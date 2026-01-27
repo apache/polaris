@@ -43,3 +43,20 @@ img[alt*="Screenshot"] {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
   margin: 1rem 0;
 }
+
+.heading-anchor {
+  text-decoration: none;
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  font-size: 1.5rem;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+h5:hover .heading-anchor,
+h6:hover .heading-anchor {
+  opacity: 1;
+}

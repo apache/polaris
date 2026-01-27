@@ -16,22 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiter;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
+package org.apache.polaris.persistence.relational.jdbc;
 
-/** TokenBucketFactory with a mock clock */
-@Alternative
-@ApplicationScoped
-public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
-  public MockTokenBucketFactory() {
-    super(5);
-  }
+public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV4SchemaTest
+    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
 
-  @Inject
-  public MockTokenBucketFactory(TokenBucketConfiguration configuration) {
-    super(configuration);
+  @Override
+  public int schemaVersion() {
+    return 4;
   }
 }

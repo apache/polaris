@@ -127,6 +127,14 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  public void testKmsUnavailable() {
+    assertThat(newBuilder().build().getKmsUnavailable()).isNull();
+    assertThat(newBuilder().kmsUnavailable(null).build().getKmsUnavailable()).isNull();
+    assertThat(newBuilder().kmsUnavailable(false).build().getKmsUnavailable()).isFalse();
+    assertThat(newBuilder().kmsUnavailable(true).build().getKmsUnavailable()).isTrue();
+  }
+
+  @Test
   public void testRoleArnParsing() {
     AwsStorageConfigurationInfo awsConfig =
         AwsStorageConfigurationInfo.builder()

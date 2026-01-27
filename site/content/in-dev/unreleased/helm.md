@@ -399,11 +399,10 @@ ct install --namespace polaris --charts ./helm/polaris
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | podSecurityContext.fsGroup | int | `10001` | GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image. |
 | priorityClassName | string | `nil` | Priority class name for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority |
-| rateLimiter | object | `{"tokenBucket":{"requestsPerSecond":9999,"type":"default","window":"PT10S"},"type":"no-op"}` | Polaris rate limiter configuration. |
-| rateLimiter.tokenBucket | object | `{"requestsPerSecond":9999,"type":"default","window":"PT10S"}` | The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm. |
-| rateLimiter.tokenBucket.requestsPerSecond | int | `9999` | The maximum number of requests per second allowed for each realm. |
+| rateLimiter | object | `{"tokenBucket":{"requestsPerSecond":9999,"type":"default"},"type":"no-op"}` | Polaris rate limiter configuration. |
+| rateLimiter.tokenBucket | object | `{"requestsPerSecond":9999,"type":"default"}` | The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm. |
+| rateLimiter.tokenBucket.requestsPerSecond | int | `9999` | The maximum number of requests (permits) per second allowed for each realm. |
 | rateLimiter.tokenBucket.type | string | `"default"` | The type of the token bucket rate limiter. Only the default type is supported out of the box. |
-| rateLimiter.tokenBucket.window | string | `"PT10S"` | The time window. |
 | rateLimiter.type | string | `"no-op"` | The type of rate limiter filter to use. Two built-in types are supported: default and no-op. |
 | readinessProbe | object | `{"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Configures the readiness probe for polaris pods. |
 | readinessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1. |

@@ -356,9 +356,9 @@
         "acr.loa.map": "{}",
         "display.on.consent.screen": "false",
         "client.offline.session.max.lifespan": "86400",
-        "client.session.max.lifespan": "86400",
+        "client.session.max.lifespan": "36000",
         "token.response.type.bearer.lower-case": "false",
-        "client.session.idle.timeout": "86400"
+        "client.session.idle.timeout": "1800"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,

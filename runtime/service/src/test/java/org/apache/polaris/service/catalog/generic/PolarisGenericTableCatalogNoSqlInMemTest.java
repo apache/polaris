@@ -16,22 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiter;
+package org.apache.polaris.service.catalog.generic;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import java.util.List;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.service.catalog.Profiles;
 
-/** TokenBucketFactory with a mock clock */
-@Alternative
-@ApplicationScoped
-public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
-  public MockTokenBucketFactory() {
-    super(5);
-  }
+@QuarkusTest
+@TestProfile(Profiles.DefaultNoSqlProfile.class)
+public class PolarisGenericTableCatalogNoSqlInMemTest
+    extends AbstractPolarisGenericTableCatalogTest {
 
-  @Inject
-  public MockTokenBucketFactory(TokenBucketConfiguration configuration) {
-    super(configuration);
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+
+  @Override
+  protected void bootstrapRealm(String realmName) {
+    metaStoreManagerFactory
+        .bootstrapRealms(
+            List.of(realmName),
+            RootCredentialsSet.fromList(List.of(realmName + ",aClientId,aSecret")))
+        .get(realmName);
   }
 }

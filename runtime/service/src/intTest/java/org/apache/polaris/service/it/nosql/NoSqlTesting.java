@@ -16,22 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiter;
+package org.apache.polaris.service.it.nosql;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-/** TokenBucketFactory with a mock clock */
-@Alternative
-@ApplicationScoped
-public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
-  public MockTokenBucketFactory() {
-    super(5);
-  }
+public final class NoSqlTesting {
+  private NoSqlTesting() {}
 
-  @Inject
-  public MockTokenBucketFactory(TokenBucketConfiguration configuration) {
-    super(configuration);
+  public static class PersistenceInMemoryProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.persistence.type",
+          "nosql",
+          "polaris.persistence.nosql.backend",
+          "InMemory",
+          "polaris.persistence.auto-bootstrap-types",
+          "nosql");
+    }
   }
 }
