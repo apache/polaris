@@ -49,7 +49,7 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=root:s3cr3t \
-    --conf spark.sql.catalog.polaris.client.region=us-west-1 \
+    --conf spark.sql.catalog.polaris.client.region=us-west-2 \
     --conf spark.sql.catalog.polaris.s3.access-key-id=polaris_root \
     --conf spark.sql.catalog.polaris.s3.secret-access-key=polaris_pass
 ```

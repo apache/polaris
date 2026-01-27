@@ -113,7 +113,7 @@ services:
         /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ ;
         source /assets/polaris/obtain-token.sh;
         echo Creating bucket...;
-        curl -X PUT --user "polaris_root:polaris_pass" --aws-sigv4 "aws:amz:us-west-1:s3" \
+        curl -X PUT --user "polaris_root:polaris_pass" --aws-sigv4 "aws:amz:us-west-2:s3" \
           http://ozone-s3g:9878/bucket123 ;
         echo Creating catalog...;
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
