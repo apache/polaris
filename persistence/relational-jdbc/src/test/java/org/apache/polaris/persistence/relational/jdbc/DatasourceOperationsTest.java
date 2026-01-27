@@ -291,4 +291,18 @@ public class DatasourceOperationsTest {
     assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     verify(mockOperation, times(1)).execute();
   }
+
+  @Test
+  void testAcquisitionTimeoutIsRetryable() throws SQLException {
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(2000L));
+    when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockOperation.execute())
+        .thenThrow(new SQLException("Acquisition timeout while waiting for new connection"))
+        .thenReturn("Success!");
+
+    String result = datasourceOperations.withRetries(mockOperation);
+    assertEquals("Success!", result);
+    verify(mockOperation, times(2)).execute();
+  }
 }
