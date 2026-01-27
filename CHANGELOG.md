@@ -55,6 +55,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 - Added KMS options to Polaris CLI
 - Changed from Poetry to UV for Python package management
+- ExternalCatalog properties (e.g., `rest.client.proxy.*`, timeout settings) are now passed through to federated catalog HTTP clients, enabling federation in controlled egress environments.
 
 ### Deprecations
 
@@ -93,7 +94,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
-- ExternalCatalog properties (e.g., `rest.client.proxy.*`, timeout settings) are now passed through to federated catalog HTTP clients, enabling federation in controlled egress environments.
 - The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
