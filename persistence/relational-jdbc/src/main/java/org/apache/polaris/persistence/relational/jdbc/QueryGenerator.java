@@ -51,6 +51,15 @@ public class QueryGenerator {
   record QueryFragment(String sql, List<Object> parameters) {}
 
   /**
+   * Returns the fully-qualified table name used by relational-jdbc queries.
+   *
+   * @param tableName Target table name.
+   */
+  public static String fullyQualifiedTableName(@Nonnull String tableName) {
+    return getFullyQualifiedTableName(tableName);
+  }
+
+  /**
    * Generates a SELECT query with projection and filtering.
    *
    * @param projections List of columns to retrieve.
