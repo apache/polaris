@@ -49,13 +49,16 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=root:s3cr3t \
-    --conf spark.sql.catalog.polaris.client.region=irrelevant
+    --conf spark.sql.catalog.polaris.client.region=us-west-2 \
+    --conf spark.sql.catalog.polaris.s3.access-key-id=polaris_root \
+    --conf spark.sql.catalog.polaris.s3.secret-access-key=polaris_pass
 ```
 
 Note: `s3cr3t` is defined as the password for the `root` user in the `docker-compose.yml` file.
 
-Note: The `client.region` configuration is required for the AWS S3 client to work, but it is not used in
-this example since Ozone does not require a specific region.
+Note: The `client.region`, `s3.access-key-id`, and `s3.secret-access-key` configuration are required
+for the AWS S3 client to work, but they are not used in this example since Ozone does not require them
+when securing S3 is not enabled.
 
 ## Running Queries
 
@@ -87,11 +90,8 @@ The lack of STS API is represented in the Catalog storage configuration by the
 
 ## S3 Credentials
 
-In this example Ozone does not require credentials for accessing its S3 API. Therefore, neither 
-Polaris, not Spark use any S3 access keys.
-
-If Ozone were configured to require credentials, Spark and Polaris would have to their own separate
-S3 access key / secret properties because credential vending is not possible with Ozone 2.0.0.
+In this example Ozone does not have securing S3 enabled for accessing its S3 API. Therefore, use
+any AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY will work for accessing S3 API.
 
 ## S3 Endpoints
 
