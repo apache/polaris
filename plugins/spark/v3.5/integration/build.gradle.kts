@@ -96,7 +96,7 @@ dependencies {
   // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
   // manageable
   // This matches what Spark 3.5 distribution provides (hive-exec-2.3.9-core.jar)
-  testImplementation("org.apache.hive:hive-exec:2.3.9:core") {
+  testImplementation("org.apache.hive:hive-exec:2.3.10:core") {
     // Exclude conflicting dependencies to use Spark's versions
     exclude("org.apache.hadoop", "*")
     exclude("org.apache.commons", "*")
