@@ -24,7 +24,7 @@ iceberg = "1.10.1" # Ensure to update the iceberg version in regtests to keep re
 immutables = "2.12.1"
 jmh = "1.37"
 picocli = "4.7.7"
-quarkus = "3.30.8"
+quarkus = "3.31.0"
 scala212 = "2.12.19"
 swagger = "1.6.16"
 
