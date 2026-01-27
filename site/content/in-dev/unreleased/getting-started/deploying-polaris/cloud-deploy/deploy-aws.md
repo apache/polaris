@@ -52,9 +52,8 @@ The deployment script accepts the following environment variables:
 * **`CLIENT_ID`** (required): Client ID for Polaris authentication
 * **`CLIENT_SECRET`** (required): Client secret for Polaris authentication
 * **`POSTGRES_PASSWORD`** (optional): Password for the PostgreSQL database
-  * If not provided, a random 16-character password will be automatically generated
+  * If not provided, a random 16-character password will be automatically generated and will be displayed in the script output
   * Cannot be set to `postgres` for security reasons
-  * The generated or provided password will be displayed in the script output
 
 ## Next Steps
 Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
