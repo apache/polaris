@@ -84,6 +84,11 @@
     {
       matchPackageNames: ["openapi-generator-cli"],
       enabled: false
+    },
+    // Disable update for python version
+    {
+      matchPackageNames: ["python"],
+      enabled: false
     }
   ],
 
