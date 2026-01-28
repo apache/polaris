@@ -465,11 +465,52 @@ You can now publish Docker images on DockerHub:
 ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z
 ```
 
-### Publishing docs 
-1. Open a PR against branch [`versioned-docs`](https://github.com/apache/polaris/tree/versioned-docs) to publish the documentation
-2. Open a PR against the `main` branch to update website
-    - Add download links and release notes in [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads/_index.md)
-    - Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
+### Upload the documentation
+Now that the release artifacts have been published, the next step is to publish the associated documentation on the website.  Checkout the `versioned-docs` branch locally and copy the documentation associated to the release tag at the root of the repository.
+
+```
+git checkout -b versioned-docs-[major].[minor].[patch] versioned-docs
+mkdir [major].[minor].[patch]
+git archive apache-polaris-[major].[minor].[patch]-incubating site/content/in-dev/unreleased | tar -x --strip-components=4 -C [major].[minor].[patch]/
+```
+
+Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications.
+* Change the title from `In Development` to `[major].[minor].[patch]`.
+* Remove the `alert warning` block that warns that the documentation is for the main branch.
+* Commit and push to your fork
+
+```
+git add .
+git commit -m "Add documentation for [major].[minor].[patch]"
+```
+
+Then open a PR against the `versioned-docs` branch with your changes.
+
+### Update the download links on the website
+The final step is to update the "Download" page on Polaris website with links to the newly released artifacts.  Checkout the `main` branch locally.
+
+```
+git checkout -b main-site-download-links-[major].[minor].[patch] main
+```
+
+Edit the file `site/content/downloads/_index.md` and add a new section for the release.  The section should contain the following information:
+
+* A table with links to each of the artifacts, its PGP signature and associated checksum. All links in this section MUST point to `https://dlcdn.apache.org/` or `https://downloads.apache.org/`.
+* The release date.
+* A paragraph with the release notes.
+
+Then update the section of the previous release so that it references `https://archive.apache.org` instead of `https://dlcdn.apache.org/` and `https://downloads.apache.org/`.
+
+Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new release.  Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the following format:
+
+```
+    - name: "[major].[minor].[patch]"
+      url: "/releases/[major].[minor].[patch]/"
+      parent: "doc"
+      weight: [previous release weight - 1]
+```
+
+Then open a PR against the `main` branch with your changes.
 
 ### Announcing the release
 To announce the release, wait until Maven Central has mirrored the artifacts.
