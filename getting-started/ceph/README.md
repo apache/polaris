@@ -47,56 +47,12 @@ Note: this example pulls the `apache/polaris:latest` image, but assumes the imag
 cp .env.example .env
 ```
 
-### 2. Start monitor and manager
+### 2. Start the docker compose group by running the following command:
 ```shell
-docker compose up -d mon1 mgr
+docker compose up -d
 ```
 
-### 3. Start OSD
-```shell
-docker compose up -d osd1
-```
-
-### 4. Start RGW
-```shell
-docker compose up -d rgw1
-```
-#### Check status
-```shell
-docker exec --interactive --tty ceph-mon1-1 ceph -s
-```
-You should see something like:
-```yaml
-cluster:
-  id:     b2f59c4b-5f14-4f8c-a9b7-3b7998c76a0e
-  health: HEALTH_WARN
-          mon is allowing insecure global_id reclaim
-          1 monitors have not enabled msgr2
-          6 pool(s) have no replicas configured
-
-services:
-  mon: 1 daemons, quorum mon1 (age 49m)
-  mgr: mgr(active, since 94m)
-  osd: 1 osds: 1 up (since 36m), 1 in (since 93m)
-  rgw: 1 daemon active (1 hosts, 1 zones)
-```
-
-### 5. Create bucket for Polaris storage
-```shell
-docker compose up -d setup_bucket
-```
-
-### 6. Run Polaris service
-```shell
-docker compose up -d polaris
-```
-
-### 7. Setup polaris catalog
-```shell
-docker compose up -d polaris-setup
-```
-
-## 8. Connecting From Spark
+## 3. Connecting From Spark
 
 ```shell
 bin/spark-sql \
@@ -121,7 +77,7 @@ Note: `s3cr3t` is defined as the password for the `root` user in the `docker-com
 Note: The `client.region` configuration is required for the AWS S3 client to work, but it is not used in this example
 since Ceph does not require a specific region.
 
-## 9. Running Queries
+## 4. Running Queries
 
 Run inside the Spark SQL shell:
 
