@@ -69,6 +69,11 @@
       matchPackageNames: ["boto3{/,}**"],
       extends: ["schedule:weekly"],
     },
+    // amazon/aws-cli (release frequency: multiple times per week)
+    {
+      matchPackageNames: ["amazon/aws-cli"],
+      extends: ["schedule:weekly"],
+    },
     // Quarkus platform + plugin together
     {
       groupName: "Quarkus Platform and Group",
