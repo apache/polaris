@@ -14,11 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.polaris.idempotency;
+package org.apache.polaris.core.entity;
 
 import java.time.Instant;
 
+/**
+ * Immutable snapshot of an idempotency reservation and its finalization status.
+ *
+ * <p>This is the persistence-agnostic representation used by higher layers; storage backends map
+ * their concrete schemas into this type.
+ */
 public final class IdempotencyRecord {
+
   private final String realmId;
   private final String idempotencyKey;
   private final String operationType;
@@ -79,6 +86,14 @@ public final class IdempotencyRecord {
     return operationType;
   }
 
+  /**
+   * Normalized identifier of the resource affected by the operation.
+   *
+   * <p>This should be derived from the request (for example, a canonicalized path like {@code
+   * "tables/ns.tbl"}), not from a generated internal entity id. This ensures the binding is
+   * available even when an operation fails before creating any entities, and allows the HTTP layer
+   * to detect idempotency-key reuse across different resources.
+   */
   public String getNormalizedResourceId() {
     return normalizedResourceId;
   }

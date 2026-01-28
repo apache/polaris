@@ -18,7 +18,7 @@ package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
 import java.util.Optional;
-import org.apache.polaris.idempotency.IdempotencyRecord;
+import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
  * Abstraction for persisting and querying idempotency records.
