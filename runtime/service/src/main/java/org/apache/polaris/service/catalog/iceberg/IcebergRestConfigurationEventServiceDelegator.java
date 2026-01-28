@@ -29,7 +29,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -64,13 +64,13 @@ public class IcebergRestConfigurationEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_CONFIG,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
+            new EventAttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_GET_CONFIG,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())));
     return resp;
   }

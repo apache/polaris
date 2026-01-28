@@ -50,7 +50,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -202,7 +202,7 @@ public class TaskExecutorImpl implements TaskExecutor {
         new PolarisEvent(
             PolarisEventType.BEFORE_ATTEMPT_TASK,
             eventMetadataFactory.copy(eventMetadata),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                 .put(EventAttributes.TASK_ATTEMPT, attempt)));
 
@@ -251,7 +251,7 @@ public class TaskExecutorImpl implements TaskExecutor {
           new PolarisEvent(
               PolarisEventType.AFTER_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
-              new AttributeMap()
+              new EventAttributeMap()
                   .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
                   .put(EventAttributes.TASK_ATTEMPT, attempt)
                   .put(EventAttributes.TASK_SUCCESS, success)));

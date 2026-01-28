@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -115,6 +116,33 @@ public class CommitTransactionEventTest {
         .isInstanceOf(IllegalStateException.class);
     assertThatThrownBy(() -> testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE))
         .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void testLoadTableResponsesInCommitTransaction() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    String table1Name = "test-table-5";
+    String table2Name = "test-table-6";
+    executeTransactionTest(false, table1Name, table2Name, testServices);
+
+    TestPolarisEventListener testEventListener =
+        (TestPolarisEventListener) testServices.polarisEventListener();
+
+    // Verify that AfterUpdateTable events contain LoadTableResponse objects
+    PolarisEvent afterUpdateTableEvent =
+        testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE);
+
+    // Verify second table's LoadTableResponse
+    assertThat(afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
+        .isEqualTo(table2Name);
+    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isPresent();
+    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isNotEmpty();
+    TableMetadata metadata =
+        afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA);
+    assertThat(metadata).isNotNull();
+    assertThat(metadata.properties()).containsEntry(propertyName, "value2");
   }
 
   private void createCatalogAndNamespace(
