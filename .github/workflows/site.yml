@@ -25,7 +25,7 @@ on:
     branches: [ "main" ]
   workflow_call:
     # The workflow is programmatically "protected" to be only callable from the 'apache/polaris' repo.
-    # Beware: this workflow will be called with with the `github` context from the 'versioned-docs' branch,
+    # Beware: this workflow will be called with the `github` context from the 'versioned-docs' branch,
     # which means, for example, that the `github.ref` would be 'refs/heads/versioned-docs'.
 
 # Ensure that no two site publications happen concurrently.
