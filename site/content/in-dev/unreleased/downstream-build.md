@@ -29,7 +29,8 @@ according to the terms of the license included in Polaris distributions.
 
 ## General Principles
 
-* Create a module in your project (Maven, Gradle or any other build tool) for a Quarkus Application.
+* Create a module in your project (Maven, Gradle or any other build tool) for a
+[Quarkus Application](https://code.quarkus.io/).
 * Include `polaris-runtime-service` as a runtime or compile-time dependency.
 * Include / exclude other dependencies according to the project's needs (e.g., an alternative JDBC driver).
 * Do not include `polaris-runtime-defaults` or `polaris-server` as dependencies.
