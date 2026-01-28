@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1042,57 +1043,71 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         new TransactionWorkspaceMetaStoreManager(diagnostics, metaStoreManager);
     ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
-    commitTransactionRequest.tableChanges().stream()
-        .forEach(
-            change -> {
-              Table table = baseCatalog.loadTable(change.identifier());
-              if (!(table instanceof BaseTable baseTable)) {
-                throw new IllegalStateException(
-                    "Cannot wrap catalog that does not produce BaseTable");
+    // Group all changes by table identifier to handle them atomically
+    // This prevents conflicts when multiple changes target the same table entity
+    // LinkedHashMap preserves insertion order for deterministic processing
+    Map<TableIdentifier, List<UpdateTableRequest>> changesByTable = new LinkedHashMap<>();
+    for (UpdateTableRequest change : commitTransactionRequest.tableChanges()) {
+      if (isCreate(change)) {
+        throw new BadRequestException(
+            "Unsupported operation: commitTranaction with updateForStagedCreate: %s", change);
+      }
+      changesByTable.computeIfAbsent(change.identifier(), k -> new ArrayList<>()).add(change);
+    }
+
+    // Process each table's changes in order
+    changesByTable.forEach(
+        (tableIdentifier, changes) -> {
+          Table table = baseCatalog.loadTable(tableIdentifier);
+          if (!(table instanceof BaseTable baseTable)) {
+            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+          }
+
+          TableOperations tableOps = baseTable.operations();
+          TableMetadata baseMetadata = tableOps.current();
+
+          // Apply each change sequentially: validate requirements against current state,
+          // then apply updates. This ensures conflicts are detected (e.g., if two changes
+          // both expect schema ID 0, the second will fail after the first increments it).
+          TableMetadata currentMetadata = baseMetadata;
+          for (UpdateTableRequest change : changes) {
+            // Validate requirements against the current metadata state
+            final TableMetadata metadataForValidation = currentMetadata;
+            change
+                .requirements()
+                .forEach(requirement -> requirement.validate(metadataForValidation));
+
+            // Apply this change's updates
+            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+            for (MetadataUpdate singleUpdate : change.updates()) {
+              // Note: If location-overlap checking is refactored to be atomic, we could
+              // support validation within a single multi-table transaction as well, but
+              // will need to update the TransactionWorkspaceMetaStoreManager to better
+              // expose the concept of being able to read uncommitted updates.
+              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                if (!currentMetadata.location().equals(setLocation.location())
+                    && !realmConfig.getConfig(
+                        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                  throw new BadRequestException(
+                      "Unsupported operation: commitTransaction containing SetLocation"
+                          + " for table '%s' and new location '%s'",
+                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
+                }
               }
-              if (isCreate(change)) {
-                throw new BadRequestException(
-                    "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
-                    change);
-              }
 
-              TableOperations tableOps = baseTable.operations();
-              TableMetadata currentMetadata = tableOps.current();
+              // Apply updates to builder
+              singleUpdate.applyTo(metadataBuilder);
+            }
 
-              // Validate requirements; any CommitFailedExceptions will fail the overall request
-              change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
+            // Update currentMetadata to reflect this change for subsequent requirement validation
+            currentMetadata = metadataBuilder.build();
+          }
 
-              // Apply changes
-              TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-              change.updates().stream()
-                  .forEach(
-                      singleUpdate -> {
-                        // Note: If location-overlap checking is refactored to be atomic, we could
-                        // support validation within a single multi-table transaction as well, but
-                        // will need to update the TransactionWorkspaceMetaStoreManager to better
-                        // expose the concept of being able to read uncommitted updates.
-                        if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                          if (!currentMetadata.location().equals(setLocation.location())
-                              && !realmConfig.getConfig(
-                                  FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                            throw new BadRequestException(
-                                "Unsupported operation: commitTransaction containing SetLocation"
-                                    + " for table '%s' and new location '%s'",
-                                change.identifier(),
-                                ((MetadataUpdate.SetLocation) singleUpdate).location());
-                          }
-                        }
-
-                        // Apply updates to builder
-                        singleUpdate.applyTo(metadataBuilder);
-                      });
-
-              // Commit into transaction workspace we swapped the baseCatalog to use
-              TableMetadata updatedMetadata = metadataBuilder.build();
-              if (!updatedMetadata.changes().isEmpty()) {
-                tableOps.commit(currentMetadata, updatedMetadata);
-              }
-            });
+          // Commit all accumulated changes for this table in a single atomic operation
+          if (!currentMetadata.changes().isEmpty()) {
+            tableOps.commit(baseMetadata, currentMetadata);
+          }
+        });
 
     // Commit the collected updates in a single atomic operation
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
