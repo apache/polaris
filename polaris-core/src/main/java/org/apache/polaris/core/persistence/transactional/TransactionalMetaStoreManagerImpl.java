@@ -2023,7 +2023,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
 
     // get meta store session we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -2061,7 +2062,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               allowedWriteLocations,
               polarisPrincipal,
               refreshCredentialsEndpoint,
-              credentialVendingContext);
+              credentialVendingContext,
+              tableProperties); // Convert Optional to nullable for storage integration
       return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

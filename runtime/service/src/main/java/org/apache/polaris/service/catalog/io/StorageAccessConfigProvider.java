@@ -57,15 +57,18 @@ public class StorageAccessConfigProvider {
   private final StorageCredentialCache storageCredentialCache;
   private final StorageCredentialsVendor storageCredentialsVendor;
   private final PolarisPrincipal polarisPrincipal;
+  private final TableStorageConfigurationMerger tableStorageConfigurationMerger;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
       StorageCredentialsVendor storageCredentialsVendor,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      TableStorageConfigurationMerger tableStorageConfigurationMerger) {
     this.storageCredentialCache = storageCredentialCache;
     this.storageCredentialsVendor = storageCredentialsVendor;
     this.polarisPrincipal = polarisPrincipal;
+    this.tableStorageConfigurationMerger = tableStorageConfigurationMerger;
   }
 
   /**
@@ -77,6 +80,8 @@ public class StorageAccessConfigProvider {
    *     to
    * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
    * @param resolvedPath the entity hierarchy to search for storage configuration
+   * @param tableProperties optional table properties map containing table-level storage properties
+   *     that may override catalog-level configuration (e.g., different credentials, endpoints)
    * @return {@link StorageAccessConfig} with scoped credentials and metadata; empty if no storage
    *     config found
    */
@@ -85,7 +90,8 @@ public class StorageAccessConfigProvider {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisResolvedPathWrapper resolvedPath) {
+      @Nonnull PolarisResolvedPathWrapper resolvedPath,
+      java.util.Map<String, String> tableProperties) {
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
@@ -110,6 +116,30 @@ public class StorageAccessConfigProvider {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
+
+      // Even when skipping credential vending, merge table properties into config if feature is
+      // enabled
+      boolean allowTableStorageOverrides =
+          storageCredentialsVendor
+              .getRealmConfig()
+              .getConfig(FeatureConfiguration.ALLOW_TABLE_STORAGE_PROPERTY_OVERRIDES);
+
+      if (allowTableStorageOverrides
+          && tableProperties != null
+          && tableStorageConfigurationMerger.hasTableStorageProperties(tableProperties)) {
+        LOGGER
+            .atDebug()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .log(
+                "Merging table properties as extra properties (credential vending skipped, feature enabled)");
+        StorageAccessConfig.Builder builder = StorageAccessConfig.builder();
+        // Merge table properties as extra properties (non-vended scenario)
+        java.util.Map<String, String> emptyConfig = java.util.Collections.emptyMap();
+        java.util.Map<String, String> mergedProps =
+            tableStorageConfigurationMerger.mergeConfigurations(emptyConfig, tableProperties);
+        mergedProps.forEach(builder::putExtraProperty);
+        return builder.build();
+      }
       return StorageAccessConfig.builder().build();
     }
 
@@ -127,6 +157,31 @@ public class StorageAccessConfigProvider {
     CredentialVendingContext credentialVendingContext =
         buildCredentialVendingContext(tableIdentifier, resolvedPath);
 
+    // Check if table property overrides are enabled
+    boolean allowTableStorageOverrides =
+        storageCredentialsVendor
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.ALLOW_TABLE_STORAGE_PROPERTY_OVERRIDES);
+
+    // Extract table properties for credential vending if enabled
+    // These will be passed through to the storage integration (e.g.,
+    // AwsCredentialsStorageIntegration)
+    // where they can override catalog-level configuration before making STS calls
+    Optional<java.util.Map<String, String>> tablePropsForVending = Optional.empty();
+    if (allowTableStorageOverrides
+        && tableProperties != null
+        && !tableProperties.isEmpty()
+        && tableStorageConfigurationMerger.hasTableStorageProperties(tableProperties)) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tablePropertyKeys", tableProperties.keySet())
+          .log("Table-level storage properties will be passed to credential vending");
+
+      tablePropsForVending = Optional.of(tableProperties);
+    }
+
+    // Get vended credentials, passing table properties that will override catalog config
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             storageCredentialsVendor,
@@ -136,13 +191,15 @@ public class StorageAccessConfigProvider {
             writeLocations,
             polarisPrincipal,
             refreshCredentialsEndpoint,
-            credentialVendingContext);
+            credentialVendingContext,
+            tablePropsForVending); // Table properties passed through to storage integration
 
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
         .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
         .addKeyValue("extraProperties", accessConfig.extraProperties())
+        .addKeyValue("hasTableProperties", tablePropsForVending.isPresent())
         .log("Loaded scoped credentials for table");
     if (accessConfig.credentials().isEmpty()) {
       LOGGER.debug("No credentials found for table");
