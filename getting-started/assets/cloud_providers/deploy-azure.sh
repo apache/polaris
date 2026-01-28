@@ -17,6 +17,17 @@
 # under the License.
 #
 
+# Handle POSTGRES_PASSWORD validation and generation
+if [ "$POSTGRES_PASSWORD" = "postgres" ]; then
+  echo "ERROR: Using 'postgres' as the database password is not allowed. Please set the environment variable POSTGRES_PASSWORD to a strong password."
+  exit 1
+elif [ -z "$POSTGRES_PASSWORD" ]; then
+  POSTGRES_PASSWORD=$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)
+  echo "WARNING: POSTGRES_PASSWORD not provided. Generated random password: $POSTGRES_PASSWORD"
+else
+  echo "INFO: Using provided POSTGRES_PASSWORD"
+fi
+
 DESCRIBE_INSTANCE=$(curl -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2021-02-01")
 CURRENT_RESOURCE_GROUP=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.resourceGroupName')
 CURRENT_REGION=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.location')
@@ -24,14 +35,17 @@ CURRENT_VM_NAME=$(echo $DESCRIBE_INSTANCE | jq -r '.compute.name')
 RANDOM_SUFFIX=$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
 INSTANCE_NAME="polaris-backend-test-$RANDOM_SUFFIX"
 
-CREATE_DB_RESPONSE=$(az postgres flexible-server create -l $CURRENT_REGION -g $CURRENT_RESOURCE_GROUP -n $INSTANCE_NAME -u postgres -p postgres -y)
+# Get the VM's public IP to restrict database access
+INSTANCE_IP=$(az vm list-ip-addresses --name $CURRENT_VM_NAME --resource-group $CURRENT_RESOURCE_GROUP --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" -o tsv)
+
+CREATE_DB_RESPONSE=$(az postgres flexible-server create -l $CURRENT_REGION -g $CURRENT_RESOURCE_GROUP -n $INSTANCE_NAME -u postgres -p "$POSTGRES_PASSWORD" --public-access $INSTANCE_IP -y)
 
 az postgres flexible-server db create -g $CURRENT_RESOURCE_GROUP -s $INSTANCE_NAME -d POLARIS
 
 POSTGRES_ADDR=$(echo $CREATE_DB_RESPONSE | jq -r '.host')
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
-export QUARKUS_DATASOURCE_PASSWORD=postgres
+export QUARKUS_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
 echo $QUARKUS_DATASOURCE_JDBC_URL
 
 STORAGE_ACCOUNT_NAME="polaristest$RANDOM_SUFFIX"
