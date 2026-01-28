@@ -125,20 +125,17 @@ since Ceph does not require a specific region.
 
 Run inside the Spark SQL shell:
 
+```sql
+USE polaris;
+
+CREATE NAMESPACE ns;
+
+CREATE TABLE ns.t1 AS SELECT 'abc';
+
+SELECT * FROM ns.t1;
+-- abc
 ```
-spark-sql (default)> use polaris;
-Time taken: 0.837 seconds
 
-spark-sql ()> create namespace ns;
-Time taken: 0.374 seconds
-
-spark-sql ()> create table ns.t1 as select 'abc';
-Time taken: 2.192 seconds
-
-spark-sql ()> select * from ns.t1;
-abc
-Time taken: 0.579 seconds, Fetched 1 row(s)
-```
 ## Lack of Credential Vending
 
 Notice that the Spark configuration does not contain a `X-Iceberg-Access-Delegation` header.
