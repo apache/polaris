@@ -149,7 +149,7 @@ public enum PolarisEventType {
   // Credential Events
   BEFORE_LOAD_CREDENTIALS(800),
   AFTER_LOAD_CREDENTIALS(801),
-    // Transaction Events
+  // Transaction Events
   BEFORE_COMMIT_TRANSACTION(900),
   AFTER_COMMIT_TRANSACTION(901),
   // Notification Events
@@ -196,11 +196,12 @@ public enum PolarisEventType {
   BEFORE_LIMIT_REQUEST_RATE(1500);
 
   private final int code;
+
   private PolarisEventType(int code) {
     this.code = code;
   }
+
   public int code() {
     return code;
   }
-
 }
