@@ -145,10 +145,11 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
   }
 
   @Override
-  public void onEvent(PolarisEvent event) {
-    if (event.type() != PolarisEventType.AFTER_REFRESH_TABLE) {
+  public void onEvent(PolarisEventType type, Supplier<PolarisEvent> eventSupplier) {
+    if (type != PolarisEventType.AFTER_REFRESH_TABLE) {
       return;
     }
+    PolarisEvent event = eventSupplier.get();
     HashMap<String, Object> properties = new HashMap<>();
     properties.put("event_type", event.type().name());
     event

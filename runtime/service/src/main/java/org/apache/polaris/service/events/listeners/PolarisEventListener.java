@@ -18,14 +18,16 @@
  */
 package org.apache.polaris.service.events.listeners;
 
+import java.util.function.Supplier;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventType;
 
 /**
- * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes with {@link
- * PolarisEvent#hasAttribute} and {@link PolarisEvent#attribute}.
+ * Event listener that responds to notable moments during Polaris's execution. Implementations
+ * should check the event type and only call {@code eventSupplier.get()} for types they handle,
+ * avoiding unnecessary object allocation.
  */
 public interface PolarisEventListener {
 
-  default void onEvent(PolarisEvent event) {}
+  default void onEvent(PolarisEventType type, Supplier<PolarisEvent> eventSupplier) {}
 }
