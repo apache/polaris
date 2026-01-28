@@ -61,6 +61,33 @@ Refer to the [CLI documentation](../command-line-interface.md#catalogs) for deta
 Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
 receive tokens with access to the federated namespace.
 
+## Outbound HTTP settings
+
+Iceberg REST federation uses Iceberg's HTTP client. You can pass through HTTP settings by adding
+catalog properties when creating or updating the external catalog (via `--property` or
+`--set-property`).
+
+Common settings include:
+
+- `rest.client.proxy.hostname`
+- `rest.client.proxy.port`
+- `rest.client.proxy.username`
+- `rest.client.proxy.password`
+- `rest.client.connection-timeout-ms`
+- `rest.client.socket-timeout-ms`
+
+Example:
+
+```bash
+polaris catalogs update analytics_rest \
+    --set-property rest.client.proxy.hostname=proxy.example.com \
+    --set-property rest.client.proxy.port=3128 \
+    --set-property rest.client.connection-timeout-ms=30000 \
+    --set-property rest.client.socket-timeout-ms=120000
+```
+
+Connection config properties (URI and authentication) take precedence if the same keys are present.
+
 ## Operational notes
 
 - **Connectivity checks:** Polaris does not lazily probe the remote service; catalog creation fails if
