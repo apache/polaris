@@ -83,9 +83,7 @@ public class DatasourceOperations {
     return databaseType;
   }
 
-  /**
-   * Returns the detected database type for this datasource.
-   */
+  /** Returns the detected database type for this datasource. */
   public DatabaseType databaseType() {
     return databaseType;
   }

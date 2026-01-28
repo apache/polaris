@@ -89,8 +89,8 @@ public final class IdempotencyRecord {
   /**
    * Normalized identifier of the resource affected by the operation.
    *
-   * <p>This should be derived from the request (for example, a canonicalized path like
-   * {@code "tables/ns.tbl"}), not from a generated internal entity id. This ensures the binding is
+   * <p>This should be derived from the request (for example, a canonicalized path like {@code
+   * "tables/ns.tbl"}), not from a generated internal entity id. This ensures the binding is
    * available even when an operation fails before creating any entities, and allows the HTTP layer
    * to detect idempotency-key reuse across different resources.
    */
@@ -111,8 +111,8 @@ public final class IdempotencyRecord {
   /**
    * Optional error subtype or code that provides additional detail when the operation failed.
    *
-   * <p>Examples include {@code already_exists}, {@code namespace_not_empty}, or
-   * {@code idempotency_replay_failed}.
+   * <p>Examples include {@code already_exists}, {@code namespace_not_empty}, or {@code
+   * idempotency_replay_failed}.
    */
   public String getErrorSubtype() {
     return errorSubtype;
@@ -132,8 +132,8 @@ public final class IdempotencyRecord {
   /**
    * Serialized representation of a small, whitelisted set of HTTP response headers.
    *
-   * <p>Stored as a JSON string so that the HTTP layer can replay key headers (such as
-   * {@code Content-Type}) when serving a duplicate idempotent request.
+   * <p>Stored as a JSON string so that the HTTP layer can replay key headers (such as {@code
+   * Content-Type}) when serving a duplicate idempotent request.
    */
   public String getResponseHeaders() {
     return responseHeaders;

@@ -20,10 +20,10 @@ import jakarta.annotation.Nonnull;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Arrays;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
@@ -39,7 +39,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   private final DatasourceOperations datasourceOperations;
 
   public RelationalJdbcIdempotencyStore(
-      @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg) throws SQLException {
+      @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg)
+      throws SQLException {
     this.datasourceOperations = new DatasourceOperations(dataSource, cfg);
   }
 
@@ -66,10 +67,14 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               .expiresAt(expiresAt)
               .build();
 
-      List<Object> values = model.toMap(datasourceOperations.databaseType()).values().stream().toList();
+      List<Object> values =
+          model.toMap(datasourceOperations.databaseType()).values().stream().toList();
       QueryGenerator.PreparedQuery insert =
           QueryGenerator.generateInsertQuery(
-              ModelIdempotencyRecord.ALL_COLUMNS, ModelIdempotencyRecord.TABLE_NAME, values, realmId);
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              values,
+              realmId);
       datasourceOperations.executeUpdate(insert);
       return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
@@ -99,7 +104,10 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       }
       if (results.size() > 1) {
         throw new IllegalStateException(
-            "More than one idempotency record found for realm/key: " + realmId + "/" + idempotencyKey);
+            "More than one idempotency record found for realm/key: "
+                + realmId
+                + "/"
+                + idempotencyKey);
       }
       return Optional.of(results.getFirst());
     } catch (SQLException e) {
@@ -131,12 +139,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     QueryGenerator.PreparedQuery update =
         new QueryGenerator.PreparedQuery(
             sql,
-            List.of(
-                Timestamp.from(now),
-                Timestamp.from(now),
-                realmId,
-                idempotencyKey,
-                executorId));
+            List.of(Timestamp.from(now), Timestamp.from(now), realmId, idempotencyKey, executorId));
 
     try {
       int updated = datasourceOperations.executeUpdate(update);
