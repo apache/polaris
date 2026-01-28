@@ -29,14 +29,14 @@ if [ -z "$ENDPOINT" ]; then
 fi
 
 # Make up to 30 attempts to list buckets. Success means the service is available
-for i in `seq 1 30`; do
+for i in $(seq 1 30); do
   echo "Listing buckets at $ENDPOINT"
-  curl --user "$KEY_ID:$SECRET" --aws-sigv4 "aws:amz:us-west-1:s3" $ENDPOINT
-  if [[ "$?" == "0" ]]; then
+
+  if curl --user "$KEY_ID:$SECRET" --aws-sigv4 "aws:amz:us-west-1:s3" "$ENDPOINT"; then
     echo
     echo "$ENDPOINT is available"
     break
   fi
   echo "Sleeping $SLEEP ..."
-  sleep $SLEEP
+  sleep "$SLEEP"
 done
