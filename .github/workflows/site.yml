@@ -25,6 +25,8 @@ on:
     branches: [ "main" ]
   workflow_call:
     # The workflow is programmatically "protected" to be only callable from the 'apache/polaris' repo.
+    # Beware: this workflow will be called with with the `github` context from the 'versioned-docs' branch,
+    # which means, for example, that the `github.ref` would be 'refs/heads/versioned-docs'.
 
 # Ensure that no two site publications happen concurrently.
 # 1 job per reference can run concurrently, no cancellation
@@ -45,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
+          # Must mention the branch to check out explicitly.
+          # Otherwise the branch of the workflow-call (usually 'versioned-docs') would be checked out.
           ref: "main"
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
@@ -68,7 +72,7 @@ jobs:
         run: sudo cp .asf.yaml site/build/apache-site/
 
       - name: Deploy Static Site to GitHub
-        if: (github.event_name == 'push' && github.repository == 'apache/polaris') || github.event_name == 'workflow_call'
+        if: github.event_name == 'push' && github.repository == 'apache/polaris'
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
