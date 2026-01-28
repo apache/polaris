@@ -22,7 +22,7 @@ services:
   ozone-datanode:
     image: &ozone-image apache/ozone:2.1.0
     ports:
-      - 9864
+      - "9864"
     command: ["ozone","datanode"]
     environment:
       &ozone-common-config
@@ -39,10 +39,10 @@ services:
       OZONE-SITE.XML_ozone.scm.names: "ozone-scm"
       OZONE-SITE.XML_hdds.scm.safemode.min.datanode: "1"
       no_proxy: "ozone-om,ozone-recon,ozone-scm,ozone-s3g,localhost,127.0.0.1"
-  ozone-om:
+  ozone-om: # Ozone manager
     image: *ozone-image
     ports:
-      - 9874:9874
+      - "9874:9874"
     environment:
       <<: *ozone-common-config
       CORE-SITE.XML_hadoop.proxyuser.hadoop.hosts: "*"
@@ -50,10 +50,10 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       WAITFOR: ozone-scm:9876
     command: ["ozone","om"]
-  ozone-scm:
+  ozone-scm: # storage container manager
     image: *ozone-image
     ports:
-      - 9876:9876
+      - "9876:9876"
     environment:
       <<: *ozone-common-config
       ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
@@ -61,16 +61,41 @@ services:
   ozone-recon:
     image: *ozone-image
     ports:
-      - 9888:9888
+      - "9888:9888"
     environment:
       <<: *ozone-common-config
+    depends_on:
+      ozone-om:
+        condition: service_started
+      ozone-scm:
+        condition: service_started
+      ozone-datanode:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:9888"]
+      interval: 1s
+      timeout: 10s
+      retries: 60
+      start_period: 5s
     command: ["ozone","recon"]
   ozone-s3g:
     image: *ozone-image
     ports:
-      - 9878:9878
+      - "9878:9878"
+    depends_on:
+      ozone-om:
+        condition: service_started
+      ozone-datanode:
+        condition: service_started
     environment:
       <<: *ozone-common-config
+      WAITFOR: ozone-om:9874
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:9878"]
+      interval: 1s
+      timeout: 10s
+      retries: 60
+      start_period: 5s
     command: ["ozone","s3g"]
 
   polaris:
@@ -80,6 +105,9 @@ services:
       - "8181:8181"
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
+    depends_on:
+      ozone-s3g:
+        condition: service_healthy
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
@@ -93,11 +121,12 @@ services:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
-      retries: 10
+      retries: 60
       start_period: 10s
 
   polaris-setup:
     image: alpine/curl:8.17.0
+    restart: "no"
     depends_on:
       polaris:
         condition: service_healthy
