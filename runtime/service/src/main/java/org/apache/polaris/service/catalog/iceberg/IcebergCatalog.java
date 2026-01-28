@@ -1852,16 +1852,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      polarisEventListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.BEFORE_COMMIT_VIEW,
-              eventMetadataFactory.create(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
-                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
-                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
-
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug(
           "doCommit for view {} with metadataBefore {}, metadataAfter {}",
@@ -1959,16 +1949,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(identifier, entity);
       }
-
-      polarisEventListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.AFTER_COMMIT_VIEW,
-              eventMetadataFactory.create(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
-                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
-                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {
