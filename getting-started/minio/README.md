@@ -72,19 +72,15 @@ since MinIO does not require a specific region.
 
 Run inside the Spark SQL shell:
 
-```
-spark-sql (default)> use polaris;
-Time taken: 0.837 seconds
+```sql
+USE polaris;
 
-spark-sql ()> create namespace ns;
-Time taken: 0.374 seconds
+CREATE NAMESPACE ns;
 
-spark-sql ()> create table ns.t1 as select 'abc';
-Time taken: 2.192 seconds
+CREATE TABLE ns.t1 AS SELECT 'abc';
 
-spark-sql ()> select * from ns.t1;
-abc
-Time taken: 0.579 seconds, Fetched 1 row(s)
+SELECT * FROM ns.t1;
+-- abc
 ```
 
 ## MinIO Endpoints
