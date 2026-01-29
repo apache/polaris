@@ -69,7 +69,6 @@ services:
     command:
       - "-c"
       - >-
-        chmod +x /polaris/create-catalog.sh;
         /polaris/create-catalog.sh;
 
   prometheus:
