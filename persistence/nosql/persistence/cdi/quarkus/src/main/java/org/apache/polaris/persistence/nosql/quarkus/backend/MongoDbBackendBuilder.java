@@ -19,10 +19,8 @@
 package org.apache.polaris.persistence.nosql.quarkus.backend;
 
 import com.mongodb.client.MongoClient;
-import io.quarkus.arc.Arc;
-import io.quarkus.mongodb.runtime.MongoClientBeanUtil;
-import io.quarkus.mongodb.runtime.MongoClients;
 import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.mongodb.MongoDbBackendConfig;
@@ -36,11 +34,11 @@ class MongoDbBackendBuilder implements BackendBuilder {
   @ConfigProperty(name = "quarkus.mongodb.database", defaultValue = "polaris")
   String databaseName;
 
+  @Inject Instance<MongoClient> mongoClientInstance;
+
   @Override
   public Backend buildBackend() {
-    MongoClients mongoClients = Arc.container().instance(MongoClients.class).get();
-    MongoClient client =
-        mongoClients.createMongoClient(MongoClientBeanUtil.DEFAULT_MONGOCLIENT_NAME);
+    MongoClient client = mongoClientInstance.get();
 
     var config = new MongoDbBackendConfig(databaseName, client, true, false);
 
