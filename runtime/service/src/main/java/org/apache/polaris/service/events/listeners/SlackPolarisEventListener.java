@@ -42,8 +42,24 @@ public class SlackPolarisEventListener implements PolarisEventListener {
     @Override
     public void onEvent(PolarisEvent event) {
         if (event.type() == PolarisEventType.AFTER_DELETE_CATALOG && event.attributes().getRequired(EventAttributes.CATALOG_NAME).startsWith("restricted")) {
-            sendSlackEvent(event);
+            sendSlackEvent(generatePayload(event));
         }
+    }
+
+    private String generatePayload(PolarisEvent event) {
+        String payload = "";
+        if (event.type() == PolarisEventType.AFTER_DELETE_CATALOG) {
+            String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
+            String principalName = event.metadata().user().map(PolarisPrincipal::getName).orElse(null);
+            String requestId = event.metadata().requestId().orElse(null);
+
+            payload = String.format("""
+                {
+                    "text": "Catalog *%s* deleted by *%s*, as part of request ID: *%s*"
+                }
+                """, catalogName, principalName, requestId);
+        }
+        return payload;
     }
 
 
@@ -58,20 +74,7 @@ public class SlackPolarisEventListener implements PolarisEventListener {
      * ./polaris --client-id root --client-secret s3cr3t catalogs delete $CATALOG_NAME
      * ./polaris --client-id root --client-secret s3cr3t catalogs delete $RESTRICTED_CATALOG_NAME
      */
-    private void sendSlackEvent(PolarisEvent event) {
-        String payload = "";
-        if (event.type() == PolarisEventType.AFTER_DELETE_CATALOG) {
-            String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
-            String principalName = event.metadata().user().map(PolarisPrincipal::getName).orElse(null);
-            String requestId = event.metadata().requestId().orElse(null);
-
-            payload = String.format("""
-                {
-                    "text": "Catalog *%s* deleted by *%s*, as part of request ID: *%s*"
-                }
-                """, catalogName, principalName, requestId);
-        }
-
+    private void sendSlackEvent(String payload) {
         if (payload.isEmpty()) {
             return;
         }
