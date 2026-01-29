@@ -77,7 +77,9 @@ PAYLOAD='{
 
 echo $PAYLOAD
 
-curl -s -H "Authorization: Bearer ${TOKEN}" \
+curl --fail-with-body \
+   -s \
+   -H "Authorization: Bearer ${TOKEN}" \
    -H 'Accept: application/json' \
    -H 'Content-Type: application/json' \
    -H "Polaris-Realm: $realm" \

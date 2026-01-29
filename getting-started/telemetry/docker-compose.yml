@@ -50,7 +50,7 @@ services:
       quarkus.log.file.format:    "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{app},%X{env}] [%X{realmId},%X{requestId}] [%X{traceId},%X{spanId}] (%t) %s%e%n"
       polaris.realm-context.realms: POLARIS
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10

@@ -23,7 +23,10 @@ apk add --no-cache jq
 
 realm=${1:-"POLARIS"}
 
-TOKEN=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
+TOKEN=$(curl \
+  --fail-with-body \
+  -s \
+  http://polaris:8181/api/catalog/v1/oauth/tokens \
   --user ${CLIENT_ID}:${CLIENT_SECRET} \
   -H "Polaris-Realm: $realm" \
   -d grant_type=client_credentials \
