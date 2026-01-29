@@ -42,8 +42,11 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
 
       var fileOps = new FileOperationsImpl(fileIO);
       var result =
-          fileOps.purgeFiles(
-              IntStream.range(0, 10).mapToObj(i -> prefix + i), PurgeSpec.DEFAULT_INSTANCE);
+          fileOps.purge(
+              IntStream.range(0, 10)
+                  .mapToObj(i -> prefix + i)
+                  .map(BaseFileOperationsImpl::fileSpecFromLocation),
+              PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
           .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 3/7 in this test (via
@@ -51,8 +54,11 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
           .containsExactly(10L, 0L);
 
       result =
-          fileOps.purgeFiles(
-              IntStream.range(20, 40).mapToObj(i -> prefix + i), PurgeSpec.DEFAULT_INSTANCE);
+          fileOps.purge(
+              IntStream.range(20, 40)
+                  .mapToObj(i -> prefix + i)
+                  .map(BaseFileOperationsImpl::fileSpecFromLocation),
+              PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
           .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 0/20 in this test (via
@@ -60,8 +66,11 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
           .containsExactly(20L, 0L);
 
       result =
-          fileOps.purgeFiles(
-              IntStream.range(40, 60).mapToObj(i -> prefix + "40"), PurgeSpec.DEFAULT_INSTANCE);
+          fileOps.purge(
+              IntStream.range(40, 60)
+                  .mapToObj(i -> prefix + "40")
+                  .map(BaseFileOperationsImpl::fileSpecFromLocation),
+              PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
           .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 0/1 in this test (via

@@ -195,9 +195,10 @@ public abstract class BaseTestFileOperationsImpl extends BaseFileOperationsImpl 
 
       int deletes = numFiles / 10;
       assertThat(
-              fileOps.purgeFiles(
+              fileOps.purge(
                   IntStream.range(0, deletes)
-                      .mapToObj(i -> format(prefix + "path/%d/%d", i % 100, i)),
+                      .mapToObj(i -> format(prefix + "path/%d/%d", i % 100, i))
+                      .map(BaseFileOperationsImpl::fileSpecFromLocation),
                   PurgeSpec.DEFAULT_INSTANCE))
           .extracting(PurgeStats::purgeFileRequests)
           .isEqualTo((long) deletes);
