@@ -44,8 +44,7 @@ public interface FileOperations {
    * @param filter file filter
    * @return a stream of file specs with the {@link FileSpec#createdAtMillis()} and {@link
    *     FileSpec#size()} attributes populated with the information provided by the object store.
-   *     The {@link FileSpec#fileType() file type} attribute is not populated, it may be {@link
-   *     FileSpec#guessTypeFromName() guessed}.
+   *     The {@link FileSpec#fileType() file type} attribute is not populated.
    */
   Stream<FileSpec> findFiles(@Nonnull String prefix, @Nonnull FileFilter filter);
 
