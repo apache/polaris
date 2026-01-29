@@ -138,7 +138,7 @@ jobs:
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
-          ./gradlew :polaris-runtime-service:intTest --continue
+          ./gradlew :polaris-runtime-service:intTest --continue --info
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
