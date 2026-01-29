@@ -65,7 +65,11 @@ services:
       - CLIENT_SECRET=s3cr3t
     volumes:
       - ../assets/polaris/:/polaris
-    entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        /polaris/create-catalog.sh;
 
   prometheus:
     image: docker.io/prom/prometheus:v3.9.1
