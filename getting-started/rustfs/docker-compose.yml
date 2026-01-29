@@ -79,10 +79,10 @@ services:
     command:
       - "-c"
       - >-
-        echo Creating RustFS bucket...;
-        aws s3 mb s3://bucket123;
-        aws s3 ls;
-        echo Bucket setup complete.;
+        echo Creating RustFS bucket... &&
+        aws s3 mb s3://bucket123 &&
+        aws s3 ls &&
+        echo Bucket setup complete.
 
   polaris-setup:
     image: alpine/curl:8.17.0
@@ -98,19 +98,21 @@ services:
     command:
       - "-c"
       - >-
-        chmod +x /polaris/create-catalog.sh;
-        chmod +x /polaris/obtain-token.sh;
-        source /polaris/obtain-token.sh;
-        echo Creating catalog...;
+        source /polaris/obtain-token.sh &&
+        echo Creating catalog... &&
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
           "endpoint":"http://localhost:9000",
           "endpointInternal":"http://rustfs:9000",
-          "pathStyleAccess":true}';
-        export STORAGE_LOCATION='s3://bucket123';
-        /polaris/create-catalog.sh POLARIS $$TOKEN;
-        echo Extra grants...;
-        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          "pathStyleAccess":true}' &&
+        export STORAGE_LOCATION='s3://bucket123' &&
+        /polaris/create-catalog.sh POLARIS $$TOKEN &&
+        echo Extra grants... &&
+        curl \
+          --fail-with-body \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H 'Content-Type: application/json' \
           -X PUT \
           http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
-          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
-        echo Done.;
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}' &&
+        echo Done. &&
+        sleep 120
