@@ -80,7 +80,7 @@ public abstract class BaseFileOperationsImpl {
 
     var fileOps = new FileOperationsImpl(fileIO);
 
-    var identifiedFiles = fileOps.identifyIcebergTableFiles(metadataLocation, true).toList();
+    var identifiedFiles = fileOps.identifyIcebergTableFiles(metadataLocation).toList();
     // 4 table-metadata in total (identify can only yield the given metadata and all mentioned in
     //   the metadata-log)
     // 3 manifest lists
