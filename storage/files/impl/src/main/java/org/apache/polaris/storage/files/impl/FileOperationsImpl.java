@@ -98,8 +98,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
   }
 
   @Override
-  public Stream<FileSpec> identifyIcebergTableFiles(
-      @Nonnull String tableMetadataLocation, boolean deduplicate) {
+  public Stream<FileSpec> identifyIcebergTableFiles(@Nonnull String tableMetadataLocation) {
     var optionalTableMetadata = readTableMetadataFailsafe(tableMetadataLocation);
     if (optionalTableMetadata.isEmpty()) {
       return Stream.empty();
@@ -139,16 +138,20 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
                           .build()));
     }
 
+    // Explicitly "extract" 'specsById' here to "release" the reference to 'metadata'
+    // so that GC is able to collect the metadata and its referenced objects as soon
+    // as possible.
     var specsById = metadata.specsById();
 
-    var addPredicate = deduplicator(deduplicate);
+    var processManifestFilePredicate = bestEffortDeduplicator();
 
     fileSources.addFirst(
         metadata.snapshots().stream()
             // Newest snapshots first
             .sorted((s1, s2) -> Long.compare(s2.timestampMillis(), s1.timestampMillis()))
             .flatMap(
-                snapshot -> identifyIcebergTableSnapshotFiles(snapshot, specsById, addPredicate)));
+                snapshot ->
+                    identifyIcebergManifests(snapshot, specsById, processManifestFilePredicate)));
 
     // Return "dependencies" before the "metadata" itself, so the probability of being able to
     // resume a failed/aborted purge is higher.
@@ -156,40 +159,11 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     return fileSources.stream().flatMap(Function.identity());
   }
 
-  static Predicate<String> deduplicator(boolean deduplicate) {
-    if (!deduplicate) {
-      return x -> true;
-    }
-    var set = new LinkedHashSet<String>();
-    return location -> {
-      synchronized (set) {
-        if (set.size() > 100_000) {
-          // limit the heap pressure of the deduplication set to 100,000 elements
-          set.removeFirst();
-        }
-        return set.add(location);
-      }
-    };
-  }
-
-  Stream<FileSpec> identifyIcebergTableSnapshotFiles(
-      @Nonnull Snapshot snapshot,
-      Map<Integer, PartitionSpec> specsById,
-      Predicate<String> addPredicate) {
-    var manifestListLocation = snapshot.manifestListLocation();
-    if (manifestListLocation != null && !addPredicate.test(manifestListLocation)) {
-      return Stream.empty();
-    }
-
-    return identifyIcebergManifests(manifestListLocation, snapshot, specsById, addPredicate);
-  }
-
-  Stream<FileSpec> identifyIcebergManifests(
-      String manifestListLocation,
+  private Stream<FileSpec> identifyIcebergManifests(
       Snapshot snapshot,
       Map<Integer, PartitionSpec> specsById,
-      Predicate<String> addPredicate) {
-
+      Predicate<ManifestFile> processManifestFilePredicate) {
+    var manifestListLocation = snapshot.manifestListLocation();
     var manifestListFileSpecStream = Stream.<FileSpec>empty();
 
     if (manifestListLocation != null && !manifestListLocation.isEmpty()) {
@@ -202,11 +176,11 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
     try {
       var allManifestsFiles =
-          snapshot.allManifests(fileIO).stream()
-              .filter(manifestFile -> addPredicate.test(manifestFile.path()))
+          Stream.of(snapshot)
               .flatMap(
-                  manifestFile ->
-                      identifyIcebergManifestDataFiles(manifestFile, specsById, addPredicate));
+                  s ->
+                      icebergTableManifestDataFilesFromSnapshot(
+                          s, specsById, processManifestFilePredicate));
 
       // Return "dependencies" before the "metadata" itself, so a failed/aborted purge can be
       // resumed.
@@ -217,11 +191,68 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     }
   }
 
+  /**
+   * When iterating over a snapshot's manifests, we do not have any information whether a specific
+   * manifest file has been "seen" before.
+   *
+   * <p>This means we would be processing the same manifest files multiple times. The same is true
+   * for data/delete files references from the manifest files. Note that newer snapshots reference
+   * previous manifest files, as returned by {@link Snapshot#allManifests(FileIO)}. Since there is
+   * no better way than that function, we have to either bite that bullet and re-read the same
+   * manifest-files multiple times or have a somewhat working deduplication mechanism, as
+   * implemented. The implemented deduplicator only considers manifest file paths.
+   */
+  private Predicate<ManifestFile> bestEffortDeduplicator() {
+    var set = new LinkedHashSet<String>();
+    return manifestFile -> {
+      synchronized (set) {
+        if (set.size() > 10_000) {
+          // limit the heap pressure of the deduplication set to 10,000 manifest files
+          set.removeFirst();
+        }
+        var path = manifestFile.path();
+        var handle = set.add(path);
+        System.err.println("TEST: " + path + " -> " + handle + "  " + System.identityHashCode(set));
+        return handle;
+      }
+    };
+  }
+
+  private Stream<FileSpec> icebergTableManifestDataFilesFromSnapshot(
+      Snapshot snapshot,
+      Map<Integer, PartitionSpec> specsById,
+      Predicate<ManifestFile> processManifestFilePredicate) {
+    // Iceberg's org.apache.iceberg.ManifestLists is _not_ public and does not offer
+    // an iterator-based approach as offered by ManifestFiles.read().
+
+    // This unfortunately means that we can only rely on Snapshot.allManifests(),
+    // which delegates to org.apache.iceberg.BaseSnapshot.cacheManifests().
+
+    // That 'cacheManifests()' function reads the fill manifest list and keeps a
+    // strong reference to the list of `ManifestFile` objects.
+    // To optimize that, there are two options:
+    // 1. Iceberg to offer an iterator-based approach for scanning manifest-lists.
+    // 2. Implement or better use an alternative implementation, which likely exist.
+
+    // This Stream.flatMap() body is the only and "last" place that needs the
+    // (Base)Snapshot instance, the only place that populates the cached manifests,
+    // once it finishes, the reference to the (Base)Snapshot instance becomes
+    // eligible for garbage collection.
+
+    var allManifests = snapshot.allManifests(fileIO);
+
+    var allFilesStreams =
+        allManifests.stream()
+            .filter(processManifestFilePredicate)
+            .map(mf -> Stream.of(mf).flatMap(m -> identifyIcebergManifestDataFiles(m, specsById)))
+            .toList();
+
+    return allFilesStreams.stream().flatMap(Function.identity());
+  }
+
   @SuppressWarnings("UnnecessaryDefault")
   private Stream<FileSpec> identifyIcebergManifestDataFiles(
-      ManifestFile manifestFile,
-      Map<Integer, PartitionSpec> specsById,
-      Predicate<String> addPredicate) {
+      ManifestFile manifestFile, Map<Integer, PartitionSpec> specsById) {
 
     var manifestFileSpec =
         FileSpec.fromLocationAndSize(manifestFile.path(), manifestFile.length())
@@ -247,12 +278,10 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
       var files = new ArrayList<FileSpec>();
       while (contentFilesIter.hasNext()) {
         var contentFile = contentFilesIter.next();
-        if (addPredicate.test(contentFile.location())) {
-          files.add(
-              FileSpec.fromLocationAndSize(contentFile.location(), contentFile.fileSizeInBytes())
-                  .fileType(FileType.fromContentFile(contentFile))
-                  .build());
-        }
+        files.add(
+            FileSpec.fromLocationAndSize(contentFile.location(), contentFile.fileSizeInBytes())
+                .fileType(FileType.fromContentFile(contentFile))
+                .build());
       }
       // Return "dependencies" before the "metadata" itself, so the probability of being able to
       // resume a failed/aborted purge is higher.
@@ -266,8 +295,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
   }
 
   @Override
-  public Stream<FileSpec> identifyIcebergViewFiles(
-      @Nonnull String viewMetadataLocation, boolean deduplicate) {
+  public Stream<FileSpec> identifyIcebergViewFiles(@Nonnull String viewMetadataLocation) {
     var optionalViewMetadata = readViewMetadataFailsafe(viewMetadataLocation);
     if (optionalViewMetadata.isEmpty()) {
       return Stream.empty();
@@ -281,8 +309,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
   @Override
   public PurgeStats purgeIcebergTable(@Nonnull String tableMetadataLocation, PurgeSpec purgeSpec) {
-    var files =
-        identifyIcebergTableFiles(tableMetadataLocation, true).filter(purgeSpec.fileFilter());
+    var files = identifyIcebergTableFiles(tableMetadataLocation).filter(purgeSpec.fileFilter());
     return purge(files, purgeSpec);
   }
 
@@ -305,8 +332,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
   @Override
   public PurgeStats purgeIcebergView(@Nonnull String viewMetadataLocation, PurgeSpec purgeSpec) {
-    var files =
-        identifyIcebergViewFiles(viewMetadataLocation, false).filter(purgeSpec.fileFilter());
+    var files = identifyIcebergViewFiles(viewMetadataLocation).filter(purgeSpec.fileFilter());
     return purge(files, purgeSpec);
   }
 

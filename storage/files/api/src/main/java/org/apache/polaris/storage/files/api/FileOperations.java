@@ -58,16 +58,12 @@ public interface FileOperations {
    * views. Rate-limiting on a single invocation may not be effective as expected.
    *
    * @param tableMetadataLocation Iceberg table-metadata location
-   * @param deduplicate if true, attempt to deduplicate files by their location, adding additional
-   *     heap pressure to the operation. Implementations may ignore this parameter or may not
-   *     deduplicate all identified files.
    * @return a stream of {@link FileSpec file specs}. The {@link FileSpec#createdAtMillis()}
    *     attribute is usually not populated, as it would have to be derived from user-provided
    *     information in metadata or snapshot. The {@link FileSpec#fileType()} attribute is populated
    *     based on where a file appears during identification.
    */
-  Stream<FileSpec> identifyIcebergTableFiles(
-      @Nonnull String tableMetadataLocation, boolean deduplicate);
+  Stream<FileSpec> identifyIcebergTableFiles(@Nonnull String tableMetadataLocation);
 
   /**
    * Identifies all files referenced by the given view-metadata.
@@ -79,16 +75,12 @@ public interface FileOperations {
    * views. Rate-limiting on a single invocation may not be effective as expected.
    *
    * @param viewMetadataLocation Iceberg view-metadata location
-   * @param deduplicate if true, attempt to deduplicate files by their location, adding additional
-   *     heap pressure to the operation. Implementations may ignore this parameter or may not
-   *     deduplicate all identified files.
    * @return a stream of {@link FileSpec file specs}. The {@link FileSpec#createdAtMillis()}
    *     attribute is usually not populated, as it would have been derived from user-provided
    *     information in metadata or snapshot. The {@link FileSpec#fileType()} attribute is populated
    *     based on where a file appears during identification.
    */
-  Stream<FileSpec> identifyIcebergViewFiles(
-      @Nonnull String viewMetadataLocation, boolean deduplicate);
+  Stream<FileSpec> identifyIcebergViewFiles(@Nonnull String viewMetadataLocation);
 
   /**
    * Purges all files that are referenced by the given table-metadata, respecting the given filter.
@@ -100,7 +92,7 @@ public interface FileOperations {
    * purge(identifyIcebergTableFiles(tableMetadataLocation).filter(purgeSpec.fileFilter()))}
    *
    * @see #purge(Stream, PurgeSpec)
-   * @see #identifyIcebergTableFiles(String, boolean)
+   * @see #identifyIcebergTableFiles(String)
    * @see #findFiles(String, FileFilter)
    */
   PurgeStats purgeIcebergTable(@Nonnull String tableMetadataLocation, PurgeSpec purgeSpec);
@@ -130,7 +122,7 @@ public interface FileOperations {
    * purge(identifyIcebergViewFiles(tableMetadataLocation).filter(fileFilter))}
    *
    * @see #purge(Stream, PurgeSpec)
-   * @see #identifyIcebergViewFiles(String, boolean)
+   * @see #identifyIcebergViewFiles(String)
    * @see #findFiles(String, FileFilter)
    */
   PurgeStats purgeIcebergView(@Nonnull String viewMetadataLocation, PurgeSpec purgeSpec);
