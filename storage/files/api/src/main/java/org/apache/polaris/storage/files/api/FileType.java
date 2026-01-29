@@ -22,22 +22,14 @@ package org.apache.polaris.storage.files.api;
 import org.apache.iceberg.ContentFile;
 
 public enum FileType {
-  UNKNOWN(false, false),
-  ICEBERG_METADATA(true, false),
-  ICEBERG_STATISTICS(false, false),
-  ICEBERG_MANIFEST_LIST(false, false),
-  ICEBERG_MANIFEST_FILE(false, false),
-  ICEBERG_DATA_FILE(false, true),
-  ICEBERG_DELETE_FILE(false, true),
+  UNKNOWN(),
+  ICEBERG_METADATA(),
+  ICEBERG_STATISTICS(),
+  ICEBERG_MANIFEST_LIST(),
+  ICEBERG_MANIFEST_FILE(),
+  ICEBERG_DATA_FILE(),
+  ICEBERG_DELETE_FILE(),
   ;
-
-  private final boolean metadata;
-  private final boolean dataOrDelete;
-
-  FileType(boolean metadata, boolean dataOrDelete) {
-    this.metadata = metadata;
-    this.dataOrDelete = dataOrDelete;
-  }
 
   @SuppressWarnings("UnnecessaryDefault")
   public static FileType fromContentFile(ContentFile<? extends ContentFile<?>> contentFile) {
@@ -46,13 +38,5 @@ public enum FileType {
       case EQUALITY_DELETES, POSITION_DELETES -> ICEBERG_DELETE_FILE;
       default -> UNKNOWN;
     };
-  }
-
-  public boolean metadata() {
-    return metadata;
-  }
-
-  public boolean dataOrDelete() {
-    return dataOrDelete;
   }
 }
