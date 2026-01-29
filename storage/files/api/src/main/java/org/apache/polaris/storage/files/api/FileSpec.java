@@ -40,8 +40,6 @@ public interface FileSpec {
    *
    * <p>The type might have been guessed from the file name, in which case the returned value is not
    * guaranteed to be accurate.
-   *
-   * @see #guessTypeFromName()
    */
   Optional<FileType> fileType();
 
@@ -65,22 +63,6 @@ public interface FileSpec {
       b.size(size);
     }
     return b;
-  }
-
-  /** Guesses the given file's type from its name, not guaranteed to be accurate. */
-  default FileType guessTypeFromName() {
-    var location = location();
-    var lastSlash = location.lastIndexOf('/');
-    var fileName = lastSlash > 0 ? location.substring(lastSlash + 1) : location;
-
-    if (fileName.contains(".metadata.json")) {
-      return FileType.ICEBERG_METADATA;
-    } else if (fileName.startsWith("snap-")) {
-      return FileType.ICEBERG_MANIFEST_LIST;
-    } else if (fileName.contains("-m")) {
-      return FileType.ICEBERG_MANIFEST_FILE;
-    }
-    return FileType.UNKNOWN;
   }
 
   interface Builder {

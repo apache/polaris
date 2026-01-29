@@ -121,7 +121,9 @@ public abstract class BaseFileOperationsImpl {
             identifiedFiles.stream().map(FileSpec::location).collect(Collectors.toList()));
     soft.assertThat(
             foundFiles.stream()
-                .collect(Collectors.groupingBy(FileSpec::guessTypeFromName, Collectors.counting())))
+                .collect(
+                    Collectors.groupingBy(
+                        BaseFileOperationsImpl::guessTypeFromName, Collectors.counting())))
         .containsAllEntriesOf(
             Map.of(
                 FileType.ICEBERG_METADATA,
@@ -137,6 +139,22 @@ public abstract class BaseFileOperationsImpl {
         .extracting(PurgeStats::purgedFiles)
         .isEqualTo(16L);
     soft.assertThat(fileOps.findFiles(prefix, FileFilter.alwaysTrue())).isEmpty();
+  }
+
+  /** Guesses the given file's type from its name, not guaranteed to be accurate. */
+  static FileType guessTypeFromName(FileSpec fileSpec) {
+    var location = fileSpec.location();
+    var lastSlash = location.lastIndexOf('/');
+    var fileName = lastSlash > 0 ? location.substring(lastSlash + 1) : location;
+
+    if (fileName.contains(".metadata.json")) {
+      return FileType.ICEBERG_METADATA;
+    } else if (fileName.startsWith("snap-")) {
+      return FileType.ICEBERG_MANIFEST_LIST;
+    } else if (fileName.contains("-m")) {
+      return FileType.ICEBERG_MANIFEST_FILE;
+    }
+    return FileType.UNKNOWN;
   }
 
   DataFile dataFile(FileIO fileIO, String path) throws Exception {
