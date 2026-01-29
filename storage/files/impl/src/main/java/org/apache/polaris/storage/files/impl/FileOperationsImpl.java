@@ -331,11 +331,6 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
   @Override
   public PurgeStats purge(@Nonnull Stream<FileSpec> locationStream, PurgeSpec purgeSpec) {
-    return purgeFiles(locationStream.map(FileSpec::location), purgeSpec);
-  }
-
-  @Override
-  public PurgeStats purgeFiles(@Nonnull Stream<String> locationStream, PurgeSpec purgeSpec) {
     if (fileIO instanceof SupportsBulkOperations bulkOps) {
       var startedNanos = System.nanoTime();
 
@@ -343,7 +338,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
       var batcher = new PurgeBatcher(purgeSpec, bulkOps);
       while (iter.hasNext()) {
-        batcher.add(iter.next());
+        batcher.add(iter.next().location());
       }
       batcher.flush();
 

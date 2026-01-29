@@ -141,6 +141,10 @@ public abstract class BaseFileOperationsImpl {
     soft.assertThat(fileOps.findFiles(prefix, FileFilter.alwaysTrue())).isEmpty();
   }
 
+  static FileSpec fileSpecFromLocation(String location) {
+    return FileSpec.fromLocation(location).build();
+  }
+
   /** Guesses the given file's type from its name, not guaranteed to be accurate. */
   static FileType guessTypeFromName(FileSpec fileSpec) {
     var location = fileSpec.location();
