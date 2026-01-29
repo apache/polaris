@@ -136,7 +136,7 @@ public abstract class BaseFileOperationsImpl {
                 6L));
 
     soft.assertThat(fileOps.purgeIcebergTable(metadataLocation, PurgeSpec.DEFAULT_INSTANCE))
-        .extracting(PurgeStats::purgedFiles)
+        .extracting(PurgeStats::purgeFileRequests)
         .isEqualTo(16L);
     soft.assertThat(fileOps.findFiles(prefix, FileFilter.alwaysTrue())).isEmpty();
   }
