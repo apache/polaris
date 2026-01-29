@@ -105,7 +105,7 @@ public abstract class BaseTestFileOperationsImpl extends BaseFileOperationsImpl 
               prefix + "foo.metadata.json",
               PurgeSpec.DEFAULT_INSTANCE.withDeleteBatchSize(deleteBatchSize));
 
-      assertThat(purgeStats.purgedFiles())
+      assertThat(purgeStats.purgeFileRequests())
           // 1st "1" --> metadata-json
           // 2nd "1" --> manifest-list
           // 3rd "1" --> manifest-file
@@ -199,7 +199,7 @@ public abstract class BaseTestFileOperationsImpl extends BaseFileOperationsImpl 
                   IntStream.range(0, deletes)
                       .mapToObj(i -> format(prefix + "path/%d/%d", i % 100, i)),
                   PurgeSpec.DEFAULT_INSTANCE))
-          .extracting(PurgeStats::purgedFiles)
+          .extracting(PurgeStats::purgeFileRequests)
           .isEqualTo((long) deletes);
 
       try (Stream<FileSpec> files = fileOps.findFiles(prefix, FileFilter.alwaysTrue())) {

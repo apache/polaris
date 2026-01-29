@@ -45,7 +45,7 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
           fileOps.purgeFiles(
               IntStream.range(0, 10).mapToObj(i -> prefix + i), PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
-          .extracting(PurgeStats::purgedFiles, PurgeStats::failedPurges)
+          .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 3/7 in this test (via
           // `BulkDeletionFailureException`) in case those do not exist.
           .containsExactly(10L, 0L);
@@ -54,7 +54,7 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
           fileOps.purgeFiles(
               IntStream.range(20, 40).mapToObj(i -> prefix + i), PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
-          .extracting(PurgeStats::purgedFiles, PurgeStats::failedPurges)
+          .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 0/20 in this test (via
           // `BulkDeletionFailureException`) in case those do not exist.
           .containsExactly(20L, 0L);
@@ -63,7 +63,7 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
           fileOps.purgeFiles(
               IntStream.range(40, 60).mapToObj(i -> prefix + "40"), PurgeSpec.DEFAULT_INSTANCE);
       soft.assertThat(result)
-          .extracting(PurgeStats::purgedFiles, PurgeStats::failedPurges)
+          .extracting(PurgeStats::purgeFileRequests, PurgeStats::failedFilePurges)
           // Iceberg does not yield the correct number of purged files, 0/1 in this test (via
           // `BulkDeletionFailureException`) in case those do not exist.
           .containsExactly(1L, 0L);
@@ -97,7 +97,7 @@ public abstract class BaseITFileOperationsImpl extends BaseFileOperationsImpl {
 
       var purgeStats = fileOps.purgeIcebergTable(tableMetadataPath, PurgeSpec.DEFAULT_INSTANCE);
 
-      assertThat(purgeStats.purgedFiles())
+      assertThat(purgeStats.purgeFileRequests())
           // 1st "1" --> metadata-json
           // 2nd "1" --> manifest-list
           // 3rd "1" --> manifest-file

@@ -20,23 +20,27 @@
 package org.apache.polaris.storage.files.api;
 
 import java.time.Duration;
+import org.apache.iceberg.io.BulkDeletionFailureException;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 @PolarisImmutable
 public interface PurgeStats {
+  /** Runtime of the purge operation. */
   Duration duration();
 
   /**
-   * The number of purged files.
+   * The number of files attempted to be purged, only for informational purposes.
    *
-   * <p>The returned value may be wrong and include non-existing files.
+   * <p>The accuracy of the returned value depends on the information provided by the leveraged
+   * libraries, for example {@link BulkDeletionFailureException#numberFailedObjects()}.
    */
-  long purgedFiles();
+  long purgeFileRequests();
 
   /**
-   * Number of files that were not purged.
+   * Number of files that were not purged, only for informational purposes.
    *
-   * <p>The returned value may be wrong and not include non-existing files.
+   * <p>The accuracy of the returned value depends on the information provided by the leveraged
+   * libraries, for example {@link BulkDeletionFailureException#numberFailedObjects()}.
    */
-  long failedPurges();
+  long failedFilePurges();
 }

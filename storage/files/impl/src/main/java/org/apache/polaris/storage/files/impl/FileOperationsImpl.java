@@ -295,8 +295,8 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     if (metadata.isEmpty()) {
       return ImmutablePurgeStats.builder()
           .duration(Duration.ZERO)
-          .purgedFiles(0L)
-          .failedPurges(1)
+          .purgeFileRequests(0L)
+          .failedFilePurges(1)
           .build();
     }
 
@@ -319,8 +319,8 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     if (metadata.isEmpty()) {
       return ImmutablePurgeStats.builder()
           .duration(Duration.ZERO)
-          .purgedFiles(0L)
-          .failedPurges(1)
+          .purgeFileRequests(0L)
+          .failedFilePurges(1)
           .build();
     }
 
@@ -348,8 +348,8 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
       batcher.flush();
 
       return ImmutablePurgeStats.builder()
-          .purgedFiles(batcher.purged)
-          .failedPurges(batcher.failed)
+          .purgeFileRequests(batcher.purged)
+          .failedFilePurges(batcher.failed)
           .duration(Duration.ofNanos(System.nanoTime() - startedNanos))
           .build();
     }
