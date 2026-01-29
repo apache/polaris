@@ -27,9 +27,9 @@ class PolarisEventTypeTest {
 
   @Test
   void testAllCodesAreUnique() {
-    assertThat(Arrays.stream(PolarisEventType.values()).map(PolarisEventType::code).distinct().count())
+    assertThat(
+            Arrays.stream(PolarisEventType.values()).map(PolarisEventType::code).distinct().count())
         .as("All event type codes should be unique")
         .isEqualTo(PolarisEventType.values().length);
   }
-
 }
