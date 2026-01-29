@@ -127,7 +127,7 @@ services:
     depends_on:
       - osd1
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7480"]
+      test: ["CMD", "curl", "--fail", "http://localhost:7480"]
       interval: 2s
       timeout: 10s
       retries: 10
@@ -172,7 +172,7 @@ services:
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10

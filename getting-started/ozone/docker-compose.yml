@@ -72,7 +72,7 @@ services:
       ozone-datanode:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:9888"]
+      test: ["CMD", "curl", "--fail", "http://localhost:9888"]
       interval: 1s
       timeout: 10s
       retries: 60
@@ -91,7 +91,9 @@ services:
       <<: *ozone-common-config
       WAITFOR: ozone-om:9874
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:9878"]
+      test: ["CMD", "curl", "--fail", "http://localhost:19878"]
+      # Should ideally use the following, but the curl version in ozone image is too old (7.76.1) to support --aws-sigv4
+      # test: ["CMD", "curl", "--fail", "--user", "root:s3cr3t", "--aws-sigv4", "aws:amz:us-west-1:s3", "http://localhost:9878"]
       interval: 1s
       timeout: 10s
       retries: 60
@@ -118,7 +120,7 @@ services:
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 60
