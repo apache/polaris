@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -194,7 +194,7 @@ class AwsCloudWatchEventListenerTest {
           new PolarisEvent(
               PolarisEventType.AFTER_REFRESH_TABLE,
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new AttributeMap()
+              new EventAttributeMap()
                   .put(EventAttributes.CATALOG_NAME, "test_catalog")
                   .put(EventAttributes.TABLE_IDENTIFIER, testTable)));
 
@@ -256,7 +256,7 @@ class AwsCloudWatchEventListenerTest {
           new PolarisEvent(
               PolarisEventType.AFTER_REFRESH_TABLE,
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new AttributeMap()
+              new EventAttributeMap()
                   .put(EventAttributes.CATALOG_NAME, "test_catalog")
                   .put(EventAttributes.TABLE_IDENTIFIER, syncTestTable)));
 

@@ -31,7 +31,7 @@ class AttributeMapTest {
 
   @Test
   void testPutAndGet() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     map.put(STRING_KEY, "value");
 
     assertThat(map.get(STRING_KEY)).hasValue("value");
@@ -39,14 +39,14 @@ class AttributeMapTest {
 
   @Test
   void testGetReturnsEmptyForMissingKey() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
 
     assertThat(map.get(STRING_KEY)).isEmpty();
   }
 
   @Test
   void testGetRequired() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     map.put(STRING_KEY, "value");
 
     assertThat(map.getRequired(STRING_KEY)).isEqualTo("value");
@@ -54,7 +54,7 @@ class AttributeMapTest {
 
   @Test
   void testGetRequiredThrowsForMissingKey() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
 
     assertThatThrownBy(() -> map.getRequired(STRING_KEY))
         .isInstanceOf(IllegalStateException.class)
@@ -63,7 +63,7 @@ class AttributeMapTest {
 
   @Test
   void testContains() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     map.put(STRING_KEY, "value");
 
     assertThat(map.contains(STRING_KEY)).isTrue();
@@ -72,7 +72,7 @@ class AttributeMapTest {
 
   @Test
   void testNullValueIsIgnored() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     map.put(STRING_KEY, null);
 
     assertThat(map.contains(STRING_KEY)).isFalse();
@@ -81,7 +81,7 @@ class AttributeMapTest {
 
   @Test
   void testSize() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     assertThat(map.size()).isEqualTo(0);
 
     map.put(STRING_KEY, "value");
@@ -93,7 +93,7 @@ class AttributeMapTest {
 
   @Test
   void testIsEmpty() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
     assertThat(map.isEmpty()).isTrue();
 
     map.put(STRING_KEY, "value");
@@ -102,10 +102,10 @@ class AttributeMapTest {
 
   @Test
   void testCopyConstructor() {
-    AttributeMap original = new AttributeMap();
+    EventAttributeMap original = new EventAttributeMap();
     original.put(STRING_KEY, "value");
 
-    AttributeMap copy = new AttributeMap(original);
+    EventAttributeMap copy = new EventAttributeMap(original);
 
     assertThat(copy.getRequired(STRING_KEY)).isEqualTo("value");
 
@@ -116,9 +116,9 @@ class AttributeMapTest {
 
   @Test
   void testPutReturnsThis() {
-    AttributeMap map = new AttributeMap();
+    EventAttributeMap map = new EventAttributeMap();
 
-    AttributeMap result = map.put(STRING_KEY, "value");
+    EventAttributeMap result = map.put(STRING_KEY, "value");
 
     assertThat(result).isSameAs(map);
   }

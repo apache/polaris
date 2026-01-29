@@ -33,7 +33,7 @@ import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -55,14 +55,14 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, request.getPrincipal().getName())));
     Response resp = delegate.createPrincipal(request, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(
                     EventAttributes.PRINCIPAL,
                     ((PrincipalWithCredentials) resp.getEntity()).getPrincipal())));
@@ -79,7 +79,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_RESET_CREDENTIALS,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     Response resp =
         delegate.resetCredentials(
             principalName, resetPrincipalRequest, realmContext, securityContext);
@@ -87,7 +87,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.AFTER_RESET_CREDENTIALS,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(
                     EventAttributes.PRINCIPAL,
                     ((PrincipalWithCredentials) resp.getEntity()).getPrincipal())));
@@ -101,13 +101,13 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_DELETE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     Response resp = delegate.deletePrincipal(principalName, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_DELETE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     return resp;
   }
 
@@ -118,13 +118,13 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     Response resp = delegate.getPrincipal(principalName, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_GET_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL, (Principal) resp.getEntity())));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL, (Principal) resp.getEntity())));
     return resp;
   }
 
@@ -138,7 +138,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_UPDATE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, principalName)
                 .put(EventAttributes.UPDATE_PRINCIPAL_REQUEST, updateRequest)));
     Response resp =
@@ -147,7 +147,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.AFTER_UPDATE_PRINCIPAL,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL, (Principal) resp.getEntity())));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL, (Principal) resp.getEntity())));
     return resp;
   }
 
@@ -158,14 +158,14 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_ROTATE_CREDENTIALS,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     Response resp = delegate.rotateCredentials(principalName, realmContext, securityContext);
     PrincipalWithCredentials principalWithCredentials = (PrincipalWithCredentials) resp.getEntity();
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_ROTATE_CREDENTIALS,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL, principalWithCredentials.getPrincipal())));
     return resp;
   }
@@ -176,13 +176,13 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_PRINCIPALS,
             eventMetadataFactory.create(),
-            new AttributeMap()));
+            new EventAttributeMap()));
     Response resp = delegate.listPrincipals(realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_PRINCIPALS,
             eventMetadataFactory.create(),
-            new AttributeMap()));
+            new EventAttributeMap()));
     return resp;
   }
 
@@ -196,7 +196,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_ASSIGN_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, principalName)
                 .put(EventAttributes.PRINCIPAL_ROLE, request.getPrincipalRole())));
     Response resp =
@@ -205,7 +205,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.AFTER_ASSIGN_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, principalName)
                 .put(EventAttributes.PRINCIPAL_ROLE, request.getPrincipalRole())));
     return resp;
@@ -221,7 +221,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_REVOKE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, principalName)
                 .put(EventAttributes.PRINCIPAL_ROLE_NAME, principalRoleName)));
     Response resp =
@@ -231,7 +231,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.AFTER_REVOKE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.PRINCIPAL_NAME, principalName)
                 .put(EventAttributes.PRINCIPAL_ROLE_NAME, principalRoleName)));
     return resp;
@@ -244,14 +244,14 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_ASSIGNED_PRINCIPAL_ROLES,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     Response resp =
         delegate.listPrincipalRolesAssigned(principalName, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_ASSIGNED_PRINCIPAL_ROLES,
             eventMetadataFactory.create(),
-            new AttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
+            new EventAttributeMap().put(EventAttributes.PRINCIPAL_NAME, principalName)));
     return resp;
   }
 }

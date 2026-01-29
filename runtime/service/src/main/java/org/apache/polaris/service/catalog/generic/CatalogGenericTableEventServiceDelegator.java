@@ -29,7 +29,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -60,7 +60,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)));
@@ -71,7 +71,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(
@@ -92,7 +92,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
@@ -102,7 +102,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.AFTER_DROP_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
@@ -122,7 +122,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_GENERIC_TABLES,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)));
     Response resp =
@@ -132,7 +132,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_GENERIC_TABLES,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)));
     return resp;
@@ -150,7 +150,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.BEFORE_LOAD_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
@@ -160,7 +160,7 @@ public class CatalogGenericTableEventServiceDelegator
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_GENERIC_TABLE,
             eventMetadataFactory.create(),
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(
