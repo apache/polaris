@@ -23,13 +23,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.vertx.http.HttpServer;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -57,14 +58,12 @@ public class RequestIdHeaderTest {
   private static final String CLIENT_ID = "client1";
   private static final String CLIENT_SECRET = "secret1";
 
-  private static final URI baseUri =
-      URI.create(
-          "http://localhost:"
-              + Objects.requireNonNull(
-                  Integer.getInteger("quarkus.http.test-port"),
-                  "System property not set correctly: quarkus.http.test-port"));
+  @SuppressWarnings("CdiInjectionPointsInspection")
+  @Inject
+  HttpServer httpServer;
 
   private Response request(Map<String, String> headers) {
+    var baseUri = URI.create("http://localhost:" + httpServer.getPort());
     try (PolarisClient client =
         PolarisClient.polarisClient(new PolarisApiEndpoints(baseUri, REALM, headers))) {
       return client
