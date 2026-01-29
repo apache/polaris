@@ -100,11 +100,11 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
   @Override
   public Stream<FileSpec> identifyIcebergTableFiles(
       @Nonnull String tableMetadataLocation, boolean deduplicate) {
-    var metadataOpt = readTableMetadataFailsafe(tableMetadataLocation);
-    if (metadataOpt.isEmpty()) {
+    var optionalTableMetadata = readTableMetadataFailsafe(tableMetadataLocation);
+    if (optionalTableMetadata.isEmpty()) {
       return Stream.empty();
     }
-    var metadata = metadataOpt.get();
+    var metadata = optionalTableMetadata.get();
 
     var metadataFileSpec =
         FileSpec.fromLocation(tableMetadataLocation).fileType(FileType.ICEBERG_METADATA).build();
@@ -268,8 +268,8 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
   @Override
   public Stream<FileSpec> identifyIcebergViewFiles(
       @Nonnull String viewMetadataLocation, boolean deduplicate) {
-    var metadataOpt = readViewMetadataFailsafe(viewMetadataLocation);
-    if (metadataOpt.isEmpty()) {
+    var optionalViewMetadata = readViewMetadataFailsafe(viewMetadataLocation);
+    if (optionalViewMetadata.isEmpty()) {
       return Stream.empty();
     }
 
