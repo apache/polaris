@@ -18,14 +18,17 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
-import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Context information needed when converting Iceberg metrics reports to persistence records.
  *
  * <p>This context captures information from the request environment that is not available in the
- * Iceberg report itself, such as realm, catalog, principal, and tracing information.
+ * Iceberg report itself, such as realm and catalog identification.
+ *
+ * <p>Note: Principal and tracing information (e.g., OpenTelemetry trace/span IDs) are not included
+ * in this context. The persistence implementation can obtain these from the ambient request context
+ * (OTel context, security context) at write time if needed.
  */
 @PolarisImmutable
 public interface MetricsContext {
@@ -41,18 +44,6 @@ public interface MetricsContext {
 
   /** Dot-separated namespace path (e.g., "db.schema"). */
   String namespace();
-
-  /** Name of the principal who initiated the operation. */
-  Optional<String> principalName();
-
-  /** Request ID for correlation. */
-  Optional<String> requestId();
-
-  /** OpenTelemetry trace ID for distributed tracing. */
-  Optional<String> otelTraceId();
-
-  /** OpenTelemetry span ID for distributed tracing. */
-  Optional<String> otelSpanId();
 
   /**
    * Creates a new builder for MetricsContext.
