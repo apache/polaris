@@ -48,6 +48,8 @@ services:
     depends_on:
       rustfs:
         condition: service_healthy
+      setup_bucket:
+        condition: service_completed_successfully
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
