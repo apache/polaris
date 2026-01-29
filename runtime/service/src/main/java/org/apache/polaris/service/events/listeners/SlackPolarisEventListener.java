@@ -53,6 +53,7 @@ public class SlackPolarisEventListener implements PolarisEventListener {
             String principalName = event.metadata().user().map(PolarisPrincipal::getName).orElse(null);
             String requestId = event.metadata().requestId().orElse(null);
 
+            //SNIPPET: json
             payload = String.format("""
                 {
                     "text": "Catalog *%s* deleted by *%s*, as part of request ID: *%s*"
@@ -79,12 +80,14 @@ public class SlackPolarisEventListener implements PolarisEventListener {
             return;
         }
 
+        // SNIPPET: webhook-env
         LOGGER.debug("Sending Slack event: {}", payload);
         String webhookUrl = System.getenv("SLACK_WEBHOOK_URL");
         if (webhookUrl == null || webhookUrl.isBlank()) {
             throw new IllegalStateException("SLACK_WEBHOOK_URL environment variable is not set");
         }
 
+        // SNIPPET: send-webhook
         try {
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(webhookUrl))
