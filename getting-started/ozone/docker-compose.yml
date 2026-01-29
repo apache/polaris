@@ -37,6 +37,7 @@ services:
       OZONE-SITE.XML_ozone.scm.client.address: "ozone-scm"
       OZONE-SITE.XML_ozone.scm.datanode.id.dir: "/data/metadata"
       OZONE-SITE.XML_ozone.scm.names: "ozone-scm"
+      OZONE-SITE.XML_hdds.scm.safemode.min.datanode: "1"
       no_proxy: "ozone-om,ozone-recon,ozone-scm,ozone-s3g,localhost,127.0.0.1"
   ozone-om:
     image: *ozone-image
@@ -83,8 +84,8 @@ services:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: minio_root
-      AWS_SECRET_ACCESS_KEY: m1n1opwd
+      AWS_ACCESS_KEY_ID: polaris_root
+      AWS_SECRET_ACCESS_KEY: polaris_pass
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
@@ -112,7 +113,7 @@ services:
         /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ ;
         source /assets/polaris/obtain-token.sh;
         echo Creating bucket...;
-        curl -X PUT --user "invalidKey:secret" --aws-sigv4 "aws:amz:us-west-1:s3" \
+        curl -X PUT --user "polaris_root:polaris_pass" --aws-sigv4 "aws:amz:us-west-2:s3" \
           http://ozone-s3g:9878/bucket123 ;
         echo Creating catalog...;
         export STORAGE_CONFIG_INFO='{"storageType":"S3",

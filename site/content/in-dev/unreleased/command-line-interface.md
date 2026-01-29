@@ -97,7 +97,7 @@ Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris ser
 These examples assume the Polaris CLI is on the PATH and so can be invoked just by the command `polaris`. You can add the CLI to your PATH environment variable with a command like the following:
 
 ```
-export PATH="~/polaris:$PATH"
+export PATH="$HOME/polaris:$PATH"
 ```
 
 Alternatively, you can run the CLI by providing a path to it, such as with the following invocation:
@@ -148,6 +148,7 @@ options:
       --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
       --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
       --no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
+      --no-kms  (Only for S3) Indicates that Polaris should not use KMS (e.g. if KMS is not available)
       --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --current-kms-key  (Only for AWS S3) The AWS KMS key ARN to be used for encrypting new S3 data
       --allowed-kms-key  (Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)

@@ -21,8 +21,6 @@ package org.apache.polaris.service.ratelimiter;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Clock;
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
@@ -32,30 +30,20 @@ import org.apache.polaris.core.context.RealmContext;
 public class DefaultTokenBucketFactory implements TokenBucketFactory {
 
   private final long requestsPerSecond;
-  private final Duration window;
-  private final Clock clock;
   private final Map<String, TokenBucket> perRealmBuckets = new ConcurrentHashMap<>();
 
   @Inject
-  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration, Clock clock) {
-    this(configuration.requestsPerSecond(), configuration.window(), clock);
+  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration) {
+    this(configuration.requestsPerSecond());
   }
 
-  public DefaultTokenBucketFactory(long requestsPerSecond, Duration window, Clock clock) {
+  public DefaultTokenBucketFactory(long requestsPerSecond) {
     this.requestsPerSecond = requestsPerSecond;
-    this.window = window;
-    this.clock = clock;
   }
 
   @Override
   public TokenBucket getOrCreateTokenBucket(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
-    return perRealmBuckets.computeIfAbsent(
-        realmId,
-        k ->
-            new TokenBucket(
-                requestsPerSecond,
-                Math.multiplyExact(requestsPerSecond, window.toSeconds()),
-                clock));
+    return perRealmBuckets.computeIfAbsent(realmId, k -> new TokenBucket(requestsPerSecond));
   }
 }

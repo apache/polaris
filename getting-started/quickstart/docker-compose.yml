@@ -19,25 +19,26 @@
 
 services:
 
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.81
     ports:
       # API port
       - "9000:9000"
       # UI port
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minio_root
-      MINIO_ROOT_PASSWORD: m1n1opwd
-    command:
-      - "server"
-      - "/data"
-      - "--console-address"
-      - ":9001"
+      RUSTFS_ACCESS_KEY: polaris_root
+      RUSTFS_SECRET_KEY: polaris_pass
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
     healthcheck:
-      test: ["CMD", "curl", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 1s
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/health && curl -f http://127.0.0.1:9001/rustfs/console/health"]
+      interval: 30s
       timeout: 10s
+      retries: 3
+      start_period: 40s
 
   polaris:
     image: apache/polaris:latest
@@ -49,14 +50,14 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: minio_root
-      AWS_SECRET_ACCESS_KEY: m1n1opwd
+      AWS_ACCESS_KEY_ID: polaris_root
+      AWS_SECRET_ACCESS_KEY: polaris_pass
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${ROOT_CLIENT_ID:-root},${ROOT_CLIENT_SECRET:-s3cr3t}
       polaris.realm-context.realms: ${POLARIS_REALM:-POLARIS}
       quarkus.otel.sdk.disabled: "true"
@@ -67,19 +68,22 @@ services:
       retries: 10
       start_period: 10s
 
-  setup_bucket:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+  bucket-setup:
+    image: amazon/aws-cli:2.33.8
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: polaris_root
+      AWS_SECRET_ACCESS_KEY: polaris_pass
+      AWS_ENDPOINT_URL: http://rustfs:9000
     entrypoint: "/bin/sh"
     command:
       - "-c"
       - >-
-        echo Creating MinIO bucket...;
-        mc alias set pol http://minio:9000 minio_root m1n1opwd;
-        mc mb pol/bucket123;
-        mc ls pol;
+        echo Creating RustFS bucket...;
+        aws s3 mb s3://bucket123;
+        aws s3 ls;
         echo Bucket setup complete.;
 
   polaris-setup:
@@ -129,7 +133,7 @@ services:
               "storageType": "S3",
               "allowedLocations": ["s3://bucket123"],
               "endpoint": "http://localhost:9000",
-              "endpointInternal": "http://minio:9000",
+              "endpointInternal": "http://rustfs:9000",
               "pathStyleAccess": true
             }
           }
@@ -234,9 +238,9 @@ services:
         echo "=========================================="
         echo ""
         echo "Catalog: $$CATALOG_NAME"
-        echo "  Storage: S3 (MinIO)"
+        echo "  Storage: S3 (RustFS)"
         echo "  Location: s3://bucket123"
-        echo "  MinIO UI: http://localhost:9001"
+        echo "  RustFS UI: http://localhost:9001"
         echo ""
         echo "Root credentials:"
         echo "  Client ID:     $$CLIENT_ID"
@@ -267,8 +271,8 @@ services:
         echo "    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \\"
         echo "    --conf spark.sql.catalog.polaris.s3.endpoint=http://localhost:9000 \\"
         echo "    --conf spark.sql.catalog.polaris.s3.path-style-access=true \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.access-key-id=minio_root \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.secret-access-key=m1n1opwd \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.access-key-id=polaris_root \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.secret-access-key=polaris_pass \\"
         echo "    --conf spark.sql.catalog.polaris.client.region=irrelevant \\"
         echo "    --conf spark.sql.defaultCatalog=polaris"
         echo ""

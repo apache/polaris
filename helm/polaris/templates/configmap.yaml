@@ -64,7 +64,6 @@ data:
     {{- if ne .Values.rateLimiter.type "no-op" -}}
     {{- $_ = set $map "polaris.rate-limiter.token-bucket.type" .Values.rateLimiter.tokenBucket.type -}}
     {{- $_ = set $map "polaris.rate-limiter.token-bucket.requests-per-second" .Values.rateLimiter.tokenBucket.requestsPerSecond -}}
-    {{- $_ = set $map "polaris.rate-limiter.token-bucket.window" .Values.rateLimiter.tokenBucket.window -}}
     {{- end -}}
 
     {{- /* Tasks */ -}}

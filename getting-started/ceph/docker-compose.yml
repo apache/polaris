@@ -126,27 +126,32 @@ services:
       - ./ceph-conf:/etc/ceph
     depends_on:
       - osd1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7480"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
 
-  setup_bucket:
-    image: peakcom/s5cmd:v2.3.0
+  bucket-setup:
+    image: amazon/aws-cli:2.33.8
     depends_on:
-      - rgw1
+      rgw1:
+        condition: service_healthy
     environment:
       AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
-      S3_REGION: ${S3_REGION}
+      AWS_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      AWS_REGION: ${S3_REGION}
       S3_POLARIS_BUCKET: ${S3_POLARIS_BUCKET}
     entrypoint: "/bin/sh"
     command:
       - "-c"
       - >-
-        set -ex;
-        echo ">>> Waiting for RGW to become ready...";
-        sleep 5;
-        echo ">>> Create bucket if not exist...";
-        /s5cmd --endpoint-url ${S3_ENDPOINT_URL} mb s3://${S3_POLARIS_BUCKET} || true;
-        tail -f /dev/null;
+        echo Creating Ceph bucket...;
+        aws s3 mb s3://${S3_POLARIS_BUCKET};
+        aws s3 ls;
+        echo Bucket setup complete.;
 
   polaris:
     image: apache/polaris:latest

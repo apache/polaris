@@ -31,8 +31,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
+
 ### Breaking changes
 
+- The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
 
@@ -48,15 +51,20 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
   feature is enabled in Azure.
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
+- Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 
 ### Changes
 
 - The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
-- Added KMS options to Polaris CLI
-- Changed from Poetry to UV for Python package management
+- Added KMS options to Polaris CLI.
+- Changed from Poetry to UV for Python package management.
+- Exclude KMS policies when KMS is not being used for S3.
+- Improved default KMS permission handling to better distinguish read-only and read-write access.
 
 ### Deprecations
+
+- The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
 
 ### Fixes
 

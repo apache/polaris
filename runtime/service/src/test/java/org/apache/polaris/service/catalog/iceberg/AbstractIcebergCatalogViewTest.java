@@ -267,41 +267,5 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
-
-    PolarisEvent beforeCommitEvent =
-        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_VIEW);
-    Assertions.assertThat(
-            beforeCommitEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
-        .isEqualTo(TestData.TABLE);
-    Assertions.assertThat(
-            beforeCommitEvent
-                .attributes()
-                .get(EventAttributes.VIEW_METADATA_BEFORE)
-                .map(m -> m.properties().get(key)))
-        .hasValue(valOld);
-    Assertions.assertThat(
-            beforeCommitEvent
-                .attributes()
-                .get(EventAttributes.VIEW_METADATA_AFTER)
-                .map(m -> m.properties().get(key)))
-        .hasValue(valNew);
-
-    PolarisEvent afterCommitEvent =
-        testPolarisEventListener.getLatest(PolarisEventType.AFTER_COMMIT_VIEW);
-    Assertions.assertThat(
-            afterCommitEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
-        .isEqualTo(TestData.TABLE);
-    Assertions.assertThat(
-            afterCommitEvent
-                .attributes()
-                .get(EventAttributes.VIEW_METADATA_BEFORE)
-                .map(m -> m.properties().get(key)))
-        .hasValue(valOld);
-    Assertions.assertThat(
-            afterCommitEvent
-                .attributes()
-                .get(EventAttributes.VIEW_METADATA_AFTER)
-                .map(m -> m.properties().get(key)))
-        .hasValue(valNew);
   }
 }
