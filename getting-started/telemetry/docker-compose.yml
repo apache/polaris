@@ -78,6 +78,8 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      polaris-setup:
+        condition: service_completed_successfully
     volumes:
       - ../assets/prometheus/:/etc/prometheus/
     command:

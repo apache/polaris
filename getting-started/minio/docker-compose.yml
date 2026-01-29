@@ -89,6 +89,8 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      setup_bucket:
+        condition: service_completed_successfully
     environment:
       - CLIENT_ID=root
       - CLIENT_SECRET=s3cr3t
