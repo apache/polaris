@@ -83,10 +83,10 @@ services:
     command:
       - "-c"
       - >-
-        echo Creating RustFS bucket...;
-        aws s3 mb s3://bucket123;
-        aws s3 ls;
-        echo Bucket setup complete.;
+        echo Creating RustFS bucket... &&
+        aws s3 mb s3://bucket123 &&
+        aws s3 ls &&
+        echo Bucket setup complete.
 
   polaris-setup:
     image: alpine/curl:8.17.0
@@ -298,3 +298,5 @@ services:
         echo "    -H \"Authorization: Bearer \$$TOKEN\""
         echo ""
         echo "=========================================="
+
+        sleep 120
