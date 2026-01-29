@@ -19,8 +19,8 @@
 package org.apache.polaris.service.metrics;
 
 import io.micrometer.common.annotation.ValueExpressionResolver;
-import io.micrometer.common.lang.Nullable;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
