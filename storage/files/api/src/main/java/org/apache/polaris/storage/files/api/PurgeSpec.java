@@ -26,10 +26,19 @@ import java.util.function.Consumer;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
+/**
+ * Provides parameters for purge/batch-deletion operations, most notably rate-limits like
+ * {@linkplain #batchDeletesPerSecond() number of batch-delete operations per second} and {@link
+ * #fileDeletesPerSecond() file deletions per second}. Setting these limits is inherently important
+ * to ensure that the service does not hit rate limits enforced by the object storages and to keep
+ * the pressure on the purging process reasonable.
+ */
 @SuppressWarnings("unused")
 @PolarisImmutable
 public interface PurgeSpec {
   PurgeSpec DEFAULT_INSTANCE = PurgeSpec.builder().build();
+
+  int DEFAULT_BATCH_SITE = 250;
 
   @Value.Default
   default FileFilter fileFilter() {
@@ -39,12 +48,14 @@ public interface PurgeSpec {
   PurgeSpec withFileFilter(FileFilter fileFilter);
 
   /**
-   * Delete batch size for purge/batch-deletion operations. Implementations may opt to ignore this
-   * parameter and enforce a reasonable or required different limit.
+   * Delete batch size for purge/batch-deletion operations.
+   *
+   * <p>Implementations may opt to ignore this parameter and enforce a reasonable different/lower
+   * batch size required by the object storage system.
    */
   @Value.Default
   default int deleteBatchSize() {
-    return 250;
+    return DEFAULT_BATCH_SITE;
   }
 
   PurgeSpec withDeleteBatchSize(int deleteBatchSize);
