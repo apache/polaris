@@ -92,8 +92,6 @@ services:
       - "4317:4317"
       # Jaeger UI
       - "16686:16686"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:13133/status"]
       interval: 5s
