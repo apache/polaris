@@ -212,8 +212,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
       // resumed.
       return Stream.of(allManifestsFiles, manifestListFileSpecStream).flatMap(Function.identity());
     } catch (Exception e) {
-      LOGGER.warn("Failure reading manifest list file {}: {}", manifestListLocation, e.toString());
-      LOGGER.debug("Failure reading manifest list file {}", manifestListLocation);
+      LOGGER.warn("Failure reading manifest list file {}", manifestListLocation, e);
       return manifestListFileSpecStream;
     }
   }
@@ -261,8 +260,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
       return files.stream();
     } catch (IOException e) {
-      LOGGER.warn("Failure reading manifest file {}: {}", manifestFile.path(), e.toString());
-      LOGGER.debug("Failure reading manifest file {}", manifestFile.path(), e);
+      LOGGER.warn("Failure reading manifest file {}", manifestFile.path(), e);
       return Stream.of(manifestFileSpec);
     }
   }
@@ -446,9 +444,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
       var inputFile = fileIO.newInputFile(tableMetadataLocation);
       return Optional.of(TableMetadataParser.read(inputFile));
     } catch (Exception e) {
-      LOGGER.warn(
-          "Failure reading table metadata file {}: {}", tableMetadataLocation, e.toString());
-      LOGGER.debug("Failure reading table metadata file {}", tableMetadataLocation, e);
+      LOGGER.warn("Failure reading table metadata file {}", tableMetadataLocation, e);
       return Optional.empty();
     }
   }
@@ -458,8 +454,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
       var inputFile = fileIO.newInputFile(viewMetadataLocation);
       return Optional.of(ViewMetadataParser.read(inputFile));
     } catch (Exception e) {
-      LOGGER.warn("Failure reading view metadata file {}: {}", viewMetadataLocation, e.toString());
-      LOGGER.debug("Failure reading view metadata file {}", viewMetadataLocation, e);
+      LOGGER.warn("Failure reading view metadata file {}", viewMetadataLocation, e);
       return Optional.empty();
     }
   }
