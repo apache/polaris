@@ -154,16 +154,8 @@ public interface FileOperations {
    * Purges all files that match the given stream of locations. The {@link Stream} will be fully
    * consumed.
    *
-   * <p>This is a convenience for {@link #purgeFiles(Stream, PurgeSpec)
-   * purgeFiles(locationStream.map(FileSpec::location))}
-   */
-  PurgeStats purge(@Nonnull Stream<FileSpec> locationStream, PurgeSpec purgeSpec);
-
-  /**
-   * Purges all files from the given stream of locations. The {@link Stream} will be fully consumed.
-   *
    * <p>Non-existing files and other deletion errors will not let the call fail, which makes it
    * resilient against transient or irrelevant errors.
    */
-  PurgeStats purgeFiles(@Nonnull Stream<String> locationStream, PurgeSpec purgeSpec);
+  PurgeStats purge(@Nonnull Stream<FileSpec> locationStream, PurgeSpec purgeSpec);
 }
