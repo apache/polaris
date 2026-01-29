@@ -33,7 +33,6 @@ import java.util.Objects;
  * <p>This type is <em>private</em> to the {@code polaris-storage-files-impl} module.
  */
 final class StorageUri implements Comparable<StorageUri> {
-  public static final String SCHEME_FILE = "file";
 
   public static final Comparator<StorageUri> COMPARATOR =
       Comparator.<StorageUri, String>comparing(u -> normalizedForCompare(u.scheme))
