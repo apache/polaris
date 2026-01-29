@@ -58,21 +58,19 @@ public interface ScanMetricsRecord {
   /** Timestamp when the report was received. */
   Instant timestamp();
 
-  // === Request Context ===
+  // === Client Correlation ===
 
-  /** Name of the principal who initiated the operation. */
-  Optional<String> principalName();
-
-  /** Request ID for correlation. */
-  Optional<String> requestId();
-
-  /** OpenTelemetry trace ID for distributed tracing. */
-  Optional<String> otelTraceId();
-
-  /** OpenTelemetry span ID for distributed tracing. */
-  Optional<String> otelSpanId();
-
-  /** Trace ID from the report itself (may differ from OTel trace). */
+  /**
+   * Client-provided trace ID from the metrics report metadata.
+   *
+   * <p>This is an optional identifier that the Iceberg client may include in the report's metadata
+   * map (typically under the key "trace-id"). It allows clients to correlate this metrics report
+   * with their own distributed tracing system or query execution context.
+   *
+   * <p>Note: Server-side tracing information (e.g., OpenTelemetry trace/span IDs) and principal
+   * information are not included in this record. The persistence implementation can obtain these
+   * from the ambient request context (OTel context, security context) at write time if needed.
+   */
   Optional<String> reportTraceId();
 
   // === Scan Context ===

@@ -35,8 +35,7 @@ import org.immutables.value.Value;
  * <table>
  * <tr><th>Pattern</th><th>Fields Used</th><th>Index Required</th></tr>
  * <tr><td>By Table + Time</td><td>catalogName, namespace, tableName, startTime, endTime</td><td>Yes (OSS)</td></tr>
- * <tr><td>By Trace ID</td><td>otelTraceId</td><td>Yes (OSS)</td></tr>
- * <tr><td>By Principal</td><td>principalName</td><td>No (custom deployment)</td></tr>
+ * <tr><td>By Client Trace ID</td><td>reportTraceId</td><td>No (custom deployment)</td></tr>
  * <tr><td>By Time Only</td><td>startTime, endTime</td><td>Partial (timestamp index)</td></tr>
  * </table>
  */
@@ -64,26 +63,45 @@ public interface MetricsQueryCriteria {
 
   // === Correlation ===
 
-  /** OpenTelemetry trace ID to filter by. */
-  Optional<String> otelTraceId();
-
   /**
-   * Principal name to filter by.
+   * Client-provided trace ID to filter by (from report metadata).
+   *
+   * <p>This matches the {@code reportTraceId} field in the metrics records, which originates from
+   * the client's metadata map. Useful for correlating metrics with client-side query execution.
    *
    * <p>Note: This query pattern may require a custom index in deployment environments. The OSS
-   * codebase does not include an index for principal-based queries.
+   * codebase does not include an index for trace-based queries.
    */
-  Optional<String> principalName();
+  Optional<String> reportTraceId();
 
   // === Pagination ===
 
-  /** Maximum number of results to return. Defaults to 100. */
+  /**
+   * Maximum number of results to return.
+   *
+   * <p>Defaults to 100. Used together with {@link #offset()} for offset-based pagination.
+   */
   @Value.Default
   default int limit() {
     return 100;
   }
 
-  /** Number of results to skip. Defaults to 0. */
+  /**
+   * Number of results to skip before returning results.
+   *
+   * <p>Defaults to 0. Used for offset-based pagination where:
+   *
+   * <ul>
+   *   <li>Page 1: offset=0, limit=100 → returns results 1-100
+   *   <li>Page 2: offset=100, limit=100 → returns results 101-200
+   *   <li>Page N: offset=(N-1)*limit, limit=100 → returns results for page N
+   * </ul>
+   *
+   * <p>Note: Offset-based pagination can be inefficient for large offsets in some databases. For
+   * very large result sets (>10K records), consider using time-based filtering with {@link
+   * #startTime()} and {@link #endTime()} to narrow the result set instead of relying on large
+   * offsets.
+   */
   @Value.Default
   default int offset() {
     return 0;
@@ -127,13 +145,13 @@ public interface MetricsQueryCriteria {
   }
 
   /**
-   * Creates criteria for querying by OpenTelemetry trace ID.
+   * Creates criteria for querying by client-provided trace ID.
    *
-   * @param traceId the trace ID to search for
+   * @param reportTraceId the client trace ID to search for
    * @param limit maximum number of results
    * @return the query criteria
    */
-  static MetricsQueryCriteria forTraceId(String traceId, int limit) {
-    return builder().otelTraceId(traceId).limit(limit).build();
+  static MetricsQueryCriteria forReportTraceId(String reportTraceId, int limit) {
+    return builder().reportTraceId(reportTraceId).limit(limit).build();
   }
 }
