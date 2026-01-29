@@ -61,7 +61,8 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
     ports:
       - ${DASHBOARD_PORT}:${INTERNAL_DASHBOARD_PORT}
 
@@ -93,7 +94,8 @@ services:
       - ./ceph-conf:/etc/ceph
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
 
   rgw1:
     image: quay.io/ceph/ceph:v20.2.0
@@ -125,7 +127,8 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - osd1
+      osd1:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7480"]
       interval: 2s
@@ -161,7 +164,8 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
-      - rgw1
+      rgw1:
+        condition: service_started
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
