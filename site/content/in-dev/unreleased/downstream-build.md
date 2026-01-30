@@ -22,7 +22,7 @@ type: docs
 weight: 1005
 ---
 
-This page proposes a method for building custom servers based on Apache Polaris.
+This page highlights a few keys points for building custom servers based on Apache Polaris.
 
 Polaris produces several jars. These jars may be used to build custom catalog server 
 according to the terms of the license included in Polaris distributions.
