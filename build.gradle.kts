@@ -248,3 +248,17 @@ tasks.register("showVersion") {
     )
   }
 }
+
+tasks.named<Wrapper>("wrapper") {
+  actions.addLast {
+    val script = scriptFile.readText()
+    val scriptLines = script.lines().toMutableList()
+
+    val insertAtLine =
+      scriptLines.indexOf("# Use the maximum available, or set MAX_FD != -1 to use that value.")
+    scriptLines.add(insertAtLine, "")
+    scriptLines.add(insertAtLine, $$". \"${APP_HOME}/gradle/gradlew-include.sh\"")
+
+    scriptFile.writeText(scriptLines.joinToString("\n"))
+  }
+}
