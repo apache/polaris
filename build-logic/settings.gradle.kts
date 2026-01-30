@@ -24,6 +24,10 @@ dependencyResolutionManagement {
 dependencyResolutionManagement {
   repositories {
     mavenCentral()
+    maven {
+      url = uri("https://repository.apache.org/snapshots/")
+      mavenContent { snapshotsOnly() }
+    }
     gradlePluginPortal()
   }
 }
