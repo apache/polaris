@@ -22,8 +22,12 @@ package org.apache.polaris.core.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
+import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class AwsStorageConfigurationInfoTest {
 
@@ -134,12 +138,14 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(newBuilder().kmsUnavailable(true).build().getKmsUnavailable()).isTrue();
   }
 
-  @Test
-  public void testRoleArnParsing() {
+  @ParameterizedTest
+  @MethodSource
+  public void testRoleArnParsing(
+      String roleArn, String expectedAccountId, String expectedPartition) {
     AwsStorageConfigurationInfo awsConfig =
         AwsStorageConfigurationInfo.builder()
             .addAllowedLocation("s3://bucket/path/to/warehouse")
-            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .roleARN(roleArn)
             .region("us-east-2")
             .build();
 
@@ -148,6 +154,15 @@ public class AwsStorageConfigurationInfoTest {
             AwsStorageConfigurationInfo::getRoleARN,
             AwsStorageConfigurationInfo::getAwsAccountId,
             AwsStorageConfigurationInfo::getAwsPartition)
-        .containsExactly("arn:aws:iam::012345678901:role/jdoe", "012345678901", "aws");
+        .containsExactly(roleArn, expectedAccountId, expectedPartition);
+  }
+
+  static Stream<Arguments> testRoleArnParsing() {
+    return Stream.of(
+        Arguments.of("arn:aws:iam::012345678901:role/jdoe", "012345678901", "aws"),
+        Arguments.of("arn:aws-us-gov:iam::012345678901:role/jdoe", "012345678901", "aws-us-gov"),
+        Arguments.of("arn:aws-cn:iam::012345678901:role/jdoe", "012345678901", "aws-cn"),
+        Arguments.of("urn:ecs:sts::s3:assumed-role/s3assumeRole/user1-105-temp", "s3", "ecs"),
+        Arguments.of("urn:sgws:identity::12345:group/foo-bar-abcdef", "12345", "sgws"));
   }
 }
