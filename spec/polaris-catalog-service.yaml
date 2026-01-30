@@ -112,6 +112,9 @@ paths:
   /v1/{prefix}/namespaces/{namespace}/views:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
 
+  /v1/{prefix}/namespaces/{namespace}/register-view:
+    $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register-view'
+
   /v1/{prefix}/namespaces/{namespace}/views/{view}:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
 

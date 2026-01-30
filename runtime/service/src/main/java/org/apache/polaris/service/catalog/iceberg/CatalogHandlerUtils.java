@@ -68,10 +68,12 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -100,8 +102,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CODE_COPIED_TO_POLARIS Copied from CatalogHandler in Iceberg 1.8.0 Contains a collection of
- * utilities related to managing Iceberg entities
+ * CODE_COPIED_TO_POLARIS
+ *
+ * <p>Copied from CatalogHandlers in Iceberg 1.8.0, then cherry-picked from 1.11.0.
+ *
+ * <p>Last imported commit SHA: b0c236512ae38b7668fa2a332b100db0f5b64d30.
+ *
+ * <p>Contains a collection of utilities related to managing Iceberg entities.
+ *
+ * <p>WARNING: this isn't a full copy of the Iceberg version, but rather, a cherry-pick of relevant
+ * functions. For instance, the idempotency store is not copied.
  */
 @ApplicationScoped
 public class CatalogHandlerUtils {
@@ -379,13 +389,33 @@ public class CatalogHandlerUtils {
     }
   }
 
+  /**
+   * @deprecated since 1.11.0, will be removed in 1.12.0. Use {@link #loadTable(Catalog,
+   *     TableIdentifier, RESTCatalogProperties.SnapshotMode)} instead.
+   */
+  @Deprecated
   public LoadTableResponse loadTable(Catalog catalog, TableIdentifier ident) {
+    return loadTable(catalog, ident, RESTCatalogProperties.SnapshotMode.ALL);
+  }
+
+  public LoadTableResponse loadTable(
+      Catalog catalog, TableIdentifier ident, RESTCatalogProperties.SnapshotMode mode) {
     Table table = catalog.loadTable(ident);
 
     if (table instanceof BaseTable baseTable) {
-      return LoadTableResponse.builder()
-          .withTableMetadata(baseTable.operations().current())
-          .build();
+      TableMetadata loadedMetadata = baseTable.operations().current();
+
+      TableMetadata metadata =
+          switch (mode) {
+            case ALL -> loadedMetadata;
+            case REFS ->
+                TableMetadata.buildFrom(loadedMetadata)
+                    .withMetadataLocation(loadedMetadata.metadataFileLocation())
+                    .suppressHistoricalSnapshots()
+                    .build();
+          };
+
+      return LoadTableResponse.builder().withTableMetadata(metadata).build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", ident.toString());
@@ -808,6 +838,15 @@ public class CatalogHandlerUtils {
     if (!dropped) {
       throw new NoSuchViewException("View does not exist: %s", viewIdentifier);
     }
+  }
+
+  public LoadViewResponse registerView(
+      ViewCatalog catalog, Namespace namespace, RegisterViewRequest request) {
+    request.validate();
+
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    View view = catalog.registerView(identifier, request.metadataLocation());
+    return viewResponse(view);
   }
 
   protected ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {
