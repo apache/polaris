@@ -29,6 +29,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -132,6 +133,8 @@ public final class EventAttributes {
       new AttributeKey<>("view_identifier", TableIdentifier.class);
   public static final AttributeKey<CreateViewRequest> CREATE_VIEW_REQUEST =
       new AttributeKey<>("create_view_request", CreateViewRequest.class);
+  public static final AttributeKey<RegisterViewRequest> REGISTER_VIEW_REQUEST =
+      new AttributeKey<>("register_view_request", RegisterViewRequest.class);
   public static final AttributeKey<CommitViewRequest> COMMIT_VIEW_REQUEST =
       new AttributeKey<>("commit_view_request", CommitViewRequest.class);
   public static final AttributeKey<ViewMetadata> VIEW_METADATA_BEFORE =
