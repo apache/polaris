@@ -219,4 +219,10 @@ services:
           -H "Authorization: Bearer $$TOKEN" \
           -X GET \
           http://polaris:8181/api/management/v1/catalogs &&
-        sleep 120
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]

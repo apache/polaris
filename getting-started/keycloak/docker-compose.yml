@@ -76,7 +76,13 @@ services:
         /polaris/create-catalog.sh realm-internal && 
         /polaris/create-catalog.sh realm-external $$token && 
         /polaris/create-catalog.sh realm-mixed $$token &&
-        sleep 120
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.5.2
