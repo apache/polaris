@@ -1344,7 +1344,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
-    String prefix = prefixParser.catalogNameToPrefix(callContext.getRealmContext(), catalogName);
+    String prefix = prefixParser.catalogNameToPrefix(catalogName);
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
         .withOverrides(ImmutableMap.of("prefix", prefix))
