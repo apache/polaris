@@ -71,6 +71,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -176,6 +177,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
           .add(Endpoint.V1_RENAME_VIEW)
+          .add(Endpoint.V1_REGISTER_VIEW)
           .build();
 
   private final CatalogPrefixParser prefixParser;
@@ -1154,6 +1156,21 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new BadRequestException("Cannot create view on static-facade external catalogs.");
     }
     return catalogHandlerUtils.createView(viewCatalog, namespace, request);
+  }
+
+  /**
+   * Register a view.
+   *
+   * @param namespace The namespace to register the view in
+   * @param request the register view request
+   * @return {@link LoadViewResponse} containing the view metadata
+   */
+  public LoadViewResponse registerView(Namespace namespace, RegisterViewRequest request) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_VIEW;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.name()));
+
+    return catalogHandlerUtils.registerView(viewCatalog, namespace, request);
   }
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {

@@ -34,6 +34,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -546,6 +547,38 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.VIEW_NAME, createViewRequest.name())
+                .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+    return resp;
+  }
+
+  @Override
+  public Response registerView(
+      String prefix,
+      String namespace,
+      RegisterViewRequest registerViewRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    Namespace namespaceObj = decodeNamespace(namespace);
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_REGISTER_VIEW,
+            eventMetadataFactory.create(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE, namespaceObj)
+                .put(EventAttributes.REGISTER_VIEW_REQUEST, registerViewRequest)));
+    Response resp =
+        delegate.registerView(
+            prefix, namespace, registerViewRequest, realmContext, securityContext);
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_REGISTER_VIEW,
+            eventMetadataFactory.create(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE, namespaceObj)
+                .put(EventAttributes.VIEW_NAME, registerViewRequest.name())
                 .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
     return resp;
   }

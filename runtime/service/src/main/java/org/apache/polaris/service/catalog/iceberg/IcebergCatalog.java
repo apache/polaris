@@ -831,6 +831,55 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
+  public View registerView(TableIdentifier identifier, String metadataFileLocation) {
+    Preconditions.checkArgument(
+        identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
+    Preconditions.checkArgument(
+        metadataFileLocation != null && !metadataFileLocation.isEmpty(),
+        "Cannot register an empty metadata file location as a view");
+
+    int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
+    Preconditions.checkArgument(
+        lastSlashIndex != -1,
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        metadataFileLocation);
+
+    // Throw an exception if this view already exists in the catalog.
+    if (viewExists(identifier)) {
+      throw new AlreadyExistsException("View already exists: %s", identifier);
+    }
+
+    if (tableExists(identifier)) {
+      throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
+    }
+
+    String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
+
+    ViewOperations ops = newViewOps(identifier);
+
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(identifier.namespace());
+    if (resolvedParent == null) {
+      // Illegal state because the namespace should've already been in the static resolution set.
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
+    }
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(locationDir),
+            resolvedParent,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
+    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
+    ViewMetadata metadata = ViewMetadataParser.read(metadataFile);
+    ops.commit(null, metadata);
+
+    return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
+  }
+
+  @Override
   public boolean dropView(TableIdentifier identifier) {
     boolean purge =
         realmConfig.getConfig(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP, catalogEntity);

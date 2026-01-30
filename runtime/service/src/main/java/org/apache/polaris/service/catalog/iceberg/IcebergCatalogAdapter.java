@@ -45,6 +45,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -555,6 +556,20 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> Response.ok(catalog.createView(ns, revisedRequest)).build());
+  }
+
+  @Override
+  public Response registerView(
+      String prefix,
+      String namespace,
+      RegisterViewRequest registerViewRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    Namespace ns = decodeNamespace(namespace);
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.registerView(ns, registerViewRequest)).build());
   }
 
   @Override
