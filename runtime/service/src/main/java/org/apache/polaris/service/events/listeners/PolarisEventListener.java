@@ -22,8 +22,8 @@ import org.apache.polaris.service.events.PolarisEvent;
 
 /**
  * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes with {@link
- * PolarisEvent#hasAttribute} and {@link PolarisEvent#attribute}.
+ * filter events by checking {@link PolarisEvent#type()} or by querying attributes via {@link
+ * PolarisEvent#attributes()}.
  */
 public interface PolarisEventListener {
 
