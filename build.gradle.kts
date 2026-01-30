@@ -69,6 +69,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Files copied from Docsy (ASLv2 licensed) don't have header
   excludes.add("site/layouts/docs/baseof.html")
+  excludes.add("site/layouts/guides/baseof.html")
   excludes.add("site/layouts/shortcodes/redoc-polaris.html")
   excludes.add("site/layouts/community/list.html")
   excludes.add("site/layouts/partials/navbar.html")
@@ -112,6 +113,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
   excludes.add("node_modules/**")
+
+  // Guides testing
+  excludes.add("/getting-started") // it's a symlink
 
   // Python
   excludes.add("**/.venv/**")
