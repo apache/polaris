@@ -28,11 +28,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -68,12 +70,19 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelScanMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReportConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReportConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +101,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
+  // Minimum schema version that includes metrics tables (scan_metrics_report,
+  // commit_metrics_report)
+  private static final int METRICS_TABLES_MIN_SCHEMA_VERSION = 4;
+
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
@@ -105,6 +118,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
+  }
+
+  /**
+   * Returns true if the current schema version supports metrics persistence tables.
+   *
+   * <p>Metrics tables (scan_metrics_report, commit_metrics_report) were introduced in schema
+   * version 4. On older schemas, metrics persistence operations will be no-ops.
+   *
+   * @return true if schema version >= 4, false otherwise
+   */
+  public boolean supportsMetricsPersistence() {
+    return this.schemaVersion >= METRICS_TABLES_MIN_SCHEMA_VERSION;
   }
 
   @Override
@@ -313,6 +338,460 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format("Failed to write events due to %s", e.getMessage()), e);
     }
+  }
+
+  /**
+   * Writes a scan metrics report to the database as a first-class entity.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, this method is a no-op.
+   *
+   * @param report the scan metrics report to persist
+   */
+  public void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+    if (!supportsMetricsPersistence()) {
+      LOGGER.debug(
+          "Schema version {} does not support metrics tables. Skipping scan metrics write.",
+          schemaVersion);
+      return;
+    }
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            PreparedQuery pq =
+                QueryGenerator.generateInsertQueryWithoutRealmId(
+                    ModelScanMetricsReport.ALL_COLUMNS,
+                    ModelScanMetricsReport.TABLE_NAME,
+                    report.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                        .toList());
+            int updated = datasourceOperations.execute(connection, pq);
+            if (updated == 0) {
+              throw new SQLException("Scan metrics report was not inserted.");
+            }
+
+            // Insert roles into junction table (filter out null/blank values)
+            for (String role : report.getRoles()) {
+              if (role != null && !role.isBlank()) {
+                PreparedQuery roleQuery =
+                    QueryGenerator.generateInsertQueryWithoutRealmId(
+                        List.of("realm_id", "report_id", "role_name"),
+                        "SCAN_METRICS_REPORT_ROLES",
+                        List.of(report.getRealmId(), report.getReportId(), role));
+                datasourceOperations.execute(connection, roleQuery);
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Writes a commit metrics report to the database as a first-class entity.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, this method is a no-op.
+   *
+   * @param report the commit metrics report to persist
+   */
+  public void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+    if (!supportsMetricsPersistence()) {
+      LOGGER.debug(
+          "Schema version {} does not support metrics tables. Skipping commit metrics write.",
+          schemaVersion);
+      return;
+    }
+    try {
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            PreparedQuery pq =
+                QueryGenerator.generateInsertQueryWithoutRealmId(
+                    ModelCommitMetricsReport.ALL_COLUMNS,
+                    ModelCommitMetricsReport.TABLE_NAME,
+                    report.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                        .toList());
+            int updated = datasourceOperations.execute(connection, pq);
+            if (updated == 0) {
+              throw new SQLException("Commit metrics report was not inserted.");
+            }
+
+            // Insert roles into junction table (filter out null/blank values)
+            for (String role : report.getRoles()) {
+              if (role != null && !role.isBlank()) {
+                PreparedQuery roleQuery =
+                    QueryGenerator.generateInsertQueryWithoutRealmId(
+                        List.of("realm_id", "report_id", "role_name"),
+                        "COMMIT_METRICS_REPORT_ROLES",
+                        List.of(report.getRealmId(), report.getReportId(), role));
+                datasourceOperations.execute(connection, roleQuery);
+              }
+            }
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  /** Simple converter to extract role_name from ResultSet. */
+  private static final RoleNameConverter ROLE_NAME_CONVERTER = new RoleNameConverter();
+
+  /** Converter class that extracts just the role_name column from a ResultSet. */
+  private static class RoleNameConverter implements Converter<String> {
+    @Override
+    public String fromResultSet(java.sql.ResultSet rs) throws SQLException {
+      return rs.getString("role_name");
+    }
+
+    @Override
+    public Map<String, Object> toMap(DatabaseType databaseType) {
+      throw new UnsupportedOperationException("RoleNameConverter is read-only");
+    }
+  }
+
+  /**
+   * Loads roles from the scan_metrics_report_roles junction table for the given reports.
+   *
+   * @param reports the reports to populate with roles
+   * @return new list with roles populated
+   */
+  private List<ModelScanMetricsReport> loadScanMetricsReportRoles(
+      List<ModelScanMetricsReport> reports) {
+    if (reports.isEmpty()) {
+      return reports;
+    }
+    try {
+      // Build a map of reportId -> Set<String> roles
+      Map<String, Set<String>> rolesByReportId = new HashMap<>();
+      for (ModelScanMetricsReport report : reports) {
+        String sql =
+            "SELECT role_name FROM "
+                + QueryGenerator.getFullyQualifiedTableName("SCAN_METRICS_REPORT_ROLES")
+                + " WHERE realm_id = ? AND report_id = ?";
+        PreparedQuery query = new PreparedQuery(sql, List.of(realmId, report.getReportId()));
+        List<String> roles = datasourceOperations.executeSelect(query, ROLE_NAME_CONVERTER);
+        if (roles != null && !roles.isEmpty()) {
+          rolesByReportId.put(report.getReportId(), new HashSet<>(roles));
+        }
+      }
+
+      // Rebuild reports with roles populated
+      return reports.stream()
+          .<ModelScanMetricsReport>map(
+              r ->
+                  ImmutableModelScanMetricsReport.builder()
+                      .from(r)
+                      .roles(rolesByReportId.getOrDefault(r.getReportId(), Set.of()))
+                      .build())
+          .toList();
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to load roles for scan metrics reports: {}", e.getMessage(), e);
+      return reports; // Return reports without roles on error
+    }
+  }
+
+  /**
+   * Loads roles from the commit_metrics_report_roles junction table for the given reports.
+   *
+   * @param reports the reports to populate with roles
+   * @return new list with roles populated
+   */
+  private List<ModelCommitMetricsReport> loadCommitMetricsReportRoles(
+      List<ModelCommitMetricsReport> reports) {
+    if (reports.isEmpty()) {
+      return reports;
+    }
+    try {
+      // Build a map of reportId -> Set<String> roles
+      Map<String, Set<String>> rolesByReportId = new HashMap<>();
+      for (ModelCommitMetricsReport report : reports) {
+        String sql =
+            "SELECT role_name FROM "
+                + QueryGenerator.getFullyQualifiedTableName("COMMIT_METRICS_REPORT_ROLES")
+                + " WHERE realm_id = ? AND report_id = ?";
+        PreparedQuery query = new PreparedQuery(sql, List.of(realmId, report.getReportId()));
+        List<String> roles = datasourceOperations.executeSelect(query, ROLE_NAME_CONVERTER);
+        if (roles != null && !roles.isEmpty()) {
+          rolesByReportId.put(report.getReportId(), new HashSet<>(roles));
+        }
+      }
+
+      // Rebuild reports with roles populated
+      return reports.stream()
+          .<ModelCommitMetricsReport>map(
+              r ->
+                  ImmutableModelCommitMetricsReport.builder()
+                      .from(r)
+                      .roles(rolesByReportId.getOrDefault(r.getReportId(), Set.of()))
+                      .build())
+          .toList();
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to load roles for commit metrics reports: {}", e.getMessage(), e);
+      return reports; // Return reports without roles on error
+    }
+  }
+
+  /**
+   * Retrieves scan metrics reports for a specific table within a time range.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace
+   * @param tableName the table name
+   * @param startTimeMs start of time range (inclusive), or null for no lower bound
+   * @param endTimeMs end of time range (exclusive), or null for no upper bound
+   * @param limit maximum number of results to return
+   * @return list of scan metrics reports matching the criteria, or empty list if schema version
+   *     &lt; 4
+   */
+  @Nonnull
+  public List<ModelScanMetricsReport> queryScanMetricsReports(
+      @Nonnull String catalogName,
+      @Nonnull String namespace,
+      @Nonnull String tableName,
+      @Nullable Long startTimeMs,
+      @Nullable Long endTimeMs,
+      int limit) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
+    try {
+      StringBuilder whereClause = new StringBuilder();
+      whereClause.append("realm_id = ? AND catalog_name = ? AND namespace = ? AND table_name = ?");
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogName, namespace, tableName));
+
+      if (startTimeMs != null) {
+        whereClause.append(" AND timestamp_ms >= ?");
+        values.add(startTimeMs);
+      }
+      if (endTimeMs != null) {
+        whereClause.append(" AND timestamp_ms < ?");
+        values.add(endTimeMs);
+      }
+
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
+              + " WHERE "
+              + whereClause
+              + " ORDER BY timestamp_ms DESC LIMIT "
+              + limit;
+
+      PreparedQuery query = new PreparedQuery(sql, values);
+      var results =
+          datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadScanMetricsReportRoles(results);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to query scan metrics reports due to %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Retrieves commit metrics reports for a specific table within a time range.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace
+   * @param tableName the table name
+   * @param startTimeMs start of time range (inclusive), or null for no lower bound
+   * @param endTimeMs end of time range (exclusive), or null for no upper bound
+   * @param limit maximum number of results to return
+   * @return list of commit metrics reports matching the criteria, or empty list if schema version
+   *     &lt; 4
+   */
+  @Nonnull
+  public List<ModelCommitMetricsReport> queryCommitMetricsReports(
+      @Nonnull String catalogName,
+      @Nonnull String namespace,
+      @Nonnull String tableName,
+      @Nullable Long startTimeMs,
+      @Nullable Long endTimeMs,
+      int limit) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
+    try {
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogName, namespace, tableName));
+
+      StringBuilder whereClause = new StringBuilder();
+      whereClause.append("realm_id = ? AND catalog_name = ? AND namespace = ? AND table_name = ?");
+
+      if (startTimeMs != null) {
+        whereClause.append(" AND timestamp_ms >= ?");
+        values.add(startTimeMs);
+      }
+      if (endTimeMs != null) {
+        whereClause.append(" AND timestamp_ms < ?");
+        values.add(endTimeMs);
+      }
+
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
+              + " WHERE "
+              + whereClause
+              + " ORDER BY timestamp_ms DESC LIMIT "
+              + limit;
+
+      PreparedQuery query = new PreparedQuery(sql, values);
+      var results =
+          datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadCommitMetricsReportRoles(results);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to query commit metrics reports due to %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Retrieves scan metrics reports by OpenTelemetry trace ID.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
+   * @param traceId the OpenTelemetry trace ID
+   * @return list of scan metrics reports with the given trace ID, or empty list if schema version
+   *     &lt; 4
+   */
+  @Nonnull
+  public List<ModelScanMetricsReport> queryScanMetricsReportsByTraceId(@Nonnull String traceId) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
+    try {
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
+              + " WHERE realm_id = ? AND otel_trace_id = ? ORDER BY timestamp_ms DESC";
+
+      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
+      var results =
+          datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadScanMetricsReportRoles(results);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to query scan metrics reports by trace ID due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  /**
+   * Retrieves commit metrics reports by OpenTelemetry trace ID.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
+   * @param traceId the OpenTelemetry trace ID
+   * @return list of commit metrics reports with the given trace ID, or empty list if schema version
+   *     &lt; 4
+   */
+  @Nonnull
+  public List<ModelCommitMetricsReport> queryCommitMetricsReportsByTraceId(
+      @Nonnull String traceId) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
+    try {
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
+              + " WHERE realm_id = ? AND otel_trace_id = ? ORDER BY timestamp_ms DESC";
+
+      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
+      var results =
+          datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadCommitMetricsReportRoles(results);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to query commit metrics reports by trace ID due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  /**
+   * Deletes scan metrics reports older than the specified timestamp.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
+   * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
+   *     deleted
+   * @return the number of reports deleted, or 0 if schema version &lt; 4
+   */
+  public int deleteScanMetricsReportsOlderThan(long olderThanMs) {
+    if (!supportsMetricsPersistence()) {
+      return 0;
+    }
+    try {
+      String sql =
+          "DELETE FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
+              + " WHERE realm_id = ? AND timestamp_ms < ?";
+
+      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, olderThanMs));
+      return datasourceOperations.executeUpdate(query);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete old scan metrics reports due to %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Deletes commit metrics reports older than the specified timestamp.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
+   * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
+   *     deleted
+   * @return the number of reports deleted, or 0 if schema version &lt; 4
+   */
+  public int deleteCommitMetricsReportsOlderThan(long olderThanMs) {
+    if (!supportsMetricsPersistence()) {
+      return 0;
+    }
+    try {
+      String sql =
+          "DELETE FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
+              + " WHERE realm_id = ? AND timestamp_ms < ?";
+
+      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, olderThanMs));
+      return datasourceOperations.executeUpdate(query);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to delete old commit metrics reports due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  /**
+   * Deletes all metrics reports (both scan and commit) older than the specified timestamp.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
+   * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
+   *     deleted
+   * @return the total number of reports deleted (scan + commit), or 0 if schema version &lt; 4
+   */
+  public int deleteAllMetricsReportsOlderThan(long olderThanMs) {
+    int scanDeleted = deleteScanMetricsReportsOlderThan(olderThanMs);
+    int commitDeleted = deleteCommitMetricsReportsOlderThan(olderThanMs);
+    return scanDeleted + commitDeleted;
   }
 
   @Override

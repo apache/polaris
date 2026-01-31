@@ -29,9 +29,15 @@ dependencies {
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly("com.fasterxml.jackson.core:jackson-databind")
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
+
+  // Iceberg API for metrics report conversion
+  compileOnly(platform(libs.iceberg.bom))
+  compileOnly("org.apache.iceberg:iceberg-api")
+  compileOnly("org.apache.iceberg:iceberg-core")
 
   implementation(libs.smallrye.common.annotation) // @Identifier
   implementation(libs.postgresql)

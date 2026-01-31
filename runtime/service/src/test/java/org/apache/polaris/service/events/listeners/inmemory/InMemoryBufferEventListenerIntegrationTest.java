@@ -65,6 +65,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,6 +93,7 @@ class InMemoryBufferEventListenerIntegrationTest {
           .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
           .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
           .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
+          .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
           .put("polaris.readiness.ignore-severe-issues", "true")
           .build();
     }
@@ -117,10 +119,32 @@ class InMemoryBufferEventListenerIntegrationTest {
     baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
+  /**
+   * Reset the database state before each test to ensure test isolation. The H2 in-memory database
+   * with DB_CLOSE_DELAY=-1 persists state across tests, so we need to clean up catalog-related
+   * entities while preserving the realm and principal entities set up in @BeforeAll.
+   */
+  @BeforeEach
+  public void resetDatabaseState() {
+    if (dataSource.isResolvable()) {
+      try (Connection conn = dataSource.get().getConnection();
+          Statement stmt = conn.createStatement()) {
+        // Set the schema first
+        stmt.execute("SET SCHEMA POLARIS_SCHEMA");
+        // Only delete events - catalogs use unique names and locations so they don't conflict
+        stmt.execute("DELETE FROM EVENTS");
+      } catch (Exception e) {
+        // Ignore errors - tables may not exist yet on first run
+      }
+    }
+  }
+
   @Test
   void testCreateCatalogAndTable() throws IOException {
 
     String catalogName = client.newEntityName("testCreateCatalogAndTable");
+    // Use a unique base location for this catalog to avoid overlap with other catalogs
+    URI catalogBaseLocation = baseLocation.resolve(catalogName + "/");
 
     Catalog catalog =
         PolarisCatalog.builder()
@@ -130,7 +154,7 @@ class InMemoryBufferEventListenerIntegrationTest {
             .setStorageConfigInfo(
                 FileStorageConfigInfo.builder()
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                    .setAllowedLocations(List.of(baseLocation.toString()))
+                    .setAllowedLocations(List.of(catalogBaseLocation.toString()))
                     .build())
             .build();
 
