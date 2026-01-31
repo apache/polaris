@@ -71,10 +71,10 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-unit-test-artifacts
-          path: |
+          path: &test-archive-path |
             **/build/test-results/**
             **/build/reports/tests/**
 
@@ -105,12 +105,10 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-runtime-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-runtime-service:intTest 15m
@@ -137,12 +135,10 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-runtime-inttest-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-admin:test 6m
@@ -169,12 +165,10 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-admin-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-spark-integration-*:intTest 6m (2x)
@@ -208,12 +202,10 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-integration-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   store-gradle-cache:
     name: Store Gradle Cache
