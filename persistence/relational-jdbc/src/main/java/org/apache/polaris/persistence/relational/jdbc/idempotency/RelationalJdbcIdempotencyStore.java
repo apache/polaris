@@ -20,10 +20,12 @@ import jakarta.annotation.Nonnull;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
@@ -33,7 +35,6 @@ import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguratio
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelIdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
-/** {@link IdempotencyStore} backed by the relational-jdbc schema. */
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
@@ -131,15 +132,26 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       return HeartbeatResult.LOST_OWNERSHIP;
     }
 
-    String sql =
-        "UPDATE "
-            + QueryGenerator.fullyQualifiedTableName(ModelIdempotencyRecord.TABLE_NAME)
-            + " SET heartbeat_at = ?, updated_at = ?"
-            + " WHERE realm_id = ? AND idempotency_key = ? AND http_status IS NULL AND executor_id = ?";
     QueryGenerator.PreparedQuery update =
-        new QueryGenerator.PreparedQuery(
-            sql,
-            List.of(Timestamp.from(now), Timestamp.from(now), realmId, idempotencyKey, executorId));
+        QueryGenerator.generateUpdateQuery(
+            ModelIdempotencyRecord.SELECT_COLUMNS,
+            ModelIdempotencyRecord.TABLE_NAME,
+            Map.of(
+                ModelIdempotencyRecord.HEARTBEAT_AT,
+                Timestamp.from(now),
+                ModelIdempotencyRecord.UPDATED_AT,
+                Timestamp.from(now)),
+            Map.of(
+                ModelIdempotencyRecord.REALM_ID,
+                realmId,
+                ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                idempotencyKey,
+                ModelIdempotencyRecord.EXECUTOR_ID,
+                executorId),
+            Map.of(),
+            Map.of(),
+            Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+            Set.of());
 
     try {
       int updated = datasourceOperations.executeUpdate(update);
@@ -170,24 +182,29 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       String responseSummary,
       String responseHeaders,
       Instant finalizedAt) {
-    String sql =
-        "UPDATE "
-            + QueryGenerator.fullyQualifiedTableName(ModelIdempotencyRecord.TABLE_NAME)
-            + " SET http_status = ?, error_subtype = ?, response_summary = ?, response_headers = ?,"
-            + " finalized_at = ?, updated_at = ?"
-            + " WHERE realm_id = ? AND idempotency_key = ? AND http_status IS NULL";
+    // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
+    Map<String, Object> setClause = new LinkedHashMap<>();
+    setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
+    setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
+    setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
+    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
+    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
+    setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
+
+    Map<String, Object> whereEquals = new HashMap<>();
+    whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
+    whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+
     QueryGenerator.PreparedQuery update =
-        new QueryGenerator.PreparedQuery(
-            sql,
-            Arrays.asList(
-                httpStatus,
-                errorSubtype,
-                responseSummary,
-                responseHeaders,
-                Timestamp.from(finalizedAt),
-                Timestamp.from(finalizedAt),
-                realmId,
-                idempotencyKey));
+        QueryGenerator.generateUpdateQuery(
+            ModelIdempotencyRecord.SELECT_COLUMNS,
+            ModelIdempotencyRecord.TABLE_NAME,
+            setClause,
+            whereEquals,
+            Map.of(),
+            Map.of(),
+            Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+            Set.of());
 
     try {
       return datasourceOperations.executeUpdate(update) > 0;
@@ -199,12 +216,15 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   @Override
   public int purgeExpired(String realmId, Instant before) {
     try {
-      String sql =
-          "DELETE FROM "
-              + QueryGenerator.fullyQualifiedTableName(ModelIdempotencyRecord.TABLE_NAME)
-              + " WHERE realm_id = ? AND expires_at IS NOT NULL AND expires_at < ?";
       QueryGenerator.PreparedQuery delete =
-          new QueryGenerator.PreparedQuery(sql, List.of(realmId, Timestamp.from(before)));
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.SELECT_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
+              Map.of(),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(before)),
+              Set.of(),
+              Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
     } catch (SQLException e) {
       throw new RuntimeException("Failed to purge expired idempotency records", e);
