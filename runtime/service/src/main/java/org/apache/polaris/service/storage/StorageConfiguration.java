@@ -23,6 +23,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Suppliers;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
+import io.smallrye.config.WithParentName;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
@@ -44,33 +45,34 @@ public interface StorageConfiguration extends S3AccessConfig {
 
   Duration DEFAULT_TOKEN_LIFESPAN = Duration.ofHours(1);
 
-  /**
-   * The AWS access key to use for authentication. If not present, the default credentials provider
-   * chain will be used.
-   */
-  @WithName("aws.access-key")
-  Optional<String> awsAccessKey();
-
-  /**
-   * The AWS secret key to use for authentication. If not present, the default credentials provider
-   * chain will be used.
-   */
-  @WithName("aws.secret-key")
-  Optional<String> awsSecretKey();
-
   @WithName("aws")
-  Map<String, StorageConfig> storages();
+  AwsStorageConfig aws();
+
+  interface AwsStorageConfig {
+    /**
+     * The AWS access key to use for authentication. If not present, the default credentials
+     * provider chain will be used.
+     */
+    @WithName("access-key")
+    Optional<String> accessKey();
+
+    /**
+     * The AWS secret key to use for authentication. If not present, the default credentials
+     * provider chain will be used.
+     */
+    @WithName("secret-key")
+    Optional<String> secretKey();
+
+    @WithParentName
+    Map<String, StorageConfig> storages();
+  }
 
   interface StorageConfig {
     @WithName("access-key")
-    Optional<String> awsAccessKey();
+    String accessKey();
 
     @WithName("secret-key")
-    Optional<String> awsSecretKey();
-
-    default boolean isPresent() {
-      return awsAccessKey().isPresent() && awsSecretKey().isPresent();
-    }
+    String secretKey();
   }
 
   /**
@@ -103,24 +105,21 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   default AwsCredentialsProvider stsCredentials() {
-    if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
+    if (aws().accessKey().isPresent() && aws().secretKey().isPresent()) {
       LoggerFactory.getLogger(StorageConfiguration.class)
           .warn("Using hard-coded AWS credentials - this is not recommended for production");
       return StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(awsAccessKey().get(), awsSecretKey().get()));
+          AwsBasicCredentials.create(aws().accessKey().get(), aws().secretKey().get()));
     } else {
       return DefaultCredentialsProvider.builder().build();
     }
   }
 
   default AwsCredentialsProvider stsCredentials(String storageName) {
-    if (storageName != null && storages().containsKey(storageName)) {
-      StorageConfig storageConfig = storages().get(storageName);
-      if (storageConfig.awsAccessKey().isPresent() && storageConfig.awsSecretKey().isPresent()) {
-        return StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                storageConfig.awsAccessKey().get(), storageConfig.awsSecretKey().get()));
-      }
+    if (storageName != null && aws().storages().containsKey(storageName)) {
+      StorageConfig storageConfig = aws().storages().get(storageName);
+      return StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(storageConfig.accessKey(), storageConfig.secretKey()));
     }
     return stsCredentials();
   }

@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -85,6 +86,9 @@ public abstract class PolarisStorageConfigurationInfo {
 
   public abstract List<String> getAllowedLocations();
 
+  @Nullable
+  public abstract String getStorageName();
+
   public abstract StorageType getStorageType();
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -108,6 +112,9 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public Optional<String> resolveStorageName() {
+    if (getStorageName() != null) {
+      return Optional.of(getStorageName());
+    }
     if (getAllowedLocations().isEmpty()) {
       return Optional.empty();
     }

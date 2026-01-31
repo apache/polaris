@@ -24,6 +24,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -34,6 +35,7 @@ import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -96,6 +98,14 @@ public class PolarisStorageConfigurationInfoTest {
                 .pathStyleAccess(true)
                 .build(),
             "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"externalId\":\"external-id\",\"region\":\"no-where-1\",\"endpoint\":\"http://127.9.9.9/\",\"stsEndpoint\":\"http://127.9.9.9/sts/\",\"endpointInternal\":\"http://127.8.8.8/internal/\",\"pathStyleAccess\":true,\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
+        arguments(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations("s3://foo/bar", "s3://no/where")
+                .roleARN("arn:aws:iam::123456789012:role/polaris-test")
+                .region("no-where-1")
+                .storageName("my-storage")
+                .build(),
+            "{\"@type\":\"AwsStorageConfigurationInfo\",\"storageType\":\"S3\",\"allowedLocations\":[\"s3://foo/bar\",\"s3://no/where\"],\"storageName\":\"my-storage\",\"roleARN\":\"arn:aws:iam::123456789012:role/polaris-test\",\"region\":\"no-where-1\",\"fileIoImplClassName\":\"org.apache.iceberg.aws.s3.S3FileIO\"}"),
         //
         arguments(
             GcpStorageConfigurationInfo.builder()
@@ -115,5 +125,47 @@ public class PolarisStorageConfigurationInfoTest {
                 .addAllowedLocations("file:///tmp/bar", "file:///meep/moo")
                 .build(),
             "{\"@type\":\"FileStorageConfigurationInfo\",\"allowedLocations\":[\"file:///tmp/bar\",\"file:///meep/moo\"],\"storageType\":\"FILE\",\"fileIoImplClassName\":\"org.apache.iceberg.hadoop.HadoopFileIO\"}"));
+  }
+
+  @Test
+  public void resolveStorageName_explicitName() {
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocations("s3://my-bucket/path")
+            .storageName("my-custom-name")
+            .build();
+    soft.assertThat(config.resolveStorageName()).isEqualTo(Optional.of("my-custom-name"));
+  }
+
+  @Test
+  public void resolveStorageName_explicitNameOverridesUriHost() {
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocations("s3://my-bucket/path")
+            .storageName("different-name")
+            .build();
+    soft.assertThat(config.resolveStorageName()).isEqualTo(Optional.of("different-name"));
+  }
+
+  @Test
+  public void resolveStorageName_fallbackToUriHost() {
+    var config =
+        AwsStorageConfigurationInfo.builder().addAllowedLocations("s3://my-bucket/path").build();
+    soft.assertThat(config.resolveStorageName()).isEqualTo(Optional.of("my-bucket"));
+  }
+
+  @Test
+  public void resolveStorageName_fallbackUsesFirstLocation() {
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocations("s3://first-bucket/path", "s3://second-bucket/path")
+            .build();
+    soft.assertThat(config.resolveStorageName()).isEqualTo(Optional.of("first-bucket"));
+  }
+
+  @Test
+  public void resolveStorageName_emptyLocationsNoExplicitName() {
+    var config = FileStorageConfigurationInfo.builder().build();
+    soft.assertThat(config.resolveStorageName()).isEqualTo(Optional.empty());
   }
 }
