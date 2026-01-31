@@ -28,6 +28,42 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
 
+  /**
+   * Whether the implementation expects Polaris principal roles to be present in the {@code
+   * activatedEntities} parameters of the {@link #authorizeOrThrow(PolarisPrincipal, Set,
+   * PolarisAuthorizableOperation, PolarisResolvedPathWrapper, PolarisResolvedPathWrapper)}
+   * functions.
+   *
+   * <p>If {@code false}, call sites may choose to not pass principal roles.
+   */
+  default boolean requiresPrincipalRoles() {
+    return true;
+  }
+
+  /**
+   * Whether the implementation expects Polaris catalog roles to be present in the {@code
+   * activatedEntities} parameters of the {@link #authorizeOrThrow(PolarisPrincipal, Set,
+   * PolarisAuthorizableOperation, PolarisResolvedPathWrapper, PolarisResolvedPathWrapper)}
+   * functions.
+   *
+   * <p>If {@code false}, call sites may choose to not pass catalog roles.
+   */
+  default boolean requiresCatalogRoles() {
+    return true;
+  }
+
+  /**
+   * Whether the implementation expects the {@link
+   * org.apache.polaris.core.persistence.ResolvedPolarisEntity}s in the {@link
+   * PolarisResolvedPathWrapper} instances of the {@code target} and {@code secondary} parameters to
+   * contain grant records information.
+   *
+   * <p>If {@code false}, call sites may choose to not pass grant records.
+   */
+  default boolean requiresResolvedEntities() {
+    return true;
+  }
+
   void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
