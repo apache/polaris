@@ -395,9 +395,6 @@ jobs:
           exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
           exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
 
-          exec_process cd "${dist_dev_dir}/helm-chart"
-          exec_process helm repo index .
-
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "helm-chart/${version_without_rc}"
 
@@ -405,12 +402,95 @@ jobs:
 
           echo "## Helm Chart Summary" >> $GITHUB_STEP_SUMMARY
           cat <<EOT >> $GITHUB_STEP_SUMMARY
-          🎉 Helm chart built and staged successfully:
+          🎉 Helm chart staged successfully:
 
           | Component | Status |
           | --- | --- |
           | Helm package | ✅ Created and signed |
           | Apache dist dev repository | ✅ Staged |
+          EOT
+
+      - name: Regenerate Helm index with archive versions
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+
+          # Base URL for Apache Polaris helm charts archive
+          ARCHIVE_URL="https://archive.apache.org/dist/incubator/polaris/helm-chart"
+
+          # Temporary directory for downloads
+          WORK_DIR=$(mktemp -d)
+          trap 'rm -rf "$WORK_DIR"' EXIT
+
+          echo "Working directory: $WORK_DIR"
+
+          echo ""
+          echo "Discovering chart versions from archive.apache.org..."
+          ARCHIVE_VERSIONS=$(curl -sL "$ARCHIVE_URL/" | \
+            grep -oE 'href="[0-9]+\.[0-9]+\.[0-9]+-incubating/"' | \
+            sed 's/href="//;s/\/"//' | \
+            sort -V | uniq || echo "")
+          echo "Found archive versions: $ARCHIVE_VERSIONS"
+
+          echo ""
+          echo "Downloading archived Helm charts..."
+          for version in $ARCHIVE_VERSIONS; do
+            echo "Processing archive version: $version"
+
+            CHART_URL="${ARCHIVE_URL}/${version}/polaris-${version}.tgz"
+            LOCAL_TGZ="$WORK_DIR/polaris-${version}.tgz"
+
+            echo "  Downloading: $CHART_URL"
+            if ! curl -sLf -o "$LOCAL_TGZ" "$CHART_URL"; then
+              echo "  WARNING: Failed to download $CHART_URL, skipping..."
+              continue
+            fi
+            echo "  Done."
+          done
+
+          echo ""
+          echo "Adding current release candidate: ${version_without_rc}"
+          exec_process cp "${dist_dev_dir}/helm-chart/${version_without_rc}/polaris-${version_without_rc}.tgz" "$WORK_DIR/"
+
+          echo ""
+          echo "Generating index.yaml with helm repo index..."
+          exec_process helm repo index "$WORK_DIR"
+
+          # Post-process the index.yaml to use appropriate URLs
+          echo ""
+          echo "Updating URLs in index.yaml..."
+
+          # Replace archived versions with absolute URLs to archive.apache.org
+          for version in $ARCHIVE_VERSIONS; do
+            sed -i.bak "s|^\( *- \)polaris-${version}.tgz$|\1${ARCHIVE_URL}/${version}/polaris-${version}.tgz|" "$WORK_DIR/index.yaml"
+          done
+
+          # Replace current RC version with relative URL
+          sed -i.bak "s|^\( *- \)polaris-${version_without_rc}.tgz$|\1${version_without_rc}/polaris-${version_without_rc}.tgz|" "$WORK_DIR/index.yaml"
+
+          # Copy the updated index.yaml to the dist dev directory
+          exec_process cp "$WORK_DIR/index.yaml" "${dist_dev_dir}/helm-chart/index.yaml"
+
+          # Commit the updated index
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} RC${rc_number}"
+
+          echo "## Helm Index Summary" >> $GITHUB_STEP_SUMMARY
+          ARCHIVE_COUNT=$(echo "$ARCHIVE_VERSIONS" | grep -v '^$' | wc -w | tr -d ' ')
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Helm index regenerated successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Charts from archive.apache.org | ✅ ${ARCHIVE_COUNT} versions indexed |
+          | Current RC | ✅ ${version_without_rc} added with relative URL |
+          | Helm index | ✅ Committed to dist dev |
           EOT
 
   generate-release-email:
