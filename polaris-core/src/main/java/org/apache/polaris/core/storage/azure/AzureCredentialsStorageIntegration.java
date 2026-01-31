@@ -90,9 +90,11 @@ public class AzureCredentialsStorageIntegration
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
     // Note: Azure SAS tokens do not support session tags like AWS STS.
     // The credentialVendingContext is accepted for interface compatibility but not used.
+    // TODO: Implement table property overrides for Azure (e.g., adls.*, abfs.*, azure.* properties)
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)

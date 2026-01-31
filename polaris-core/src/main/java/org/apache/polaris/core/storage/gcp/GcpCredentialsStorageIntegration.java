@@ -96,9 +96,11 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
     // Note: GCP downscoped credentials do not support session tags like AWS STS.
     // The credentialVendingContext is accepted for interface compatibility but not used.
+    // TODO: Implement table property overrides for GCP (e.g., gcs.* properties)
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {

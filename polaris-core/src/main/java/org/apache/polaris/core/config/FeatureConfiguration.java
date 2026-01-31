@@ -129,6 +129,22 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .buildFeatureConfiguration();
 
   @SuppressWarnings("deprecation")
+  public static final FeatureConfiguration<Boolean> ALLOW_TABLE_STORAGE_PROPERTY_OVERRIDES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_TABLE_STORAGE_PROPERTY_OVERRIDES")
+          .catalogConfig("polaris.config.allow.table.storage.property.overrides")
+          .catalogConfigUnsafe("allow.table.storage.property.overrides")
+          .description(
+              "EXPERIMENTAL: If set to true, allows table-level properties to override catalog-level storage\n"
+                  + "configuration (e.g., s3.endpoint, s3.region, adls.account.name). Table properties are merged\n"
+                  + "with catalog storage configuration AFTER credential vending, ensuring that table-level credentials\n"
+                  + "also participate in STS token generation. When disabled (default), only catalog-level storage\n"
+                  + "configuration is used for credential vending.\n"
+                  + "This is an experimental feature that enables fine-grained storage configuration per table.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")

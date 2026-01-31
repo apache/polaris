@@ -360,7 +360,8 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         new HashSet<>(allowedWriteLoc),
         PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty(),
-        CredentialVendingContext.empty());
+        CredentialVendingContext.empty(),
+        Optional.empty());
   }
 
   private BlobContainerClient createContainerClient(

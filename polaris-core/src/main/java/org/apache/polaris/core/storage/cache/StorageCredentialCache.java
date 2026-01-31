@@ -107,6 +107,9 @@ public class StorageCredentialCache {
    * @param refreshCredentialsEndpoint optional endpoint for credential refresh
    * @param credentialVendingContext context containing metadata for session tags (catalog,
    *     namespace, table, roles) for audit/correlation purposes
+   * @param tableProperties optional table-level storage properties that should override catalog
+   *     configuration (e.g., different credentials, endpoint, region). If empty, only catalog
+   *     configuration is used.
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
@@ -117,7 +120,8 @@ public class StorageCredentialCache {
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
     RealmContext realmContext = storageCredentialsVendor.getRealmContext();
     RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
@@ -168,7 +172,8 @@ public class StorageCredentialCache {
                   allowedWriteLocations,
                   polarisPrincipal,
                   refreshCredentialsEndpoint,
-                  k.credentialVendingContext());
+                  k.credentialVendingContext(),
+                  tableProperties); // Pass table properties through to credential vending
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(
