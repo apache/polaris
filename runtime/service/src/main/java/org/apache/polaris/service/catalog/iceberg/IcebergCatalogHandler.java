@@ -121,6 +121,8 @@ import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -183,6 +185,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
+  private final EventAttributeMap eventAttributeMap;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -208,7 +211,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
-      StorageAccessConfigProvider storageAccessConfigProvider) {
+      StorageAccessConfigProvider storageAccessConfigProvider,
+      EventAttributeMap eventAttributeMap) {
     super(
         diagnostics,
         callContext,
@@ -225,6 +229,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
+    this.eventAttributeMap = eventAttributeMap;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -1042,6 +1047,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         new TransactionWorkspaceMetaStoreManager(diagnostics, metaStoreManager);
     ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
+    List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
@@ -1092,6 +1098,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               if (!updatedMetadata.changes().isEmpty()) {
                 tableOps.commit(currentMetadata, updatedMetadata);
               }
+
+              tableMetadataObjs.add(updatedMetadata);
             });
 
     // Commit the collected updates in a single atomic operation
@@ -1105,6 +1113,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           "Transaction commit failed with status: %s, extraInfo: %s",
           result.getReturnStatus(), result.getExtraInformation());
     }
+
+    eventAttributeMap.put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {

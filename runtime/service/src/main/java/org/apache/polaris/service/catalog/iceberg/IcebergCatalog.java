@@ -132,7 +132,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -1407,7 +1407,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_TABLE,
                 eventMetadataFactory.create(),
-                new AttributeMap()
+                new EventAttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
         refreshFromMetadataLocation(
@@ -1433,7 +1433,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_TABLE,
                 eventMetadataFactory.create(),
-                new AttributeMap()
+                new EventAttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
       }
@@ -1817,7 +1817,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_VIEW,
                 eventMetadataFactory.create(),
-                new AttributeMap()
+                new EventAttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
         refreshFromMetadataLocation(
@@ -1845,23 +1845,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_VIEW,
                 eventMetadataFactory.create(),
-                new AttributeMap()
+                new EventAttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      polarisEventListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.BEFORE_COMMIT_VIEW,
-              eventMetadataFactory.create(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
-                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
-                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
-
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug(
           "doCommit for view {} with metadataBefore {}, metadataAfter {}",
@@ -1959,16 +1949,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(identifier, entity);
       }
-
-      polarisEventListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.AFTER_COMMIT_VIEW,
-              eventMetadataFactory.create(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, catalogName)
-                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
-                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
-                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

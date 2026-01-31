@@ -37,7 +37,7 @@ class PolarisEventTest {
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_TABLE,
             TEST_METADATA,
-            new AttributeMap()
+            new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, TEST_CATALOG)
                 .put(EventAttributes.TABLE_NAME, TEST_TABLE));
 

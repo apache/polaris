@@ -51,7 +51,7 @@ commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.46.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.82.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.62.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.62.1" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
@@ -95,7 +95,7 @@ scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref =
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.17" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.15.0" }
-smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.15.1" }
+smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.16.0" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }

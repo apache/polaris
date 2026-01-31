@@ -21,9 +21,6 @@ Title: Quickstart
 type: docs
 weight: 99
 ---
-{{< alert warning >}}
-Disclaimer: This getting-start example uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receives updates or security fixes.
-{{< /alert >}}
 
 Use this guide to quickly start running Polaris. This is not intended for production use.
 
@@ -40,7 +37,7 @@ curl -s https://raw.githubusercontent.com/apache/polaris/main/getting-started/qu
 
 ```
 This command will:
-1. Create a Catalog named `quickstart_catalog` with MinIO-backed storage.
+1. Create a Catalog named `quickstart_catalog` with RustFS-backed storage.
 2. Create a user principal `quickstart_user` with full access to the catalog.
 
 Once the command has been run, you will see examples on how to interact with this Polaris server in the logs.

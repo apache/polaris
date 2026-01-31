@@ -23,13 +23,13 @@ package org.apache.polaris.service.events;
  * attributes
  */
 public record PolarisEvent(
-    PolarisEventType type, PolarisEventMetadata metadata, AttributeMap attributes) {
+    PolarisEventType type, PolarisEventMetadata metadata, EventAttributeMap attributes) {
 
   public PolarisEvent {
-    attributes = new AttributeMap(attributes);
+    attributes = new EventAttributeMap(attributes);
   }
 
   public PolarisEvent(PolarisEventType type, PolarisEventMetadata metadata) {
-    this(type, metadata, new AttributeMap());
+    this(type, metadata, new EventAttributeMap());
   }
 }
