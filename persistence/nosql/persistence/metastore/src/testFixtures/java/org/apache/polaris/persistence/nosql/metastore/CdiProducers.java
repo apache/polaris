@@ -24,7 +24,7 @@ import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -44,8 +44,8 @@ public class CdiProducers {
   }
 
   @Produces
-  PolarisConfigurationStore producePolarisConfigurationStore() {
-    return new PolarisConfigurationStore() {};
+  RealmConfigurationSource produceRealmConfigurationSource() {
+    return RealmConfigurationSource.EMPTY_CONFIG;
   }
 
   @Produces

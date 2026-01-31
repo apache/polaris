@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -70,7 +70,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Identifier("nosql")
   MetaStoreManagerFactory metaStoreManagerFactory;
 
-  @Inject PolarisConfigurationStore configurationStore;
+  @Inject RealmConfigurationSource configurationSource;
   @Inject MonotonicClock monotonicClock;
 
   String realmId;
@@ -91,7 +91,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
 
-    var callCtx = new PolarisCallContext(realmContext, session, configurationStore);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
     return new PolarisTestMetaStoreManager(manager, callCtx, startTime, false);
   }

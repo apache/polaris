@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.storage;
 
+import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
+
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -43,8 +43,7 @@ class InMemoryStorageIntegrationTest {
   @ParameterizedTest
   @CsvSource({"s3,s3", "s3,s3a", "s3a,s3", "s3a,s3a"})
   public void testValidateAccessToLocations(String allowedScheme, String locationScheme) {
-    RealmConfig realmConfig =
-        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
+    RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
@@ -86,8 +85,7 @@ class InMemoryStorageIntegrationTest {
   public void testValidateAccessToLocationsWithWildcard(String s3Scheme) {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Object> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
-    RealmConfig realmConfig =
-        new RealmConfigImpl(new MockedConfigurationStore(config), REALM_CONTEXT);
+    RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> config.get(name), REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
@@ -128,8 +126,7 @@ class InMemoryStorageIntegrationTest {
   @Test
   public void testValidateAccessToLocationsNoAllowedLocations() {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
-    RealmConfig realmConfig =
-        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
+    RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
@@ -164,8 +161,7 @@ class InMemoryStorageIntegrationTest {
   @Test
   public void testValidateAccessToLocationsWithPrefixOfAllowedLocation() {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
-    RealmConfig realmConfig =
-        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
+    RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
             realmConfig,
@@ -204,21 +200,6 @@ class InMemoryStorageIntegrationTest {
         Optional<String> refreshCredentialsEndpoint,
         @Nonnull CredentialVendingContext credentialVendingContext) {
       return null;
-    }
-  }
-
-  private static class MockedConfigurationStore implements PolarisConfigurationStore {
-    private final Map<String, Object> defaults;
-
-    public MockedConfigurationStore(Map<String, Object> defaults) {
-      this.defaults = Map.copyOf(defaults);
-    }
-
-    @Override
-    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
-      @SuppressWarnings("unchecked")
-      T confgValue = (T) defaults.get(configName);
-      return confgValue;
     }
   }
 }
