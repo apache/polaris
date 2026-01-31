@@ -28,6 +28,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -83,6 +86,9 @@ public abstract class PolarisStorageConfigurationInfo {
 
   public abstract List<String> getAllowedLocations();
 
+  @Nullable
+  public abstract String getStorageName();
+
   public abstract StorageType getStorageType();
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -102,6 +108,20 @@ public abstract class PolarisStorageConfigurationInfo {
       return DEFAULT_MAPPER.writeValueAsString(this);
     } catch (JsonProcessingException e) {
       throw new RuntimeException("serialize failed: " + e.getMessage(), e);
+    }
+  }
+
+  public Optional<String> resolveStorageName() {
+    if (getStorageName() != null) {
+      return Optional.of(getStorageName());
+    }
+    if (getAllowedLocations().isEmpty()) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.ofNullable(new URI(getAllowedLocations().get(0)).getHost());
+    } catch (URISyntaxException e) {
+      return Optional.empty();
     }
   }
 

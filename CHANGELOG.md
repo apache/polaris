@@ -52,6 +52,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   feature is enabled in Azure.
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
+- Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
 
 ### Changes
 
