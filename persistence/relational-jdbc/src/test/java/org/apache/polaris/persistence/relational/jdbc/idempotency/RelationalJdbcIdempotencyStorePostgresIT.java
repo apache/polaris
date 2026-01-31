@@ -23,9 +23,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
-import org.apache.polaris.idempotency.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.junit.jupiter.api.AfterAll;
@@ -37,14 +37,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-public class PostgresIdempotencyStoreIT {
+public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:17.5-alpine");
 
   private static DataSource dataSource;
-  private static PostgresIdempotencyStore store;
+  private static RelationalJdbcIdempotencyStore store;
 
   @BeforeAll
   static void setup() throws Exception {
@@ -84,7 +84,7 @@ public class PostgresIdempotencyStoreIT {
       ops.executeScript(is);
     }
 
-    store = new PostgresIdempotencyStore(dataSource, cfg);
+    store = new RelationalJdbcIdempotencyStore(dataSource, cfg);
   }
 
   @AfterAll

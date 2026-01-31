@@ -83,6 +83,11 @@ public class DatasourceOperations {
     return databaseType;
   }
 
+  /** Returns the detected database type for this datasource. */
+  public DatabaseType databaseType() {
+    return databaseType;
+  }
+
   /**
    * Execute SQL script and close the associated input stream
    *
