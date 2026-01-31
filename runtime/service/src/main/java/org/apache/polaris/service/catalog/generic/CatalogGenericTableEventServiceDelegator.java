@@ -55,7 +55,7 @@ public class CatalogGenericTableEventServiceDelegator
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_GENERIC_TABLE,
@@ -87,7 +87,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
@@ -117,7 +117,7 @@ public class CatalogGenericTableEventServiceDelegator
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_GENERIC_TABLES,
@@ -145,7 +145,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.BEFORE_LOAD_GENERIC_TABLE,
