@@ -95,14 +95,17 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     switch (polarisStorageConfigurationInfo.getStorageType()) {
       case S3:
         Optional<AwsCredentialsProvider> awsCreds = stsCredentials;
-        if (awsCreds.isEmpty()
-            && storageConfiguration != null
-            && realmConfig != null
-            && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
-          awsCreds =
-              Optional.of(
-                  storageConfiguration.stsCredentials(
-                      polarisStorageConfigurationInfo.resolveStorageName().orElse(null)));
+        if (awsCreds.isEmpty() && storageConfiguration != null) {
+          if (realmConfig != null
+              && realmConfig.getConfig(
+                  FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            awsCreds =
+                Optional.of(
+                    storageConfiguration.stsCredentials(
+                        polarisStorageConfigurationInfo.resolveStorageName().orElse(null)));
+          } else {
+            awsCreds = Optional.of(storageConfiguration.stsCredentials());
+          }
         }
         storageIntegration =
             (PolarisStorageIntegration<T>)
