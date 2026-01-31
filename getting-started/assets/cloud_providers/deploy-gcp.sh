@@ -17,6 +17,17 @@
 # under the License.
 #
 
+# Handle POSTGRES_PASSWORD validation and generation
+if [ "$POSTGRES_PASSWORD" = "postgres" ]; then
+  echo "ERROR: Using 'postgres' as the database password is not allowed. Please set the environment variable POSTGRES_PASSWORD to a strong password."
+  exit 1
+elif [ -z "$POSTGRES_PASSWORD" ]; then
+  POSTGRES_PASSWORD=$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)
+  echo "WARNING: POSTGRES_PASSWORD not provided. Generated random password: $POSTGRES_PASSWORD"
+else
+  echo "INFO: Using provided POSTGRES_PASSWORD"
+fi
+
 CURRENT_ZONE=$(curl -H "Metadata-Flavor: Google" "http://169.254.169.254/computeMetadata/v1/instance/zone" | awk -F/ '{print $NF}')
 CURRENT_REGION=$(echo $CURRENT_ZONE | sed 's/-[a-z]$//')
 VM_INSTANCE_NAME=$(curl -H "Metadata-Flavor: Google" "http://169.254.169.254/computeMetadata/v1/instance/name")
@@ -31,14 +42,14 @@ gcloud sql instances create $DB_INSTANCE_NAME \
   --region=$CURRENT_REGION \
   --tier=db-perf-optimized-N-4 \
   --edition=ENTERPRISE_PLUS \
-  --root-password=postgres \
+  --root-password="$POSTGRES_PASSWORD" \
   --authorized-networks="$INSTANCE_IP/32"
 
 gcloud sql databases create POLARIS --instance=$DB_INSTANCE_NAME
 
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
-export QUARKUS_DATASOURCE_PASSWORD=postgres
+export QUARKUS_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
 echo $QUARKUS_DATASOURCE_JDBC_URL
 
 GCS_BUCKET_NAME="polaris-test-gcs-$RANDOM_SUFFIX"

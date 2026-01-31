@@ -17,6 +17,17 @@
 # under the License.
 #
 
+# Handle POSTGRES_PASSWORD validation and generation
+if [ "$POSTGRES_PASSWORD" = "postgres" ]; then
+  echo "ERROR: Using 'postgres' as the database password is not allowed. Please set the environment variable POSTGRES_PASSWORD to a strong password."
+  exit 1
+elif [ -z "$POSTGRES_PASSWORD" ]; then
+  POSTGRES_PASSWORD=$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)
+  echo "WARNING: POSTGRES_PASSWORD not provided. Generated random password: $POSTGRES_PASSWORD"
+else
+  echo "INFO: Using provided POSTGRES_PASSWORD"
+fi
+
 EC2_INSTANCE_ID=$(cat /var/lib/cloud/data/instance-id)
 
 DESCRIBE_INSTANCE=$(aws ec2 describe-instances \
@@ -50,7 +61,7 @@ DB_INSTANCE_INFO=$(aws rds create-db-instance \
   --db-instance-class db.t3.micro \
   --engine postgres \
   --master-username postgres \
-  --master-user-password postgres \
+  --master-user-password "$POSTGRES_PASSWORD" \
   --db-name POLARIS \
   --db-subnet-group-name $SUBNET_GROUP_NAME \
   --allocated-storage 10)
@@ -69,7 +80,7 @@ done
 POSTGRES_ADDR=$(echo $DESCRIBE_DB | jq -r '.["DBInstances"][0]["Endpoint"]' | jq -r '"\(.Address):\(.Port)"')
 export QUARKUS_DATASOURCE_JDBC_URL=$(printf '%s' "jdbc:postgresql://$POSTGRES_ADDR/POLARIS")
 export QUARKUS_DATASOURCE_USERNAME=postgres
-export QUARKUS_DATASOURCE_PASSWORD=postgres
+export QUARKUS_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
 echo $QUARKUS_DATASOURCE_JDBC_URL
 
 S3_BUCKET_NAME="polaris-quickstart-s3-$RANDOM_SUFFIX"
