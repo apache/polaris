@@ -35,7 +35,7 @@ services:
       - "--console-address"
       - ":9001"
     healthcheck:
-      test: ["CMD", "curl", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
       interval: 1s
       timeout: 10s
 
@@ -61,7 +61,7 @@ services:
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10

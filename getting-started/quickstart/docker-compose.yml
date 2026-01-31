@@ -34,7 +34,7 @@ services:
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/health && curl -f http://127.0.0.1:9001/rustfs/console/health"]
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:9000/health && curl --fail http://127.0.0.1:9001/rustfs/console/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -62,7 +62,7 @@ services:
       polaris.realm-context.realms: ${POLARIS_REALM:-POLARIS}
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
