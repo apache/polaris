@@ -61,6 +61,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Changed from Poetry to UV for Python package management.
 - Exclude KMS policies when KMS is not being used for S3.
 - Improved default KMS permission handling to better distinguish read-only and read-write access.
+- ExternalCatalog properties (e.g., `rest.client.proxy.*`, timeout settings) are now passed through to federated catalog HTTP clients, enabling federation in controlled egress environments.
 
 ### Deprecations
 

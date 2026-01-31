@@ -302,10 +302,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           externalCatalogFactories.select(
               Identifier.Literal.of(connectionType.getFactoryIdentifier()));
       if (externalCatalogFactory.isResolvable()) {
+        // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
+        // to the external catalog factory for configuration of the underlying HTTP client
+        Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
+                .createCatalog(
+                    connectionConfigInfoDpo, getPolarisCredentialManager(), catalogProperties);
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
