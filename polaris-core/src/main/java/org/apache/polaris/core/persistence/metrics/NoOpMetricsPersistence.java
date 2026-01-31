@@ -20,15 +20,15 @@ package org.apache.polaris.core.persistence.metrics;
 
 import jakarta.annotation.Nonnull;
 import java.util.Collections;
-import java.util.List;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * A no-op implementation of {@link MetricsPersistence} for backends that don't support metrics
  * persistence.
  *
  * <p>This implementation is used as the default when a persistence backend does not support metrics
- * storage. All write operations are silently ignored, and all query operations return empty
- * results.
+ * storage. All write operations are silently ignored, and all query operations return empty pages.
  */
 final class NoOpMetricsPersistence implements MetricsPersistence {
 
@@ -51,13 +51,15 @@ final class NoOpMetricsPersistence implements MetricsPersistence {
 
   @Nonnull
   @Override
-  public List<ScanMetricsRecord> queryScanReports(@Nonnull MetricsQueryCriteria criteria) {
-    return Collections.emptyList();
+  public Page<ScanMetricsRecord> queryScanReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    return Page.fromItems(Collections.emptyList());
   }
 
   @Nonnull
   @Override
-  public List<CommitMetricsRecord> queryCommitReports(@Nonnull MetricsQueryCriteria criteria) {
-    return Collections.emptyList();
+  public Page<CommitMetricsRecord> queryCommitReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    return Page.fromItems(Collections.emptyList());
   }
 }
