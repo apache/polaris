@@ -74,10 +74,10 @@ jobs:
           job-name: 'unit-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-unit-test-artifacts
-          path: |
+          path: &test-archive-path |
             **/build/test-results/**
             **/build/reports/tests/**
 
@@ -111,12 +111,10 @@ jobs:
           job-name: 'quarkus-runtime-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-runtime-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-runtime-service:intTest 15m
@@ -146,12 +144,10 @@ jobs:
           job-name: 'quarkus-runtime-inttests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-runtime-inttest-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-admin:test 6m
@@ -181,12 +177,10 @@ jobs:
           job-name: 'quarkus-admin-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-quarkus-admin-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   # Durations (approximates from GH CI):
   # - :polaris-spark-integration-*:intTest 6m (2x)
@@ -223,12 +217,10 @@ jobs:
           job-name: 'integration-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        if: always()
+        if: failure()
         with:
           name: upload-integration-test-artifacts
-          path: |
-            **/build/test-results/**
-            **/build/reports/tests/**
+          path: *test-archive-path
 
   store-gradle-cache:
     name: Store Gradle Cache
