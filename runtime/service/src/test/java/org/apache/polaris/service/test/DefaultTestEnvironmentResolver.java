@@ -18,16 +18,20 @@
  */
 package org.apache.polaris.service.test;
 
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class DefaultTestEnvironmentResolver implements TestEnvironmentResolver {
 
-  private final int localPort = Integer.getInteger("quarkus.http.port");
-  private final int localManagementPort = Integer.getInteger("quarkus.management.port");
-
   /** Resolves the TestEnvironment to point to the local Quarkus Application instance. */
   @Override
   public TestEnvironment resolveTestEnvironment(ExtensionContext extensionContext) {
+    var quarkusManagementPort =
+        ConfigProvider.getConfig().getConfigValue("quarkus.management.port");
+    var localManagementPort = Integer.parseInt(quarkusManagementPort.getValue());
+    var quarkusHttpPort = ConfigProvider.getConfig().getConfigValue("quarkus.http.port");
+    var localPort = Integer.parseInt(quarkusHttpPort.getValue());
+
     return new TestEnvironment(
         String.format("http://localhost:%d/", localPort),
         String.format("http://localhost:%d/", localManagementPort));
