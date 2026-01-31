@@ -17,11 +17,11 @@
 # under the License.
 #
 
+# Site publishing workflow, not for pull-request CI
+
 name: "Hugo Site"
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
   workflow_call:
     # The workflow is programmatically "protected" to be only callable from the 'apache/polaris' repo.
