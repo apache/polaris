@@ -21,14 +21,19 @@ package org.apache.polaris.core.persistence.metrics;
 import java.time.Instant;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 /**
  * Query criteria for retrieving metrics reports.
  *
- * <p>This class defines the parameters that can be used to filter and paginate metrics query
- * results. Not all backends may support all query patterns - check the implementation documentation
- * for supported query patterns and required indexes.
+ * <p>This class defines the filter parameters for metrics queries. Pagination is handled separately
+ * via {@link org.apache.polaris.core.persistence.pagination.PageToken}, which is passed as a
+ * separate parameter to query methods. This separation of concerns allows:
+ *
+ * <ul>
+ *   <li>Different backends to implement pagination in their optimal way
+ *   <li>Cursor-based pagination that works with both RDBMS and NoSQL backends
+ *   <li>Reuse of the existing Polaris pagination infrastructure
+ * </ul>
  *
  * <h3>Supported Query Patterns</h3>
  *
@@ -38,6 +43,23 @@ import org.immutables.value.Value;
  * <tr><td>By Client Trace ID</td><td>reportTraceId</td><td>No (custom deployment)</td></tr>
  * <tr><td>By Time Only</td><td>startTime, endTime</td><td>Partial (timestamp index)</td></tr>
  * </table>
+ *
+ * <h3>Pagination</h3>
+ *
+ * <p>Pagination is handled via the {@link org.apache.polaris.core.persistence.pagination.PageToken}
+ * passed to query methods. The token contains:
+ *
+ * <ul>
+ *   <li>{@code pageSize()} - Maximum number of results to return
+ *   <li>{@code value()} - Optional cursor token (e.g., {@link ReportIdToken}) for continuation
+ * </ul>
+ *
+ * <p>Query results are returned as {@link org.apache.polaris.core.persistence.pagination.Page}
+ * which includes an encoded token for fetching the next page.
+ *
+ * @see org.apache.polaris.core.persistence.pagination.PageToken
+ * @see org.apache.polaris.core.persistence.pagination.Page
+ * @see ReportIdToken
  */
 @PolarisImmutable
 public interface MetricsQueryCriteria {
@@ -74,38 +96,7 @@ public interface MetricsQueryCriteria {
    */
   Optional<String> reportTraceId();
 
-  // === Pagination ===
-
-  /**
-   * Maximum number of results to return.
-   *
-   * <p>Defaults to 100. Used together with {@link #offset()} for offset-based pagination.
-   */
-  @Value.Default
-  default int limit() {
-    return 100;
-  }
-
-  /**
-   * Number of results to skip before returning results.
-   *
-   * <p>Defaults to 0. Used for offset-based pagination where:
-   *
-   * <ul>
-   *   <li>Page 1: offset=0, limit=100 → returns results 1-100
-   *   <li>Page 2: offset=100, limit=100 → returns results 101-200
-   *   <li>Page N: offset=(N-1)*limit, limit=100 → returns results for page N
-   * </ul>
-   *
-   * <p>Note: Offset-based pagination can be inefficient for large offsets in some databases. For
-   * very large result sets (>10K records), consider using time-based filtering with {@link
-   * #startTime()} and {@link #endTime()} to narrow the result set instead of relying on large
-   * offsets.
-   */
-  @Value.Default
-  default int offset() {
-    return 0;
-  }
+  // === Factory Methods ===
 
   /**
    * Creates a new builder for MetricsQueryCriteria.
@@ -119,39 +110,44 @@ public interface MetricsQueryCriteria {
   /**
    * Creates criteria for querying by table and time range.
    *
+   * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
+   *
    * @param catalogName the catalog name
    * @param namespace the namespace (dot-separated)
    * @param tableName the table name
    * @param startTime the start time (inclusive)
    * @param endTime the end time (exclusive)
-   * @param limit maximum number of results
    * @return the query criteria
    */
   static MetricsQueryCriteria forTable(
-      String catalogName,
-      String namespace,
-      String tableName,
-      Instant startTime,
-      Instant endTime,
-      int limit) {
+      String catalogName, String namespace, String tableName, Instant startTime, Instant endTime) {
     return builder()
         .catalogName(catalogName)
         .namespace(namespace)
         .tableName(tableName)
         .startTime(startTime)
         .endTime(endTime)
-        .limit(limit)
         .build();
   }
 
   /**
    * Creates criteria for querying by client-provided trace ID.
    *
+   * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
+   *
    * @param reportTraceId the client trace ID to search for
-   * @param limit maximum number of results
    * @return the query criteria
    */
-  static MetricsQueryCriteria forReportTraceId(String reportTraceId, int limit) {
-    return builder().reportTraceId(reportTraceId).limit(limit).build();
+  static MetricsQueryCriteria forReportTraceId(String reportTraceId) {
+    return builder().reportTraceId(reportTraceId).build();
+  }
+
+  /**
+   * Creates empty criteria (no filters). Useful for pagination-only queries.
+   *
+   * @return empty query criteria
+   */
+  static MetricsQueryCriteria empty() {
+    return builder().build();
   }
 }

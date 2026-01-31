@@ -19,7 +19,8 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import jakarta.annotation.Nonnull;
-import java.util.List;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * Service Provider Interface (SPI) for persisting Iceberg metrics reports.
@@ -30,6 +31,24 @@ import java.util.List;
  *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
  * Implementations that don't support metrics persistence should return {@link #NOOP}.
+ *
+ * <h3>Pagination</h3>
+ *
+ * <p>Query methods use the standard Polaris pagination pattern with {@link PageToken} for requests
+ * and {@link Page} for responses. This enables:
+ *
+ * <ul>
+ *   <li>Backend-specific cursor implementations (RDBMS offset, NoSQL continuation tokens, etc.)
+ *   <li>Consistent pagination interface across all Polaris persistence APIs
+ *   <li>Efficient cursor-based pagination that works with large result sets
+ * </ul>
+ *
+ * <p>The {@link ReportIdToken} provides a cursor based on the report ID (UUID), but backends may
+ * use other cursor strategies internally.
+ *
+ * @see PageToken
+ * @see Page
+ * @see ReportIdToken
  */
 public interface MetricsPersistence {
 
@@ -82,22 +101,42 @@ public interface MetricsPersistence {
   /**
    * Queries scan metrics reports based on the specified criteria.
    *
-   * <p>Returns an empty list if {@link #isSupported()} returns false.
+   * <p>Returns an empty page if {@link #isSupported()} returns false.
    *
-   * @param criteria the query criteria
-   * @return list of matching scan metrics records, or empty list if not supported
+   * <p>Example usage:
+   *
+   * <pre>{@code
+   * // First page
+   * PageToken pageToken = PageToken.fromLimit(100);
+   * Page<ScanMetricsRecord> page = persistence.queryScanReports(criteria, pageToken);
+   *
+   * // Next page (if available)
+   * String nextPageToken = page.encodedResponseToken();
+   * if (nextPageToken != null) {
+   *   pageToken = PageToken.build(nextPageToken, null, () -> true);
+   *   Page<ScanMetricsRecord> nextPage = persistence.queryScanReports(criteria, pageToken);
+   * }
+   * }</pre>
+   *
+   * @param criteria the query criteria (filters)
+   * @param pageToken pagination parameters (page size and optional cursor)
+   * @return page of matching scan metrics records with continuation token if more results exist
    */
   @Nonnull
-  List<ScanMetricsRecord> queryScanReports(@Nonnull MetricsQueryCriteria criteria);
+  Page<ScanMetricsRecord> queryScanReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
 
   /**
    * Queries commit metrics reports based on the specified criteria.
    *
-   * <p>Returns an empty list if {@link #isSupported()} returns false.
+   * <p>Returns an empty page if {@link #isSupported()} returns false.
    *
-   * @param criteria the query criteria
-   * @return list of matching commit metrics records, or empty list if not supported
+   * @param criteria the query criteria (filters)
+   * @param pageToken pagination parameters (page size and optional cursor)
+   * @return page of matching commit metrics records with continuation token if more results exist
+   * @see #queryScanReports(MetricsQueryCriteria, PageToken) for pagination example
    */
   @Nonnull
-  List<CommitMetricsRecord> queryCommitReports(@Nonnull MetricsQueryCriteria criteria);
+  Page<CommitMetricsRecord> queryCommitReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
 }

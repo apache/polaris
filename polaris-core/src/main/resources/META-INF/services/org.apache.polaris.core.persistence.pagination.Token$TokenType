@@ -18,3 +18,4 @@
 #
 
 org.apache.polaris.core.persistence.pagination.EntityIdToken$EntityIdTokenType
+org.apache.polaris.core.persistence.metrics.ReportIdToken$ReportIdTokenType
