@@ -97,8 +97,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         Optional<AwsCredentialsProvider> awsCreds = stsCredentials;
         if (awsCreds.isEmpty() && storageConfiguration != null) {
           if (realmConfig != null
-              && realmConfig.getConfig(
-                  FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
             awsCreds =
                 Optional.of(
                     storageConfiguration.stsCredentials(
