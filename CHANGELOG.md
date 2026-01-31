@@ -68,6 +68,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Enable non-AWS STS role ARNs
+
 ### Commits
 
 ## [1.3.0-incubating]
