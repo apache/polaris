@@ -1681,7 +1681,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private static Map<String, String> buildTableMetadataPropertiesMap(TableMetadata metadata) {
     Map<String, String> storedProperties = new HashMap<>();
+    // Location specific properties
     storedProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
+    if (metadata.properties().containsKey(TableProperties.WRITE_DATA_LOCATION)) {
+      storedProperties.put(
+          IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+          metadata.properties().get(TableProperties.WRITE_DATA_LOCATION));
+    }
+    if (metadata.properties().containsKey(TableProperties.WRITE_METADATA_LOCATION)) {
+      storedProperties.put(
+          IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+          metadata.properties().get(TableProperties.WRITE_METADATA_LOCATION));
+    }
     storedProperties.put(
         IcebergTableLikeEntity.FORMAT_VERSION, String.valueOf(metadata.formatVersion()));
     storedProperties.put(IcebergTableLikeEntity.TABLE_UUID, metadata.uuid());
