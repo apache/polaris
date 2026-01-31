@@ -166,6 +166,7 @@ services:
           http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
           -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}' &&
         echo Done. &&
+        touch /tmp/polaris-setup-done &&
         tail -f /dev/null
     healthcheck:
       interval: 1s
