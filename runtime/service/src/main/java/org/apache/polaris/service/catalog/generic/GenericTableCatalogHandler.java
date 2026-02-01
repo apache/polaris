@@ -24,22 +24,16 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -50,30 +44,14 @@ import org.slf4j.LoggerFactory;
 public class GenericTableCatalogHandler extends CatalogHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogHandler.class);
 
-  private PolarisMetaStoreManager metaStoreManager;
+  private final GenericTableCatalogHandlerRuntime runtime;
 
   private GenericTableCatalog genericTableCatalog;
 
   public GenericTableCatalogHandler(
-      PolarisDiagnostics diagnostics,
-      CallContext callContext,
-      ResolutionManifestFactory resolutionManifestFactory,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisPrincipal principal,
-      String catalogName,
-      PolarisAuthorizer authorizer,
-      PolarisCredentialManager polarisCredentialManager,
-      Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(
-        diagnostics,
-        callContext,
-        resolutionManifestFactory,
-        principal,
-        catalogName,
-        authorizer,
-        polarisCredentialManager,
-        externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
+      String catalogName, PolarisPrincipal principal, GenericTableCatalogHandlerRuntime runtime) {
+    super(catalogName, principal, runtime);
+    this.runtime = runtime;
   }
 
   @Override
@@ -87,7 +65,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          runtime.realmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       GenericTableCatalog federatedCatalog;
       ConnectionType connectionType =
@@ -95,8 +73,9 @@ public class GenericTableCatalogHandler extends CatalogHandler {
 
       // Use the unified factory pattern for all external catalog types
       Instance<ExternalCatalogFactory> externalCatalogFactory =
-          externalCatalogFactories.select(
-              Identifier.Literal.of(connectionType.getFactoryIdentifier()));
+          runtime
+              .externalCatalogFactories()
+              .select(Identifier.Literal.of(connectionType.getFactoryIdentifier()));
       if (externalCatalogFactory.isResolvable()) {
         // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
         Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
@@ -113,7 +92,8 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.genericTableCatalog =
-          new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+          new PolarisGenericTableCatalog(
+              runtime.metaStoreManager(), runtime.callContext(), this.resolutionManifest);
       this.genericTableCatalog.initialize(catalogName, Map.of());
     }
   }
