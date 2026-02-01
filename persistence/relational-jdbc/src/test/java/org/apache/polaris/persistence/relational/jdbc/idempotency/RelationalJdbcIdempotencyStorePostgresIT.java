@@ -17,6 +17,7 @@
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -28,6 +29,7 @@ import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,13 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>("postgres:17.5-alpine");
+      new PostgreSQLContainer<>(
+              containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
+                  .dockerImageName(null)
+                  .asCompatibleSubstituteFor("postgres"))
+          .withDatabaseName("polaris_db")
+          .withUsername("polaris")
+          .withPassword("polaris");
 
   private static DataSource dataSource;
   private static RelationalJdbcIdempotencyStore store;
