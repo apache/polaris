@@ -16,8 +16,8 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 import java.time.Duration;
