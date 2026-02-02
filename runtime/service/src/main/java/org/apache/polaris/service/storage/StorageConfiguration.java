@@ -48,6 +48,22 @@ public interface StorageConfiguration extends S3AccessConfig {
   @WithName("aws")
   AwsStorageConfig aws();
 
+  /**
+   * @deprecated Use {@link #aws()}.{@link AwsStorageConfig#accessKey() accessKey()} instead.
+   */
+  @Deprecated
+  default Optional<String> awsAccessKey() {
+    return aws().accessKey();
+  }
+
+  /**
+   * @deprecated Use {@link #aws()}.{@link AwsStorageConfig#secretKey() secretKey()} instead.
+   */
+  @Deprecated
+  default Optional<String> awsSecretKey() {
+    return aws().secretKey();
+  }
+
   interface AwsStorageConfig {
     /**
      * The AWS access key to use for authentication. If not present, the default credentials
