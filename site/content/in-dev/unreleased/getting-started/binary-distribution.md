@@ -32,8 +32,8 @@ Use this guide to quickly start running Polaris using the pre-built binary distr
 Download and extract the binary distribution:
 
 ```bash
-curl -L https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.tgz | tar xz
-cd polaris-distribution-1.2.0-incubating
+curl -L https://downloads.apache.org/incubator/polaris/1.3.0-incubating/polaris-bin-1.3.0-incubating.tgz | tar xz
+cd polaris-distribution-1.3.0-incubating
 ```
 
 Start the Polaris server:
