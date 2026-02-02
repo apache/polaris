@@ -162,7 +162,10 @@ public class AwsStorageConfigurationInfoTest {
         Arguments.of("arn:aws:iam::012345678901:role/jdoe", "012345678901", "aws"),
         Arguments.of("arn:aws-us-gov:iam::012345678901:role/jdoe", "012345678901", "aws-us-gov"),
         Arguments.of("arn:aws-cn:iam::012345678901:role/jdoe", "012345678901", "aws-cn"),
-        Arguments.of("urn:ecs:sts::s3:assumed-role/s3assumeRole/user1-105-temp", "s3", "ecs"),
+        // Following are only there to have test coverage for non-AWS role-ARNs/URNs. ARN specific
+        // parts are irrelevant for those URNs.
+        Arguments.of(
+            "urn:ecs:sts::namespace:assumed-role/s3assumeRole/user1-105-temp", "namespace", "ecs"),
         Arguments.of("urn:sgws:identity::12345:group/foo-bar-abcdef", "12345", "sgws"));
   }
 }
