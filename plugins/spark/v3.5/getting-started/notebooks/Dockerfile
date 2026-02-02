@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.6-java17
+FROM docker.io/apache/spark:4.1.1-java17
 
 ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
     PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
