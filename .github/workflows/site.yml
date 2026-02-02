@@ -31,7 +31,7 @@ on:
 # Ensure that no two site publications happen concurrently.
 # 1 job per reference can run concurrently, no cancellation
 concurrency:
-  group: site-publishing
+  group: site-publishing-${{ case(github.event_name == 'push', 'main', github.ref) }}
   cancel-in-progress: false
 
 jobs:
