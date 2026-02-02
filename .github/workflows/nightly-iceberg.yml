@@ -68,10 +68,6 @@ jobs:
             METADATA_URL="https://repository.apache.org/content/repositories/snapshots/org/apache/iceberg/iceberg-api/maven-metadata.xml"
             LATEST_VERSION=$(curl -s "$METADATA_URL" | grep -oP '(?<=<latest>)[^<]+' | head -1)
             if [ -z "$LATEST_VERSION" ]; then
-              # Fallback: get the last version from the versions list
-              LATEST_VERSION=$(curl -s "$METADATA_URL" | grep -oP '(?<=<version>)[^<]+' | grep SNAPSHOT | tail -1)
-            fi
-            if [ -z "$LATEST_VERSION" ]; then
               echo "Failed to detect Iceberg snapshot version"
               exit 1
             fi
