@@ -70,6 +70,21 @@ SPARK_VERSION="3.5.6"
 
 SPARK_SHELL_OPTIONS=("PACKAGE" "JAR")
 
+# Define test suites to run
+# Each suite specifies: test_file:table_format:test_shortname
+declare -a TEST_SUITES=(
+  "spark_sql.sh:delta:spark_sql"
+  "spark_hudi.sh:hudi:spark_hudi"
+)
+
+# Allow running specific test via environment variable
+echo "REGTEST_SUITE=${REGTEST_SUITE}"
+if [[ -n "$REGTEST_SUITE" ]]; then
+  echo "Overriding TEST_SUITES to run only: ${REGTEST_SUITE}"
+  TEST_SUITES=("${REGTEST_SUITE}")
+fi
+echo "Will run test suites: ${TEST_SUITES[@]}"
+
 for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   echo "RUN REGRESSION TEST FOR SPARK_MAJOR_VERSION=${SPARK_MAJOR_VERSION}, SPARK_VERSION=${SPARK_VERSION}, SCALA_VERSION=${SCALA_VERSION}"
   # find the project jar
@@ -89,59 +104,74 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   fi
 
   for SPARK_SHELL_OPTION in "${SPARK_SHELL_OPTIONS[@]}"; do
-    # clean up the default configuration if exists
-    if [ -f "${SPARK_HOME}" ]; then
-      SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
-          if [ -f ${SPARK_CONF} ]; then
-            rm ${SPARK_CONF}
-          fi
-    fi
+    # Loop through each test suite
+    for TEST_SUITE_CONFIG in "${TEST_SUITES[@]}"; do
+      # Parse test suite configuration (format: test_file:table_format:test_shortname)
+      IFS=':' read -r TEST_FILE TABLE_FORMAT TEST_SHORTNAME <<< "$TEST_SUITE_CONFIG"
 
-    if [ "${SPARK_SHELL_OPTION}" == "PACKAGE" ]; then
-      # run the setup without jar configuration
-      source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION}
-    else
-      source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --jar ${JAR_PATH}
-    fi
+      # Skip this suite if REGTEST_SUITE is set and doesn't match
+      if [[ -n "$REGTEST_SUITE" ]] && [[ "$TEST_SUITE_CONFIG" != "$REGTEST_SUITE" ]]; then
+        echo "Skipping test suite ${TEST_SHORTNAME} (REGTEST_SUITE=${REGTEST_SUITE})"
+        continue
+      fi
 
-    # run the spark_sql test
-    loginfo "Starting test spark_sql.sh"
+      loginfo "Setting up for test suite: ${TEST_SHORTNAME} with table format: ${TABLE_FORMAT}"
 
-    TEST_FILE="spark_sql.sh"
-    TEST_SHORTNAME="spark_sql"
-    TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}"
-    TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
-    TEST_STDOUT="${TEST_TMPDIR}/${TEST_SHORTNAME}.stdout"
+      # clean up the default configuration if exists
+      if [ -f "${SPARK_HOME}" ]; then
+        SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
+        if [ -f ${SPARK_CONF} ]; then
+          rm ${SPARK_CONF}
+        fi
+      fi
 
-    mkdir -p ${TEST_TMPDIR}
-    if (( ${VERBOSE} )); then
-      ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
-    else
-      ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
-    fi
-    loginfo "Test run concluded for ${TEST_SUITE}:${TEST_SHORTNAME}"
+      # Run setup with appropriate table format
+      if [ "${SPARK_SHELL_OPTION}" == "PACKAGE" ]; then
+        # run the setup without jar configuration
+        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --tableFormat ${TABLE_FORMAT}
+      else
+        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --jar ${JAR_PATH} --tableFormat ${TABLE_FORMAT}
+      fi
 
-    TEST_REF="$(realpath ${SCRIPT_DIR})/${TEST_SHORTNAME}.ref"
-    if cmp --silent ${TEST_STDOUT} ${TEST_REF}; then
-      loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-    else
-      logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-      echo '#!/bin/bash' > ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-      echo "meld ${TEST_STDOUT} ${TEST_REF}" >> ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-      chmod 750 ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-      logred "To compare and fix diffs (if 'meld' installed): ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh"
-      logred "Or manually diff: diff ${TEST_STDOUT} ${TEST_REF}"
-      logred "See stderr from test run for additional diagnostics: ${TEST_STDERR}"
-      diff ${TEST_STDOUT} ${TEST_REF}
-      NUM_FAILURES=$(( NUM_FAILURES + 1 ))
-    fi
+      # run the test
+      loginfo "Starting test ${TEST_FILE}"
+
+      TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}_${SPARK_SHELL_OPTION}"
+      TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
+      TEST_STDOUT="${TEST_TMPDIR}/${TEST_SHORTNAME}.stdout"
+
+      mkdir -p ${TEST_TMPDIR}
+      if (( ${VERBOSE} )); then
+        ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
+      else
+        ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
+      fi
+      loginfo "Test run concluded for ${TEST_SHORTNAME}"
+
+      # Compare output with reference
+      TEST_REF="$(realpath ${SCRIPT_DIR})/${TEST_SHORTNAME}.ref"
+      if cmp --silent ${TEST_STDOUT} ${TEST_REF}; then
+        loggreen "Test SUCCEEDED: ${TEST_SHORTNAME}"
+      else
+        logred "Test FAILED: ${TEST_SHORTNAME}"
+        echo '#!/bin/bash' > ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+        echo "meld ${TEST_STDOUT} ${TEST_REF}" >> ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+        chmod 750 ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+        logred "To compare and fix diffs (if 'meld' installed): ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh"
+        logred "Or manually diff: diff ${TEST_STDOUT} ${TEST_REF}"
+        logred "See stderr from test run for additional diagnostics: ${TEST_STDERR}"
+        diff ${TEST_STDOUT} ${TEST_REF}
+        NUM_FAILURES=$(( NUM_FAILURES + 1 ))
+      fi
+    done
   done
 
-  # clean up
-  if [ "${SPARK_EXISTS}" = "FALSE" ]; then
-    rm -rf ${SPARK_HOME}
-    export SPARK_HOME=""
-  fi
+   clean up
+   Commented out for faster development/testing - uncomment for CI or final runs
+   if [ "${SPARK_EXISTS}" = "FALSE" ]; then
+     rm -rf ${SPARK_HOME}
+     export SPARK_HOME=""
+   fi
 done
 
 # clean the output dir

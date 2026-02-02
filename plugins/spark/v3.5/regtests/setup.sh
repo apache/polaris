@@ -25,11 +25,14 @@
 # Warning - it will set the SPARK_HOME environment variable with the spark setup
 #
 # The script can be called independently like following
-#   ./setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --jar ${JAR_PATH}
+#   ./setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --jar ${JAR_PATH} --tableFormat ${TABLE_FORMAT}
 # Required Parameters:
 #   --sparkVersion   : the spark version to setup
 #   --scalaVersion   : the scala version of spark to setup
 #   --jar            : path to the local Polaris Spark client jar
+#
+# Optional Parameters:
+#   --tableFormat    : table format to configure (delta|hudi). Default: delta
 #
 
 set -x
@@ -40,6 +43,7 @@ SPARK_VERSION=3.5.6
 SCALA_VERSION=2.12
 POLARIS_CLIENT_JAR=""
 POLARIS_VERSION=""
+TABLE_FORMAT="delta"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sparkVersion)
@@ -62,13 +66,24 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    --tableFormat)
+      TABLE_FORMAT="$2"
+      shift # past argument
+      shift # past value
+      ;;
     --) shift;
       break
       ;;
   esac
 done
 
-echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION} POLARIS_VERSION=${POLARIS_VERSION} POLARIS_CLIENT_JAR=${POLARIS_CLIENT_JAR}"
+echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION} POLARIS_VERSION=${POLARIS_VERSION} POLARIS_CLIENT_JAR=${POLARIS_CLIENT_JAR} TABLE_FORMAT=${TABLE_FORMAT}"
+
+# Validate table format
+if [[ "$TABLE_FORMAT" != "delta" && "$TABLE_FORMAT" != "hudi" ]]; then
+  echo "Error: Invalid table format '${TABLE_FORMAT}'. Must be 'delta' or 'hudi'."
+  exit 1
+fi
 
 if [ "$SCALA_VERSION" == "2.12" ]; then
   SPARK_DISTRIBUTION=spark-${SPARK_VERSION}-bin-hadoop3
@@ -141,14 +156,33 @@ else
 if [[ -z "$POLARIS_CLIENT_JAR" ]]; then
   cat << EOF >> ${SPARK_CONF}
 # POLARIS Spark client test conf
+EOF
+  if [[ "$TABLE_FORMAT" == "hudi" ]]; then
+    cat << EOF >> ${SPARK_CONF}
+spark.jars.packages org.apache.polaris:polaris-spark-3.5_$SCALA_VERSION:$POLARIS_VERSION
+# Note: Hudi package is passed via --packages on command line in spark_hudi.sh
+# to ensure it's resolved before Kryo initialization
+EOF
+  else
+    cat << EOF >> ${SPARK_CONF}
 spark.jars.packages org.apache.polaris:polaris-spark-3.5_$SCALA_VERSION:$POLARIS_VERSION,io.delta:delta-spark_${SCALA_VERSION}:3.2.1
 EOF
+  fi
 else
   cat << EOF >> ${SPARK_CONF}
 # POLARIS Spark client test conf
 spark.jars $POLARIS_CLIENT_JAR
+EOF
+  if [[ "$TABLE_FORMAT" == "hudi" ]]; then
+    cat << EOF >> ${SPARK_CONF}
+# Note: Hudi package is passed via --packages on command line in spark_hudi.sh
+# to ensure it's resolved before Kryo initialization
+EOF
+  else
+    cat << EOF >> ${SPARK_CONF}
 spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
 EOF
+  fi
 fi
 
 cat << EOF >> ${SPARK_CONF}
@@ -157,9 +191,26 @@ spark.sql.variable.substitute true
 
 spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
 
+EOF
+
+if [[ "$TABLE_FORMAT" == "hudi" ]]; then
+  cat << EOF >> ${SPARK_CONF}
+spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.apache.spark.sql.hudi.HoodieSparkSessionExtension
+# this configuration is needed for hudi table
+spark.sql.catalog.spark_catalog=org.apache.spark.sql.hudi.catalog.HoodieCatalog
+spark.serializer=org.apache.spark.serializer.KryoSerializer
+spark.kryo.registrator=org.apache.spark.HoodieSparkKryoRegistrar
+hoodie.metadata.enable=false
+EOF
+else
+  cat << EOF >> ${SPARK_CONF}
 spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension
 # this configuration is needed for delta table
 spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
+EOF
+fi
+
+cat << EOF >> ${SPARK_CONF}
 spark.sql.catalog.polaris=org.apache.polaris.spark.SparkCatalog
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
 # this configuration is currently only used for iceberg tables, generic tables currently
@@ -182,7 +233,12 @@ fi
 echo "Launch spark-sql at ${SPARK_HOME}/bin/spark-sql"
 # bootstrap dependencies so that future queries don't need to wait for the downloads.
 # this is mostly useful for building the Docker image with all needed dependencies
-${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
+if [[ "$TABLE_FORMAT" == "hudi" ]]; then
+  # For Hudi: Pass --packages on command line to match official Hudi docs approach
+  ${SPARK_HOME}/bin/spark-sql --packages org.apache.hudi:hudi-spark3.5-bundle_${SCALA_VERSION}:1.1.1 -e "SELECT 1"
+else
+  ${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
+fi
 
 # ensure SPARK_HOME is setup for later tests
 export SPARK_HOME=$SPARK_HOME
