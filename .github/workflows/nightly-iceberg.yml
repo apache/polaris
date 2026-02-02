@@ -49,12 +49,10 @@ env:
   DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
 
 jobs:
-  detect-iceberg-version:
-    name: Detect Iceberg Snapshot Version
+  smoke-tests:
+    name: Smoke Tests (Iceberg Nightly)
     runs-on: ubuntu-latest
     if: github.repository == 'apache/polaris'
-    outputs:
-      iceberg_version: ${{ steps.detect.outputs.iceberg_version }}
     steps:
       - name: Detect latest Iceberg snapshot version
         id: detect
@@ -75,12 +73,6 @@ jobs:
             echo "iceberg_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
           fi
 
-  smoke-tests:
-    name: Smoke Tests (Iceberg ${{ needs.detect-iceberg-version.outputs.iceberg_version }})
-    runs-on: ubuntu-latest
-    needs: detect-iceberg-version
-    if: github.repository == 'apache/polaris'
-    steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
@@ -100,7 +92,7 @@ jobs:
 
       - name: Override Iceberg version in version catalog
         run: |
-          ICEBERG_VERSION="${{ needs.detect-iceberg-version.outputs.iceberg_version }}"
+          ICEBERG_VERSION="${{ steps.detect.outputs.iceberg_version }}"
           echo "Overriding Iceberg version to: $ICEBERG_VERSION"
           sed -i "s/^iceberg = .*/iceberg = \"$ICEBERG_VERSION\"/" gradle/libs.versions.toml
           echo "Updated gradle/libs.versions.toml:"
@@ -110,7 +102,7 @@ jobs:
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
-          echo "Running smoke tests with Iceberg version: ${{ needs.detect-iceberg-version.outputs.iceberg_version }}"
+          echo "Running smoke tests with Iceberg version: ${{ steps.detect.outputs.iceberg_version }}"
           ./gradlew \
             :polaris-core:test \
             :polaris-api-iceberg-service:test \
