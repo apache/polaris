@@ -20,7 +20,7 @@
 [versions]
 checkstyle = "13.1.0"
 hadoop = "3.4.2"
-iceberg = "1.10.1" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
+iceberg = "1.11.0-SNAPSHOT" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
 immutables = "2.12.1"
 jmh = "1.37"
 picocli = "4.7.7"
