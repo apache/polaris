@@ -47,6 +47,8 @@ Polaris remains the source of truth for metadata and access control. Floe reads 
 ## Quick Start
 
 ```bash
+git clone https://github.com/nssalian/floe
+cd floe
 make example-polaris
 ```
 
