@@ -25,7 +25,7 @@ immutables = "2.12.1"
 jmh = "1.37"
 picocli = "4.7.7"
 quarkus = "3.30.8"
-scala212 = "2.12.19"
+scala212 = "3.8.1"
 swagger = "1.6.16"
 
 [bundles]
