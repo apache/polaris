@@ -19,6 +19,6 @@
 
 # Security Policy
 
-Apache Polaris follows the process from [ASF security team](https://www.apache.org/security/).
+Apache Polaris follows the process from [ASF security team](https://www.apache.org/security/) (https://www.apache.org/security).
 
 Please report any security issues to [security@apache.org](mailto:security@apache.org).
