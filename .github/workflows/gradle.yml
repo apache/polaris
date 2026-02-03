@@ -69,9 +69,6 @@ jobs:
             -x intTest --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: 'unit-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
@@ -106,9 +103,6 @@ jobs:
           ./gradlew :polaris-runtime-service:test --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: 'quarkus-runtime-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
@@ -141,9 +135,6 @@ jobs:
           ./gradlew :polaris-runtime-service:intTest --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: 'quarkus-runtime-inttests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
@@ -176,9 +167,6 @@ jobs:
           ./gradlew :polaris-admin:test --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: 'quarkus-admin-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
@@ -218,9 +206,6 @@ jobs:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          job-name: 'integration-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
