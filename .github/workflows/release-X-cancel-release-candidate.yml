@@ -121,8 +121,8 @@ jobs:
 
       - name: Drop Apache Nexus staging repository
         env:
-          NEXUS_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
         run: |
           echo "::add-mask::$NEXUS_PASSWORD"
 
