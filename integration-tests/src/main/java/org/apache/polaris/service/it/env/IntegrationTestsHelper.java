@@ -90,10 +90,7 @@ public final class IntegrationTestsHelper {
    * annotation will be used.
    */
   public static <A extends Annotation> Map<String, String> mergeFromAnnotatedElements(
-      TestInfo testInfo,
-      Class<A> annotationClass,
-      Function<A, String[]> propertiesExtractor,
-      Map<String, String> defaults) {
+      TestInfo testInfo, Class<A> annotationClass, Function<A, String[]> propertiesExtractor) {
     String[] methodProperties =
         testInfo
             .getTestMethod()
@@ -115,7 +112,6 @@ public final class IntegrationTestsHelper {
               + Arrays.toString(properties));
     }
     ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
-    builder.putAll(defaults);
     for (int i = 0; i < properties.length; i += 2) {
       builder.put(properties[i], properties[i + 1]);
     }

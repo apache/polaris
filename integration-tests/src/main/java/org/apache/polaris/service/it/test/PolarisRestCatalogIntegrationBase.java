@@ -159,10 +159,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   private URI externalCatalogBaseLocation;
   private String catalogBaseLocation;
 
+  /**
+   * Default RESTCatalog properties. Most tests from the parent class expect these properties to be
+   * set.
+   */
   private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
       Map.of(
-          org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
-          "org.apache.iceberg.inmemory.InMemoryFileIO",
           org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
           "catalog-default-key1",
           org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
@@ -207,6 +209,19 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
    */
   protected ImmutableMap.Builder<String, String> clientFileIOProperties() {
     return ImmutableMap.builder();
+  }
+
+  /**
+   * The expected location for a table. Some tests rely on this location, but the default
+   * implementation uses file:// locations.
+   */
+  @Override
+  protected String baseTableLocation(TableIdentifier identifier) {
+    return RESTUtil.stripTrailingSlash(catalogBaseLocation)
+        + "/"
+        + identifier.namespace()
+        + "/"
+        + identifier.name();
   }
 
   /** Get the base URI for the external catalog. */
@@ -255,10 +270,17 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
 
-    Map<String, String> catalogProperties =
+    // Sources of catalog properties:
+    // 1. DEFAULT_CATALOG_PROPERTIES
+    // 2. config from annotations
+    // 3. DROP_WITH_PURGE_ENABLED
+    // 4. FILE scheme adjustments
+
+    catalogPropsBuilder.putAll(DEFAULT_CATALOG_PROPERTIES);
+
+    catalogPropsBuilder.putAll(
         IntegrationTestsHelper.mergeFromAnnotatedElements(
-            testInfo, CatalogConfig.class, CatalogConfig::properties, DEFAULT_CATALOG_PROPERTIES);
-    catalogPropsBuilder.putAll(catalogProperties);
+            testInfo, CatalogConfig.class, CatalogConfig::properties));
 
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
@@ -283,14 +305,29 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     createPolarisCatalog(catalog);
     managementApi.makeAdmin(principalRoleName, catalog);
 
-    restCatalogConfig =
-        IntegrationTestsHelper.mergeFromAnnotatedElements(
-            testInfo,
-            RestCatalogConfig.class,
-            RestCatalogConfig::value,
-            DEFAULT_REST_CATALOG_CONFIG);
+    ImmutableMap.Builder<String, String> restCatalogConfigBuilder = ImmutableMap.builder();
 
-    restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
+    // Sources of RESTCatalog properties:
+    // 1. DEFAULT_REST_CATALOG_CONFIG
+    // 3. FileIO implementation
+    // 2. config from annotations
+    // 4. config from extraCatalogProperties()
+    // 5. config passed directly to initCatalog() (not stored in restCatalogConfig)
+
+    restCatalogConfigBuilder.putAll(DEFAULT_REST_CATALOG_CONFIG);
+
+    restCatalogConfigBuilder.put(
+        org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
+        restCatalogFileIOImplementation().getName());
+
+    restCatalogConfigBuilder.putAll(
+        IntegrationTestsHelper.mergeFromAnnotatedElements(
+            testInfo, RestCatalogConfig.class, RestCatalogConfig::value));
+
+    restCatalogConfigBuilder.putAll(extraCatalogProperties(testInfo));
+
+    restCatalogConfig = restCatalogConfigBuilder.buildKeepingLast();
+    restCatalog = initCatalog(currentCatalogName, Map.of());
   }
 
   /**
@@ -354,8 +391,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /**
    * Initialize a RESTCatalog for testing.
    *
-   * @param catalogName this parameter is currently unused.
-   * @param additionalProperties additional properties to apply on top of the default test settings
+   * @param catalogName this parameter is currently unused. All RESTCatalog instances created by
+   *     tests have the name "polaris".
+   * @param additionalProperties additional properties to apply on top of the configured defaults.
+   *     Some tests in the parent class use this to inject test-specific properties e.g. {@link
+   *     #testCatalogWithCustomMetricsReporter()}.
    * @return a configured instance of RESTCatalog
    */
   @Override
@@ -365,6 +405,23 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
         endpoints, currentCatalogName, extraPropertiesBuilder.buildKeepingLast(), principalToken);
+  }
+
+  /**
+   * Additional properties to apply when creating the RESTCatalog, on top of the default test
+   * settings and any properties specified via {@link RestCatalogConfig} annotations.
+   *
+   * <p>This is useful when subclasses need to override some of the default settings with a value
+   * that cannot be expressed via annotations (e.g. because it needs to refer to some other
+   * test-local state).
+   */
+  protected Map<String, String> extraCatalogProperties(TestInfo testInfo) {
+    return Map.of();
+  }
+
+  /** The FileIO implementation class name to be used for the RESTCatalog instance. */
+  protected Class<? extends FileIO> restCatalogFileIOImplementation() {
+    return ResolvingFileIO.class;
   }
 
   @Override
@@ -690,6 +747,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
    * should succeed.
    */
   @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", ""}) // force empty header
   @Test
   public void testLoadTableWithoutAccessDelegationForExternalCatalogWithConfigDisabled() {
     Namespace ns1 = Namespace.of("ns1");

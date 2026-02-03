@@ -25,21 +25,24 @@ import io.quarkus.test.junit.TestProfile;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
 import org.apache.polaris.test.minio.MinioExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
 @TestProfile(PolarisRestCatalogMinIOIT.Profile.class)
 @ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
+@RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
 public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
 
   protected static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
@@ -61,20 +64,24 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
   private static URI storageBase;
   private static String endpoint;
 
+  private static Map<String, String> s3Properties;
+
   @BeforeAll
   static void setup(
       @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess) {
     storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
     endpoint = minioAccess.s3endpoint();
+    s3Properties =
+        Map.of(
+            S3FileIOProperties.ENDPOINT, endpoint,
+            S3FileIOProperties.PATH_STYLE_ACCESS, "true",
+            S3FileIOProperties.ACCESS_KEY_ID, MINIO_ACCESS_KEY,
+            S3FileIOProperties.SECRET_ACCESS_KEY, MINIO_SECRET_KEY);
   }
 
   @Override
   protected ImmutableMap.Builder<String, String> clientFileIOProperties() {
-    return super.clientFileIOProperties()
-        .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-        .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
-        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
+    return super.clientFileIOProperties().putAll(s3Properties);
   }
 
   @Override
@@ -87,5 +94,16 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
             .setAllowedLocations(List.of(storageBase.toString()));
 
     return storageConfig.build();
+  }
+
+  @Override
+  protected Map<String, String> extraCatalogProperties(TestInfo testInfo) {
+    if (testInfo.getTestMethod().orElseThrow().getName().equals("testRegisterTable")) {
+      // This test registers a table – operation that doesn't support access delegation –
+      // then attempts to use the table's FileIO. This can only work if the client has its
+      // own S3 credentials.
+      return s3Properties;
+    }
+    return Map.of();
   }
 }
