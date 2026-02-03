@@ -21,6 +21,7 @@ baseURL: 'https://polaris.apache.org/'
 languageCode: 'en-us'
 title: 'Apache Polaris'
 enableRobotsTXT: true
+copyright: '<a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation</a>.<br>Licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.'
 
 permalinks:
   blog: "/:section/:year/:month/:day/:slug/"
