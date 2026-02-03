@@ -20,6 +20,7 @@
 ---
 jobs:
   stale:
+    if: github.repository == 'apache/polaris'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/stale@dcd2b9469d2220b7e8d08aedc00c105d277fd46b
@@ -33,5 +34,5 @@ on:
   schedule:
     - cron: "30 1 * * *"
 permissions:
-  issues: read
+  issues: write
   pull-requests: write
