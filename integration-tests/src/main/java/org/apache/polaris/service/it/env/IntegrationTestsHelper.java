@@ -21,7 +21,6 @@ package org.apache.polaris.service.it.env;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -76,9 +75,8 @@ public final class IntegrationTestsHelper {
       TestInfo testInfo, Class<A> annotationClass, Function<A, T> extractor, T defaultValue) {
     return testInfo
         .getTestMethod()
-        .map(AnnotatedElement.class::cast)
-        .or(testInfo::getTestClass)
-        .map(clz -> clz.getAnnotation(annotationClass))
+        .map(m -> m.getAnnotation(annotationClass))
+        .or(() -> testInfo.getTestClass().map(c -> c.getAnnotation(annotationClass)))
         .map(extractor)
         .orElse(defaultValue);
   }
@@ -109,7 +107,7 @@ public final class IntegrationTestsHelper {
             .map(propertiesExtractor)
             .orElse(new String[0]);
     String[] properties =
-        Stream.concat(Arrays.stream(methodProperties), Arrays.stream(classProperties))
+        Stream.concat(Arrays.stream(classProperties), Arrays.stream(methodProperties))
             .toArray(String[]::new);
     if (properties.length % 2 != 0) {
       throw new IllegalArgumentException(
