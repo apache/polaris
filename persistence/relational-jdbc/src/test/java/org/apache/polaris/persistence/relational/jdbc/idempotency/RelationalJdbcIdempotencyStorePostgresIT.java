@@ -44,12 +44,9 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>(
-              containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
-                  .dockerImageName(null)
-                  .asCompatibleSubstituteFor("postgres"))
-          .withDatabaseName("polaris_db")
-          .withUsername("polaris")
-          .withPassword("polaris");
+          containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
+              .dockerImageName(null)
+              .asCompatibleSubstituteFor("postgres"));
 
   private static DataSource dataSource;
   private static RelationalJdbcIdempotencyStore store;

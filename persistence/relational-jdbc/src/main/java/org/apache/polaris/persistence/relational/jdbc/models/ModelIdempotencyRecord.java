@@ -41,21 +41,35 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String TABLE_NAME = "idempotency_records";
 
+  // Logical tenant / realm identifier.
   String REALM_ID = "realm_id";
+  // Client-provided idempotency key.
   String IDEMPOTENCY_KEY = "idempotency_key";
+  // Logical operation type (e.g. commit-table).
   String OPERATION_TYPE = "operation_type";
+  // Normalized identifier of the affected resource.
   String RESOURCE_ID = "resource_id";
 
+  // Final HTTP status code once the operation is completed (null while in-progress).
   String HTTP_STATUS = "http_status";
+  // Optional error subtype for failures.
   String ERROR_SUBTYPE = "error_subtype";
+  // Short serialized representation of the response body.
   String RESPONSE_SUMMARY = "response_summary";
+  // Serialized representation of response headers.
   String RESPONSE_HEADERS = "response_headers";
+  // Timestamp when the operation was finalized (null while in-progress).
   String FINALIZED_AT = "finalized_at";
 
+  // Timestamp when the record was created.
   String CREATED_AT = "created_at";
+  // Timestamp when the record was last updated.
   String UPDATED_AT = "updated_at";
+  // Timestamp for the last heartbeat update (null if no heartbeat recorded).
   String HEARTBEAT_AT = "heartbeat_at";
+  // Identifier of the executor that owns the in-progress record (null if not owned).
   String EXECUTOR_ID = "executor_id";
+  // Expiration timestamp after which the record can be considered stale/purgeable.
   String EXPIRES_AT = "expires_at";
 
   List<String> ALL_COLUMNS =
@@ -99,20 +113,25 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
           EXPIRES_AT);
 
   /**
-   * Dummy instance to be used as a Converter when calling {@link #fromResultSet(ResultSet)}.
+   * Stateless {@link Converter} instance for {@link
+   * org.apache.polaris.persistence.relational.jdbc.DatasourceOperations#executeSelect}.
    *
-   * <p>FIXME: fromResultSet() is a factory method and should be static or moved to a factory class.
+   * <p>We only need {@link Converter#fromResultSet(ResultSet)} when selecting rows; {@link
+   * Converter#toMap(DatabaseType)} is not used in that code path.
    */
-  ModelIdempotencyRecord CONVERTER =
-      ImmutableModelIdempotencyRecord.builder()
-          .realmId("")
-          .idempotencyKey("")
-          .operationType("")
-          .resourceId("")
-          .createdAt(Instant.EPOCH)
-          .updatedAt(Instant.EPOCH)
-          .expiresAt(Instant.EPOCH)
-          .build();
+  Converter<IdempotencyRecord> CONVERTER =
+      new Converter<>() {
+        @Override
+        public IdempotencyRecord fromResultSet(ResultSet rs) throws SQLException {
+          return ModelIdempotencyRecord.fromRow(rs);
+        }
+
+        @Override
+        public Map<String, Object> toMap(DatabaseType databaseType) {
+          throw new UnsupportedOperationException(
+              "ModelIdempotencyRecord.CONVERTER is only intended for result-set conversion");
+        }
+      };
 
   String getRealmId();
 
@@ -151,6 +170,11 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   @Override
   default IdempotencyRecord fromResultSet(ResultSet rs) throws SQLException {
+    return fromRow(rs);
+  }
+
+  /** Convert the current ResultSet row into an {@link IdempotencyRecord}. */
+  static IdempotencyRecord fromRow(ResultSet rs) throws SQLException {
     String realmId = rs.getString(REALM_ID);
     String idempotencyKey = rs.getString(IDEMPOTENCY_KEY);
     String operationType = rs.getString(OPERATION_TYPE);

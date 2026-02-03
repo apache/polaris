@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
+import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
@@ -82,7 +83,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       if (datasourceOperations.isConstraintViolation(e)) {
         return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
       }
-      throw new RuntimeException("Failed to reserve idempotency key", e);
+      throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);
     }
   }
 
@@ -112,7 +113,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       }
       return Optional.of(results.getFirst());
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to load idempotency record", e);
+      throw new IdempotencyPersistenceException("Failed to load idempotency record", e);
     }
   }
 
@@ -159,7 +160,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
         return HeartbeatResult.UPDATED;
       }
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to update idempotency heartbeat", e);
+      throw new IdempotencyPersistenceException("Failed to update idempotency heartbeat", e);
     }
 
     // Raced with finalize/ownership loss; re-check to return a meaningful result.
@@ -209,7 +210,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     try {
       return datasourceOperations.executeUpdate(update) > 0;
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to finalize idempotency record", e);
+      throw new IdempotencyPersistenceException("Failed to finalize idempotency record", e);
     }
   }
 
@@ -227,7 +228,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to purge expired idempotency records", e);
+      throw new IdempotencyPersistenceException("Failed to purge expired idempotency records", e);
     }
   }
 }
