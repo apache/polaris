@@ -94,7 +94,7 @@ cascade:
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |
 | https://github.com/takidau[Tyler Akidau] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
+| https://github.com/MonkeyCanCode[Yong Zheng] | PPMC Member |
 | https://github.com/flyrain[Yufei Gu] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===
