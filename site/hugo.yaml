@@ -227,11 +227,8 @@ menu:
         external: true
     - name: "Security"
       parent: "asf"
-      url: "https://github.com/apache/polaris/blob/main/SECURITY.md"
+      url: "/community/security-report"
       weight: 46
-      params:
-        rel: "external"
-        external: true
     - name: "Sponsorship"
       parent: "asf"
       url: "https://www.apache.org/foundation/sponsorship.html"
