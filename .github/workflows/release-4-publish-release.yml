@@ -273,7 +273,7 @@ jobs:
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
