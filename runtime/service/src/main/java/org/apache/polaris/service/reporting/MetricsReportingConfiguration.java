@@ -26,4 +26,3 @@ public interface MetricsReportingConfiguration {
   @WithDefault("default")
   String type();
 }
-
