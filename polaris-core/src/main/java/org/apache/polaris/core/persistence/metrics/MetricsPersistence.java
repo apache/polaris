@@ -30,7 +30,33 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * remain backend-agnostic.
  *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
- * Implementations that don't support metrics persistence should return {@link #NOOP}.
+ * Implementations that don't support metrics persistence can use {@link #NOOP} which silently
+ * ignores write operations and returns empty pages for queries.
+ *
+ * <h3>Dependency Injection</h3>
+ *
+ * <p>This interface is designed to be injected via CDI (Contexts and Dependency Injection). The
+ * deployment module (e.g., {@code polaris-quarkus-service}) should provide a {@code @Produces}
+ * method that creates the appropriate implementation based on the configured persistence backend.
+ *
+ * <p>Example producer:
+ *
+ * <pre>{@code
+ * @Produces
+ * @RequestScoped
+ * MetricsPersistence metricsPersistence(RealmContext realmContext, PersistenceBackend backend) {
+ *   if (backend.supportsMetrics()) {
+ *     return backend.createMetricsPersistence(realmContext);
+ *   }
+ *   return MetricsPersistence.NOOP;
+ * }
+ * }</pre>
+ *
+ * <h3>Multi-Tenancy</h3>
+ *
+ * <p>Realm context is not passed in the record objects. Implementations should obtain the realm
+ * from the CDI-injected {@code RealmContext} at write/query time. This keeps catalog-specific code
+ * from needing to manage realm concerns directly.
  *
  * <h3>Pagination</h3>
  *
@@ -43,8 +69,8 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  *   <li>Efficient cursor-based pagination that works with large result sets
  * </ul>
  *
- * <p>The {@link ReportIdToken} provides a cursor based on the report ID (UUID), but backends may
- * use other cursor strategies internally.
+ * <p>The {@link ReportIdToken} provides a reference cursor implementation based on report ID
+ * (UUID), but backends may use other cursor strategies internally.
  *
  * @see PageToken
  * @see Page
@@ -56,29 +82,13 @@ public interface MetricsPersistence {
   MetricsPersistence NOOP = new NoOpMetricsPersistence();
 
   // ============================================================================
-  // Capability Detection
-  // ============================================================================
-
-  /**
-   * Returns whether this persistence backend supports metrics storage.
-   *
-   * <p>Backends that do not support metrics should return false. Service code should NOT use this
-   * to branch with instanceof checks - instead, call the interface methods directly and rely on the
-   * no-op behavior for unsupported backends.
-   *
-   * @return true if metrics persistence is supported, false otherwise
-   */
-  boolean isSupported();
-
-  // ============================================================================
   // Write Operations
   // ============================================================================
 
   /**
    * Persists a scan metrics record.
    *
-   * <p>This operation is idempotent - writing the same reportId twice has no effect. If {@link
-   * #isSupported()} returns false, this is a no-op.
+   * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
    * @param record the scan metrics record to persist
    */
@@ -87,8 +97,7 @@ public interface MetricsPersistence {
   /**
    * Persists a commit metrics record.
    *
-   * <p>This operation is idempotent - writing the same reportId twice has no effect. If {@link
-   * #isSupported()} returns false, this is a no-op.
+   * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
    * @param record the commit metrics record to persist
    */
@@ -100,8 +109,6 @@ public interface MetricsPersistence {
 
   /**
    * Queries scan metrics reports based on the specified criteria.
-   *
-   * <p>Returns an empty page if {@link #isSupported()} returns false.
    *
    * <p>Example usage:
    *
@@ -128,8 +135,6 @@ public interface MetricsPersistence {
 
   /**
    * Queries commit metrics reports based on the specified criteria.
-   *
-   * <p>Returns an empty page if {@link #isSupported()} returns false.
    *
    * @param criteria the query criteria (filters)
    * @param pageToken pagination parameters (page size and optional cursor)

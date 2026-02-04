@@ -35,11 +35,6 @@ final class NoOpMetricsPersistence implements MetricsPersistence {
   NoOpMetricsPersistence() {}
 
   @Override
-  public boolean isSupported() {
-    return false;
-  }
-
-  @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
     // No-op
   }

@@ -28,6 +28,15 @@ import org.apache.polaris.immutables.PolarisImmutable;
 /**
  * Pagination {@linkplain Token token} for metrics queries, backed by the report ID (UUID).
  *
+ * <p><strong>Note:</strong> This is a reference implementation provided for convenience. It is
+ * <em>not required</em> by the {@link MetricsPersistence} SPI contract. Persistence backends are
+ * free to implement their own {@link Token} subclass optimized for their storage model (e.g.,
+ * timestamp-based cursors, composite keys, continuation tokens).
+ *
+ * <p>Only {@link org.apache.polaris.core.persistence.pagination.PageToken} (for requests) and
+ * {@link org.apache.polaris.core.persistence.pagination.Page} (for responses) are required by the
+ * SPI contract.
+ *
  * <p>This token enables cursor-based pagination for metrics queries across different storage
  * backends. The report ID is used as the cursor because it is:
  *

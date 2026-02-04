@@ -40,9 +40,12 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * <table>
  * <tr><th>Pattern</th><th>Fields Used</th><th>Index Required</th></tr>
  * <tr><td>By Table + Time</td><td>catalogName, namespace, tableName, startTime, endTime</td><td>Yes (OSS)</td></tr>
- * <tr><td>By Client Trace ID</td><td>reportTraceId</td><td>No (custom deployment)</td></tr>
  * <tr><td>By Time Only</td><td>startTime, endTime</td><td>Partial (timestamp index)</td></tr>
  * </table>
+ *
+ * <p>Additional query patterns (e.g., by trace ID) can be implemented by persistence backends using
+ * the {@link #metadata()} filter map. Client-provided correlation data should be stored in the
+ * metrics record's metadata map and can be filtered using the metadata criteria.
  *
  * <h3>Pagination</h3>
  *
@@ -83,18 +86,20 @@ public interface MetricsQueryCriteria {
   /** End time for the query (exclusive). */
   Optional<Instant> endTime();
 
-  // === Correlation ===
+  // === Metadata Filtering ===
 
   /**
-   * Client-provided trace ID to filter by (from report metadata).
+   * Metadata key-value pairs to filter by.
    *
-   * <p>This matches the {@code reportTraceId} field in the metrics records, which originates from
-   * the client's metadata map. Useful for correlating metrics with client-side query execution.
+   * <p>This enables filtering metrics by client-provided correlation data stored in the record's
+   * metadata map. For example, clients may include a trace ID in the metadata that can be queried
+   * later.
    *
-   * <p>Note: This query pattern may require a custom index in deployment environments. The OSS
-   * codebase does not include an index for trace-based queries.
+   * <p>Note: Metadata filtering may require custom indexes depending on the persistence backend.
+   * The OSS codebase provides basic support, but performance optimizations may be needed for
+   * high-volume deployments.
    */
-  Optional<String> reportTraceId();
+  java.util.Map<String, String> metadata();
 
   // === Factory Methods ===
 
@@ -128,18 +133,6 @@ public interface MetricsQueryCriteria {
         .startTime(startTime)
         .endTime(endTime)
         .build();
-  }
-
-  /**
-   * Creates criteria for querying by client-provided trace ID.
-   *
-   * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
-   *
-   * @param reportTraceId the client trace ID to search for
-   * @return the query criteria
-   */
-  static MetricsQueryCriteria forReportTraceId(String reportTraceId) {
-    return builder().reportTraceId(reportTraceId).build();
   }
 
   /**

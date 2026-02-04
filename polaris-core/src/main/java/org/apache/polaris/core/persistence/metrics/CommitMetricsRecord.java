@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
-import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -27,50 +25,15 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * Backend-agnostic representation of an Iceberg commit metrics report.
  *
  * <p>This record captures all relevant metrics from an Iceberg {@code CommitReport} along with
- * contextual information such as realm, catalog, and request correlation data.
+ * contextual information such as catalog identification and table location.
+ *
+ * <p>Common identification fields are inherited from {@link MetricsRecordIdentity}.
+ *
+ * <p>Note: Realm ID is not included in this record. Multi-tenancy realm context should be obtained
+ * from the CDI-injected {@code RealmContext} at persistence time.
  */
 @PolarisImmutable
-public interface CommitMetricsRecord {
-
-  // === Identification ===
-
-  /** Unique identifier for this report (UUID). */
-  String reportId();
-
-  /** Multi-tenancy realm identifier. */
-  String realmId();
-
-  /** Internal catalog ID. */
-  String catalogId();
-
-  /** Human-readable catalog name. */
-  String catalogName();
-
-  /** Dot-separated namespace path (e.g., "db.schema"). */
-  String namespace();
-
-  /** Table name. */
-  String tableName();
-
-  // === Timing ===
-
-  /** Timestamp when the report was received. */
-  Instant timestamp();
-
-  // === Client Correlation ===
-
-  /**
-   * Client-provided trace ID from the metrics report metadata.
-   *
-   * <p>This is an optional identifier that the Iceberg client may include in the report's metadata
-   * map (typically under the key "trace-id"). It allows clients to correlate this metrics report
-   * with their own distributed tracing system or query execution context.
-   *
-   * <p>Note: Server-side tracing information (e.g., OpenTelemetry trace/span IDs) and principal
-   * information are not included in this record. The persistence implementation can obtain these
-   * from the ambient request context (OTel context, security context) at write time if needed.
-   */
-  Optional<String> reportTraceId();
+public interface CommitMetricsRecord extends MetricsRecordIdentity {
 
   // === Commit Context ===
 
@@ -146,11 +109,6 @@ public interface CommitMetricsRecord {
 
   /** Number of commit attempts. */
   int attempts();
-
-  // === Extensibility ===
-
-  /** Additional metadata as key-value pairs. */
-  Map<String, String> metadata();
 
   /**
    * Creates a new builder for CommitMetricsRecord.
