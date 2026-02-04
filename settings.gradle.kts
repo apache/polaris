@@ -125,6 +125,15 @@ dependencyResolutionManagement {
       url = uri("https://jitpack.io")
       content { includeModule("com.github.RoaringBitmap.RoaringBitmap", "roaringbitmap") }
     }
+    val useApacheSnapshots =
+      providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
+    if (useApacheSnapshots) {
+      maven {
+        name = "ApacheSnapshots"
+        url = uri("https://repository.apache.org/content/repositories/snapshots/")
+        mavenContent { snapshotsOnly() }
+      }
+    }
     gradlePluginPortal()
   }
 }
