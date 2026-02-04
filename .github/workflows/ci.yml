@@ -334,6 +334,8 @@ jobs:
         with:
           ref: "versioned-docs"
           path: site/content/releases
+        # Do not let this step fail when the versioned-docs branch does not exist, as on most forks
+        continue-on-error: true
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
       - name: Install docker-compose
@@ -369,6 +371,7 @@ jobs:
           cache-read-only: false
 
   required-checks:
+    # Do not rename this job, this is referenced in .asf.yaml!
     name: "Required Checks"
     needs:
       - build-checks
