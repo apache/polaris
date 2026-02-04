@@ -211,9 +211,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
           set.removeFirst();
         }
         var path = manifestFile.path();
-        var handle = set.add(path);
-        System.err.println("TEST: " + path + " -> " + handle + "  " + System.identityHashCode(set));
-        return handle;
+        return set.add(path);
       }
     };
   }
