@@ -21,6 +21,7 @@ baseURL: 'https://polaris.apache.org/'
 languageCode: 'en-us'
 title: 'Apache Polaris'
 enableRobotsTXT: true
+copyright: '<a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation</a>.<br>Licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.'
 
 permalinks:
   blog: "/:section/:year/:month/:day/:slug/"
@@ -227,11 +228,8 @@ menu:
         external: true
     - name: "Security"
       parent: "asf"
-      url: "https://github.com/apache/polaris/blob/main/SECURITY.md"
+      url: "/community/security-report"
       weight: 46
-      params:
-        rel: "external"
-        external: true
     - name: "Sponsorship"
       parent: "asf"
       url: "https://www.apache.org/foundation/sponsorship.html"
