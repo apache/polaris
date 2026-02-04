@@ -1,0 +1,386 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: CI
+
+on:
+  workflow_call:
+    # Called from ci-main.yml and ci-pr.yml, which define different concurrency groups.
+
+jobs:
+  build-checks:
+    name: Gradle Build Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: &setup-java-vars
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Checks
+        env: &gradle_env_vars
+          GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
+          DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
+          DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
+            -x :polaris-runtime-service:test \
+            -x :polaris-admin:test \
+            -x intTest \
+            --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: &test-archive-path |
+            **/build/test-results/**
+            **/build/reports/tests/**
+
+  runtime-service-tests:
+    name: Runtime Service Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Quarkus runtime tests
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-runtime-service:test --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: *test-archive-path
+
+  runtime-service-int-tests:
+    name: Runtime Service Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Quarkus runtime tests
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-runtime-service:intTest --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: *test-archive-path
+
+  admin-tool-tests:
+    name: Admin Tool Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Quarkus admin tests
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-admin:test --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: *test-archive-path
+
+  integration-tests:
+    name: Other Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run integration tests
+        env: *gradle_env_vars
+        run: |
+          ./gradlew \
+            intTest \
+            -x :polaris-runtime-service:intTest \
+            --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+      - name: Archive test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: upload-${{ github.job }}-artifacts
+          path: *test-archive-path
+
+  helm-tests:
+    name: Helm Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: 'v3.16.0'
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: Run 'helm template' validation
+        run: |
+          cd helm/polaris
+          for f in values.yaml ci/*.yaml; do
+            echo "::group::helm template $f"
+            helm template --debug --namespace polaris-ns --values $f .
+            echo "::endgroup::"
+          done
+      - name: Run Helm unit tests
+        run: |
+          # Pin version to 1.0.2 due to https://github.com/helm-unittest/helm-unittest/issues/790
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
+          helm unittest helm/polaris
+      - name: Run chart-testing (lint)
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
+      - name: Print Docker info
+        run: |
+          docker -v
+          minikube docker-env
+      - name: Image build
+        env: *gradle_env_vars
+        run: |
+          eval $(minikube -p minikube docker-env)
+          ./gradlew \
+            :polaris-server:assemble \
+            :polaris-server:quarkusAppPartsBuild --rerun \
+            :polaris-admin:assemble \
+            :polaris-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true
+          minikube image ls
+      - name: Install fixtures
+        run: |
+          kubectl create namespace polaris-ns
+          kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures
+      - name: Run chart-testing (install)
+        run: |
+          ct install --target-branch ${{ github.event.repository.default_branch }} \
+            --namespace polaris-ns \
+            --debug --charts ./helm/polaris
+
+  python-client:
+    name: Polaris Python Client Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Lint
+        run: make client-lint
+      - name: License Compliance Check
+        run: make client-license-check
+      - name: Generated Client Tests
+        run: make client-unit-test
+      - name: Integration Tests
+        run: make client-integration-test
+      - name: Run Polaris Client help manual
+        run: ./polaris --help
+
+  regtest:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Fix permissions
+        run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
+      - name: Image build
+        env: *gradle_env_vars
+        run: |
+          ./gradlew \
+              publishToMavenLocal \
+              :polaris-server:assemble \
+              :polaris-server:quarkusAppPartsBuild --rerun \
+              -Dquarkus.container-image.build=true
+      - name: Regression Test
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+        run: docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
+      - name: Spark Plugin Regression Test
+        # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration
+        # tests runs with the existing gradle.yml, which only runs on Java 21. Since spark Java compatibility
+        # for 3.5 is 8, 11, and 17, we should run spark client with those compatible java versions.
+        # TODO: add separate spark client CI and run with Java 8, 11 and 17.
+        run: docker compose -f plugins/spark/v3.5/regtests/docker-compose.yml up --build --exit-code-from regtest
+
+  markdown-link-check:
+    name: "Markdown Link Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Markdown link check
+        uses: tcort/github-action-markdown-link-check@e7c7a18363c842693fadde5d41a3bd3573a7a225
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/workflows/check-md-link-config.json'
+          folder-path: 'regtests, .github, build-logic, polaris-core, runtime, persistence, spec, getting-started, helm'
+          file-path: 'CHAT_BYLAWS.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, README.md, SECURITY.md'
+
+  site:
+    name: "Site Generation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Checkout Versioned Docs
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: "versioned-docs"
+          path: site/content/releases
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Install docker-compose
+        run: |
+          sudo curl --fail-with-body -SL \
+            https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 \
+            -o /usr/local/bin/docker-compose
+          sudo chmod 755 /usr/local/bin/docker-compose
+          sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      - name: Build Apache Site
+        run: site/bin/create-static-site.sh
+
+  store-gradle-cache:
+    name: Store Gradle Cache
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - build-checks
+      - runtime-service-tests
+      - runtime-service-int-tests
+      - admin-tool-tests
+      - integration-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Collect partial Gradle build caches
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+        with:
+          cache-read-only: false
+
+  required-checks:
+    name: "Required Checks"
+    needs:
+      - build-checks
+      - runtime-service-tests
+      - runtime-service-int-tests
+      - admin-tool-tests
+      - integration-tests
+      - helm-tests
+      - python-client
+      - regtest
+      - markdown-link-check
+      - site
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "All checks passed"
