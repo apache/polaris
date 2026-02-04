@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     namespace TEXT NOT NULL,
-    table_name TEXT NOT NULL,
+    table_id BIGINT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
     namespace TEXT NOT NULL,
-    table_name TEXT NOT NULL,
+    table_id BIGINT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
