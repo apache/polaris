@@ -209,8 +209,7 @@ CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
 CREATE TABLE IF NOT EXISTS scan_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
-    catalog_name TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
     namespace TEXT NOT NULL,
     table_name TEXT NOT NULL,
 
@@ -280,8 +279,7 @@ COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for sca
 CREATE TABLE IF NOT EXISTS commit_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id TEXT NOT NULL,
-    catalog_name TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
     namespace TEXT NOT NULL,
     table_name TEXT NOT NULL,
 
