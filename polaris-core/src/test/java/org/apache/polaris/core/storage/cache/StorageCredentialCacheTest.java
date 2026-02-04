@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 
 import jakarta.annotation.Nonnull;
@@ -31,10 +32,8 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -226,10 +225,8 @@ public class StorageCredentialCacheTest {
     Mockito.when(storageCredentialsVendor.getRealmConfig())
         .thenReturn(
             new RealmConfigImpl(
-                RealmConfigurationSource.global(
-                    Map.of(
-                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(),
-                        "true")),
+                (rc, name) ->
+                    Map.of(INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(), "true").get(name),
                 () -> "realm"));
 
     testCacheForAnotherPrincipal(false);

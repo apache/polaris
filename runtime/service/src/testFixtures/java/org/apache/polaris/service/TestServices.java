@@ -194,7 +194,7 @@ public record TestServices(
     }
 
     public TestServices build() {
-      RealmConfigurationSource configurationSource = RealmConfigurationSource.global(config);
+      RealmConfigurationSource configurationSource = (rc, name) -> config.get(name);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
       // Application level

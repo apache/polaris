@@ -21,7 +21,6 @@ package org.apache.polaris.core.config;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
@@ -32,10 +31,6 @@ import org.apache.polaris.core.context.RealmContext;
  */
 public interface RealmConfigurationSource {
   RealmConfigurationSource EMPTY_CONFIG = (rc, name) -> null;
-
-  static RealmConfigurationSource global(Map<String, ?> config) {
-    return (rc, name) -> config.get(name);
-  }
 
   /**
    * Retrieve the current value for a configuration key for a given realm. May be null if not set.

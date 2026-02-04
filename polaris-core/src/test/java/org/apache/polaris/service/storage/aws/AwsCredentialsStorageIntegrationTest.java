@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.storage.aws;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
+import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
+import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
@@ -27,10 +30,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -64,17 +65,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   public static final RealmConfig PRINCIPAL_INCLUDER_REALM_CONFIG =
       new RealmConfigImpl(
-          RealmConfigurationSource.global(
-              Map.of(
-                  FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(),
-                  "true")),
+          (rc, name) ->
+              Map.of(INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(), "true").get(name),
           () -> "realm");
 
   private static final RealmConfigImpl SESSION_TAGS_ENABLED_CONFIG =
       new RealmConfigImpl(
-          RealmConfigurationSource.global(
-              Map.of(
-                  FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(), "true")),
+          (rc, name) ->
+              Map.of(INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(), "true").get(name),
           () -> "realm");
 
   public static final AssumeRoleResponse ASSUME_ROLE_RESPONSE =
@@ -1218,10 +1216,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // Create a realm config with both session tags AND trace_id enabled
     RealmConfig sessionTagsAndTraceIdEnabledConfig =
         new RealmConfigImpl(
-            RealmConfigurationSource.global(
+            (rc, name) ->
                 Map.of(
-                    FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(), "true",
-                    FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS.key(), "true")),
+                        INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(), "true",
+                        INCLUDE_TRACE_ID_IN_SESSION_TAGS.key(), "true")
+                    .get(name),
             () -> "realm");
 
     ArgumentCaptor<AssumeRoleRequest> requestCaptor =
@@ -1495,10 +1494,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     RealmConfig sessionTagsEnabledConfig =
         new RealmConfigImpl(
-            RealmConfigurationSource.global(
-                Map.of(
-                    FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(),
-                    "true")),
+            (rc, name) ->
+                Map.of(INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key(), "true").get(name),
             () -> "realm");
 
     // Simulate STS throwing AccessDeniedException when sts:TagSession is not allowed
