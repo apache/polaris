@@ -49,6 +49,10 @@ dependencies {
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 
+  // Iceberg API for SpiModelConverter tests
+  testImplementation(platform(libs.iceberg.bom))
+  testImplementation("org.apache.iceberg:iceberg-api")
+
   testImplementation(platform(libs.testcontainers.bom))
 
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
