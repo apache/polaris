@@ -49,7 +49,6 @@ public final class MetricsReportConverter {
    * @param scanReport the Iceberg scan report
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
-   * @param catalogName the catalog name
    * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the scan (optional)
    * @param requestId the request ID (optional)
@@ -60,8 +59,7 @@ public final class MetricsReportConverter {
   public static ModelScanMetricsReport fromScanReport(
       ScanReport scanReport,
       String realmId,
-      String catalogId,
-      String catalogName,
+      long catalogId,
       String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
@@ -78,7 +76,6 @@ public final class MetricsReportConverter {
             .reportId(reportId)
             .realmId(realmId)
             .catalogId(catalogId)
-            .catalogName(catalogName)
             .namespace(namespace)
             .tableName(scanReport.tableName())
             .timestampMs(timestampMs)
@@ -146,7 +143,6 @@ public final class MetricsReportConverter {
    * @param commitReport the Iceberg commit report
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
-   * @param catalogName the catalog name
    * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the commit (optional)
    * @param requestId the request ID (optional)
@@ -157,8 +153,7 @@ public final class MetricsReportConverter {
   public static ModelCommitMetricsReport fromCommitReport(
       CommitReport commitReport,
       String realmId,
-      String catalogId,
-      String catalogName,
+      long catalogId,
       String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
@@ -175,7 +170,6 @@ public final class MetricsReportConverter {
             .reportId(reportId)
             .realmId(realmId)
             .catalogId(catalogId)
-            .catalogName(catalogName)
             .namespace(namespace)
             .tableName(commitReport.tableName())
             .timestampMs(timestampMs)

@@ -38,7 +38,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
   String REPORT_ID = "report_id";
   String REALM_ID = "realm_id";
   String CATALOG_ID = "catalog_id";
-  String CATALOG_NAME = "catalog_name";
   String NAMESPACE = "namespace";
   String TABLE_NAME_COL = "table_name";
   String TIMESTAMP_MS = "timestamp_ms";
@@ -75,7 +74,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
           REPORT_ID,
           REALM_ID,
           CATALOG_ID,
-          CATALOG_NAME,
           NAMESPACE,
           TABLE_NAME_COL,
           TIMESTAMP_MS,
@@ -112,9 +110,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   String getRealmId();
 
-  String getCatalogId();
-
-  String getCatalogName();
+  long getCatalogId();
 
   String getNamespace();
 
@@ -201,8 +197,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     return ImmutableModelScanMetricsReport.builder()
         .reportId(rs.getString(REPORT_ID))
         .realmId(rs.getString(REALM_ID))
-        .catalogId(rs.getString(CATALOG_ID))
-        .catalogName(rs.getString(CATALOG_NAME))
+        .catalogId(rs.getLong(CATALOG_ID))
         .namespace(rs.getString(NAMESPACE))
         .tableName(rs.getString(TABLE_NAME_COL))
         .timestampMs(rs.getLong(TIMESTAMP_MS))
@@ -242,7 +237,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     map.put(REPORT_ID, getReportId());
     map.put(REALM_ID, getRealmId());
     map.put(CATALOG_ID, getCatalogId());
-    map.put(CATALOG_NAME, getCatalogName());
     map.put(NAMESPACE, getNamespace());
     map.put(TABLE_NAME_COL, getTableName());
     map.put(TIMESTAMP_MS, getTimestampMs());
@@ -285,8 +279,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
       ImmutableModelScanMetricsReport.builder()
           .reportId("")
           .realmId("")
-          .catalogId("")
-          .catalogName("")
+          .catalogId(0L)
           .namespace("")
           .tableName("")
           .timestampMs(0L)

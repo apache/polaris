@@ -22,13 +22,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
@@ -46,8 +45,8 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsRep
  * <p>Key conversions handled:
  *
  * <ul>
- *   <li>catalogId: long (SPI) ↔ String (Model)
- *   <li>tableIdentifier: TableIdentifier (SPI) ↔ separate namespace/tableName strings (Model)
+ *   <li>catalogId: long (SPI) ↔ long (Model)
+ *   <li>namespace: List&lt;String&gt; (SPI) ↔ dot-separated string (Model)
  *   <li>timestamp: Instant (SPI) ↔ long milliseconds (Model)
  *   <li>metadata: Map&lt;String, String&gt; (SPI) ↔ JSON string (Model)
  *   <li>projectedFieldIds/Names: List (SPI) ↔ comma-separated string (Model)
@@ -72,10 +71,9 @@ public final class SpiModelConverter {
     return ImmutableModelScanMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
-        .catalogId(String.valueOf(record.catalogId()))
-        .catalogName(record.catalogName())
-        .namespace(record.tableIdentifier().namespace().toString())
-        .tableName(record.tableIdentifier().name())
+        .catalogId(record.catalogId())
+        .namespace(String.join(".", record.namespace()))
+        .tableName(record.tableName())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId().orElse(null))
         .schemaId(record.schemaId().orElse(null))
@@ -114,10 +112,9 @@ public final class SpiModelConverter {
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
-        .catalogId(String.valueOf(record.catalogId()))
-        .catalogName(record.catalogName())
-        .namespace(record.tableIdentifier().namespace().toString())
-        .tableName(record.tableIdentifier().name())
+        .catalogId(record.catalogId())
+        .namespace(String.join(".", record.namespace()))
+        .tableName(record.tableName())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId())
         .sequenceNumber(record.sequenceNumber().orElse(null))
@@ -153,9 +150,9 @@ public final class SpiModelConverter {
   public static ScanMetricsRecord toScanMetricsRecord(ModelScanMetricsReport model) {
     return ScanMetricsRecord.builder()
         .reportId(model.getReportId())
-        .catalogId(Long.parseLong(model.getCatalogId()))
-        .catalogName(model.getCatalogName())
-        .tableIdentifier(parseTableIdentifier(model.getNamespace(), model.getTableName()))
+        .catalogId(model.getCatalogId())
+        .namespace(parseNamespace(model.getNamespace()))
+        .tableName(model.getTableName())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
         .snapshotId(Optional.ofNullable(model.getSnapshotId()))
         .schemaId(Optional.ofNullable(model.getSchemaId()))
@@ -191,9 +188,9 @@ public final class SpiModelConverter {
   public static CommitMetricsRecord toCommitMetricsRecord(ModelCommitMetricsReport model) {
     return CommitMetricsRecord.builder()
         .reportId(model.getReportId())
-        .catalogId(Long.parseLong(model.getCatalogId()))
-        .catalogName(model.getCatalogName())
-        .tableIdentifier(parseTableIdentifier(model.getNamespace(), model.getTableName()))
+        .catalogId(model.getCatalogId())
+        .namespace(parseNamespace(model.getNamespace()))
+        .tableName(model.getTableName())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
         .snapshotId(model.getSnapshotId())
         .sequenceNumber(Optional.ofNullable(model.getSequenceNumber()))
@@ -225,13 +222,12 @@ public final class SpiModelConverter {
 
   // === Helper Methods ===
 
-  private static TableIdentifier parseTableIdentifier(String namespace, String tableName) {
+  private static List<String> parseNamespace(String namespace) {
     if (namespace == null || namespace.isEmpty()) {
-      return TableIdentifier.of(Namespace.empty(), tableName);
+      return Collections.emptyList();
     }
-    // Namespace.toString() uses "." as separator, so we split by "."
-    String[] levels = namespace.split("\\.");
-    return TableIdentifier.of(Namespace.of(levels), tableName);
+    // Namespace is stored as dot-separated string
+    return Arrays.asList(namespace.split("\\."));
   }
 
   private static String toCommaSeparated(List<?> list) {

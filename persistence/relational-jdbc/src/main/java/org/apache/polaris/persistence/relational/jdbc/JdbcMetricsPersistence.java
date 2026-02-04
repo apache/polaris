@@ -79,14 +79,19 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       return Page.fromItems(List.of());
     }
 
+    // catalogId is required for queries
+    if (criteria.catalogId().isEmpty()) {
+      return Page.fromItems(List.of());
+    }
+
     int limit = pageToken.pageSize().orElse(100);
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
     List<ModelScanMetricsReport> models =
         jdbcPersistence.queryScanMetricsReports(
-            criteria.catalogName().orElse(""),
-            criteria.namespace().orElse(""),
+            criteria.catalogId().getAsLong(),
+            String.join(".", criteria.namespace()),
             criteria.tableName().orElse(""),
             startTimeMs,
             endTimeMs,
@@ -106,14 +111,19 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       return Page.fromItems(List.of());
     }
 
+    // catalogId is required for queries
+    if (criteria.catalogId().isEmpty()) {
+      return Page.fromItems(List.of());
+    }
+
     int limit = pageToken.pageSize().orElse(100);
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
     List<ModelCommitMetricsReport> models =
         jdbcPersistence.queryCommitMetricsReports(
-            criteria.catalogName().orElse(""),
-            criteria.namespace().orElse(""),
+            criteria.catalogId().getAsLong(),
+            String.join(".", criteria.namespace()),
             criteria.tableName().orElse(""),
             startTimeMs,
             endTimeMs,

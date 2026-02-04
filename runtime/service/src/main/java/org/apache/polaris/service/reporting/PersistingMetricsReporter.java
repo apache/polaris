@@ -109,7 +109,6 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       ScanMetricsRecord record =
           MetricsRecordConverter.forScanReport(scanReport)
               .catalogId(catalogId)
-              .catalogName(catalogName)
               .tableIdentifier(table)
               .build();
       persistence.writeScanReport(record);
@@ -119,7 +118,6 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       CommitMetricsRecord record =
           MetricsRecordConverter.forCommitReport(commitReport)
               .catalogId(catalogId)
-              .catalogName(catalogName)
               .tableIdentifier(table)
               .build();
       persistence.writeCommitReport(record);

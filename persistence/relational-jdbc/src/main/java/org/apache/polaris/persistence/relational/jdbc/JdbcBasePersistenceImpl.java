@@ -537,8 +537,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    *
    * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
    *
-   * @param catalogName the catalog name
-   * @param namespace the namespace
+   * @param catalogId the catalog entity ID
+   * @param namespace the namespace (dot-separated)
    * @param tableName the table name
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
@@ -548,7 +548,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    */
   @Nonnull
   public List<ModelScanMetricsReport> queryScanMetricsReports(
-      @Nonnull String catalogName,
+      long catalogId,
       @Nonnull String namespace,
       @Nonnull String tableName,
       @Nullable Long startTimeMs,
@@ -559,8 +559,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
     try {
       StringBuilder whereClause = new StringBuilder();
-      whereClause.append("realm_id = ? AND catalog_name = ? AND namespace = ? AND table_name = ?");
-      List<Object> values = new ArrayList<>(List.of(realmId, catalogName, namespace, tableName));
+      whereClause.append("realm_id = ? AND catalog_id = ? AND namespace = ? AND table_name = ?");
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, namespace, tableName));
 
       if (startTimeMs != null) {
         whereClause.append(" AND timestamp_ms >= ?");
@@ -597,8 +597,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    *
    * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
    *
-   * @param catalogName the catalog name
-   * @param namespace the namespace
+   * @param catalogId the catalog entity ID
+   * @param namespace the namespace (dot-separated)
    * @param tableName the table name
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
@@ -608,7 +608,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    */
   @Nonnull
   public List<ModelCommitMetricsReport> queryCommitMetricsReports(
-      @Nonnull String catalogName,
+      long catalogId,
       @Nonnull String namespace,
       @Nonnull String tableName,
       @Nullable Long startTimeMs,
@@ -618,10 +618,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return Collections.emptyList();
     }
     try {
-      List<Object> values = new ArrayList<>(List.of(realmId, catalogName, namespace, tableName));
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, namespace, tableName));
 
       StringBuilder whereClause = new StringBuilder();
-      whereClause.append("realm_id = ? AND catalog_name = ? AND namespace = ? AND table_name = ?");
+      whereClause.append("realm_id = ? AND catalog_id = ? AND namespace = ? AND table_name = ?");
 
       if (startTimeMs != null) {
         whereClause.append(" AND timestamp_ms >= ?");
