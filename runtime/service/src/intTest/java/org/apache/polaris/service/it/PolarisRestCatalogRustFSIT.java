@@ -30,29 +30,29 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationBase;
-import org.apache.polaris.test.minio.Minio;
-import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
+import org.apache.polaris.test.rustfs.Rustfs;
+import org.apache.polaris.test.rustfs.RustfsAccess;
+import org.apache.polaris.test.rustfs.RustfsExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
-@TestProfile(PolarisRestCatalogMinIOIT.Profile.class)
-@ExtendWith(MinioExtension.class)
+@TestProfile(PolarisRestCatalogRustFSIT.Profile.class)
+@ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
+public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBase {
 
-  protected static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
-  protected static final String MINIO_ACCESS_KEY = "test-ak-123-polaris";
-  protected static final String MINIO_SECRET_KEY = "test-sk-123-polaris";
+  protected static final String BUCKET_URI_PREFIX = "/rustfs-test-polaris";
+  protected static final String RUSTFS_ACCESS_KEY = "test-ak-123-polaris";
+  protected static final String RUSTFS_SECRET_KEY = "test-sk-123-polaris";
 
   public static class Profile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", MINIO_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", MINIO_SECRET_KEY)
+          .put("polaris.storage.aws.access-key", RUSTFS_ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", RUSTFS_SECRET_KEY)
           .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
           .build();
     }
@@ -63,9 +63,9 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
 
   @BeforeAll
   static void setup(
-      @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess) {
-    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
-    endpoint = minioAccess.s3endpoint();
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY) RustfsAccess rustfsAccess) {
+    storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
+    endpoint = rustfsAccess.s3endpoint();
   }
 
   @Override
@@ -73,8 +73,8 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
     return super.clientFileIOProperties()
         .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
         .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
-        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY);
   }
 
   @Override

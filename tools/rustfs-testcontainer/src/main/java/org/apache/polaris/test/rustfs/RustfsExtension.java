@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.test.minio;
+package org.apache.polaris.test.rustfs;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.disabled;
@@ -40,16 +40,16 @@ import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 /**
- * JUnit extension that provides a Minio container configured with a single bucket.
+ * JUnit extension that provides a Rustfs container configured with a single bucket.
  *
- * <p>Provides instances of {@link MinioAccess} via instance or static fields or parameters
- * annotated with {@link Minio}.
+ * <p>Provides instances of {@link RustfsAccess} via instance or static fields or parameters
+ * annotated with {@link Rustfs}.
  */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public class MinioExtension
+public class RustfsExtension
     implements BeforeAllCallback, BeforeEachCallback, ParameterResolver, ExecutionCondition {
   private static final ExtensionContext.Namespace NAMESPACE =
-      ExtensionContext.Namespace.create(MinioExtension.class);
+      ExtensionContext.Namespace.create(RustfsExtension.class);
 
   @Override
   public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
@@ -58,7 +58,7 @@ public class MinioExtension
     }
     if (OS.current() == OS.MAC
         && System.getenv("CI_MAC") == null
-        && MinioContainer.canRunOnMacOs()) {
+        && RustfsContainer.canRunOnMacOs()) {
       // Disable tests on GitHub Actions
       return enabled("Running on macOS locally");
     }
@@ -69,7 +69,7 @@ public class MinioExtension
   public void beforeAll(ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
 
-    findAnnotatedFields(testClass, Minio.class, ReflectionUtils::isStatic)
+    findAnnotatedFields(testClass, Rustfs.class, ReflectionUtils::isStatic)
         .forEach(field -> injectField(context, field));
   }
 
@@ -77,21 +77,21 @@ public class MinioExtension
   public void beforeEach(ExtensionContext context) {
     Class<?> testClass = context.getRequiredTestClass();
 
-    findAnnotatedFields(testClass, Minio.class, ReflectionUtils::isNotStatic)
+    findAnnotatedFields(testClass, Rustfs.class, ReflectionUtils::isNotStatic)
         .forEach(field -> injectField(context, field));
   }
 
   private void injectField(ExtensionContext context, Field field) {
     try {
-      Minio minio =
-          AnnotationUtils.findAnnotation(field, Minio.class)
+      Rustfs rustfs =
+          AnnotationUtils.findAnnotation(field, Rustfs.class)
               .orElseThrow(IllegalStateException::new);
 
-      MinioAccess container =
+      RustfsAccess container =
           context
               .getStore(NAMESPACE)
               .getOrComputeIfAbsent(
-                  field.toString(), x -> createContainer(minio), MinioAccess.class);
+                  field.toString(), x -> createContainer(rustfs), RustfsAccess.class);
 
       makeAccessible(field).set(context.getTestInstance().orElse(null), container);
     } catch (Throwable t) {
@@ -103,10 +103,10 @@ public class MinioExtension
   public boolean supportsParameter(
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
-    if (parameterContext.findAnnotation(Minio.class).isEmpty()) {
+    if (parameterContext.findAnnotation(Rustfs.class).isEmpty()) {
       return false;
     }
-    return parameterContext.getParameter().getType().isAssignableFrom(MinioAccess.class);
+    return parameterContext.getParameter().getType().isAssignableFrom(RustfsAccess.class);
   }
 
   @Override
@@ -116,26 +116,26 @@ public class MinioExtension
     return extensionContext
         .getStore(NAMESPACE)
         .getOrComputeIfAbsent(
-            MinioExtension.class.getName() + '#' + parameterContext.getParameter().getName(),
+            RustfsExtension.class.getName() + '#' + parameterContext.getParameter().getName(),
             k -> {
-              Minio minio = parameterContext.findAnnotation(Minio.class).get();
-              return createContainer(minio);
+              Rustfs rustfs = parameterContext.findAnnotation(Rustfs.class).get();
+              return createContainer(rustfs);
             },
-            MinioAccess.class);
+            RustfsAccess.class);
   }
 
-  private MinioAccess createContainer(Minio minio) {
-    String accessKey = nonDefault(minio.accessKey());
-    String secretKey = nonDefault(minio.secretKey());
-    String bucket = nonDefault(minio.bucket());
-    String region = nonDefault(minio.region());
-    MinioContainer container =
-        new MinioContainer(null, accessKey, secretKey, bucket, region).withStartupAttempts(5);
+  private RustfsAccess createContainer(Rustfs rustfs) {
+    String accessKey = nonDefault(rustfs.accessKey());
+    String secretKey = nonDefault(rustfs.secretKey());
+    String bucket = nonDefault(rustfs.bucket());
+    String region = nonDefault(rustfs.region());
+    RustfsContainer container =
+        new RustfsContainer(null, accessKey, secretKey, bucket, region).withStartupAttempts(5);
     container.start();
     return container;
   }
 
   private static String nonDefault(String s) {
-    return s.equals(Minio.DEFAULT) ? null : s;
+    return s.equals(Rustfs.DEFAULT) ? null : s;
   }
 }

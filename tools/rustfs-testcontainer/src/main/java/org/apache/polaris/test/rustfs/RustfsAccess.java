@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.test.minio;
+package org.apache.polaris.test.rustfs;
 
 import java.net.URI;
 import java.util.Map;
@@ -26,14 +26,14 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * Provides access to Minio via a preconfigured S3 client and providing the by default randomized
+ * Provides access to Rustfs via a preconfigured S3 client and providing the by default randomized
  * bucket and access/secret keys.
  *
  * <p>Annotate JUnit test instance or static fields or method parameters of this type with {@link
- * Minio}.
+ * Rustfs}.
  */
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public interface MinioAccess {
+public interface RustfsAccess {
 
   /** Host and port, separated by '{@code :}'. */
   String hostPort();

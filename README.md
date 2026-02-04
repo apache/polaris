@@ -78,7 +78,7 @@ Apache Polaris is organized into the following modules:
     - Other Tools:
         - `polaris-container-spec-helper` - Helper for container specifications
         - `polaris-immutables` - Predefined Immutables configuration & annotations for Polaris
-        - `polaris-minio-testcontainer` - Minio test container
+        - `polaris-rustfs-testcontainer` - RustFS test container
         - `polaris-misc-types` - Miscellaneous types for Polaris
         - `polaris-version` - Versioning for Polaris
 

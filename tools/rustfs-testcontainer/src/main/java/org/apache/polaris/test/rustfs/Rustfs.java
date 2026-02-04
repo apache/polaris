@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.test.minio;
+package org.apache.polaris.test.rustfs;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -29,7 +29,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-public @interface Minio {
+public @interface Rustfs {
   /** Optional, use this access key instead of a random one. */
   String accessKey() default DEFAULT;
 
@@ -42,5 +42,5 @@ public @interface Minio {
   /** Optional, use this region. */
   String region() default DEFAULT;
 
-  String DEFAULT = "minio_default_value__";
+  String DEFAULT = "rustfs_default_value__";
 }

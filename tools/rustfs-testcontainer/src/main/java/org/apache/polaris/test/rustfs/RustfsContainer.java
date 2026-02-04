@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.test.minio;
+package org.apache.polaris.test.rustfs;
 
 import com.google.common.base.Preconditions;
 import java.net.InetAddress;
@@ -43,27 +43,27 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
 // CODE_COPIED_TO_POLARIS from Project Nessie 0.104.2
-public final class MinioContainer extends GenericContainer<MinioContainer>
-    implements MinioAccess, AutoCloseable {
+public final class RustfsContainer extends GenericContainer<RustfsContainer>
+    implements RustfsAccess, AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MinioContainer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RustfsContainer.class);
 
-  private static final int DEFAULT_PORT = 9000;
+  private static final int S3_API_PORT = 9000;
+  private static final int CONSOLE_PORT = 9001;
 
-  private static final String MINIO_ACCESS_KEY = "MINIO_ROOT_USER";
-  private static final String MINIO_SECRET_KEY = "MINIO_ROOT_PASSWORD";
-  private static final String MINIO_DOMAIN = "MINIO_DOMAIN";
+  private static final String RUSTFS_ACCESS_KEY = "RUSTFS_ACCESS_KEY";
+  private static final String RUSTFS_SECRET_KEY = "RUSTFS_SECRET_KEY";
+  private static final String RUSTFS_SERVER_DOMAINS = "RUSTFS_SERVER_DOMAINS";
 
-  private static final String DEFAULT_STORAGE_DIRECTORY = "/data";
-  private static final String HEALTH_ENDPOINT = "/minio/health/ready";
-  private static final String MINIO_DOMAIN_NAME;
+  private static final String HEALTH_ENDPOINT = "/health";
+  private static final String RUSTFS_DOMAIN_NAME;
 
   /**
    * Domain must start with "s3" in order to be recognized as an S3 endpoint by the AWS SDK with
    * virtual-host-style addressing. The bucket name is expected to be the first part of the domain
    * name, e.g. "bucket.s3.127-0-0-1.nip.io".
    */
-  private static final String MINIO_DOMAIN_NIP = "s3.127-0-0-1.nip.io";
+  private static final String RUSTFS_DOMAIN_NIP = "s3.127-0-0-1.nip.io";
 
   /**
    * Whether random bucket names cannot be used. Randomized bucket names can only be used when
@@ -74,7 +74,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   private static final String FIXED_BUCKET_NAME;
 
   static boolean canRunOnMacOs() {
-    return MINIO_DOMAIN_NAME.equals(MINIO_DOMAIN_NIP);
+    return RUSTFS_DOMAIN_NAME.equals(RUSTFS_DOMAIN_NIP);
   }
 
   static {
@@ -84,19 +84,19 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
       name = "localhost";
     } else {
       try {
-        InetAddress ignored = InetAddress.getByName(MINIO_DOMAIN_NIP);
-        name = MINIO_DOMAIN_NIP;
+        InetAddress ignored = InetAddress.getByName(RUSTFS_DOMAIN_NIP);
+        name = RUSTFS_DOMAIN_NIP;
       } catch (UnknownHostException x) {
         LOGGER.warn(
             "Could not resolve '{}', falling back to 'localhost'. "
                 + "This usually happens when your router or DNS provider is unable to resolve the nip.io addresses.",
-            MINIO_DOMAIN_NIP);
+                RUSTFS_DOMAIN_NIP);
         name = "localhost";
-        fixedBucketName = "miniobucket";
+        fixedBucketName = "rustfsbucket";
         validateBucketHost(fixedBucketName);
       }
     }
-    MINIO_DOMAIN_NAME = name;
+    RUSTFS_DOMAIN_NAME = name;
     FIXED_BUCKET_NAME = fixedBucketName;
   }
 
@@ -126,19 +126,20 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   private Optional<String> region;
 
   @SuppressWarnings("unused")
-  public MinioContainer() {
+  public RustfsContainer() {
     this(null, null, null, null, null);
   }
 
   @SuppressWarnings("resource")
-  public MinioContainer(
+  public RustfsContainer(
       String image, String accessKey, String secretKey, String bucket, String region) {
     super(
-        ContainerSpecHelper.containerSpecHelper("minio", MinioContainer.class)
+        ContainerSpecHelper.containerSpecHelper("rustfs", RustfsContainer.class)
             .dockerImageName(image));
-    withNetworkAliases(randomString("minio"));
-    withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(MinioContainer.class)));
-    addExposedPort(DEFAULT_PORT);
+    withNetworkAliases(randomString("rustfs"));
+    withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(RustfsContainer.class)));
+    addFixedExposedPort(S3_API_PORT, S3_API_PORT);
+    addExposedPort(CONSOLE_PORT);
     this.accessKey = accessKey != null ? accessKey : randomString("access");
     this.secretKey = secretKey != null ? secretKey : randomString("secret");
     this.bucket =
@@ -146,19 +147,18 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
             ? validateBucketHost(bucket)
             : (FIXED_BUCKET_NAME != null ? FIXED_BUCKET_NAME : randomString("bucket"));
     this.region = Optional.ofNullable(region);
-    withEnv(MINIO_ACCESS_KEY, this.accessKey);
-    withEnv(MINIO_SECRET_KEY, this.secretKey);
-    // S3 SDK encodes bucket names in host names - need to tell Minio which domain to use
-    withEnv(MINIO_DOMAIN, MINIO_DOMAIN_NAME);
-    withCommand("server", DEFAULT_STORAGE_DIRECTORY);
+    withEnv(RUSTFS_ACCESS_KEY, this.accessKey);
+    withEnv(RUSTFS_SECRET_KEY, this.secretKey);
+    // S3 SDK encodes bucket names in host names - need to tell Rustfs which domain to use
+    withEnv(RUSTFS_SERVER_DOMAINS, RUSTFS_DOMAIN_NAME + ":" + S3_API_PORT);
     setWaitStrategy(
         new HttpWaitStrategy()
-            .forPort(DEFAULT_PORT)
+            .forPort(CONSOLE_PORT)
             .forPath(HEALTH_ENDPOINT)
             .withStartupTimeout(Duration.ofMinutes(2)));
   }
 
-  public MinioContainer withRegion(String region) {
+  public RustfsContainer withRegion(String region) {
     this.region = Optional.of(region);
     return this;
   }
@@ -240,7 +240,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   public void start() {
     super.start();
 
-    this.hostPort = MINIO_DOMAIN_NAME + ":" + getMappedPort(DEFAULT_PORT);
+    this.hostPort = RUSTFS_DOMAIN_NAME + ":" + getMappedPort(S3_API_PORT);
     this.s3endpoint = String.format("http://%s/", hostPort);
 
     this.s3 = createS3Client();

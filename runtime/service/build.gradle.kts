@@ -124,7 +124,7 @@ dependencies {
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(project(":polaris-relational-jdbc"))
 
-  testImplementation(project(":polaris-minio-testcontainer"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")

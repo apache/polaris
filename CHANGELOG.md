@@ -61,6 +61,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Changed from Poetry to UV for Python package management.
 - Exclude KMS policies when KMS is not being used for S3.
 - Improved default KMS permission handling to better distinguish read-only and read-write access.
+- Replace MinIO with RustFS for integration testing.
 
 ### Deprecations
 

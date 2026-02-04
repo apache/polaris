@@ -72,9 +72,9 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.apache.polaris.test.minio.Minio;
-import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
+import org.apache.polaris.test.rustfs.Rustfs;
+import org.apache.polaris.test.rustfs.RustfsAccess;
+import org.apache.polaris.test.rustfs.RustfsExtension;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -90,19 +90,19 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 /**
- * These tests complement {@link PolarisRestCatalogMinIOIT} to validate client-side access to MinIO
+ * These tests complement {@link PolarisRestCatalogRustFSIT} to validate client-side access to RustFS
  * storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses with
  * some S3-specific options.
  */
 @QuarkusIntegrationTest
-@TestProfile(RestCatalogMinIOSpecialIT.Profile.class)
-@ExtendWith(MinioExtension.class)
+@TestProfile(RestCatalogRustFSSpecialIT.Profile.class)
+@ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class RestCatalogMinIOSpecialIT {
+public class RestCatalogRustFSSpecialIT {
 
-  private static final String BUCKET_URI_PREFIX = "/minio-test";
-  private static final String MINIO_ACCESS_KEY = "test-ak-123";
-  private static final String MINIO_SECRET_KEY = "test-sk-123";
+  private static final String BUCKET_URI_PREFIX = "/rustfs-test";
+  private static final String RUSTFS_ACCESS_KEY = "test-ak-123";
+  private static final String RUSTFS_SECRET_KEY = "test-sk-123";
   private static String adminToken;
 
   public static class Profile implements QuarkusTestProfile {
@@ -110,8 +110,8 @@ public class RestCatalogMinIOSpecialIT {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
-          .put("polaris.storage.aws.access-key", MINIO_ACCESS_KEY)
-          .put("polaris.storage.aws.secret-key", MINIO_SECRET_KEY)
+          .put("polaris.storage.aws.access-key", RUSTFS_ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", RUSTFS_SECRET_KEY)
           .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
           .build();
     }
@@ -137,15 +137,15 @@ public class RestCatalogMinIOSpecialIT {
   @BeforeAll
   static void setup(
       PolarisApiEndpoints apiEndpoints,
-      @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess,
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY) RustfsAccess rustfsAccess,
       ClientCredentials credentials) {
-    s3Client = minioAccess.s3Client();
+    s3Client = rustfsAccess.s3Client();
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
-    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
-    endpoint = minioAccess.s3endpoint();
+    storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
+    endpoint = rustfsAccess.s3endpoint();
   }
 
   @AfterAll
@@ -197,9 +197,9 @@ public class RestCatalogMinIOSpecialIT {
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
     if (!stsEnabled) {
       catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY);
+          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY);
       catalogProps.addProperty(
-          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
+          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY);
     }
     Catalog catalog =
         PolarisCatalog.builder()
@@ -227,8 +227,8 @@ public class RestCatalogMinIOSpecialIT {
 
     if (delegationMode.isEmpty()) {
       // Use local credentials on the client side
-      propertiesBuilder.put("s3.access-key-id", MINIO_ACCESS_KEY);
-      propertiesBuilder.put("s3.secret-access-key", MINIO_SECRET_KEY);
+      propertiesBuilder.put("s3.access-key-id", RUSTFS_ACCESS_KEY);
+      propertiesBuilder.put("s3.secret-access-key", RUSTFS_SECRET_KEY);
     }
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
