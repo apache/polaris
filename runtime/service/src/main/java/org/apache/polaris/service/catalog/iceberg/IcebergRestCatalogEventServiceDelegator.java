@@ -26,6 +26,8 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -64,6 +66,7 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+  @Inject EventAttributeMap eventAttributeMap;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -71,11 +74,13 @@ public class IcebergRestCatalogEventServiceDelegator
       IcebergCatalogAdapter delegate,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory,
-      CatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser,
+      EventAttributeMap eventAttributeMap) {
     this.delegate = delegate;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
     this.prefixParser = prefixParser;
+    this.eventAttributeMap = eventAttributeMap;
   }
 
   // Default constructor for CDI
@@ -507,7 +512,9 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)
                 .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
-                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                .put(
+                    EventAttributes.TABLE_METADATA,
+                    ((LoadTableResponse) resp.getEntity()).tableMetadata())));
     return resp;
   }
 
@@ -783,7 +790,14 @@ public class IcebergRestCatalogEventServiceDelegator
             new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)));
-    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+    List<TableMetadata> tableMetadataList =
+        eventAttributeMap.getRequired(EventAttributes.TABLE_METADATAS);
+    for (int i = 0; i < commitTransactionRequest.tableChanges().size(); i++) {
+      UpdateTableRequest req = commitTransactionRequest.tableChanges().get(i);
+      TableMetadata tableMetadata =
+          tableMetadataList != null && i < tableMetadataList.size()
+              ? tableMetadataList.get(i)
+              : null;
       polarisEventListener.onEvent(
           new PolarisEvent(
               PolarisEventType.AFTER_UPDATE_TABLE,
@@ -792,7 +806,8 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                   .put(EventAttributes.TABLE_NAME, req.identifier().name())
-                  .put(EventAttributes.UPDATE_TABLE_REQUEST, req)));
+                  .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
+                  .put(EventAttributes.TABLE_METADATA, tableMetadata)));
     }
     return resp;
   }

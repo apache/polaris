@@ -108,6 +108,7 @@ public class IcebergCatalogAdapter
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
   private final Clock clock;
+  private final EventAttributeMap eventAttributeMap;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -126,7 +127,8 @@ public class IcebergCatalogAdapter
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
       PolarisMetricsReporter metricsReporter,
-      Clock clock) {
+      Clock clock,
+      EventAttributeMap eventAttributeMap) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -144,6 +146,7 @@ public class IcebergCatalogAdapter
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
     this.clock = clock;
+    this.eventAttributeMap = eventAttributeMap;
   }
 
   /**
@@ -193,7 +196,7 @@ public class IcebergCatalogAdapter
         catalogHandlerUtils,
         externalCatalogFactories,
         storageAccessConfigProvider,
-        new EventAttributeMap());
+        eventAttributeMap);
   }
 
   @Override
