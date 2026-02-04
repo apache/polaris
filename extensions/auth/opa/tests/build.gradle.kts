@@ -38,7 +38,7 @@ dependencies {
   testImplementation(project(":polaris-runtime-test-common"))
 
   // Test dependencies
-  intTestImplementation("io.quarkus:quarkus-junit5")
+  intTestImplementation("io.quarkus:quarkus-junit")
   intTestImplementation("io.rest-assured:rest-assured")
   intTestImplementation(project(":polaris-api-management-model"))
   intTestImplementation(platform(libs.iceberg.bom))

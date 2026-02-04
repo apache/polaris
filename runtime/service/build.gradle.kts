@@ -133,8 +133,8 @@ dependencies {
   testImplementation("software.amazon.awssdk:dynamodb")
 
   testImplementation(enforcedPlatform(libs.quarkus.bom))
-  testImplementation("io.quarkus:quarkus-junit5")
-  testImplementation("io.quarkus:quarkus-junit5-mockito")
+  testImplementation("io.quarkus:quarkus-junit")
+  testImplementation("io.quarkus:quarkus-junit-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
