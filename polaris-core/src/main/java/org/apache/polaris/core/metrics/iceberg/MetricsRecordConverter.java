@@ -19,7 +19,9 @@
 package org.apache.polaris.core.metrics.iceberg;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,13 +77,13 @@ public final class MetricsRecordConverter {
   }
 
   /**
-   * Converts a TableIdentifier namespace to a dot-separated string.
+   * Converts a TableIdentifier namespace to a list of levels.
    *
    * @param tableIdentifier the Iceberg table identifier
-   * @return dot-separated namespace string
+   * @return namespace as a list of levels
    */
-  private static String namespaceToString(TableIdentifier tableIdentifier) {
-    return String.join(".", tableIdentifier.namespace().levels());
+  private static List<String> namespaceToList(TableIdentifier tableIdentifier) {
+    return Arrays.asList(tableIdentifier.namespace().levels());
   }
 
   /** Builder for converting ScanReport to ScanMetricsRecord. */
@@ -121,7 +123,7 @@ public final class MetricsRecordConverter {
       return ScanMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespaceToString(tableIdentifier))
+          .namespace(namespaceToList(tableIdentifier))
           .tableName(tableIdentifier.name())
           .timestamp(Instant.now())
           .snapshotId(Optional.of(scanReport.snapshotId()))
@@ -196,7 +198,7 @@ public final class MetricsRecordConverter {
       return CommitMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespaceToString(tableIdentifier))
+          .namespace(namespaceToList(tableIdentifier))
           .tableName(tableIdentifier.name())
           .timestamp(Instant.now())
           .snapshotId(commitReport.snapshotId())

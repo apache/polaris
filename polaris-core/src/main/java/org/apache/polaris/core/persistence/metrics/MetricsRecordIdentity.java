@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,12 +65,13 @@ public interface MetricsRecordIdentity {
   long catalogId();
 
   /**
-   * Namespace path as a dot-separated string (e.g., "db.schema").
+   * Namespace path as a list of levels (e.g., ["db", "schema"]).
    *
-   * <p>This is the namespace portion of the table identifier. Multi-level namespaces are
-   * represented with dots separating levels.
+   * <p>This is the namespace portion of the table identifier. Using a list avoids ambiguity when
+   * namespace segments contain dots. The persistence implementation handles the serialization
+   * format.
    */
-  String namespace();
+  List<String> namespace();
 
   /**
    * Table name.

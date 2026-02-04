@@ -19,7 +19,10 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
@@ -75,10 +78,15 @@ public interface MetricsQueryCriteria {
    * <p>This is the internal catalog entity ID. Callers should resolve catalog names to IDs before
    * querying, as catalog names can change over time.
    */
-  java.util.OptionalLong catalogId();
+  OptionalLong catalogId();
 
-  /** Namespace to filter by (dot-separated). */
-  Optional<String> namespace();
+  /**
+   * Namespace to filter by.
+   *
+   * <p>The namespace is represented as a list of levels to avoid ambiguity when segments contain
+   * dots. An empty list means no namespace filter is applied.
+   */
+  List<String> namespace();
 
   /** Table name to filter by. */
   Optional<String> tableName();
@@ -104,7 +112,7 @@ public interface MetricsQueryCriteria {
    * The OSS codebase provides basic support, but performance optimizations may be needed for
    * high-volume deployments.
    */
-  java.util.Map<String, String> metadata();
+  Map<String, String> metadata();
 
   // === Factory Methods ===
 
@@ -123,14 +131,18 @@ public interface MetricsQueryCriteria {
    * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
    *
    * @param catalogId the catalog entity ID
-   * @param namespace the namespace (dot-separated)
+   * @param namespace the namespace as a list of levels
    * @param tableName the table name
    * @param startTime the start time (inclusive)
    * @param endTime the end time (exclusive)
    * @return the query criteria
    */
   static MetricsQueryCriteria forTable(
-      long catalogId, String namespace, String tableName, Instant startTime, Instant endTime) {
+      long catalogId,
+      List<String> namespace,
+      String tableName,
+      Instant startTime,
+      Instant endTime) {
     return builder()
         .catalogId(catalogId)
         .namespace(namespace)
