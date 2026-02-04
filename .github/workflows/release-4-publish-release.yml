@@ -179,8 +179,8 @@ jobs:
 
       - name: Copy distribution from SVN dev to release space
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -214,8 +214,8 @@ jobs:
 
       - name: Update Helm index in release space
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -303,8 +303,8 @@ jobs:
       - name: Create GitHub release with artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
