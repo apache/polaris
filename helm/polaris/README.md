@@ -39,7 +39,7 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 * Centralized catalog, namespace, and table management
 * Kubernetes-native deployment with support for horizontal scaling, Ingress, and Gateway API
 * Production-ready observability with health checks and metrics
-* Open source and vendor neutral, governed by the Apache Polaris PPMC under the Apache Software Foundation
+* Open source and vendor neutral, governed by the Apache Polaris PMC under the Apache Software Foundation
 
 ## Documentation
 
