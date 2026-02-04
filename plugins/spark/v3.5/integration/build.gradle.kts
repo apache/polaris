@@ -114,7 +114,7 @@ dependencies {
   testImplementation(testFixtures(project(":polaris-runtime-service")))
 
   testImplementation(platform(libs.quarkus.bom))
-  testImplementation("io.quarkus:quarkus-junit5")
+  testImplementation("io.quarkus:quarkus-junit")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
 
