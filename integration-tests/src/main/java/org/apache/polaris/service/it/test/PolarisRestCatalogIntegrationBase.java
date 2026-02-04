@@ -710,13 +710,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   /**
    * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
-   * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
-   * try to fetch vended credentials. Expect a ForbiddenException.
+   * EXTERNAL catalogs, so try to register a table with the REST client configured to try to fetch
+   * vended credentials. Expect a ForbiddenException.
    */
   @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
   @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
   @Test
-  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+  public void testRegisterTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
@@ -730,10 +730,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
-      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
         Assertions.assertThatThrownBy(
-                () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
+                () -> restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation))
             .isInstanceOf(ForbiddenException.class)
             .hasMessageContaining("Access Delegation is not enabled for this catalog")
             .hasMessageContaining(

@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +45,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -67,6 +69,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -810,7 +813,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .registerTable(
+                  NS1,
+                  registerRequest,
+                  EnumSet.noneOf(AccessDelegationMode.class),
+                  Optional.empty());
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
@@ -850,7 +858,87 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.TABLE_LIST),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest);
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .registerTable(
+                  NS2,
+                  registerRequest,
+                  EnumSet.noneOf(AccessDelegationMode.class),
+                  Optional.empty());
+        });
+  }
+
+  @Test
+  public void testRegisterTableWithWriteDelegationSufficientPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
+
+    RegisterTableRequest registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name("newtable")
+            .metadataLocation(metadataLocation)
+            .build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_READ_DATA),
+            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA),
+            Set.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.TABLE_READ_DATA),
+            Set.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.TABLE_WRITE_DATA),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .registerTable(
+                  NS1,
+                  registerRequest,
+                  EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
+        },
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE2))
+              .dropTableWithoutPurge(TableIdentifier.of(NS1, "newtable"));
+        },
+        PRINCIPAL_NAME);
+  }
+
+  @Test
+  public void testRegisterTableWithWriteDelegationInsufficientPermissions() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    RegisterTableRequest registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name("newtable")
+            .metadataLocation(metadataLocation)
+            .build();
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .registerTable(
+                  NS2,
+                  registerRequest,
+                  EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
         });
   }
 
