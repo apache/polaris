@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitMetricsResult;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.CounterResult;
@@ -44,8 +45,7 @@ import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
  * ScanMetricsRecord record = MetricsRecordConverter.forScanReport(scanReport)
  *     .catalogId(catalog.getId())
  *     .catalogName(catalog.getName())
- *     .namespace(namespace.toString())
- *     .tableName(tableName)
+ *     .tableIdentifier(TableIdentifier.of(namespace, tableName))
  *     .build();
  * }</pre>
  */
@@ -80,8 +80,7 @@ public final class MetricsRecordConverter {
     private final ScanReport scanReport;
     private long catalogId;
     private String catalogName;
-    private String namespace;
-    private String tableName;
+    private TableIdentifier tableIdentifier;
 
     private ScanReportBuilder(ScanReport scanReport) {
       this.scanReport = scanReport;
@@ -97,13 +96,14 @@ public final class MetricsRecordConverter {
       return this;
     }
 
-    public ScanReportBuilder namespace(String namespace) {
-      this.namespace = namespace;
-      return this;
-    }
-
-    public ScanReportBuilder tableName(String tableName) {
-      this.tableName = tableName;
+    /**
+     * Sets the table identifier including namespace and table name.
+     *
+     * @param tableIdentifier the Iceberg table identifier
+     * @return this builder
+     */
+    public ScanReportBuilder tableIdentifier(TableIdentifier tableIdentifier) {
+      this.tableIdentifier = tableIdentifier;
       return this;
     }
 
@@ -116,8 +116,7 @@ public final class MetricsRecordConverter {
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
           .catalogName(catalogName)
-          .namespace(namespace)
-          .tableName(tableName)
+          .tableIdentifier(tableIdentifier)
           .timestamp(Instant.now())
           .snapshotId(Optional.of(scanReport.snapshotId()))
           .schemaId(Optional.of(scanReport.schemaId()))
@@ -159,8 +158,7 @@ public final class MetricsRecordConverter {
     private final CommitReport commitReport;
     private long catalogId;
     private String catalogName;
-    private String namespace;
-    private String tableName;
+    private TableIdentifier tableIdentifier;
 
     private CommitReportBuilder(CommitReport commitReport) {
       this.commitReport = commitReport;
@@ -176,13 +174,14 @@ public final class MetricsRecordConverter {
       return this;
     }
 
-    public CommitReportBuilder namespace(String namespace) {
-      this.namespace = namespace;
-      return this;
-    }
-
-    public CommitReportBuilder tableName(String tableName) {
-      this.tableName = tableName;
+    /**
+     * Sets the table identifier including namespace and table name.
+     *
+     * @param tableIdentifier the Iceberg table identifier
+     * @return this builder
+     */
+    public CommitReportBuilder tableIdentifier(TableIdentifier tableIdentifier) {
+      this.tableIdentifier = tableIdentifier;
       return this;
     }
 
@@ -195,8 +194,7 @@ public final class MetricsRecordConverter {
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
           .catalogName(catalogName)
-          .namespace(namespace)
-          .tableName(tableName)
+          .tableIdentifier(tableIdentifier)
           .timestamp(Instant.now())
           .snapshotId(commitReport.snapshotId())
           .sequenceNumber(Optional.of(commitReport.sequenceNumber()))

@@ -20,19 +20,39 @@ package org.apache.polaris.core.persistence.metrics;
 
 import java.time.Instant;
 import java.util.Map;
+import org.apache.iceberg.catalog.TableIdentifier;
 
 /**
  * Base interface containing common identification fields shared by all metrics records.
  *
  * <p>This interface defines the common fields that identify the source of a metrics report,
- * including the report ID, catalog information, namespace, table name, timestamp, and metadata.
+ * including the report ID, catalog information, table identifier, timestamp, and metadata.
  *
  * <p>Both {@link ScanMetricsRecord} and {@link CommitMetricsRecord} extend this interface to
  * inherit these common fields while adding their own specific metrics.
  *
- * <p>Note: Realm ID is intentionally not included in this interface. Multi-tenancy realm context
- * should be obtained from the CDI-injected {@code RealmContext} at persistence time. This keeps
- * catalog-specific code from needing to manage realm concerns.
+ * <h3>Design Decisions</h3>
+ *
+ * <p><b>TableIdentifier vs separate namespace/tableName:</b> We use Iceberg's {@link
+ * TableIdentifier} which encapsulates both namespace and table name. This aligns with how Iceberg
+ * reports identify tables and is consistent with Polaris entity patterns (e.g., {@code
+ * TableLikeEntity.getTableIdentifier()}).
+ *
+ * <p><b>Catalog ID/Name vs CatalogEntity:</b> We use separate primitive fields for catalog ID and
+ * name rather than {@code CatalogEntity} because:
+ *
+ * <ul>
+ *   <li>{@code CatalogEntity} is a heavyweight object containing storage config, properties, and
+ *       other data not relevant for metrics identification
+ *   <li>{@code CatalogEntity} is not an Immutables-compatible interface, making it difficult to
+ *       include in {@code @PolarisImmutable} generated classes
+ *   <li>For metrics, we only need the catalog ID (for foreign key relationships) and name (for
+ *       display/query convenience)
+ * </ul>
+ *
+ * <p><b>Realm ID:</b> Realm ID is intentionally not included in this interface. Multi-tenancy realm
+ * context should be obtained from the CDI-injected {@code RealmContext} at persistence time. This
+ * keeps catalog-specific code from needing to manage realm concerns.
  */
 public interface MetricsRecordIdentity {
 
@@ -61,18 +81,16 @@ public interface MetricsRecordIdentity {
   String catalogName();
 
   /**
-   * Dot-separated namespace path (e.g., "db.schema").
+   * Table identifier including namespace and table name.
    *
-   * <p>The namespace containing the table for which metrics are reported.
-   */
-  String namespace();
-
-  /**
-   * Table name.
+   * <p>This uses Iceberg's {@link TableIdentifier} which encapsulates both the namespace path and
+   * the table name. The namespace can be accessed via {@link TableIdentifier#namespace()} and the
+   * table name via {@link TableIdentifier#name()}.
    *
-   * <p>The name of the table for which metrics are reported.
+   * <p>Example: For a table "my_table" in namespace "db.schema", use {@code
+   * TableIdentifier.of(Namespace.of("db", "schema"), "my_table")}.
    */
-  String tableName();
+  TableIdentifier tableIdentifier();
 
   /**
    * Timestamp when the report was received.
