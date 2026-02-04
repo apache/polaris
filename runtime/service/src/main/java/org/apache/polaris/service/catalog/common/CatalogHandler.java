@@ -218,10 +218,13 @@ public abstract class CatalogHandler {
 
   /**
    * Authorizes a register-table-with-overwrite operation. If the table already exists, {@code
-   * REGISTER_TABLE_OVERWRITE} is authorized against the table entity. If the table does not exist,
-   * {@code REGISTER_TABLE} is authorized against the parent namespace.
+   * overwriteOp} is authorized against the table entity. If the table does not exist, {@code
+   * fallbackOp} is authorized against the parent namespace.
    */
-  protected void authorizeRegisterTableOverwriteOrThrow(TableIdentifier identifier) {
+  protected void authorizeRegisterTableOverwriteOrThrow(
+      PolarisAuthorizableOperation overwriteOp,
+      PolarisAuthorizableOperation fallbackOp,
+      TableIdentifier identifier) {
     Namespace namespace = identifier.namespace();
     resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
@@ -252,7 +255,7 @@ public abstract class CatalogHandler {
           .authorizeOrThrow(
               polarisPrincipal(),
               resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+              overwriteOp,
               tableTarget,
               null /* secondary */);
     } else {
@@ -265,7 +268,7 @@ public abstract class CatalogHandler {
           .authorizeOrThrow(
               polarisPrincipal(),
               resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-              PolarisAuthorizableOperation.REGISTER_TABLE, // normal register-table operation
+              fallbackOp, // normal register-table operation
               namespaceTarget,
               null /* secondary */);
     }
