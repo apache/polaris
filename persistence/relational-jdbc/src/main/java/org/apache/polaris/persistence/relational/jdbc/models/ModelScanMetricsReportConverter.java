@@ -36,7 +36,7 @@ public class ModelScanMetricsReportConverter implements Converter<ModelScanMetri
         .realmId(rs.getString(ModelScanMetricsReport.REALM_ID))
         .catalogId(rs.getLong(ModelScanMetricsReport.CATALOG_ID))
         .namespace(rs.getString(ModelScanMetricsReport.NAMESPACE))
-        .tableName(rs.getString(ModelScanMetricsReport.TABLE_NAME_COL))
+        .tableId(rs.getLong(ModelScanMetricsReport.TABLE_ID_COL))
         .timestampMs(rs.getLong(ModelScanMetricsReport.TIMESTAMP_MS))
         .principalName(rs.getString(ModelScanMetricsReport.PRINCIPAL_NAME))
         .requestId(rs.getString(ModelScanMetricsReport.REQUEST_ID))

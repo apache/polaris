@@ -33,10 +33,9 @@ public class ModelCommitMetricsReportTest {
 
   private static final String TEST_REPORT_ID = "commit-report-123";
   private static final String TEST_REALM_ID = "realm-1";
-  private static final String TEST_CATALOG_ID = "catalog-1";
-  private static final String TEST_CATALOG_NAME = "my_catalog";
+  private static final long TEST_CATALOG_ID = 12345L;
   private static final String TEST_NAMESPACE = "db.schema";
-  private static final String TEST_TABLE_NAME = "my_table";
+  private static final long TEST_TABLE_ID = 67890L;
   private static final long TEST_TIMESTAMP_MS = 1704067200000L;
   private static final String TEST_PRINCIPAL = "user@example.com";
   private static final String TEST_REQUEST_ID = "req-456";
@@ -71,12 +70,9 @@ public class ModelCommitMetricsReportTest {
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
     when(mockResultSet.getString(ModelCommitMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
-    when(mockResultSet.getString(ModelCommitMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
-    when(mockResultSet.getString(ModelCommitMetricsReport.CATALOG_NAME))
-        .thenReturn(TEST_CATALOG_NAME);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
     when(mockResultSet.getString(ModelCommitMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
-    when(mockResultSet.getString(ModelCommitMetricsReport.TABLE_NAME_COL))
-        .thenReturn(TEST_TABLE_NAME);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
     when(mockResultSet.getLong(ModelCommitMetricsReport.TIMESTAMP_MS))
         .thenReturn(TEST_TIMESTAMP_MS);
     when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_NAME))
@@ -135,9 +131,8 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
-    assertEquals(TEST_CATALOG_NAME, result.getCatalogName());
     assertEquals(TEST_NAMESPACE, result.getNamespace());
-    assertEquals(TEST_TABLE_NAME, result.getTableName());
+    assertEquals(TEST_TABLE_ID, result.getTableId());
     assertEquals(TEST_TIMESTAMP_MS, result.getTimestampMs());
     assertEquals(TEST_SNAPSHOT_ID, result.getSnapshotId());
     assertEquals(TEST_OPERATION, result.getOperation());
@@ -179,9 +174,8 @@ public class ModelCommitMetricsReportTest {
         .reportId(TEST_REPORT_ID)
         .realmId(TEST_REALM_ID)
         .catalogId(TEST_CATALOG_ID)
-        .catalogName(TEST_CATALOG_NAME)
         .namespace(TEST_NAMESPACE)
-        .tableName(TEST_TABLE_NAME)
+        .tableId(TEST_TABLE_ID)
         .timestampMs(TEST_TIMESTAMP_MS)
         .principalName(TEST_PRINCIPAL)
         .requestId(TEST_REQUEST_ID)

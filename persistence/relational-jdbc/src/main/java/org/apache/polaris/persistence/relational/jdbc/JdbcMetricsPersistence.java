@@ -92,7 +92,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         jdbcPersistence.queryScanMetricsReports(
             criteria.catalogId().getAsLong(),
             String.join(".", criteria.namespace()),
-            criteria.tableName().orElse(""),
+            criteria.tableId().orElse(0L),
             startTimeMs,
             endTimeMs,
             limit);
@@ -124,7 +124,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         jdbcPersistence.queryCommitMetricsReports(
             criteria.catalogId().getAsLong(),
             String.join(".", criteria.namespace()),
-            criteria.tableName().orElse(""),
+            criteria.tableId().orElse(0L),
             startTimeMs,
             endTimeMs,
             limit);

@@ -36,7 +36,7 @@ public class ModelCommitMetricsReportConverter implements Converter<ModelCommitM
         .realmId(rs.getString(ModelCommitMetricsReport.REALM_ID))
         .catalogId(rs.getLong(ModelCommitMetricsReport.CATALOG_ID))
         .namespace(rs.getString(ModelCommitMetricsReport.NAMESPACE))
-        .tableName(rs.getString(ModelCommitMetricsReport.TABLE_NAME_COL))
+        .tableId(rs.getLong(ModelCommitMetricsReport.TABLE_ID_COL))
         .timestampMs(rs.getLong(ModelCommitMetricsReport.TIMESTAMP_MS))
         .principalName(rs.getString(ModelCommitMetricsReport.PRINCIPAL_NAME))
         .requestId(rs.getString(ModelCommitMetricsReport.REQUEST_ID))

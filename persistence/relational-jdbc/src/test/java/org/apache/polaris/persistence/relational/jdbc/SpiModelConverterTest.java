@@ -24,8 +24,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
@@ -40,9 +38,9 @@ public class SpiModelConverterTest {
   private static final String TEST_REPORT_ID = "report-123";
   private static final String TEST_REALM_ID = "realm-1";
   private static final long TEST_CATALOG_ID = 12345L;
-  private static final String TEST_CATALOG_NAME = "my_catalog";
-  private static final String TEST_NAMESPACE = "db.schema";
-  private static final String TEST_TABLE_NAME = "my_table";
+  private static final List<String> TEST_NAMESPACE = List.of("db", "schema");
+  private static final String TEST_NAMESPACE_STR = "db.schema";
+  private static final long TEST_TABLE_ID = 67890L;
   private static final Instant TEST_TIMESTAMP = Instant.ofEpochMilli(1704067200000L);
   private static final long TEST_TIMESTAMP_MS = 1704067200000L;
 
@@ -56,10 +54,9 @@ public class SpiModelConverterTest {
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
-    assertThat(model.getCatalogId()).isEqualTo(String.valueOf(TEST_CATALOG_ID));
-    assertThat(model.getCatalogName()).isEqualTo(TEST_CATALOG_NAME);
-    assertThat(model.getNamespace()).isEqualTo(TEST_NAMESPACE);
-    assertThat(model.getTableName()).isEqualTo(TEST_TABLE_NAME);
+    assertThat(model.getCatalogId()).isEqualTo(TEST_CATALOG_ID);
+    assertThat(model.getNamespace()).isEqualTo(TEST_NAMESPACE_STR);
+    assertThat(model.getTableId()).isEqualTo(TEST_TABLE_ID);
     assertThat(model.getTimestampMs()).isEqualTo(TEST_TIMESTAMP_MS);
     assertThat(model.getSnapshotId()).isEqualTo(123456789L);
     assertThat(model.getSchemaId()).isEqualTo(1);
@@ -80,9 +77,8 @@ public class SpiModelConverterTest {
 
     assertThat(record.reportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(record.catalogId()).isEqualTo(TEST_CATALOG_ID);
-    assertThat(record.catalogName()).isEqualTo(TEST_CATALOG_NAME);
-    assertThat(record.tableIdentifier().namespace().toString()).isEqualTo(TEST_NAMESPACE);
-    assertThat(record.tableIdentifier().name()).isEqualTo(TEST_TABLE_NAME);
+    assertThat(record.namespace()).isEqualTo(TEST_NAMESPACE);
+    assertThat(record.tableId()).isEqualTo(TEST_TABLE_ID);
     assertThat(record.timestamp()).isEqualTo(TEST_TIMESTAMP);
     assertThat(record.snapshotId()).isEqualTo(Optional.of(123456789L));
     assertThat(record.schemaId()).isEqualTo(Optional.of(1));
@@ -102,8 +98,8 @@ public class SpiModelConverterTest {
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
     assertThat(roundTripped.catalogId()).isEqualTo(original.catalogId());
-    assertThat(roundTripped.catalogName()).isEqualTo(original.catalogName());
-    assertThat(roundTripped.tableIdentifier()).isEqualTo(original.tableIdentifier());
+    assertThat(roundTripped.namespace()).isEqualTo(original.namespace());
+    assertThat(roundTripped.tableId()).isEqualTo(original.tableId());
     assertThat(roundTripped.timestamp()).isEqualTo(original.timestamp());
     assertThat(roundTripped.resultDataFiles()).isEqualTo(original.resultDataFiles());
   }
@@ -118,10 +114,9 @@ public class SpiModelConverterTest {
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
-    assertThat(model.getCatalogId()).isEqualTo(String.valueOf(TEST_CATALOG_ID));
-    assertThat(model.getCatalogName()).isEqualTo(TEST_CATALOG_NAME);
-    assertThat(model.getNamespace()).isEqualTo(TEST_NAMESPACE);
-    assertThat(model.getTableName()).isEqualTo(TEST_TABLE_NAME);
+    assertThat(model.getCatalogId()).isEqualTo(TEST_CATALOG_ID);
+    assertThat(model.getNamespace()).isEqualTo(TEST_NAMESPACE_STR);
+    assertThat(model.getTableId()).isEqualTo(TEST_TABLE_ID);
     assertThat(model.getTimestampMs()).isEqualTo(TEST_TIMESTAMP_MS);
     assertThat(model.getSnapshotId()).isEqualTo(987654321L);
     assertThat(model.getSequenceNumber()).isEqualTo(5L);
@@ -140,9 +135,8 @@ public class SpiModelConverterTest {
 
     assertThat(record.reportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(record.catalogId()).isEqualTo(TEST_CATALOG_ID);
-    assertThat(record.catalogName()).isEqualTo(TEST_CATALOG_NAME);
-    assertThat(record.tableIdentifier().namespace().toString()).isEqualTo(TEST_NAMESPACE);
-    assertThat(record.tableIdentifier().name()).isEqualTo(TEST_TABLE_NAME);
+    assertThat(record.namespace()).isEqualTo(TEST_NAMESPACE);
+    assertThat(record.tableId()).isEqualTo(TEST_TABLE_ID);
     assertThat(record.timestamp()).isEqualTo(TEST_TIMESTAMP);
     assertThat(record.snapshotId()).isEqualTo(987654321L);
     assertThat(record.sequenceNumber()).isEqualTo(Optional.of(5L));
@@ -160,8 +154,8 @@ public class SpiModelConverterTest {
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
     assertThat(roundTripped.catalogId()).isEqualTo(original.catalogId());
-    assertThat(roundTripped.catalogName()).isEqualTo(original.catalogName());
-    assertThat(roundTripped.tableIdentifier()).isEqualTo(original.tableIdentifier());
+    assertThat(roundTripped.namespace()).isEqualTo(original.namespace());
+    assertThat(roundTripped.tableId()).isEqualTo(original.tableId());
     assertThat(roundTripped.timestamp()).isEqualTo(original.timestamp());
     assertThat(roundTripped.snapshotId()).isEqualTo(original.snapshotId());
     assertThat(roundTripped.operation()).isEqualTo(original.operation());
@@ -175,8 +169,8 @@ public class SpiModelConverterTest {
         ScanMetricsRecord.builder()
             .reportId(TEST_REPORT_ID)
             .catalogId(TEST_CATALOG_ID)
-            .catalogName(TEST_CATALOG_NAME)
-            .tableIdentifier(TableIdentifier.of(Namespace.empty(), TEST_TABLE_NAME))
+            .namespace(List.of())
+            .tableId(TEST_TABLE_ID)
             .timestamp(TEST_TIMESTAMP)
             .resultDataFiles(0L)
             .resultDeleteFiles(0L)
@@ -200,7 +194,7 @@ public class SpiModelConverterTest {
     assertThat(model.getNamespace()).isEmpty();
 
     ScanMetricsRecord roundTripped = SpiModelConverter.toScanMetricsRecord(model);
-    assertThat(roundTripped.tableIdentifier().namespace()).isEqualTo(Namespace.empty());
+    assertThat(roundTripped.namespace()).isEmpty();
   }
 
   @Test
@@ -209,8 +203,8 @@ public class SpiModelConverterTest {
         ScanMetricsRecord.builder()
             .reportId(TEST_REPORT_ID)
             .catalogId(TEST_CATALOG_ID)
-            .catalogName(TEST_CATALOG_NAME)
-            .tableIdentifier(TableIdentifier.of(Namespace.of("db"), TEST_TABLE_NAME))
+            .namespace(List.of("db"))
+            .tableId(TEST_TABLE_ID)
             .timestamp(TEST_TIMESTAMP)
             .resultDataFiles(0L)
             .resultDeleteFiles(0L)
@@ -244,8 +238,8 @@ public class SpiModelConverterTest {
         ScanMetricsRecord.builder()
             .reportId(TEST_REPORT_ID)
             .catalogId(TEST_CATALOG_ID)
-            .catalogName(TEST_CATALOG_NAME)
-            .tableIdentifier(TableIdentifier.of(Namespace.of("db"), TEST_TABLE_NAME))
+            .namespace(List.of("db"))
+            .tableId(TEST_TABLE_ID)
             .timestamp(TEST_TIMESTAMP)
             .resultDataFiles(0L)
             .resultDeleteFiles(0L)
@@ -275,8 +269,8 @@ public class SpiModelConverterTest {
     return ScanMetricsRecord.builder()
         .reportId(TEST_REPORT_ID)
         .catalogId(TEST_CATALOG_ID)
-        .catalogName(TEST_CATALOG_NAME)
-        .tableIdentifier(TableIdentifier.of(Namespace.of("db", "schema"), TEST_TABLE_NAME))
+        .namespace(TEST_NAMESPACE)
+        .tableId(TEST_TABLE_ID)
         .timestamp(TEST_TIMESTAMP)
         .snapshotId(123456789L)
         .schemaId(1)
@@ -307,10 +301,9 @@ public class SpiModelConverterTest {
     return ImmutableModelScanMetricsReport.builder()
         .reportId(TEST_REPORT_ID)
         .realmId(TEST_REALM_ID)
-        .catalogId(String.valueOf(TEST_CATALOG_ID))
-        .catalogName(TEST_CATALOG_NAME)
-        .namespace(TEST_NAMESPACE)
-        .tableName(TEST_TABLE_NAME)
+        .catalogId(TEST_CATALOG_ID)
+        .namespace(TEST_NAMESPACE_STR)
+        .tableId(TEST_TABLE_ID)
         .timestampMs(TEST_TIMESTAMP_MS)
         .snapshotId(123456789L)
         .schemaId(1)
@@ -341,8 +334,8 @@ public class SpiModelConverterTest {
     return CommitMetricsRecord.builder()
         .reportId(TEST_REPORT_ID)
         .catalogId(TEST_CATALOG_ID)
-        .catalogName(TEST_CATALOG_NAME)
-        .tableIdentifier(TableIdentifier.of(Namespace.of("db", "schema"), TEST_TABLE_NAME))
+        .namespace(TEST_NAMESPACE)
+        .tableId(TEST_TABLE_ID)
         .timestamp(TEST_TIMESTAMP)
         .snapshotId(987654321L)
         .sequenceNumber(5L)
@@ -373,10 +366,9 @@ public class SpiModelConverterTest {
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(TEST_REPORT_ID)
         .realmId(TEST_REALM_ID)
-        .catalogId(String.valueOf(TEST_CATALOG_ID))
-        .catalogName(TEST_CATALOG_NAME)
-        .namespace(TEST_NAMESPACE)
-        .tableName(TEST_TABLE_NAME)
+        .catalogId(TEST_CATALOG_ID)
+        .namespace(TEST_NAMESPACE_STR)
+        .tableId(TEST_TABLE_ID)
         .timestampMs(TEST_TIMESTAMP_MS)
         .snapshotId(987654321L)
         .sequenceNumber(5L)

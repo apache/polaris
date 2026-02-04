@@ -81,10 +81,9 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .schemaId(1)
@@ -122,10 +121,9 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .sequenceNumber(1L)
@@ -166,10 +164,10 @@ class MetricsReportPersistenceTest {
           ImmutableModelScanMetricsReport.builder()
               .reportId(UUID.randomUUID().toString())
               .realmId("TEST_REALM")
-              .catalogId("test-catalog")
-              .catalogName("test-catalog")
+              .catalogId(12345L)
+              
               .namespace("db.schema")
-              .tableName("table_" + i)
+              .tableId(100L + i)
               .timestampMs(System.currentTimeMillis())
               .resultDataFiles((long) (i * 10))
               .resultDeleteFiles(0L)
@@ -199,10 +197,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db")
-            .tableName("minimal_table")
+            .tableId(99999L)
             .timestampMs(System.currentTimeMillis())
             // All optional fields left as null
             .resultDataFiles(1L)
@@ -237,10 +235,10 @@ class MetricsReportPersistenceTest {
           ImmutableModelScanMetricsReport.builder()
               .reportId(UUID.randomUUID().toString())
               .realmId("TEST_REALM")
-              .catalogId("test-catalog")
-              .catalogName("test-catalog")
+              .catalogId(12345L)
+              
               .namespace("db.schema")
-              .tableName("query_test_table")
+              .tableId(88888L)
               .timestampMs(baseTime + i * 1000)
               .resultDataFiles((long) i)
               .resultDeleteFiles(0L)
@@ -265,19 +263,19 @@ class MetricsReportPersistenceTest {
     // Query all reports for the table
     var results =
         persistence.queryScanMetricsReports(
-            "test-catalog", "db.schema", "query_test_table", null, null, 10);
+            12345L, "db.schema", 88888L, null, null, 10);
     assertThat(results).hasSize(5);
 
     // Query with time range
     var rangeResults =
         persistence.queryScanMetricsReports(
-            "test-catalog", "db.schema", "query_test_table", baseTime + 1000, baseTime + 4000, 10);
+            12345L, "db.schema", 88888L, baseTime + 1000, baseTime + 4000, 10);
     assertThat(rangeResults).hasSize(3);
 
     // Query with limit
     var limitedResults =
         persistence.queryScanMetricsReports(
-            "test-catalog", "db.schema", "query_test_table", null, null, 2);
+            12345L, "db.schema", 88888L, null, null, 2);
     assertThat(limitedResults).hasSize(2);
   }
 
@@ -290,10 +288,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db")
-            .tableName("trace_test_table")
+            .tableId(77777L)
             .timestampMs(System.currentTimeMillis())
             .otelTraceId(traceId)
             .resultDataFiles(1L)
@@ -333,10 +331,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId("old-report-" + UUID.randomUUID())
             .realmId("TEST_REALM")
-            .catalogId("catalog1")
-            .catalogName("test_catalog")
+            .catalogId(11111L)
+            
             .namespace("test_namespace")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(twoDaysAgo)
             .resultDataFiles(10L)
             .resultDeleteFiles(0L)
@@ -362,10 +360,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId("recent-report-" + UUID.randomUUID())
             .realmId("TEST_REALM")
-            .catalogId("catalog1")
-            .catalogName("test_catalog")
+            .catalogId(11111L)
+            
             .namespace("test_namespace")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(oneHourAgo)
             .resultDataFiles(10L)
             .resultDeleteFiles(0L)
@@ -396,7 +394,7 @@ class MetricsReportPersistenceTest {
     // Query to verify only recent report remains
     var results =
         persistence.queryScanMetricsReports(
-            "test_catalog", "test_namespace", "test_table", null, null, 10);
+            11111L, "test_namespace", 67890L, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -413,10 +411,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId("old-commit-" + UUID.randomUUID())
             .realmId("TEST_REALM")
-            .catalogId("catalog1")
-            .catalogName("test_catalog")
+            .catalogId(11111L)
+            
             .namespace("test_namespace")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(twoDaysAgo)
             .snapshotId(100L)
             .sequenceNumber(1L)
@@ -447,10 +445,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId("recent-commit-" + UUID.randomUUID())
             .realmId("TEST_REALM")
-            .catalogId("catalog1")
-            .catalogName("test_catalog")
+            .catalogId(11111L)
+            
             .namespace("test_namespace")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(oneHourAgo)
             .snapshotId(101L)
             .sequenceNumber(2L)
@@ -486,7 +484,7 @@ class MetricsReportPersistenceTest {
     // Query to verify only recent report remains
     var results =
         persistence.queryCommitMetricsReports(
-            "test_catalog", "test_namespace", "test_table", null, null, 10);
+            11111L, "test_namespace", 67890L, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -519,10 +517,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .resultDataFiles(1L)
             .resultDeleteFiles(0L)
@@ -554,10 +552,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .operation("append")
@@ -590,7 +588,7 @@ class MetricsReportPersistenceTest {
     JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
 
     var results =
-        v3Persistence.queryScanMetricsReports("catalog", "namespace", "table", null, null, 10);
+        v3Persistence.queryScanMetricsReports(12345L, "namespace", 67890L, null, null, 10);
 
     assertThat(results).isEmpty();
   }
@@ -600,7 +598,7 @@ class MetricsReportPersistenceTest {
     JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
 
     var results =
-        v3Persistence.queryCommitMetricsReports("catalog", "namespace", "table", null, null, 10);
+        v3Persistence.queryCommitMetricsReports(12345L, "namespace", 67890L, null, null, 10);
 
     assertThat(results).isEmpty();
   }
@@ -656,10 +654,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .schemaId(1)
@@ -697,10 +695,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .sequenceNumber(1L)
@@ -745,10 +743,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(reportId)
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .schemaId(1)
@@ -797,10 +795,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelCommitMetricsReport.builder()
             .reportId(reportId)
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .sequenceNumber(1L)
@@ -851,10 +849,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(reportId)
             .realmId("TEST_REALM")
-            .catalogId("test-catalog")
-            .catalogName("test-catalog")
+            .catalogId(12345L)
+            
             .namespace("db.schema")
-            .tableName("test_table")
+            .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
             .snapshotId(12345L)
             .schemaId(1)
@@ -902,10 +900,10 @@ class MetricsReportPersistenceTest {
         ImmutableModelScanMetricsReport.builder()
             .reportId(reportId)
             .realmId("TEST_REALM")
-            .catalogId("test-catalog-roles-query")
-            .catalogName("test-catalog-roles-query")
+            .catalogId(22222L)
+            
             .namespace("db.schema")
-            .tableName("test_table_roles")
+            .tableId(66666L)
             .timestampMs(timestamp)
             .snapshotId(12345L)
             .schemaId(1)
@@ -938,9 +936,9 @@ class MetricsReportPersistenceTest {
     // Query by time range and verify roles are returned
     List<ModelScanMetricsReport> results =
         persistence.queryScanMetricsReports(
-            "test-catalog-roles-query",
+            22222L,
             "db.schema",
-            "test_table_roles",
+            66666L,
             timestamp - 1000,
             timestamp + 1000,
             100);

@@ -49,6 +49,7 @@ public final class MetricsReportConverter {
    * @param scanReport the Iceberg scan report
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
+   * @param tableId the table entity ID
    * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the scan (optional)
    * @param requestId the request ID (optional)
@@ -60,6 +61,7 @@ public final class MetricsReportConverter {
       ScanReport scanReport,
       String realmId,
       long catalogId,
+      long tableId,
       String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
@@ -77,7 +79,7 @@ public final class MetricsReportConverter {
             .realmId(realmId)
             .catalogId(catalogId)
             .namespace(namespace)
-            .tableName(scanReport.tableName())
+            .tableId(tableId)
             .timestampMs(timestampMs)
             .principalName(principalName)
             .requestId(requestId)
@@ -143,6 +145,7 @@ public final class MetricsReportConverter {
    * @param commitReport the Iceberg commit report
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
+   * @param tableId the table entity ID
    * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the commit (optional)
    * @param requestId the request ID (optional)
@@ -154,6 +157,7 @@ public final class MetricsReportConverter {
       CommitReport commitReport,
       String realmId,
       long catalogId,
+      long tableId,
       String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
@@ -171,7 +175,7 @@ public final class MetricsReportConverter {
             .realmId(realmId)
             .catalogId(catalogId)
             .namespace(namespace)
-            .tableName(commitReport.tableName())
+            .tableId(tableId)
             .timestampMs(timestampMs)
             .principalName(principalName)
             .requestId(requestId)

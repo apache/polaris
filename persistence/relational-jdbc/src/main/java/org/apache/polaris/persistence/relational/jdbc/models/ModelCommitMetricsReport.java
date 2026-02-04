@@ -39,7 +39,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   String REALM_ID = "realm_id";
   String CATALOG_ID = "catalog_id";
   String NAMESPACE = "namespace";
-  String TABLE_NAME_COL = "table_name";
+  String TABLE_ID_COL = "table_id";
   String TIMESTAMP_MS = "timestamp_ms";
   String PRINCIPAL_NAME = "principal_name";
   String REQUEST_ID = "request_id";
@@ -75,7 +75,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           REALM_ID,
           CATALOG_ID,
           NAMESPACE,
-          TABLE_NAME_COL,
+          TABLE_ID_COL,
           TIMESTAMP_MS,
           PRINCIPAL_NAME,
           REQUEST_ID,
@@ -114,7 +114,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   String getNamespace();
 
-  String getTableName();
+  long getTableId();
 
   long getTimestampMs();
 
@@ -195,7 +195,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .realmId(rs.getString(REALM_ID))
         .catalogId(rs.getLong(CATALOG_ID))
         .namespace(rs.getString(NAMESPACE))
-        .tableName(rs.getString(TABLE_NAME_COL))
+        .tableId(rs.getLong(TABLE_ID_COL))
         .timestampMs(rs.getLong(TIMESTAMP_MS))
         .principalName(rs.getString(PRINCIPAL_NAME))
         .requestId(rs.getString(REQUEST_ID))
@@ -234,7 +234,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(REALM_ID, getRealmId());
     map.put(CATALOG_ID, getCatalogId());
     map.put(NAMESPACE, getNamespace());
-    map.put(TABLE_NAME_COL, getTableName());
+    map.put(TABLE_ID_COL, getTableId());
     map.put(TIMESTAMP_MS, getTimestampMs());
     map.put(PRINCIPAL_NAME, getPrincipalName());
     map.put(REQUEST_ID, getRequestId());
@@ -277,7 +277,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           .realmId("")
           .catalogId(0L)
           .namespace("")
-          .tableName("")
+          .tableId(0L)
           .timestampMs(0L)
           .snapshotId(0L)
           .operation("")
