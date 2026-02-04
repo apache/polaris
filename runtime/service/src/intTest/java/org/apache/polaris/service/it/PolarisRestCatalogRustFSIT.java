@@ -63,7 +63,8 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
 
   @BeforeAll
   static void setup(
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY) RustfsAccess rustfsAccess) {
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
+          RustfsAccess rustfsAccess) {
     storageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX);
     endpoint = rustfsAccess.s3endpoint();
   }

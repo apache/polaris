@@ -90,9 +90,9 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 /**
- * These tests complement {@link PolarisRestCatalogRustFSIT} to validate client-side access to RustFS
- * storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses with
- * some S3-specific options.
+ * These tests complement {@link PolarisRestCatalogRustFSIT} to validate client-side access to
+ * RustFS storage via {@code FileIO} instances configured from catalog's {@code loadTable} responses
+ * with some S3-specific options.
  */
 @QuarkusIntegrationTest
 @TestProfile(RestCatalogRustFSSpecialIT.Profile.class)
@@ -137,7 +137,8 @@ public class RestCatalogRustFSSpecialIT {
   @BeforeAll
   static void setup(
       PolarisApiEndpoints apiEndpoints,
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY) RustfsAccess rustfsAccess,
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
+          RustfsAccess rustfsAccess,
       ClientCredentials credentials) {
     s3Client = rustfsAccess.s3Client();
     endpoints = apiEndpoints;

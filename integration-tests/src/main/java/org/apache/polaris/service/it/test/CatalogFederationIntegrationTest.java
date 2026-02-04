@@ -108,7 +108,8 @@ public class CatalogFederationIntegrationTest {
   static void setup(
       PolarisApiEndpoints apiEndpoints,
       ClientCredentials credentials,
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY) RustfsAccess rustfsAccess) {
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
+          RustfsAccess rustfsAccess) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     String adminToken = client.obtainToken(credentials);

@@ -90,7 +90,7 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
         LOGGER.warn(
             "Could not resolve '{}', falling back to 'localhost'. "
                 + "This usually happens when your router or DNS provider is unable to resolve the nip.io addresses.",
-                RUSTFS_DOMAIN_NIP);
+            RUSTFS_DOMAIN_NIP);
         name = "localhost";
         fixedBucketName = "rustfsbucket";
         validateBucketHost(fixedBucketName);
