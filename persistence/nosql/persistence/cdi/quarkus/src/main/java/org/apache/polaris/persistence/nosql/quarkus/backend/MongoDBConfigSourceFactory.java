@@ -23,11 +23,12 @@ import io.smallrye.config.ConfigSourceFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.persistence.nosql.mongodb.MongoDbBackendFactory;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 
 /**
- * This config source factory is used to activate the Quarkus-MongoDB driver when one of the MongoDB
- * Nessie version stores is used, and otherwise disable the Quarkus-MongoDB driver.
+ * This config source factory is used to activate the Quarkus-MongoDB driver when the MongoDB NoSQL
+ * database backend is used, and otherwise disable the Quarkus-MongoDB driver.
  *
  * <p>The Quarkus configuration {@code quarkus.mongodb.active}, defaults to {@code true}, got added
  * via Quarkus 3.31.0.
@@ -51,7 +52,8 @@ public class MongoDBConfigSourceFactory implements ConfigSourceFactory {
             }
 
             var backendType = context.getValue("polaris.persistence.nosql.backend");
-            return backendType != null && "MongoDb".equalsIgnoreCase(backendType.getValue())
+            return backendType != null
+                    && MongoDbBackendFactory.NAME.equalsIgnoreCase(backendType.getValue())
                 ? "true"
                 : "false";
           }
