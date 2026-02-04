@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,6 +53,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
@@ -75,6 +77,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -496,28 +499,66 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // To get a handy metadata file we can use one from another table.
     // to avoid overlapping directories, drop the original table and recreate it via registerTable
-    final String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
     newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
-    final RegisterTableRequest registerRequest =
-        new RegisterTableRequest() {
-          @Override
-          public String name() {
-            return TABLE_NS1_1.name();
-          }
-
-          @Override
-          public String metadataLocation() {
-            return metadataLocation;
-          }
-        };
+    RegisterTableRequest registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name(TABLE_NS1_1.name())
+            .metadataLocation(metadataLocation)
+            .build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
     return authzTestsBuilder("registerTable")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest))
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .registerTable(
+                        NS1,
+                        registerRequest,
+                        EnumSet.noneOf(AccessDelegationMode.class),
+                        Optional.empty()))
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testRegisterTableWithWriteDelegationPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+
+    // To get a handy metadata file we can use one from another table.
+    // to avoid overlapping directories, drop the original table and recreate it via registerTable
+    String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
+
+    RegisterTableRequest registerRequest =
+        ImmutableRegisterTableRequest.builder()
+            .name(TABLE_NS1_1.name())
+            .metadataLocation(metadataLocation)
+            .build();
+
+    return authzTestsBuilder("registerTableWithWriteDelegation")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .registerTable(
+                        NS1,
+                        registerRequest,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                        Optional.empty()))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -638,7 +679,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // With fine-grained authorization disabled, TABLE_WRITE_PROPERTIES should work
     // even for operations that would require specific privileges when enabled
     return authzTestsBuilder("updateTable (coarse-grained fallback)")
-        .action(() -> newWrapperWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request))
+        .action(() -> newHandlerWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -649,7 +690,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * Creates a wrapper with fine-grained authorization explicitly disabled for testing the fallback
    * behavior to coarse-grained authorization.
    */
-  private IcebergCatalogHandler newWrapperWithFineGrainedAuthzDisabled() {
+  private IcebergCatalogHandler newHandlerWithFineGrainedAuthzDisabled() {
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
 
     // Create a custom CallContext that returns a custom RealmConfig
