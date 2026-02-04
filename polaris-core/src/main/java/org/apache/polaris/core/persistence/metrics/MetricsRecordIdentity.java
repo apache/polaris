@@ -20,35 +20,25 @@ package org.apache.polaris.core.persistence.metrics;
 
 import java.time.Instant;
 import java.util.Map;
-import org.apache.iceberg.catalog.TableIdentifier;
 
 /**
  * Base interface containing common identification fields shared by all metrics records.
  *
  * <p>This interface defines the common fields that identify the source of a metrics report,
- * including the report ID, catalog information, table identifier, timestamp, and metadata.
+ * including the report ID, catalog ID, table location, timestamp, and metadata.
  *
  * <p>Both {@link ScanMetricsRecord} and {@link CommitMetricsRecord} extend this interface to
  * inherit these common fields while adding their own specific metrics.
  *
  * <h3>Design Decisions</h3>
  *
- * <p><b>TableIdentifier vs separate namespace/tableName:</b> We use Iceberg's {@link
- * TableIdentifier} which encapsulates both namespace and table name. This aligns with how Iceberg
- * reports identify tables and is consistent with Polaris entity patterns (e.g., {@code
- * TableLikeEntity.getTableIdentifier()}).
+ * <p><b>Namespace/TableName as primitives:</b> We use separate String fields for namespace and
+ * table name rather than Iceberg's {@code TableIdentifier} to avoid Iceberg dependencies in the
+ * Polaris SPI. The service layer can convert to/from {@code TableIdentifier} as needed.
  *
- * <p><b>Catalog ID/Name vs CatalogEntity:</b> We use separate primitive fields for catalog ID and
- * name rather than {@code CatalogEntity} because:
- *
- * <ul>
- *   <li>{@code CatalogEntity} is a heavyweight object containing storage config, properties, and
- *       other data not relevant for metrics identification
- *   <li>{@code CatalogEntity} is not an Immutables-compatible interface, making it difficult to
- *       include in {@code @PolarisImmutable} generated classes
- *   <li>For metrics, we only need the catalog ID (for foreign key relationships) and name (for
- *       display/query convenience)
- * </ul>
+ * <p><b>Catalog ID only (no name):</b> We store only the catalog ID, not the catalog name. Catalog
+ * names can change over time (via rename operations), which would make querying historical metrics
+ * by name challenging. Queries should resolve catalog names to IDs using the current catalog state.
  *
  * <p><b>Realm ID:</b> Realm ID is intentionally not included in this interface. Multi-tenancy realm
  * context should be obtained from the CDI-injected {@code RealmContext} at persistence time. This
@@ -68,29 +58,25 @@ public interface MetricsRecordIdentity {
    * Internal catalog ID.
    *
    * <p>This matches the catalog entity ID in Polaris persistence, as defined by {@code
-   * PolarisEntityCore#getId()}.
+   * PolarisEntityCore#getId()}. The catalog name is not stored since it can change over time;
+   * queries should resolve names to IDs using the current catalog state.
    */
   long catalogId();
 
   /**
-   * Human-readable catalog name.
+   * Namespace path as a dot-separated string (e.g., "db.schema").
    *
-   * <p>The catalog name as known to clients. This is stored alongside the ID for query convenience
-   * and display purposes.
+   * <p>This is the namespace portion of the table identifier. Multi-level namespaces are
+   * represented with dots separating levels.
    */
-  String catalogName();
+  String namespace();
 
   /**
-   * Table identifier including namespace and table name.
+   * Table name.
    *
-   * <p>This uses Iceberg's {@link TableIdentifier} which encapsulates both the namespace path and
-   * the table name. The namespace can be accessed via {@link TableIdentifier#namespace()} and the
-   * table name via {@link TableIdentifier#name()}.
-   *
-   * <p>Example: For a table "my_table" in namespace "db.schema", use {@code
-   * TableIdentifier.of(Namespace.of("db", "schema"), "my_table")}.
+   * <p>This is the table name portion of the table identifier, without the namespace prefix.
    */
-  TableIdentifier tableIdentifier();
+  String tableName();
 
   /**
    * Timestamp when the report was received.

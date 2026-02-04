@@ -39,7 +39,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *
  * <table>
  * <tr><th>Pattern</th><th>Fields Used</th><th>Index Required</th></tr>
- * <tr><td>By Table + Time</td><td>catalogName, namespace, tableName, startTime, endTime</td><td>Yes (OSS)</td></tr>
+ * <tr><td>By Table + Time</td><td>catalogId, namespace, tableName, startTime, endTime</td><td>Yes (OSS)</td></tr>
  * <tr><td>By Time Only</td><td>startTime, endTime</td><td>Partial (timestamp index)</td></tr>
  * </table>
  *
@@ -69,8 +69,13 @@ public interface MetricsQueryCriteria {
 
   // === Table Identification (optional) ===
 
-  /** Catalog name to filter by. */
-  Optional<String> catalogName();
+  /**
+   * Catalog ID to filter by.
+   *
+   * <p>This is the internal catalog entity ID. Callers should resolve catalog names to IDs before
+   * querying, as catalog names can change over time.
+   */
+  java.util.OptionalLong catalogId();
 
   /** Namespace to filter by (dot-separated). */
   Optional<String> namespace();
@@ -117,7 +122,7 @@ public interface MetricsQueryCriteria {
    *
    * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
    *
-   * @param catalogName the catalog name
+   * @param catalogId the catalog entity ID
    * @param namespace the namespace (dot-separated)
    * @param tableName the table name
    * @param startTime the start time (inclusive)
@@ -125,9 +130,9 @@ public interface MetricsQueryCriteria {
    * @return the query criteria
    */
   static MetricsQueryCriteria forTable(
-      String catalogName, String namespace, String tableName, Instant startTime, Instant endTime) {
+      long catalogId, String namespace, String tableName, Instant startTime, Instant endTime) {
     return builder()
-        .catalogName(catalogName)
+        .catalogId(catalogId)
         .namespace(namespace)
         .tableName(tableName)
         .startTime(startTime)
