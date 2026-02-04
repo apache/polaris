@@ -42,7 +42,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *
  * <table>
  * <tr><th>Pattern</th><th>Fields Used</th><th>Index Required</th></tr>
- * <tr><td>By Table + Time</td><td>catalogId, namespace, tableName, startTime, endTime</td><td>Yes (OSS)</td></tr>
+ * <tr><td>By Table + Time</td><td>catalogId, tableId, startTime, endTime</td><td>Yes (OSS)</td></tr>
  * <tr><td>By Time Only</td><td>startTime, endTime</td><td>Partial (timestamp index)</td></tr>
  * </table>
  *
@@ -88,8 +88,13 @@ public interface MetricsQueryCriteria {
    */
   List<String> namespace();
 
-  /** Table name to filter by. */
-  Optional<String> tableName();
+  /**
+   * Table entity ID to filter by.
+   *
+   * <p>This is the internal table entity ID. Callers should resolve table names to IDs before
+   * querying, as table names can change over time.
+   */
+  OptionalLong tableId();
 
   // === Time Range ===
 
@@ -126,30 +131,26 @@ public interface MetricsQueryCriteria {
   }
 
   /**
-   * Creates criteria for querying by table and time range.
+   * Creates a builder pre-populated with table identification info.
    *
-   * <p>Pagination is handled separately via the {@code PageToken} parameter to query methods.
+   * <p>This allows the caller to add time ranges and other filters at the call site. This pattern
+   * is useful when table info is resolved in one place and time ranges are added elsewhere.
+   *
+   * <p>Example usage:
+   *
+   * <pre>{@code
+   * MetricsQueryCriteria criteria = MetricsQueryCriteria.forTable(catalogId, tableId)
+   *     .startTime(startTime)
+   *     .endTime(endTime)
+   *     .build();
+   * }</pre>
    *
    * @param catalogId the catalog entity ID
-   * @param namespace the namespace as a list of levels
-   * @param tableName the table name
-   * @param startTime the start time (inclusive)
-   * @param endTime the end time (exclusive)
-   * @return the query criteria
+   * @param tableId the table entity ID
+   * @return a builder pre-populated with table info, ready for adding time ranges
    */
-  static MetricsQueryCriteria forTable(
-      long catalogId,
-      List<String> namespace,
-      String tableName,
-      Instant startTime,
-      Instant endTime) {
-    return builder()
-        .catalogId(catalogId)
-        .namespace(namespace)
-        .tableName(tableName)
-        .startTime(startTime)
-        .endTime(endTime)
-        .build();
+  static ImmutableMetricsQueryCriteria.Builder forTable(long catalogId, long tableId) {
+    return builder().catalogId(catalogId).tableId(tableId);
   }
 
   /**

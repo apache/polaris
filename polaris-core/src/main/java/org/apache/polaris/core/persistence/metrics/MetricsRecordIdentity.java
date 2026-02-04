@@ -33,13 +33,14 @@ import java.util.Map;
  *
  * <h3>Design Decisions</h3>
  *
- * <p><b>Namespace/TableName as primitives:</b> We use separate String fields for namespace and
- * table name rather than Iceberg's {@code TableIdentifier} to avoid Iceberg dependencies in the
- * Polaris SPI. The service layer can convert to/from {@code TableIdentifier} as needed.
+ * <p><b>Entity IDs only (no names):</b> We store only catalog ID and table ID, not their names.
+ * Names can change over time (via rename operations), which would make querying historical metrics
+ * by name challenging and lead to correctness issues. Queries should resolve names to IDs using the
+ * current catalog state.
  *
- * <p><b>Catalog ID only (no name):</b> We store only the catalog ID, not the catalog name. Catalog
- * names can change over time (via rename operations), which would make querying historical metrics
- * by name challenging. Queries should resolve catalog names to IDs using the current catalog state.
+ * <p><b>Namespace as List&lt;String&gt;:</b> Namespaces are stored as a list of levels rather than
+ * a dot-separated string to avoid ambiguity when namespace segments contain dots. The persistence
+ * implementation handles the serialization format.
  *
  * <p><b>Realm ID:</b> Realm ID is intentionally not included in this interface. Multi-tenancy realm
  * context should be obtained from the CDI-injected {@code RealmContext} at persistence time. This
@@ -74,11 +75,13 @@ public interface MetricsRecordIdentity {
   List<String> namespace();
 
   /**
-   * Table name.
+   * Internal table entity ID.
    *
-   * <p>This is the table name portion of the table identifier, without the namespace prefix.
+   * <p>This matches the table entity ID in Polaris persistence, as defined by {@code
+   * PolarisEntityCore#getId()}. The table name is not stored since it can change over time; queries
+   * should resolve names to IDs using the current catalog state.
    */
-  String tableName();
+  long tableId();
 
   /**
    * Timestamp when the report was received.

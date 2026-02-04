@@ -19,13 +19,11 @@
 package org.apache.polaris.core.metrics.iceberg;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitMetricsResult;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.CounterResult;
@@ -46,7 +44,8 @@ import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
  * <pre>{@code
  * ScanMetricsRecord record = MetricsRecordConverter.forScanReport(scanReport)
  *     .catalogId(catalog.getId())
- *     .tableIdentifier(TableIdentifier.of(namespace, tableName))
+ *     .tableId(tableEntity.getId())
+ *     .namespace(namespace)
  *     .build();
  * }</pre>
  */
@@ -76,21 +75,12 @@ public final class MetricsRecordConverter {
     return new CommitReportBuilder(commitReport);
   }
 
-  /**
-   * Converts a TableIdentifier namespace to a list of levels.
-   *
-   * @param tableIdentifier the Iceberg table identifier
-   * @return namespace as a list of levels
-   */
-  private static List<String> namespaceToList(TableIdentifier tableIdentifier) {
-    return Arrays.asList(tableIdentifier.namespace().levels());
-  }
-
   /** Builder for converting ScanReport to ScanMetricsRecord. */
   public static final class ScanReportBuilder {
     private final ScanReport scanReport;
     private long catalogId;
-    private TableIdentifier tableIdentifier;
+    private long tableId;
+    private List<String> namespace = Collections.emptyList();
 
     private ScanReportBuilder(ScanReport scanReport) {
       this.scanReport = scanReport;
@@ -102,16 +92,26 @@ public final class MetricsRecordConverter {
     }
 
     /**
-     * Sets the table identifier including namespace and table name.
+     * Sets the table entity ID.
      *
-     * <p>The namespace and table name will be extracted from the TableIdentifier and stored as
-     * separate primitive fields in the SPI record.
+     * <p>This is the internal Polaris entity ID for the table.
      *
-     * @param tableIdentifier the Iceberg table identifier
+     * @param tableId the table entity ID
      * @return this builder
      */
-    public ScanReportBuilder tableIdentifier(TableIdentifier tableIdentifier) {
-      this.tableIdentifier = tableIdentifier;
+    public ScanReportBuilder tableId(long tableId) {
+      this.tableId = tableId;
+      return this;
+    }
+
+    /**
+     * Sets the namespace as a list of levels.
+     *
+     * @param namespace the namespace levels
+     * @return this builder
+     */
+    public ScanReportBuilder namespace(List<String> namespace) {
+      this.namespace = namespace != null ? namespace : Collections.emptyList();
       return this;
     }
 
@@ -123,8 +123,8 @@ public final class MetricsRecordConverter {
       return ScanMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespaceToList(tableIdentifier))
-          .tableName(tableIdentifier.name())
+          .namespace(namespace)
+          .tableId(tableId)
           .timestamp(Instant.now())
           .snapshotId(Optional.of(scanReport.snapshotId()))
           .schemaId(Optional.of(scanReport.schemaId()))
@@ -165,7 +165,8 @@ public final class MetricsRecordConverter {
   public static final class CommitReportBuilder {
     private final CommitReport commitReport;
     private long catalogId;
-    private TableIdentifier tableIdentifier;
+    private long tableId;
+    private List<String> namespace = Collections.emptyList();
 
     private CommitReportBuilder(CommitReport commitReport) {
       this.commitReport = commitReport;
@@ -177,16 +178,26 @@ public final class MetricsRecordConverter {
     }
 
     /**
-     * Sets the table identifier including namespace and table name.
+     * Sets the table entity ID.
      *
-     * <p>The namespace and table name will be extracted from the TableIdentifier and stored as
-     * separate primitive fields in the SPI record.
+     * <p>This is the internal Polaris entity ID for the table.
      *
-     * @param tableIdentifier the Iceberg table identifier
+     * @param tableId the table entity ID
      * @return this builder
      */
-    public CommitReportBuilder tableIdentifier(TableIdentifier tableIdentifier) {
-      this.tableIdentifier = tableIdentifier;
+    public CommitReportBuilder tableId(long tableId) {
+      this.tableId = tableId;
+      return this;
+    }
+
+    /**
+     * Sets the namespace as a list of levels.
+     *
+     * @param namespace the namespace levels
+     * @return this builder
+     */
+    public CommitReportBuilder namespace(List<String> namespace) {
+      this.namespace = namespace != null ? namespace : Collections.emptyList();
       return this;
     }
 
@@ -198,8 +209,8 @@ public final class MetricsRecordConverter {
       return CommitMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespaceToList(tableIdentifier))
-          .tableName(tableIdentifier.name())
+          .namespace(namespace)
+          .tableId(tableId)
           .timestamp(Instant.now())
           .snapshotId(commitReport.snapshotId())
           .sequenceNumber(Optional.of(commitReport.sequenceNumber()))
