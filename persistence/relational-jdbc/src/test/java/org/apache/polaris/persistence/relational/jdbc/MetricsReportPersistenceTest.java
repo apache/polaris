@@ -165,7 +165,6 @@ class MetricsReportPersistenceTest {
               .reportId(UUID.randomUUID().toString())
               .realmId("TEST_REALM")
               .catalogId(12345L)
-              
               .namespace("db.schema")
               .tableId(100L + i)
               .timestampMs(System.currentTimeMillis())
@@ -198,7 +197,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db")
             .tableId(99999L)
             .timestampMs(System.currentTimeMillis())
@@ -236,7 +234,6 @@ class MetricsReportPersistenceTest {
               .reportId(UUID.randomUUID().toString())
               .realmId("TEST_REALM")
               .catalogId(12345L)
-              
               .namespace("db.schema")
               .tableId(88888L)
               .timestampMs(baseTime + i * 1000)
@@ -261,9 +258,7 @@ class MetricsReportPersistenceTest {
     }
 
     // Query all reports for the table
-    var results =
-        persistence.queryScanMetricsReports(
-            12345L, "db.schema", 88888L, null, null, 10);
+    var results = persistence.queryScanMetricsReports(12345L, "db.schema", 88888L, null, null, 10);
     assertThat(results).hasSize(5);
 
     // Query with time range
@@ -274,8 +269,7 @@ class MetricsReportPersistenceTest {
 
     // Query with limit
     var limitedResults =
-        persistence.queryScanMetricsReports(
-            12345L, "db.schema", 88888L, null, null, 2);
+        persistence.queryScanMetricsReports(12345L, "db.schema", 88888L, null, null, 2);
     assertThat(limitedResults).hasSize(2);
   }
 
@@ -289,7 +283,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db")
             .tableId(77777L)
             .timestampMs(System.currentTimeMillis())
@@ -332,7 +325,6 @@ class MetricsReportPersistenceTest {
             .reportId("old-report-" + UUID.randomUUID())
             .realmId("TEST_REALM")
             .catalogId(11111L)
-            
             .namespace("test_namespace")
             .tableId(67890L)
             .timestampMs(twoDaysAgo)
@@ -361,7 +353,6 @@ class MetricsReportPersistenceTest {
             .reportId("recent-report-" + UUID.randomUUID())
             .realmId("TEST_REALM")
             .catalogId(11111L)
-            
             .namespace("test_namespace")
             .tableId(67890L)
             .timestampMs(oneHourAgo)
@@ -393,8 +384,7 @@ class MetricsReportPersistenceTest {
 
     // Query to verify only recent report remains
     var results =
-        persistence.queryScanMetricsReports(
-            11111L, "test_namespace", 67890L, null, null, 10);
+        persistence.queryScanMetricsReports(11111L, "test_namespace", 67890L, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -412,7 +402,6 @@ class MetricsReportPersistenceTest {
             .reportId("old-commit-" + UUID.randomUUID())
             .realmId("TEST_REALM")
             .catalogId(11111L)
-            
             .namespace("test_namespace")
             .tableId(67890L)
             .timestampMs(twoDaysAgo)
@@ -446,7 +435,6 @@ class MetricsReportPersistenceTest {
             .reportId("recent-commit-" + UUID.randomUUID())
             .realmId("TEST_REALM")
             .catalogId(11111L)
-            
             .namespace("test_namespace")
             .tableId(67890L)
             .timestampMs(oneHourAgo)
@@ -483,8 +471,7 @@ class MetricsReportPersistenceTest {
 
     // Query to verify only recent report remains
     var results =
-        persistence.queryCommitMetricsReports(
-            11111L, "test_namespace", 67890L, null, null, 10);
+        persistence.queryCommitMetricsReports(11111L, "test_namespace", 67890L, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -518,7 +505,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -553,7 +539,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -655,7 +640,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db.schema")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -696,7 +680,6 @@ class MetricsReportPersistenceTest {
             .reportId(UUID.randomUUID().toString())
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db.schema")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -744,7 +727,6 @@ class MetricsReportPersistenceTest {
             .reportId(reportId)
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db.schema")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -796,7 +778,6 @@ class MetricsReportPersistenceTest {
             .reportId(reportId)
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db.schema")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -850,7 +831,6 @@ class MetricsReportPersistenceTest {
             .reportId(reportId)
             .realmId("TEST_REALM")
             .catalogId(12345L)
-            
             .namespace("db.schema")
             .tableId(67890L)
             .timestampMs(System.currentTimeMillis())
@@ -901,7 +881,6 @@ class MetricsReportPersistenceTest {
             .reportId(reportId)
             .realmId("TEST_REALM")
             .catalogId(22222L)
-            
             .namespace("db.schema")
             .tableId(66666L)
             .timestampMs(timestamp)
@@ -936,12 +915,7 @@ class MetricsReportPersistenceTest {
     // Query by time range and verify roles are returned
     List<ModelScanMetricsReport> results =
         persistence.queryScanMetricsReports(
-            22222L,
-            "db.schema",
-            66666L,
-            timestamp - 1000,
-            timestamp + 1000,
-            100);
+            22222L, "db.schema", 66666L, timestamp - 1000, timestamp + 1000, 100);
 
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(reportId);
