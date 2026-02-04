@@ -30,5 +30,7 @@ concurrency:
 
 jobs:
   ci-pr:
-    name: PR#${{ github.event.number }} ${{ github.event.pull_request.title }}
+    # The 'name' MUST BE CONSTANT, as it becomes a part of the required_checks in .asf.yaml !!
+    # Do not rename this job, this is referenced in .asf.yaml!
+    name: CI/PR
     uses: ./.github/workflows/ci.yml
