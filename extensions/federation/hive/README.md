@@ -25,7 +25,7 @@ NonRESTCatalogs=HIVE,<alternates>
 
 The other option is to pass it as an argument to the gradle JVM as follows: 
 ```
-./gradlew build -DNonRESTCatalogs=HIVE
+./gradlew build -Dorg.gradle.project.NonRESTCatalogs=HIVE
 ```
 
 Without this flag, the Hive factory won't be compiled into Polaris and therefore Polaris will not load the class at runtime, throwing an unsupported exception for federated catalog calls.
