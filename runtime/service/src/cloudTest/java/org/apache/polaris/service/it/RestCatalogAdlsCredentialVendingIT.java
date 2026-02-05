@@ -20,10 +20,12 @@ package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.test.PolarisRestCatalogAdlsIntegrationTestBase;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
 @TestProfile(CredentialVendingProfile.class)
 @EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
+@RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
 public class RestCatalogAdlsCredentialVendingIT extends PolarisRestCatalogAdlsIntegrationTestBase {}
