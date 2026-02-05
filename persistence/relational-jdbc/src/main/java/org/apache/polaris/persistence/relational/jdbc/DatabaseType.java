@@ -50,12 +50,32 @@ public enum DatabaseType {
    */
   public InputStream openInitScriptResource(int schemaVersion) {
     // Preconditions check is simpler and more direct than a switch default
-    if (schemaVersion <= 0 || schemaVersion > 3) {
+    if (schemaVersion <= 0 || schemaVersion > 4) {
       throw new IllegalArgumentException("Unknown or invalid schema version " + schemaVersion);
     }
 
     final String resourceName =
         String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
+
+    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+    return classLoader.getResourceAsStream(resourceName);
+  }
+
+  /**
+   * Open an InputStream that contains data from the metrics schema init script. This stream should
+   * be closed by the caller.
+   *
+   * @param metricsSchemaVersion the metrics schema version (currently only 1 is supported)
+   * @return an InputStream for the metrics schema SQL file
+   */
+  public InputStream openMetricsSchemaResource(int metricsSchemaVersion) {
+    if (metricsSchemaVersion != 1) {
+      throw new IllegalArgumentException(
+          "Unknown or invalid metrics schema version " + metricsSchemaVersion);
+    }
+
+    final String resourceName =
+        String.format("%s/schema-metrics-v%d.sql", this.getDisplayName(), metricsSchemaVersion);
 
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     return classLoader.getResourceAsStream(resourceName);
