@@ -73,11 +73,11 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerFactory;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerRuntime;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
-import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandlerRuntime;
+import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -340,26 +340,31 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
-      ImmutableIcebergCatalogHandlerRuntime runtime =
-          IcebergCatalogHandlerRuntime.builder()
-              .diagnostics(diagnostics)
-              .callContext(callContext)
-              .prefixParser(new DefaultCatalogPrefixParser())
-              .resolverFactory(resolverFactory)
-              .resolutionManifestFactory(resolutionManifestFactory)
-              .metaStoreManager(metaStoreManager)
-              .credentialManager(credentialManager)
-              .catalogFactory(callContextFactory)
-              .authorizer(authorizer)
-              .reservedProperties(reservedProperties)
-              .catalogHandlerUtils(catalogHandlerUtils)
-              .externalCatalogFactories(externalCatalogFactory)
-              .storageAccessConfigProvider(storageAccessConfigProvider)
-              .eventAttributeMap(eventAttributeMap)
-              .build();
-
-      IcebergCatalogHandlerFactory handlerFactory = new IcebergCatalogHandlerFactory();
-      handlerFactory.setRuntime(runtime);
+      IcebergCatalogHandlerFactory handlerFactory =
+          new IcebergCatalogHandlerFactory() {
+            @Override
+            public IcebergCatalogHandler createHandler(
+                String catalogName, PolarisPrincipal principal) {
+              return ImmutableIcebergCatalogHandler.builder()
+                  .catalogName(catalogName)
+                  .polarisPrincipal(principal)
+                  .diagnostics(diagnostics)
+                  .callContext(callContext)
+                  .prefixParser(new DefaultCatalogPrefixParser())
+                  .resolverFactory(resolverFactory)
+                  .resolutionManifestFactory(resolutionManifestFactory)
+                  .metaStoreManager(metaStoreManager)
+                  .credentialManager(credentialManager)
+                  .catalogFactory(callContextFactory)
+                  .authorizer(authorizer)
+                  .reservedProperties(reservedProperties)
+                  .catalogHandlerUtils(catalogHandlerUtils)
+                  .externalCatalogFactories(externalCatalogFactory)
+                  .storageAccessConfigProvider(storageAccessConfigProvider)
+                  .eventAttributeMap(eventAttributeMap)
+                  .build();
+            }
+          };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(

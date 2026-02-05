@@ -56,17 +56,16 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
       Set<String> activatedPrincipalRoles, String catalogName) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    GenericTableCatalogHandlerRuntime runtime =
-        GenericTableCatalogHandlerRuntime.builder()
-            .diagnostics(diagServices)
-            .callContext(callContext)
-            .resolutionManifestFactory(resolutionManifestFactory)
-            .metaStoreManager(metaStoreManager)
-            .credentialManager(credentialManager)
-            .authorizer(polarisAuthorizer)
-            .externalCatalogFactories(emptyExternalCatalogFactory())
-            .build();
-    return new GenericTableCatalogHandler(catalogName, authenticatedPrincipal, runtime);
+    return ImmutableGenericTableCatalogHandler.builder()
+        .catalogName(catalogName)
+        .polarisPrincipal(authenticatedPrincipal)
+        .callContext(callContext)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .credentialManager(credentialManager)
+        .authorizer(polarisAuthorizer)
+        .externalCatalogFactories(emptyExternalCatalogFactory())
+        .build();
   }
 
   /**

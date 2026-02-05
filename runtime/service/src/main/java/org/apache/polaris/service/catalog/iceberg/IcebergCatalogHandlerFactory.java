@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -39,12 +37,6 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
 
-/**
- * Factory for creating {@link IcebergCatalogHandler} instances.
- *
- * <p>This factory holds all the shared dependencies needed to create handler instances, allowing
- * callers to create handlers by providing only the per-request values (principal and catalog name).
- */
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
 
@@ -63,40 +55,24 @@ public class IcebergCatalogHandlerFactory {
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
 
-  private IcebergCatalogHandlerRuntime runtime;
-
-  @PostConstruct
-  public void init() {
-    runtime =
-        IcebergCatalogHandlerRuntime.builder()
-            .diagnostics(diagnostics)
-            .callContext(callContext)
-            .prefixParser(prefixParser)
-            .resolverFactory(resolverFactory)
-            .resolutionManifestFactory(resolutionManifestFactory)
-            .metaStoreManager(metaStoreManager)
-            .credentialManager(credentialManager)
-            .catalogFactory(catalogFactory)
-            .authorizer(authorizer)
-            .reservedProperties(reservedProperties)
-            .catalogHandlerUtils(catalogHandlerUtils)
-            .externalCatalogFactories(externalCatalogFactories)
-            .storageAccessConfigProvider(storageAccessConfigProvider)
-            .eventAttributeMap(eventAttributeMap)
-            .build();
-  }
-
-  /** Creates a new {@link IcebergCatalogHandler} instance for the given principal and catalog. */
   public IcebergCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
-    return new IcebergCatalogHandler(catalogName, principal, runtime);
-  }
-
-  /**
-   * Only used for unit testing. See TestServices. Should be removed if/when we migrate all
-   * TestServices tests to Quarkus tests.
-   */
-  @VisibleForTesting
-  public void setRuntime(IcebergCatalogHandlerRuntime runtime) {
-    this.runtime = runtime;
+    return ImmutableIcebergCatalogHandler.builder()
+        .catalogName(catalogName)
+        .polarisPrincipal(principal)
+        .diagnostics(diagnostics)
+        .callContext(callContext)
+        .prefixParser(prefixParser)
+        .resolverFactory(resolverFactory)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .credentialManager(credentialManager)
+        .catalogFactory(catalogFactory)
+        .authorizer(authorizer)
+        .reservedProperties(reservedProperties)
+        .catalogHandlerUtils(catalogHandlerUtils)
+        .externalCatalogFactories(externalCatalogFactories)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .eventAttributeMap(eventAttributeMap)
+        .build();
   }
 }

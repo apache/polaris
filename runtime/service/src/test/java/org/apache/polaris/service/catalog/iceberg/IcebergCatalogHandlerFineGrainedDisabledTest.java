@@ -60,24 +60,24 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
   private IcebergCatalogHandler newWrapper() {
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
-    ImmutableIcebergCatalogHandlerRuntime runtime =
-        IcebergCatalogHandlerRuntime.builder()
-            .diagnostics(diagServices)
-            .callContext(callContext)
-            .prefixParser(prefixParser)
-            .resolverFactory(resolverFactory)
-            .resolutionManifestFactory(resolutionManifestFactory)
-            .metaStoreManager(metaStoreManager)
-            .credentialManager(credentialManager)
-            .catalogFactory(callContextCatalogFactory)
-            .authorizer(polarisAuthorizer)
-            .reservedProperties(reservedProperties)
-            .catalogHandlerUtils(catalogHandlerUtils)
-            .externalCatalogFactories(emptyExternalCatalogFactory())
-            .storageAccessConfigProvider(storageAccessConfigProvider)
-            .eventAttributeMap(eventAttributeMap)
-            .build();
-    return new IcebergCatalogHandler(CATALOG_NAME, authenticatedPrincipal, runtime);
+    return ImmutableIcebergCatalogHandler.builder()
+        .catalogName(CATALOG_NAME)
+        .polarisPrincipal(authenticatedPrincipal)
+        .diagnostics(diagServices)
+        .callContext(callContext)
+        .prefixParser(prefixParser)
+        .resolverFactory(resolverFactory)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .credentialManager(credentialManager)
+        .catalogFactory(callContextCatalogFactory)
+        .authorizer(polarisAuthorizer)
+        .reservedProperties(reservedProperties)
+        .catalogHandlerUtils(catalogHandlerUtils)
+        .externalCatalogFactories(emptyExternalCatalogFactory())
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .eventAttributeMap(eventAttributeMap)
+        .build();
   }
 
   public static class Profile extends PolarisAuthzTestBase.Profile {
