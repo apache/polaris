@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
+import com.google.common.annotations.Beta;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -32,7 +33,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *
  * <p>Note: Realm ID is not included in this record. Multi-tenancy realm context should be obtained
  * from the CDI-injected {@code RealmContext} at persistence time.
+ *
+ * <p><b>Note:</b> This type is part of the experimental Metrics Persistence SPI and may change in
+ * future releases.
  */
+@Beta
 @PolarisImmutable
 public interface ScanMetricsRecord extends MetricsRecordIdentity {
 

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
+import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +50,9 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * the {@link #metadata()} filter map. Client-provided correlation data should be stored in the
  * metrics record's metadata map and can be filtered using the metadata criteria.
  *
+ * <p><b>Note:</b> This type is part of the experimental Metrics Persistence SPI and may change in
+ * future releases.
+ *
  * <h3>Pagination</h3>
  *
  * <p>Pagination is handled via the {@link org.apache.polaris.core.persistence.pagination.PageToken}
@@ -66,6 +70,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * @see org.apache.polaris.core.persistence.pagination.Page
  * @see ReportIdToken
  */
+@Beta
 @PolarisImmutable
 public interface MetricsQueryCriteria {
 

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
+import com.google.common.annotations.Beta;
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -72,10 +73,14 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * <p>The {@link ReportIdToken} provides a reference cursor implementation based on report ID
  * (UUID), but backends may use other cursor strategies internally.
  *
+ * <p><b>Note:</b> This SPI is currently experimental and not yet implemented in all persistence
+ * backends. The API may change in future releases.
+ *
  * @see PageToken
  * @see Page
  * @see ReportIdToken
  */
+@Beta
 public interface MetricsPersistence {
 
   /** A no-op implementation for backends that don't support metrics persistence. */

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
+import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,11 @@ import java.util.Map;
  * <p><b>Realm ID:</b> Realm ID is intentionally not included in this interface. Multi-tenancy realm
  * context should be obtained from the CDI-injected {@code RealmContext} at persistence time. This
  * keeps catalog-specific code from needing to manage realm concerns.
+ *
+ * <p><b>Note:</b> This type is part of the experimental Metrics Persistence SPI and may change in
+ * future releases.
  */
+@Beta
 public interface MetricsRecordIdentity {
 
   /**
