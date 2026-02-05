@@ -52,7 +52,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -173,6 +172,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
               datasourceOperations
                   .getDatabaseType()
                   .openInitScriptResource(effectiveSchemaVersion));
+
+          // Run the metrics schema script if requested
+          if (JdbcBootstrapUtils.shouldIncludeMetrics(bootstrapOptions)) {
+            LOGGER.info("Including metrics schema for realm: {}", realm);
+            datasourceOperations.executeScript(
+                datasourceOperations.getDatabaseType().openMetricsSchemaResource(1));
+          }
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
@@ -246,21 +252,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    // Ensure the session is initialized for this realm
-    BasePersistence session = getOrCreateSession(realmContext);
-
-    if (session instanceof JdbcBasePersistenceImpl jdbcPersistence) {
-      // Return JDBC-specific metrics persistence if schema version supports it
-      // The JdbcMetricsPersistence will gracefully handle unsupported schemas
-      return new JdbcMetricsPersistence(jdbcPersistence, realmContext.getRealmIdentifier());
-    }
-
-    // Fallback to no-op for non-JDBC sessions (shouldn't happen in JDBC factory)
-    return MetricsPersistence.NOOP;
   }
 
   /**

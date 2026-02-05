@@ -21,8 +21,15 @@ package org.apache.polaris.core.persistence.bootstrap;
 
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface SchemaOptions {
   Optional<Integer> schemaVersion();
+
+  /** Whether to include the metrics schema during bootstrap. Defaults to false. */
+  @Value.Default
+  default boolean includeMetrics() {
+    return false;
+  }
 }

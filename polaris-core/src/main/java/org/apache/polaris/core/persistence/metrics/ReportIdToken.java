@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.metrics;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.annotations.Beta;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -54,7 +55,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>NoSQL: Use report ID as partition/sort key cursor
  *   <li>Time-series: Combine with timestamp for efficient range scans
  * </ul>
+ *
+ * <p><b>Note:</b> This type is part of the experimental Metrics Persistence SPI and may change in
+ * future releases.
  */
+@Beta
 @PolarisImmutable
 @JsonSerialize(as = ImmutableReportIdToken.class)
 @JsonDeserialize(as = ImmutableReportIdToken.class)
