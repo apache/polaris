@@ -39,7 +39,8 @@ public class SpiModelConverterTest {
   private static final String TEST_REALM_ID = "realm-1";
   private static final long TEST_CATALOG_ID = 12345L;
   private static final List<String> TEST_NAMESPACE = List.of("db", "schema");
-  private static final String TEST_NAMESPACE_STR = "db.schema";
+  // Namespace is stored as JSON array
+  private static final String TEST_NAMESPACE_STR = "[\"db\",\"schema\"]";
   private static final long TEST_TABLE_ID = 67890L;
   private static final Instant TEST_TIMESTAMP = Instant.ofEpochMilli(1704067200000L);
   private static final long TEST_TIMESTAMP_MS = 1704067200000L;

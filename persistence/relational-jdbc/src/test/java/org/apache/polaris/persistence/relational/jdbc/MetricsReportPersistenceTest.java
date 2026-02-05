@@ -258,16 +258,17 @@ class MetricsReportPersistenceTest {
     }
 
     // Query all reports for the table
-    var results = persistence.queryScanMetricsReports(12345L, 88888L, null, null, 10);
+    var results = persistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 10);
     assertThat(results).hasSize(5);
 
     // Query with time range
     var rangeResults =
-        persistence.queryScanMetricsReports(12345L, 88888L, baseTime + 1000, baseTime + 4000, 10);
+        persistence.queryScanMetricsReports(
+            12345L, 88888L, baseTime + 1000, baseTime + 4000, null, 10);
     assertThat(rangeResults).hasSize(3);
 
     // Query with limit
-    var limitedResults = persistence.queryScanMetricsReports(12345L, 88888L, null, null, 2);
+    var limitedResults = persistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 2);
     assertThat(limitedResults).hasSize(2);
   }
 
@@ -381,7 +382,7 @@ class MetricsReportPersistenceTest {
     assertThat(deleted).isEqualTo(1);
 
     // Query to verify only recent report remains
-    var results = persistence.queryScanMetricsReports(11111L, 67890L, null, null, 10);
+    var results = persistence.queryScanMetricsReports(11111L, 67890L, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -467,7 +468,7 @@ class MetricsReportPersistenceTest {
     assertThat(deleted).isEqualTo(1);
 
     // Query to verify only recent report remains
-    var results = persistence.queryCommitMetricsReports(11111L, 67890L, null, null, 10);
+    var results = persistence.queryCommitMetricsReports(11111L, 67890L, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -568,7 +569,7 @@ class MetricsReportPersistenceTest {
   void testQueryScanMetricsReports_OlderSchema_ReturnsEmptyList() {
     JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
 
-    var results = v3Persistence.queryScanMetricsReports(12345L, 67890L, null, null, 10);
+    var results = v3Persistence.queryScanMetricsReports(12345L, 67890L, null, null, null, 10);
 
     assertThat(results).isEmpty();
   }
@@ -577,7 +578,7 @@ class MetricsReportPersistenceTest {
   void testQueryCommitMetricsReports_OlderSchema_ReturnsEmptyList() {
     JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
 
-    var results = v3Persistence.queryCommitMetricsReports(12345L, 67890L, null, null, 10);
+    var results = v3Persistence.queryCommitMetricsReports(12345L, 67890L, null, null, null, 10);
 
     assertThat(results).isEmpty();
   }
@@ -909,7 +910,7 @@ class MetricsReportPersistenceTest {
     // Query by time range and verify roles are returned
     List<ModelScanMetricsReport> results =
         persistence.queryScanMetricsReports(
-            22222L, 66666L, timestamp - 1000, timestamp + 1000, 100);
+            22222L, 66666L, timestamp - 1000, timestamp + 1000, null, 100);
 
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(reportId);

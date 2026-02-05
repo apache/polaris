@@ -24,9 +24,11 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
+import org.apache.polaris.core.persistence.metrics.ReportIdToken;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 
@@ -88,18 +90,27 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
+    // Extract cursor from page token if present
+    String lastReportId =
+        pageToken.valueAs(ReportIdToken.class).map(ReportIdToken::reportId).orElse(null);
+
     List<ModelScanMetricsReport> models =
         jdbcPersistence.queryScanMetricsReports(
             criteria.catalogId().getAsLong(),
             criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
+            lastReportId,
             limit);
 
     List<ScanMetricsRecord> records =
         models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
 
-    return Page.fromItems(records);
+    // Build continuation token if we have results (there may be more pages)
+    Token nextToken =
+        records.isEmpty() ? null : ReportIdToken.fromReportId(records.getLast().reportId());
+
+    return Page.page(pageToken, records, nextToken);
   }
 
   @Override
@@ -119,17 +130,26 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
+    // Extract cursor from page token if present
+    String lastReportId =
+        pageToken.valueAs(ReportIdToken.class).map(ReportIdToken::reportId).orElse(null);
+
     List<ModelCommitMetricsReport> models =
         jdbcPersistence.queryCommitMetricsReports(
             criteria.catalogId().getAsLong(),
             criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
+            lastReportId,
             limit);
 
     List<CommitMetricsRecord> records =
         models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
 
-    return Page.fromItems(records);
+    // Build continuation token if we have results (there may be more pages)
+    Token nextToken =
+        records.isEmpty() ? null : ReportIdToken.fromReportId(records.getLast().reportId());
+
+    return Page.page(pageToken, records, nextToken);
   }
 }

@@ -72,7 +72,7 @@ public final class SpiModelConverter {
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
-        .namespace(String.join(".", record.namespace()))
+        .namespace(toNamespaceJson(record.namespace()))
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId().orElse(null))
@@ -113,7 +113,7 @@ public final class SpiModelConverter {
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
-        .namespace(String.join(".", record.namespace()))
+        .namespace(toNamespaceJson(record.namespace()))
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId())
@@ -226,8 +226,14 @@ public final class SpiModelConverter {
     if (namespace == null || namespace.isEmpty()) {
       return Collections.emptyList();
     }
-    // Namespace is stored as dot-separated string
-    return Arrays.asList(namespace.split("\\."));
+    // Namespace is stored as a JSON array to preserve segment boundaries
+    // (namespace levels may contain dots)
+    try {
+      return OBJECT_MAPPER.readValue(namespace, new TypeReference<List<String>>() {});
+    } catch (JsonProcessingException e) {
+      // Fallback for any legacy dot-separated data
+      return Arrays.asList(namespace.split("\\."));
+    }
   }
 
   private static String toCommaSeparated(List<?> list) {
@@ -256,6 +262,17 @@ public final class SpiModelConverter {
         .map(String::trim)
         .filter(s -> !s.isEmpty())
         .collect(Collectors.toList());
+  }
+
+  private static String toNamespaceJson(List<String> namespace) {
+    if (namespace == null || namespace.isEmpty()) {
+      return "";
+    }
+    try {
+      return OBJECT_MAPPER.writeValueAsString(namespace);
+    } catch (JsonProcessingException e) {
+      return "";
+    }
   }
 
   private static String toJsonString(Map<String, String> map) {

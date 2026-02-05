@@ -22,6 +22,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -111,13 +112,38 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
     PolarisBaseEntity catalogEntity = catalogResult.getEntity();
     long catalogId = catalogEntity.getId();
 
-    // Look up the table entity to get the table ID
-    // Build the path from catalog to table through namespace
-    List<PolarisEntityCore> catalogPath = List.of(PolarisEntity.toCore(catalogEntity));
+    // Build the full path from catalog through namespace to resolve the table.
+    // The path contains the catalog, then each namespace level.
+    // The last element in the path becomes the parent for the lookup.
+    List<PolarisEntityCore> entityPath = new ArrayList<>();
+    entityPath.add(PolarisEntity.toCore(catalogEntity));
+
+    // Resolve each namespace level
+    String[] namespaceLevels = table.namespace().levels();
+    for (String nsLevel : namespaceLevels) {
+      EntityResult nsResult =
+          metaStoreManager.readEntityByName(
+              callContext.getPolarisCallContext(),
+              entityPath,
+              PolarisEntityType.NAMESPACE,
+              PolarisEntitySubType.ANY_SUBTYPE,
+              nsLevel);
+
+      if (!nsResult.isSuccess()) {
+        LOGGER.warn(
+            "Failed to find namespace '{}' in catalog '{}' for metrics persistence. Metrics will not be stored.",
+            nsLevel,
+            catalogName);
+        return;
+      }
+      entityPath.add(PolarisEntity.toCore(nsResult.getEntity()));
+    }
+
+    // Now look up the table with the full namespace path
     EntityResult tableResult =
         metaStoreManager.readEntityByName(
             callContext.getPolarisCallContext(),
-            catalogPath,
+            entityPath,
             PolarisEntityType.TABLE_LIKE,
             PolarisEntitySubType.ANY_SUBTYPE,
             table.name());
@@ -131,7 +157,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
     }
 
     long tableId = tableResult.getEntity().getId();
-    List<String> namespace = Arrays.asList(table.namespace().levels());
+    List<String> namespace = Arrays.asList(namespaceLevels);
 
     if (metricsReport instanceof ScanReport scanReport) {
       ScanMetricsRecord record =
@@ -139,6 +165,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .catalogId(catalogId)
               .tableId(tableId)
               .namespace(namespace)
+              .timestamp(receivedTimestamp)
               .build();
       persistence.writeScanReport(record);
       LOGGER.debug(
@@ -149,6 +176,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .catalogId(catalogId)
               .tableId(tableId)
               .namespace(namespace)
+              .timestamp(receivedTimestamp)
               .build();
       persistence.writeCommitReport(record);
       LOGGER.debug(

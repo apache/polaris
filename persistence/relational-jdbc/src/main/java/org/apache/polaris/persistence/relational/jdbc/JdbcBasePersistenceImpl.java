@@ -545,12 +545,28 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    * @return list of scan metrics reports matching the criteria, or empty list if schema version
    *     &lt; 4
    */
+  /**
+   * Retrieves scan metrics reports for a specific table within a time range.
+   *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
+   * @param catalogId the catalog entity ID
+   * @param tableId the table entity ID
+   * @param startTimeMs start of time range (inclusive), or null for no lower bound
+   * @param endTimeMs end of time range (exclusive), or null for no upper bound
+   * @param lastReportId cursor for pagination: return results after this report ID, or null for
+   *     first page
+   * @param limit maximum number of results to return
+   * @return list of scan metrics reports matching the criteria, or empty list if schema version
+   *     &lt; 4
+   */
   @Nonnull
   public List<ModelScanMetricsReport> queryScanMetricsReports(
       long catalogId,
       long tableId,
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
+      @Nullable String lastReportId,
       int limit) {
     if (!supportsMetricsPersistence()) {
       return Collections.emptyList();
@@ -568,13 +584,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         whereClause.append(" AND timestamp_ms < ?");
         values.add(endTimeMs);
       }
+      if (lastReportId != null) {
+        whereClause.append(" AND report_id > ?");
+        values.add(lastReportId);
+      }
 
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms DESC LIMIT "
+              + " ORDER BY report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
@@ -599,6 +619,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    * @param tableId the table entity ID
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
+   * @param lastReportId cursor for pagination: return results after this report ID, or null for
+   *     first page
    * @param limit maximum number of results to return
    * @return list of commit metrics reports matching the criteria, or empty list if schema version
    *     &lt; 4
@@ -609,6 +631,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long tableId,
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
+      @Nullable String lastReportId,
       int limit) {
     if (!supportsMetricsPersistence()) {
       return Collections.emptyList();
@@ -627,13 +650,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         whereClause.append(" AND timestamp_ms < ?");
         values.add(endTimeMs);
       }
+      if (lastReportId != null) {
+        whereClause.append(" AND report_id > ?");
+        values.add(lastReportId);
+      }
 
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms DESC LIMIT "
+              + " ORDER BY report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);

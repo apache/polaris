@@ -108,6 +108,25 @@ public class PersistingMetricsReporterTest {
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
 
+    // Setup namespace lookups - "db" and "schema"
+    PolarisBaseEntity dbNamespaceEntity = createNamespaceEntity(11111L, "db", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("db")))
+        .thenReturn(new EntityResult(dbNamespaceEntity));
+
+    PolarisBaseEntity schemaNamespaceEntity = createNamespaceEntity(22222L, "schema", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("schema")))
+        .thenReturn(new EntityResult(schemaNamespaceEntity));
+
     // Setup table lookup
     PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
     when(metaStoreManager.readEntityByName(
@@ -146,6 +165,25 @@ public class PersistingMetricsReporterTest {
             eq(PolarisEntitySubType.ANY_SUBTYPE),
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
+
+    // Setup namespace lookups - "db" and "schema"
+    PolarisBaseEntity dbNamespaceEntity = createNamespaceEntity(11111L, "db", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("db")))
+        .thenReturn(new EntityResult(dbNamespaceEntity));
+
+    PolarisBaseEntity schemaNamespaceEntity = createNamespaceEntity(22222L, "schema", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("schema")))
+        .thenReturn(new EntityResult(schemaNamespaceEntity));
 
     // Setup table lookup
     PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
@@ -208,6 +246,25 @@ public class PersistingMetricsReporterTest {
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
 
+    // Setup namespace lookups - "db" and "schema"
+    PolarisBaseEntity dbNamespaceEntity = createNamespaceEntity(11111L, "db", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("db")))
+        .thenReturn(new EntityResult(dbNamespaceEntity));
+
+    PolarisBaseEntity schemaNamespaceEntity = createNamespaceEntity(22222L, "schema", CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.NAMESPACE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq("schema")))
+        .thenReturn(new EntityResult(schemaNamespaceEntity));
+
     // Setup table lookup
     PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
     when(metaStoreManager.readEntityByName(
@@ -235,6 +292,18 @@ public class PersistingMetricsReporterTest {
         .id(id)
         .parentId(0L)
         .typeCode(PolarisEntityType.CATALOG.getCode())
+        .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+        .name(name)
+        .entityVersion(1)
+        .build();
+  }
+
+  private PolarisBaseEntity createNamespaceEntity(long id, String name, long catalogId) {
+    return new PolarisBaseEntity.Builder()
+        .catalogId(catalogId)
+        .id(id)
+        .parentId(catalogId) // Parent is the catalog for simplicity
+        .typeCode(PolarisEntityType.NAMESPACE.getCode())
         .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
         .name(name)
         .entityVersion(1)
