@@ -27,6 +27,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -61,8 +63,11 @@ public class PersistingMetricsReporterTest {
 
   private static final String CATALOG_NAME = "test-catalog";
   private static final long CATALOG_ID = 12345L;
+  private static final long TABLE_ID = 67890L;
+  private static final String TABLE_NAME = "test_table";
+  private static final List<String> NAMESPACE = Arrays.asList("db", "schema");
   private static final TableIdentifier TABLE_IDENTIFIER =
-      TableIdentifier.of(Namespace.of("db", "schema"), "test_table");
+      TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
   private RealmContext realmContext;
   private CallContext callContext;
@@ -103,6 +108,16 @@ public class PersistingMetricsReporterTest {
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
 
+    // Setup table lookup
+    PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.TABLE_LIKE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq(TABLE_NAME)))
+        .thenReturn(new EntityResult(tableEntity));
+
     // Create a scan report
     ScanReport scanReport = createScanReport();
 
@@ -115,8 +130,8 @@ public class PersistingMetricsReporterTest {
 
     ScanMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
-    assertThat(record.catalogName()).isEqualTo(CATALOG_NAME);
-    assertThat(record.tableIdentifier()).isEqualTo(TABLE_IDENTIFIER);
+    assertThat(record.tableId()).isEqualTo(TABLE_ID);
+    assertThat(record.namespace()).isEqualTo(NAMESPACE);
     assertThat(record.reportId()).isNotNull();
   }
 
@@ -132,6 +147,16 @@ public class PersistingMetricsReporterTest {
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
 
+    // Setup table lookup
+    PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.TABLE_LIKE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq(TABLE_NAME)))
+        .thenReturn(new EntityResult(tableEntity));
+
     // Create a commit report
     CommitReport commitReport = createCommitReport();
 
@@ -144,8 +169,8 @@ public class PersistingMetricsReporterTest {
 
     CommitMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
-    assertThat(record.catalogName()).isEqualTo(CATALOG_NAME);
-    assertThat(record.tableIdentifier()).isEqualTo(TABLE_IDENTIFIER);
+    assertThat(record.tableId()).isEqualTo(TABLE_ID);
+    assertThat(record.namespace()).isEqualTo(NAMESPACE);
     assertThat(record.reportId()).isNotNull();
   }
 
@@ -183,6 +208,16 @@ public class PersistingMetricsReporterTest {
             eq(CATALOG_NAME)))
         .thenReturn(new EntityResult(catalogEntity));
 
+    // Setup table lookup
+    PolarisBaseEntity tableEntity = createTableEntity(TABLE_ID, TABLE_NAME, CATALOG_ID);
+    when(metaStoreManager.readEntityByName(
+            eq(polarisCallContext),
+            any(),
+            eq(PolarisEntityType.TABLE_LIKE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq(TABLE_NAME)))
+        .thenReturn(new EntityResult(tableEntity));
+
     // Create an unknown report type (using a mock)
     MetricsReport unknownReport = mock(MetricsReport.class);
 
@@ -201,6 +236,18 @@ public class PersistingMetricsReporterTest {
         .parentId(0L)
         .typeCode(PolarisEntityType.CATALOG.getCode())
         .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+        .name(name)
+        .entityVersion(1)
+        .build();
+  }
+
+  private PolarisBaseEntity createTableEntity(long id, String name, long catalogId) {
+    return new PolarisBaseEntity.Builder()
+        .catalogId(catalogId)
+        .id(id)
+        .parentId(catalogId) // Parent is the catalog for simplicity
+        .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+        .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
         .name(name)
         .entityVersion(1)
         .build();
