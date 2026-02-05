@@ -697,6 +697,9 @@ public class IcebergCatalogAdapter
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
+    if (warehouse == null) {
+      throw new BadRequestException("Please specify a warehouse");
+    }
     return withCatalogByName(
         securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
   }

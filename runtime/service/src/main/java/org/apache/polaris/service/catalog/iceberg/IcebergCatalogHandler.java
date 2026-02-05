@@ -1315,15 +1315,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   public ConfigResponse getConfig() {
-    // 'catalogName' is taken from the REST request's 'warehouse' query parameter.
-    // 'warehouse' as an output will be treated by the client as a default catalog
-    //   storage base location.
-    // 'prefix' as an output is the REST subpath that routes to the catalog
-    //   resource, which may be URL-escaped catalogName or potentially a different
-    //   unique identifier for the catalog being accessed.
-    if (catalogName() == null) {
-      throw new BadRequestException("Please specify a warehouse");
-    }
     Resolver resolver = resolverFactory().createResolver(polarisPrincipal(), catalogName());
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
