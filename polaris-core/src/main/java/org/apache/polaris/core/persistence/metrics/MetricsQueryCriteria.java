@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -81,18 +80,15 @@ public interface MetricsQueryCriteria {
   OptionalLong catalogId();
 
   /**
-   * Namespace to filter by.
-   *
-   * <p>The namespace is represented as a list of levels to avoid ambiguity when segments contain
-   * dots. An empty list means no namespace filter is applied.
-   */
-  List<String> namespace();
-
-  /**
    * Table entity ID to filter by.
    *
    * <p>This is the internal table entity ID. Callers should resolve table names to IDs before
    * querying, as table names can change over time.
+   *
+   * <p>Note: Namespace is intentionally not included as a query filter. Since we query by table ID,
+   * the namespace is implicit. If users want to query by namespace, the service layer should
+   * resolve namespace to table IDs using the current catalog state, then query by those IDs. This
+   * avoids confusion with table moves over time.
    */
   OptionalLong tableId();
 
