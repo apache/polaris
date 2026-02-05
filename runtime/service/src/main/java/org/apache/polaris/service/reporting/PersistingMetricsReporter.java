@@ -22,12 +22,17 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.metrics.iceberg.MetricsRecordConverter;
@@ -103,13 +108,37 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       return;
     }
 
-    long catalogId = catalogResult.getEntity().getId();
+    PolarisBaseEntity catalogEntity = catalogResult.getEntity();
+    long catalogId = catalogEntity.getId();
+
+    // Look up the table entity to get the table ID
+    // Build the path from catalog to table through namespace
+    List<PolarisEntityCore> catalogPath = List.of(PolarisEntity.toCore(catalogEntity));
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            callContext.getPolarisCallContext(),
+            catalogPath,
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            table.name());
+
+    if (!tableResult.isSuccess()) {
+      LOGGER.warn(
+          "Failed to find table '{}' in catalog '{}' for metrics persistence. Metrics will not be stored.",
+          table,
+          catalogName);
+      return;
+    }
+
+    long tableId = tableResult.getEntity().getId();
+    List<String> namespace = Arrays.asList(table.namespace().levels());
 
     if (metricsReport instanceof ScanReport scanReport) {
       ScanMetricsRecord record =
           MetricsRecordConverter.forScanReport(scanReport)
               .catalogId(catalogId)
-              .tableIdentifier(table)
+              .tableId(tableId)
+              .namespace(namespace)
               .build();
       persistence.writeScanReport(record);
       LOGGER.debug(
@@ -118,7 +147,8 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       CommitMetricsRecord record =
           MetricsRecordConverter.forCommitReport(commitReport)
               .catalogId(catalogId)
-              .tableIdentifier(table)
+              .tableId(tableId)
+              .namespace(namespace)
               .build();
       persistence.writeCommitReport(record);
       LOGGER.debug(
