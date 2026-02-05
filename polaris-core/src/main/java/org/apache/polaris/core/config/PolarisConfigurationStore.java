@@ -29,7 +29,11 @@ import org.slf4j.LoggerFactory;
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
  * request.
+ *
+ * @deprecated Use {@link RealmConfig} instead.
  */
+@SuppressWarnings("DeprecatedIsStillUsed")
+@Deprecated(forRemoval = true)
 public interface PolarisConfigurationStore {
   Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
 
@@ -54,10 +58,8 @@ public interface PolarisConfigurationStore {
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
    * @param <T> the type of the configuration value
-   * @deprecated Use {@link RealmConfig}.
    */
-  @SuppressWarnings({"DeprecatedIsStillUsed", "removal"})
-  @Deprecated(forRemoval = true)
+  @SuppressWarnings("removal")
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
     return asRealmConfig(realmContext).getConfig(configName, defaultValue);

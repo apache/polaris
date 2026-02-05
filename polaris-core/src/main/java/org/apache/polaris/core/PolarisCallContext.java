@@ -19,7 +19,6 @@
 package org.apache.polaris.core;
 
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -43,11 +42,12 @@ public class PolarisCallContext implements CallContext {
    * @deprecated Use {@link PolarisCallContext#PolarisCallContext(RealmContext, BasePersistence,
    *     RealmConfigurationSource)}.
    */
+  @SuppressWarnings("removal")
   @Deprecated(forRemoval = true)
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisConfigurationStore configurationStore) {
+      @Nonnull org.apache.polaris.core.config.PolarisConfigurationStore configurationStore) {
     this(realmContext, metaStore, configurationStore::getConfiguration);
   }
 

@@ -66,6 +66,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 - The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
+- `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
 
