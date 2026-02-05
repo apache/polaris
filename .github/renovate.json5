@@ -94,6 +94,11 @@
     {
       matchPackageNames: ["python"],
       enabled: false
+    },
+    {
+      matchManagers: ["github-actions"],
+      matchPackageNames: ["python"],
+      enabled: false
     }
   ],
 
