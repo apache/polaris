@@ -81,6 +81,7 @@ public final class MetricsRecordConverter {
     private long catalogId;
     private long tableId;
     private List<String> namespace = Collections.emptyList();
+    private Instant timestamp;
 
     private ScanReportBuilder(ScanReport scanReport) {
       this.scanReport = scanReport;
@@ -115,6 +116,20 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /**
+     * Sets the timestamp for the metrics record.
+     *
+     * <p>This should be the time the metrics report was received by the server, which may differ
+     * from the time it was recorded by the client.
+     *
+     * @param timestamp the timestamp
+     * @return this builder
+     */
+    public ScanReportBuilder timestamp(Instant timestamp) {
+      this.timestamp = timestamp;
+      return this;
+    }
+
     public ScanMetricsRecord build() {
       ScanMetricsResult metrics = scanReport.scanMetrics();
       Map<String, String> reportMetadata =
@@ -125,7 +140,7 @@ public final class MetricsRecordConverter {
           .catalogId(catalogId)
           .namespace(namespace)
           .tableId(tableId)
-          .timestamp(Instant.now())
+          .timestamp(timestamp != null ? timestamp : Instant.now())
           .snapshotId(Optional.of(scanReport.snapshotId()))
           .schemaId(Optional.of(scanReport.schemaId()))
           .filterExpression(
@@ -167,6 +182,7 @@ public final class MetricsRecordConverter {
     private long catalogId;
     private long tableId;
     private List<String> namespace = Collections.emptyList();
+    private Instant timestamp;
 
     private CommitReportBuilder(CommitReport commitReport) {
       this.commitReport = commitReport;
@@ -201,6 +217,20 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /**
+     * Sets the timestamp for the metrics record.
+     *
+     * <p>This should be the time the metrics report was received by the server, which may differ
+     * from the time it was recorded by the client.
+     *
+     * @param timestamp the timestamp
+     * @return this builder
+     */
+    public CommitReportBuilder timestamp(Instant timestamp) {
+      this.timestamp = timestamp;
+      return this;
+    }
+
     public CommitMetricsRecord build() {
       CommitMetricsResult metrics = commitReport.commitMetrics();
       Map<String, String> reportMetadata =
@@ -211,7 +241,7 @@ public final class MetricsRecordConverter {
           .catalogId(catalogId)
           .namespace(namespace)
           .tableId(tableId)
-          .timestamp(Instant.now())
+          .timestamp(timestamp != null ? timestamp : Instant.now())
           .snapshotId(commitReport.snapshotId())
           .sequenceNumber(Optional.of(commitReport.sequenceNumber()))
           .operation(commitReport.operation())
