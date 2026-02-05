@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -52,9 +53,9 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
-import org.apache.polaris.test.minio.Minio;
-import org.apache.polaris.test.minio.MinioAccess;
-import org.apache.polaris.test.minio.MinioExtension;
+import org.apache.polaris.test.rustfs.Rustfs;
+import org.apache.polaris.test.rustfs.RustfsAccess;
+import org.apache.polaris.test.rustfs.RustfsExtension;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
@@ -69,13 +70,13 @@ import org.junit.jupiter.api.io.TempDir;
  * Integration test for catalog federation functionality. This test verifies that an external
  * catalog can be created that federates with an internal catalog.
  */
-@ExtendWith(MinioExtension.class)
+@ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class CatalogFederationIntegrationTest {
 
-  public static final String BUCKET_URI_PREFIX = "/minio-test-catalog-federation";
-  public static final String MINIO_ACCESS_KEY = "test-ak-123-catalog-federation";
-  public static final String MINIO_SECRET_KEY = "test-sk-123-catalog-federation";
+  public static final String BUCKET_URI_PREFIX = "/rustfs-test-catalog-federation";
+  public static final String RUSTFS_ACCESS_KEY = "test-ak-123-catalog-federation";
+  public static final String RUSTFS_SECRET_KEY = "test-sk-123-catalog-federation";
 
   private static PolarisClient client;
   private static CatalogApi catalogApi;
@@ -108,21 +109,22 @@ public class CatalogFederationIntegrationTest {
   static void setup(
       PolarisApiEndpoints apiEndpoints,
       ClientCredentials credentials,
-      @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess) {
+      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
+          RustfsAccess rustfsAccess) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     String adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
     catalogApi = client.catalogApi(adminToken);
-    endpoint = minioAccess.s3endpoint();
+    endpoint = rustfsAccess.s3endpoint();
 
-    localStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog");
-    remoteStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/federated_catalog");
+    localStorageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog");
+    remoteStorageBase = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX + "/federated_catalog");
     // Allow credential vending for tables located under ns1
     remoteStorageExtraAllowedLocationNs1 =
-        minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns1");
+        rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns1");
     remoteStorageExtraAllowedLocationNs2 =
-        minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns2");
+        rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns2");
   }
 
   @AfterAll
@@ -422,7 +424,14 @@ public class CatalogFederationIntegrationTest {
 
     // Verify that write is blocked since the vended credential should only have read permission
     assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
-        .hasMessageContaining("Access Denied. (Service: S3, Status Code: 403,");
+        .satisfies(
+            ex -> {
+              Throwable root = ExceptionUtils.getRootCause(ex);
+              assertThat(root)
+                  .isInstanceOf(
+                      software.amazon.awssdk.services.s3.model.AccessDeniedException.class);
+              assertThat(root.getMessage()).matches("(?s).*Access Denied.*Status Code: 403.*");
+            });
 
     // Case 3: TABLE_WRITE_DATA should
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
