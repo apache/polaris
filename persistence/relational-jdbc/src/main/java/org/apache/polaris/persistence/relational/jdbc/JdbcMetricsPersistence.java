@@ -79,8 +79,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       return Page.fromItems(List.of());
     }
 
-    // catalogId is required for queries
-    if (criteria.catalogId().isEmpty()) {
+    // catalogId and tableId are required for queries
+    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
       return Page.fromItems(List.of());
     }
 
@@ -91,8 +91,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     List<ModelScanMetricsReport> models =
         jdbcPersistence.queryScanMetricsReports(
             criteria.catalogId().getAsLong(),
-            String.join(".", criteria.namespace()),
-            criteria.tableId().orElse(0L),
+            criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
             limit);
@@ -111,8 +110,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       return Page.fromItems(List.of());
     }
 
-    // catalogId is required for queries
-    if (criteria.catalogId().isEmpty()) {
+    // catalogId and tableId are required for queries
+    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
       return Page.fromItems(List.of());
     }
 
@@ -123,8 +122,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     List<ModelCommitMetricsReport> models =
         jdbcPersistence.queryCommitMetricsReports(
             criteria.catalogId().getAsLong(),
-            String.join(".", criteria.namespace()),
-            criteria.tableId().orElse(0L),
+            criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
             limit);
