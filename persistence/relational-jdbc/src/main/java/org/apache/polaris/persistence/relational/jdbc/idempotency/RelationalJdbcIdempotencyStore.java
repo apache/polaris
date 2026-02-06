@@ -17,6 +17,7 @@
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
 import jakarta.annotation.Nonnull;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -33,7 +34,7 @@ import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
-import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelIdempotencyRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
@@ -56,21 +57,23 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       String executorId,
       Instant now) {
     try {
-      ModelIdempotencyRecord model =
-          ImmutableModelIdempotencyRecord.builder()
-              .realmId(realmId)
-              .idempotencyKey(idempotencyKey)
-              .operationType(operationType)
-              .resourceId(normalizedResourceId)
-              .createdAt(now)
-              .updatedAt(now)
-              .heartbeatAt(now)
-              .executorId(executorId)
-              .expiresAt(expiresAt)
-              .build();
+      // Build insert values directly to avoid requiring an Immutables-generated model type.
+      Map<String, Object> insertMap = new LinkedHashMap<>();
+      insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+      insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
+      insertMap.put(ModelIdempotencyRecord.RESOURCE_ID, normalizedResourceId);
+      insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, null);
+      insertMap.put(ModelIdempotencyRecord.ERROR_SUBTYPE, null);
+      insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
+      insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
+      insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
+      insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
+      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
+      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, Timestamp.from(now));
+      insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
+      insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
 
-      List<Object> values =
-          model.toMap(datasourceOperations.databaseType()).values().stream().toList();
+      List<Object> values = insertMap.values().stream().toList();
       QueryGenerator.PreparedQuery insert =
           QueryGenerator.generateInsertQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
@@ -92,7 +95,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     try {
       QueryGenerator.PreparedQuery query =
           QueryGenerator.generateSelectQuery(
-              ModelIdempotencyRecord.SELECT_COLUMNS,
+              ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(
                   ModelIdempotencyRecord.REALM_ID,
@@ -100,7 +103,20 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
                   ModelIdempotencyRecord.IDEMPOTENCY_KEY,
                   idempotencyKey));
       List<IdempotencyRecord> results =
-          datasourceOperations.executeSelect(query, ModelIdempotencyRecord.CONVERTER);
+          datasourceOperations.executeSelect(
+              query,
+              new Converter<>() {
+                @Override
+                public IdempotencyRecord fromResultSet(ResultSet rs) throws SQLException {
+                  return ModelIdempotencyRecord.fromRow(realmId, rs);
+                }
+
+                @Override
+                public Map<String, Object> toMap(
+                    org.apache.polaris.persistence.relational.jdbc.DatabaseType databaseType) {
+                  throw new UnsupportedOperationException("Not used for SELECT conversion");
+                }
+              });
       if (results.isEmpty()) {
         return Optional.empty();
       }
@@ -135,7 +151,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
-            ModelIdempotencyRecord.SELECT_COLUMNS,
+            ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             Map.of(
                 ModelIdempotencyRecord.HEARTBEAT_AT,
@@ -198,7 +214,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
-            ModelIdempotencyRecord.SELECT_COLUMNS,
+            ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             setClause,
             whereEquals,
@@ -219,7 +235,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     try {
       QueryGenerator.PreparedQuery delete =
           QueryGenerator.generateDeleteQuery(
-              ModelIdempotencyRecord.SELECT_COLUMNS,
+              ModelIdempotencyRecord.ALL_COLUMNS,
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
               Map.of(),

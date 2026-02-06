@@ -197,7 +197,7 @@ public class QueryGenerator {
    * predicates (equality, greater-than, less-than, IS NULL, IS NOT NULL).
    *
    * <p>Callers should prefer passing an ordered map (e.g. {@link java.util.LinkedHashMap}) for the
-   * set clause so generated SQL and parameter order are stable.
+   * set clause so generated SQL and parameter order are consistent.
    *
    * @param tableColumns List of valid table columns.
    * @param tableName Target table.
@@ -224,11 +224,6 @@ public class QueryGenerator {
 
     Set<String> columns = new HashSet<>(tableColumns);
     validateColumns(columns, setClause.keySet());
-    validateColumns(columns, whereEquals.keySet());
-    validateColumns(columns, whereGreater.keySet());
-    validateColumns(columns, whereLess.keySet());
-    validateColumns(columns, whereIsNull);
-    validateColumns(columns, whereIsNotNull);
 
     QueryFragment where =
         generateWhereClauseExtended(
@@ -281,12 +276,6 @@ public class QueryGenerator {
       @Nonnull Set<String> whereIsNull,
       @Nonnull Set<String> whereIsNotNull) {
     Set<String> columns = new HashSet<>(tableColumns);
-    validateColumns(columns, whereEquals.keySet());
-    validateColumns(columns, whereGreater.keySet());
-    validateColumns(columns, whereLess.keySet());
-    validateColumns(columns, whereIsNull);
-    validateColumns(columns, whereIsNotNull);
-
     QueryFragment where =
         generateWhereClauseExtended(
             columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
@@ -337,8 +326,6 @@ public class QueryGenerator {
       @Nonnull Map<String, Object> whereLess,
       @Nonnull Set<String> whereIsNull,
       @Nonnull Set<String> whereIsNotNull) {
-    // Preserve the original behavior of rejecting unknown columns. This is used by SELECT query
-    // generation too, not only by callers of the extended UPDATE/DELETE helpers.
     validateColumns(tableColumns, whereEquals.keySet());
     validateColumns(tableColumns, whereGreater.keySet());
     validateColumns(tableColumns, whereLess.keySet());

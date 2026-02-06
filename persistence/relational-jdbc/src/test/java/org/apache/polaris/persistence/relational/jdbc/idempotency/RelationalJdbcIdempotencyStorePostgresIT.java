@@ -102,7 +102,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     String realm = "test-realm";
     String key = "K1";
     String op = "commit-table";
-    String rid = "tables/ns.tbl";
+    String rid = "catalogs/1/tables/ns.tbl";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
@@ -125,7 +125,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     String realm = "test-realm";
     String key = "K2";
     String op = "commit-table";
-    String rid = "tables/ns.tbl2";
+    String rid = "catalogs/1/tables/ns.tbl2";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
@@ -167,7 +167,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     String realm = "test-realm";
     String key = "K3";
     String op = "drop-table";
-    String rid = "tables/ns.tbl3";
+    String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
@@ -181,9 +181,9 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     String realm = "test-realm";
     String key = "K4";
     String op1 = "commit-table";
-    String rid1 = "tables/ns.tbl4";
+    String rid1 = "catalogs/1/tables/ns.tbl4";
     String op2 = "drop-table"; // different binding
-    String rid2 = "tables/ns.tbl4"; // same resource, different op
+    String rid2 = "catalogs/1/tables/ns.tbl4"; // same resource, different op
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 

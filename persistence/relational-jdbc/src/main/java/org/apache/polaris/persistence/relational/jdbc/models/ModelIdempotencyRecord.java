@@ -27,7 +27,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.entity.IdempotencyRecord;
-import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 /**
@@ -35,8 +34,10 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
  *
  * <p>This follows the same pattern as {@link ModelEvent}, separating the storage representation
  * from the core domain model while still providing {@link Converter} helpers.
+ *
+ * <p>Note: {@code realm_id} is treated as an implicit column across relational-jdbc: callers can
+ * filter on it in WHERE clauses even if it is not included in the projection list.
  */
-@PolarisImmutable
 public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String TABLE_NAME = "idempotency_records";
@@ -88,51 +89,6 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
           EXECUTOR_ID,
           EXPIRES_AT);
 
-  /**
-   * Columns to select when reading idempotency records.
-   *
-   * <p>{@code realm_id} is intentionally not part of {@link #ALL_COLUMNS} because {@link
-   * org.apache.polaris.persistence.relational.jdbc.QueryGenerator#generateInsertQuery(List, String,
-   * List, String)} appends it automatically for all relational-jdbc tables.
-   */
-  List<String> SELECT_COLUMNS =
-      List.of(
-          REALM_ID,
-          IDEMPOTENCY_KEY,
-          OPERATION_TYPE,
-          RESOURCE_ID,
-          HTTP_STATUS,
-          ERROR_SUBTYPE,
-          RESPONSE_SUMMARY,
-          RESPONSE_HEADERS,
-          FINALIZED_AT,
-          CREATED_AT,
-          UPDATED_AT,
-          HEARTBEAT_AT,
-          EXECUTOR_ID,
-          EXPIRES_AT);
-
-  /**
-   * Stateless {@link Converter} instance for {@link
-   * org.apache.polaris.persistence.relational.jdbc.DatasourceOperations#executeSelect}.
-   *
-   * <p>We only need {@link Converter#fromResultSet(ResultSet)} when selecting rows; {@link
-   * Converter#toMap(DatabaseType)} is not used in that code path.
-   */
-  Converter<IdempotencyRecord> CONVERTER =
-      new Converter<>() {
-        @Override
-        public IdempotencyRecord fromResultSet(ResultSet rs) throws SQLException {
-          return ModelIdempotencyRecord.fromRow(rs);
-        }
-
-        @Override
-        public Map<String, Object> toMap(DatabaseType databaseType) {
-          throw new UnsupportedOperationException(
-              "ModelIdempotencyRecord.CONVERTER is only intended for result-set conversion");
-        }
-      };
-
   String getRealmId();
 
   String getIdempotencyKey();
@@ -175,7 +131,15 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   /** Convert the current ResultSet row into an {@link IdempotencyRecord}. */
   static IdempotencyRecord fromRow(ResultSet rs) throws SQLException {
-    String realmId = rs.getString(REALM_ID);
+    // Requires realm_id to be projected in the ResultSet.
+    return fromRow(rs.getString(REALM_ID), rs);
+  }
+
+  /**
+   * Convert the current ResultSet row into an {@link IdempotencyRecord}, using {@code realmId} from
+   * call context (so callers can project only {@link #ALL_COLUMNS}).
+   */
+  static IdempotencyRecord fromRow(String realmId, ResultSet rs) throws SQLException {
     String idempotencyKey = rs.getString(IDEMPOTENCY_KEY);
     String operationType = rs.getString(OPERATION_TYPE);
     String resourceId = rs.getString(RESOURCE_ID);
