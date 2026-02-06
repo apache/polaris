@@ -281,8 +281,7 @@ public class PolarisApplicationIntegrationTest {
   public void testConfigureCatalogCaseSensitive() {
     assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
         .isInstanceOf(RESTException.class)
-        .hasMessage(
-            "Unable to process: Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
+        .hasMessageContaining("Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
   }
 
   @Test

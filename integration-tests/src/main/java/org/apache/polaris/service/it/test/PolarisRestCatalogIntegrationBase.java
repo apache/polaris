@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -118,9 +119,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -2299,4 +2302,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     assertThat(nsResponse.namespaces()).hasSize(5);
     assertThat(nsResponse.nextPageToken()).isNull();
   }
+
+  @Test
+  @Disabled("Test is not compatible with REST catalogs")
+  @Override
+  public void testLoadTableWithMissingMetadataFile(@TempDir Path tempDir) {}
 }
