@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
@@ -177,6 +178,7 @@ public class CommitTransactionEventTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -197,6 +199,7 @@ public class CommitTransactionEventTest {
             namespace,
             createTableRequest,
             null,
+            new UUID(0L, 0L) /* TODO UUID v7 */,
             services.realmContext(),
             services.securityContext());
   }
@@ -235,6 +238,7 @@ public class CommitTransactionEventTest {
           .commitTransaction(
               catalog,
               generateCommitTransactionRequest(shouldFail, table1Name, table2Name),
+              new UUID(0L, 0L) /* TODO UUID v7 */,
               testServices.realmContext(),
               testServices.securityContext());
     } catch (Exception ignored) {

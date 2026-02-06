@@ -102,6 +102,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
+                    new UUID(0L, 0L) /* TODO UUID v7 */,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -131,6 +132,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext());
 
@@ -327,6 +329,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext());
     assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -401,6 +404,7 @@ public class IcebergAllowedLocationTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
