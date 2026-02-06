@@ -1538,7 +1538,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
 
     // get meta store session we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1581,7 +1582,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               allowedWriteLocations,
               polarisPrincipal,
               refreshCredentialsEndpoint,
-              credentialVendingContext);
+              credentialVendingContext,
+              tableProperties);
       return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

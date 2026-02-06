@@ -130,7 +130,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"),
                 POLARIS_PRINCIPAL,
                 Optional.of("/namespace/table/credentials"),
-                CredentialVendingContext.empty());
+                CredentialVendingContext.empty(),
+                Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -180,7 +181,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"),
                 POLARIS_PRINCIPAL,
                 Optional.of("/namespace/table/credentials"),
-                CredentialVendingContext.empty());
+                CredentialVendingContext.empty(),
+                Optional.empty());
   }
 
   @ParameterizedTest
@@ -323,7 +325,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(s3Path(bucket, firstPath)),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                    CredentialVendingContext.empty());
+                    CredentialVendingContext.empty(),
+                    Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -426,7 +429,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath)),
                 POLARIS_PRINCIPAL,
                 Optional.empty(),
-                CredentialVendingContext.empty());
+                CredentialVendingContext.empty(),
+                Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -540,7 +544,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(),
                 POLARIS_PRINCIPAL,
                 Optional.empty(),
-                CredentialVendingContext.empty());
+                CredentialVendingContext.empty(),
+                Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -626,7 +631,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(),
                 POLARIS_PRINCIPAL,
                 Optional.empty(),
-                CredentialVendingContext.empty());
+                CredentialVendingContext.empty(),
+                Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -671,7 +677,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                    CredentialVendingContext.empty());
+                    CredentialVendingContext.empty(),
+                    Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -714,7 +721,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                    CredentialVendingContext.empty());
+                    CredentialVendingContext.empty(),
+                    Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -736,7 +744,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             Set.of(),
                             POLARIS_PRINCIPAL,
                             Optional.empty(),
-                            CredentialVendingContext.empty()))
+                            CredentialVendingContext.empty(),
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       default:
@@ -785,7 +794,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
 
     // Test with kmsUnavailable=true and read-only permissions - should NOT add KMS policies
     Mockito.reset(stsClient);
@@ -818,7 +828,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
   }
 
   @Test
@@ -877,7 +888,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
 
     // Test with allowed KMS keys and read-only permissions
     Mockito.reset(stsClient);
@@ -927,7 +939,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
 
     // Test with no KMS keys and read-only (should add wildcard KMS access)
     Mockito.reset(stsClient);
@@ -965,7 +978,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
 
     // Test with no KMS keys and write permissions (should not add KMS statement)
     Mockito.reset(stsClient);
@@ -1000,7 +1014,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
   }
 
   @Test
@@ -1042,7 +1057,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(warehouseDir + "/namespace/table"),
             polarisPrincipalWithLongName,
             Optional.of("/namespace/table/credentials"),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
   }
 
   @Test
@@ -1190,7 +1206,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            context);
+            context,
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // 5 tags are included when session tags enabled but trace_id not in context
@@ -1279,7 +1296,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            context);
+            context,
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // All 6 tags are included when both session tags AND trace_id are enabled
@@ -1345,7 +1363,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            context);
+            context,
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // Tags should be empty when feature is disabled
@@ -1398,7 +1417,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            context);
+            context,
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // 5 tags are included when session tags enabled but trace_id disabled (default)
@@ -1469,7 +1489,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            context);
+            context,
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // Verify namespace tag is truncated to 256 characters
@@ -1523,7 +1544,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // 5 tags are included when session tags enabled but trace_id disabled (default)
@@ -1620,7 +1642,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         POLARIS_PRINCIPAL,
                         Optional.empty(),
-                        context))
+                        context,
+                        Optional.empty() // we need to remove it later
+                        ))
         .isInstanceOf(software.amazon.awssdk.services.sts.model.StsException.class)
         .hasMessageContaining("sts:TagSession");
   }
@@ -1663,6 +1687,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-            CredentialVendingContext.empty());
+            CredentialVendingContext.empty(),
+            Optional.empty());
   }
 }

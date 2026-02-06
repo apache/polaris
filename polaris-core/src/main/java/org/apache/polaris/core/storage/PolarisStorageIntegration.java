@@ -64,6 +64,9 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *     handling the relative path
    * @param credentialVendingContext context containing metadata for session tags (catalog,
    *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
+   * @param tableProperties optional table-level storage properties that should override catalog
+   *     configuration (e.g., different credentials, endpoint, region). If null or empty, only
+   *     catalog configuration is used.
    * @return An enum map including the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
@@ -73,7 +76,8 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties);
 
   /**
    * Validate access for the provided operation actions and locations.

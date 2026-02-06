@@ -40,7 +40,10 @@ import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -88,10 +91,19 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+
+    // Get base storage config from catalog
     AwsStorageConfigurationInfo storageConfig = config();
+
+    // Apply table property overrides if present
+    if (tableProperties != null && !tableProperties.isEmpty()) {
+      storageConfig = applyTablePropertyOverrides(storageConfig, tableProperties.get());
+    }
+
     String region = storageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
@@ -135,7 +147,12 @@ public class AwsCredentialsStorageIntegration
         }
       }
 
-      credentialsProvider.ifPresent(
+      // Check for credential overrides in table properties
+      Optional<AwsCredentialsProvider> effectiveCredentialsProvider =
+          extractCredentialsProviderFromTableProperties(tableProperties)
+              .or(() -> credentialsProvider);
+
+      effectiveCredentialsProvider.ifPresent(
           cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
       @SuppressWarnings("resource")
@@ -197,6 +214,54 @@ public class AwsCredentialsStorageIntegration
 
   private boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {
     return !Boolean.TRUE.equals(storageConfig.getKmsUnavailable());
+  }
+
+  /**
+   * Extract AWS credentials from table properties if present. This allows tables to override the
+   * credentials used for STS AssumeRole calls.
+   *
+   * @param tableProperties table-level properties that may contain AWS credentials
+   * @return Optional containing a StaticCredentialsProvider if credentials are found, empty
+   *     otherwise
+   */
+  private Optional<AwsCredentialsProvider> extractCredentialsProviderFromTableProperties(
+      Optional<java.util.Map<String, String>> tableProperties) {
+    if (tableProperties == null || tableProperties.isEmpty()) {
+      return Optional.empty();
+    }
+
+    String accessKeyId =
+        tableProperties.get().get(StorageAccessProperty.AWS_KEY_ID.getPropertyName());
+    String secretAccessKey =
+        tableProperties.get().get(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName());
+    String sessionToken =
+        tableProperties.get().get(StorageAccessProperty.AWS_TOKEN.getPropertyName());
+
+    // Check if we have the minimum required credentials (access key and secret key)
+    if (accessKeyId != null
+        && !accessKeyId.trim().isEmpty()
+        && secretAccessKey != null
+        && !secretAccessKey.trim().isEmpty()) {
+
+      LOGGER
+          .atDebug()
+          .addKeyValue("hasSessionToken", sessionToken != null && !sessionToken.trim().isEmpty())
+          .log("Using AWS credentials from table properties for STS AssumeRole call");
+
+      // If session token is provided, use AwsSessionCredentials
+      if (sessionToken != null && !sessionToken.trim().isEmpty()) {
+        return Optional.of(
+            StaticCredentialsProvider.create(
+                AwsSessionCredentials.create(accessKeyId, secretAccessKey, sessionToken)));
+      } else {
+        // Otherwise use basic credentials
+        return Optional.of(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKeyId, secretAccessKey)));
+      }
+    }
+
+    return Optional.empty();
   }
 
   /**
@@ -400,5 +465,50 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
+  }
+
+  /**
+   * Apply table-level property overrides to the base catalog AWS storage configuration. This allows
+   * tables to specify different credentials, endpoints, regions, etc.
+   *
+   * @param baseConfig the base catalog configuration
+   * @param tableProperties table-level properties that may override catalog settings
+   * @return a new AwsStorageConfigurationInfo with table overrides applied
+   */
+  private AwsStorageConfigurationInfo applyTablePropertyOverrides(
+      AwsStorageConfigurationInfo baseConfig, java.util.Map<String, String> tableProperties) {
+
+    ImmutableAwsStorageConfigurationInfo.Builder builder =
+        ImmutableAwsStorageConfigurationInfo.builder().from(baseConfig);
+
+    // Override endpoint if specified in table properties
+    if (tableProperties.containsKey("s3.endpoint")) {
+      builder.endpoint(tableProperties.get("s3.endpoint"));
+    }
+
+    // Override region if specified in table properties
+    if (tableProperties.containsKey("s3.region") || tableProperties.containsKey("client.region")) {
+      String region =
+          tableProperties.getOrDefault("s3.region", tableProperties.get("client.region"));
+      if (region != null) {
+        builder.region(region);
+      }
+    }
+
+    // Override STS endpoint if specified
+    if (tableProperties.containsKey("s3.sts-endpoint")) {
+      builder.stsEndpoint(tableProperties.get("s3.sts-endpoint"));
+    }
+
+    // Note: We don't override roleArn, externalId, or userArn from table properties
+    // as these are security-sensitive and should be controlled at catalog level
+    // If needed in the future, this can be added with appropriate security checks
+
+    LOGGER
+        .atDebug()
+        .addKeyValue("tablePropertyKeys", tableProperties.keySet())
+        .log("Applied table property overrides to AWS storage configuration");
+
+    return builder.build();
   }
 }

@@ -187,7 +187,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new HashSet<>(allowedWriteLoc),
         PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.of(REFRESH_ENDPOINT),
-        CredentialVendingContext.empty());
+        CredentialVendingContext.empty(),
+        Optional.empty());
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
@@ -367,7 +368,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Set.of("gs://bucket/path"),
         PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty(),
-        CredentialVendingContext.empty());
+        CredentialVendingContext.empty(),
+        Optional.empty());
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(
