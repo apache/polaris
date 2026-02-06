@@ -207,12 +207,7 @@ jobs:
           Artifacts and Helm chart moved from dist dev to dist release
           EOT
 
-      - name: Set up Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
-        with:
-          version: 'latest'
-
-      - name: Update Helm index in release space
+      - name: Transfer Helm index from dev to release
         env:
           SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
           SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
@@ -222,20 +217,20 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          # Checkout the release Helm chart directory
-          release_helm_dir="${RELEASEY_DIR}/polaris-dist-release-helm-chart"
-          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
+          # Define source and destination URLs for the Helm index
+          dev_helm_index_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/index.yaml"
+          release_helm_index_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/index.yaml"
 
-          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
-          exec_process_with_retries 5 60 "${release_helm_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"
-
-          exec_process cd "${release_helm_dir}"
-          exec_process helm repo index .
-          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} release"
+          # Move the index.yaml from dev to release
+          # The index was already properly generated in workflow 3 with relative URLs for the current
+          # release and absolute URLs to archive.apache.org for previous releases, so we just transfer it as-is
+          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${dev_helm_index_url}" "${release_helm_index_url}" \
+            -m "Transfer Helm index for ${version_without_rc} release"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Helm Index
-          Helm index updated in dist release
+          Helm index transferred from dist dev to dist release
           EOT
 
       - name: Create final release tag and push to Git repository
