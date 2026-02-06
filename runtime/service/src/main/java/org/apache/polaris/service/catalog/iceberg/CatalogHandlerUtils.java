@@ -64,6 +64,7 @@ import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
@@ -348,7 +349,21 @@ public class CatalogHandlerUtils {
     request.validate();
 
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-    Table table = catalog.registerTable(identifier, request.metadataLocation());
+    // Determine whether the client requested overwrite semantics. For catalogs that
+    // understand overwrite (our {@link IcebergCatalog}) we invoke the overwrite-capable
+    // registration path. For other catalog implementations, explicitly reject overwrite
+    // so callers don't accidentally replace an existing table pointer.
+    boolean shouldOverwrite = RegisterTableRequestContext.getOverwrite();
+    Table table;
+    if (shouldOverwrite && catalog instanceof IcebergCatalog polarisCatalog) {
+      table = polarisCatalog.registerTable(identifier, request.metadataLocation(), true);
+    } else if (shouldOverwrite && catalog.tableExists(identifier)) {
+      throw new BadRequestException(
+          "Register table overwrite is not supported for catalog type: %s",
+          catalog.getClass().getName());
+    } else {
+      table = catalog.registerTable(identifier, request.metadataLocation());
+    }
     if (table instanceof BaseTable baseTable) {
       return LoadTableResponse.builder()
           .withTableMetadata(baseTable.operations().current())
