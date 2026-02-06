@@ -689,6 +689,8 @@ public class PolarisAdminService {
               // service identity managed by Polaris. Nothing to do here.
               break;
             }
+          case GCP:
+            break; // only contains user IDs, not credentials
           default:
             throw new IllegalStateException(
                 "Unsupported authentication type: "
