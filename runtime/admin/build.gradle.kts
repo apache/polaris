@@ -46,7 +46,7 @@ dependencies {
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
-  testFixturesApi("io.quarkus:quarkus-junit5")
+  testFixturesApi("io.quarkus:quarkus-junit")
 
   testFixturesApi(project(":polaris-container-spec-helper"))
   testFixturesApi(platform(libs.testcontainers.bom))
