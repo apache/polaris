@@ -136,17 +136,14 @@ class IntegrationTestsHelperTest {
   @ParameterizedTest
   @MethodSource
   void mergeFromAnnotatedElements(
-      Method testMethod,
-      Class<?> testClass,
-      Map<String, String> defaults,
-      Map<String, String> expected) {
+      Method testMethod, Class<?> testClass, Map<String, String> expected) {
     TestInfo testInfo = mock(TestInfo.class);
     when(testInfo.getTestMethod()).thenReturn(Optional.ofNullable(testMethod));
     when(testInfo.getTestClass()).thenReturn(Optional.ofNullable(testClass));
 
     Map<String, String> result =
         IntegrationTestsHelper.mergeFromAnnotatedElements(
-            testInfo, TestAnnotation.class, TestAnnotation::properties, defaults);
+            testInfo, TestAnnotation.class, TestAnnotation::properties);
 
     assertThat(result).isEqualTo(expected);
   }
@@ -160,42 +157,27 @@ class IntegrationTestsHelperTest {
         Arguments.of(
             annotatedMethod,
             AnnotatedClass.class,
-            Map.of(),
             Map.of(
                 "sharedKey", "methodValue", "classKey", "classValue", "methodKey", "methodValue")),
+        // Only method has properties
+        Arguments.of(
+            annotatedMethod,
+            UnannotatedClass.class,
+            Map.of("sharedKey", "methodValue", "methodKey", "methodValue")),
         // Only class has properties
         Arguments.of(
             unannotatedMethod,
             AnnotatedClass.class,
-            Map.of(),
             Map.of("sharedKey", "classValue", "classKey", "classValue")),
         // No method, class has properties
         Arguments.of(
             null,
             AnnotatedClass.class,
-            Map.of(),
             Map.of("sharedKey", "classValue", "classKey", "classValue")),
-        // Neither has properties - return defaults
-        Arguments.of(
-            unannotatedMethod,
-            UnannotatedClass.class,
-            Map.of("defaultKey", "defaultValue"),
-            Map.of("defaultKey", "defaultValue")),
-        // No method, no class - return defaults
-        Arguments.of(null, null, Map.of("key", "value"), Map.of("key", "value")),
-        // Defaults are overridden by class properties
-        Arguments.of(
-            null,
-            AnnotatedClass.class,
-            Map.of("sharedKey", "overridden"),
-            Map.of("sharedKey", "classValue", "classKey", "classValue")),
-        // Defaults are overridden by method properties
-        Arguments.of(
-            annotatedMethod,
-            AnnotatedClass.class,
-            Map.of("methodKey", "overridden"),
-            Map.of(
-                "sharedKey", "methodValue", "classKey", "classValue", "methodKey", "methodValue")));
+        // Neither has properties - return empty
+        Arguments.of(unannotatedMethod, UnannotatedClass.class, Map.of()),
+        // No method, no class - return empty
+        Arguments.of(null, null, Map.of()));
   }
 
   @TestAnnotation(properties = {"key1", "value1", "key2"})
@@ -213,7 +195,7 @@ class IntegrationTestsHelperTest {
     assertThatThrownBy(
             () ->
                 IntegrationTestsHelper.mergeFromAnnotatedElements(
-                    testInfo, TestAnnotation.class, TestAnnotation::properties, Map.of()))
+                    testInfo, TestAnnotation.class, TestAnnotation::properties))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Properties must be in key-value pairs");
   }
