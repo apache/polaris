@@ -20,7 +20,6 @@ package org.apache.polaris.core.metrics.iceberg;
 
 import java.time.Instant;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,7 +44,6 @@ import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
  * ScanMetricsRecord record = MetricsRecordConverter.forScanReport(scanReport)
  *     .catalogId(catalog.getId())
  *     .tableId(tableEntity.getId())
- *     .namespace(namespace)
  *     .build();
  * }</pre>
  */
@@ -80,7 +78,6 @@ public final class MetricsRecordConverter {
     private final ScanReport scanReport;
     private long catalogId;
     private long tableId;
-    private List<String> namespace = Collections.emptyList();
     private Instant timestamp;
 
     private ScanReportBuilder(ScanReport scanReport) {
@@ -106,17 +103,6 @@ public final class MetricsRecordConverter {
     }
 
     /**
-     * Sets the namespace as a list of levels.
-     *
-     * @param namespace the namespace levels
-     * @return this builder
-     */
-    public ScanReportBuilder namespace(List<String> namespace) {
-      this.namespace = namespace != null ? namespace : Collections.emptyList();
-      return this;
-    }
-
-    /**
      * Sets the timestamp for the metrics record.
      *
      * <p>This should be the time the metrics report was received by the server, which may differ
@@ -138,7 +124,6 @@ public final class MetricsRecordConverter {
       return ScanMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespace)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
           .snapshotId(Optional.of(scanReport.snapshotId()))
@@ -181,7 +166,6 @@ public final class MetricsRecordConverter {
     private final CommitReport commitReport;
     private long catalogId;
     private long tableId;
-    private List<String> namespace = Collections.emptyList();
     private Instant timestamp;
 
     private CommitReportBuilder(CommitReport commitReport) {
@@ -207,17 +191,6 @@ public final class MetricsRecordConverter {
     }
 
     /**
-     * Sets the namespace as a list of levels.
-     *
-     * @param namespace the namespace levels
-     * @return this builder
-     */
-    public CommitReportBuilder namespace(List<String> namespace) {
-      this.namespace = namespace != null ? namespace : Collections.emptyList();
-      return this;
-    }
-
-    /**
      * Sets the timestamp for the metrics record.
      *
      * <p>This should be the time the metrics report was received by the server, which may differ
@@ -239,7 +212,6 @@ public final class MetricsRecordConverter {
       return CommitMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
-          .namespace(namespace)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
           .snapshotId(commitReport.snapshotId())

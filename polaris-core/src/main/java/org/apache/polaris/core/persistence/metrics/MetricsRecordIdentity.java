@@ -20,28 +20,24 @@ package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Base interface containing common identification fields shared by all metrics records.
  *
  * <p>This interface defines the common fields that identify the source of a metrics report,
- * including the report ID, catalog ID, table location, timestamp, and metadata.
+ * including the report ID, catalog ID, table ID, timestamp, and metadata.
  *
  * <p>Both {@link ScanMetricsRecord} and {@link CommitMetricsRecord} extend this interface to
  * inherit these common fields while adding their own specific metrics.
  *
  * <h3>Design Decisions</h3>
  *
- * <p><b>Entity IDs only (no names):</b> We store only catalog ID and table ID, not their names.
- * Names can change over time (via rename operations), which would make querying historical metrics
- * by name challenging and lead to correctness issues. Queries should resolve names to IDs using the
- * current catalog state.
- *
- * <p><b>Namespace as List&lt;String&gt;:</b> Namespaces are stored as a list of levels rather than
- * a dot-separated string to avoid ambiguity when namespace segments contain dots. The persistence
- * implementation handles the serialization format.
+ * <p><b>Entity IDs only (no names):</b> We store only catalog ID and table ID, not their names or
+ * namespace paths. Names can change over time (via rename operations), which would make querying
+ * historical metrics by name challenging and lead to correctness issues. Queries should resolve
+ * names to IDs using the current catalog state. The table ID uniquely identifies the table, and the
+ * namespace can be derived from the table entity if needed.
  *
  * <p><b>Realm ID:</b> Realm ID is intentionally not included in this interface. Multi-tenancy realm
  * context should be obtained from the CDI-injected {@code RealmContext} at persistence time. This
@@ -71,20 +67,12 @@ public interface MetricsRecordIdentity {
   long catalogId();
 
   /**
-   * Namespace path as a list of levels (e.g., ["db", "schema"]).
-   *
-   * <p>This is the namespace portion of the table identifier. Using a list avoids ambiguity when
-   * namespace segments contain dots. The persistence implementation handles the serialization
-   * format.
-   */
-  List<String> namespace();
-
-  /**
    * Internal table entity ID.
    *
    * <p>This matches the table entity ID in Polaris persistence, as defined by {@code
    * PolarisEntityCore#getId()}. The table name is not stored since it can change over time; queries
-   * should resolve names to IDs using the current catalog state.
+   * should resolve names to IDs using the current catalog state. The namespace can be derived from
+   * the table entity if needed.
    */
   long tableId();
 
