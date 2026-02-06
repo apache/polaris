@@ -226,7 +226,9 @@ public class StorageCredentialCacheTest {
         .thenReturn(
             new RealmConfigImpl(
                 (rc, name) ->
-                    Map.of(INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(), "true").get(name),
+                    INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key().equals(name)
+                        ? "true"
+                        : null,
                 () -> "realm"));
 
     testCacheForAnotherPrincipal(false);
