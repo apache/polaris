@@ -18,11 +18,8 @@
  */
 package org.apache.polaris.core.config;
 
-import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -32,7 +29,11 @@ import org.slf4j.LoggerFactory;
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
  * request.
+ *
+ * @deprecated Use {@link RealmConfig} instead.
  */
+@SuppressWarnings("DeprecatedIsStillUsed")
+@Deprecated(forRemoval = true)
 public interface PolarisConfigurationStore {
   Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
 
@@ -58,35 +59,10 @@ public interface PolarisConfigurationStore {
    * @return the current value or the supplied default value
    * @param <T> the type of the configuration value
    */
+  @SuppressWarnings("removal")
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
-    Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
-    T configValue = getConfiguration(realmContext, configName);
-    return configValue != null ? configValue : defaultValue;
-  }
-
-  /**
-   * In some cases, we may extract a value that doesn't match the expected type for a config. This
-   * method can be used to attempt to force-cast it using `String.valueOf`
-   */
-  private <T> @Nonnull T tryCast(PolarisConfiguration<T> config, Object value) {
-    if (value == null) {
-      return config.defaultValue();
-    }
-
-    if (config.defaultValue() instanceof Boolean) {
-      return config.cast(Boolean.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Integer) {
-      return config.cast(Integer.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Long) {
-      return config.cast(Long.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Double) {
-      return config.cast(Double.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof List<?>) {
-      return config.cast(new ArrayList<>((List<?>) value));
-    } else {
-      return config.cast(value);
-    }
+    return asRealmConfig(realmContext).getConfig(configName, defaultValue);
   }
 
   /**
@@ -99,8 +75,7 @@ public interface PolarisConfigurationStore {
    */
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
-    T result = getConfiguration(realmContext, config.key(), config.defaultValue());
-    return tryCast(config, result);
+    return asRealmConfig(realmContext).getConfig(config);
   }
 
   /**
@@ -138,26 +113,10 @@ public interface PolarisConfigurationStore {
       @Nonnull RealmContext realmContext,
       @Nonnull Map<String, String> catalogProperties,
       PolarisConfiguration<T> config) {
-    if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
-      String propertyValue = null;
-      if (config.hasCatalogConfig()) {
-        propertyValue = catalogProperties.get(config.catalogConfig());
-      }
-      if (propertyValue == null) {
-        if (config.hasCatalogConfigUnsafe()) {
-          propertyValue = catalogProperties.get(config.catalogConfigUnsafe());
-        }
-        if (propertyValue != null) {
-          LOGGER.warn(
-              String.format(
-                  "Deprecated config %s is in use and will be removed in a future version",
-                  config.catalogConfigUnsafe()));
-        }
-      }
-      if (propertyValue != null) {
-        return tryCast(config, propertyValue);
-      }
-    }
-    return getConfiguration(realmContext, config);
+    return asRealmConfig(realmContext).getConfig(config, catalogProperties);
+  }
+
+  private RealmConfig asRealmConfig(RealmContext realmContext) {
+    return new RealmConfigImpl(this::getConfiguration, realmContext);
   }
 }

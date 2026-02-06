@@ -1139,14 +1139,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Create a simple RealmConfig implementation that overrides just what we need
     RealmConfig customRealmConfig =
         new RealmConfig() {
+          @SuppressWarnings("removal")
           @Override
           public <T> T getConfig(String configName) {
-            return realmConfig.getConfig(configName);
+            throw new UnsupportedOperationException();
           }
 
+          @SuppressWarnings("removal")
           @Override
           public <T> T getConfig(String configName, T defaultValue) {
-            return realmConfig.getConfig(configName, defaultValue);
+            throw new UnsupportedOperationException();
           }
 
           @Override
