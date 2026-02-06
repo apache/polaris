@@ -16,9 +16,6 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- ============================================================================
--- POLARIS METRICS SCHEMA VERSION 1 (PostgreSQL)
--- ============================================================================
 -- This schema is SEPARATE from the entity schema and can evolve independently.
 -- It contains tables for storing Iceberg metrics reports.
 --

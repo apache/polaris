@@ -17,9 +17,6 @@
 -- under the License.
 --
 
--- ============================================================================
--- POLARIS METRICS SCHEMA VERSION 1 (H2)
--- ============================================================================
 -- This schema is SEPARATE from the entity schema and can evolve independently.
 -- It contains tables for storing Iceberg metrics reports.
 --
