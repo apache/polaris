@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.common;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 
-import jakarta.enterprise.inject.Instance;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -31,23 +30,23 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.immutables.value.Value;
 
 /**
  * An ABC for catalog wrappers which provides authorize methods that should be called before a
@@ -56,47 +55,35 @@ import org.apache.polaris.service.types.PolicyIdentifier;
  */
 public abstract class CatalogHandler {
 
-  // Initialized in the authorize methods.
-  protected PolarisResolutionManifest resolutionManifest = null;
+  public abstract String catalogName();
 
-  protected final ResolutionManifestFactory resolutionManifestFactory;
-  protected final String catalogName;
-  protected final PolarisAuthorizer authorizer;
-  protected final PolarisCredentialManager credentialManager;
-  protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
+  public abstract PolarisPrincipal polarisPrincipal();
 
-  protected final PolarisDiagnostics diagnostics;
-  protected final CallContext callContext;
-  protected final RealmConfig realmConfig;
-  protected final PolarisPrincipal polarisPrincipal;
+  public abstract CallContext callContext();
 
-  public CatalogHandler(
-      PolarisDiagnostics diagnostics,
-      CallContext callContext,
-      ResolutionManifestFactory resolutionManifestFactory,
-      PolarisPrincipal principal,
-      String catalogName,
-      PolarisAuthorizer authorizer,
-      PolarisCredentialManager credentialManager,
-      Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    this.diagnostics = diagnostics;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
-    this.resolutionManifestFactory = resolutionManifestFactory;
-    this.catalogName = catalogName;
-    this.polarisPrincipal = principal;
-    this.authorizer = authorizer;
-    this.credentialManager = credentialManager;
-    this.externalCatalogFactories = externalCatalogFactories;
+  @Value.Derived
+  public RealmConfig realmConfig() {
+    return callContext().getRealmConfig();
   }
 
-  protected PolarisCredentialManager getPolarisCredentialManager() {
-    return credentialManager;
+  @Value.Derived
+  public RealmContext realmContext() {
+    return callContext().getRealmContext();
   }
+
+  public abstract PolarisMetaStoreManager metaStoreManager();
+
+  public abstract ResolutionManifestFactory resolutionManifestFactory();
+
+  public abstract PolarisAuthorizer authorizer();
 
   protected PolarisResolutionManifest newResolutionManifest() {
-    return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
+    return resolutionManifestFactory().createResolutionManifest(polarisPrincipal(), catalogName());
   }
+
+  // Initialized in the authorize methods.
+  @SuppressWarnings("immutables:incompat")
+  protected PolarisResolutionManifest resolutionManifest = null;
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();
@@ -152,12 +139,13 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            null /* secondary */);
 
     initializeCatalog();
   }
@@ -184,12 +172,13 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            null /* secondary */);
 
     initializeCatalog();
   }
@@ -220,12 +209,13 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            null /* secondary */);
 
     initializeCatalog();
   }
@@ -267,12 +257,13 @@ public abstract class CatalogHandler {
     }
 
     for (PolarisAuthorizableOperation op : ops) {
-      authorizer.authorizeOrThrow(
-          polarisPrincipal,
-          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          op,
-          target,
-          null /* secondary */);
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              op,
+              target,
+              null /* secondary */);
     }
 
     initializeCatalog();
@@ -317,12 +308,13 @@ public abstract class CatalogHandler {
                                     : new NoSuchViewException(
                                         "View does not exist: %s", identifier)))
             .toList();
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        targets,
-        null /* secondaries */);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            targets,
+            null /* secondaries */);
 
     initializeCatalog();
   }
@@ -384,12 +376,13 @@ public abstract class CatalogHandler {
         resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType, true);
     PolarisResolvedPathWrapper secondary =
         resolutionManifest.getResolvedPath(dst.namespace(), true);
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        secondary);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            secondary);
 
     initializeCatalog();
   }

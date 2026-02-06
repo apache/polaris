@@ -20,14 +20,17 @@ package org.apache.polaris.service.catalog.generic;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
@@ -41,20 +44,28 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return newWrapper(activatedPrincipalRoles, CATALOG_NAME);
   }
 
+  @SuppressWarnings("unchecked")
+  private static Instance<ExternalCatalogFactory> emptyExternalCatalogFactory() {
+    Instance<ExternalCatalogFactory> mock = Mockito.mock(Instance.class);
+    Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
+    Mockito.when(mock.isUnsatisfied()).thenReturn(true);
+    return mock;
+  }
+
   private GenericTableCatalogHandler newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return new GenericTableCatalogHandler(
-        diagServices,
-        callContext,
-        resolutionManifestFactory,
-        metaStoreManager,
-        authenticatedPrincipal,
-        catalogName,
-        polarisAuthorizer,
-        null,
-        null);
+    return ImmutableGenericTableCatalogHandler.builder()
+        .catalogName(catalogName)
+        .polarisPrincipal(authenticatedPrincipal)
+        .callContext(callContext)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .credentialManager(credentialManager)
+        .authorizer(polarisAuthorizer)
+        .externalCatalogFactories(emptyExternalCatalogFactory())
+        .build();
   }
 
   /**

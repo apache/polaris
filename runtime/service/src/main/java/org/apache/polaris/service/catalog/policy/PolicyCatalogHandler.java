@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.policy;
 
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
-import jakarta.enterprise.inject.Instance;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -29,23 +28,16 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -57,37 +49,16 @@ import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 
-public class PolicyCatalogHandler extends CatalogHandler {
-
-  private PolarisMetaStoreManager metaStoreManager;
+@PolarisImmutable
+@SuppressWarnings("immutables:incompat")
+public abstract class PolicyCatalogHandler extends CatalogHandler {
 
   private PolicyCatalog policyCatalog;
 
-  public PolicyCatalogHandler(
-      PolarisDiagnostics diagnostics,
-      CallContext callContext,
-      ResolutionManifestFactory resolutionManifestFactory,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisPrincipal principal,
-      String catalogName,
-      PolarisAuthorizer authorizer,
-      PolarisCredentialManager polarisCredentialManager,
-      Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(
-        diagnostics,
-        callContext,
-        resolutionManifestFactory,
-        principal,
-        catalogName,
-        authorizer,
-        polarisCredentialManager,
-        externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
-  }
-
   @Override
   protected void initializeCatalog() {
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.policyCatalog =
+        new PolicyCatalog(metaStoreManager(), callContext(), this.resolutionManifest);
   }
 
   public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
@@ -179,12 +150,13 @@ public class PolicyCatalogHandler extends CatalogHandler {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            null /* secondary */);
 
     initializeCatalog();
   }
@@ -221,12 +193,13 @@ public class PolicyCatalogHandler extends CatalogHandler {
     if (targetCatalog == null) {
       throw new NotFoundException("Catalog not found");
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        targetCatalog,
-        null);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            targetCatalog,
+            null);
 
     initializeCatalog();
   }
@@ -278,12 +251,13 @@ public class PolicyCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation op =
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
 
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        policyWrapper,
-        targetWrapper);
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            policyWrapper,
+            targetWrapper);
 
     initializeCatalog();
   }

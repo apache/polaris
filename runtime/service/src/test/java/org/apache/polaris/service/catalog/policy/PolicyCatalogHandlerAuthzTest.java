@@ -50,16 +50,14 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   private PolicyCatalogHandler newWrapper(Set<String> activatedPrincipalRoles, String catalogName) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return new PolicyCatalogHandler(
-        diagServices,
-        callContext,
-        resolutionManifestFactory,
-        metaStoreManager,
-        authenticatedPrincipal,
-        catalogName,
-        polarisAuthorizer,
-        null,
-        null);
+    return ImmutablePolicyCatalogHandler.builder()
+        .catalogName(catalogName)
+        .polarisPrincipal(authenticatedPrincipal)
+        .callContext(callContext)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .authorizer(polarisAuthorizer)
+        .metaStoreManager(metaStoreManager)
+        .build();
   }
 
   /**

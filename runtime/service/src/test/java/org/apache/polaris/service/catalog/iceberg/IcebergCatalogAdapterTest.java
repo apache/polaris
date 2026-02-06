@@ -219,7 +219,7 @@ public class IcebergCatalogAdapterTest {
               return wrappedHandler;
             })
         .when(catalogAdapter)
-        .newHandlerWrapper(Mockito.any(), Mockito.any());
+        .newHandler(Mockito.any(), Mockito.any());
   }
 
   private static Stream<Arguments> paginationTestCases() {
