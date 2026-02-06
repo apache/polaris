@@ -51,10 +51,6 @@ public class JdbcMetricsPersistenceProducer {
 
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
 
-  @Inject RealmContext realmContext;
-
-  @Inject RealmConfig realmConfig;
-
   /**
    * Produces a {@link MetricsPersistence} instance for the current request.
    *
@@ -62,12 +58,14 @@ public class JdbcMetricsPersistenceProducer {
    * and schema version. If the schema version is less than 4 (which includes metrics tables), the
    * returned instance will be functional but all operations will be no-ops.
    *
+   * @param realmContext the current realm context (request-scoped)
+   * @param realmConfig the realm configuration (request-scoped)
    * @return a MetricsPersistence implementation for JDBC
    */
   @Produces
   @RequestScoped
   @Identifier("relational-jdbc")
-  public MetricsPersistence metricsPersistence() {
+  public MetricsPersistence metricsPersistence(RealmContext realmContext, RealmConfig realmConfig) {
     try {
       DatasourceOperations datasourceOperations =
           new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
