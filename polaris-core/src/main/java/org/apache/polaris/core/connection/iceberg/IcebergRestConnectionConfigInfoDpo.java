@@ -43,8 +43,16 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     implements IcebergCatalogPropertiesProvider {
 
+  private static final String GOOGLE_USER_PROJECT_HEADER_KEY = "x-goog-user-project";
+
   private final String remoteCatalogName;
 
+  private final Map<String, String> additionalHeaders;
+
+  /**
+   * @param additionalHeaders Properties that might be specifically needed for a particular
+   *     implementation of a REST API.
+   */
   public IcebergRestConnectionConfigInfoDpo(
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
@@ -52,10 +60,18 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentityInfo,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
-          String remoteCatalogName) {
+          String remoteCatalogName,
+      @JsonProperty(value = "additionalHeaders", required = false) @Nullable
+          Map<String, String> additionalHeaders) {
     super(
         ConnectionType.ICEBERG_REST.getCode(), uri, authenticationParameters, serviceIdentityInfo);
     this.remoteCatalogName = remoteCatalogName;
+    this.additionalHeaders = additionalHeaders == null ? Map.of() : additionalHeaders;
+  }
+
+  @Nullable
+  public Map<String, String> getAdditionalHeaders() {
+    return additionalHeaders;
   }
 
   public String getRemoteCatalogName() {
@@ -72,6 +88,11 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     }
     // Add authentication-specific metadata (non-credential properties)
     properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(credentialManager));
+    if (getAdditionalHeaders().containsKey(GOOGLE_USER_PROJECT_HEADER_KEY)) {
+      properties.put(
+          "header." + GOOGLE_USER_PROJECT_HEADER_KEY,
+          getAdditionalHeaders().get(GOOGLE_USER_PROJECT_HEADER_KEY));
+    }
     // Add connection credentials from Polaris credential manager
     ConnectionCredentials connectionCredentials = credentialManager.getConnectionCredentials(this);
     properties.putAll(connectionCredentials.credentials());
@@ -82,7 +103,11 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   public ConnectionConfigInfoDpo withServiceIdentity(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new IcebergRestConnectionConfigInfoDpo(
-        getUri(), getAuthenticationParameters(), serviceIdentityInfo, getRemoteCatalogName());
+        getUri(),
+        getAuthenticationParameters(),
+        serviceIdentityInfo,
+        getRemoteCatalogName(),
+        getAdditionalHeaders());
   }
 
   @Override
@@ -100,6 +125,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
                     serviceIdentityInfoDpo ->
                         serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
+        .setAdditionalHeaders(getAdditionalHeaders())
         .build();
   }
 
@@ -111,6 +137,7 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
         .add("remoteCatalogName", getRemoteCatalogName())
         .add("authenticationParameters", getAuthenticationParameters().toString())
         .add("serviceIdentity", getServiceIdentity())
+        .add("additionalHeaders", getAdditionalHeaders())
         .toString();
   }
 }
