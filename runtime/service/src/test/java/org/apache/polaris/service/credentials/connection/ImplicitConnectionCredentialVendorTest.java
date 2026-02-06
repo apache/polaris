@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -46,9 +47,7 @@ public class ImplicitConnectionCredentialVendorTest {
     // Setup
     ImplicitAuthenticationParametersDpo authParams = new ImplicitAuthenticationParametersDpo();
 
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://catalog.example.com", authParams, null, "test-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
     // Execute
     ConnectionCredentials credentials = implicitVendor.getConnectionCredentials(connectionConfig);
