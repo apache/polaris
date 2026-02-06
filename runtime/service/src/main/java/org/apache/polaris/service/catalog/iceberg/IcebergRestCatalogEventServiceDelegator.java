@@ -350,6 +350,7 @@ public class IcebergRestCatalogEventServiceDelegator
             snapshots,
             realmContext,
             securityContext);
+
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_TABLE,
