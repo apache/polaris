@@ -521,31 +521,163 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .createTests();
   }
 
+    @TestFactory
+    Stream<DynamicNode> testRegisterTableInsufficientPermissions() {
+        assertSuccess(
+                adminService.grantPrivilegeOnCatalogToRole(
+                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+        assertSuccess(
+                adminService.grantPrivilegeOnCatalogToRole(
+                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+        assertSuccess(
+                adminService.grantPrivilegeOnCatalogToRole(
+                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+
+        final TableIdentifier sourceTable = TableIdentifier.of(NS2, "register_table_insufficient_source");
+        final TableIdentifier targetTable = TableIdentifier.of(NS2, "register_table_insufficient_target");
+
+        // Prepare a source metadata file under NS2, then drop the source table to avoid location overlap.
+        try {
+            newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(sourceTable);
+        } catch (RuntimeException ignored) {
+            // Table may not exist yet; cleanup pre-step is best-effort.
+        }
+        CreateTableRequest createSourceRequest =
+                CreateTableRequest.builder().withName(sourceTable.name()).withSchema(SCHEMA).build();
+        newHandler(Set.of(PRINCIPAL_ROLE2)).createTableDirect(NS2, createSourceRequest);
+
+        final String metadataLocation =
+                newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(sourceTable, "all").metadataLocation();
+        newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(sourceTable);
+
+        final RegisterTableRequest registerRequest =
+                new RegisterTableRequest() {
+                    @Override
+                    public String name() {
+                        return targetTable.name();
+                    }
+
+                    @Override
+                    public String metadataLocation() {
+                        return metadataLocation;
+                    }
+                };
+
+        // Registering a new table requires TABLE_CREATE (or broader privileges).
+        return authzTestsBuilder("registerTable (insufficient)")
+                .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest))
+                .cleanupAction(
+                        () -> {
+                            IcebergCatalogHandler cleanup = newHandler(Set.of(PRINCIPAL_ROLE2));
+                            try {
+                                cleanup.dropTableWithoutPurge(targetTable);
+                            } catch (RuntimeException ignored) {
+                                // Target table may not have been created; cleanup is best-effort.
+                            }
+                        })
+                .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+                .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+                .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+                .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+                .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+                .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+                .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+                .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+                .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+                .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+                .createTests();
+    }
+
+    @TestFactory
+    Stream<DynamicNode> testLoadTablePrivileges() {
+        return authzTestsBuilder("loadTable")
+                .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .createTests();
+    }
+
   @TestFactory
-  Stream<DynamicNode> testLoadTablePrivileges() {
-    return authzTestsBuilder("loadTable")
-        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+  Stream<DynamicNode> testRegisterTableOverwriteSufficientPrivileges() {
+    // Overwrite requires TABLE_FULL_METADATA or broader catalog privilege.
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    // Mock RegisterTableRequest with overwrite=true
+    final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
+    Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
+    Mockito.when(registerRequest.metadataLocation()).thenReturn(metadataLocation);
+    Mockito.when(registerRequest.overwrite()).thenReturn(true);
+
+    return authzTestsBuilder("registerTableOverwrite")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
-  @TestFactory
-  Stream<DynamicNode> testLoadTableIfStalePrivileges() {
-    return authzTestsBuilder("loadTableIfStale")
-        .action(
-            () ->
-                newHandler()
-                    .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"))
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+    @TestFactory
+    Stream<DynamicNode> testRegisterTableOverwriteInsufficientPermissions() {
+    /*
+     * Verifies that a variety of privileges are insufficient to authorize a registerTable operation
+     * with overwrite enabled. Grants only TABLE_READ_PROPERTIES to the cleanup role, mocks a
+     * RegisterTableRequest for overwriting an existing table, and asserts that privileges such as
+     * TABLE_WRITE_PROPERTIES, TABLE_CREATE, TABLE_DROP, NAMESPACE_FULL_METADATA,
+     * VIEW_FULL_METADATA, TABLE_READ_PROPERTIES, TABLE_READ_DATA, and TABLE_LIST do not permit
+     * the overwrite operation.
+     */
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    // Mock RegisterTableRequest with overwrite=true
+    final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
+    Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
+    Mockito.when(registerRequest.metadataLocation()).thenReturn(metadataLocation);
+    Mockito.when(registerRequest.overwrite()).thenReturn(true);
+
+    return authzTestsBuilder("registerTableOverwrite (insufficient)")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
         .createTests();
+  }
+
+    @TestFactory
+    Stream<DynamicNode> testLoadTableIfStalePrivileges() {
+        return authzTestsBuilder("loadTableIfStale")
+                .action(
+                        () ->
+                                newHandler()
+                                        .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"))
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .createTests();
   }
 
   @TestFactory
@@ -664,127 +796,127 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             throw new UnsupportedOperationException();
           }
 
-          @SuppressWarnings("removal")
-          @Override
-          public <T> T getConfig(String configName, T defaultValue) {
-            throw new UnsupportedOperationException();
+                    @SuppressWarnings("removal")
+                    @Override
+                    public <T> T getConfig(String configName, T defaultValue) {
+                        throw new UnsupportedOperationException();
           }
 
-          @Override
-          public <T> T getConfig(PolarisConfiguration<T> config) {
-            return realmConfig.getConfig(config);
-          }
+                    @Override
+                    public <T> T getConfig(PolarisConfiguration<T> config) {
+                        return realmConfig.getConfig(config);
+                    }
 
-          @Override
-          @SuppressWarnings("unchecked")
-          public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
-            // Override the specific configuration we want to test
-            if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
-              return (T) Boolean.FALSE;
-            }
-            return realmConfig.getConfig(config, catalogEntity);
-          }
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
+                        // Override the specific configuration we want to test
+                        if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
+                            return (T) Boolean.FALSE;
+                        }
+                        return realmConfig.getConfig(config, catalogEntity);
+                    }
 
-          @Override
-          @SuppressWarnings("unchecked")
-          public <T> T getConfig(
-              PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-            // Override the specific configuration we want to test
-            if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
-              return (T) Boolean.FALSE;
-            }
-            return realmConfig.getConfig(config, catalogProperties);
-          }
-        };
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public <T> T getConfig(
+                            PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+                        // Override the specific configuration we want to test
+                        if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
+                            return (T) Boolean.FALSE;
+                        }
+                        return realmConfig.getConfig(config, catalogProperties);
+                    }
+                };
 
-    // Mock the regular CallContext calls
-    Mockito.when(mockCallContext.getRealmContext()).thenReturn(() -> "test");
-    Mockito.when(mockCallContext.getRealmConfig()).thenReturn(customRealmConfig);
-    Mockito.when(mockCallContext.getPolarisCallContext())
-        .thenReturn(callContext.getPolarisCallContext());
+        // Mock the regular CallContext calls
+        Mockito.when(mockCallContext.getRealmContext()).thenReturn(() -> "test");
+        Mockito.when(mockCallContext.getRealmConfig()).thenReturn(customRealmConfig);
+        Mockito.when(mockCallContext.getPolarisCallContext())
+                .thenReturn(callContext.getPolarisCallContext());
 
-    IcebergCatalogHandler handler =
-        icebergCatalogHandlerFactory.createHandler(
-            PolarisAuthzTestBase.CATALOG_NAME, authenticatedPrincipal);
+        IcebergCatalogHandler handler =
+                icebergCatalogHandlerFactory.createHandler(
+                        PolarisAuthzTestBase.CATALOG_NAME, authenticatedPrincipal);
 
-    return ImmutableIcebergCatalogHandler.builder()
-        .from(handler)
-        .callContext(mockCallContext)
-        .build();
-  }
+        return ImmutableIcebergCatalogHandler.builder()
+                .from(handler)
+                .callContext(mockCallContext)
+                .build();
+    }
 
-  @TestFactory
-  Stream<DynamicNode> testDropTableWithoutPurgePrivileges() {
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+    @TestFactory
+    Stream<DynamicNode> testDropTableWithoutPurgePrivileges() {
+        assertSuccess(
+                adminService.grantPrivilegeOnCatalogToRole(
+                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
-    final CreateTableRequest createRequest =
-        CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
+        final CreateTableRequest createRequest =
+                CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
 
-    // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return authzTestsBuilder("dropTableWithoutPurge")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithoutPurge(TABLE_NS1_1))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
-        .shouldPassWith(PolarisPrivilege.TABLE_DROP)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .createTests();
-  }
+        // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
+        return authzTestsBuilder("dropTableWithoutPurge")
+                .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithoutPurge(TABLE_NS1_1))
+                .cleanupAction(
+                        () ->
+                                newHandler(Set.of(PRINCIPAL_ROLE2))
+                                        .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                .shouldPassWith(PolarisPrivilege.TABLE_DROP)
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .createTests();
+    }
 
-  @TestFactory
-  Stream<DynamicNode> testDropTableWithPurgePrivileges() {
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
+    @TestFactory
+    Stream<DynamicNode> testDropTableWithPurgePrivileges() {
+        assertSuccess(
+                adminService.grantPrivilegeOnCatalogToRole(
+                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
-    final CreateTableRequest createRequest =
-        CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
+        final CreateTableRequest createRequest =
+                CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
 
-    // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return authzTestsBuilder("dropTableWithPurge")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithPurge(TABLE_NS1_1))
-        .cleanupAction(
-            () ->
-                newHandler(Set.of(PRINCIPAL_ROLE2))
-                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .createTests();
-  }
+        // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
+        return authzTestsBuilder("dropTableWithPurge")
+                .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithPurge(TABLE_NS1_1))
+                .cleanupAction(
+                        () ->
+                                newHandler(Set.of(PRINCIPAL_ROLE2))
+                                        .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
+                .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+                .createTests();
+    }
 
-  @TestFactory
-  Stream<DynamicNode> testTableExistsPrivileges() {
-    return authzTestsBuilder("tableExists")
-        .action(() -> newHandler().tableExists(TABLE_NS1A_2))
-        .shouldPassWith(PolarisPrivilege.TABLE_LIST)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .createTests();
-  }
+    @TestFactory
+    Stream<DynamicNode> testTableExistsPrivileges() {
+        return authzTestsBuilder("tableExists")
+                .action(() -> newHandler().tableExists(TABLE_NS1A_2))
+                .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+                .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .createTests();
+    }
 
-  @TestFactory
-  Stream<DynamicNode> testRenameTablePrivileges() {
-    final TableIdentifier srcTable = TABLE_NS1_1;
-    final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
-    final RenameTableRequest rename1 =
-        RenameTableRequest.builder().withSource(srcTable).withDestination(dstTable).build();
-    final RenameTableRequest rename2 =
-        RenameTableRequest.builder().withSource(dstTable).withDestination(srcTable).build();
+    @TestFactory
+    Stream<DynamicNode> testRenameTablePrivileges() {
+        final TableIdentifier srcTable = TABLE_NS1_1;
+        final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
+        final RenameTableRequest rename1 =
+                RenameTableRequest.builder().withSource(srcTable).withDestination(dstTable).build();
+        final RenameTableRequest rename2 =
+                RenameTableRequest.builder().withSource(dstTable).withDestination(srcTable).build();
 
-    return authzTestsBuilder("renameTable")
-        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename1))
-        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename2))
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_DROP)
-        .createTests();
+        return authzTestsBuilder("renameTable")
+                .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename1))
+                .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename2))
+                .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_DROP)
+                .createTests();
   }
 
   @Test
