@@ -28,7 +28,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
-import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -63,9 +62,9 @@ public class RequestIdHeaderTest {
   HttpServer httpServer;
 
   private Response request(Map<String, String> headers) {
-    var baseUri = URI.create("http://localhost:" + httpServer.getPort());
     try (PolarisClient client =
-        PolarisClient.polarisClient(new PolarisApiEndpoints(baseUri, REALM, headers))) {
+        PolarisClient.polarisClient(
+            new PolarisApiEndpoints(httpServer.getLocalBaseUri(), REALM, headers))) {
       return client
           .catalogApiPlain()
           .request("v1/oauth/tokens")
