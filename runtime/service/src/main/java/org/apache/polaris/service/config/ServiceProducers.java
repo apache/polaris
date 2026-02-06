@@ -47,6 +47,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -222,6 +223,20 @@ public class ServiceProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  /**
+   * Produces a {@link MetricsPersistence} bean for the current request. The default implementation
+   * returns a no-op instance. Persistence backends that support metrics storage (e.g., JDBC with
+   * metrics schema) should provide an alternative producer that returns a functional
+   * implementation.
+   *
+   * @return a MetricsPersistence implementation for the current realm
+   */
+  @Produces
+  @RequestScoped
+  public MetricsPersistence metricsPersistence() {
+    return MetricsPersistence.NOOP;
   }
 
   @Produces

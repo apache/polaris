@@ -30,14 +30,12 @@ import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.metrics.iceberg.MetricsRecordConverter;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
@@ -65,21 +63,18 @@ import org.slf4j.LoggerFactory;
 public class PersistingMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
-  private final RealmContext realmContext;
   private final CallContext callContext;
   private final PolarisMetaStoreManager metaStoreManager;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final MetricsPersistence metricsPersistence;
 
   @Inject
   public PersistingMetricsReporter(
-      RealmContext realmContext,
       CallContext callContext,
       PolarisMetaStoreManager metaStoreManager,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.realmContext = realmContext;
+      MetricsPersistence metricsPersistence) {
     this.callContext = callContext;
     this.metaStoreManager = metaStoreManager;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.metricsPersistence = metricsPersistence;
   }
 
   @Override
@@ -88,10 +83,6 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       TableIdentifier table,
       MetricsReport metricsReport,
       Instant receivedTimestamp) {
-
-    // Get the MetricsPersistence implementation for this realm
-    MetricsPersistence persistence =
-        metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
 
     // Look up the catalog entity to get the catalog ID
     EntityResult catalogResult =
@@ -167,7 +158,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .namespace(namespace)
               .timestamp(receivedTimestamp)
               .build();
-      persistence.writeScanReport(record);
+      metricsPersistence.writeScanReport(record);
       LOGGER.debug(
           "Persisted scan metrics for {}.{} (reportId={})", catalogName, table, record.reportId());
     } else if (metricsReport instanceof CommitReport commitReport) {
@@ -178,7 +169,7 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .namespace(namespace)
               .timestamp(receivedTimestamp)
               .build();
-      persistence.writeCommitReport(record);
+      metricsPersistence.writeCommitReport(record);
       LOGGER.debug(
           "Persisted commit metrics for {}.{} (reportId={})",
           catalogName,

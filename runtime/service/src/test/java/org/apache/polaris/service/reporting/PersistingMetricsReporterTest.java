@@ -44,11 +44,9 @@ import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -69,31 +67,22 @@ public class PersistingMetricsReporterTest {
   private static final TableIdentifier TABLE_IDENTIFIER =
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
-  private RealmContext realmContext;
   private CallContext callContext;
   private PolarisCallContext polarisCallContext;
   private PolarisMetaStoreManager metaStoreManager;
-  private MetaStoreManagerFactory metaStoreManagerFactory;
   private MetricsPersistence metricsPersistence;
   private PersistingMetricsReporter reporter;
 
   @BeforeEach
   void setUp() {
-    realmContext = () -> "test-realm";
     polarisCallContext = mock(PolarisCallContext.class);
     callContext = mock(CallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
 
     metaStoreManager = mock(PolarisMetaStoreManager.class);
-    metaStoreManagerFactory = mock(MetaStoreManagerFactory.class);
     metricsPersistence = mock(MetricsPersistence.class);
 
-    when(metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext))
-        .thenReturn(metricsPersistence);
-
-    reporter =
-        new PersistingMetricsReporter(
-            realmContext, callContext, metaStoreManager, metaStoreManagerFactory);
+    reporter = new PersistingMetricsReporter(callContext, metaStoreManager, metricsPersistence);
   }
 
   @Test

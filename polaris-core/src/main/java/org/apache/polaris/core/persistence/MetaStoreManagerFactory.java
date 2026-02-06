@@ -26,7 +26,6 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
@@ -36,21 +35,6 @@ public interface MetaStoreManagerFactory {
   BasePersistence getOrCreateSession(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
-
-  /**
-   * Gets or creates a metrics persistence instance for the given realm context.
-   *
-   * <p>The default implementation returns a no-op implementation that silently ignores write
-   * operations and returns empty pages for queries. Persistence backends that support metrics
-   * storage (e.g., JDBC with schema v4+) should override this method to provide a functional
-   * implementation.
-   *
-   * @param realmContext the realm context
-   * @return a MetricsPersistence implementation for the realm
-   */
-  default MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return MetricsPersistence.NOOP;
-  }
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realms, RootCredentialsSet rootCredentialsSet);
