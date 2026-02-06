@@ -92,9 +92,6 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     indexed_delete_files BIGINT DEFAULT 0,
     total_delete_file_size_bytes BIGINT DEFAULT 0,
 
-    -- Principal roles (denormalized as JSON array)
-    principal_role_ids TEXT DEFAULT '[]',
-
     -- Additional metadata (for extensibility)
     metadata TEXT DEFAULT '{}',
 
@@ -161,9 +158,6 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     -- Duration and attempts
     total_duration_ms BIGINT DEFAULT 0,
     attempts INTEGER DEFAULT 1,
-
-    -- Principal roles (denormalized as JSON array)
-    principal_role_ids TEXT DEFAULT '[]',
 
     -- Additional metadata (for extensibility)
     metadata TEXT DEFAULT '{}',
