@@ -226,16 +226,25 @@ public class ServiceProducers {
   }
 
   /**
-   * Produces a {@link MetricsPersistence} bean for the current request. The default implementation
-   * returns a no-op instance. Persistence backends that support metrics storage (e.g., JDBC with
-   * metrics schema) should provide an alternative producer that returns a functional
-   * implementation.
+   * Produces a {@link MetricsPersistence} bean for the current request.
    *
+   * <p>This method selects a MetricsPersistence implementation based on the configured persistence
+   * type. If a backend-specific implementation is available (e.g., JDBC with metrics schema), it
+   * will be used. Otherwise, falls back to the no-op implementation.
+   *
+   * @param config the persistence configuration
+   * @param metricsPersistenceImpls all available MetricsPersistence implementations
    * @return a MetricsPersistence implementation for the current realm
    */
   @Produces
   @RequestScoped
-  public MetricsPersistence metricsPersistence() {
+  public MetricsPersistence metricsPersistence(
+      PersistenceConfiguration config, @Any Instance<MetricsPersistence> metricsPersistenceImpls) {
+    Instance<MetricsPersistence> selected =
+        metricsPersistenceImpls.select(Identifier.Literal.of(config.type()));
+    if (selected.isResolvable()) {
+      return selected.get();
+    }
     return MetricsPersistence.NOOP;
   }
 

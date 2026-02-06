@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -26,9 +25,6 @@ import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -36,15 +32,14 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsRep
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /**
- * Integration tests for metrics report persistence using JdbcBasePersistenceImpl. Tests the full
+ * Integration tests for metrics report persistence using JdbcMetricsPersistence. Tests the full
  * flow of writing scan and commit metrics reports to the database.
  */
 class MetricsReportPersistenceTest {
 
-  private JdbcBasePersistenceImpl persistence;
+  private JdbcMetricsPersistence metricsPersistence;
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
@@ -64,17 +59,7 @@ class MetricsReportPersistenceTest {
     InputStream metricsSchemaStream = classLoader.getResourceAsStream("h2/schema-metrics-v1.sql");
     datasourceOperations.executeScript(metricsSchemaStream);
 
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    RealmContext realmContext = () -> "TEST_REALM";
-
-    persistence =
-        new JdbcBasePersistenceImpl(
-            diagServices,
-            datasourceOperations,
-            RANDOM_SECRETS,
-            Mockito.mock(),
-            realmContext.getRealmIdentifier(),
-            4);
+    metricsPersistence = new JdbcMetricsPersistence(datasourceOperations, "TEST_REALM", 4);
   }
 
   @Test
@@ -114,7 +99,7 @@ class MetricsReportPersistenceTest {
             .build();
 
     // Should not throw
-    persistence.writeScanMetricsReport(report);
+    metricsPersistence.writeScanMetricsReport(report);
   }
 
   @Test
@@ -156,7 +141,7 @@ class MetricsReportPersistenceTest {
             .build();
 
     // Should not throw
-    persistence.writeCommitMetricsReport(report);
+    metricsPersistence.writeCommitMetricsReport(report);
   }
 
   @Test
@@ -188,7 +173,7 @@ class MetricsReportPersistenceTest {
               .totalDeleteFileSizeBytes(0L)
               .build();
 
-      persistence.writeScanMetricsReport(report);
+      metricsPersistence.writeScanMetricsReport(report);
     }
   }
 
@@ -222,7 +207,7 @@ class MetricsReportPersistenceTest {
             .build();
 
     // Should not throw even with null optional fields
-    persistence.writeScanMetricsReport(report);
+    metricsPersistence.writeScanMetricsReport(report);
   }
 
   @Test
@@ -256,21 +241,22 @@ class MetricsReportPersistenceTest {
               .indexedDeleteFiles(0L)
               .totalDeleteFileSizeBytes(0L)
               .build();
-      persistence.writeScanMetricsReport(report);
+      metricsPersistence.writeScanMetricsReport(report);
     }
 
     // Query all reports for the table
-    var results = persistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 10);
+    var results = metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 10);
     assertThat(results).hasSize(5);
 
     // Query with time range
     var rangeResults =
-        persistence.queryScanMetricsReports(
+        metricsPersistence.queryScanMetricsReports(
             12345L, 88888L, baseTime + 1000, baseTime + 4000, null, 10);
     assertThat(rangeResults).hasSize(3);
 
     // Query with limit
-    var limitedResults = persistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 2);
+    var limitedResults =
+        metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 2);
     assertThat(limitedResults).hasSize(2);
   }
 
@@ -305,10 +291,10 @@ class MetricsReportPersistenceTest {
             .indexedDeleteFiles(0L)
             .totalDeleteFileSizeBytes(0L)
             .build();
-    persistence.writeScanMetricsReport(report);
+    metricsPersistence.writeScanMetricsReport(report);
 
     // Query by trace ID
-    var results = persistence.queryScanMetricsReportsByTraceId(traceId);
+    var results = metricsPersistence.queryScanMetricsReportsByTraceId(traceId);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getOtelTraceId()).isEqualTo(traceId);
   }
@@ -346,7 +332,7 @@ class MetricsReportPersistenceTest {
             .indexedDeleteFiles(0L)
             .totalDeleteFileSizeBytes(0L)
             .build();
-    persistence.writeScanMetricsReport(oldReport);
+    metricsPersistence.writeScanMetricsReport(oldReport);
 
     // Create a recent report (1 hour ago)
     ModelScanMetricsReport recentReport =
@@ -374,17 +360,17 @@ class MetricsReportPersistenceTest {
             .indexedDeleteFiles(0L)
             .totalDeleteFileSizeBytes(0L)
             .build();
-    persistence.writeScanMetricsReport(recentReport);
+    metricsPersistence.writeScanMetricsReport(recentReport);
 
     // Delete reports older than 1 day
     long oneDayAgo = now - 24 * 3600_000;
-    int deleted = persistence.deleteScanMetricsReportsOlderThan(oneDayAgo);
+    int deleted = metricsPersistence.deleteScanMetricsReportsOlderThan(oneDayAgo);
 
     // Should have deleted the old report
     assertThat(deleted).isEqualTo(1);
 
     // Query to verify only recent report remains
-    var results = persistence.queryScanMetricsReports(11111L, 67890L, null, null, null, 10);
+    var results = metricsPersistence.queryScanMetricsReports(11111L, 67890L, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -427,7 +413,7 @@ class MetricsReportPersistenceTest {
             .totalDurationMs(50L)
             .attempts(1)
             .build();
-    persistence.writeCommitMetricsReport(oldReport);
+    metricsPersistence.writeCommitMetricsReport(oldReport);
 
     // Create a recent report (1 hour ago)
     ModelCommitMetricsReport recentReport =
@@ -460,17 +446,18 @@ class MetricsReportPersistenceTest {
             .totalDurationMs(30L)
             .attempts(1)
             .build();
-    persistence.writeCommitMetricsReport(recentReport);
+    metricsPersistence.writeCommitMetricsReport(recentReport);
 
     // Delete reports older than 1 day
     long oneDayAgo = now - 24 * 3600_000;
-    int deleted = persistence.deleteCommitMetricsReportsOlderThan(oneDayAgo);
+    int deleted = metricsPersistence.deleteCommitMetricsReportsOlderThan(oneDayAgo);
 
     // Should have deleted the old report
     assertThat(deleted).isEqualTo(1);
 
     // Query to verify only recent report remains
-    var results = persistence.queryCommitMetricsReports(11111L, 67890L, null, null, null, 10);
+    var results =
+        metricsPersistence.queryCommitMetricsReports(11111L, 67890L, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -480,24 +467,24 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testSupportsMetricsPersistence_SchemaV4() {
-    assertThat(persistence.supportsMetricsPersistence()).isTrue();
+    assertThat(metricsPersistence.supportsMetricsPersistence()).isTrue();
   }
 
   @Test
   void testSupportsMetricsPersistence_SchemaV3() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
     assertThat(v3Persistence.supportsMetricsPersistence()).isFalse();
   }
 
   @Test
   void testSupportsMetricsPersistence_SchemaV1() {
-    JdbcBasePersistenceImpl v1Persistence = createPersistenceWithSchemaVersion(1);
+    JdbcMetricsPersistence v1Persistence = createMetricsPersistenceWithSchemaVersion(1);
     assertThat(v1Persistence.supportsMetricsPersistence()).isFalse();
   }
 
   @Test
   void testWriteScanMetricsReport_OlderSchema_IsNoOp() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     ModelScanMetricsReport report =
         ImmutableModelScanMetricsReport.builder()
@@ -531,7 +518,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testWriteCommitMetricsReport_OlderSchema_IsNoOp() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     ModelCommitMetricsReport report =
         ImmutableModelCommitMetricsReport.builder()
@@ -569,7 +556,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testQueryScanMetricsReports_OlderSchema_ReturnsEmptyList() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     var results = v3Persistence.queryScanMetricsReports(12345L, 67890L, null, null, null, 10);
 
@@ -578,7 +565,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testQueryCommitMetricsReports_OlderSchema_ReturnsEmptyList() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     var results = v3Persistence.queryCommitMetricsReports(12345L, 67890L, null, null, null, 10);
 
@@ -587,7 +574,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testQueryScanMetricsReportsByTraceId_OlderSchema_ReturnsEmptyList() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     var results = v3Persistence.queryScanMetricsReportsByTraceId("trace-123");
 
@@ -596,7 +583,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testQueryCommitMetricsReportsByTraceId_OlderSchema_ReturnsEmptyList() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     var results = v3Persistence.queryCommitMetricsReportsByTraceId("trace-123");
 
@@ -605,7 +592,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testDeleteScanMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     int deleted = v3Persistence.deleteScanMetricsReportsOlderThan(System.currentTimeMillis());
 
@@ -614,7 +601,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testDeleteCommitMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     int deleted = v3Persistence.deleteCommitMetricsReportsOlderThan(System.currentTimeMillis());
 
@@ -623,7 +610,7 @@ class MetricsReportPersistenceTest {
 
   @Test
   void testDeleteAllMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
-    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    JdbcMetricsPersistence v3Persistence = createMetricsPersistenceWithSchemaVersion(3);
 
     int deleted = v3Persistence.deleteAllMetricsReportsOlderThan(System.currentTimeMillis());
 
@@ -631,18 +618,11 @@ class MetricsReportPersistenceTest {
   }
 
   /**
-   * Creates a JdbcBasePersistenceImpl with the specified schema version. This uses the same
+   * Creates a JdbcMetricsPersistence with the specified schema version. This uses the same
    * datasource but with a different reported schema version to test graceful degradation.
    */
-  private JdbcBasePersistenceImpl createPersistenceWithSchemaVersion(int schemaVersion) {
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    return new JdbcBasePersistenceImpl(
-        diagServices,
-        datasourceOperations,
-        RANDOM_SECRETS,
-        Mockito.mock(),
-        "TEST_REALM",
-        schemaVersion);
+  private JdbcMetricsPersistence createMetricsPersistenceWithSchemaVersion(int schemaVersion) {
+    return new JdbcMetricsPersistence(datasourceOperations, "TEST_REALM", schemaVersion);
   }
 
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {
