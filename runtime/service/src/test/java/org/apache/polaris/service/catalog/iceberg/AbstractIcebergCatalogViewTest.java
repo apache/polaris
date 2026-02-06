@@ -72,7 +72,6 @@ import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -269,19 +268,4 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
   }
-
-  @Test
-  @Disabled("Polaris REST catalog does not support view registration")
-  @Override
-  public void registerView() {}
-
-  @Test
-  @Disabled("Polaris REST catalog does not support view registration")
-  @Override
-  public void registerExistingView() {}
-
-  @Test
-  @Disabled("Polaris REST catalog does not support view registration")
-  @Override
-  public void registerViewThatAlreadyExistsAsTable() {}
 }

@@ -71,6 +71,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -174,6 +175,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
           .add(Endpoint.V1_RENAME_VIEW)
+          .add(Endpoint.V1_REGISTER_VIEW)
           .build();
 
   protected abstract PolarisDiagnostics diagnostics();
@@ -1139,6 +1141,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new BadRequestException("Cannot create view on static-facade external catalogs.");
     }
     return catalogHandlerUtils().createView(viewCatalog, namespace, request);
+  }
+
+  public LoadViewResponse registerView(Namespace namespace, RegisterViewRequest request) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_VIEW;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.name()));
+
+    return catalogHandlerUtils().registerView(viewCatalog, namespace, request);
   }
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {

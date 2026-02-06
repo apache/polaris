@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -134,6 +135,7 @@ public class PolarisS3InteroperabilityTest {
             .createNamespace(
                 catalogName,
                 createNamespaceRequest,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -165,6 +167,7 @@ public class PolarisS3InteroperabilityTest {
                 namespace,
                 createTableRequest,
                 null,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
