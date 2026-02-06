@@ -158,7 +158,7 @@ public class DefaultConfigurationStoreTest {
     Boolean realmOneValue = configurationStore.getConfiguration(realmOneContext, falseByDefaultKey);
     assertThat(realmOneValue).isTrue();
 
-    assertThat(configurationStore).isInstanceOf(PolarisConfigurationStoreBridge.class);
+    assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
   }
 
   @Test

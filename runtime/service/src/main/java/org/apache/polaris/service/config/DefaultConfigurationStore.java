@@ -30,8 +30,10 @@ import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("removal")
 @ApplicationScoped
-public class DefaultConfigurationStore implements RealmConfigurationSource {
+public class DefaultConfigurationStore
+    implements org.apache.polaris.core.config.PolarisConfigurationStore, RealmConfigurationSource {
   Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationStore.class);
 
   private final Map<String, Object> defaults;
@@ -52,6 +54,13 @@ public class DefaultConfigurationStore implements RealmConfigurationSource {
     LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
     return Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
         .orElseGet(() -> getDefaultConfiguration(configName));
+  }
+
+  @Override
+  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+    @SuppressWarnings("unchecked")
+    T value = (T) getConfigValue(realmContext, configName);
+    return value;
   }
 
   private <T> @Nullable T getDefaultConfiguration(String configName) {
