@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
@@ -108,6 +109,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
+                new UUID(0L, 0L) /* TODO UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
@@ -128,7 +130,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .createTable(
-                catalog, "ns1", request, null, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                request,
+                null,
+                new UUID(0L, 0L) /* TODO UUID v7 */,
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
@@ -137,7 +145,13 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .dropTable(
-                catalog, "ns1", "t1", false, services.realmContext(), services.securityContext());
+                catalog,
+                "ns1",
+                "t1",
+                new UUID(0L, 0L) /* TODO UUID v7 */,
+                false,
+                services.realmContext(),
+                services.securityContext());
     res.close();
   }
 
