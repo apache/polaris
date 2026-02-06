@@ -24,7 +24,7 @@ if (!project.extra.has("duplicated-project-sources")) {
   spotless {
     java {
       target("src/*/java/**/*.java")
-      googleJavaFormat()
+      googleJavaFormat("1.34.1")
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
       endWithNewline()
       toggleOffOn()
