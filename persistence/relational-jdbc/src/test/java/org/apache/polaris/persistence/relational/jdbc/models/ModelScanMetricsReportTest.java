@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -63,6 +65,8 @@ public class ModelScanMetricsReportTest {
   private static final long TEST_POSITIONAL_DELETE_FILES = 1L;
   private static final long TEST_INDEXED_DELETE_FILES = 0L;
   private static final long TEST_DELETE_FILE_SIZE = 2048L;
+  private static final Set<String> TEST_ROLES = Set.of("admin", "data_engineer", "analyst");
+  private static final String TEST_ROLES_JSON = "[\"admin\",\"data_engineer\",\"analyst\"]";
   private static final String TEST_METADATA = "{\"custom\":\"value\"}";
 
   @Test
@@ -123,6 +127,8 @@ public class ModelScanMetricsReportTest {
         .thenReturn(TEST_INDEXED_DELETE_FILES);
     when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES))
         .thenReturn(TEST_DELETE_FILE_SIZE);
+    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS))
+        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelScanMetricsReport result = ModelScanMetricsReport.CONVERTER.fromResultSet(mockResultSet);
@@ -140,6 +146,7 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_RESULT_DATA_FILES, result.getResultDataFiles());
     assertEquals(TEST_TOTAL_FILE_SIZE, result.getTotalFileSizeBytes());
     assertEquals(TEST_PLANNING_DURATION, result.getTotalPlanningDurationMs());
+    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -156,6 +163,9 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_TABLE_ID, resultMap.get(ModelScanMetricsReport.TABLE_ID_COL));
     assertEquals(TEST_TIMESTAMP_MS, resultMap.get(ModelScanMetricsReport.TIMESTAMP_MS));
     assertEquals(TEST_RESULT_DATA_FILES, resultMap.get(ModelScanMetricsReport.RESULT_DATA_FILES));
+    // principal_role_ids should be serialized as a JSON string for H2
+    String rolesJson = (String) resultMap.get(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS);
+    assertThat(rolesJson).contains("admin", "data_engineer", "analyst");
     assertEquals(TEST_METADATA, resultMap.get(ModelScanMetricsReport.METADATA));
   }
 
@@ -166,9 +176,63 @@ public class ModelScanMetricsReportTest {
     Map<String, Object> resultMap = report.toMap(DatabaseType.POSTGRES);
 
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelScanMetricsReport.REPORT_ID));
+    // principal_role_ids should be serialized as a PGobject with type "jsonb" for Postgres
+    PGobject rolesPgObject = (PGobject) resultMap.get(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS);
+    assertEquals("jsonb", rolesPgObject.getType());
+    assertThat(rolesPgObject.getValue()).contains("admin", "data_engineer", "analyst");
     PGobject pgObject = (PGobject) resultMap.get(ModelScanMetricsReport.METADATA);
     assertEquals("jsonb", pgObject.getType());
     assertEquals(TEST_METADATA, pgObject.getValue());
+  }
+
+  @Test
+  public void testConverterFromResultSet() throws SQLException {
+    // Test the separate ModelScanMetricsReportConverter class (used in query methods)
+    ModelScanMetricsReportConverter converter = new ModelScanMetricsReportConverter();
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.getString(ModelScanMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
+    when(mockResultSet.getLong(ModelScanMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
+    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
+    when(mockResultSet.getString(ModelScanMetricsReport.REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_TRACE_ID)).thenReturn(TEST_OTEL_TRACE_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_SPAN_ID)).thenReturn(TEST_OTEL_SPAN_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.REPORT_TRACE_ID)).thenReturn(TEST_REPORT_TRACE_ID);
+    when(mockResultSet.getObject(ModelScanMetricsReport.SNAPSHOT_ID, Long.class)).thenReturn(TEST_SNAPSHOT_ID);
+    when(mockResultSet.getObject(ModelScanMetricsReport.SCHEMA_ID, Integer.class)).thenReturn(TEST_SCHEMA_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.FILTER_EXPRESSION)).thenReturn(TEST_FILTER);
+    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_IDS)).thenReturn(TEST_PROJECTED_IDS);
+    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_NAMES)).thenReturn(TEST_PROJECTED_NAMES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DATA_FILES)).thenReturn(TEST_RESULT_DATA_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DELETE_FILES)).thenReturn(TEST_RESULT_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_FILE_SIZE_BYTES)).thenReturn(TEST_TOTAL_FILE_SIZE);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DATA_MANIFESTS)).thenReturn(TEST_TOTAL_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_MANIFESTS)).thenReturn(TEST_TOTAL_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DATA_MANIFESTS)).thenReturn(TEST_SCANNED_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DELETE_MANIFESTS)).thenReturn(TEST_SCANNED_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_MANIFESTS)).thenReturn(TEST_SKIPPED_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_MANIFESTS)).thenReturn(TEST_SKIPPED_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_FILES)).thenReturn(TEST_SKIPPED_DATA_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_FILES)).thenReturn(TEST_SKIPPED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_PLANNING_DURATION_MS)).thenReturn(TEST_PLANNING_DURATION);
+    when(mockResultSet.getLong(ModelScanMetricsReport.EQUALITY_DELETE_FILES)).thenReturn(TEST_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.POSITIONAL_DELETE_FILES)).thenReturn(TEST_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.INDEXED_DELETE_FILES)).thenReturn(TEST_INDEXED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES)).thenReturn(TEST_DELETE_FILE_SIZE);
+    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS)).thenReturn(TEST_ROLES_JSON);
+    when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
+
+    ModelScanMetricsReport result = converter.fromResultSet(mockResultSet);
+
+    assertEquals(TEST_REPORT_ID, result.getReportId());
+    assertEquals(TEST_REALM_ID, result.getRealmId());
+    assertEquals(TEST_CATALOG_ID, result.getCatalogId());
+    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
+    assertEquals(TEST_METADATA, result.getMetadata());
   }
 
   private ModelScanMetricsReport createTestReport() {
@@ -199,6 +263,7 @@ public class ModelScanMetricsReportTest {
         .positionalDeleteFiles(TEST_POSITIONAL_DELETE_FILES)
         .indexedDeleteFiles(TEST_INDEXED_DELETE_FILES)
         .totalDeleteFileSizeBytes(TEST_DELETE_FILE_SIZE)
+        .roles(TEST_ROLES)
         .metadata(TEST_METADATA)
         .build();
   }

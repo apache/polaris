@@ -18,9 +18,15 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 /**
@@ -29,8 +35,22 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
  */
 public class ModelScanMetricsReportConverter implements Converter<ModelScanMetricsReport> {
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   @Override
   public ModelScanMetricsReport fromResultSet(ResultSet rs) throws SQLException {
+    // Parse principal_role_ids JSON array
+    Set<String> roles = Set.of();
+    String rolesJson = rs.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS);
+    if (rolesJson != null && !rolesJson.isBlank()) {
+      try {
+        roles = new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
+      } catch (JsonProcessingException e) {
+        // Log and continue with empty roles
+        roles = Set.of();
+      }
+    }
+
     return ImmutableModelScanMetricsReport.builder()
         .reportId(rs.getString(ModelScanMetricsReport.REPORT_ID))
         .realmId(rs.getString(ModelScanMetricsReport.REALM_ID))
@@ -64,6 +84,7 @@ public class ModelScanMetricsReportConverter implements Converter<ModelScanMetri
         .positionalDeleteFiles(rs.getLong(ModelScanMetricsReport.POSITIONAL_DELETE_FILES))
         .indexedDeleteFiles(rs.getLong(ModelScanMetricsReport.INDEXED_DELETE_FILES))
         .totalDeleteFileSizeBytes(rs.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES))
+        .roles(roles)
         .metadata(rs.getString(ModelScanMetricsReport.METADATA))
         .build();
   }

@@ -18,9 +18,13 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +37,9 @@ import org.immutables.value.Value;
 @PolarisImmutable
 public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsReport> {
   String TABLE_NAME = "COMMIT_METRICS_REPORT";
+
+  /** ObjectMapper for JSON serialization/deserialization of roles. */
+  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // Column names
   String REPORT_ID = "report_id";
@@ -67,6 +74,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   String TOTAL_FILE_SIZE_BYTES = "total_file_size_bytes";
   String TOTAL_DURATION_MS = "total_duration_ms";
   String ATTEMPTS = "attempts";
+  String PRINCIPAL_ROLE_IDS = "principal_role_ids";
   String METADATA = "metadata";
 
   List<String> ALL_COLUMNS =
@@ -103,6 +111,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           TOTAL_FILE_SIZE_BYTES,
           TOTAL_DURATION_MS,
           ATTEMPTS,
+          PRINCIPAL_ROLE_IDS,
           METADATA);
 
   // Getters
@@ -180,8 +189,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   String getMetadata();
 
   /**
-   * Returns the activated principal roles associated with this report. This is populated from the
-   * junction table commit_metrics_report_roles.
+   * Returns the activated principal roles associated with this report. This is stored as a JSON
+   * array in the principal_role_ids column.
    */
   @Value.Default
   default Set<String> getRoles() {
@@ -190,6 +199,18 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   @Override
   default ModelCommitMetricsReport fromResultSet(ResultSet rs) throws SQLException {
+    // Parse principal_role_ids JSON array
+    Set<String> roles = Set.of();
+    String rolesJson = rs.getString(PRINCIPAL_ROLE_IDS);
+    if (rolesJson != null && !rolesJson.isBlank()) {
+      try {
+        roles = new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
+      } catch (JsonProcessingException e) {
+        // Log and continue with empty roles
+        roles = Set.of();
+      }
+    }
+
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(rs.getString(REPORT_ID))
         .realmId(rs.getString(REALM_ID))
@@ -223,6 +244,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .totalFileSizeBytes(rs.getLong(TOTAL_FILE_SIZE_BYTES))
         .totalDurationMs(rs.getLong(TOTAL_DURATION_MS))
         .attempts(rs.getInt(ATTEMPTS))
+        .roles(roles)
         .metadata(rs.getString(METADATA))
         .build();
   }
@@ -262,9 +284,19 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(TOTAL_FILE_SIZE_BYTES, getTotalFileSizeBytes());
     map.put(TOTAL_DURATION_MS, getTotalDurationMs());
     map.put(ATTEMPTS, getAttempts());
+
+    // Serialize roles to JSON array
+    String rolesJson;
+    try {
+      rolesJson = OBJECT_MAPPER.writeValueAsString(getRoles());
+    } catch (JsonProcessingException e) {
+      rolesJson = "[]";
+    }
     if (databaseType.equals(DatabaseType.POSTGRES)) {
+      map.put(PRINCIPAL_ROLE_IDS, toJsonbPGobject(rolesJson));
       map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
     } else {
+      map.put(PRINCIPAL_ROLE_IDS, rolesJson);
       map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
     }
     return map;

@@ -18,9 +18,13 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +37,9 @@ import org.immutables.value.Value;
 @PolarisImmutable
 public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport> {
   String TABLE_NAME = "SCAN_METRICS_REPORT";
+
+  /** ObjectMapper for JSON serialization/deserialization of roles. */
+  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // Column names
   String REPORT_ID = "report_id";
@@ -67,6 +74,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
   String POSITIONAL_DELETE_FILES = "positional_delete_files";
   String INDEXED_DELETE_FILES = "indexed_delete_files";
   String TOTAL_DELETE_FILE_SIZE_BYTES = "total_delete_file_size_bytes";
+  String PRINCIPAL_ROLE_IDS = "principal_role_ids";
   String METADATA = "metadata";
 
   List<String> ALL_COLUMNS =
@@ -103,6 +111,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
           POSITIONAL_DELETE_FILES,
           INDEXED_DELETE_FILES,
           TOTAL_DELETE_FILE_SIZE_BYTES,
+          PRINCIPAL_ROLE_IDS,
           METADATA);
 
   // Getters
@@ -184,8 +193,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
   String getMetadata();
 
   /**
-   * Returns the activated principal roles associated with this report. This is populated from the
-   * junction table scan_metrics_report_roles.
+   * Returns the activated principal roles associated with this report. This is stored as a JSON
+   * array in the principal_role_ids column.
    */
   @Value.Default
   default Set<String> getRoles() {
@@ -194,6 +203,18 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   @Override
   default ModelScanMetricsReport fromResultSet(ResultSet rs) throws SQLException {
+    // Parse principal_role_ids JSON array
+    Set<String> roles = Set.of();
+    String rolesJson = rs.getString(PRINCIPAL_ROLE_IDS);
+    if (rolesJson != null && !rolesJson.isBlank()) {
+      try {
+        roles = new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
+      } catch (JsonProcessingException e) {
+        // Log and continue with empty roles
+        roles = Set.of();
+      }
+    }
+
     return ImmutableModelScanMetricsReport.builder()
         .reportId(rs.getString(REPORT_ID))
         .realmId(rs.getString(REALM_ID))
@@ -227,6 +248,7 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .positionalDeleteFiles(rs.getLong(POSITIONAL_DELETE_FILES))
         .indexedDeleteFiles(rs.getLong(INDEXED_DELETE_FILES))
         .totalDeleteFileSizeBytes(rs.getLong(TOTAL_DELETE_FILE_SIZE_BYTES))
+        .roles(roles)
         .metadata(rs.getString(METADATA))
         .build();
   }
@@ -266,9 +288,19 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     map.put(POSITIONAL_DELETE_FILES, getPositionalDeleteFiles());
     map.put(INDEXED_DELETE_FILES, getIndexedDeleteFiles());
     map.put(TOTAL_DELETE_FILE_SIZE_BYTES, getTotalDeleteFileSizeBytes());
+
+    // Serialize roles to JSON array
+    String rolesJson;
+    try {
+      rolesJson = OBJECT_MAPPER.writeValueAsString(getRoles());
+    } catch (JsonProcessingException e) {
+      rolesJson = "[]";
+    }
     if (databaseType.equals(DatabaseType.POSTGRES)) {
+      map.put(PRINCIPAL_ROLE_IDS, toJsonbPGobject(rolesJson));
       map.put(METADATA, toJsonbPGobject(getMetadata() != null ? getMetadata() : "{}"));
     } else {
+      map.put(PRINCIPAL_ROLE_IDS, rolesJson);
       map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
     }
     return map;

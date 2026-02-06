@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -63,6 +65,8 @@ public class ModelCommitMetricsReportTest {
   private static final long TEST_TOTAL_FILE_SIZE = 10240000L;
   private static final long TEST_TOTAL_DURATION = 250L;
   private static final int TEST_ATTEMPTS = 1;
+  private static final Set<String> TEST_ROLES = Set.of("admin", "data_engineer", "analyst");
+  private static final String TEST_ROLES_JSON = "[\"admin\",\"data_engineer\",\"analyst\"]";
   private static final String TEST_METADATA = "{\"commit\":\"info\"}";
 
   @Test
@@ -123,6 +127,8 @@ public class ModelCommitMetricsReportTest {
     when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DURATION_MS))
         .thenReturn(TEST_TOTAL_DURATION);
     when(mockResultSet.getInt(ModelCommitMetricsReport.ATTEMPTS)).thenReturn(TEST_ATTEMPTS);
+    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS))
+        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelCommitMetricsReport result =
@@ -140,6 +146,7 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_ADDED_RECORDS, result.getAddedRecords());
     assertEquals(TEST_TOTAL_DURATION, result.getTotalDurationMs());
     assertEquals(TEST_ATTEMPTS, result.getAttempts());
+    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -154,6 +161,9 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_SNAPSHOT_ID, resultMap.get(ModelCommitMetricsReport.SNAPSHOT_ID));
     assertEquals(TEST_OPERATION, resultMap.get(ModelCommitMetricsReport.OPERATION));
     assertEquals(TEST_ADDED_DATA_FILES, resultMap.get(ModelCommitMetricsReport.ADDED_DATA_FILES));
+    // principal_role_ids should be serialized as a JSON string for H2
+    String rolesJson = (String) resultMap.get(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS);
+    assertThat(rolesJson).contains("admin", "data_engineer", "analyst");
     assertEquals(TEST_METADATA, resultMap.get(ModelCommitMetricsReport.METADATA));
   }
 
@@ -164,9 +174,63 @@ public class ModelCommitMetricsReportTest {
     Map<String, Object> resultMap = report.toMap(DatabaseType.POSTGRES);
 
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelCommitMetricsReport.REPORT_ID));
+    // principal_role_ids should be serialized as a PGobject with type "jsonb" for Postgres
+    PGobject rolesPgObject = (PGobject) resultMap.get(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS);
+    assertEquals("jsonb", rolesPgObject.getType());
+    assertThat(rolesPgObject.getValue()).contains("admin", "data_engineer", "analyst");
     PGobject pgObject = (PGobject) resultMap.get(ModelCommitMetricsReport.METADATA);
     assertEquals("jsonb", pgObject.getType());
     assertEquals(TEST_METADATA, pgObject.getValue());
+  }
+
+  @Test
+  public void testConverterFromResultSet() throws SQLException {
+    // Test the separate ModelCommitMetricsReportConverter class (used in query methods)
+    ModelCommitMetricsReportConverter converter = new ModelCommitMetricsReportConverter();
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
+    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
+    when(mockResultSet.getString(ModelCommitMetricsReport.REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_TRACE_ID)).thenReturn(TEST_OTEL_TRACE_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_SPAN_ID)).thenReturn(TEST_OTEL_SPAN_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_TRACE_ID)).thenReturn(TEST_REPORT_TRACE_ID);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.SNAPSHOT_ID, Long.class)).thenReturn(TEST_SNAPSHOT_ID);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.SEQUENCE_NUMBER, Long.class)).thenReturn(TEST_SEQUENCE_NUMBER);
+    when(mockResultSet.getString(ModelCommitMetricsReport.OPERATION)).thenReturn(TEST_OPERATION);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DATA_FILES)).thenReturn(TEST_ADDED_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DATA_FILES)).thenReturn(TEST_REMOVED_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DATA_FILES)).thenReturn(TEST_TOTAL_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DELETE_FILES)).thenReturn(TEST_ADDED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DELETE_FILES)).thenReturn(TEST_REMOVED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DELETE_FILES)).thenReturn(TEST_TOTAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_EQUALITY_DELETE_FILES)).thenReturn(TEST_ADDED_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_EQUALITY_DELETE_FILES)).thenReturn(TEST_REMOVED_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_POSITIONAL_DELETE_FILES)).thenReturn(TEST_ADDED_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_POSITIONAL_DELETE_FILES)).thenReturn(TEST_REMOVED_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_RECORDS)).thenReturn(TEST_ADDED_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_RECORDS)).thenReturn(TEST_REMOVED_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_RECORDS)).thenReturn(TEST_TOTAL_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_FILE_SIZE_BYTES)).thenReturn(TEST_ADDED_FILE_SIZE);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_FILE_SIZE_BYTES)).thenReturn(TEST_REMOVED_FILE_SIZE);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES)).thenReturn(TEST_TOTAL_FILE_SIZE);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class)).thenReturn(TEST_TOTAL_DURATION);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class)).thenReturn(TEST_ATTEMPTS);
+    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS)).thenReturn(TEST_ROLES_JSON);
+    when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
+
+    ModelCommitMetricsReport result = converter.fromResultSet(mockResultSet);
+
+    assertEquals(TEST_REPORT_ID, result.getReportId());
+    assertEquals(TEST_REALM_ID, result.getRealmId());
+    assertEquals(TEST_CATALOG_ID, result.getCatalogId());
+    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
+    assertEquals(TEST_METADATA, result.getMetadata());
   }
 
   private ModelCommitMetricsReport createTestReport() {
@@ -201,6 +265,7 @@ public class ModelCommitMetricsReportTest {
         .totalFileSizeBytes(TEST_TOTAL_FILE_SIZE)
         .totalDurationMs(TEST_TOTAL_DURATION)
         .attempts(TEST_ATTEMPTS)
+        .roles(TEST_ROLES)
         .metadata(TEST_METADATA)
         .build();
   }
