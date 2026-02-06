@@ -326,6 +326,85 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCreateCatalogWithLowercaseStorageType() {
+    // Test creating a catalog with lowercase "s3" storage type
+    String catalogJson =
+        "{\"catalog\":{\"type\":\"INTERNAL\",\"name\":\""
+            + client.newEntityName("lowercase-s3-catalog")
+            + "\",\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"},"
+            + "\"storageConfigInfo\":{\"storageType\":\"s3\",\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\",\"allowedLocations\":[]}}}";
+
+    try (Response response = managementApi.request("v1/catalogs").post(Entity.json(catalogJson))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      assertThat(catalog.getStorageConfigInfo().getStorageType())
+          .isEqualTo(StorageConfigInfo.StorageTypeEnum.S3);
+      assertThat(catalog.getStorageConfigInfo()).isInstanceOf(AwsStorageConfigInfo.class);
+    }
+  }
+
+  @Test
+  public void testCreateCatalogWithMixedCaseStorageType() {
+    // Test creating a catalog with mixed case "gCs" storage type
+    String catalogJson =
+        "{\"catalog\":{\"type\":\"INTERNAL\",\"name\":\""
+            + client.newEntityName("mixedcase-gcs-catalog")
+            + "\",\"properties\":{\"default-base-location\":\"gs://my-bucket/path/to/data\"},"
+            + "\"storageConfigInfo\":{\"storageType\":\"gCs\",\"allowedLocations\":[]}}}";
+
+    try (Response response = managementApi.request("v1/catalogs").post(Entity.json(catalogJson))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      assertThat(catalog.getStorageConfigInfo().getStorageType())
+          .isEqualTo(StorageConfigInfo.StorageTypeEnum.GCS);
+      assertThat(catalog.getStorageConfigInfo()).isInstanceOf(GcpStorageConfigInfo.class);
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogWithLowercaseStorageType() {
+    // First create a catalog with uppercase storage type
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
+            .build();
+
+    String catalogName = client.newEntityName("update-lowercase-catalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    // Update with lowercase storage type (updating properties, not changing storage type)
+    String updateJson =
+        "{\"currentEntityVersion\":1,\"properties\":{\"new-property\":\"new-value\"}}";
+
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
+            .put(Entity.json(updateJson))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+
+    // Verify catalog still exists and has correct storage type
+    try (Response response =
+        managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalogName)).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog retrievedCatalog = response.readEntity(Catalog.class);
+      assertThat(retrievedCatalog.getStorageConfigInfo().getStorageType())
+          .isEqualTo(StorageConfigInfo.StorageTypeEnum.S3);
+    }
+  }
+
+  @Test
   public void testCreateCatalogWithNullBaseLocation() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
