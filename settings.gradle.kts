@@ -127,7 +127,7 @@ dependencyResolutionManagement {
     }
     val useApacheSnapshots =
       providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
-    if (useApacheSnapshots) {
+    if (useApacheSnapshots || true) {
       maven {
         name = "ApacheSnapshots"
         url = uri("https://repository.apache.org/content/repositories/snapshots/")
