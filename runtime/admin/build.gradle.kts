@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-runtime-defaults"))
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
@@ -39,8 +40,6 @@ dependencies {
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  implementation(project(":polaris-runtime-common"))
 
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))

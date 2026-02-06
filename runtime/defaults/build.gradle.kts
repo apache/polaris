@@ -37,4 +37,7 @@ dependencies {
   compileOnly("io.quarkus:quarkus-oidc")
   compileOnly("io.quarkus:quarkus-opentelemetry")
   compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+
+  implementation(platform(libs.quarkus.amazon.services.bom))
+  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
 }
