@@ -75,6 +75,7 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.persistence.MetricsPersistenceConfiguration;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -228,24 +229,20 @@ public class ServiceProducers {
   /**
    * Produces a {@link MetricsPersistence} bean for the current request.
    *
-   * <p>This method selects a MetricsPersistence implementation based on the configured persistence
-   * type. If a backend-specific implementation is available (e.g., JDBC with metrics schema), it
-   * will be used. Otherwise, falls back to the no-op implementation.
+   * <p>This method selects a MetricsPersistence implementation based on the configured metrics
+   * persistence type. The type is configured independently from the entity metastore via {@code
+   * polaris.persistence.metrics.type}.
    *
-   * @param config the persistence configuration
+   * @param config the metrics persistence configuration
    * @param metricsPersistenceImpls all available MetricsPersistence implementations
    * @return a MetricsPersistence implementation for the current realm
    */
   @Produces
   @RequestScoped
   public MetricsPersistence metricsPersistence(
-      PersistenceConfiguration config, @Any Instance<MetricsPersistence> metricsPersistenceImpls) {
-    Instance<MetricsPersistence> selected =
-        metricsPersistenceImpls.select(Identifier.Literal.of(config.type()));
-    if (selected.isResolvable()) {
-      return selected.get();
-    }
-    return MetricsPersistence.NOOP;
+      MetricsPersistenceConfiguration config,
+      @Any Instance<MetricsPersistence> metricsPersistenceImpls) {
+    return metricsPersistenceImpls.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces

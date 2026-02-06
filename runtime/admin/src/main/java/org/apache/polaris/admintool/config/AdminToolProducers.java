@@ -81,16 +81,17 @@ public class AdminToolProducers {
   }
 
   @Produces
-  public RealmConfig dummyRealmConfig(PolarisConfigurationStore configurationStore) {
-    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+  public RealmContext dummyRealmContext() {
+    // Use UUID to protect against accidental realm ID collisions.
+    // This is a dummy RealmContext for the admin tool - required by JdbcMetricsPersistenceProducer
+    // but not actually used since the admin tool doesn't persist metrics.
     String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationStore, () -> absentId);
+    return () -> absentId;
   }
 
   @Produces
-  public RealmContext dummyRealmContext() {
-    // A dummy RealmContext for the admin tool - required by JdbcMetricsPersistenceProducer
-    // but not actually used since the admin tool doesn't persist metrics.
-    return () -> "admin-tool-realm";
+  public RealmConfig dummyRealmConfig(
+      PolarisConfigurationStore configurationStore, RealmContext realmContext) {
+    return new RealmConfigImpl(configurationStore, realmContext);
   }
 }
