@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,7 +25,6 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -65,8 +63,6 @@ public class ModelCommitMetricsReportTest {
   private static final long TEST_TOTAL_FILE_SIZE = 10240000L;
   private static final long TEST_TOTAL_DURATION = 250L;
   private static final int TEST_ATTEMPTS = 1;
-  private static final Set<String> TEST_ROLES = Set.of("admin", "data_engineer", "analyst");
-  private static final String TEST_ROLES_JSON = "[\"admin\",\"data_engineer\",\"analyst\"]";
   private static final String TEST_METADATA = "{\"commit\":\"info\"}";
 
   @Test
@@ -127,8 +123,6 @@ public class ModelCommitMetricsReportTest {
     when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DURATION_MS))
         .thenReturn(TEST_TOTAL_DURATION);
     when(mockResultSet.getInt(ModelCommitMetricsReport.ATTEMPTS)).thenReturn(TEST_ATTEMPTS);
-    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS))
-        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelCommitMetricsReport result =
@@ -146,7 +140,6 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_ADDED_RECORDS, result.getAddedRecords());
     assertEquals(TEST_TOTAL_DURATION, result.getTotalDurationMs());
     assertEquals(TEST_ATTEMPTS, result.getAttempts());
-    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -161,9 +154,6 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_SNAPSHOT_ID, resultMap.get(ModelCommitMetricsReport.SNAPSHOT_ID));
     assertEquals(TEST_OPERATION, resultMap.get(ModelCommitMetricsReport.OPERATION));
     assertEquals(TEST_ADDED_DATA_FILES, resultMap.get(ModelCommitMetricsReport.ADDED_DATA_FILES));
-    // principal_role_ids should be serialized as a JSON string for H2
-    String rolesJson = (String) resultMap.get(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS);
-    assertThat(rolesJson).contains("admin", "data_engineer", "analyst");
     assertEquals(TEST_METADATA, resultMap.get(ModelCommitMetricsReport.METADATA));
   }
 
@@ -174,10 +164,6 @@ public class ModelCommitMetricsReportTest {
     Map<String, Object> resultMap = report.toMap(DatabaseType.POSTGRES);
 
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelCommitMetricsReport.REPORT_ID));
-    // principal_role_ids should be serialized as a PGobject with type "jsonb" for Postgres
-    PGobject rolesPgObject = (PGobject) resultMap.get(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS);
-    assertEquals("jsonb", rolesPgObject.getType());
-    assertThat(rolesPgObject.getValue()).contains("admin", "data_engineer", "analyst");
     PGobject pgObject = (PGobject) resultMap.get(ModelCommitMetricsReport.METADATA);
     assertEquals("jsonb", pgObject.getType());
     assertEquals(TEST_METADATA, pgObject.getValue());
@@ -246,8 +232,6 @@ public class ModelCommitMetricsReportTest {
         .thenReturn(TEST_TOTAL_DURATION);
     when(mockResultSet.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class))
         .thenReturn(TEST_ATTEMPTS);
-    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS))
-        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelCommitMetricsReport result = converter.fromResultSet(mockResultSet);
@@ -255,7 +239,6 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
-    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -291,7 +274,6 @@ public class ModelCommitMetricsReportTest {
         .totalFileSizeBytes(TEST_TOTAL_FILE_SIZE)
         .totalDurationMs(TEST_TOTAL_DURATION)
         .attempts(TEST_ATTEMPTS)
-        .roles(TEST_ROLES)
         .metadata(TEST_METADATA)
         .build();
   }

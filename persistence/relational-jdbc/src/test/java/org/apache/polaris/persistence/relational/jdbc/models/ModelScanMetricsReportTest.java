@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,7 +25,6 @@ import static org.mockito.Mockito.when;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -65,8 +63,6 @@ public class ModelScanMetricsReportTest {
   private static final long TEST_POSITIONAL_DELETE_FILES = 1L;
   private static final long TEST_INDEXED_DELETE_FILES = 0L;
   private static final long TEST_DELETE_FILE_SIZE = 2048L;
-  private static final Set<String> TEST_ROLES = Set.of("admin", "data_engineer", "analyst");
-  private static final String TEST_ROLES_JSON = "[\"admin\",\"data_engineer\",\"analyst\"]";
   private static final String TEST_METADATA = "{\"custom\":\"value\"}";
 
   @Test
@@ -127,8 +123,6 @@ public class ModelScanMetricsReportTest {
         .thenReturn(TEST_INDEXED_DELETE_FILES);
     when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES))
         .thenReturn(TEST_DELETE_FILE_SIZE);
-    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS))
-        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelScanMetricsReport result = ModelScanMetricsReport.CONVERTER.fromResultSet(mockResultSet);
@@ -146,7 +140,6 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_RESULT_DATA_FILES, result.getResultDataFiles());
     assertEquals(TEST_TOTAL_FILE_SIZE, result.getTotalFileSizeBytes());
     assertEquals(TEST_PLANNING_DURATION, result.getTotalPlanningDurationMs());
-    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -163,9 +156,6 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_TABLE_ID, resultMap.get(ModelScanMetricsReport.TABLE_ID_COL));
     assertEquals(TEST_TIMESTAMP_MS, resultMap.get(ModelScanMetricsReport.TIMESTAMP_MS));
     assertEquals(TEST_RESULT_DATA_FILES, resultMap.get(ModelScanMetricsReport.RESULT_DATA_FILES));
-    // principal_role_ids should be serialized as a JSON string for H2
-    String rolesJson = (String) resultMap.get(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS);
-    assertThat(rolesJson).contains("admin", "data_engineer", "analyst");
     assertEquals(TEST_METADATA, resultMap.get(ModelScanMetricsReport.METADATA));
   }
 
@@ -176,10 +166,6 @@ public class ModelScanMetricsReportTest {
     Map<String, Object> resultMap = report.toMap(DatabaseType.POSTGRES);
 
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelScanMetricsReport.REPORT_ID));
-    // principal_role_ids should be serialized as a PGobject with type "jsonb" for Postgres
-    PGobject rolesPgObject = (PGobject) resultMap.get(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS);
-    assertEquals("jsonb", rolesPgObject.getType());
-    assertThat(rolesPgObject.getValue()).contains("admin", "data_engineer", "analyst");
     PGobject pgObject = (PGobject) resultMap.get(ModelScanMetricsReport.METADATA);
     assertEquals("jsonb", pgObject.getType());
     assertEquals(TEST_METADATA, pgObject.getValue());
@@ -246,8 +232,6 @@ public class ModelScanMetricsReportTest {
         .thenReturn(TEST_INDEXED_DELETE_FILES);
     when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES))
         .thenReturn(TEST_DELETE_FILE_SIZE);
-    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS))
-        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelScanMetricsReport result = converter.fromResultSet(mockResultSet);
@@ -255,7 +239,6 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
-    assertThat(result.getRoles()).containsExactlyInAnyOrderElementsOf(TEST_ROLES);
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
@@ -287,7 +270,6 @@ public class ModelScanMetricsReportTest {
         .positionalDeleteFiles(TEST_POSITIONAL_DELETE_FILES)
         .indexedDeleteFiles(TEST_INDEXED_DELETE_FILES)
         .totalDeleteFileSizeBytes(TEST_DELETE_FILE_SIZE)
-        .roles(TEST_ROLES)
         .metadata(TEST_METADATA)
         .build();
   }

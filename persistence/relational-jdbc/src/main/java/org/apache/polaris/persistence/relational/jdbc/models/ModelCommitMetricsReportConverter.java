@@ -18,15 +18,9 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 /**
@@ -35,23 +29,8 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
  */
 public class ModelCommitMetricsReportConverter implements Converter<ModelCommitMetricsReport> {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   @Override
   public ModelCommitMetricsReport fromResultSet(ResultSet rs) throws SQLException {
-    // Parse principal_role_ids JSON array
-    Set<String> roles = Set.of();
-    String rolesJson = rs.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS);
-    if (rolesJson != null && !rolesJson.isBlank()) {
-      try {
-        roles =
-            new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
-      } catch (JsonProcessingException e) {
-        // Log and continue with empty roles
-        roles = Set.of();
-      }
-    }
-
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(rs.getString(ModelCommitMetricsReport.REPORT_ID))
         .realmId(rs.getString(ModelCommitMetricsReport.REALM_ID))
@@ -88,7 +67,6 @@ public class ModelCommitMetricsReportConverter implements Converter<ModelCommitM
         .totalFileSizeBytes(rs.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES))
         .totalDurationMs(rs.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class))
         .attempts(rs.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class))
-        .roles(roles)
         .metadata(rs.getString(ModelCommitMetricsReport.METADATA))
         .build();
   }
