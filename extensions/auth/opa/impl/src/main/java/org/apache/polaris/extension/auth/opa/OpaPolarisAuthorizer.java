@@ -26,6 +26,7 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -50,6 +51,8 @@ import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -114,7 +117,16 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   public void preAuthorize(
       @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
-    // No-op for OPA; external PDP does not require RBAC entity resolution.
+    PolarisResolutionManifest manifest = ctx.getResolutionManifest();
+    if (manifest.hasResolution()) {
+      return;
+    }
+    // Resolve requested entities without RBAC role resolution.
+    manifest.resolveSelections(
+        EnumSet.of(
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.TOP_LEVEL_ENTITIES));
   }
 
   @Override

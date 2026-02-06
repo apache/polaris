@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import java.util.Objects;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 /**
@@ -30,17 +31,15 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 public class AuthorizationCallContext {
   private PolarisResolutionManifest resolutionManifest;
 
-  public AuthorizationCallContext() {}
-
-  public AuthorizationCallContext(@Nullable PolarisResolutionManifest resolutionManifest) {
-    this.resolutionManifest = resolutionManifest;
+  public AuthorizationCallContext(@Nonnull PolarisResolutionManifest resolutionManifest) {
+    this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
 
-  public @Nullable PolarisResolutionManifest getResolutionManifest() {
+  public @Nonnull PolarisResolutionManifest getResolutionManifest() {
     return resolutionManifest;
   }
 
-  public void setResolutionManifest(@Nullable PolarisResolutionManifest resolutionManifest) {
-    this.resolutionManifest = resolutionManifest;
+  public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
+    this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
 }
