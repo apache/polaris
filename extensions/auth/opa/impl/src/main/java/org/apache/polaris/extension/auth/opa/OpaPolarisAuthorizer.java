@@ -95,6 +95,21 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     this.objectMapper = objectMapper;
   }
 
+  @Override
+  public boolean requiresPrincipalRoles() {
+    return false;
+  }
+
+  @Override
+  public boolean requiresCatalogRoles() {
+    return false;
+  }
+
+  @Override
+  public boolean requiresResolvedEntities() {
+    return false;
+  }
+
   /**
    * Authorizes a single target and secondary entity for the given principal and operation.
    *
