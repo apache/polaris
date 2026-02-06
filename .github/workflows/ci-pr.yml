@@ -22,7 +22,7 @@ run-name: PR#${{ github.event.number }} ${{ github.event.pull_request.title }}
 
 on:
   pull_request:
-    branches: [ "main", "release/*" ]
+    branches: [ "main", "release/*", "feature/*" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
