@@ -22,7 +22,7 @@ run-name: CI/${{github.ref_name}} ${{github.event.head_commit.message}}
 
 on:
   push:
-    branches: [ "main", "release/*" ]
+    branches: [ "main", "release/*", "feature/*" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
