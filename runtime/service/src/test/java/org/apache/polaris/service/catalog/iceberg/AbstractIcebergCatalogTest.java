@@ -22,6 +22,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -83,6 +86,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
@@ -116,6 +120,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -1960,6 +1965,138 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key());
+  }
+
+  @Test
+  public void testDropNamespaceWithUnexpectedError() {
+    catalog.createNamespace(NS);
+
+    // Create a spy of the metaStoreManager to simulate an unexpected error
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Simulated server error"))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropNamespace(NS))
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessageContaining("Unexpected error dropping namespace")
+        .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+  }
+
+  @Test
+  public void testDropTableWithUnexpectedError() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    // Create a spy of the metaStoreManager to simulate an unexpected error
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Simulated server error"))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropTable(TABLE, false))
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessageContaining("Unexpected error dropping table")
+        .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+  }
+
+  @Test
+  public void testDropTableWithUndroppableEntity() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    // Create a spy of the metaStoreManager to simulate an undroppable entity error
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropTable(TABLE, false))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("cannot be dropped");
+  }
+
+  @Test
+  public void testDropViewWithUnexpectedError() {
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    // Create a spy of the metaStoreManager to simulate an unexpected error
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Simulated server error"))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropView(TABLE))
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessageContaining("Unexpected error dropping view")
+        .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
+  }
+
+  @Test
+  public void testDropViewWithUndroppableEntity() {
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    // Create a spy of the metaStoreManager to simulate an undroppable entity error
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(
+            new DropEntityResult(
+                BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Assertions.assertThatThrownBy(() -> spiedCatalog.dropView(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("cannot be dropped");
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {
