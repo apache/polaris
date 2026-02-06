@@ -92,9 +92,6 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     indexed_delete_files BIGINT DEFAULT 0,
     total_delete_file_size_bytes BIGINT DEFAULT 0,
 
-    -- Principal roles (denormalized as JSON array)
-    principal_role_ids JSONB DEFAULT '[]'::JSONB,
-
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,
 
@@ -107,7 +104,6 @@ COMMENT ON COLUMN scan_metrics_report.realm_id IS 'Realm ID for multi-tenancy';
 COMMENT ON COLUMN scan_metrics_report.catalog_id IS 'Catalog ID';
 COMMENT ON COLUMN scan_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID from HTTP headers';
 COMMENT ON COLUMN scan_metrics_report.report_trace_id IS 'Trace ID from report metadata';
-COMMENT ON COLUMN scan_metrics_report.principal_role_ids IS 'JSON array of activated principal role IDs';
 
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp
@@ -169,9 +165,6 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     total_duration_ms BIGINT DEFAULT 0,
     attempts INTEGER DEFAULT 1,
 
-    -- Principal roles (denormalized as JSON array)
-    principal_role_ids JSONB DEFAULT '[]'::JSONB,
-
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,
 
@@ -183,7 +176,6 @@ COMMENT ON COLUMN commit_metrics_report.report_id IS 'Unique identifier for the 
 COMMENT ON COLUMN commit_metrics_report.realm_id IS 'Realm ID for multi-tenancy';
 COMMENT ON COLUMN commit_metrics_report.operation IS 'Commit operation type: append, overwrite, delete, replace';
 COMMENT ON COLUMN commit_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID from HTTP headers';
-COMMENT ON COLUMN commit_metrics_report.principal_role_ids IS 'JSON array of activated principal role IDs';
 
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp
