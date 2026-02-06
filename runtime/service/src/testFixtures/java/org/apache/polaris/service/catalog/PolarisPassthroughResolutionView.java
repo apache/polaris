@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -74,6 +75,11 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           namespace);
       manifest.resolveAll();
       return manifest.getResolvedPath(namespace);
+    } else if (key instanceof PolarisSecurable securable) {
+      manifest.addPath(
+          new ResolverPath(securable.getNameParts(), securable.getEntityType()), securable);
+      manifest.resolveAll();
+      return manifest.getResolvedPath(securable);
     } else {
       throw new IllegalStateException(
           String.format(
@@ -92,6 +98,10 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           identifier);
       manifest.resolveAll();
       return manifest.getResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolarisSecurable securable) {
+      manifest.addPath(new ResolverPath(securable.getNameParts(), entityType), securable);
+      manifest.resolveAll();
+      return manifest.getResolvedPath(securable, entityType, subType);
     } else if (key instanceof PolicyIdentifier policyIdentifier) {
       manifest.addPath(
           new ResolverPath(
@@ -118,6 +128,10 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
           namespace);
       return manifest.getPassthroughResolvedPath(namespace);
+    } else if (key instanceof PolarisSecurable securable) {
+      manifest.addPassthroughPath(
+          new ResolverPath(securable.getNameParts(), securable.getEntityType()), securable);
+      return manifest.getPassthroughResolvedPath(securable);
     } else {
       throw new IllegalStateException(
           String.format(
@@ -135,6 +149,10 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
           new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
       return manifest.getPassthroughResolvedPath(identifier, entityType, subType);
+    } else if (key instanceof PolarisSecurable securable) {
+      manifest.addPassthroughPath(
+          new ResolverPath(securable.getNameParts(), entityType), securable);
+      return manifest.getPassthroughResolvedPath(securable, entityType, subType);
     } else if (key instanceof PolicyIdentifier policyIdentifier) {
       manifest.addPassthroughPath(
           new ResolverPath(

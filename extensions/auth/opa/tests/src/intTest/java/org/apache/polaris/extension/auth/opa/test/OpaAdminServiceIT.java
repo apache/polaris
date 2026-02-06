@@ -140,6 +140,20 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   }
 
   @Test
+  void rbacAdminOperationsAreDeniedUnderOpa() {
+    String rootToken = baseRootToken;
+    String principalRole = "opa-pr-role-deny-" + UUID.randomUUID().toString().replace("-", "");
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(Map.of("name", principalRole, "properties", Map.of())))
+        .post("/api/management/v1/principal-roles")
+        .then()
+        .statusCode(403);
+  }
+
+  @Test
   void createCatalogAuthorization() throws Exception {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());

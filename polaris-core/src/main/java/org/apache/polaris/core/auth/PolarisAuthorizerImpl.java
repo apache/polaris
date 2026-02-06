@@ -127,6 +127,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -140,6 +141,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -907,5 +910,24 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         polarisPrincipal.getName(),
         resolvedPath);
     return false;
+  }
+
+  @Override
+  public void preAuthorize(
+      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+    PolarisResolutionManifest manifest = ctx.getResolutionManifest();
+    if (manifest == null || manifest.hasResolution()) {
+      return;
+    }
+
+    // Phase 2: preserve existing RBAC ordering by resolving the manifest within preAuthorize.
+    manifest.resolveSelections(
+        EnumSet.of(
+            Resolvable.CALLER_PRINCIPAL,
+            Resolvable.CALLER_PRINCIPAL_ROLES,
+            Resolvable.CATALOG_ROLES,
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.TOP_LEVEL_ENTITIES));
   }
 }

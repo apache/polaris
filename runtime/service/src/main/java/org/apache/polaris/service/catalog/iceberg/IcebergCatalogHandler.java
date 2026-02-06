@@ -83,6 +83,8 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationCallContext;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -105,8 +107,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -351,7 +353,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Map<String, String> filteredProperties =
           reservedProperties.removeReservedProperties(
               resolutionManifest
-                  .getPassthroughResolvedPath(namespace)
+                  .getPassthroughResolvedPath(newNamespaceSecurable(namespace))
                   .getRawLeafEntity()
                   .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
@@ -672,7 +674,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return the Polaris table entity for the table or null for external catalogs
    */
   private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(newTableLikeSecurable(tableIdentifier));
     PolarisEntity rawLeafEntity = target.getRawLeafEntity();
     if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(rawLeafEntity);
@@ -1325,12 +1328,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (catalogName == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver = resolverFactory.createResolver(polarisPrincipal, catalogName);
-    ResolverStatus resolverStatus = resolver.resolveAll();
-    if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
+    PolarisResolutionManifest manifest = newResolutionManifest();
+    AuthorizationCallContext authzContext = new AuthorizationCallContext(manifest);
+    authorizer.preAuthorize(
+        authzContext,
+        new AuthorizationRequest(
+            polarisPrincipal, PolarisAuthorizableOperation.GET_CATALOG, null, null));
+    ResolverStatus resolverStatus = manifest.getResolverStatus();
+    if (resolverStatus == null
+        || !resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
+    ResolvedPolarisEntity resolvedReferenceCatalog =
+        manifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity();
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
