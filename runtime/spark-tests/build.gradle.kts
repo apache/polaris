@@ -73,6 +73,8 @@ tasks.named<Test>("intTest").configure {
   // Same issue as above: allow a java security manager after Java 21
   // (this setting is for the application under test, while the setting above is for test code).
   systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
+  //  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow
+  // -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006")
   val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
   // delete files from previous runs
   doFirst {
