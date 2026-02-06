@@ -208,7 +208,8 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
     String rolesJson = rs.getString(PRINCIPAL_ROLE_IDS);
     if (rolesJson != null && !rolesJson.isBlank()) {
       try {
-        roles = new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
+        roles =
+            new HashSet<>(OBJECT_MAPPER.readValue(rolesJson, new TypeReference<List<String>>() {}));
       } catch (JsonProcessingException e) {
         // Log and continue with empty roles
         roles = Set.of();

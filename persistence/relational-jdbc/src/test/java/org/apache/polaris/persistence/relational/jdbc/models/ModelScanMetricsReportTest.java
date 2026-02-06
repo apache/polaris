@@ -199,31 +199,55 @@ public class ModelScanMetricsReportTest {
     when(mockResultSet.getLong(ModelScanMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
     when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
     when(mockResultSet.getString(ModelScanMetricsReport.REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
-    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_TRACE_ID)).thenReturn(TEST_OTEL_TRACE_ID);
-    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_SPAN_ID)).thenReturn(TEST_OTEL_SPAN_ID);
-    when(mockResultSet.getString(ModelScanMetricsReport.REPORT_TRACE_ID)).thenReturn(TEST_REPORT_TRACE_ID);
-    when(mockResultSet.getObject(ModelScanMetricsReport.SNAPSHOT_ID, Long.class)).thenReturn(TEST_SNAPSHOT_ID);
-    when(mockResultSet.getObject(ModelScanMetricsReport.SCHEMA_ID, Integer.class)).thenReturn(TEST_SCHEMA_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_TRACE_ID))
+        .thenReturn(TEST_OTEL_TRACE_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.OTEL_SPAN_ID))
+        .thenReturn(TEST_OTEL_SPAN_ID);
+    when(mockResultSet.getString(ModelScanMetricsReport.REPORT_TRACE_ID))
+        .thenReturn(TEST_REPORT_TRACE_ID);
+    when(mockResultSet.getObject(ModelScanMetricsReport.SNAPSHOT_ID, Long.class))
+        .thenReturn(TEST_SNAPSHOT_ID);
+    when(mockResultSet.getObject(ModelScanMetricsReport.SCHEMA_ID, Integer.class))
+        .thenReturn(TEST_SCHEMA_ID);
     when(mockResultSet.getString(ModelScanMetricsReport.FILTER_EXPRESSION)).thenReturn(TEST_FILTER);
-    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_IDS)).thenReturn(TEST_PROJECTED_IDS);
-    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_NAMES)).thenReturn(TEST_PROJECTED_NAMES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DATA_FILES)).thenReturn(TEST_RESULT_DATA_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DELETE_FILES)).thenReturn(TEST_RESULT_DELETE_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_FILE_SIZE_BYTES)).thenReturn(TEST_TOTAL_FILE_SIZE);
-    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DATA_MANIFESTS)).thenReturn(TEST_TOTAL_DATA_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_MANIFESTS)).thenReturn(TEST_TOTAL_DELETE_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DATA_MANIFESTS)).thenReturn(TEST_SCANNED_DATA_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DELETE_MANIFESTS)).thenReturn(TEST_SCANNED_DELETE_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_MANIFESTS)).thenReturn(TEST_SKIPPED_DATA_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_MANIFESTS)).thenReturn(TEST_SKIPPED_DELETE_MANIFESTS);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_FILES)).thenReturn(TEST_SKIPPED_DATA_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_FILES)).thenReturn(TEST_SKIPPED_DELETE_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_PLANNING_DURATION_MS)).thenReturn(TEST_PLANNING_DURATION);
-    when(mockResultSet.getLong(ModelScanMetricsReport.EQUALITY_DELETE_FILES)).thenReturn(TEST_EQUALITY_DELETE_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.POSITIONAL_DELETE_FILES)).thenReturn(TEST_POSITIONAL_DELETE_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.INDEXED_DELETE_FILES)).thenReturn(TEST_INDEXED_DELETE_FILES);
-    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES)).thenReturn(TEST_DELETE_FILE_SIZE);
-    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS)).thenReturn(TEST_ROLES_JSON);
+    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_IDS))
+        .thenReturn(TEST_PROJECTED_IDS);
+    when(mockResultSet.getString(ModelScanMetricsReport.PROJECTED_FIELD_NAMES))
+        .thenReturn(TEST_PROJECTED_NAMES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DATA_FILES))
+        .thenReturn(TEST_RESULT_DATA_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.RESULT_DELETE_FILES))
+        .thenReturn(TEST_RESULT_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_FILE_SIZE_BYTES))
+        .thenReturn(TEST_TOTAL_FILE_SIZE);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DATA_MANIFESTS))
+        .thenReturn(TEST_TOTAL_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_MANIFESTS))
+        .thenReturn(TEST_TOTAL_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DATA_MANIFESTS))
+        .thenReturn(TEST_SCANNED_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SCANNED_DELETE_MANIFESTS))
+        .thenReturn(TEST_SCANNED_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_MANIFESTS))
+        .thenReturn(TEST_SKIPPED_DATA_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_MANIFESTS))
+        .thenReturn(TEST_SKIPPED_DELETE_MANIFESTS);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DATA_FILES))
+        .thenReturn(TEST_SKIPPED_DATA_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.SKIPPED_DELETE_FILES))
+        .thenReturn(TEST_SKIPPED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_PLANNING_DURATION_MS))
+        .thenReturn(TEST_PLANNING_DURATION);
+    when(mockResultSet.getLong(ModelScanMetricsReport.EQUALITY_DELETE_FILES))
+        .thenReturn(TEST_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.POSITIONAL_DELETE_FILES))
+        .thenReturn(TEST_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.INDEXED_DELETE_FILES))
+        .thenReturn(TEST_INDEXED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelScanMetricsReport.TOTAL_DELETE_FILE_SIZE_BYTES))
+        .thenReturn(TEST_DELETE_FILE_SIZE);
+    when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_ROLE_IDS))
+        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelScanMetricsReport result = converter.fromResultSet(mockResultSet);

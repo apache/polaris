@@ -194,34 +194,60 @@ public class ModelCommitMetricsReportTest {
     when(mockResultSet.getLong(ModelCommitMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
     when(mockResultSet.getString(ModelCommitMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
     when(mockResultSet.getLong(ModelCommitMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
-    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TIMESTAMP_MS))
+        .thenReturn(TEST_TIMESTAMP_MS);
+    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_NAME))
+        .thenReturn(TEST_PRINCIPAL);
     when(mockResultSet.getString(ModelCommitMetricsReport.REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
-    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_TRACE_ID)).thenReturn(TEST_OTEL_TRACE_ID);
-    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_SPAN_ID)).thenReturn(TEST_OTEL_SPAN_ID);
-    when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_TRACE_ID)).thenReturn(TEST_REPORT_TRACE_ID);
-    when(mockResultSet.getObject(ModelCommitMetricsReport.SNAPSHOT_ID, Long.class)).thenReturn(TEST_SNAPSHOT_ID);
-    when(mockResultSet.getObject(ModelCommitMetricsReport.SEQUENCE_NUMBER, Long.class)).thenReturn(TEST_SEQUENCE_NUMBER);
+    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_TRACE_ID))
+        .thenReturn(TEST_OTEL_TRACE_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.OTEL_SPAN_ID))
+        .thenReturn(TEST_OTEL_SPAN_ID);
+    when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_TRACE_ID))
+        .thenReturn(TEST_REPORT_TRACE_ID);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.SNAPSHOT_ID, Long.class))
+        .thenReturn(TEST_SNAPSHOT_ID);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.SEQUENCE_NUMBER, Long.class))
+        .thenReturn(TEST_SEQUENCE_NUMBER);
     when(mockResultSet.getString(ModelCommitMetricsReport.OPERATION)).thenReturn(TEST_OPERATION);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DATA_FILES)).thenReturn(TEST_ADDED_DATA_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DATA_FILES)).thenReturn(TEST_REMOVED_DATA_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DATA_FILES)).thenReturn(TEST_TOTAL_DATA_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DELETE_FILES)).thenReturn(TEST_ADDED_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DELETE_FILES)).thenReturn(TEST_REMOVED_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DELETE_FILES)).thenReturn(TEST_TOTAL_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_EQUALITY_DELETE_FILES)).thenReturn(TEST_ADDED_EQUALITY_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_EQUALITY_DELETE_FILES)).thenReturn(TEST_REMOVED_EQUALITY_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_POSITIONAL_DELETE_FILES)).thenReturn(TEST_ADDED_POSITIONAL_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_POSITIONAL_DELETE_FILES)).thenReturn(TEST_REMOVED_POSITIONAL_DELETE_FILES);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_RECORDS)).thenReturn(TEST_ADDED_RECORDS);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_RECORDS)).thenReturn(TEST_REMOVED_RECORDS);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_RECORDS)).thenReturn(TEST_TOTAL_RECORDS);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_FILE_SIZE_BYTES)).thenReturn(TEST_ADDED_FILE_SIZE);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_FILE_SIZE_BYTES)).thenReturn(TEST_REMOVED_FILE_SIZE);
-    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES)).thenReturn(TEST_TOTAL_FILE_SIZE);
-    when(mockResultSet.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class)).thenReturn(TEST_TOTAL_DURATION);
-    when(mockResultSet.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class)).thenReturn(TEST_ATTEMPTS);
-    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS)).thenReturn(TEST_ROLES_JSON);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DATA_FILES))
+        .thenReturn(TEST_ADDED_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DATA_FILES))
+        .thenReturn(TEST_REMOVED_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DATA_FILES))
+        .thenReturn(TEST_TOTAL_DATA_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_DELETE_FILES))
+        .thenReturn(TEST_ADDED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_DELETE_FILES))
+        .thenReturn(TEST_REMOVED_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_DELETE_FILES))
+        .thenReturn(TEST_TOTAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_EQUALITY_DELETE_FILES))
+        .thenReturn(TEST_ADDED_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_EQUALITY_DELETE_FILES))
+        .thenReturn(TEST_REMOVED_EQUALITY_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_POSITIONAL_DELETE_FILES))
+        .thenReturn(TEST_ADDED_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_POSITIONAL_DELETE_FILES))
+        .thenReturn(TEST_REMOVED_POSITIONAL_DELETE_FILES);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_RECORDS))
+        .thenReturn(TEST_ADDED_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_RECORDS))
+        .thenReturn(TEST_REMOVED_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_RECORDS))
+        .thenReturn(TEST_TOTAL_RECORDS);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.ADDED_FILE_SIZE_BYTES))
+        .thenReturn(TEST_ADDED_FILE_SIZE);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.REMOVED_FILE_SIZE_BYTES))
+        .thenReturn(TEST_REMOVED_FILE_SIZE);
+    when(mockResultSet.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES))
+        .thenReturn(TEST_TOTAL_FILE_SIZE);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class))
+        .thenReturn(TEST_TOTAL_DURATION);
+    when(mockResultSet.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class))
+        .thenReturn(TEST_ATTEMPTS);
+    when(mockResultSet.getString(ModelCommitMetricsReport.PRINCIPAL_ROLE_IDS))
+        .thenReturn(TEST_ROLES_JSON);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
     ModelCommitMetricsReport result = converter.fromResultSet(mockResultSet);
