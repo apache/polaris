@@ -23,7 +23,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitReport;
@@ -148,14 +147,12 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
     }
 
     long tableId = tableResult.getEntity().getId();
-    List<String> namespace = Arrays.asList(namespaceLevels);
 
     if (metricsReport instanceof ScanReport scanReport) {
       ScanMetricsRecord record =
           MetricsRecordConverter.forScanReport(scanReport)
               .catalogId(catalogId)
               .tableId(tableId)
-              .namespace(namespace)
               .timestamp(receivedTimestamp)
               .build();
       metricsPersistence.writeScanReport(record);
@@ -166,7 +163,6 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
           MetricsRecordConverter.forCommitReport(commitReport)
               .catalogId(catalogId)
               .tableId(tableId)
-              .namespace(namespace)
               .timestamp(receivedTimestamp)
               .build();
       metricsPersistence.writeCommitReport(record);

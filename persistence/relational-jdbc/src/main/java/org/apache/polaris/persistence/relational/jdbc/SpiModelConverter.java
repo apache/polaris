@@ -22,7 +22,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +45,6 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsRep
  *
  * <ul>
  *   <li>catalogId: long (SPI) ↔ long (Model)
- *   <li>namespace: List&lt;String&gt; (SPI) ↔ dot-separated string (Model)
  *   <li>timestamp: Instant (SPI) ↔ long milliseconds (Model)
  *   <li>metadata: Map&lt;String, String&gt; (SPI) ↔ JSON string (Model)
  *   <li>projectedFieldIds/Names: List (SPI) ↔ comma-separated string (Model)
@@ -72,7 +70,6 @@ public final class SpiModelConverter {
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
-        .namespace(toNamespaceJson(record.namespace()))
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId().orElse(null))
@@ -113,7 +110,6 @@ public final class SpiModelConverter {
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
-        .namespace(toNamespaceJson(record.namespace()))
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
         .snapshotId(record.snapshotId())
@@ -151,7 +147,6 @@ public final class SpiModelConverter {
     return ScanMetricsRecord.builder()
         .reportId(model.getReportId())
         .catalogId(model.getCatalogId())
-        .namespace(parseNamespace(model.getNamespace()))
         .tableId(model.getTableId())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
         .snapshotId(Optional.ofNullable(model.getSnapshotId()))
@@ -189,7 +184,6 @@ public final class SpiModelConverter {
     return CommitMetricsRecord.builder()
         .reportId(model.getReportId())
         .catalogId(model.getCatalogId())
-        .namespace(parseNamespace(model.getNamespace()))
         .tableId(model.getTableId())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
         .snapshotId(model.getSnapshotId())
@@ -222,20 +216,6 @@ public final class SpiModelConverter {
 
   // === Helper Methods ===
 
-  private static List<String> parseNamespace(String namespace) {
-    if (namespace == null || namespace.isEmpty()) {
-      return Collections.emptyList();
-    }
-    // Namespace is stored as a JSON array to preserve segment boundaries
-    // (namespace levels may contain dots)
-    try {
-      return OBJECT_MAPPER.readValue(namespace, new TypeReference<List<String>>() {});
-    } catch (JsonProcessingException e) {
-      // Fallback for any legacy dot-separated data
-      return Arrays.asList(namespace.split("\\."));
-    }
-  }
-
   private static String toCommaSeparated(List<?> list) {
     if (list == null || list.isEmpty()) {
       return null;
@@ -262,17 +242,6 @@ public final class SpiModelConverter {
         .map(String::trim)
         .filter(s -> !s.isEmpty())
         .collect(Collectors.toList());
-  }
-
-  private static String toNamespaceJson(List<String> namespace) {
-    if (namespace == null || namespace.isEmpty()) {
-      return "";
-    }
-    try {
-      return OBJECT_MAPPER.writeValueAsString(namespace);
-    } catch (JsonProcessingException e) {
-      return "";
-    }
   }
 
   private static String toJsonString(Map<String, String> map) {

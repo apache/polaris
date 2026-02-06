@@ -34,7 +34,6 @@ public class ModelScanMetricsReportTest {
   private static final String TEST_REPORT_ID = "report-123";
   private static final String TEST_REALM_ID = "realm-1";
   private static final long TEST_CATALOG_ID = 12345L;
-  private static final String TEST_NAMESPACE = "db.schema";
   private static final long TEST_TABLE_ID = 67890L;
   private static final long TEST_TIMESTAMP_MS = 1704067200000L;
   private static final String TEST_PRINCIPAL = "user@example.com";
@@ -71,7 +70,6 @@ public class ModelScanMetricsReportTest {
     when(mockResultSet.getString(ModelScanMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
     when(mockResultSet.getString(ModelScanMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
     when(mockResultSet.getLong(ModelScanMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
-    when(mockResultSet.getString(ModelScanMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
     when(mockResultSet.getLong(ModelScanMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
     when(mockResultSet.getLong(ModelScanMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
     when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
@@ -130,7 +128,6 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
-    assertEquals(TEST_NAMESPACE, result.getNamespace());
     assertEquals(TEST_TABLE_ID, result.getTableId());
     assertEquals(TEST_TIMESTAMP_MS, result.getTimestampMs());
     assertEquals(TEST_PRINCIPAL, result.getPrincipalName());
@@ -152,7 +149,6 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelScanMetricsReport.REPORT_ID));
     assertEquals(TEST_REALM_ID, resultMap.get(ModelScanMetricsReport.REALM_ID));
     assertEquals(TEST_CATALOG_ID, resultMap.get(ModelScanMetricsReport.CATALOG_ID));
-    assertEquals(TEST_NAMESPACE, resultMap.get(ModelScanMetricsReport.NAMESPACE));
     assertEquals(TEST_TABLE_ID, resultMap.get(ModelScanMetricsReport.TABLE_ID_COL));
     assertEquals(TEST_TIMESTAMP_MS, resultMap.get(ModelScanMetricsReport.TIMESTAMP_MS));
     assertEquals(TEST_RESULT_DATA_FILES, resultMap.get(ModelScanMetricsReport.RESULT_DATA_FILES));
@@ -180,7 +176,6 @@ public class ModelScanMetricsReportTest {
     when(mockResultSet.getString(ModelScanMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
     when(mockResultSet.getString(ModelScanMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
     when(mockResultSet.getLong(ModelScanMetricsReport.CATALOG_ID)).thenReturn(TEST_CATALOG_ID);
-    when(mockResultSet.getString(ModelScanMetricsReport.NAMESPACE)).thenReturn(TEST_NAMESPACE);
     when(mockResultSet.getLong(ModelScanMetricsReport.TABLE_ID_COL)).thenReturn(TEST_TABLE_ID);
     when(mockResultSet.getLong(ModelScanMetricsReport.TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
     when(mockResultSet.getString(ModelScanMetricsReport.PRINCIPAL_NAME)).thenReturn(TEST_PRINCIPAL);
@@ -247,7 +242,6 @@ public class ModelScanMetricsReportTest {
         .reportId(TEST_REPORT_ID)
         .realmId(TEST_REALM_ID)
         .catalogId(TEST_CATALOG_ID)
-        .namespace(TEST_NAMESPACE)
         .tableId(TEST_TABLE_ID)
         .timestampMs(TEST_TIMESTAMP_MS)
         .principalName(TEST_PRINCIPAL)

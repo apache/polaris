@@ -139,7 +139,6 @@ public class PersistingMetricsReporterTest {
     ScanMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
     assertThat(record.tableId()).isEqualTo(TABLE_ID);
-    assertThat(record.namespace()).isEqualTo(NAMESPACE);
     assertThat(record.reportId()).isNotNull();
   }
 
@@ -197,7 +196,6 @@ public class PersistingMetricsReporterTest {
     CommitMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
     assertThat(record.tableId()).isEqualTo(TABLE_ID);
-    assertThat(record.namespace()).isEqualTo(NAMESPACE);
     assertThat(record.reportId()).isNotNull();
   }
 

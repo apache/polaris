@@ -36,7 +36,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   String REPORT_ID = "report_id";
   String REALM_ID = "realm_id";
   String CATALOG_ID = "catalog_id";
-  String NAMESPACE = "namespace";
   String TABLE_ID_COL = "table_id";
   String TIMESTAMP_MS = "timestamp_ms";
   String PRINCIPAL_NAME = "principal_name";
@@ -72,7 +71,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           REPORT_ID,
           REALM_ID,
           CATALOG_ID,
-          NAMESPACE,
           TABLE_ID_COL,
           TIMESTAMP_MS,
           PRINCIPAL_NAME,
@@ -109,8 +107,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   String getRealmId();
 
   long getCatalogId();
-
-  String getNamespace();
 
   long getTableId();
 
@@ -183,7 +179,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .reportId(rs.getString(REPORT_ID))
         .realmId(rs.getString(REALM_ID))
         .catalogId(rs.getLong(CATALOG_ID))
-        .namespace(rs.getString(NAMESPACE))
         .tableId(rs.getLong(TABLE_ID_COL))
         .timestampMs(rs.getLong(TIMESTAMP_MS))
         .principalName(rs.getString(PRINCIPAL_NAME))
@@ -222,7 +217,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     map.put(REPORT_ID, getReportId());
     map.put(REALM_ID, getRealmId());
     map.put(CATALOG_ID, getCatalogId());
-    map.put(NAMESPACE, getNamespace());
     map.put(TABLE_ID_COL, getTableId());
     map.put(TIMESTAMP_MS, getTimestampMs());
     map.put(PRINCIPAL_NAME, getPrincipalName());
@@ -266,7 +260,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
           .reportId("")
           .realmId("")
           .catalogId(0L)
-          .namespace("")
           .tableId(0L)
           .timestampMs(0L)
           .snapshotId(0L)

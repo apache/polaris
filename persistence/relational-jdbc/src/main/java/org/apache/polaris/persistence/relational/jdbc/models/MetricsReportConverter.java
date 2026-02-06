@@ -50,7 +50,6 @@ public final class MetricsReportConverter {
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
    * @param tableId the table entity ID
-   * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the scan (optional)
    * @param requestId the request ID (optional)
    * @param otelTraceId OpenTelemetry trace ID (optional)
@@ -62,7 +61,6 @@ public final class MetricsReportConverter {
       String realmId,
       long catalogId,
       long tableId,
-      String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
       @Nullable String otelTraceId,
@@ -78,7 +76,6 @@ public final class MetricsReportConverter {
             .reportId(reportId)
             .realmId(realmId)
             .catalogId(catalogId)
-            .namespace(namespace)
             .tableId(tableId)
             .timestampMs(timestampMs)
             .principalName(principalName)
@@ -146,7 +143,6 @@ public final class MetricsReportConverter {
    * @param realmId the realm ID for multi-tenancy
    * @param catalogId the catalog ID
    * @param tableId the table entity ID
-   * @param namespace the namespace (dot-separated)
    * @param principalName the principal who initiated the commit (optional)
    * @param requestId the request ID (optional)
    * @param otelTraceId OpenTelemetry trace ID (optional)
@@ -158,7 +154,6 @@ public final class MetricsReportConverter {
       String realmId,
       long catalogId,
       long tableId,
-      String namespace,
       @Nullable String principalName,
       @Nullable String requestId,
       @Nullable String otelTraceId,
@@ -174,7 +169,6 @@ public final class MetricsReportConverter {
             .reportId(reportId)
             .realmId(realmId)
             .catalogId(catalogId)
-            .namespace(namespace)
             .tableId(tableId)
             .timestampMs(timestampMs)
             .principalName(principalName)
