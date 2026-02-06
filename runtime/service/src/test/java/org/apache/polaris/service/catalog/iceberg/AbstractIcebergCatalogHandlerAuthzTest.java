@@ -839,6 +839,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
           }
         };
 
+    // Registering a *new* table requires TABLE_CREATE (or an equivalent broader privilege).
+    // This test verifies that a variety of other privileges (read/list/write-data/etc.)
+    // are not sufficient to perform a registerTable for a new table in NS2.
     doTestInsufficientPrivileges(
         List.of(
             PolarisPrivilege.NAMESPACE_FULL_METADATA,
@@ -851,6 +854,71 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest);
+        });
+  }
+
+  @Test
+  public void testRegisterTableOverwriteSufficientPrivileges() {
+    // For overwrite, the caller needs an UPDATE_TABLE-like privilege on the target table.
+    // In Polaris's privilege model this is represented by TABLE_WRITE_PROPERTIES or
+    // TABLE_FULL_METADATA (or a catalog-wide CATALOG_MANAGE_CONTENT). This test verifies
+    // that each of those privileges, granted at the catalog level to the test role,
+    // is sufficient to perform a registerTable with overwrite=true.
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newWrapper(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    // Mock RegisterTableRequest with overwrite=true
+    final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
+    Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
+    Mockito.when(registerRequest.metadataLocation()).thenReturn(metadataLocation);
+    Mockito.when(registerRequest.overwrite()).thenReturn(true);
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
+        },
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteInsufficientPermissions() {
+    /*
+     * Verifies that a variety of privileges are insufficient to authorize a registerTable operation
+     * with overwrite enabled. Grants only TABLE_READ_PROPERTIES to the cleanup role, mocks a
+     * RegisterTableRequest for overwriting an existing table, and asserts that privileges such as
+     * NAMESPACE_FULL_METADATA, VIEW_FULL_METADATA, TABLE_CREATE, TABLE_DROP, TABLE_READ_PROPERTIES,
+     * TABLE_READ_DATA, and TABLE_LIST do not permit the overwrite operation.
+     */
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newWrapper(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    // Mock RegisterTableRequest with overwrite=true
+    final RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
+    Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
+    Mockito.when(registerRequest.metadataLocation()).thenReturn(metadataLocation);
+    Mockito.when(registerRequest.overwrite()).thenReturn(true);
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
         });
   }
 

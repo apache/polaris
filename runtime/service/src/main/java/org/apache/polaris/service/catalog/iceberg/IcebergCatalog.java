@@ -287,6 +287,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public Table registerTable(TableIdentifier identifier, String metadataFileLocation) {
+    return registerTable(identifier, metadataFileLocation, false);
+  }
+
+  /**
+   * Register a table with optional overwrite semantics.
+   *
+   * <p>When {@code overwrite} is false (the default) this behaves like a normal register and will
+   * fail if the table already exists. When {@code overwrite} is true and the named table already
+   * exists, this method updates the table's stored metadata-location to point at the provided
+   * metadata file. The overwrite path performs additional validation to ensure the supplied
+   * metadata file and its location are consistent with the table's resolved storage configuration.
+   *
+   * @param identifier the table identifier
+   * @param metadataFileLocation the metadata file location
+   * @param overwrite if true, update existing table metadata; if false, throw exception if table
+   *     exists
+   * @return the registered table
+   */
+  public Table registerTable(
+      TableIdentifier identifier, String metadataFileLocation, boolean overwrite) {
     Preconditions.checkArgument(
         identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
     Preconditions.checkArgument(
@@ -300,12 +320,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         metadataFileLocation);
 
     // Throw an exception if this table already exists in the catalog.
-    if (tableExists(identifier)) {
+    boolean tableExists = tableExists(identifier);
+    if (!overwrite && tableExists) {
       throw new AlreadyExistsException("Table already exists: %s", identifier);
     }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
+    if (!tableExists) {
+      return registerNewTable(identifier, metadataFileLocation, locationDir);
+    }
 
+    return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+  }
+
+  private Table registerNewTable(
+      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
     TableOperations ops = newTableOps(identifier);
 
     PolarisResolvedPathWrapper resolvedParent =
@@ -327,6 +356,85 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     TableMetadata metadata = TableMetadataParser.read(metadataFile);
     ops.commit(null, metadata);
 
+    return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
+  }
+
+  private Table overwriteRegisteredTable(
+      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
+    /*
+     * High-level overview:
+     * - Resolve the authorized parent for the table so we know the storage context.
+     * - Validate and read the provided metadata file using a FileIO tied to that
+     *   storage context.
+     * - Ensure the target entity exists and is the correct table-like subtype.
+     * - Replace the stored entity properties (including metadata-location) with
+     *   values derived from the parsed TableMetadata and persist the change.
+     */
+
+    // Resolve the parent namespace path that was authorized for this catalog.
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(identifier.namespace());
+    if (resolvedParent == null) {
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
+    }
+
+    // Validate the supplied metadata file location against the resolved storage.
+    validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
+
+    // Configure FileIO for the resolved storage and read the metadata file.
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(locationDir),
+            resolvedParent,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
+    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
+    validateLocationForTableLike(identifier, metadata.location(), resolvedParent);
+    validateMetadataFileInTableDir(identifier, metadata);
+
+    // Find the passthrough-resolved entity so we can update the stored record.
+    PolarisResolvedPathWrapper resolvedPath =
+        resolvedEntityView.getPassthroughResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedPath == null || resolvedPath.getRawLeafEntity() == null) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
+
+    // Ensure the raw entity is an Iceberg table-like entity (not a view/generic table).
+    PolarisEntity rawEntity = resolvedPath.getRawLeafEntity();
+    if (rawEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+      throw new AlreadyExistsException("View with same name already exists: %s", identifier);
+    } else if (rawEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
+      throw new AlreadyExistsException(
+          "Generic table with same name already exists: %s", identifier);
+    }
+
+    IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
+    if (existingEntity == null) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
+
+    // Build updated entity from parsed metadata and persist the update.
+    // NOTE: This updates the Iceberg table UUID to match the new metadata file's UUID
+    // (via buildTableMetadataPropertiesMap which extracts metadata.uuid()).
+    // The Polaris entity ID remains unchanged to preserve grants/permissions.
+    // See https://lists.apache.org/thread/b5k7vdng904zr3n3q8wv83y8l30rnd4c
+    // and https://lists.apache.org/thread/k3595bttvohb6c3ms36o16gppdfllqmp
+    Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+    IcebergTableLikeEntity updatedEntity =
+        new IcebergTableLikeEntity.Builder(existingEntity)
+            .setInternalProperties(storedProperties)
+            .setMetadataLocation(metadataFileLocation)
+            .build();
+
+    updateTableLike(identifier, updatedEntity);
+
+    // Refresh TableOperations so the in-memory table reflects the new metadata.
+    TableOperations ops = newTableOps(identifier);
+    ops.refresh();
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
   }
 
