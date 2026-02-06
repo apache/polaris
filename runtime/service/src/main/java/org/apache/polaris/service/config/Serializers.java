@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -40,6 +42,7 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.service.catalog.iceberg.RegisterTableRequestContext;
 
 public final class Serializers {
   private Serializers() {}
@@ -58,6 +61,7 @@ public final class Serializers {
         GrantCatalogRoleRequest.class, new GrantCatalogRoleRequestDeserializer());
     module.addDeserializer(AddGrantRequest.class, new AddGrantRequestDeserializer());
     module.addDeserializer(RevokeGrantRequest.class, new RevokeGrantRequestDeserializer());
+    module.addDeserializer(RegisterTableRequest.class, new RegisterTableRequestDeserializer());
     mapper.registerModule(module);
   }
 
@@ -240,6 +244,47 @@ public final class Serializers {
             .setGrant(ctxt.readTreeAsValue((JsonNode) treeNode, GrantResource.class))
             .build();
       }
+    }
+  }
+
+  /**
+   * Deserializer for {@link RegisterTableRequest} that captures the optional "overwrite" flag from
+   * the incoming payload and stores it in {@link
+   * org.apache.polaris.service.catalog.iceberg.RegisterTableRequestContext}.
+   *
+   * <p>Rationale: the Iceberg {@code RegisterTableRequest} interface does not include the newer
+   * "overwrite" boolean in the generated type used by the REST client. We capture the flag here so
+   * the server-side catalog helpers can observe the caller's intent (defaulting to false to
+   * preserve backward compatibility).
+   */
+  public static final class RegisterTableRequestDeserializer
+      extends JsonDeserializer<RegisterTableRequest> {
+    @Override
+    public RegisterTableRequest deserialize(JsonParser p, DeserializationContext ctxt)
+        throws IOException {
+      JsonNode root = p.readValueAsTree();
+      if (!root.isObject()) {
+        return (RegisterTableRequest) ctxt.handleUnexpectedToken(RegisterTableRequest.class, p);
+      }
+
+      JsonNode nameField = root.get("name");
+      JsonNode metadataLocationField = root.get("metadata-location");
+      if (nameField == null || metadataLocationField == null) {
+        return (RegisterTableRequest) ctxt.handleUnexpectedToken(RegisterTableRequest.class, p);
+      }
+
+      // Capture the optional overwrite flag; default to false for backward compatibility.
+      boolean shouldOverwrite = false;
+      JsonNode overwriteField = root.get("overwrite");
+      if (overwriteField != null && overwriteField.isBoolean()) {
+        shouldOverwrite = overwriteField.asBoolean(false);
+      }
+
+      RegisterTableRequestContext.setOverwrite(shouldOverwrite);
+      return ImmutableRegisterTableRequest.builder()
+          .name(nameField.asText())
+          .metadataLocation(metadataLocationField.asText())
+          .build();
     }
   }
 }

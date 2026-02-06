@@ -85,8 +85,10 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -94,8 +96,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -108,6 +113,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -634,11 +640,110 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    boolean overwrite = RegisterTableRequestContext.getOverwrite();
 
-    return catalogHandlerUtils.registerTable(baseCatalog, namespace, request);
+    if (overwrite) {
+      // Resolve the namespace and table (optional) so we can distinguish overwrite from create.
+      resolutionManifest = newResolutionManifest();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+          namespace);
+      ResolverPath tablePath =
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */);
+      resolutionManifest.addPassthroughPath(tablePath, identifier);
+      resolutionManifest.resolveAll();
+
+      boolean tableExists =
+          resolutionManifest.getResolvedPath(
+                  identifier,
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisEntitySubType.ICEBERG_TABLE,
+                  true)
+              != null;
+      if (tableExists) {
+        authorizeUpdateTableOverwriteOrThrow(identifier);
+        LOGGER.debug(
+            "registerTable: overwrite=true, authorized for UPDATE_TABLE on existing table");
+      } else {
+        // Table doesn't exist, fall back to REGISTER_TABLE authorization
+        LOGGER.debug(
+            "registerTable: overwrite=true, table not found, falling back to REGISTER_TABLE");
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+      }
+    } else {
+      // Creating new table requires REGISTER_TABLE privilege
+      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    }
+
+    try {
+      return catalogHandlerUtils.registerTable(baseCatalog, namespace, request);
+    } finally {
+      // Clean up context
+      RegisterTableRequestContext.clear();
+    }
+  }
+
+  private void authorizeUpdateTableOverwriteOrThrow(TableIdentifier identifier) {
+    authorizeBasicTableLikeOperationsOrThrow(
+        EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE),
+        PolarisEntitySubType.ICEBERG_TABLE,
+        identifier);
+
+    if (!(authorizer instanceof PolarisAuthorizerImpl authorizerImpl)) {
+      return;
+    }
+
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, true);
+    if (target == null) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
+
+    Set<Long> activatedEntityIds =
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles().stream()
+            .map(PolarisEntityCore::getId)
+            .collect(Collectors.toSet());
+    boolean hasNonDataWritePrivilege =
+        hasWritePropertiesPrivilegeExcludingWriteData(authorizerImpl, activatedEntityIds, target);
+    if (!hasNonDataWritePrivilege) {
+      throw new ForbiddenException(
+          "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
+          polarisPrincipal.getName(),
+          polarisPrincipal.getRoles(),
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles().stream()
+              .map(PolarisEntityCore::getName)
+              .collect(Collectors.toSet()),
+          PolarisAuthorizableOperation.UPDATE_TABLE);
+    }
+  }
+
+  private boolean hasWritePropertiesPrivilegeExcludingWriteData(
+      PolarisAuthorizerImpl authorizerImpl,
+      Set<Long> activatedEntityIds,
+      PolarisResolvedPathWrapper target) {
+    for (ResolvedPolarisEntity resolvedSecurableEntity : target.getResolvedFullPath()) {
+      for (PolarisGrantRecord grantRecord : resolvedSecurableEntity.getGrantRecordsAsSecurable()) {
+        if (activatedEntityIds.contains(grantRecord.getGranteeId())) {
+          PolarisPrivilege grantedPrivilege =
+              PolarisPrivilege.fromCode(grantRecord.getPrivilegeCode());
+          if (grantedPrivilege == PolarisPrivilege.TABLE_WRITE_DATA) {
+            continue;
+          }
+          if (authorizerImpl.matchesOrIsSubsumedBy(
+              PolarisPrivilege.TABLE_WRITE_PROPERTIES, grantedPrivilege)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {

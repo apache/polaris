@@ -839,6 +839,62 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  /**
+   * Build an Iceberg table, then invoke a subsequent register table call that overwrites the
+   * existing table metadata. Verifies that the overwrite is applied and the catalog reflects the
+   * updated metadata.
+   */
+  @Test
+  public void testRegisterTableOverwriteViaRest() {
+    Namespace ns = Namespace.of("ns_overwrite_rest");
+    restCatalog.createNamespace(ns);
+
+    // Create a source table and capture its metadata location
+    Table source = restCatalog.buildTable(TableIdentifier.of(ns, "source_table"), SCHEMA).create();
+    String currentMetadataLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      // Write a new metadata file (re-using the current metadata contents)
+      TableMetadataParser.write(
+          ((BaseTable) source).operations().current(),
+          resolvingFileIO.newOutputFile(newMetadataLocation));
+
+      // Invoke REST register with overwrite=true
+      Invocation registerInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_rest/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "source_table",
+                          "metadata-location",
+                          newMetadataLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response registerResponse = registerInvocation.invoke()) {
+        assertThat(registerResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+
+      // Reload the table via REST client and verify metadata-location updated
+      Table loaded = restCatalog.loadTable(TableIdentifier.of(ns, "source_table"));
+      assertThat(((BaseTable) loaded).operations().current().metadataFileLocation())
+          .isEqualTo(newMetadataLocation);
+
+      // Clean up the test metadata files
+      resolvingFileIO.deleteFile(currentMetadataLocation);
+      resolvingFileIO.deleteFile(newMetadataLocation);
+    }
+  }
+
   @Test
   public void testCreateAndLoadTableWithReturnedEtag() {
     Namespace ns1 = Namespace.of("ns1");

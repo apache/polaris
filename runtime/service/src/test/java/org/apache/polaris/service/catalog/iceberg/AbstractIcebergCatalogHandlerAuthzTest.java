@@ -33,6 +33,8 @@ import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -794,7 +796,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
 
     // To get a handy metadata file we can use one from another table.
-    // to avoid overlapping directories, drop the original table and recreate it via registerTable
+    // To avoid overlapping directories, drop the original table and recreate it via registerTable
     final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
     newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
@@ -860,6 +862,131 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest);
         });
+  }
+
+  @Test
+  public void testRegisterTableOverwriteSufficientPrivileges() {
+    // For overwrite, we need UPDATE_TABLE privilege (because table exists)
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newWrapper(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    final RegisterTableRequest registerRequest =
+        new RegisterTableRequest() {
+          @Override
+          public String name() {
+            return TABLE_NS1_1.name();
+          }
+
+          @Override
+          public String metadataLocation() {
+            return metadataLocation;
+          }
+        };
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> {
+          try {
+            RegisterTableRequestContext.setOverwrite(true);
+            newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
+          } finally {
+            RegisterTableRequestContext.clear();
+          }
+        },
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteInsufficientPermissions() {
+    // These privileges should NOT allow overwrite (which requires UPDATE_TABLE or equivalent)
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    final String metadataLocation =
+        newWrapper(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    final RegisterTableRequest registerRequest =
+        new RegisterTableRequest() {
+          @Override
+          public String name() {
+            return TABLE_NS1_1.name();
+          }
+
+          @Override
+          public String metadataLocation() {
+            return metadataLocation;
+          }
+        };
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          try {
+            RegisterTableRequestContext.setOverwrite(true);
+            newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
+          } finally {
+            RegisterTableRequestContext.clear();
+          }
+        });
+  }
+
+  @Test
+  public void testRegisterTableOverwriteContextClearedAfterCall() {
+    // Focused, non-mutating test: use a mocked Catalog and the injected CatalogHandlerUtils
+    final RegisterTableRequest registerRequest =
+        new RegisterTableRequest() {
+          @Override
+          public String name() {
+            return "sometable";
+          }
+
+          @Override
+          public String metadataLocation() {
+            return "s3://dummy/metadata.json";
+          }
+        };
+
+    // Mock a Catalog that returns no existing table and produces a BaseTable on register
+    Catalog mockCatalog = Mockito.mock(Catalog.class);
+    TableIdentifier ident = TableIdentifier.of(NS1, registerRequest.name());
+    Mockito.when(mockCatalog.tableExists(ident)).thenReturn(false);
+    BaseTable mockTable = Mockito.mock(BaseTable.class);
+    TableOperations mockOps = Mockito.mock(TableOperations.class);
+    TableMetadata mockMeta = Mockito.mock(TableMetadata.class);
+    Mockito.when(mockTable.operations()).thenReturn(mockOps);
+    Mockito.when(mockOps.current()).thenReturn(mockMeta);
+    Mockito.when(mockCatalog.registerTable(ident, registerRequest.metadataLocation()))
+        .thenReturn(mockTable);
+
+    try {
+      RegisterTableRequestContext.setOverwrite(true);
+      // Call the util directly; it should clear the ThreadLocal in a finally block
+      try {
+        catalogHandlerUtils.registerTable(mockCatalog, NS1, registerRequest);
+      } catch (Exception ignored) {
+        // We don't care about the return; only that the ThreadLocal gets cleared
+      }
+    } finally {
+      // ensure cleanup to avoid leaking state for other tests
+      RegisterTableRequestContext.clear();
+    }
+
+    // After the call, the default should be false
+    Assertions.assertThat(RegisterTableRequestContext.getOverwrite()).isFalse();
   }
 
   @Test

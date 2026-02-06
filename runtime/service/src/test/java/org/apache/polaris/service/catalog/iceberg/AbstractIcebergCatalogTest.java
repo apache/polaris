@@ -2096,6 +2096,77 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   @Test
+  public void testRegisterTableOverwriteUpdatesMetadataLocation() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_update");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create initial table
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String currentMetadataLocation = currentMetadata.metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+    TableMetadataParser.write(currentMetadata, fileIO.newOutputFile(newMetadataLocation));
+
+    // Register with overwrite=true should update the metadata location
+    Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
+
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteCreatesWhenMissing() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_create");
+    TableIdentifier sourceTable = TableIdentifier.of(namespace, "source_table");
+    TableIdentifier targetTable = TableIdentifier.of(namespace, "target_table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create source table and get its metadata location
+    Table source = catalog.buildTable(sourceTable, SCHEMA).create();
+    String metadataLocation = ((BaseTable) source).operations().current().metadataFileLocation();
+
+    // Register target table with overwrite=true when it doesn't exist should create it
+    Table registered = catalog.registerTable(targetTable, metadataLocation, true);
+
+    Assertions.assertThat(registered).isInstanceOf(BaseTable.class);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(targetTable))
+                .operations()
+                .current()
+                .metadataFileLocation())
+        .isEqualTo(metadataLocation);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteFalseRejectsExistingTable() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_conflict");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    // Create table and try to register with overwrite=false should throw
+    catalog.buildTable(table, SCHEMA).create();
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(table, "s3://bucket/path", false))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Table already exists");
+  }
+
+  @Test
   public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
