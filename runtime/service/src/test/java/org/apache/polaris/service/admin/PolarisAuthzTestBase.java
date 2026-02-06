@@ -680,9 +680,11 @@ public abstract class PolarisAuthzTestBase {
       Function<PolarisPrivilege, PrivilegeResult> grantAction,
       Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
-      for (PolarisPrivilege privilege : privilegeSet) {
-        // Grant the single privilege at a catalog level to cascade to all objects.
-        assertSuccess(grantAction.apply(privilege));
+      try {
+        // Grant the whole privilege set at a catalog level to cascade to all objects.
+        for (PolarisPrivilege privilege : privilegeSet) {
+          assertSuccess(grantAction.apply(privilege));
+        }
 
         // Should be insufficient
         try {
@@ -692,12 +694,16 @@ public abstract class PolarisAuthzTestBase {
               .hasMessageContaining("is not authorized");
         } catch (Throwable t) {
           Assertions.fail(
-              String.format("Expected failure with insufficientPrivilege '%s'", privilege), t);
+              String.format("Expected failure with insufficient privilege set '%s'", privilegeSet),
+              t);
         }
 
+      } finally {
         // Revoking only matters in case there are some multi-privilege actions being tested with
         // only granting individual privileges in isolation.
-        assertSuccess(revokeAction.apply(privilege));
+        for (PolarisPrivilege privilege : privilegeSet) {
+          assertSuccess(revokeAction.apply(privilege));
+        }
       }
     }
   }
