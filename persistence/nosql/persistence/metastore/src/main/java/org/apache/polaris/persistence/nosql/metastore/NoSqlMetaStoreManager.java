@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -73,12 +72,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 
 record NoSqlMetaStoreManager(
@@ -678,59 +675,6 @@ record NoSqlMetaStoreManager(
                   .secondarySecretHash(Optional.empty());
               return ""; // need some non-null return value
             });
-  }
-
-  // PolarisCredentialVendor
-
-  @Nonnull
-  @Override
-  public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @Nonnull PolarisEntityType entityType,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-
-    checkArgument(
-        !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-        "allowed_locations_to_subscope_is_required");
-
-    // reload the entity or error out if not found
-    var reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // get storage integration
-    var storageIntegration = ms(callCtx).loadPolarisStorageIntegration(reloadedEntity.getEntity());
-
-    // cannot be null
-    checkNotNull(
-        storageIntegration,
-        "storage_integration_not_exists, catalogId=%s, entityId=%s",
-        catalogId,
-        entityId);
-
-    try {
-      var creds =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations,
-              polarisPrincipal,
-              refreshCredentialsEndpoint,
-              credentialVendingContext);
-      return new ScopedCredentialsResult(creds);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
   }
 
   @Override
