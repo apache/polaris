@@ -177,8 +177,8 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
-    authorizer().authorize(
-        authzContext, newAuthorizationRequest(op, List.of(namespaceSecurable), null));
+    authorizer()
+        .authorize(authzContext, newAuthorizationRequest(op, List.of(namespaceSecurable), null));
 
     initializeCatalog();
   }
@@ -210,8 +210,9 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
     }
-    authorizer().authorize(
-        authzContext, newAuthorizationRequest(op, List.of(parentNamespaceSecurable), null));
+    authorizer()
+        .authorize(
+            authzContext, newAuthorizationRequest(op, List.of(parentNamespaceSecurable), null));
 
     initializeCatalog();
   }
@@ -247,8 +248,8 @@ public abstract class CatalogHandler {
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
-    authorizer().authorize(
-        authzContext, newAuthorizationRequest(op, List.of(namespaceSecurable), null));
+    authorizer()
+        .authorize(authzContext, newAuthorizationRequest(op, List.of(namespaceSecurable), null));
 
     initializeCatalog();
   }
@@ -276,8 +277,9 @@ public abstract class CatalogHandler {
           tableSecurable);
       resolutionManifest.addPassthroughAlias(tableSecurable, identifier);
       AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
-      authorizer().preAuthorize(
-          authzContext, newAuthorizationRequest(PolarisAuthorizableOperation.LOAD_TABLE));
+      authorizer()
+          .preAuthorize(
+              authzContext, newAuthorizationRequest(PolarisAuthorizableOperation.LOAD_TABLE));
     }
   }
 
@@ -303,8 +305,8 @@ public abstract class CatalogHandler {
     }
 
     for (PolarisAuthorizableOperation op : ops) {
-      authorizer().authorize(
-          authzContext, newAuthorizationRequest(op, List.of(targetSecurable), null));
+      authorizer()
+          .authorize(authzContext, newAuthorizationRequest(op, List.of(targetSecurable), null));
     }
 
     initializeCatalog();
@@ -421,9 +423,10 @@ public abstract class CatalogHandler {
         break;
     }
 
-    authorizer().authorize(
-        authzContext,
-        newAuthorizationRequest(op, List.of(srcSecurable), List.of(dstNamespaceSecurable)));
+    authorizer()
+        .authorize(
+            authzContext,
+            newAuthorizationRequest(op, List.of(srcSecurable), List.of(dstNamespaceSecurable)));
 
     initializeCatalog();
   }

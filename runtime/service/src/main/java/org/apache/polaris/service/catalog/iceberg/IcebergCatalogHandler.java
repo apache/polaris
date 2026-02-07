@@ -104,7 +104,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -1330,10 +1329,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
     PolarisResolutionManifest manifest = newResolutionManifest();
     AuthorizationCallContext authzContext = new AuthorizationCallContext(manifest);
-    authorizer().preAuthorize(
-        authzContext,
-        new AuthorizationRequest(
-            polarisPrincipal(), PolarisAuthorizableOperation.GET_CATALOG, null, null));
+    authorizer()
+        .preAuthorize(
+            authzContext,
+            new AuthorizationRequest(
+                polarisPrincipal(), PolarisAuthorizableOperation.GET_CATALOG, null, null));
     ResolverStatus resolverStatus = manifest.getResolverStatus();
     if (resolverStatus == null
         || !resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {

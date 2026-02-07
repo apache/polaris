@@ -153,17 +153,18 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         policySecurable);
     resolutionManifest.addPassthroughAlias(policySecurable, identifier);
     AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
-    authorizer().preAuthorize(
-        authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+    authorizer()
+        .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(policySecurable, true);
     if (target == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
-    authorizer().authorize(
-        authzContext,
-        new AuthorizationRequest(polarisPrincipal(), op, List.of(policySecurable), null));
+    authorizer()
+        .authorize(
+            authzContext,
+            new AuthorizationRequest(polarisPrincipal(), op, List.of(policySecurable), null));
 
     initializeCatalog();
   }
@@ -194,17 +195,18 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest = newResolutionManifest();
     AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
-    authorizer().preAuthorize(
-        authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+    authorizer()
+        .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
     if (targetCatalog == null) {
       throw new NotFoundException("Catalog not found");
     }
-    authorizer().authorize(
-        authzContext,
-        new AuthorizationRequest(polarisPrincipal(), op, List.of(newCatalogSecurable()), null));
+    authorizer()
+        .authorize(
+            authzContext,
+            new AuthorizationRequest(polarisPrincipal(), op, List.of(newCatalogSecurable()), null));
 
     initializeCatalog();
   }
@@ -249,8 +251,9 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     PolarisAuthorizableOperation preAuthOp =
         determinePolicyMappingOperation(target.getType(), isAttach);
     AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
-    authorizer().preAuthorize(
-        authzContext, new AuthorizationRequest(polarisPrincipal(), preAuthOp, null, null));
+    authorizer()
+        .preAuthorize(
+            authzContext, new AuthorizationRequest(polarisPrincipal(), preAuthOp, null, null));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
     throwNotFoundExceptionIfFailToResolve(status, identifier);
@@ -267,10 +270,11 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisAuthorizableOperation op =
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
-    authorizer().authorize(
-        authzContext,
-        new AuthorizationRequest(
-            polarisPrincipal(), op, List.of(policySecurable), List.of(targetSecurable)));
+    authorizer()
+        .authorize(
+            authzContext,
+            new AuthorizationRequest(
+                polarisPrincipal(), op, List.of(policySecurable), List.of(targetSecurable)));
 
     initializeCatalog();
   }

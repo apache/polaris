@@ -52,7 +52,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest.Resolvable;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
