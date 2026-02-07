@@ -253,14 +253,21 @@ public class QueryGeneratorTest {
     setClause.put("error_subtype", null);
     setClause.put("http_status", 200);
 
+    // Use ordered maps so WHERE clause order is deterministic.
+    Map<String, Object> whereEquals = new LinkedHashMap<>();
+    whereEquals.put("realm_id", "r1");
+    whereEquals.put("idempotency_key", "k1");
+    Map<String, Object> whereLess = new LinkedHashMap<>();
+    whereLess.put("http_status", 500);
+
     QueryGenerator.PreparedQuery q =
         QueryGenerator.generateUpdateQuery(
             List.of("error_subtype", "http_status", "realm_id", "idempotency_key", "executor_id"),
             "idempotency_records",
             setClause,
-            Map.of("realm_id", "r1", "idempotency_key", "k1"),
+            whereEquals,
             Map.of(),
-            Map.of("http_status", 500),
+            whereLess,
             Set.of("executor_id"),
             Set.of());
 
