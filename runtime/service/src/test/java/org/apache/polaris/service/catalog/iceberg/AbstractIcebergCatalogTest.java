@@ -72,6 +72,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.UpdateRequirements;
 import org.apache.iceberg.UpdateSchema;
@@ -2271,6 +2272,16 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    catalog
+        .loadTable(TABLE)
+        .updateProperties()
+        .set(
+            TableProperties.WRITE_DATA_LOCATION,
+            "s3://my-bucket/path/to/data/newdb/newtable/my-data")
+        .set(
+            TableProperties.WRITE_METADATA_LOCATION,
+            "s3://my-bucket/path/to/data/newdb/newtable/my-metadata")
+        .commit();
     Table afterAppend = catalog.loadTable(TABLE);
     EntityResult schemaResult =
         metaStoreManager.readEntityByName(
@@ -2297,6 +2308,12 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
             String.valueOf(afterAppend.currentSnapshot().snapshotId()))
         .containsEntry(IcebergTableLikeEntity.LOCATION, afterAppend.location())
+        .containsEntry(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+            afterAppend.properties().get(TableProperties.WRITE_DATA_LOCATION))
+        .containsEntry(
+            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+            afterAppend.properties().get(TableProperties.WRITE_METADATA_LOCATION))
         .containsEntry(IcebergTableLikeEntity.TABLE_UUID, afterAppend.uuid().toString())
         .containsEntry(
             IcebergTableLikeEntity.CURRENT_SCHEMA_ID,
