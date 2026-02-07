@@ -52,6 +52,7 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +78,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
   @Inject RealmConfig realmConfig;
+
+  @Inject
+  @Identifier("relational-jdbc")
+  MetricsSchemaBootstrap metricsSchemaBootstrap;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -173,11 +178,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                   .getDatabaseType()
                   .openInitScriptResource(effectiveSchemaVersion));
 
-          // Run the metrics schema script if requested
+          // Run the metrics schema bootstrap if requested
           if (JdbcBootstrapUtils.shouldIncludeMetrics(bootstrapOptions)) {
-            LOGGER.info("Including metrics schema for realm: {}", realm);
-            datasourceOperations.executeScript(
-                datasourceOperations.getDatabaseType().openMetricsSchemaResource(1));
+            metricsSchemaBootstrap.bootstrap(realm);
           }
         } catch (SQLException e) {
           throw new RuntimeException(

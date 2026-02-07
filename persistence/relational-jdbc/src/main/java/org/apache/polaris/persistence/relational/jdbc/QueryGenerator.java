@@ -281,6 +281,13 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
+  static PreparedQuery generateMetricsVersionQuery() {
+    return new PreparedQuery(
+        "SELECT version_value FROM POLARIS_SCHEMA.metrics_version WHERE version_key = 'metrics_version'",
+        List.of());
+  }
+
+  @VisibleForTesting
   static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
         String.format(

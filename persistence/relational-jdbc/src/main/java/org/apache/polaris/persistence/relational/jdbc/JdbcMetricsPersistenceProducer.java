@@ -30,6 +30,7 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +94,30 @@ public class JdbcMetricsPersistenceProducer {
           "Failed to create JdbcMetricsPersistence due to {}. Returning NOOP implementation.",
           e.getMessage());
       return MetricsPersistence.NOOP;
+    }
+  }
+
+  /**
+   * Produces a {@link MetricsSchemaBootstrap} instance for the JDBC backend.
+   *
+   * <p>This producer creates a {@link JdbcMetricsSchemaBootstrap} that can bootstrap the metrics
+   * schema tables independently from the entity schema.
+   *
+   * @return a MetricsSchemaBootstrap implementation for JDBC
+   */
+  @Produces
+  @ApplicationScoped
+  @Identifier("relational-jdbc")
+  public MetricsSchemaBootstrap metricsSchemaBootstrap() {
+    try {
+      DatasourceOperations datasourceOperations =
+          new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+      return new JdbcMetricsSchemaBootstrap(datasourceOperations);
+    } catch (SQLException e) {
+      LOGGER.warn(
+          "Failed to create JdbcMetricsSchemaBootstrap due to {}. Returning NOOP implementation.",
+          e.getMessage());
+      return MetricsSchemaBootstrap.NOOP;
     }
   }
 }
