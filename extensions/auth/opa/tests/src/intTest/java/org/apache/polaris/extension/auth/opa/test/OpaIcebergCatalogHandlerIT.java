@@ -78,15 +78,7 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
   @Test
   void tableCreateAndDropAuthorization() throws Exception {
     String rootToken = this.rootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
-
-    // Stranger cannot list namespaces for the catalog
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get("/api/catalog/v1/{cat}/namespaces", catalogName)
-        .then()
-        .statusCode(403);
 
     // Root can list namespaces
     given()
@@ -97,15 +89,6 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
 
     Map<String, Object> createTableRequest =
         buildCreateTableRequest(tableName, baseLocation, namespace);
-
-    // Stranger cannot register table
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(createTableRequest))
-        .post("/api/catalog/v1/{cat}/namespaces/{ns}/register", catalogName, namespace)
-        .then()
-        .statusCode(403);
 
     // Root registers table
     given()

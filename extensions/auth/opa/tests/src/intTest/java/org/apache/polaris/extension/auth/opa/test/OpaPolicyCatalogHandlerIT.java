@@ -65,7 +65,6 @@ public class OpaPolicyCatalogHandlerIT extends OpaIntegrationTestBase {
   @Test
   void policyListAndAttachAuthorization() throws Exception {
     String rootToken = this.rootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String policyName = "pol_" + UUID.randomUUID().toString().replace("-", "");
 
     Map<String, Object> createPolicyRequest =
@@ -91,13 +90,6 @@ public class OpaPolicyCatalogHandlerIT extends OpaIntegrationTestBase {
         .then()
         .statusCode(200);
 
-    // Stranger cannot list policies
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies", catalogName, namespace)
-        .then()
-        .statusCode(403);
-
     // Root lists policies
     given()
         .header("Authorization", "Bearer " + rootToken)
@@ -107,19 +99,6 @@ public class OpaPolicyCatalogHandlerIT extends OpaIntegrationTestBase {
 
     Map<String, Object> attachRequest =
         Map.of("target", Map.of("type", "catalog", "path", List.of()), "parameters", Map.of());
-
-    // Stranger cannot attach policy
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(attachRequest))
-        .put(
-            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
-            catalogName,
-            namespace,
-            policyName)
-        .then()
-        .statusCode(403);
 
     // Root attaches policy to catalog
     given()

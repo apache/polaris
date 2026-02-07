@@ -65,18 +65,10 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
   @Test
   void genericTableCreateAndDropAuthorization() throws Exception {
     String rootToken = this.rootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String tableName = "gt_" + UUID.randomUUID().toString().replace("-", "");
 
     Map<String, Object> tablePayload =
         Map.of("name", tableName, "format", "ICEBERG", "doc", "doc", "properties", Map.of());
-
-    // Stranger cannot list generic tables
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
-        .then()
-        .statusCode(403);
 
     // Root lists generic tables (initially empty)
     given()
@@ -84,16 +76,6 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
         .get("/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
         .then()
         .statusCode(200);
-
-    // Stranger cannot create generic table
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(tablePayload))
-        .post(
-            "/api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables", catalogName, namespace)
-        .then()
-        .statusCode(403);
 
     // Root creates generic table
     given()

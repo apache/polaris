@@ -41,6 +41,8 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -89,10 +91,20 @@ public class PolicyCatalog {
     this.metaStoreManager = metaStoreManager;
   }
 
+  private PolarisSecurable newNamespaceSecurable(Namespace namespace) {
+    return new PolarisSecurable(PolarisEntityType.NAMESPACE, Arrays.asList(namespace.levels()));
+  }
+
+  private PolarisSecurable newPolicySecurable(PolicyIdentifier identifier) {
+    return new PolarisSecurable(
+        PolarisEntityType.POLICY,
+        PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()));
+  }
+
   public Policy createPolicy(
       PolicyIdentifier policyIdentifier, String type, String description, String content) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(policyIdentifier.getNamespace());
+        resolvedEntityView.getResolvedPath(newNamespaceSecurable(policyIdentifier.getNamespace()));
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -103,7 +115,9 @@ public class PolicyCatalog {
 
     PolarisResolvedPathWrapper resolvedPolicyEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            newPolicySecurable(policyIdentifier),
+            PolarisEntityType.POLICY,
+            PolarisEntitySubType.NULL_SUBTYPE);
 
     PolicyEntity entity =
         PolicyEntity.of(
@@ -157,7 +171,8 @@ public class PolicyCatalog {
   }
 
   public List<PolicyIdentifier> listPolicies(Namespace namespace, @Nullable PolicyType policyType) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(newNamespaceSecurable(namespace));
     if (resolvedEntities == null) {
       throw new IllegalStateException(
           String.format("Failed to fetch resolved namespace '%s'", namespace));
@@ -454,7 +469,8 @@ public class PolicyCatalog {
       return List.of(catalogEntity);
     } else if (Strings.isNullOrEmpty(targetName)) {
       // namespace
-      var resolvedTargetEntity = resolvedEntityView.getResolvedPath(namespace);
+      var resolvedTargetEntity =
+          resolvedEntityView.getResolvedPath(newNamespaceSecurable(namespace));
       if (resolvedTargetEntity == null) {
         throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
       }
@@ -465,7 +481,11 @@ public class PolicyCatalog {
       // only Iceberg tables are supported
       var resolvedTableEntity =
           resolvedEntityView.getResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              new PolarisSecurable(
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier)),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_TABLE);
       if (resolvedTableEntity == null) {
         throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
       }
@@ -485,7 +505,9 @@ public class PolicyCatalog {
   private PolarisResolvedPathWrapper getResolvedPathWrapper(PolicyIdentifier policyIdentifier) {
     var resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            newPolicySecurable(policyIdentifier),
+            PolarisEntityType.POLICY,
+            PolarisEntitySubType.NULL_SUBTYPE);
     if (resolvedEntities == null || resolvedEntities.getResolvedLeafEntity() == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
     }
@@ -499,7 +521,8 @@ public class PolicyCatalog {
       case CATALOG -> resolvedEntityView.getResolvedReferenceCatalogEntity();
       case NAMESPACE -> {
         var namespace = Namespace.of(target.getPath().toArray(new String[0]));
-        var resolvedTargetEntity = resolvedEntityView.getResolvedPath(namespace);
+        var resolvedTargetEntity =
+            resolvedEntityView.getResolvedPath(newNamespaceSecurable(namespace));
         if (resolvedTargetEntity == null) {
           throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
         }
@@ -510,7 +533,11 @@ public class PolicyCatalog {
         // only Iceberg tables are supported
         var resolvedTableEntity =
             resolvedEntityView.getResolvedPath(
-                tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+                new PolarisSecurable(
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier)),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
           throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
         }

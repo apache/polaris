@@ -23,17 +23,10 @@ import static io.restassured.RestAssured.given;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
-import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -68,68 +61,21 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   @Test
   void assignCatalogRoleToPrincipalRole() {
     String rootToken = baseRootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-
     String catalogRole = "opa-cat-role-" + UUID.randomUUID().toString().replace("-", "");
-    String principalRole = "opa-pr-role-" + UUID.randomUUID().toString().replace("-", "");
 
-    // create catalog role
+    // RBAC catalog role management is denied under OPA
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
         .body(toJson(Map.of("name", catalogRole, "properties", Map.of())))
         .post("/api/management/v1/catalogs/{cat}/catalog-roles", baseCatalogName)
         .then()
-        .statusCode(201);
-
-    // create principal role
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(Map.of("name", principalRole, "properties", Map.of())))
-        .post("/api/management/v1/principal-roles")
-        .then()
-        .statusCode(201);
-
-    Map<String, Object> grantRequest =
-        Map.of("catalogRole", Map.of("name", catalogRole, "properties", Map.of()));
-
-    // stranger cannot bind
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/principal-roles/{pr}/catalog-roles/{cat}",
-            principalRole,
-            baseCatalogName)
-        .then()
         .statusCode(403);
-
-    // root binds successfully
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/principal-roles/{pr}/catalog-roles/{cat}",
-            principalRole,
-            baseCatalogName)
-        .then()
-        .statusCode(201);
   }
 
   @Test
   void listCatalogsAuthorization() {
     String rootToken = baseRootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-
-    // stranger cannot list catalogs
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get("/api/management/v1/catalogs")
-        .then()
-        .statusCode(403);
 
     // root lists catalogs successfully
     given()
@@ -140,9 +86,22 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   }
 
   @Test
+  void rbacAdminOperationsAreDeniedUnderOpa() {
+    String rootToken = baseRootToken;
+    String principalRole = "opa-pr-role-deny-" + UUID.randomUUID().toString().replace("-", "");
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(Map.of("name", principalRole, "properties", Map.of())))
+        .post("/api/management/v1/principal-roles")
+        .then()
+        .statusCode(403);
+  }
+
+  @Test
   void createCatalogAuthorization() throws Exception {
     String rootToken = getRootToken();
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
 
     String catalogName = "opa-cat-create-" + UUID.randomUUID().toString().replace("-", "");
     String baseLocation =
@@ -157,15 +116,6 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
             Map.of("default-base-location", baseLocation),
             "storageConfigInfo",
             Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)));
-
-    // Stranger cannot create catalog
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(createCatalogRequest))
-        .post("/api/management/v1/catalogs")
-        .then()
-        .statusCode(403);
 
     // Root creates catalog
     given()
@@ -186,233 +136,44 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
   @Test
   void grantTablePrivilegesAuthorization() throws Exception {
     String rootToken = baseRootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-    String catalogName = "opa-grant-cat-" + UUID.randomUUID().toString().replace("-", "");
-    String namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
-    String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("opa-grant");
-    String baseLocation = tempDir.toUri().toString();
-    String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
-    createFileCatalog(
-        rootToken, catalogName, baseLocation, List.of(allowedPrefix, allowedPrefix + "/"));
-
-    createNamespace(rootToken, catalogName, namespace);
-
-    Map<String, Object> registerPayload =
-        buildRegisterTableRequest(tableName, baseLocation, namespace);
-    Map<String, Object> grantRequest =
-        Map.of(
-            "grant",
-            Map.of(
-                "type",
-                "table",
-                "namespace",
-                List.of(namespace),
-                "tableName",
-                tableName,
-                "privilege",
-                "TABLE_READ_DATA"));
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(registerPayload))
-        .post("/api/catalog/v1/{cat}/namespaces/{ns}/register", catalogName, namespace)
-        .then()
-        .statusCode(200);
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(Map.of("name", catalogRole, "properties", Map.of())))
-        .post("/api/management/v1/catalogs/{cat}/catalog-roles", catalogName)
-        .then()
-        .statusCode(201);
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + strangerToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants",
-            catalogName,
-            catalogRole)
-        .then()
-        .statusCode(403);
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants",
-            catalogName,
-            catalogRole)
-        .then()
-        .statusCode(201);
-  }
-
-  @Test
-  void listAssigneePrincipalRolesForCatalogRole() {
-    String rootToken = baseRootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-
-    String catalogRole = "opa-cat-role-" + UUID.randomUUID().toString().replace("-", "");
-    String principalRole = "opa-pr-role-" + UUID.randomUUID().toString().replace("-", "");
-
+    // RBAC grant management is denied under OPA
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
         .body(toJson(Map.of("name", catalogRole, "properties", Map.of())))
         .post("/api/management/v1/catalogs/{cat}/catalog-roles", baseCatalogName)
         .then()
-        .statusCode(201);
+        .statusCode(403);
+  }
 
+  @Test
+  void listAssigneePrincipalRolesForCatalogRole() {
+    String rootToken = baseRootToken;
+
+    // RBAC principal role management is denied under OPA
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(Map.of("name", principalRole, "properties", Map.of())))
+        .body(toJson(Map.of("name", "opa-pr-role-deny", "properties", Map.of())))
         .post("/api/management/v1/principal-roles")
         .then()
-        .statusCode(201);
-
-    Map<String, Object> grantRequest =
-        Map.of("catalogRole", Map.of("name", catalogRole, "properties", Map.of()));
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/principal-roles/{pr}/catalog-roles/{cat}",
-            principalRole,
-            baseCatalogName)
-        .then()
-        .statusCode(201);
-
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/principal-roles",
-            baseCatalogName,
-            catalogRole)
-        .then()
         .statusCode(403);
-
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .get(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/principal-roles",
-            baseCatalogName,
-            catalogRole)
-        .then()
-        .statusCode(200);
   }
 
   @Test
   void listGrantsForCatalogRole() throws Exception {
     String rootToken = baseRootToken;
-    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-    String catalogName = "opa-grant-list-cat-" + UUID.randomUUID().toString().replace("-", "");
-    String namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
-    String tableName = "tbl_" + UUID.randomUUID().toString().replace("-", "");
     String catalogRole = "role_" + UUID.randomUUID().toString().replace("-", "");
 
-    Path tempDir = Files.createTempDirectory("opa-grant-list");
-    String baseLocation = tempDir.toUri().toString();
-    String allowedPrefix = baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
-    createFileCatalog(
-        rootToken, catalogName, baseLocation, List.of(allowedPrefix, allowedPrefix + "/"));
-    createNamespace(rootToken, catalogName, namespace);
-
-    Map<String, Object> registerPayload =
-        buildRegisterTableRequest(tableName, baseLocation, namespace);
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(registerPayload))
-        .post("/api/catalog/v1/{cat}/namespaces/{ns}/register", catalogName, namespace)
-        .then()
-        .statusCode(200);
-
+    // RBAC catalog role management is denied under OPA
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
         .body(toJson(Map.of("name", catalogRole, "properties", Map.of())))
-        .post("/api/management/v1/catalogs/{cat}/catalog-roles", catalogName)
-        .then()
-        .statusCode(201);
-
-    Map<String, Object> grantRequest =
-        Map.of(
-            "grant",
-            Map.of(
-                "type",
-                "table",
-                "namespace",
-                List.of(namespace),
-                "tableName",
-                tableName,
-                "privilege",
-                "TABLE_READ_DATA"));
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(grantRequest))
-        .put(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants",
-            catalogName,
-            catalogRole)
-        .then()
-        .statusCode(201);
-
-    given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .get(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants",
-            catalogName,
-            catalogRole)
+        .post("/api/management/v1/catalogs/{cat}/catalog-roles", baseCatalogName)
         .then()
         .statusCode(403);
-
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .get(
-            "/api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants",
-            catalogName,
-            catalogRole)
-        .then()
-        .statusCode(200);
-  }
-
-  private Map<String, Object> buildRegisterTableRequest(
-      String tableName, String baseLocation, String namespace) throws Exception {
-    String tableLocation =
-        baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace + "/" + tableName;
-    Schema schema =
-        new Schema(
-            Types.NestedField.required(1, "id", Types.LongType.get()),
-            Types.NestedField.required(2, "data", Types.StringType.get()));
-    PartitionSpec spec = PartitionSpec.unpartitioned();
-    TableMetadata metadata = TableMetadata.newTableMetadata(schema, spec, tableLocation, Map.of());
-    Path metadataPath =
-        Path.of(
-            URI.create(
-                tableLocation
-                    + (tableLocation.endsWith("/") ? "" : "/")
-                    + "metadata/v1.metadata.json"));
-    Files.createDirectories(metadataPath.getParent());
-    Files.writeString(metadataPath, TableMetadataParser.toJson(metadata));
-
-    return Map.of(
-        "name",
-        tableName,
-        "metadata-location",
-        metadataPath.toUri().toString(),
-        "stage-create",
-        false);
   }
 }

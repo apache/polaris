@@ -19,10 +19,10 @@
 package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -50,37 +50,31 @@ public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
   }
 
   @Test
-  void testCreatePrincipalAndGetToken() {
-    // Test the helper method createPrincipalAndGetToken
-    // useful for debugging and ensuring that the helper method works correctly
-    assertThatNoException().isThrownBy(() -> createPrincipalAndGetToken("test-user"));
+  void testOpaDeniesRbacPrincipalCreation() {
+    String rootToken = getRootToken();
+
+    Map<String, Object> createPrincipalBody =
+        Map.of("principal", Map.of("name", "opa-test-user", "properties", Map.of()));
+    given()
+        .contentType("application/json")
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(createPrincipalBody))
+        .when()
+        .post("/api/management/v1/principals")
+        .then()
+        .statusCode(403);
   }
 
   @Test
-  void testOpaPolicyDeniesStrangerUser() {
-    // Create a "stranger" principal and get its access token
-    String strangerToken = createPrincipalAndGetToken("stranger");
+  void testOpaDeniesRbacPrincipalRoleCreation() {
+    String rootToken = getRootToken();
 
-    // Use the stranger token to test OPA authorization - should be denied
     given()
-        .header("Authorization", "Bearer " + strangerToken)
-        .when()
-        .get("/api/management/v1/catalogs")
+        .contentType("application/json")
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(Map.of("name", "opa-test-role", "properties", Map.of())))
+        .post("/api/management/v1/principal-roles")
         .then()
-        .statusCode(403); // Should be forbidden by OPA policy - stranger is denied
-  }
-
-  @Test
-  void testOpaAllowsAdminUser() {
-    // Create an "admin" principal and get its access token
-    String adminToken = createPrincipalAndGetToken("admin");
-
-    // Use the admin token to test OPA authorization - should be allowed
-    given()
-        .header("Authorization", "Bearer " + adminToken)
-        .when()
-        .get("/api/management/v1/catalogs")
-        .then()
-        .statusCode(200); // Should succeed - admin user is allowed by policy
+        .statusCode(403);
   }
 }

@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -45,13 +47,19 @@ public class CatalogUtils {
    */
   public static PolarisResolvedPathWrapper findResolvedStorageEntity(
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
+    PolarisSecurable tableSecurable =
+        new PolarisSecurable(
+            PolarisEntityType.TABLE_LIKE,
+            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier));
     PolarisResolvedPathWrapper resolvedTableEntities =
         resolvedEntityView.getResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+            tableSecurable, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
     if (resolvedTableEntities != null) {
       return resolvedTableEntities;
     }
-    return resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+    return resolvedEntityView.getResolvedPath(
+        new PolarisSecurable(
+            PolarisEntityType.NAMESPACE, List.of(tableIdentifier.namespace().levels())));
   }
 
   /**
