@@ -44,4 +44,27 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
     // assertThat(result2.exitCode()).isEqualTo(EXIT_CODE_BOOTSTRAP_ERROR);
     // assertThat(result2.getOutput()).contains("Cannot bootstrap due to schema version mismatch.");
   }
+
+  @Test
+  public void testBootstrapWithIncludeMetrics(QuarkusMainLauncher launcher) {
+    // Test that --include-metrics option is accepted and bootstrap completes successfully.
+    // The metrics tables are created during bootstrap when this flag is set.
+    LaunchResult result =
+        launcher.launch(
+            "bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t", "--include-metrics");
+    assertThat(result.exitCode()).isEqualTo(0);
+    assertThat(result.getOutput())
+        .contains("Realm 'realm1' successfully bootstrapped.")
+        .contains("Bootstrap completed successfully.");
+  }
+
+  @Test
+  public void testBootstrapWithoutIncludeMetrics(QuarkusMainLauncher launcher) {
+    // Test that bootstrap works without --include-metrics (default behavior)
+    LaunchResult result = launcher.launch("bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t");
+    assertThat(result.exitCode()).isEqualTo(0);
+    assertThat(result.getOutput())
+        .contains("Realm 'realm1' successfully bootstrapped.")
+        .contains("Bootstrap completed successfully.");
+  }
 }

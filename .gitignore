@@ -112,3 +112,4 @@ venv
 # to override default properties for local development.
 # And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
 application-local.properties
+.polaris-work-notes.md
