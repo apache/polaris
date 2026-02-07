@@ -53,8 +53,6 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
-
 /**
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
  * authorization. It uses the underlying persistent metastore to store and retrieve Polaris metadata
@@ -62,7 +60,6 @@ import org.apache.polaris.core.storage.PolarisCredentialVendor;
 public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
-        PolarisCredentialVendor,
         PolarisPolicyMappingManager,
         PolarisEventManager {
 

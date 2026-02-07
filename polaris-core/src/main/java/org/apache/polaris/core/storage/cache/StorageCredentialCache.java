@@ -32,6 +32,7 @@ import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -39,8 +40,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,8 +98,8 @@ public class StorageCredentialCache {
   /**
    * Either get from the cache or generate a new entry for a scoped creds
    *
-   * @param storageCredentialsVendor the credential vendor used to generate a new scoped creds if
-   *     needed
+   * @param callContext the call context providing realm context and configuration
+   * @param credentialVendor the credential vendor used to generate a new scoped creds if needed
    * @param polarisEntity the polaris entity that is going to scoped creds
    * @param allowListOperation whether allow list action on the provided read and write locations
    * @param allowedReadLocations a set of allowed to read locations
@@ -110,7 +111,8 @@ public class StorageCredentialCache {
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
-      @Nonnull StorageCredentialsVendor storageCredentialsVendor,
+      @Nonnull CallContext callContext,
+      @Nonnull PolarisCredentialVendor credentialVendor,
       @Nonnull PolarisEntity polarisEntity,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -118,8 +120,8 @@ public class StorageCredentialCache {
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    RealmContext realmContext = storageCredentialsVendor.getRealmContext();
-    RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
+    RealmContext realmContext = callContext.getRealmContext();
+    RealmConfig realmConfig = callContext.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
       diagnostics.fail(
           "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
@@ -161,8 +163,11 @@ public class StorageCredentialCache {
           // Use credentialVendingContext from the cache key for correctness.
           // This ensures we use the same context that was used for cache key comparison.
           ScopedCredentialsResult scopedCredentialsResult =
-              storageCredentialsVendor.getSubscopedCredsForEntity(
-                  polarisEntity,
+              credentialVendor.getSubscopedCredsForEntity(
+                  callContext.getPolarisCallContext(),
+                  polarisEntity.getCatalogId(),
+                  polarisEntity.getId(),
+                  polarisEntity.getType(),
                   allowListOperation,
                   allowedReadLocations,
                   allowedWriteLocations,

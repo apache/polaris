@@ -34,10 +34,11 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,16 +56,19 @@ public class StorageAccessConfigProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
   private final StorageCredentialCache storageCredentialCache;
-  private final StorageCredentialsVendor storageCredentialsVendor;
+  private final CallContext callContext;
+  private final PolarisCredentialVendor credentialVendor;
   private final PolarisPrincipal polarisPrincipal;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      StorageCredentialsVendor storageCredentialsVendor,
+      CallContext callContext,
+      PolarisCredentialVendor credentialVendor,
       PolarisPrincipal polarisPrincipal) {
     this.storageCredentialCache = storageCredentialCache;
-    this.storageCredentialsVendor = storageCredentialsVendor;
+    this.callContext = callContext;
+    this.credentialVendor = credentialVendor;
     this.polarisPrincipal = polarisPrincipal;
   }
 
@@ -102,7 +106,7 @@ public class StorageAccessConfigProvider {
     PolarisEntity storageInfoEntity = storageInfo.get();
 
     boolean skipCredentialSubscopingIndirection =
-        storageCredentialsVendor
+        callContext
             .getRealmConfig()
             .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
@@ -129,7 +133,8 @@ public class StorageAccessConfigProvider {
 
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
-            storageCredentialsVendor,
+            callContext,
+            credentialVendor,
             storageInfoEntity,
             allowList,
             tableLocations,
@@ -195,7 +200,7 @@ public class StorageAccessConfigProvider {
     // When disabled (default), trace IDs are not included, allowing efficient credential
     // caching across requests with different trace IDs.
     boolean includeTraceIdInSessionTags =
-        storageCredentialsVendor
+        callContext
             .getRealmConfig()
             .getConfig(FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS);
     if (includeTraceIdInSessionTags) {
