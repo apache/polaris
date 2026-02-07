@@ -45,7 +45,8 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 
-  testFixturesApi(libs.weld.se.core)
+  testFixturesApi(platform(libs.weld.core.bom))
+  testFixturesApi("org.jboss.weld.se:weld-se-core")
   testFixturesApi(libs.weld.junit5)
   testRuntimeOnly(libs.smallrye.jandex)
 

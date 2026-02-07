@@ -102,7 +102,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.1.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
-weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.4.Final" }
+weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }
 
 [plugins]
 jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.9.0" }
