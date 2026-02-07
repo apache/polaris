@@ -82,9 +82,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -122,9 +120,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -187,9 +183,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -259,9 +253,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -334,9 +326,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -440,9 +430,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
@@ -599,9 +587,7 @@ public class StorageCredentialCacheTest {
     Mockito.when(
             credentialVendor.getSubscopedCredsForEntity(
                 Mockito.any(),
-                Mockito.anyLong(),
-                Mockito.anyLong(),
-                Mockito.any(),
+                Mockito.any(PolarisEntity.class),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),

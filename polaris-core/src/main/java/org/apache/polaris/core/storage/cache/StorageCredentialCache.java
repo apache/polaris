@@ -167,9 +167,7 @@ public class StorageCredentialCache {
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   callContext.getPolarisCallContext(),
-                  polarisEntity.getCatalogId(),
-                  polarisEntity.getId(),
-                  polarisEntity.getType(),
+                  polarisEntity,
                   allowListOperation,
                   allowedReadLocations,
                   allowedWriteLocations,

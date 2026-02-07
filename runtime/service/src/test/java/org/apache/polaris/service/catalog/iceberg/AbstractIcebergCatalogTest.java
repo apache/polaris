@@ -1862,9 +1862,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         credentialVendor
             .getSubscopedCredsForEntity(
                 polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
+                taskEntity,
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
