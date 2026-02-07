@@ -22,7 +22,7 @@ services:
   ozone-datanode:
     image: &ozone-image apache/ozone:2.1.0
     ports:
-      - 9864
+      - "9864"
     command: ["ozone","datanode"]
     environment:
       &ozone-common-config
@@ -39,10 +39,10 @@ services:
       OZONE-SITE.XML_ozone.scm.names: "ozone-scm"
       OZONE-SITE.XML_hdds.scm.safemode.min.datanode: "1"
       no_proxy: "ozone-om,ozone-recon,ozone-scm,ozone-s3g,localhost,127.0.0.1"
-  ozone-om:
+  ozone-om: # Ozone manager
     image: *ozone-image
     ports:
-      - 9874:9874
+      - "9874:9874"
     environment:
       <<: *ozone-common-config
       CORE-SITE.XML_hadoop.proxyuser.hadoop.hosts: "*"
@@ -50,10 +50,10 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       WAITFOR: ozone-scm:9876
     command: ["ozone","om"]
-  ozone-scm:
+  ozone-scm: # storage container manager
     image: *ozone-image
     ports:
-      - 9876:9876
+      - "9876:9876"
     environment:
       <<: *ozone-common-config
       ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
@@ -61,16 +61,43 @@ services:
   ozone-recon:
     image: *ozone-image
     ports:
-      - 9888:9888
+      - "9888:9888"
     environment:
       <<: *ozone-common-config
+    depends_on:
+      ozone-om:
+        condition: service_started
+      ozone-scm:
+        condition: service_started
+      ozone-datanode:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9888"]
+      interval: 1s
+      timeout: 10s
+      retries: 60
+      start_period: 5s
     command: ["ozone","recon"]
   ozone-s3g:
     image: *ozone-image
     ports:
-      - 9878:9878
+      - "9878:9878"
+    depends_on:
+      ozone-om:
+        condition: service_started
+      ozone-datanode:
+        condition: service_started
     environment:
       <<: *ozone-common-config
+      WAITFOR: ozone-om:9874
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:19878"]
+      # Should ideally use the following, but the curl version in ozone image is too old (7.76.1) to support --aws-sigv4
+      # test: ["CMD", "curl", "--fail", "--user", "root:s3cr3t", "--aws-sigv4", "aws:amz:us-west-1:s3", "http://localhost:9878"]
+      interval: 1s
+      timeout: 10s
+      retries: 60
+      start_period: 5s
     command: ["ozone","s3g"]
 
   polaris:
@@ -80,6 +107,9 @@ services:
       - "8181:8181"
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
+    depends_on:
+      ozone-s3g:
+        condition: service_healthy
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
@@ -90,10 +120,10 @@ services:
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
-      retries: 10
+      retries: 60
       start_period: 10s
 
   polaris-setup:
@@ -110,23 +140,36 @@ services:
     command:
       - "-c"
       - >-
-        /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ ;
-        source /assets/polaris/obtain-token.sh;
-        echo Creating bucket...;
-        curl -X PUT --user "polaris_root:polaris_pass" --aws-sigv4 "aws:amz:us-west-2:s3" \
-          http://ozone-s3g:9878/bucket123 ;
-        echo Creating catalog...;
+        /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ &&
+        source /assets/polaris/obtain-token.sh &&
+        echo Creating bucket... &&
+        curl \
+          --fail-with-body \
+          -X PUT \
+          --user "polaris_root:polaris_pass" \
+          --aws-sigv4 "aws:amz:us-west-2:s3" \
+          http://ozone-s3g:9878/bucket123  &&
+        echo Creating catalog... &&
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
           "endpoint":"http://localhost:9878",
           "endpointInternal":"http://ozone-s3g:9878",
           "stsUnavailable":true,
-          "pathStyleAccess":true}';
-        export STORAGE_LOCATION='s3://bucket123';
-        /assets/polaris/create-catalog.sh POLARIS $$TOKEN;
-        echo Extra grants...;
-        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          "pathStyleAccess":true}' &&
+        export STORAGE_LOCATION='s3://bucket123' &&
+        /assets/polaris/create-catalog.sh POLARIS $$TOKEN &&
+        echo Extra grants... &&
+        curl \
+          --fail-with-body \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H 'Content-Type: application/json' \
           -X PUT \
           http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
-          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
-        echo Done.;
-
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}' &&
+        echo Done. &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]

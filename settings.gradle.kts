@@ -113,7 +113,7 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.3.1"
+  id("com.gradle.develocity") version "4.3.2"
   id("com.gradle.common-custom-user-data-gradle-plugin") version "2.4.0"
 }
 
@@ -124,6 +124,15 @@ dependencyResolutionManagement {
     maven {
       url = uri("https://jitpack.io")
       content { includeModule("com.github.RoaringBitmap.RoaringBitmap", "roaringbitmap") }
+    }
+    val useApacheSnapshots =
+      providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
+    if (useApacheSnapshots) {
+      maven {
+        name = "ApacheSnapshots"
+        url = uri("https://repository.apache.org/content/repositories/snapshots/")
+        mavenContent { snapshotsOnly() }
+      }
     }
     gradlePluginPortal()
   }

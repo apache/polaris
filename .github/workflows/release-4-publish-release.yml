@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           # Fetch full history for proper branch operations
           fetch-depth: 0
@@ -179,8 +179,8 @@ jobs:
 
       - name: Copy distribution from SVN dev to release space
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -214,8 +214,8 @@ jobs:
 
       - name: Update Helm index in release space
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -273,7 +273,7 @@ jobs:
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
@@ -303,8 +303,8 @@ jobs:
       - name: Create GitHub release with artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -365,8 +365,8 @@ jobs:
 
       - name: Release candidate repository on Nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
         run: |
           source "${LIBS_DIR}/_exec.sh"
 

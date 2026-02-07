@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,5 +17,20 @@
 # under the License.
 #
 
-make client-regenerate
-docker-compose -f getting-started/spark/docker-compose.yml up
+name: CI/PR
+run-name: PR#${{ github.event.number }} ${{ github.event.pull_request.title }}
+
+on:
+  pull_request:
+    branches: [ "main", "release/*", "feature/*" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-pr:
+    # The 'name' MUST BE CONSTANT, as it becomes a part of the required_checks in .asf.yaml !!
+    # Do not rename this job, this is referenced in .asf.yaml!
+    name: CI/PR
+    uses: ./.github/workflows/ci.yml

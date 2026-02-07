@@ -17,22 +17,40 @@
 # under the License.
 #
 
+# Site publishing workflow, not for pull-request CI
+
 name: "Hugo Site"
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_call:
+    # The workflow is programmatically "protected" to be only callable from the 'apache/polaris' repo.
+    # Beware: this workflow will be called with the `github` context from the 'versioned-docs' branch,
+    # which means, for example, that the `github.ref` would be 'refs/heads/versioned-docs'.
+
+# Ensure that no two site publications happen concurrently.
+# 1 job per reference can run concurrently, no cancellation
+concurrency:
+  group: site-publishing-${{ case(github.event_name == 'push', 'main', github.ref) }}
+  cancel-in-progress: false
 
 jobs:
   site:
 
     runs-on: ubuntu-latest
+
+    # This condition, which ensures the workflow is only run within the 'apache/polaris' repo, serves two purposes:
+    # 1. Not triggering the workflow from any other repo, as it declares a 'workflow_call' trigger (security).
+    # 2. Preventing forks from having "failed" site workflow runs (a publication won't work there).
     if: github.repository == 'apache/polaris'
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # Must mention the branch to check out explicitly.
+          # Otherwise the branch of the workflow-call (usually 'versioned-docs') would be checked out.
+          ref: "main"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: "versioned-docs"
           path: site/content/releases

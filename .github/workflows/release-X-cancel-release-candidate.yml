@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -121,8 +121,8 @@ jobs:
 
       - name: Drop Apache Nexus staging repository
         env:
-          NEXUS_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
         run: |
           echo "::add-mask::$NEXUS_PASSWORD"
 
@@ -174,8 +174,8 @@ jobs:
 
       - name: Delete artifacts from Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 

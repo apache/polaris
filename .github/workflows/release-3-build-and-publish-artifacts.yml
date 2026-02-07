@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -128,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -171,8 +171,8 @@ jobs:
 
       - name: Stage artifacts to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -203,8 +203,8 @@ jobs:
       - name: Publish and close Apache Nexus staging repository
         id: publish-nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
@@ -254,7 +254,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -326,7 +326,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
@@ -379,8 +379,8 @@ jobs:
 
       - name: Stage Helm chart to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -428,7 +428,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 

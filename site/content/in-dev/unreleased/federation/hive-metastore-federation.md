@@ -34,7 +34,7 @@ property to include `HIVE` (and any other non-REST backends you need):
 
 ```bash
 ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
-  -DNonRESTCatalogs=HIVE -Dquarkus.container-image.build=true
+  -PNonRESTCatalogs=HIVE -Dquarkus.container-image.build=true
 ```
 
 `runtime/server/build.gradle.kts` wires the extension in only when this flag is present, so binaries

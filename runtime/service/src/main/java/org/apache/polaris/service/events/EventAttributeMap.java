@@ -18,19 +18,21 @@
  */
 package org.apache.polaris.service.events;
 
+import jakarta.enterprise.context.RequestScoped;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /** A type-safe container for event attributes. This class is mutable and not thread-safe! */
-public final class AttributeMap {
+@RequestScoped
+public final class EventAttributeMap {
   private final Map<AttributeKey<?>, Object> attributes;
 
-  public AttributeMap() {
+  public EventAttributeMap() {
     this.attributes = new HashMap<>();
   }
 
-  public AttributeMap(AttributeMap other) {
+  public EventAttributeMap(EventAttributeMap other) {
     this.attributes = new HashMap<>(other.attributes);
   }
 
@@ -45,7 +47,7 @@ public final class AttributeMap {
             () -> new IllegalStateException("Required attribute " + key.name() + " not found"));
   }
 
-  public <T> AttributeMap put(AttributeKey<T> key, T value) {
+  public <T> EventAttributeMap put(AttributeKey<T> key, T value) {
     if (value != null) {
       attributes.put(key, value);
     }

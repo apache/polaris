@@ -422,8 +422,7 @@ public class CatalogFederationIntegrationTest {
 
     // Verify that write is blocked since the vended credential should only have read permission
     assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
-        .hasMessageContaining(
-            "software.amazon.awssdk.services.s3.model.S3Exception: Access Denied. (Service: S3, Status Code: 403,");
+        .hasMessageContaining("Access Denied. (Service: S3, Status Code: 403,");
 
     // Case 3: TABLE_WRITE_DATA should
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);

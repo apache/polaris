@@ -60,22 +60,24 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
   private IcebergCatalogHandler newWrapper() {
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
-    return new IcebergCatalogHandler(
-        diagServices,
-        callContext,
-        prefixParser,
-        resolverFactory,
-        resolutionManifestFactory,
-        metaStoreManager,
-        credentialManager,
-        authenticatedPrincipal,
-        callContextCatalogFactory,
-        CATALOG_NAME,
-        polarisAuthorizer,
-        reservedProperties,
-        catalogHandlerUtils,
-        emptyExternalCatalogFactory(),
-        storageAccessConfigProvider);
+    return ImmutableIcebergCatalogHandler.builder()
+        .catalogName(CATALOG_NAME)
+        .polarisPrincipal(authenticatedPrincipal)
+        .diagnostics(diagServices)
+        .callContext(callContext)
+        .prefixParser(prefixParser)
+        .resolverFactory(resolverFactory)
+        .resolutionManifestFactory(resolutionManifestFactory)
+        .metaStoreManager(metaStoreManager)
+        .credentialManager(credentialManager)
+        .catalogFactory(callContextCatalogFactory)
+        .authorizer(polarisAuthorizer)
+        .reservedProperties(reservedProperties)
+        .catalogHandlerUtils(catalogHandlerUtils)
+        .externalCatalogFactories(emptyExternalCatalogFactory())
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .eventAttributeMap(eventAttributeMap)
+        .build();
   }
 
   public static class Profile extends PolarisAuthzTestBase.Profile {

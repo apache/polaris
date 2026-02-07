@@ -38,6 +38,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
+- The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 
 ### New Features
 
@@ -67,6 +68,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
 
 ### Fixes
+
+- Enable non-AWS STS role ARNs
 
 ### Commits
 

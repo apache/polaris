@@ -61,7 +61,8 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
     ports:
       - ${DASHBOARD_PORT}:${INTERNAL_DASHBOARD_PORT}
 
@@ -93,7 +94,8 @@ services:
       - ./ceph-conf:/etc/ceph
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
 
   rgw1:
     image: quay.io/ceph/ceph:v20.2.0
@@ -125,16 +127,17 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - osd1
+      osd1:
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7480"]
+      test: ["CMD", "curl", "--fail", "http://localhost:7480"]
       interval: 2s
       timeout: 10s
       retries: 10
       start_period: 10s
 
   bucket-setup:
-    image: amazon/aws-cli:2.33.8
+    image: amazon/aws-cli:2.33.12
     depends_on:
       rgw1:
         condition: service_healthy
@@ -148,10 +151,10 @@ services:
     command:
       - "-c"
       - >-
-        echo Creating Ceph bucket...;
-        aws s3 mb s3://${S3_POLARIS_BUCKET};
-        aws s3 ls;
-        echo Bucket setup complete.;
+        echo Creating Ceph bucket... &&
+        aws s3 mb s3://${S3_POLARIS_BUCKET} &&
+        aws s3 ls &&
+        echo Bucket setup complete.
 
   polaris:
     image: apache/polaris:latest
@@ -161,7 +164,8 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
-      - rgw1
+      rgw1:
+        condition: service_started
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
@@ -172,7 +176,7 @@ services:
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
@@ -192,23 +196,33 @@ services:
     command:
       - "-c"
       - >-
-        chmod +x /polaris/create-catalog.sh;
-        chmod +x /polaris/obtain-token.sh;
-        source /polaris/obtain-token.sh;
-        echo Creating catalog...;
+        source /polaris/obtain-token.sh &&
+        echo Creating catalog... &&
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
           "endpoint":"http://localhost:7480",
           "endpointInternal":"http://rgw1:7480",
           "stsUnavailable":"true",
-          "pathStyleAccess":true}';
-        export STORAGE_LOCATION='s3://polaris-storage';
-        /polaris/create-catalog.sh POLARIS $$TOKEN;
-        echo Extra grants...;
-        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          "pathStyleAccess":true}' &&
+        export STORAGE_LOCATION='s3://polaris-storage' &&
+        /polaris/create-catalog.sh POLARIS $$TOKEN &&
+        echo Extra grants... &&
+        curl \
+          --fail-with-body \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H 'Content-Type: application/json' \
           -X PUT \
           http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
-          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
-        echo Done.;
-        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}' &&
+        echo Done. &&
+        curl \
+          --fail-with-body \
+          -H "Authorization: Bearer $$TOKEN" \
           -X GET \
-          http://polaris:8181/api/management/v1/catalogs;
+          http://polaris:8181/api/management/v1/catalogs &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]

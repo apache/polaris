@@ -90,6 +90,7 @@ import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -204,6 +205,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
   @Inject protected RealmContextHolder realmContextHolder;
+  @Inject protected EventAttributeMap eventAttributeMap;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;

@@ -51,7 +51,7 @@ services:
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
       polaris.readiness.ignore-severe-issues: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
@@ -71,12 +71,18 @@ services:
     command:
       - "-c"
       - >-
-        apk add --no-cache jq && 
-        chmod +x /polaris/create-catalog.sh && 
+        apk add --no-cache jq &&
         token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=client_credentials' | jq -r .access_token) && 
         /polaris/create-catalog.sh realm-internal && 
         /polaris/create-catalog.sh realm-external $$token && 
-        /polaris/create-catalog.sh realm-mixed $$token
+        /polaris/create-catalog.sh realm-mixed $$token &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.5.2

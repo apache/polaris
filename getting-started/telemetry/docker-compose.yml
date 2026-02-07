@@ -50,7 +50,7 @@ services:
       quarkus.log.file.format:    "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{app},%X{env}] [%X{realmId},%X{requestId}] [%X{traceId},%X{spanId}] (%t) %s%e%n"
       polaris.realm-context.realms: POLARIS
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
@@ -65,7 +65,18 @@ services:
       - CLIENT_SECRET=s3cr3t
     volumes:
       - ../assets/polaris/:/polaris
-    entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        /polaris/create-catalog.sh &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   prometheus:
     image: docker.io/prom/prometheus:v3.9.1
@@ -73,6 +84,8 @@ services:
       - "9093:9090"
     depends_on:
       polaris:
+        condition: service_healthy
+      polaris-setup:
         condition: service_healthy
     volumes:
       - ../assets/prometheus/:/etc/prometheus/
@@ -86,16 +99,14 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/all-in-one:1.76.0
+    image: docker.io/jaegertracing/jaeger:2.14.1
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"
       # Jaeger UI
       - "16686:16686"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
     healthcheck:
-      test: "echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' | nc localhost 16686 | grep -q '200 OK'"
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133/status"]
       interval: 5s
       timeout: 2s
       retries: 15
