@@ -34,6 +34,7 @@ import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
 import org.apache.polaris.test.rustfs.RustfsExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @QuarkusIntegrationTest
@@ -88,5 +89,15 @@ public class PolarisRestCatalogRustFSIT extends PolarisRestCatalogIntegrationBas
             .setAllowedLocations(List.of(storageBase.toString()));
 
     return storageConfig.build();
+  }
+
+  @Override
+  protected Map<String, String> extraCatalogProperties(TestInfo testInfo) {
+    return ImmutableMap.<String, String>builder()
+        .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
+        .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), RUSTFS_ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), RUSTFS_SECRET_KEY)
+        .build();
   }
 }
