@@ -77,6 +77,11 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
         allow if {
           input.actor.principal == "admin"
         }
+
+        # Allow non-root test user for all operations
+        allow if {
+          input.actor.principal == "test-user"
+        }
         """;
       loadRegoPolicy(baseUrl, polarisPolicyName, polarisRegoPolicy);
 

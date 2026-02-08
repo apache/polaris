@@ -189,7 +189,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    * resolver selection is fully implemented.
    */
   public ResolverStatus resolveSelections(Set<Resolvable> selections) {
-    return resolveAll();
+    boolean skipCallerPrincipal =
+        !selections.contains(Resolvable.CALLER_PRINCIPAL)
+            && !selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES);
+    if (!skipCallerPrincipal) {
+      return resolveAll();
+    }
+
+    primaryResolver.setSkipCallerPrincipalResolution(true);
+    primaryResolverStatus = primaryResolver.resolveAll();
+    return primaryResolverStatus;
   }
 
   public boolean getIsPassthroughFacade() {

@@ -22,6 +22,7 @@ import static io.restassured.RestAssured.given;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -70,5 +71,21 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .post("/api/management/v1/principal-roles")
         .then()
         .statusCode(403);
+  }
+
+  @Test
+  void testOpaAllowsNonRootJwtSubject() {
+    String rootToken = getRootToken();
+    String catalogName = "opa-non-root-catalog";
+    createFileCatalog(rootToken, catalogName, "file:/tmp/opa-non-root", List.of("file:/tmp"));
+
+    String nonRootToken = createJwtToken("test-user");
+
+    given()
+        .header("Authorization", "Bearer " + nonRootToken)
+        .when()
+        .get("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(200);
   }
 }
