@@ -210,7 +210,7 @@ public record TestServices(
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
-          new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
+          new StorageCredentialCache(storageCredentialCacheConfig);
 
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
@@ -295,7 +295,13 @@ public record TestServices(
               metaStoreManager, storageIntegrationProvider, diagnostics);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, callContext, credentialVendor, principal, realmContext);
+              storageCredentialCache,
+              callContext,
+              credentialVendor,
+              principal,
+              realmContext,
+              storageIntegrationProvider,
+              diagnostics);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);

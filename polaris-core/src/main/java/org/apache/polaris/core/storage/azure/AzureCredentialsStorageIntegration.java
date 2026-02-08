@@ -57,10 +57,12 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -445,5 +447,30 @@ public class AzureCredentialsStorageIntegration
           || message.contains("429"); // Too many requests
     }
     return false;
+  }
+
+  /**
+   * Builds a cache key for Azure credentials. Azure SAS tokens do not support session tags, so
+   * principal and credential vending context are never included in the cache key.
+   */
+  public static StorageCredentialCacheKey buildCacheKey(
+      @Nonnull String realmId,
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull Optional<String> refreshCredentialsEndpoint,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
+    return StorageCredentialCacheKey.of(
+        realmId,
+        entity,
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        refreshCredentialsEndpoint,
+        Optional.empty(),
+        CredentialVendingContext.empty());
   }
 }
