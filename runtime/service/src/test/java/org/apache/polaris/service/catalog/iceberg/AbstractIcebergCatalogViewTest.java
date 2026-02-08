@@ -18,6 +18,10 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doCallRealMethod;
+
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
@@ -129,6 +133,9 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
+    doCallRealMethod()
+        .when(mock)
+        .buildCacheKey(any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
