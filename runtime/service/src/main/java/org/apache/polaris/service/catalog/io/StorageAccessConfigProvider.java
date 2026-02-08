@@ -30,16 +30,23 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,17 +66,23 @@ public class StorageAccessConfigProvider {
   private final CallContext callContext;
   private final PolarisCredentialVendor credentialVendor;
   private final PolarisPrincipal polarisPrincipal;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final PolarisDiagnostics diagnostics;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
       CallContext callContext,
       PolarisCredentialVendor credentialVendor,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      PolarisDiagnostics diagnostics) {
     this.storageCredentialCache = storageCredentialCache;
     this.callContext = callContext;
     this.credentialVendor = credentialVendor;
     this.polarisPrincipal = polarisPrincipal;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.diagnostics = diagnostics;
   }
 
   /**
@@ -105,6 +118,11 @@ public class StorageAccessConfigProvider {
     }
     PolarisEntity storageInfoEntity = storageInfo.get();
 
+    if (!isTypeSupported(storageInfoEntity.getType())) {
+      diagnostics.fail(
+          "entity_type_not_suppported_to_scope_creds", "type={}", storageInfoEntity.getType());
+    }
+
     boolean skipCredentialSubscopingIndirection =
         callContext
             .getRealmConfig()
@@ -131,17 +149,47 @@ public class StorageAccessConfigProvider {
     CredentialVendingContext credentialVendingContext =
         buildCredentialVendingContext(tableIdentifier, resolvedPath);
 
-    StorageAccessConfig accessConfig =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            callContext,
-            credentialVendor,
+    RealmConfig realmConfig = callContext.getRealmConfig();
+
+    // Build cache key via the storage integration provider
+    StorageCredentialCacheKey key =
+        storageIntegrationProvider.buildCacheKey(
+            callContext.getRealmContext().getRealmIdentifier(),
             storageInfoEntity,
+            realmConfig,
             allowList,
             tableLocations,
             writeLocations,
-            polarisPrincipal,
             refreshCredentialsEndpoint,
+            polarisPrincipal,
             credentialVendingContext);
+    StorageAccessConfig accessConfig =
+        storageCredentialCache.getOrLoad(
+            key,
+            realmConfig,
+            () -> {
+              // Use credentialVendingContext from the cache key for correctness.
+              // The key may transform the context (e.g., GCP/Azure use empty context).
+              ScopedCredentialsResult result =
+                  credentialVendor.getSubscopedCredsForEntity(
+                      callContext.getPolarisCallContext(),
+                      storageInfoEntity,
+                      allowList,
+                      tableLocations,
+                      writeLocations,
+                      polarisPrincipal,
+                      refreshCredentialsEndpoint,
+                      key.credentialVendingContext());
+              if (result.isSuccess()) {
+                return result.getStorageAccessConfig();
+              }
+              LOGGER
+                  .atDebug()
+                  .addKeyValue("errorMessage", result.getExtraInformation())
+                  .log("Failed to get subscoped credentials");
+              throw new UnprocessableEntityException(
+                  "Failed to get subscoped credentials: %s", result.getExtraInformation());
+            });
 
     LOGGER
         .atDebug()
@@ -153,6 +201,13 @@ public class StorageAccessConfigProvider {
       LOGGER.debug("No credentials found for table");
     }
     return accessConfig;
+  }
+
+  private boolean isTypeSupported(PolarisEntityType type) {
+    return type == PolarisEntityType.CATALOG
+        || type == PolarisEntityType.NAMESPACE
+        || type == PolarisEntityType.TABLE_LIKE
+        || type == PolarisEntityType.TASK;
   }
 
   /**

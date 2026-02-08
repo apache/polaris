@@ -109,8 +109,8 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
+      StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Produces

@@ -18,7 +18,14 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Optional;
+import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
@@ -28,4 +35,33 @@ public interface PolarisStorageIntegrationProvider {
   <T extends PolarisStorageConfigurationInfo>
       @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+
+  /**
+   * Builds a cache key for credential caching. Different storage backends may include different
+   * fields in the cache key based on which parameters actually affect the vended credentials.
+   *
+   * <p>The default implementation includes principal and context based on feature flags for all
+   * backends (today's behavior). Implementations should override to dispatch to backend-specific
+   * key building logic.
+   */
+  default StorageCredentialCacheKey buildCacheKey(
+      @Nonnull String realmId,
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull Optional<String> refreshCredentialsEndpoint,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
+    return StorageCredentialCacheKey.of(
+        realmId,
+        entity,
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        refreshCredentialsEndpoint,
+        Optional.empty(),
+        CredentialVendingContext.empty());
+  }
 }

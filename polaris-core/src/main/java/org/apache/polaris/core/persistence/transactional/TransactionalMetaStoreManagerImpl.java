@@ -2007,8 +2007,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
   }
 
-  /** {@inheritDoc} */
-
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long, PolarisEntityType)} */
   private @Nonnull ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx,

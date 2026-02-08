@@ -19,10 +19,8 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.GRANT_NOT_FOUND;
-import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.mapToEntity;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.mapToEntityNameLookupRecord;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.principalObjToPolarisPrincipalSecrets;
@@ -33,7 +31,6 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;

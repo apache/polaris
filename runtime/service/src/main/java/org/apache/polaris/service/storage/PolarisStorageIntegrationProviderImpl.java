@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -44,6 +46,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -139,5 +142,95 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             "Unknown storage type " + polarisStorageConfigurationInfo.getStorageType());
     }
     return storageIntegration;
+  }
+
+  @Override
+  public StorageCredentialCacheKey buildCacheKey(
+      @Nonnull String realmId,
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull Optional<String> refreshCredentialsEndpoint,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
+    String storageConfigStr =
+        entity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    StorageCredentialCacheKey result;
+    if (storageConfigStr != null) {
+      PolarisStorageConfigurationInfo storageConfig =
+          PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
+      switch (storageConfig.getStorageType()) {
+        case S3:
+          result =
+              AwsCredentialsStorageIntegration.buildCacheKey(
+                  realmId,
+                  entity,
+                  realmConfig,
+                  allowListOperation,
+                  allowedReadLocations,
+                  allowedWriteLocations,
+                  refreshCredentialsEndpoint,
+                  polarisPrincipal,
+                  credentialVendingContext);
+          break;
+        case GCS:
+          result =
+              GcpCredentialsStorageIntegration.buildCacheKey(
+                  realmId,
+                  entity,
+                  realmConfig,
+                  allowListOperation,
+                  allowedReadLocations,
+                  allowedWriteLocations,
+                  refreshCredentialsEndpoint,
+                  polarisPrincipal,
+                  credentialVendingContext);
+          break;
+        case AZURE:
+          result =
+              AzureCredentialsStorageIntegration.buildCacheKey(
+                  realmId,
+                  entity,
+                  realmConfig,
+                  allowListOperation,
+                  allowedReadLocations,
+                  allowedWriteLocations,
+                  refreshCredentialsEndpoint,
+                  polarisPrincipal,
+                  credentialVendingContext);
+          break;
+        default:
+          result =
+              PolarisStorageIntegrationProvider.super.buildCacheKey(
+                  realmId,
+                  entity,
+                  realmConfig,
+                  allowListOperation,
+                  allowedReadLocations,
+                  allowedWriteLocations,
+                  refreshCredentialsEndpoint,
+                  polarisPrincipal,
+                  credentialVendingContext);
+          break;
+      }
+    } else {
+      // Fall back to default behavior for missing config
+      result =
+          PolarisStorageIntegrationProvider.super.buildCacheKey(
+              realmId,
+              entity,
+              realmConfig,
+              allowListOperation,
+              allowedReadLocations,
+              allowedWriteLocations,
+              refreshCredentialsEndpoint,
+              polarisPrincipal,
+              credentialVendingContext);
+    }
+    return result;
   }
 }
