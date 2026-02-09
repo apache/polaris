@@ -106,10 +106,9 @@ public class TableUpdateNotification {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof TableUpdateNotification)) {
+    if (!(o instanceof TableUpdateNotification tableUpdateNotification)) {
       return false;
     }
-    TableUpdateNotification tableUpdateNotification = (TableUpdateNotification) o;
     return Objects.equals(this.tableName, tableUpdateNotification.tableName)
         && Objects.equals(this.timestamp, tableUpdateNotification.timestamp)
         && Objects.equals(this.tableUuid, tableUpdateNotification.tableUuid)

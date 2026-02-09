@@ -175,10 +175,9 @@ public class PolarisEntityCore implements Identifiable {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof PolarisEntityCore)) {
+    if (!(o instanceof PolarisEntityCore that)) {
       return false;
     }
-    PolarisEntityCore that = (PolarisEntityCore) o;
     return catalogId == that.catalogId
         && id == that.id
         && parentId == that.parentId

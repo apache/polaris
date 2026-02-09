@@ -98,10 +98,9 @@ public class ListGenericTablesResponse {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof ListGenericTablesResponse)) {
+    if (!(o instanceof ListGenericTablesResponse listGenericTablesResponse)) {
       return false;
     }
-    ListGenericTablesResponse listGenericTablesResponse = (ListGenericTablesResponse) o;
     return Objects.equals(this.nextPageToken, listGenericTablesResponse.nextPageToken)
         && Objects.equals(this.identifiers, listGenericTablesResponse.identifiers);
   }

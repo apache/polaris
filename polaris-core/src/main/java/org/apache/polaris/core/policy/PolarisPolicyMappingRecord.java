@@ -199,8 +199,7 @@ public class PolarisPolicyMappingRecord {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof PolarisPolicyMappingRecord)) return false;
-    PolarisPolicyMappingRecord that = (PolarisPolicyMappingRecord) o;
+    if (!(o instanceof PolarisPolicyMappingRecord that)) return false;
     return targetCatalogId == that.targetCatalogId
         && targetId == that.targetId
         && policyCatalogId == that.policyCatalogId
