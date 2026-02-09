@@ -545,9 +545,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("RESOLVE_CREDENTIALS_BY_STORAGE_NAME")
           .description(
-              "If set to true, resolve AWS credentials based on the storage name derived from "
-                  + "the storage configuration. The storage name can be set explicitly via the "
-                  + "storageName field, or inferred from the first allowed location's host. "
+              "If set to true, resolve AWS credentials based on the storageName field "
+                  + "of the storage configuration. "
                   + "When disabled, the default AWS credentials are used for all storages.")
           .defaultValue(false)
           .buildFeatureConfiguration();

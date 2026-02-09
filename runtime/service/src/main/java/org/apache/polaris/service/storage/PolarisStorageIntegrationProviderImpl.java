@@ -101,7 +101,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             awsCreds =
                 Optional.of(
                     storageConfiguration.stsCredentials(
-                        polarisStorageConfigurationInfo.resolveStorageName().orElse(null)));
+                        polarisStorageConfigurationInfo.getStorageName()));
           } else {
             awsCreds = Optional.of(storageConfiguration.stsCredentials());
           }
