@@ -169,8 +169,6 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
     done
   done
 
-  clean up
-  Commented out for faster development/testing - uncomment for CI or final runs
   if [ "${SPARK_EXISTS}" = "FALSE" ]; then
     rm -rf ${SPARK_HOME}
     export SPARK_HOME=""
