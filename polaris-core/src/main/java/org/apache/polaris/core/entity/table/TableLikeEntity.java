@@ -55,6 +55,7 @@ public abstract class TableLikeEntity extends PolarisEntity implements LocationB
     if (encodedNamespace == null) {
       return Namespace.empty();
     }
-    return RESTUtil.decodeNamespace(encodedNamespace);
+    return RESTUtil.decodeNamespace(
+        encodedNamespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
   }
 }

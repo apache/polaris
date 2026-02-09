@@ -20,19 +20,26 @@ package org.apache.polaris.service.catalog.common;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.entity.NamespaceEntity;
 
 /**
  * A common interface for adapters between the REST interface and {@link CatalogHandler}
  * implementations
  */
 public interface CatalogAdapter {
+
+  /** Decode the namespace as extracted by the REST layer from the request URI path parameter. */
   default Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
+    // Need to encode the namespace because RESTUtil expects the namespace to be URL encoded,
+    // but the REST layer has already decoded it.
+    String encodedNamespace = URLEncoder.encode(namespace, StandardCharsets.UTF_8);
+    return RESTUtil.decodeNamespace(
+        encodedNamespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
   }
 
   default PolarisPrincipal validatePrincipal(SecurityContext securityContext) {

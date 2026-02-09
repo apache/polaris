@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.NamespaceEntity;
 
 public class PolarisResourcePaths {
   private static final Joiner SLASH = Joiner.on("/").skipNulls();
@@ -54,7 +55,12 @@ public class PolarisResourcePaths {
 
   public String genericTables(Namespace ns) {
     return SLASH.join(
-        "polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "generic-tables");
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespace(ns, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8),
+        "generic-tables");
   }
 
   public String credentialsPath(TableIdentifier ident) {
@@ -62,7 +68,8 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        RESTUtil.encodeNamespace(ident.namespace()),
+        RESTUtil.encodeNamespace(
+            ident.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8),
         "tables",
         RESTUtil.encodeString(ident.name()),
         "credentials");
@@ -74,7 +81,8 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        RESTUtil.encodeNamespace(ident.namespace()),
+        RESTUtil.encodeNamespace(
+            ident.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8),
         "generic-tables",
         RESTUtil.encodeString(ident.name()));
   }
