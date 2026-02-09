@@ -434,7 +434,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
         default:
           throw new ServiceFailureException(
-              "Unexpected error dropping table %s: %s. ExtraInfo: %s",
+              "Failed to drop table %s, status=%s, extraInfo=%s",
               tableIdentifier,
               dropEntityResult.getReturnStatus(),
               dropEntityResult.getExtraInformation());
@@ -674,8 +674,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
         default:
           throw new ServiceFailureException(
-              "Unexpected error dropping namespace %s: %s. ExtraInfo: %s",
-              namespace, dropEntityResult.getReturnStatus(), dropEntityResult.getExtraInformation());
+              "Failed to drop namespace %s, status=%s, extraInfo=%s",
+              namespace,
+              dropEntityResult.getReturnStatus(),
+              dropEntityResult.getExtraInformation());
       }
     }
 
@@ -874,7 +876,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
         default:
           throw new ServiceFailureException(
-              "Unexpected error dropping view %s: %s. ExtraInfo: %s",
+              "Failed to drop view %s, status=%s, extraInfo=%s",
               identifier,
               dropEntityResult.getReturnStatus(),
               dropEntityResult.getExtraInformation());

@@ -1987,7 +1987,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     Assertions.assertThatThrownBy(() -> spiedCatalog.dropNamespace(NS))
         .isInstanceOf(ServiceFailureException.class)
-        .hasMessageContaining("Unexpected error dropping namespace")
+        .hasMessageContaining("Failed to drop namespace")
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
   }
 
@@ -2012,7 +2012,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     Assertions.assertThatThrownBy(() -> spiedCatalog.dropTable(TABLE, false))
         .isInstanceOf(ServiceFailureException.class)
-        .hasMessageContaining("Unexpected error dropping table")
+        .hasMessageContaining("Failed to drop table")
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
   }
 
@@ -2024,8 +2024,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Create a spy of the metaStoreManager to simulate an undroppable entity error
     PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
     doReturn(
-            new DropEntityResult(
-                BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
+            new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
         .when(spiedManager)
         .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
 
@@ -2066,7 +2065,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     Assertions.assertThatThrownBy(() -> spiedCatalog.dropView(TABLE))
         .isInstanceOf(ServiceFailureException.class)
-        .hasMessageContaining("Unexpected error dropping view")
+        .hasMessageContaining("Failed to drop view")
         .hasMessageContaining("UNEXPECTED_ERROR_SIGNALED");
   }
 
@@ -2083,8 +2082,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Create a spy of the metaStoreManager to simulate an undroppable entity error
     PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
     doReturn(
-            new DropEntityResult(
-                BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
+            new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, "Entity is protected"))
         .when(spiedManager)
         .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
 
