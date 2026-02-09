@@ -155,8 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
-      if (configInfo instanceof AwsStorageConfigurationInfo) {
-        AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) configInfo;
+      if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
         return AwsStorageConfigInfo.builder()
             .setRoleArn(awsConfig.getRoleARN())
             .setExternalId(awsConfig.getExternalId())
@@ -174,8 +173,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setKmsUnavailable(awsConfig.getKmsUnavailable())
             .build();
       }
-      if (configInfo instanceof AzureStorageConfigurationInfo) {
-        AzureStorageConfigurationInfo azureConfig = (AzureStorageConfigurationInfo) configInfo;
+      if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
         return AzureStorageConfigInfo.builder()
             .setTenantId(azureConfig.getTenantId())
             .setMultiTenantAppName(azureConfig.getMultiTenantAppName())
@@ -185,16 +183,14 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setHierarchical(azureConfig.isHierarchical())
             .build();
       }
-      if (configInfo instanceof GcpStorageConfigurationInfo) {
-        GcpStorageConfigurationInfo gcpConfigModel = (GcpStorageConfigurationInfo) configInfo;
+      if (configInfo instanceof GcpStorageConfigurationInfo gcpConfigModel) {
         return GcpStorageConfigInfo.builder()
             .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
             .build();
       }
-      if (configInfo instanceof FileStorageConfigurationInfo) {
-        FileStorageConfigurationInfo fileConfigModel = (FileStorageConfigurationInfo) configInfo;
+      if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
         return new FileStorageConfigInfo(
             StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
       }

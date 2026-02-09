@@ -92,17 +92,13 @@ public abstract class MemorySize {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof MemorySize)) {
-        return false;
+      if (o instanceof MemorySize that) {
+        return o instanceof MemorySizeLong l
+            ? bytes == l.bytes
+            : asBigInteger().equals(that.asBigInteger());
       }
 
-      if (o instanceof MemorySizeLong) {
-        var l = (MemorySizeLong) o;
-        return bytes == l.bytes;
-      }
-
-      var that = (MemorySize) o;
-      return asBigInteger().equals(that.asBigInteger());
+      return false;
     }
 
     @Override
@@ -145,12 +141,10 @@ public abstract class MemorySize {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof MemorySize)) {
-        return false;
+      if (o instanceof MemorySize that) {
+        return bytes.equals(that.asBigInteger());
       }
-
-      MemorySize that = (MemorySize) o;
-      return bytes.equals(that.asBigInteger());
+      return false;
     }
 
     @Override

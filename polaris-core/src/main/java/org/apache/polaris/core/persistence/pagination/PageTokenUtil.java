@@ -67,10 +67,9 @@ final class PageTokenUtil {
 
         @Override
         public boolean equals(Object obj) {
-          if (!(obj instanceof PageToken)) {
+          if (!(obj instanceof PageToken other)) {
             return false;
           }
-          PageToken other = (PageToken) obj;
           return other.pageSize().isEmpty() && other.value().isEmpty();
         }
 
@@ -99,10 +98,9 @@ final class PageTokenUtil {
 
       @Override
       public boolean equals(Object obj) {
-        if (!(obj instanceof PageToken)) {
+        if (!(obj instanceof PageToken other)) {
           return false;
         }
-        PageToken other = (PageToken) obj;
         return other.pageSize().equals(pageSize()) && other.value().isEmpty();
       }
 
@@ -240,8 +238,8 @@ final class PageTokenUtil {
     }
 
     private String getId(Object value) {
-      if (value instanceof Token) {
-        return ((Token) value).getT();
+      if (value instanceof Token token) {
+        return token.getT();
       }
 
       return null;

@@ -139,8 +139,7 @@ public class PolarisGrantRecord {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof PolarisGrantRecord)) return false;
-    PolarisGrantRecord that = (PolarisGrantRecord) o;
+    if (!(o instanceof PolarisGrantRecord that)) return false;
     return securableCatalogId == that.securableCatalogId
         && securableId == that.securableId
         && granteeCatalogId == that.granteeCatalogId

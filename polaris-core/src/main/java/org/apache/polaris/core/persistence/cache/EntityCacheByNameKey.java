@@ -101,8 +101,7 @@ public class EntityCacheByNameKey {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof EntityCacheByNameKey)) return false;
-    EntityCacheByNameKey that = (EntityCacheByNameKey) o;
+    if (!(o instanceof EntityCacheByNameKey that)) return false;
     return parentId == that.parentId
         && typeCode == that.typeCode
         && Objects.equals(name, that.name);
