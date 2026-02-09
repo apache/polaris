@@ -32,3 +32,5 @@ jobs:
   ci-main:
     name: CI/${{ github.ref_name }}
     uses: ./.github/workflows/ci.yml
+    secrets:
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
