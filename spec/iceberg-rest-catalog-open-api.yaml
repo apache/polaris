@@ -20,7 +20,7 @@
 # CODE_COPIED_TO_POLARIS
 
 # Apache Iceberg Version: 1.11.0
-# commit SHA: b0c236512ae38b7668fa2a332b100db0f5b64d30
+# commit SHA: 459332131f429484177d45acabea8903a45acc4e
 
 ---
 openapi: 3.1.1
@@ -890,6 +890,7 @@ paths:
         - Catalog API
       summary: Register a table in the given namespace using given metadata file location
       parameters:
+        - $ref: '#/components/parameters/data-access'
         - $ref: '#/components/parameters/idempotency-key'
       description:
         Register a table using given metadata file location.

@@ -454,6 +454,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
+      String accessDelegationMode,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -469,7 +470,13 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.REGISTER_TABLE_REQUEST, registerTableRequest)));
     Response resp =
         delegate.registerTable(
-            prefix, namespace, registerTableRequest, idempotencyKey, realmContext, securityContext);
+            prefix,
+            namespace,
+            registerTableRequest,
+            accessDelegationMode,
+            idempotencyKey,
+            realmContext,
+            securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_REGISTER_TABLE,

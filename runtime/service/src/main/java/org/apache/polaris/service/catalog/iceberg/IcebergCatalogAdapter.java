@@ -420,6 +420,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
+      String accessDelegationMode,
       UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
