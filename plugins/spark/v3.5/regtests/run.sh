@@ -118,12 +118,15 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
       loginfo "Setting up for test suite: ${TEST_SHORTNAME} with table format: ${TABLE_FORMAT}"
 
       # clean up the default configuration if exists
-      if [ -f "${SPARK_HOME}" ]; then
+      if [ -d "${SPARK_HOME}" ]; then
         SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
-        if [ -f ${SPARK_CONF} ]; then
+        if [ -f "${SPARK_CONF}" ]; then
+          echo "Clean spark conf file"
           rm ${SPARK_CONF}
         fi
       fi
+
+      echo "finish SPARK_HOME check"
 
       # Run setup with appropriate table format
       if [ "${SPARK_SHELL_OPTION}" == "PACKAGE" ]; then
@@ -136,7 +139,7 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
       # run the test
       loginfo "Starting test ${TEST_FILE}"
 
-      TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}_${SPARK_SHELL_OPTION}"
+      TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}_${SPARK_SHELL_OPTION}_${TABLE_FORMAT}"
       TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
       TEST_STDOUT="${TEST_TMPDIR}/${TEST_SHORTNAME}.stdout"
 
@@ -166,12 +169,12 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
     done
   done
 
-   clean up
-   Commented out for faster development/testing - uncomment for CI or final runs
-   if [ "${SPARK_EXISTS}" = "FALSE" ]; then
-     rm -rf ${SPARK_HOME}
-     export SPARK_HOME=""
-   fi
+  clean up
+  Commented out for faster development/testing - uncomment for CI or final runs
+  if [ "${SPARK_EXISTS}" = "FALSE" ]; then
+    rm -rf ${SPARK_HOME}
+    export SPARK_HOME=""
+  fi
 done
 
 # clean the output dir

@@ -38,12 +38,7 @@ curl -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/js
   "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/config?warehouse=${CATALOG_NAME}"
 echo
 echo "Catalog created"
-cat << EOF | ${SPARK_HOME}/bin/spark-sql -S \
-  --packages org.apache.hudi:hudi-spark3.5-bundle_${SCALA_VERSION}:1.1.1 \
-  --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" \
-  --conf spark.sql.catalog.polaris.warehouse=${CATALOG_NAME} \
-  --conf spark.serializer=org.apache.spark.serializer.KryoSerializer \
-  --conf spark.kryo.registrator=org.apache.spark.HoodieSparkKryoRegistrar
+cat << EOF | ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" --conf spark.sql.catalog.polaris.warehouse=${CATALOG_NAME}
 use polaris;
 create namespace hudi_db1;
 create namespace hudi_db2;
