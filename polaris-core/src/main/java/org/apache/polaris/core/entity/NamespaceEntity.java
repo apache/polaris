@@ -33,6 +33,9 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
   // RESTUtil-encoded parent namespace.
   public static final String PARENT_NAMESPACE_KEY = "parent-namespace";
 
+  /** The URL-encoded UTF-8 representation of the namespace separator character (0x1F). */
+  public static final String NAMESPACE_SEPARATOR_URLENCODED_UTF_8 = "%1F";
+
   public NamespaceEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
     Preconditions.checkState(
@@ -55,7 +58,7 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
     if (encodedNamespace == null) {
       return Namespace.empty();
     }
-    return RESTUtil.decodeNamespace(encodedNamespace);
+    return RESTUtil.decodeNamespace(encodedNamespace, NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
   }
 
   public Namespace asNamespace() {
@@ -89,7 +92,9 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
 
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
-        internalProperties.put(PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+        internalProperties.put(
+            PARENT_NAMESPACE_KEY,
+            RESTUtil.encodeNamespace(namespace, NAMESPACE_SEPARATOR_URLENCODED_UTF_8));
       }
       return this;
     }

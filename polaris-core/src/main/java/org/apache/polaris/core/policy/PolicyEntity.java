@@ -84,7 +84,8 @@ public class PolicyEntity extends PolarisEntity {
   public Namespace getParentNamespace() {
     String parentNamespace = getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
     if (parentNamespace != null) {
-      return RESTUtil.decodeNamespace(parentNamespace);
+      return RESTUtil.decodeNamespace(
+          parentNamespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     }
     return null;
   }
@@ -114,7 +115,9 @@ public class PolicyEntity extends PolarisEntity {
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY,
+            RESTUtil.encodeNamespace(
+                namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8));
       }
       return this;
     }
