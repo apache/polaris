@@ -238,10 +238,11 @@ tests:
               name: polaris-http
 
   # spec.sessionAffinity
-  - it: should not set service session affinity by default
+  - it: should set service session affinity by default
     asserts:
-      - notExists:
+      - equal:
           path: spec.sessionAffinity
+          value: None
   - it: should set service session affinity
     set:
       service.sessionAffinity: ClientIP
@@ -268,6 +269,13 @@ tests:
     asserts:
       - notExists:
           path: spec.externalTrafficPolicy
+  - it: should set service external traffic policy by default if LoadBalancer
+    set:
+      service.type: LoadBalancer
+    asserts:
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Cluster
   - it: should set service external traffic policy if LoadBalancer
     set:
       service.externalTrafficPolicy: Local
@@ -293,10 +301,11 @@ tests:
           path: spec.externalTrafficPolicy
 
   # spec.internalTrafficPolicy
-  - it: should not set service internal traffic policy by default
+  - it: should set service internal traffic policy by default
     asserts:
-      - notExists:
+      - equal:
           path: spec.internalTrafficPolicy
+          value: Cluster
   - it: should set service internal traffic policy
     set:
       service.internalTrafficPolicy: Local
@@ -315,17 +324,17 @@ tests:
       majorVersion: 1
       minorVersion: 31
     set:
-      service.trafficDistribution: Local
+      service.trafficDistribution: PreferClose
     asserts:
       - equal:
           path: spec.trafficDistribution
-          value: Local
+          value: PreferClose
   - it: should not set service traffic distribution if Kubernetes version < 1.31
     capabilities:
       majorVersion: 1
       minorVersion: 30
     set:
-      service.trafficDistribution: Local
+      service.trafficDistribution: PreferClose
     asserts:
       - notExists:
           path: spec.trafficDistribution
