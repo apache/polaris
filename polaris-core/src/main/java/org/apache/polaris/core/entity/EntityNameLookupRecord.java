@@ -104,8 +104,7 @@ public class EntityNameLookupRecord implements Identifiable {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof EntityNameLookupRecord)) return false;
-    EntityNameLookupRecord that = (EntityNameLookupRecord) o;
+    if (!(o instanceof EntityNameLookupRecord that)) return false;
     return catalogId == that.catalogId
         && id == that.id
         && parentId == that.parentId

@@ -54,10 +54,9 @@ public class NotificationRequest {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof NotificationRequest)) {
+    if (!(o instanceof NotificationRequest notificationRequest)) {
       return false;
     }
-    NotificationRequest notificationRequest = (NotificationRequest) o;
     return Objects.equals(this.notificationType, notificationRequest.notificationType)
         && Objects.equals(this.payload, notificationRequest.payload);
   }
