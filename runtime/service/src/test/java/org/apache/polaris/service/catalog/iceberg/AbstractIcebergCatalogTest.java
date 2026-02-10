@@ -2112,19 +2112,27 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Table created = catalog.buildTable(table, SCHEMA).create();
     TableMetadata currentMetadata = ((BaseTable) created).operations().current();
     String currentMetadataLocation = currentMetadata.metadataFileLocation();
+    String oldTableUuid = currentMetadata.uuid();
+    String newTableUuid = UUID.randomUUID().toString();
     String metadataDir =
         currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
     String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
-    TableMetadataParser.write(currentMetadata, fileIO.newOutputFile(newMetadataLocation));
+    String updatedMetadataJson =
+        TableMetadataParser.toJson(currentMetadata).replace(oldTableUuid, newTableUuid);
+    fileIO.addFile(newMetadataLocation, updatedMetadataJson.getBytes(UTF_8));
 
     // Register with overwrite=true should update the metadata location
     Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
 
     Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
         .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().uuid())
+        .isEqualTo(newTableUuid);
     Assertions.assertThat(
             ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
         .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(((BaseTable) catalog.loadTable(table)).operations().current().uuid())
+        .isEqualTo(newTableUuid);
   }
 
   @Test
