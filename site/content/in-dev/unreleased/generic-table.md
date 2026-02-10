@@ -37,7 +37,7 @@ Generic tables are in beta. Please use it with caution and report any issue if e
 A generic table is an entity that defines the following fields:
 
 - **name** (required): A unique identifier for the table within a namespace
-- **format** (required): The format for the generic table, i.e. "delta", "csv"
+- **format** (required): The format for the generic table, i.e. "delta", "hudi", "paimon", "csv"
 - **base-location** (optional): Table base location in URI format. For example: s3://<my-bucket>/path/to/table
   - The table base location is a location that includes all files for the table
   - A table with multiple disjoint locations (i.e. containing files that are outside the configured base location) is not compliant with the current generic table support in Polaris.
