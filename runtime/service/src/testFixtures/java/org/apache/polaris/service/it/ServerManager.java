@@ -57,6 +57,6 @@ public class ServerManager implements PolarisServerManager {
         .orElseThrow(
             () ->
                 new IllegalStateException(
-                    "System property not set correctly: quarkus.http.test-port"));
+                    "Quarkus property not set correctly: quarkus.http.test-port"));
   }
 }
