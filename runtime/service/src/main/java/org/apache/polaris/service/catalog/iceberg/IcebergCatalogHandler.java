@@ -85,6 +85,7 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -103,6 +104,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -612,11 +614,77 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    boolean overwrite = request.overwrite();
 
+    if (overwrite) {
+      // Resolve the namespace and table (optional) so we can distinguish overwrite from create.
+      resolutionManifest = newResolutionManifest();
+      resolutionManifest.addPath(
+          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+          namespace);
+      ResolverPath tablePath =
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */);
+      resolutionManifest.addPassthroughPath(tablePath, identifier);
+      resolutionManifest.resolveAll();
+
+      boolean tableExists =
+          resolutionManifest.getResolvedPath(
+                  identifier,
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisEntitySubType.ICEBERG_TABLE,
+                  true)
+              != null;
+      if (tableExists) {
+        authorizeUpdateTableOverwriteOrThrow(identifier);
+        LOGGER.debug(
+            "registerTable: overwrite=true, authorized for UPDATE_TABLE on existing table");
+      } else {
+        // Table doesn't exist, fall back to REGISTER_TABLE authorization
+        LOGGER.debug(
+            "registerTable: overwrite=true, table not found, falling back to REGISTER_TABLE");
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+      }
+    } else {
+      // Creating new table requires REGISTER_TABLE privilege
+      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    }
+
+    // Handle Polaris-specific overwrite logic
+    if (overwrite) {
+      if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+        // Use the overwrite-capable registration path for IcebergCatalog
+        Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
+        if (table instanceof BaseTable baseTable) {
+          return LoadTableResponse.builder()
+              .withTableMetadata(baseTable.operations().current())
+              .build();
+        }
+        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+      } else {
+        // For non-Polaris catalogs, reject overwrite to prevent accidental overwrites
+        throw new BadRequestException(
+            "Register table overwrite is not supported for catalog type: %s",
+            baseCatalog.getClass().getName());
+      }
+    }
+
+    // Standard registration path (no overwrite)
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
+  }
+
+  private void authorizeUpdateTableOverwriteOrThrow(TableIdentifier identifier) {
+    // UPDATE_TABLE operation requires TABLE_WRITE_PROPERTIES privilege (or higher), which
+    // automatically excludes users with only TABLE_WRITE_DATA. No custom grant checking needed.
+    authorizeBasicTableLikeOperationsOrThrow(
+        EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE),
+        PolarisEntitySubType.ICEBERG_TABLE,
+        identifier);
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
