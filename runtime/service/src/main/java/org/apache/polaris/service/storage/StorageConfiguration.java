@@ -132,7 +132,11 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   default AwsCredentialsProvider stsCredentials(String storageName) {
-    if (storageName != null && aws().storages().containsKey(storageName)) {
+    if (storageName != null) {
+      if (!aws().storages().containsKey(storageName)) {
+        throw new IllegalArgumentException(
+            "Storage name '" + storageName + "' is not configured on the server");
+      }
       StorageConfig storageConfig = aws().storages().get(storageName);
       return StaticCredentialsProvider.create(
           AwsBasicCredentials.create(storageConfig.accessKey(), storageConfig.secretKey()));

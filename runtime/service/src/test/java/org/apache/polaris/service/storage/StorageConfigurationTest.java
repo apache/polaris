@@ -19,6 +19,7 @@
 package org.apache.polaris.service.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -371,13 +372,12 @@ public class StorageConfigurationTest {
   }
 
   @Test
-  public void testStsCredentialsWithUnknownStorageFallsBackToDefault() {
+  public void testStsCredentialsWithUnknownStorageThrows() {
     StorageConfiguration config = configWithNamedStorage();
-    AwsCredentialsProvider credentialsProvider = config.stsCredentials("unknownStorage");
-    assertThat(credentialsProvider).isInstanceOf(StaticCredentialsProvider.class);
-    assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
-    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
-        .isEqualTo(TEST_SECRET_KEY);
+    assertThatThrownBy(() -> config.stsCredentials("unknownStorage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unknownStorage")
+        .hasMessageContaining("not configured");
   }
 
   @Test
