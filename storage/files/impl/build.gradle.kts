@@ -106,18 +106,6 @@ testing {
           implementation("org.apache.iceberg:iceberg-aws")
           implementation("org.apache.iceberg:iceberg-gcp")
           implementation("org.apache.iceberg:iceberg-azure")
-
-          // AzureSDK since version 1.3.4 uses an Azure services version that does not work
-          // with Azurite version 3.35.0. Therefore pin the Azure SDK version to 1.3.3 for
-          // these tests. The version constraint can be removed when a new version of the
-          // azurite-testcontainer is released.
-          runtimeOnly(
-            platform("${libs.azuresdk.bom.get().group}:${libs.azuresdk.bom.get().name}:1.3.3!!")
-          )
-          runtimeOnly("com.azure:azure-storage-blob")
-          runtimeOnly("com.azure:azure-storage-common")
-          runtimeOnly("com.azure:azure-identity")
-          runtimeOnly("com.azure:azure-storage-file-datalake")
         }
       }
   }
