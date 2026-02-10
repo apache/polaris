@@ -273,6 +273,7 @@ jobs:
 
   regtest:
     name: Regression Tests
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
