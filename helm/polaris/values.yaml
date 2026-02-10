@@ -233,7 +233,9 @@ ingress:
   # -- A list of host paths used to configure the ingress.
   hosts:
     - host: chart-example.local
-      paths: []
+      paths:
+        - path: /
+          pathType: Prefix
   # -- A list of TLS certificates; each entry has a list of hosts in the certificate,
   # along with the secret name used to terminate TLS traffic on port 443.
   tls: []
