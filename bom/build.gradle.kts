@@ -31,6 +31,7 @@ dependencies {
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-minio-testcontainer"))
+    api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))

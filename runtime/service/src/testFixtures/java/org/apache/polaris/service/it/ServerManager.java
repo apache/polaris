@@ -19,11 +19,11 @@
 package org.apache.polaris.service.it;
 
 import java.net.URI;
-import java.util.Objects;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class ServerManager implements PolarisServerManager {
@@ -51,9 +51,8 @@ public class ServerManager implements PolarisServerManager {
     };
   }
 
-  private static Integer getQuarkusTestPort() {
-    return Objects.requireNonNull(
-        Integer.getInteger("quarkus.http.test-port"),
-        "System property not set correctly: quarkus.http.test-port");
+  private static int getQuarkusTestPort() {
+    var quarkusHttpPort = ConfigProvider.getConfig().getConfigValue("quarkus.http.port");
+    return Integer.parseInt(quarkusHttpPort.getValue());
   }
 }

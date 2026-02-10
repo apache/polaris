@@ -36,7 +36,7 @@ dependencies {
   implementation(project(":polaris-core"))
   implementation(libs.jakarta.ws.rs.api)
   implementation(enforcedPlatform(libs.quarkus.bom))
-  implementation("io.quarkus:quarkus-junit5")
+  implementation("io.quarkus:quarkus-junit")
 
   implementation(platform(libs.testcontainers.bom))
   implementation("org.testcontainers:testcontainers")

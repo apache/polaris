@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Startup;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.nio.charset.Charset;
@@ -327,7 +328,7 @@ public class ProductionReadinessChecks {
   @Produces
   @SuppressWarnings("unchecked")
   public ProductionReadinessCheck checkConnectionCredentialVendors(
-      Instance<ConnectionCredentialVendor> credentialVendors,
+      @Any Instance<ConnectionCredentialVendor> credentialVendors,
       FeaturesConfiguration featureConfiguration) {
     var mapper = JsonMapper.builder().build();
     var defaults = featureConfiguration.parseDefaults(mapper);
