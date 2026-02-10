@@ -83,7 +83,7 @@ cascade:
 | https://github.com/fpapon[François Papon] | Mentor |
 | Holden Karau | Mentor |
 | https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
-| https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
+| https://github.com/jbonofre[JB Onofre] | Champion, Mentor, PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/vvcephei[John Roesler] | PPMC Member | link:https://www.confluent.io/[Confluent]
 | https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Kent Yao | Mentor |
@@ -93,8 +93,9 @@ cascade:
 | https://github.com/snazy[Robert Stupp] | PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |
+| https://github.com/sungwy[Sung Yun] | Committer | link:https://www.bloomberg.com/[Bloomberg]
 | https://github.com/takidau[Tyler Akidau] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
+| https://github.com/MonkeyCanCode[Yong Zheng] | PPMC Member |
 | https://github.com/flyrain[Yufei Gu] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===

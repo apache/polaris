@@ -202,10 +202,9 @@ public class SecretReference {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj == null || !(obj instanceof SecretReference)) {
+    if (!(obj instanceof SecretReference that)) {
       return false;
     }
-    SecretReference that = (SecretReference) obj;
     return Objects.equals(this.getUrn(), that.getUrn())
         && Objects.equals(this.getReferencePayload(), that.getReferencePayload());
   }

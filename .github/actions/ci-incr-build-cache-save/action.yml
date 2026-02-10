@@ -19,6 +19,7 @@ description: 'Save incremental Gradle caches'
 inputs:
   job-name:
     description: 'job name'
+    default: ${{ github.job }}
   java-version:
     description: 'Java version'
     default: '21'
@@ -27,6 +28,7 @@ runs:
   steps:
     - name: Prepare Gradle caches archive
       shell: bash
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       run: |
         if [[ -d ~/.gradle/caches/ ]] ; then
           echo "::group::Gradle caches / identify updated cache items"
@@ -62,6 +64,7 @@ runs:
         fi
     - name: Archive code-checks incremental
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       with:
         name: ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}
         path: ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar

@@ -68,6 +68,7 @@ dependencies {
   implementation(libs.s3mock.testcontainers)
   implementation(project(":polaris-runtime-test-common"))
   implementation(project(":polaris-minio-testcontainer"))
+  implementation(project(":polaris-rustfs-testcontainer"))
 }
 
 copiedCodeChecks {

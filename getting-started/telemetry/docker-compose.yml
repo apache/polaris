@@ -69,7 +69,14 @@ services:
     command:
       - "-c"
       - >-
-        /polaris/create-catalog.sh;
+        /polaris/create-catalog.sh &&
+        touch /tmp/polaris-setup-done &&
+        tail -f /dev/null
+    healthcheck:
+      interval: 1s
+      timeout: 10s
+      retries: 240
+      test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   prometheus:
     image: docker.io/prom/prometheus:v3.9.1
@@ -79,7 +86,7 @@ services:
       polaris:
         condition: service_healthy
       polaris-setup:
-        condition: service_completed_successfully
+        condition: service_healthy
     volumes:
       - ../assets/prometheus/:/etc/prometheus/
     command:
@@ -92,7 +99,7 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/jaeger:2.14.1
+    image: docker.io/jaegertracing/jaeger:2.15.0
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"

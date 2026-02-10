@@ -20,10 +20,12 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -38,7 +40,9 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     if (!(connectionConfig instanceof IcebergRestConnectionConfigInfoDpo icebergConfig)) {
       throw new IllegalArgumentException(
           "Expected IcebergRestConnectionConfigInfoDpo but got: "
@@ -54,16 +58,23 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
                     .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
                     .build());
 
-    federatedCatalog.initialize(
-        icebergConfig.getRemoteCatalogName(),
-        connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+    // Merge properties with precedence: connection config properties override catalog properties
+    // to ensure required settings like URI and authentication cannot be accidentally overwritten.
+    Map<String, String> mergedProperties =
+        RESTUtil.merge(
+            catalogProperties != null ? catalogProperties : Map.of(),
+            connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+
+    federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
     return federatedCatalog;
   }
 
   @Override
   public GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");

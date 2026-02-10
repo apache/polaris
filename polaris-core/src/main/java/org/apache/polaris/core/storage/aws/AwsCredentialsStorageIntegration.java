@@ -93,7 +93,6 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
-    String accountId = storageConfig.getAwsAccountId();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
     boolean includePrincipalNameInSubscopedCredential =
@@ -103,25 +102,22 @@ public class AwsCredentialsStorageIntegration
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
-            ? "polaris-" + polarisPrincipal.getName()
+            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName())
             : "PolarisAwsCredentialsStorageIntegration";
-    String cappedRoleSessionName =
-        roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
 
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
               .externalId(storageConfig.getExternalId())
               .roleArn(storageConfig.getRoleARN())
-              .roleSessionName(cappedRoleSessionName)
+              .roleSessionName(roleSessionName)
               .policy(
                   policyString(
                           storageConfig,
                           allowListOperation,
                           allowedReadLocations,
                           allowedWriteLocations,
-                          region,
-                          accountId)
+                          region)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
@@ -215,8 +211,7 @@ public class AwsCredentialsStorageIntegration
       boolean allowList,
       Set<String> readLocations,
       Set<String> writeLocations,
-      String region,
-      String accountId) {
+      String region) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -261,7 +256,8 @@ public class AwsCredentialsStorageIntegration
                           .addResource(key));
             });
 
-    if (!writeLocations.isEmpty()) {
+    boolean canWrite = !writeLocations.isEmpty();
+    if (canWrite) {
       IamStatement.Builder allowPutObjectStatementBuilder =
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
@@ -275,13 +271,15 @@ public class AwsCredentialsStorageIntegration
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
-      if (shouldUseKms(storageConfigurationInfo)) {
-        addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, true, region, accountId);
-      }
-    } else {
-      if (shouldUseKms(storageConfigurationInfo)) {
-        addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, false, region, accountId);
-      }
+    }
+    if (shouldUseKms(storageConfigurationInfo)) {
+      addKmsKeyPolicy(
+          currentKmsKey,
+          allowedKmsKeys,
+          policyBuilder,
+          canWrite,
+          region,
+          storageConfigurationInfo.getAwsAccountId());
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder

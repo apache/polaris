@@ -176,9 +176,11 @@ public class PolarisPolicyServiceIntegrationTest {
 
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
 
+    catalogPropsBuilder.putAll(DEFAULT_CATALOG_PROPERTIES);
+
     Map<String, String> catalogProperties =
         IntegrationTestsHelper.mergeFromAnnotatedElements(
-            testInfo, CatalogConfig.class, CatalogConfig::properties, DEFAULT_CATALOG_PROPERTIES);
+            testInfo, CatalogConfig.class, CatalogConfig::properties);
     catalogPropsBuilder.putAll(catalogProperties);
 
     if (!s3BucketBase.getScheme().equals("file")) {
@@ -206,7 +208,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
     Map<String, String> restCatalogProperties =
         IntegrationTestsHelper.mergeFromAnnotatedElements(
-            testInfo, RestCatalogConfig.class, RestCatalogConfig::value, Map.of());
+            testInfo, RestCatalogConfig.class, RestCatalogConfig::value);
 
     String principalToken = client.obtainToken(principalCredentials);
     restCatalog =

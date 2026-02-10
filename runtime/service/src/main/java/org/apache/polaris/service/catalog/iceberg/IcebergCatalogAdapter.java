@@ -24,8 +24,6 @@ import static org.apache.polaris.service.catalog.validation.IcebergPropertiesVal
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
@@ -51,27 +49,17 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
@@ -91,62 +79,29 @@ public class IcebergCatalogAdapter
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
-  private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
-  private final CallContext callContext;
   private final RealmConfig realmConfig;
-  private final CallContextCatalogFactory catalogFactory;
-  private final ResolutionManifestFactory resolutionManifestFactory;
-  private final ResolverFactory resolverFactory;
-  private final PolarisMetaStoreManager metaStoreManager;
-  private final PolarisCredentialManager credentialManager;
-  private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
-  private final CatalogHandlerUtils catalogHandlerUtils;
-  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
-  private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
   private final Clock clock;
-  private final EventAttributeMap eventAttributeMap;
+  private final IcebergCatalogHandlerFactory handlerFactory;
 
   @Inject
   public IcebergCatalogAdapter(
-      PolarisDiagnostics diagnostics,
-      RealmContext realmContext,
       CallContext callContext,
-      CallContextCatalogFactory catalogFactory,
-      ResolverFactory resolverFactory,
-      ResolutionManifestFactory resolutionManifestFactory,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCredentialManager credentialManager,
-      PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils,
-      @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
-      StorageAccessConfigProvider storageAccessConfigProvider,
       PolarisMetricsReporter metricsReporter,
       Clock clock,
-      EventAttributeMap eventAttributeMap) {
-    this.diagnostics = diagnostics;
-    this.realmContext = realmContext;
-    this.callContext = callContext;
+      IcebergCatalogHandlerFactory handlerFactory) {
+    this.realmContext = callContext.getRealmContext();
     this.realmConfig = callContext.getRealmConfig();
-    this.catalogFactory = catalogFactory;
-    this.resolutionManifestFactory = resolutionManifestFactory;
-    this.resolverFactory = resolverFactory;
-    this.metaStoreManager = metaStoreManager;
-    this.credentialManager = credentialManager;
-    this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
-    this.catalogHandlerUtils = catalogHandlerUtils;
-    this.externalCatalogFactories = externalCatalogFactories;
-    this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
     this.clock = clock;
-    this.eventAttributeMap = eventAttributeMap;
+    this.handlerFactory = handlerFactory;
   }
 
   /**
@@ -157,7 +112,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext,
       String prefix,
       Function<IcebergCatalogHandler, Response> action) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     return withCatalogByName(securityContext, catalogName, action);
   }
 
@@ -165,7 +120,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext,
       String catalogName,
       Function<IcebergCatalogHandler, Response> action) {
-    try (IcebergCatalogHandler wrapper = newHandlerWrapper(securityContext, catalogName)) {
+    try (IcebergCatalogHandler wrapper = newHandler(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
       LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
@@ -177,26 +132,9 @@ public class IcebergCatalogAdapter
   }
 
   @VisibleForTesting
-  IcebergCatalogHandler newHandlerWrapper(SecurityContext securityContext, String catalogName) {
+  IcebergCatalogHandler newHandler(SecurityContext securityContext, String catalogName) {
     PolarisPrincipal principal = validatePrincipal(securityContext);
-
-    return new IcebergCatalogHandler(
-        diagnostics,
-        callContext,
-        prefixParser,
-        resolverFactory,
-        resolutionManifestFactory,
-        metaStoreManager,
-        credentialManager,
-        principal,
-        catalogFactory,
-        catalogName,
-        polarisAuthorizer,
-        reservedProperties,
-        catalogHandlerUtils,
-        externalCatalogFactories,
-        storageAccessConfigProvider,
-        eventAttributeMap);
+    return handlerFactory.createHandler(catalogName, principal);
   }
 
   @Override
@@ -727,7 +665,7 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
@@ -759,6 +697,9 @@ public class IcebergCatalogAdapter
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
+    if (warehouse == null) {
+      throw new BadRequestException("Please specify a warehouse");
+    }
     return withCatalogByName(
         securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
   }

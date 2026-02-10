@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 3)
+VALUES ('version', 4)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
