@@ -96,6 +96,7 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.CatalogConfig;
@@ -1536,7 +1537,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
     try {
-      String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+      String ns =
+          RESTUtil.encodeNamespace(
+              tableIdentifier.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
       try (Response res =
           genericTableApi
               .request(
@@ -1617,7 +1620,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            tableIdentifier.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         genericTableApi
             .request(

@@ -60,6 +60,7 @@ import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.service.it.env.CatalogConfig;
@@ -110,7 +111,8 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
 
-  private static final String NS1_NAME = RESTUtil.encodeNamespace(NS1);
+  private static final String NS1_NAME =
+      RESTUtil.encodeNamespace(NS1, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
   private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
   private static final String INVALID_POLICY = "INVALID_POLICY";
   private static final String INVALID_TABLE = "INVALID_TABLE";
@@ -296,7 +298,9 @@ public class PolarisPolicyServiceIntegrationTest {
     restCatalog.createNamespace(NS1);
     PolicyIdentifier policyIdentifier = new PolicyIdentifier(NS1, policyName);
 
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            policyIdentifier.getNamespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     CreatePolicyRequest request =
         CreatePolicyRequest.builder()
             .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())

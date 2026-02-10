@@ -41,6 +41,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.entity.NamespaceEntity;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Iceberg REST API.
@@ -112,7 +113,8 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void deleteNamespace(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response response =
         request("v1/{cat}/namespaces/" + ns, Map.of("cat", catalog)).delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
@@ -130,7 +132,8 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listTables(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog)).get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -140,7 +143,8 @@ public class CatalogApi extends PolarisRestApi {
 
   public ListTablesResponse listTables(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("pageToken", pageToken);
     queryParams.put("pageSize", pageSize);
@@ -153,7 +157,9 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void dropTable(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
@@ -178,7 +184,9 @@ public class CatalogApi extends PolarisRestApi {
     HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
     allHeaders.putAll(headers);
 
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
@@ -197,7 +205,8 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listViews(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog)).get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -207,7 +216,8 @@ public class CatalogApi extends PolarisRestApi {
 
   public ListTablesResponse listViews(
       String catalog, Namespace namespace, String pageToken, String pageSize) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("pageToken", pageToken);
     queryParams.put("pageSize", pageSize);
@@ -220,7 +230,9 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void dropView(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/views/{view}",
