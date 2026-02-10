@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.service.test;
 
+import java.util.Optional;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class DefaultTestEnvironmentResolver implements TestEnvironmentResolver {
 
-  private final int localPort = Integer.getInteger("quarkus.http.port");
-  private final int localManagementPort = Integer.getInteger("quarkus.management.port");
+  private final int localPort = getRequiredInt("quarkus.http.port");
+  private final int localManagementPort = getRequiredInt("quarkus.management.port");
 
   /** Resolves the TestEnvironment to point to the local Quarkus Application instance. */
   @Override
@@ -31,5 +33,11 @@ public class DefaultTestEnvironmentResolver implements TestEnvironmentResolver {
     return new TestEnvironment(
         String.format("http://localhost:%d/", localPort),
         String.format("http://localhost:%d/", localManagementPort));
+  }
+
+  private static int getRequiredInt(String key) {
+    Optional<Integer> value = ConfigProvider.getConfig().getOptionalValue(key, Integer.class);
+    return value.orElseThrow(
+        () -> new IllegalStateException("Quarkus property not set correctly: " + key));
   }
 }
