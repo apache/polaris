@@ -74,6 +74,9 @@ public class PolarisSparkCatalog implements TableCatalog {
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(genericTable.getFormat())) {
         return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+      } else if (PolarisCatalogUtils.usePaimon(genericTable.getFormat())) {
+        // Paimon uses DataSourceV2, so we return a V2Table
+        return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
@@ -119,6 +122,9 @@ public class PolarisSparkCatalog implements TableCatalog {
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
       if (PolarisCatalogUtils.useHudi(format)) {
         return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+      } else if (PolarisCatalogUtils.usePaimon(format)) {
+        // Paimon uses DataSourceV2, so we return a V2Table
+        return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);
       }
