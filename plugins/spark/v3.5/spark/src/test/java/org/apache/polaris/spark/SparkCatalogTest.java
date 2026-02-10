@@ -154,6 +154,7 @@ public class SparkCatalogTest {
         .thenReturn("/tmp/test-warehouse");
     Mockito.when(mockedSession.sparkContext()).thenReturn(mockedContext);
     Mockito.when(mockedContext.applicationId()).thenReturn("appId");
+    Mockito.when(mockedContext.appName()).thenReturn("test-app");
     Mockito.when(mockedContext.sparkUser()).thenReturn("test-user");
     Mockito.when(mockedContext.version()).thenReturn("3.5");
 
