@@ -36,16 +36,16 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className | quote }}
   {{- end }}
-  {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
+    {{- if and .secretName .hosts }}
     - hosts:
         {{- range .hosts }}
         - {{ . | quote }}
         {{- end }}
       secretName: {{ .secretName }}
     {{- end }}
-  {{- end }}
+    {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
@@ -61,4 +61,4 @@ spec:
                   number: {{ $svcPort }}
           {{- end }}
     {{- end }}
-  {{- end }}
+    {{- end }}
