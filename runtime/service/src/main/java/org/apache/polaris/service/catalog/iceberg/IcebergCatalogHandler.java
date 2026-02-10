@@ -611,12 +611,30 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @param request the register table request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+  public LoadTableResponse registerTable(
+      Namespace namespace,
+      RegisterTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
 
-    return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
+    request.validate();
+    TableIdentifier ident = TableIdentifier.of(namespace, request.name());
+
+    Set<PolarisStorageActions> actionsRequested = authorizeRegisterTable(ident, delegationModes);
+
+    Table table = baseCatalog.registerTable(ident, request.metadataLocation());
+
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              ident, tableMetadata, delegationModes, actionsRequested, refreshCredentialsEndpoint)
+          .build();
+    } else if (table instanceof BaseMetadataTable) {
+      // metadata tables are loaded on the client side, return NoSuchTableException for now
+      throw new NoSuchTableException("Table does not exist: %s", ident.toString());
+    }
+
+    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -754,6 +772,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } catch (ForbiddenException e) {
       authorizeBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    }
+
+    checkAllowExternalCatalogCredentialVending(delegationModes);
+
+    return actionsRequested;
+  }
+
+  private Set<PolarisStorageActions> authorizeRegisterTable(
+      TableIdentifier tableIdentifier, EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.isEmpty()) {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.REGISTER_TABLE, tableIdentifier);
+      return Set.of();
+    }
+
+    // Here we have a single method that falls through multiple candidate
+    // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
+    // and failing the authz check if grants aren't found, we find the first most-privileged authz
+    // match and respond according to that.
+
+    Set<PolarisStorageActions> actionsRequested =
+        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+    try {
+      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
+      // easily.
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION, tableIdentifier);
+      actionsRequested.add(PolarisStorageActions.WRITE);
+    } catch (ForbiddenException e) {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION, tableIdentifier);
     }
 
     checkAllowExternalCatalogCredentialVending(delegationModes);

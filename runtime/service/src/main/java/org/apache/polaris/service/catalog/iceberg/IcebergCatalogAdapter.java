@@ -425,11 +425,20 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
+    TableIdentifier tableIdentifier =
+        TableIdentifier.of(ns, RESTUtil.decodeString(registerTableRequest.name()));
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(accessDelegationMode);
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
+          LoadTableResponse response =
+              catalog.registerTable(
+                  ns,
+                  registerTableRequest,
+                  delegationModes,
+                  getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier));
           return tryInsertETagHeader(
                   Response.ok(response), response, namespace, registerTableRequest.name())
               .build();
