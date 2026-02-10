@@ -19,11 +19,11 @@
 package org.apache.polaris.service.it;
 
 import java.net.URI;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class ServerManager implements PolarisServerManager {

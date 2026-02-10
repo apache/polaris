@@ -57,8 +57,7 @@ public class RequestIdHeaderTest {
   private static final String CLIENT_ID = "client1";
   private static final String CLIENT_SECRET = "secret1";
 
-  private static final URI baseUri =
-      URI.create("http://localhost:" + getQuarkusTestPort());
+  private static final URI baseUri = URI.create("http://localhost:" + getQuarkusTestPort());
 
   private Response request(Map<String, String> headers) {
     try (PolarisClient client =
