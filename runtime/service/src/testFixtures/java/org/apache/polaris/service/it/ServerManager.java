@@ -51,7 +51,7 @@ public class ServerManager implements PolarisServerManager {
     };
   }
 
-  private static Integer getQuarkusTestPort() {
+  private static int getQuarkusTestPort() {
     return ConfigProvider.getConfig()
         .getOptionalValue("quarkus.http.test-port", Integer.class)
         .orElseThrow(
