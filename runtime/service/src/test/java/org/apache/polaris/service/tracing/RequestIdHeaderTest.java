@@ -29,10 +29,10 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -58,11 +58,7 @@ public class RequestIdHeaderTest {
   private static final String CLIENT_SECRET = "secret1";
 
   private static final URI baseUri =
-      URI.create(
-          "http://localhost:"
-              + Objects.requireNonNull(
-                  Integer.getInteger("quarkus.http.test-port"),
-                  "System property not set correctly: quarkus.http.test-port"));
+      URI.create("http://localhost:" + getQuarkusTestPort());
 
   private Response request(Map<String, String> headers) {
     try (PolarisClient client =
@@ -115,5 +111,14 @@ public class RequestIdHeaderTest {
       assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
       return response.getHeaders().get(REQUEST_ID_HEADER).getFirst().toString();
     }
+  }
+
+  private static int getQuarkusTestPort() {
+    return ConfigProvider.getConfig()
+        .getOptionalValue("quarkus.http.test-port", Integer.class)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "System property not set correctly: quarkus.http.test-port"));
   }
 }
