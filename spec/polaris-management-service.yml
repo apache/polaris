@@ -1075,6 +1075,9 @@ components:
           items:
             type: string
           example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
+        storageName:
+          type: string
+          description: An optional name referencing a server-side storage configuration for credential vending
       required:
         - storageType
       discriminator:
