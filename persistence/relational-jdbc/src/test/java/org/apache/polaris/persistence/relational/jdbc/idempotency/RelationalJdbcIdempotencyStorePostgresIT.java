@@ -34,16 +34,16 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @Testcontainers
 public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Container
-  private static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>(
+  private static final PostgreSQLContainer POSTGRES =
+      new PostgreSQLContainer(
           containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
               .dockerImageName(null)
               .asCompatibleSubstituteFor("postgres"));
