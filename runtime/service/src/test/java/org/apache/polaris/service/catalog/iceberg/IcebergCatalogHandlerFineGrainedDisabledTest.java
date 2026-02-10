@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +31,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.catalog.CatalogPrefixParser;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /**
  * Test class specifically for testing fine-grained authorization when the feature is DISABLED. This
@@ -45,39 +41,11 @@ import org.mockito.Mockito;
 @TestProfile(IcebergCatalogHandlerFineGrainedDisabledTest.Profile.class)
 public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTestBase {
 
-  @Inject CallContextCatalogFactory callContextCatalogFactory;
-  @Inject CatalogPrefixParser prefixParser;
-
-  @SuppressWarnings("unchecked")
-  private static Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory>
-      emptyExternalCatalogFactory() {
-    Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory> mock =
-        Mockito.mock(Instance.class);
-    Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
-    Mockito.when(mock.isUnsatisfied()).thenReturn(true);
-    return mock;
-  }
+  @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   private IcebergCatalogHandler newWrapper() {
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
-    return ImmutableIcebergCatalogHandler.builder()
-        .catalogName(CATALOG_NAME)
-        .polarisPrincipal(authenticatedPrincipal)
-        .diagnostics(diagServices)
-        .callContext(callContext)
-        .prefixParser(prefixParser)
-        .resolverFactory(resolverFactory)
-        .resolutionManifestFactory(resolutionManifestFactory)
-        .metaStoreManager(metaStoreManager)
-        .credentialManager(credentialManager)
-        .catalogFactory(callContextCatalogFactory)
-        .authorizer(polarisAuthorizer)
-        .reservedProperties(reservedProperties)
-        .catalogHandlerUtils(catalogHandlerUtils)
-        .externalCatalogFactories(emptyExternalCatalogFactory())
-        .storageAccessConfigProvider(storageAccessConfigProvider)
-        .eventAttributeMap(eventAttributeMap)
-        .build();
+    return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
 
   public static class Profile extends PolarisAuthzTestBase.Profile {
