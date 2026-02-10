@@ -37,7 +37,11 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -45,6 +49,7 @@ import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
@@ -110,7 +115,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     if (factory == callContextCatalogFactory) {
       return handler;
     }
-    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).build();
+    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).metricsReporter(metricsReporter)
+        .clock(clock)
+        .build();
   }
 
   protected void doTestInsufficientPrivileges(
@@ -2188,5 +2195,52 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         () ->
             newWrapper()
                 .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
+  }
+
+  @Test
+  public void testReportMetricsSufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_REPORT_METRICS,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportMetricsInsufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
   }
 }

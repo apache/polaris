@@ -104,6 +104,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPE
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REPORT_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_LOCATION;
@@ -461,6 +462,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         VIEW_FULL_METADATA,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, VIEW_FULL_METADATA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REPORT_METRICS,
+        List.of(CATALOG_MANAGE_CONTENT, TABLE_FULL_METADATA, TABLE_REPORT_METRICS));
 
     // Catalog privileges
     SUPER_PRIVILEGES.putAll(

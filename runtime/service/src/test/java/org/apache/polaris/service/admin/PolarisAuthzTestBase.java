@@ -30,6 +30,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +94,7 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -206,6 +208,8 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected RealmConfig realmConfig;
   @Inject protected RealmContextHolder realmContextHolder;
   @Inject protected EventAttributeMap eventAttributeMap;
+  @Inject protected PolarisMetricsReporter metricsReporter;
+  @Inject protected Clock clock;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;

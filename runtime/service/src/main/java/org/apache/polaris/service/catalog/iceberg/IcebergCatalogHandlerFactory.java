@@ -22,6 +22,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -36,6 +37,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 
 @RequestScoped
 public class IcebergCatalogHandlerFactory {
@@ -54,6 +56,8 @@ public class IcebergCatalogHandlerFactory {
   @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
+  @Inject PolarisMetricsReporter metricsReporter;
+  @Inject Clock clock;
 
   public IcebergCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableIcebergCatalogHandler.builder()
@@ -73,6 +77,8 @@ public class IcebergCatalogHandlerFactory {
         .externalCatalogFactories(externalCatalogFactories)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(eventAttributeMap)
+        .metricsReporter(metricsReporter)
+        .clock(clock)
         .build();
   }
 }

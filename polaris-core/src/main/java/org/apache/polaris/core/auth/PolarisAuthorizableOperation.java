@@ -90,6 +90,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPE
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REPORT_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_LOCATION;
@@ -144,7 +145,7 @@ public enum PolarisAuthorizableOperation {
   DROP_VIEW(VIEW_DROP),
   VIEW_EXISTS(VIEW_LIST),
   RENAME_VIEW(VIEW_DROP, EnumSet.of(VIEW_LIST, VIEW_CREATE)),
-  REPORT_METRICS(EnumSet.noneOf(PolarisPrivilege.class)),
+  REPORT_METRICS(TABLE_REPORT_METRICS),
   SEND_NOTIFICATIONS(
       EnumSet.of(
           TABLE_CREATE, TABLE_WRITE_PROPERTIES, TABLE_DROP, NAMESPACE_CREATE, NAMESPACE_DROP)),

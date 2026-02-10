@@ -118,6 +118,7 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
 | TABLE_ATTACH_POLICY | Enables attaching policy to a table. |
 | TABLE_DETACH_POLICY | Enables detaching policy from a table. |
+| TABLE_REPORT_METRICS | Enables reporting metrics for a table. |
 
 ### View privileges
 
