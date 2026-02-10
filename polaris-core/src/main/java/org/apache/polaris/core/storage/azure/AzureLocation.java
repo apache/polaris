@@ -104,8 +104,7 @@ public class AzureLocation extends StorageLocation {
    */
   @Override
   public boolean isChildOf(@Nonnull StorageLocation potentialParent) {
-    if (potentialParent instanceof AzureLocation) {
-      AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
+    if (potentialParent instanceof AzureLocation potentialAzureParent) {
       if (this.container.equals(potentialAzureParent.container)) {
         if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
           String formattedFilePath = ensureLeadingSlash(ensureTrailingSlash(this.filePath));

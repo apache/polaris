@@ -74,10 +74,9 @@ public class LoadGenericTableResponse {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof LoadGenericTableResponse)) {
+    if (!(o instanceof LoadGenericTableResponse loadGenericTableResponse)) {
       return false;
     }
-    LoadGenericTableResponse loadGenericTableResponse = (LoadGenericTableResponse) o;
     return Objects.equals(this.table, loadGenericTableResponse.table);
   }
 
