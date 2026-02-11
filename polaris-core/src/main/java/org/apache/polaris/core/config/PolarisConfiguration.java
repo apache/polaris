@@ -24,8 +24,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An ABC for Polaris configurations that alter the service's behavior TODO: deprecate unsafe
@@ -34,8 +32,6 @@ import org.slf4j.LoggerFactory;
  * @param <T> The type of the configuration
  */
 public abstract class PolarisConfiguration<T> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
 
   private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
 
