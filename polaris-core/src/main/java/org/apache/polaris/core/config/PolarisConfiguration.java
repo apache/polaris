@@ -170,13 +170,16 @@ public abstract class PolarisConfiguration<T> {
     }
 
     /**
-     * Used to support backwards compatibility before there were reserved properties. Usage of this
-     * method should be removed over time.
-     *
-     * @deprecated Use {@link #catalogConfig()} instead.
+     * @deprecated Use {@link #legacyCatalogConfig(String)} instead.
      */
-    @Deprecated
+    @SuppressWarnings("DeprecatedIsStillUsed")
+    @Deprecated(since = "1.0.0-incubating", forRemoval = true)
     public Builder<T> catalogConfigUnsafe(String catalogConfig) {
+      return legacyCatalogConfig(catalogConfig);
+    }
+
+    /** Used to support backwards compatibility before there were reserved properties. */
+    Builder<T> legacyCatalogConfig(String catalogConfig) {
       if (catalogConfig.startsWith(SAFE_CATALOG_CONFIG_PREFIX)) {
         throw new IllegalArgumentException(
             "Unsafe catalog configs are not expected to start with " + SAFE_CATALOG_CONFIG_PREFIX);
