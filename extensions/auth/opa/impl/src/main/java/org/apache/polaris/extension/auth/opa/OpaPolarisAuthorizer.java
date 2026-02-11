@@ -42,8 +42,8 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.auth.AuthorizationCallContext;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -115,8 +115,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @throws ForbiddenException if authorization is denied by OPA
    */
   @Override
-  public void preAuthorize(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     if (manifest.hasResolution()) {
       return;
@@ -130,9 +129,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  public void authorize(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
-    if (request.getOperation().isRbacAdminOperation()) {
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    if (request.isInternalPrincipalScope() || request.isInternalRoleScope()) {
       throw new ForbiddenException("OPA denied admin operation");
     }
     boolean allowed =
@@ -150,7 +148,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     authorize(ctx, request);
   }
 

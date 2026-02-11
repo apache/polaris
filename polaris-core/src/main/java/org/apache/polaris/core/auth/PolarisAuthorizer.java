@@ -32,19 +32,19 @@ public interface PolarisAuthorizer {
    *
    * <p>Implementations may resolve or validate any inputs needed to make an authorization decision.
    */
-  void preAuthorize(@Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request);
+  void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
 
   /** Core authorization entry point for the new SPI. */
-  void authorize(@Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request);
+  void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
 
   /**
    * Backwards-compatible external API that throws on deny for legacy call sites.
    *
-   * <p>Default implementation delegates to {@link #authorize(AuthorizationCallContext,
+   * <p>Default implementation delegates to {@link #authorize(AuthorizationState,
    * AuthorizationRequest)}.
    */
   default void authorizeOrThrow(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     authorize(ctx, request);
   }
 

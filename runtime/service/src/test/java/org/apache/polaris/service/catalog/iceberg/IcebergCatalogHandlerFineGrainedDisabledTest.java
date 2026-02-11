@@ -32,6 +32,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         .credentialManager(credentialManager)
         .catalogFactory(callContextCatalogFactory)
         .authorizer(polarisAuthorizer)
+        .authorizationState(new RequestAuthorizationState())
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
         .externalCatalogFactories(emptyExternalCatalogFactory())

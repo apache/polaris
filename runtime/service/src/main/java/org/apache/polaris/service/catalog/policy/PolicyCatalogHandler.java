@@ -28,8 +28,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.auth.AuthorizationCallContext;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -152,7 +152,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             true /* optional */),
         policySecurable);
     resolutionManifest.addPassthroughAlias(policySecurable, identifier);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState();
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
         .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
@@ -194,7 +195,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest = newResolutionManifest();
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState();
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
         .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
@@ -250,7 +252,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisAuthorizableOperation preAuthOp =
         determinePolicyMappingOperation(target.getType(), isAttach);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState();
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
         .preAuthorize(
             authzContext, new AuthorizationRequest(polarisPrincipal(), preAuthOp, null, null));

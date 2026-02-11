@@ -29,6 +29,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 
 @RequestScoped
 public class GenericTableCatalogHandlerFactory {
@@ -38,6 +39,7 @@ public class GenericTableCatalogHandlerFactory {
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisAuthorizer authorizer;
   @Inject PolarisCredentialManager credentialManager;
+  @Inject RequestAuthorizationState authorizationState;
   @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   public GenericTableCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
@@ -48,6 +50,7 @@ public class GenericTableCatalogHandlerFactory {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(authorizer)
+        .authorizationState(authorizationState)
         .credentialManager(credentialManager)
         .externalCatalogFactories(externalCatalogFactories)
         .build();

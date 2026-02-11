@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -171,7 +172,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             serviceIdentityProvider,
             authenticatedRoot,
             authorizer,
-            reservedProperties);
+            reservedProperties,
+            new RequestAuthorizationState());
     adminService.createCatalog(
         new CreateCatalogRequest(
             new CatalogEntity.Builder()

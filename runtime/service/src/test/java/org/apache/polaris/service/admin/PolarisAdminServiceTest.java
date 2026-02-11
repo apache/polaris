@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -110,7 +111,8 @@ public class PolarisAdminServiceTest {
             identityProvider,
             authenticatedPrincipal,
             authorizer,
-            reservedProperties);
+            reservedProperties,
+            new RequestAuthorizationState());
   }
 
   protected static void assertSuccess(BaseResult result) {

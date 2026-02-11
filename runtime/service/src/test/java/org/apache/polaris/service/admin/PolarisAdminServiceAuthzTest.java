@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -58,7 +59,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         serviceIdentityProvider,
         authenticatedPrincipal,
         polarisAuthorizer,
-        reservedProperties);
+        reservedProperties,
+        new RequestAuthorizationState());
   }
 
   private void doTestSufficientPrivileges(

@@ -74,8 +74,8 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
-import org.apache.polaris.core.auth.AuthorizationCallContext;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -154,6 +154,7 @@ public class PolarisAdminService {
   private final UserSecretsManager userSecretsManager;
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
+  private final AuthorizationState authorizationState;
 
   @Inject
   public PolarisAdminService(
@@ -164,7 +165,8 @@ public class PolarisAdminService {
       @Nonnull ServiceIdentityProvider serviceIdentityProvider,
       @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizer authorizer,
-      @Nonnull ReservedProperties reservedProperties) {
+      @Nonnull ReservedProperties reservedProperties,
+      @Nonnull AuthorizationState authorizationState) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -174,6 +176,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.authorizationState = authorizationState;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -265,7 +268,8 @@ public class PolarisAdminService {
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(null);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     PolarisSecurable rootSecurable =
         newSecurable(
@@ -288,7 +292,8 @@ public class PolarisAdminService {
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -344,7 +349,8 @@ public class PolarisAdminService {
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleSecurable);
     resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(catalogRoleSecurable, true);
@@ -366,7 +372,8 @@ public class PolarisAdminService {
             PolarisEntityType.ROOT, List.of(PolarisEntityConstants.getRootContainerName()));
     PolarisSecurable principalRoleSecurable =
         newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -393,7 +400,8 @@ public class PolarisAdminService {
         newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
     PolarisSecurable principalSecurable =
         newTopLevelSecurable(PolarisEntityType.PRINCIPAL, principalName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -424,7 +432,8 @@ public class PolarisAdminService {
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     PolarisSecurable principalRoleSecurable =
         newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -457,7 +466,8 @@ public class PolarisAdminService {
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleSecurable);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -490,7 +500,8 @@ public class PolarisAdminService {
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleSecurable);
     resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -536,7 +547,8 @@ public class PolarisAdminService {
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleSecurable);
     resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
@@ -590,7 +602,8 @@ public class PolarisAdminService {
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleSecurable);
     resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(resolutionManifest);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
     authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {

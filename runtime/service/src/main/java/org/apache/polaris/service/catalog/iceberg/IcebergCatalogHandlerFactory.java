@@ -31,6 +31,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -49,6 +50,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject PolarisCredentialManager credentialManager;
   @Inject CallContextCatalogFactory catalogFactory;
   @Inject PolarisAuthorizer authorizer;
+  @Inject RequestAuthorizationState authorizationState;
   @Inject ReservedProperties reservedProperties;
   @Inject CatalogHandlerUtils catalogHandlerUtils;
   @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
@@ -68,6 +70,7 @@ public class IcebergCatalogHandlerFactory {
         .credentialManager(credentialManager)
         .catalogFactory(catalogFactory)
         .authorizer(authorizer)
+        .authorizationState(authorizationState)
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
         .externalCatalogFactories(externalCatalogFactories)

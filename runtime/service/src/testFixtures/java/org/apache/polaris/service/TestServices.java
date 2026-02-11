@@ -39,8 +39,8 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthorizationCallContext;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -72,6 +72,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -222,7 +223,7 @@ public record TestServices(
           new PolarisAuthorizer() {
             @Override
             public void preAuthorize(
-                @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+                @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
               if (ctx.getResolutionManifest() != null
                   && !ctx.getResolutionManifest().hasResolution()) {
                 ctx.getResolutionManifest().resolveAll();
@@ -231,7 +232,7 @@ public record TestServices(
 
             @Override
             public void authorize(
-                @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {}
+                @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {}
 
             @Override
             public void authorizeOrThrow(
@@ -397,6 +398,7 @@ public record TestServices(
                   .credentialManager(credentialManager)
                   .catalogFactory(callContextFactory)
                   .authorizer(authorizer)
+                  .authorizationState(new RequestAuthorizationState())
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
                   .externalCatalogFactories(externalCatalogFactory)
@@ -444,7 +446,8 @@ public record TestServices(
               serviceIdentityProvider,
               principal,
               authorizer,
-              reservedProperties);
+              reservedProperties,
+              new RequestAuthorizationState());
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(

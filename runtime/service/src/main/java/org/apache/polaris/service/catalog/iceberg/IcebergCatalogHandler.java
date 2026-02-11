@@ -83,8 +83,8 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthorizationCallContext;
 import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -1328,7 +1328,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new BadRequestException("Please specify a warehouse");
     }
     PolarisResolutionManifest manifest = newResolutionManifest();
-    AuthorizationCallContext authzContext = new AuthorizationCallContext(manifest);
+    AuthorizationState authzContext = authorizationState();
+    authzContext.setResolutionManifest(manifest);
     authorizer()
         .preAuthorize(
             authzContext,

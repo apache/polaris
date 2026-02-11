@@ -915,8 +915,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void preAuthorize(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     if (manifest.hasResolution()) {
       return;
@@ -934,8 +933,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void authorize(
-      @Nonnull AuthorizationCallContext ctx, @Nonnull AuthorizationRequest request) {
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     Set<PolarisBaseEntity> activatedEntities =
         manifest == null ? Set.of() : manifest.getAllActivatedCatalogRoleAndPrincipalRoles();

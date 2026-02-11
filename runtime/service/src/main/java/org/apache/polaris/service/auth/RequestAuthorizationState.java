@@ -16,29 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.service.auth;
 
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.RequestScoped;
 import java.util.Objects;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-/**
- * Request-scoped authorization context carrying state shared across authorization phases.
- *
- * <p>Distinct from {@link org.apache.polaris.core.context.CallContext}. This context is intended to
- * carry authorization-specific state, such as a {@link PolarisResolutionManifest}.
- */
-public class AuthorizationCallContext {
+@RequestScoped
+public class RequestAuthorizationState implements AuthorizationState {
   private PolarisResolutionManifest resolutionManifest;
 
-  public AuthorizationCallContext(@Nonnull PolarisResolutionManifest resolutionManifest) {
-    this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
-  }
-
+  @Override
   public @Nonnull PolarisResolutionManifest getResolutionManifest() {
-    return resolutionManifest;
+    return Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
 
+  @Override
   public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
     this.resolutionManifest = Objects.requireNonNull(resolutionManifest, "resolutionManifest");
   }
