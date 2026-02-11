@@ -22,8 +22,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -125,6 +127,8 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisCredentialVendorImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -262,6 +266,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
+    doCallRealMethod()
+        .when(mock)
+        .buildCacheKey(any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -1882,13 +1889,13 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    PolarisCredentialVendor credentialVendor =
+        new PolarisCredentialVendorImpl(metaStoreManager, storageIntegrationProvider, diagServices);
     Map<String, String> credentials =
-        metaStoreManager
+        credentialVendor
             .getSubscopedCredsForEntity(
                 polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
+                taskEntity,
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),

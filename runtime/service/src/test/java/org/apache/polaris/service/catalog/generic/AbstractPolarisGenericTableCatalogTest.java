@@ -19,7 +19,10 @@
 package org.apache.polaris.service.catalog.generic;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -129,6 +132,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
+    doCallRealMethod()
+        .when(mock)
+        .buildCacheKey(any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 

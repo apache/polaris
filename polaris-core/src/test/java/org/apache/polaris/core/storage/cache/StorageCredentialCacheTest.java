@@ -18,18 +18,14 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -39,311 +35,219 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
-  private final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   private final RealmContext realmContext = () -> "testRealm";
   private final RealmConfig realmConfig =
       new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
-  private final StorageCredentialsVendor storageCredentialsVendor;
   private StorageCredentialCache storageCredentialCache;
-
-  public StorageCredentialCacheTest() {
-    storageCredentialsVendor = Mockito.mock(StorageCredentialsVendor.class);
-    Mockito.when(storageCredentialsVendor.getRealmContext()).thenReturn(realmContext);
-    Mockito.when(storageCredentialsVendor.getRealmConfig()).thenReturn(realmConfig);
-  }
 
   @BeforeEach
   void beforeEach() {
     StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
-    storageCredentialCache = new StorageCredentialCache(diagServices, storageCredentialCacheConfig);
+    storageCredentialCache = new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Test
   public void testBadResult() {
-    ScopedCredentialsResult badResult =
-        new ScopedCredentialsResult(
-            BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(badResult);
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+    StorageCredentialCacheKey key =
+        buildKey(
+            getPolarisEntities().get(0),
+            true,
+            Set.of("s3://bucket1/path"),
+            Set.of("s3://bucket3/path"),
+            Optional.empty(),
+            Optional.empty());
 
     Assertions.assertThatThrownBy(
             () ->
-                storageCredentialCache.getOrGenerateSubScopeCreds(
-                    storageCredentialsVendor,
-                    polarisEntity,
-                    true,
-                    Set.of("s3://bucket1/path"),
-                    Set.of("s3://bucket3/path"),
-                    polarisPrincipal,
-                    Optional.empty(),
-                    CredentialVendingContext.empty()))
+                storageCredentialCache.getOrLoad(
+                    key,
+                    realmConfig,
+                    () -> {
+                      throw new UnprocessableEntityException(
+                          "Failed to get subscoped credentials: extra_error_info");
+                    }))
         .isInstanceOf(UnprocessableEntityException.class)
         .hasMessage("Failed to get subscoped credentials: extra_error_info");
   }
 
   @Test
   public void testCacheHit() {
-    List<ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(1));
-    PolarisBaseEntity baseEntity =
-        new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
-    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(3, /* expireSoon= */ false);
+    AtomicInteger loadCount = new AtomicInteger();
+
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    StorageCredentialCacheKey key =
+        buildKey(
+            polarisEntity,
+            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
+            Optional.empty());
 
     // add an item to the cache
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    storageCredentialCache.getOrLoad(
+        key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
-    // subscope for the same entity and same allowed locations, will hit the cache
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    // same key will hit the cache
+    storageCredentialCache.getOrLoad(
+        key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
-    Optional<PolarisPrincipal> emptyPrincipal = Optional.empty();
-
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
-  }
-
-  private void testCacheForAnotherPrincipal(boolean hitExpected) {
-    List<ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(1));
-    PolarisBaseEntity baseEntity =
-        new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
-    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
-    PolarisPrincipal anotherPolarisPrincipal =
-        PolarisPrincipal.of("anotherPrincipal", Map.of(), Set.of());
-
-    // add an item to the cache
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    // same key again — still a hit
+    storageCredentialCache.getOrLoad(
+        key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        anotherPolarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(hitExpected ? 1 : 2);
+    // loader should only have been called once
+    Assertions.assertThat(loadCount.get()).isEqualTo(1);
   }
 
   @Test
-  public void testCacheHitForAnotherPrincipal() {
-    testCacheForAnotherPrincipal(true);
+  public void testCacheHitForSameKeyWithoutPrincipal() {
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(2, /* expireSoon= */ false);
+    AtomicInteger loadCount = new AtomicInteger();
+
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    // Key without principal — same key for different principals
+    StorageCredentialCacheKey key =
+        buildKey(
+            polarisEntity,
+            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
+            Optional.empty());
+
+    storageCredentialCache.getOrLoad(
+        key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // Same key — cache hit regardless of who the caller is
+    storageCredentialCache.getOrLoad(
+        key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    Assertions.assertThat(loadCount.get()).isEqualTo(1);
   }
 
   @Test
-  public void testCacheMissForAnotherPrincipal() {
-    Mockito.when(storageCredentialsVendor.getRealmConfig())
-        .thenReturn(
-            new RealmConfigImpl(
-                new PolarisConfigurationStore() {
-                  @SuppressWarnings("unchecked")
-                  @Override
-                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
-                    if (configName.equals(
-                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
-                            .key())) {
-                      return "true";
-                    }
-                    return null;
-                  }
-                },
-                () -> "realm"));
+  public void testCacheMissForDifferentKeysWithPrincipal() {
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(2, /* expireSoon= */ false);
+    AtomicInteger loadCount = new AtomicInteger();
 
-    testCacheForAnotherPrincipal(false);
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    // Key with principal1
+    StorageCredentialCacheKey key1 =
+        buildKey(
+            polarisEntity,
+            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
+            Optional.of("principal"));
+
+    // Key with principal2
+    StorageCredentialCacheKey key2 =
+        buildKey(
+            polarisEntity,
+            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
+            Optional.of("anotherPrincipal"));
+
+    storageCredentialCache.getOrLoad(
+        key1, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // Different key — cache miss
+    storageCredentialCache.getOrLoad(
+        key2, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(2);
+
+    Assertions.assertThat(loadCount.get()).isEqualTo(2);
   }
 
   @RepeatedTest(10)
   public void testCacheEvict() throws Exception {
-    List<ScopedCredentialsResult> mockedScopedCreds = getFakeScopedCreds(3, /* expireSoon= */ true);
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(3, /* expireSoon= */ true);
+    AtomicInteger loadCount = new AtomicInteger();
 
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(2));
-    PolarisBaseEntity baseEntity =
-        new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
-    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
-
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     StorageCredentialCacheKey cacheKey =
-        StorageCredentialCacheKey.of(
-            realmContext.getRealmIdentifier(),
+        buildKey(
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
-            Optional.of(polarisPrincipal),
-            CredentialVendingContext.empty());
+            Optional.empty());
 
     // the entry will be evicted immediately because the token is expired
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    storageCredentialCache.getOrLoad(
+        cacheKey, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    storageCredentialCache.getOrLoad(
+        cacheKey, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"),
-        polarisPrincipal,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+    storageCredentialCache.getOrLoad(
+        cacheKey, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
 
   @Test
   public void testCacheGenerateNewEntries() {
-    List<ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(2));
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(30, /* expireSoon= */ false);
+    AtomicInteger loadCount = new AtomicInteger();
+
     List<PolarisEntity> entityList = getPolarisEntities();
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
     int cacheSize = 0;
-    // different catalog will generate new cache entries
+
+    // different catalogs will generate new cache entries
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          entity,
-          true,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              entity,
+              true,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
-    // update the entity's storage config, since StorageConfig changed, cache will generate new
+
+    // update the entity's storage config — since StorageConfig changed, cache will generate new
     // entry
     for (PolarisEntity entity : entityList) {
       Map<String, String> internalMap = entity.getPropertiesAsMap();
@@ -351,193 +255,229 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          PolarisEntity.of(updateEntity),
-          /* allowedListAction= */ true,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              PolarisEntity.of(updateEntity),
+              true,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
-    // allowedListAction changed to different value FALSE, will generate new entry
+
+    // allowedListAction changed to FALSE — will generate new entry
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          entity,
-          /* allowedListAction= */ false,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              entity,
+              false,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
-    // different allowedWriteLocations, will generate new entry
+
+    // different allowedWriteLocations — will generate new entry
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          entity,
-          /* allowedListAction= */ false,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://differentbucket/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              entity,
+              false,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://differentbucket/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
-    // different allowedReadLocations, will generate new try
+
+    // different allowedReadLocations — will generate new entry
     for (PolarisEntity entity : entityList) {
       Map<String, String> internalMap = entity.getPropertiesAsMap();
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          PolarisEntity.of(updateEntity),
-          /* allowedListAction= */ false,
-          Set.of("s3://differentbucket/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              PolarisEntity.of(updateEntity),
+              false,
+              Set.of("s3://differentbucket/path", "s3://bucket2/path"),
+              Set.of("s3://bucket/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
   }
 
   @Test
   public void testCacheNotAffectedBy() {
-    List<ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ false);
+    List<StorageAccessConfig> configs = getFakeAccessConfigs(20, /* expireSoon= */ false);
+    AtomicInteger loadCount = new AtomicInteger();
 
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(2));
     List<PolarisEntity> entityList = getPolarisEntities();
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          entity,
-          true,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              entity,
+              true,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket3/path", "s3://bucket4/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     }
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
 
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
-          true,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
+              true,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket3/path", "s3://bucket4/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
-    // other property changes does not affect the cache
+    // other property changes do not affect the cache
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
-          true,
-          Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
+              true,
+              Set.of("s3://bucket1/path", "s3://bucket2/path"),
+              Set.of("s3://bucket3/path", "s3://bucket4/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
+
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
-          true,
-          Set.of("s3://bucket2/path", "s3://bucket1/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
+              true,
+              Set.of("s3://bucket2/path", "s3://bucket1/path"),
+              Set.of("s3://bucket3/path", "s3://bucket4/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
     // order of the allowedWriteLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
-          new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
-          true,
-          Set.of("s3://bucket2/path", "s3://bucket1/path"),
-          Set.of("s3://bucket4/path", "s3://bucket3/path"),
-          polarisPrincipal,
-          Optional.empty(),
-          CredentialVendingContext.empty());
+      StorageCredentialCacheKey key =
+          buildKey(
+              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
+              true,
+              Set.of("s3://bucket2/path", "s3://bucket1/path"),
+              Set.of("s3://bucket4/path", "s3://bucket3/path"),
+              Optional.empty(),
+              Optional.empty());
+      storageCredentialCache.getOrLoad(
+          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
   }
 
-  private static List<ScopedCredentialsResult> getFakeScopedCreds(int number, boolean expireSoon) {
-    List<ScopedCredentialsResult> res = new ArrayList<>();
-    for (int i = 1; i <= number; i = i + 3) {
+  @Test
+  public void testExtraProperties() {
+    StorageAccessConfig config =
+        StorageAccessConfig.builder()
+            .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
+            .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
+            .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
+            .build();
+
+    List<PolarisEntity> entityList = getPolarisEntities();
+
+    StorageCredentialCacheKey key =
+        buildKey(
+            entityList.get(0),
+            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
+            Optional.empty());
+
+    StorageAccessConfig result = storageCredentialCache.getOrLoad(key, realmConfig, () -> config);
+    Assertions.assertThat(result.credentials())
+        .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));
+    Assertions.assertThat(result.extraProperties())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of("s3.endpoint", "test-endpoint1", "s3.path-style-access", "true"));
+  }
+
+  private StorageCredentialCacheKey buildKey(
+      PolarisEntity entity,
+      boolean allowListAction,
+      Set<String> allowedReadLocations,
+      Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> principalName) {
+    return StorageCredentialCacheKey.of(
+        realmContext.getRealmIdentifier(),
+        entity,
+        allowListAction,
+        allowedReadLocations,
+        allowedWriteLocations,
+        refreshCredentialsEndpoint,
+        principalName.map(
+            name -> org.apache.polaris.core.auth.PolarisPrincipal.of(name, Map.of(), Set.of())),
+        CredentialVendingContext.empty());
+  }
+
+  private static List<StorageAccessConfig> getFakeAccessConfigs(int number, boolean expireSoon) {
+    List<StorageAccessConfig> res = new ArrayList<>();
+    for (int i = 1; res.size() < number; i = i + 3) {
       int finalI = i;
-      // NOTE: The default behavior of the Caffeine cache seems to have a bug; if our
-      // expireAfter definition in the StorageCredentialCache constructor doesn't clip
-      // the returned time to minimum of 0, and we set the expiration time to more than
-      // 1 second in the past, it seems the cache fails to remove the expired entries
-      // no matter how long we wait. This is possibly related to the implementation-specific
-      // "minimum difference between the scheduled executions" documented in Caffeine.java
-      // to be 1 second.
       String expireTime =
           expireSoon
               ? String.valueOf(System.currentTimeMillis() - 100)
               : String.valueOf(Long.MAX_VALUE);
       res.add(
-          new ScopedCredentialsResult(
-              StorageAccessConfig.builder()
-                  .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
-                  .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
-                  .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
-                  .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
-                  .build()));
+          StorageAccessConfig.builder()
+              .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
+              .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+              .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
+              .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
+              .build());
       if (res.size() == number) return res;
       res.add(
-          new ScopedCredentialsResult(
-              StorageAccessConfig.builder()
-                  .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
-                  .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
-                  .build()));
+          StorageAccessConfig.builder()
+              .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
+              .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
+              .build());
       if (res.size() == number) return res;
       res.add(
-          new ScopedCredentialsResult(
-              StorageAccessConfig.builder()
-                  .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
-                  .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
-                  .build()));
+          StorageAccessConfig.builder()
+              .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
+              .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
+              .build());
     }
     return res;
   }
 
-  @Nonnull
   private static List<PolarisEntity> getPolarisEntities() {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(
@@ -553,44 +493,5 @@ public class StorageCredentialCacheTest {
                 3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
-  }
-
-  @Test
-  public void testExtraProperties() {
-    ScopedCredentialsResult properties =
-        new ScopedCredentialsResult(
-            StorageAccessConfig.builder()
-                .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
-                .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
-                .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
-                .build());
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(properties);
-    List<PolarisEntity> entityList = getPolarisEntities();
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
-
-    StorageAccessConfig config =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            storageCredentialsVendor,
-            entityList.get(0),
-            true,
-            Set.of("s3://bucket1/path", "s3://bucket2/path"),
-            Set.of("s3://bucket3/path", "s3://bucket4/path"),
-            polarisPrincipal,
-            Optional.empty(),
-            CredentialVendingContext.empty());
-    Assertions.assertThat(config.credentials())
-        .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));
-    Assertions.assertThat(config.extraProperties())
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of("s3.endpoint", "test-endpoint1", "s3.path-style-access", "true"));
   }
 }

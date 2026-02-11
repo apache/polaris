@@ -55,7 +55,9 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisCredentialVendorImpl;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
@@ -107,8 +109,8 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
+      StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(storageCredentialCacheConfig);
   }
 
   @Produces
@@ -226,9 +228,12 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
-  public StorageCredentialsVendor storageCredentialsVendor(
-      PolarisMetaStoreManager metaStoreManager, CallContext callContext) {
-    return new StorageCredentialsVendor(metaStoreManager, callContext);
+  public PolarisCredentialVendor polarisCredentialVendor(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      PolarisDiagnostics diagnostics) {
+    return new PolarisCredentialVendorImpl(
+        metaStoreManager, storageIntegrationProvider, diagnostics);
   }
 
   @Produces

@@ -32,12 +32,17 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
@@ -1623,6 +1628,178 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         context))
         .isInstanceOf(software.amazon.awssdk.services.sts.model.StsException.class)
         .hasMessageContaining("sts:TagSession");
+  }
+
+  // Tests for buildCacheKey
+
+  @Test
+  public void testBuildCacheKeyExcludesPrincipalByDefault() {
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    StorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/read"),
+            Set.of("s3://bucket/write"),
+            Optional.empty(),
+            POLARIS_PRINCIPAL,
+            CredentialVendingContext.empty());
+
+    assertThat(key.principalName()).isEmpty();
+    assertThat(key.credentialVendingContext()).isEqualTo(CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testBuildCacheKeyIncludesPrincipalWhenFlagSet() {
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    StorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/read"),
+            Set.of("s3://bucket/write"),
+            Optional.empty(),
+            POLARIS_PRINCIPAL,
+            CredentialVendingContext.empty());
+
+    assertThat(key.principalName()).isPresent().hasValue("test-principal");
+    assertThat(key.credentialVendingContext()).isEqualTo(CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testBuildCacheKeyIncludesPrincipalAndContextWhenSessionTagsFlagSet() {
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    RealmConfig sessionTagsConfig =
+        new RealmConfigImpl(
+            new PolarisConfigurationStore() {
+              @SuppressWarnings("unchecked")
+              @Override
+              public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                if (configName.equals(
+                    FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
+                  return "true";
+                }
+                return null;
+              }
+            },
+            () -> "realm");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .catalogName(Optional.of("my-catalog"))
+            .namespace(Optional.of("my-ns"))
+            .tableName(Optional.of("my-table"))
+            .build();
+
+    StorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            sessionTagsConfig,
+            true,
+            Set.of("s3://bucket/read"),
+            Set.of("s3://bucket/write"),
+            Optional.empty(),
+            POLARIS_PRINCIPAL,
+            context);
+
+    // Session tags flag implies principal is included
+    assertThat(key.principalName()).isPresent().hasValue("test-principal");
+    // Context is included when session tags are enabled
+    assertThat(key.credentialVendingContext()).isEqualTo(context);
+  }
+
+  @Test
+  public void testBuildCacheKeyDifferentPrincipalsProduceDifferentKeys() {
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    PolarisPrincipal principal1 = PolarisPrincipal.of("alice", Map.of(), Set.of());
+    PolarisPrincipal principal2 = PolarisPrincipal.of("bob", Map.of(), Set.of());
+
+    StorageCredentialCacheKey key1 =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            principal1,
+            CredentialVendingContext.empty());
+
+    StorageCredentialCacheKey key2 =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            principal2,
+            CredentialVendingContext.empty());
+
+    assertThat(key1).isNotEqualTo(key2);
+    assertThat(key1.principalName()).hasValue("alice");
+    assertThat(key2.principalName()).hasValue("bob");
+  }
+
+  @Test
+  public void testBuildCacheKeySamePrincipalsProduceSameKeysWhenFlagOff() {
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    PolarisPrincipal principal1 = PolarisPrincipal.of("alice", Map.of(), Set.of());
+    PolarisPrincipal principal2 = PolarisPrincipal.of("bob", Map.of(), Set.of());
+
+    StorageCredentialCacheKey key1 =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            principal1,
+            CredentialVendingContext.empty());
+
+    StorageCredentialCacheKey key2 =
+        AwsCredentialsStorageIntegration.buildCacheKey(
+            "testRealm",
+            entity,
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            principal2,
+            CredentialVendingContext.empty());
+
+    // With flags off, principal is excluded — keys are equal
+    assertThat(key1).isEqualTo(key2);
   }
 
   @Test

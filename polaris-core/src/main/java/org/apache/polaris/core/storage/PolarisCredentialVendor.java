@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 
@@ -46,9 +47,9 @@ public interface PolarisCredentialVendor {
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @return an enum map containing the scoped credentials
-   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, long, long,
-   *     PolarisEntityType, boolean, Set, Set, PolarisPrincipal, Optional,
-   *     CredentialVendingContext)} instead. This method will be removed in a future release.
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity, boolean,
+   *     Set, Set, PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will
+   *     be removed in a future release.
    */
   @Deprecated(forRemoval = true)
   @Nonnull
@@ -95,7 +96,11 @@ public interface PolarisCredentialVendor {
    * @param credentialVendingContext context containing metadata for session tags (catalog,
    *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity, boolean,
+   *     Set, Set, PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will
+   *     be removed in a future release.
    */
+  @Deprecated(forRemoval = true)
   @Nonnull
   ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,
@@ -108,4 +113,46 @@ public interface PolarisCredentialVendor {
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
       @Nonnull CredentialVendingContext credentialVendingContext);
+
+  /**
+   * Get sub-scoped credentials for an entity, using the entity directly instead of primitive IDs.
+   *
+   * <p>This overload avoids the need for implementations to reload the entity by ID. The default
+   * implementation extracts IDs from the entity and delegates to {@link
+   * #getSubscopedCredsForEntity(PolarisCallContext, long, long, PolarisEntityType, boolean, Set,
+   * Set, PolarisPrincipal, Optional, CredentialVendingContext)}, so existing implementations work
+   * without changes.
+   *
+   * @param callCtx the polaris call context
+   * @param entity the entity to scope credentials for
+   * @param allowListOperation whether to allow LIST operation on the provided locations
+   * @param allowedReadLocations a set of allowed to read locations
+   * @param allowedWriteLocations a set of allowed to write locations
+   * @param polarisPrincipal the principal requesting credentials
+   * @param refreshCredentialsEndpoint an optional endpoint for refreshing credentials
+   * @param credentialVendingContext context containing metadata for session tags
+   * @return an enum map containing the scoped credentials
+   */
+  @Nonnull
+  default ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntity entity,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
+    return getSubscopedCredsForEntity(
+        callCtx,
+        entity.getCatalogId(),
+        entity.getId(),
+        entity.getType(),
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        polarisPrincipal,
+        refreshCredentialsEndpoint,
+        credentialVendingContext);
+  }
 }
