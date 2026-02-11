@@ -134,7 +134,10 @@ The following describes the current limitations of the Polaris Spark client:
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
 
 ### Paimon Table Limitations
-1. Paimon support requires the Paimon Spark connector to be included in the classpath.
+1. Paimon support requires the Paimon Spark connector to be included in the classpath. For example:
+   ```shell
+   --packages org.apache.paimon:paimon-spark-3.5:1.0.0
+   ```
 2. Create a Paimon table without explicit location is not supported.
 3. Rename a Paimon table is not supported.
 
