@@ -22,6 +22,9 @@ name: CI
 on:
   workflow_call:
     # Called from ci-main.yml and ci-pr.yml, which define different concurrency groups.
+    secrets:
+      DEVELOCITY_ACCESS_KEY:
+        required: false
 
 jobs:
   build-checks:

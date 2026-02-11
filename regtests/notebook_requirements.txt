@@ -18,4 +18,4 @@
 #
 
 jupyterlab==4.5.3
-ipykernel==7.1.0
+ipykernel==7.2.0
