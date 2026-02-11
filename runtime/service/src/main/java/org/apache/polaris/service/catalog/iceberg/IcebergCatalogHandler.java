@@ -113,6 +113,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -472,7 +473,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, delegationModes);
+    // Resolve the optimal delegation mode based on catalog capabilities
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
+
+    authorizeCreateTableDirect(namespace, request, resolvedModes);
 
     request.validate();
 
@@ -499,7 +503,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return buildLoadTableResponseWithDelegationCredentials(
               tableIdentifier,
               tableMetadata,
-              delegationModes,
+              resolvedModes,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -598,7 +602,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableStaged(namespace, request, delegationModes);
+    // Resolve the optimal delegation mode based on catalog capabilities
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
+
+    authorizeCreateTableStaged(namespace, request, resolvedModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -606,7 +613,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
             metadata,
-            delegationModes,
+            resolvedModes,
             Set.of(PolarisStorageActions.ALL),
             refreshCredentialsEndpoint)
         .build();
@@ -788,8 +795,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Resolve the optimal delegation mode based on catalog capabilities
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
+
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, delegationModes);
+        authorizeLoadTable(tableIdentifier, resolvedModes);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -821,7 +831,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           buildLoadTableResponseWithDelegationCredentials(
                   tableIdentifier,
                   tableMetadata,
-                  delegationModes,
+                  resolvedModes,
                   actionsRequested,
                   refreshCredentialsEndpoint)
               .build();
@@ -1325,6 +1335,34 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               + "documentation for the catalog config property '%s' to enable this feature",
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
+  }
+
+  /**
+   * Resolves the optimal access delegation mode from the set of requested modes based on the
+   * catalog's capabilities.
+   *
+   * <p>When both VENDED_CREDENTIALS and REMOTE_SIGNING are requested, the resolver checks:
+   *
+   * <ul>
+   *   <li>STS availability from the catalog's storage configuration
+   *   <li>Whether credential subscoping is skipped
+   * </ul>
+   *
+   * <p>This ensures the optimal mode is selected based on actual catalog capabilities rather than
+   * simple heuristics.
+   *
+   * @param requestedModes The set of delegation modes requested by the client
+   * @return The resolved set of delegation modes (containing the single optimal mode)
+   */
+  protected EnumSet<AccessDelegationMode> resolveAccessDelegationModes(
+      EnumSet<AccessDelegationMode> requestedModes) {
+    if (requestedModes.isEmpty()) {
+      return requestedModes;
+    }
+
+    AccessDelegationModeResolver resolver = new AccessDelegationModeResolver(realmConfig());
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    return resolver.resolveToSet(requestedModes, catalogEntity);
   }
 
   @Override
