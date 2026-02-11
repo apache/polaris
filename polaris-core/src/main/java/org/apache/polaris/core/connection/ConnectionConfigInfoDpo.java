@@ -44,8 +44,6 @@ import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInf
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.

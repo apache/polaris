@@ -34,8 +34,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.service.credentials.connection.AuthType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link PolarisCredentialManager} responsible for retrieving credentials

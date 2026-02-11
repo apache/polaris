@@ -22,8 +22,6 @@ import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FileIOUtil {
 
