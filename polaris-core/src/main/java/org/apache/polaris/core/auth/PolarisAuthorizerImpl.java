@@ -127,6 +127,8 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -136,10 +138,13 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -907,5 +912,74 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         polarisPrincipal.getName(),
         resolvedPath);
     return false;
+  }
+
+  @Override
+  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    PolarisResolutionManifest manifest = ctx.getResolutionManifest();
+    if (manifest.hasResolution()) {
+      return;
+    }
+
+    // Phase 2: preserve existing RBAC ordering by resolving the manifest within preAuthorize.
+    manifest.resolveSelections(
+        EnumSet.of(
+            Resolvable.CALLER_PRINCIPAL,
+            Resolvable.CALLER_PRINCIPAL_ROLES,
+            Resolvable.CATALOG_ROLES,
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.TOP_LEVEL_ENTITIES));
+  }
+
+  @Override
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    PolarisResolutionManifest manifest = ctx.getResolutionManifest();
+    Set<PolarisBaseEntity> activatedEntities =
+        manifest == null ? Set.of() : manifest.getAllActivatedCatalogRoleAndPrincipalRoles();
+    List<PolarisResolvedPathWrapper> resolvedTargets =
+        resolveSecurables(manifest, request.getTargets());
+    List<PolarisResolvedPathWrapper> resolvedSecondaries =
+        resolveSecurables(manifest, request.getSecondaries());
+    authorizeOrThrow(
+        request.getPrincipal(),
+        activatedEntities,
+        request.getOperation(),
+        resolvedTargets,
+        resolvedSecondaries);
+  }
+
+  private static List<PolarisResolvedPathWrapper> resolveSecurables(
+      PolarisResolutionManifest manifest, List<PolarisSecurable> securables) {
+    if (securables == null) {
+      return null;
+    }
+    if (manifest == null) {
+      return null;
+    }
+    List<PolarisResolvedPathWrapper> resolved = new ArrayList<>(securables.size());
+    for (PolarisSecurable securable : securables) {
+      PolarisEntityType type = securable.getEntityType();
+      switch (type) {
+        case ROOT:
+          resolved.add(manifest.getResolvedRootContainerEntityAsPath());
+          break;
+        case CATALOG:
+          if (manifest.hasTopLevelName(securable.getName(), type)) {
+            resolved.add(manifest.getResolvedTopLevelEntity(securable.getName(), type));
+          } else {
+            resolved.add(manifest.getResolvedReferenceCatalogEntity());
+          }
+          break;
+        case PRINCIPAL:
+        case PRINCIPAL_ROLE:
+          resolved.add(manifest.getResolvedTopLevelEntity(securable.getName(), type));
+          break;
+        default:
+          resolved.add(manifest.getResolvedPath(securable, true));
+          break;
+      }
+    }
+    return resolved;
   }
 }

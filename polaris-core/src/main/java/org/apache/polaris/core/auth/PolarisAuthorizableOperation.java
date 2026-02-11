@@ -275,7 +275,7 @@ public enum PolarisAuthorizableOperation {
         secondaryPrivilege == null ? null : EnumSet.of(secondaryPrivilege));
   }
 
-  /** EnumSets on target, targetParent */
+  /** Base constructor. */
   PolarisAuthorizableOperation(
       EnumSet<PolarisPrivilege> privilegesOnTarget,
       EnumSet<PolarisPrivilege> privilegesOnSecondary) {

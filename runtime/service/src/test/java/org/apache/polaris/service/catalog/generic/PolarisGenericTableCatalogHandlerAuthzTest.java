@@ -29,6 +29,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -64,6 +65,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .metaStoreManager(metaStoreManager)
         .credentialManager(credentialManager)
         .authorizer(polarisAuthorizer)
+        .authorizationState(new RequestAuthorizationState())
         .externalCatalogFactories(emptyExternalCatalogFactory())
         .build();
   }

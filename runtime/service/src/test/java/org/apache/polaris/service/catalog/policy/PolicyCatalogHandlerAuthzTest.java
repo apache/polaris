@@ -28,6 +28,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -57,6 +58,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         .resolutionManifestFactory(resolutionManifestFactory)
         .authorizer(polarisAuthorizer)
         .metaStoreManager(metaStoreManager)
+        .authorizationState(new RequestAuthorizationState())
         .build();
   }
 

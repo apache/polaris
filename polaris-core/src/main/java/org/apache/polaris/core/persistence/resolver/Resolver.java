@@ -110,6 +110,8 @@ public class Resolver {
   // leniency of resolution of in-catalog paths
   private boolean isPassthroughFacade;
 
+  private boolean skipCallerPrincipalResolution = false;
+
   /**
    * Constructor, effectively starts an entity resolver session
    *
@@ -261,6 +263,10 @@ public class Resolver {
     return status;
   }
 
+  public void setSkipCallerPrincipalResolution(boolean skipCallerPrincipalResolution) {
+    this.skipCallerPrincipalResolution = skipCallerPrincipalResolution;
+  }
+
   public boolean getIsPassthroughFacade() {
     return this.isPassthroughFacade;
   }
@@ -409,7 +415,12 @@ public class Resolver {
     List<ResolvedPolarisEntity> toValidate = new ArrayList<>();
 
     // first resolve the principal and determine the set of activated principal roles
-    ResolverStatus status = this.resolveCallerPrincipalAndPrincipalRoles(toValidate);
+    ResolverStatus status;
+    if (skipCallerPrincipalResolution) {
+      status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+    } else {
+      status = this.resolveCallerPrincipalAndPrincipalRoles(toValidate);
+    }
 
     // if success, continue resolving
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {

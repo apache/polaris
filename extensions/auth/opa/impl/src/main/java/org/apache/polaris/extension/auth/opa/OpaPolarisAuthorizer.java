@@ -26,6 +26,7 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,11 +42,17 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -107,6 +114,44 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param secondary the secondary entity (if any)
    * @throws ForbiddenException if authorization is denied by OPA
    */
+  @Override
+  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    PolarisResolutionManifest manifest = ctx.getResolutionManifest();
+    if (manifest.hasResolution()) {
+      return;
+    }
+    // Resolve requested entities without RBAC role resolution.
+    manifest.resolveSelections(
+        EnumSet.of(
+            Resolvable.REFERENCE_CATALOG,
+            Resolvable.REQUESTED_PATHS,
+            Resolvable.TOP_LEVEL_ENTITIES));
+  }
+
+  @Override
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    if (request.isInternalPrincipalScope() || request.isInternalRoleScope()) {
+      throw new ForbiddenException("OPA denied admin operation");
+    }
+    boolean allowed =
+        queryOpaIntent(
+            request.getPrincipal(),
+            request.getOperation(),
+            request.getTargets(),
+            request.getSecondaries());
+    if (!allowed) {
+      throw new ForbiddenException(
+          "Principal '%s' is not authorized for op %s",
+          request.getPrincipal().getName(), request.getOperation());
+    }
+  }
+
+  @Override
+  public void authorizeOrThrow(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    authorize(ctx, request);
+  }
+
   @Override
   public void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,
@@ -186,6 +231,31 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       httpPost.setEntity(new StringEntity(inputJson, ContentType.APPLICATION_JSON));
 
       // Execute request
+      return httpClientExecute(httpPost, this::queryOpaCheckResponse);
+    } catch (HttpException | IOException e) {
+      throw new RuntimeException("OPA query failed", e);
+    }
+  }
+
+  private boolean queryOpaIntent(
+      PolarisPrincipal principal,
+      PolarisAuthorizableOperation op,
+      List<PolarisSecurable> targets,
+      List<PolarisSecurable> secondaries) {
+    try {
+      String inputJson = buildOpaInputJson(principal, op, targets, secondaries);
+
+      HttpPost httpPost = new HttpPost(policyUri);
+      httpPost.setHeader("Content-Type", "application/json");
+
+      if (tokenProvider != null) {
+        String token = tokenProvider.getToken();
+        if (token != null && !token.isEmpty()) {
+          httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+      }
+
+      httpPost.setEntity(new StringEntity(inputJson, ContentType.APPLICATION_JSON));
       return httpClientExecute(httpPost, this::queryOpaCheckResponse);
     } catch (HttpException | IOException e) {
       throw new RuntimeException("OPA query failed", e);
@@ -295,6 +365,54 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return objectMapper.writeValueAsString(request);
   }
 
+  private String buildOpaInputJson(
+      PolarisPrincipal principal,
+      PolarisAuthorizableOperation op,
+      List<PolarisSecurable> targets,
+      List<PolarisSecurable> secondaries)
+      throws IOException {
+
+    var actor =
+        ImmutableActor.builder()
+            .principal(principal.getName())
+            .addAllRoles(principal.getRoles())
+            .build();
+
+    List<ResourceEntity> targetEntities = new ArrayList<>();
+    if (targets != null) {
+      for (PolarisSecurable target : targets) {
+        ResourceEntity entity = buildResourceEntity(target);
+        if (entity != null) {
+          targetEntities.add(entity);
+        }
+      }
+    }
+
+    List<ResourceEntity> secondaryEntities = new ArrayList<>();
+    if (secondaries != null) {
+      for (PolarisSecurable secondary : secondaries) {
+        ResourceEntity entity = buildResourceEntity(secondary);
+        if (entity != null) {
+          secondaryEntities.add(entity);
+        }
+      }
+    }
+
+    var resource =
+        ImmutableResource.builder().targets(targetEntities).secondaries(secondaryEntities).build();
+    var context = ImmutableContext.builder().requestId(UUID.randomUUID().toString()).build();
+    var input =
+        ImmutableOpaAuthorizationInput.builder()
+            .actor(actor)
+            .action(op.name())
+            .resource(resource)
+            .context(context)
+            .build();
+    var request = ImmutableOpaRequest.builder().input(input).build();
+
+    return objectMapper.writeValueAsString(request);
+  }
+
   /**
    * Builds a resource entity from a resolved path wrapper.
    *
@@ -328,6 +446,40 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
                 .build());
       }
       builder.parents(parents);
+    }
+
+    return builder.build();
+  }
+
+  @Nullable
+  private ResourceEntity buildResourceEntity(@Nullable PolarisSecurable securable) {
+    if (securable == null) {
+      return null;
+    }
+
+    var builder =
+        ImmutableResourceEntity.builder()
+            .type(securable.getEntityType().name())
+            .name(
+                securable.getNameParts().isEmpty()
+                    ? ""
+                    : securable.getNameParts().get(securable.getNameParts().size() - 1));
+
+    List<String> parts = securable.getNameParts();
+    if (parts.size() > 1) {
+      List<ResourceEntity> parents = new ArrayList<>();
+      PolarisEntityType parentType =
+          switch (securable.getEntityType()) {
+            case TABLE_LIKE, POLICY, NAMESPACE -> PolarisEntityType.NAMESPACE;
+            default -> null;
+          };
+      if (parentType != null) {
+        for (int i = 0; i < parts.size() - 1; i++) {
+          parents.add(
+              ImmutableResourceEntity.builder().type(parentType.name()).name(parts.get(i)).build());
+        }
+        builder.parents(parents);
+      }
     }
 
     return builder.build();

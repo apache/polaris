@@ -83,6 +83,8 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -101,7 +103,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
@@ -338,7 +340,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           reservedProperties()
               .removeReservedProperties(
                   resolutionManifest
-                      .getPassthroughResolvedPath(namespace)
+                      .getPassthroughResolvedPath(newNamespaceSecurable(namespace))
                       .getRawLeafEntity()
                       .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
@@ -659,7 +661,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @return the Polaris table entity for the table or null for external catalogs
    */
   private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(newTableLikeSecurable(tableIdentifier));
     PolarisEntity rawLeafEntity = target.getRawLeafEntity();
     if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(rawLeafEntity);
@@ -1315,12 +1318,30 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   public ConfigResponse getConfig() {
-    Resolver resolver = resolverFactory().createResolver(polarisPrincipal(), catalogName());
-    ResolverStatus resolverStatus = resolver.resolveAll();
-    if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
+    // 'catalogName' is taken from the REST request's 'warehouse' query parameter.
+    // 'warehouse' as an output will be treated by the client as a default catalog
+    //   storage base location.
+    // 'prefix' as an output is the REST subpath that routes to the catalog
+    //   resource, which may be URL-escaped catalogName or potentially a different
+    //   unique identifier for the catalog being accessed.
+    if (catalogName() == null) {
+      throw new BadRequestException("Please specify a warehouse");
+    }
+    PolarisResolutionManifest manifest = newResolutionManifest();
+    AuthorizationState authzContext = authorizationState();
+    authzContext.setResolutionManifest(manifest);
+    authorizer()
+        .preAuthorize(
+            authzContext,
+            new AuthorizationRequest(
+                polarisPrincipal(), PolarisAuthorizableOperation.GET_CATALOG, null, null));
+    ResolverStatus resolverStatus = manifest.getResolverStatus();
+    if (resolverStatus == null
+        || !resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName());
     }
-    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
+    ResolvedPolarisEntity resolvedReferenceCatalog =
+        manifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity();
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 

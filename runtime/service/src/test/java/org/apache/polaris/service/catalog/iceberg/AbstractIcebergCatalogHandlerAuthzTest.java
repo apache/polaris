@@ -67,6 +67,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -129,6 +130,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .credentialManager(credentialManager)
         .catalogFactory(factory)
         .authorizer(polarisAuthorizer)
+        .authorizationState(new RequestAuthorizationState())
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
         .externalCatalogFactories(emptyExternalCatalogFactory())
@@ -273,6 +275,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .credentialManager(credentialManager)
             .catalogFactory(callContextCatalogFactory)
             .authorizer(polarisAuthorizer)
+            .authorizationState(new RequestAuthorizationState())
             .reservedProperties(reservedProperties)
             .catalogHandlerUtils(catalogHandlerUtils)
             .externalCatalogFactories(emptyExternalCatalogFactory())
@@ -1194,6 +1197,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .credentialManager(credentialManager)
         .catalogFactory(factory)
         .authorizer(polarisAuthorizer)
+        .authorizationState(new RequestAuthorizationState())
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
         .externalCatalogFactories(emptyExternalCatalogFactory())

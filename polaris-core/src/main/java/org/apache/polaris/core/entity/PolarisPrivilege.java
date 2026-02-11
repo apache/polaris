@@ -352,6 +352,10 @@ public enum PolarisPrivilege {
     return code;
   }
 
+  public @Nonnull PolarisEntityType getSecurableType() {
+    return securableType;
+  }
+
   /**
    * Given the code associated to a privilege, return the privilege associated to it. Return null if
    * not found

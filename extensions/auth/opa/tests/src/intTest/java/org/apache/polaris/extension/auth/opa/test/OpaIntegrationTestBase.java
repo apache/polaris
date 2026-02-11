@@ -21,14 +21,19 @@ package org.apache.polaris.extension.auth.opa.test;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.restassured.http.ContentType;
 import java.io.UncheckedIOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 
 /**
@@ -38,6 +43,7 @@ import org.junit.jupiter.api.AfterEach;
 public abstract class OpaIntegrationTestBase {
 
   private static final JsonMapper mapper = JsonMapper.builder().build();
+  private static final String JWT_SECRET = OpaTestConstants.JWT_SECRET;
   private final List<String> catalogsToCleanup = new ArrayList<>();
 
   protected String toJson(Object value) {
@@ -132,6 +138,17 @@ public abstract class OpaIntegrationTestBase {
     }
 
     return accessToken;
+  }
+
+  protected String createJwtToken(String principalName) {
+    Instant now = Instant.now();
+    return JWT.create()
+        .withIssuer("external-idp")
+        .withSubject(principalName)
+        .withIssuedAt(now)
+        .withExpiresAt(now.plus(1, ChronoUnit.HOURS))
+        .withJWTId(UUID.randomUUID().toString())
+        .sign(Algorithm.HMAC256(JWT_SECRET));
   }
 
   /**

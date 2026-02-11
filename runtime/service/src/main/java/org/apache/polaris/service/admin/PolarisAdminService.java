@@ -74,9 +74,12 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -87,6 +90,7 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -150,6 +154,7 @@ public class PolarisAdminService {
   private final UserSecretsManager userSecretsManager;
   private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
+  private final AuthorizationState authorizationState;
 
   @Inject
   public PolarisAdminService(
@@ -160,7 +165,8 @@ public class PolarisAdminService {
       @Nonnull ServiceIdentityProvider serviceIdentityProvider,
       @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizer authorizer,
-      @Nonnull ReservedProperties reservedProperties) {
+      @Nonnull ReservedProperties reservedProperties,
+      @Nonnull AuthorizationState authorizationState) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -170,6 +176,7 @@ public class PolarisAdminService {
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
+    this.authorizationState = authorizationState;
   }
 
   private PolarisCallContext getCurrentPolarisContext() {
@@ -186,6 +193,40 @@ public class PolarisAdminService {
 
   private PolarisResolutionManifest newResolutionManifest(@Nullable String catalogName) {
     return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
+  }
+
+  private AuthorizationRequest newAuthorizationRequest(PolarisAuthorizableOperation op) {
+    return new AuthorizationRequest(polarisPrincipal, op, null, null);
+  }
+
+  private AuthorizationRequest newAuthorizationRequest(
+      PolarisAuthorizableOperation op,
+      List<PolarisSecurable> targets,
+      List<PolarisSecurable> secondaries) {
+    return new AuthorizationRequest(polarisPrincipal, op, targets, secondaries);
+  }
+
+  private PolarisSecurable newSecurable(PolarisEntityType type, List<String> nameParts) {
+    return new PolarisSecurable(type, nameParts);
+  }
+
+  private PolarisSecurable newTopLevelSecurable(PolarisEntityType type, String name) {
+    return newSecurable(type, List.of(name));
+  }
+
+  private PolarisSecurable newNamespaceSecurable(Namespace namespace) {
+    return newSecurable(PolarisEntityType.NAMESPACE, Arrays.asList(namespace.levels()));
+  }
+
+  private PolarisSecurable newTableLikeSecurable(TableIdentifier identifier) {
+    return newSecurable(
+        PolarisEntityType.TABLE_LIKE, PolarisCatalogHelpers.tableIdentifierToList(identifier));
+  }
+
+  private PolarisSecurable newPolicySecurable(PolicyIdentifier identifier) {
+    return newSecurable(
+        PolarisEntityType.POLICY,
+        PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()));
   }
 
   private static PrincipalEntity getPrincipalByName(
@@ -217,7 +258,9 @@ public class PolarisAdminService {
 
   private static CatalogRoleEntity getCatalogRoleByName(
       PolarisResolutionManifest resolutionManifest, String catalogRoleName) {
-    return Optional.ofNullable(resolutionManifest.getResolvedPath(catalogRoleName))
+    PolarisSecurable catalogRoleSecurable =
+        new PolarisSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
+    return Optional.ofNullable(resolutionManifest.getResolvedPath(catalogRoleSecurable))
         .map(PolarisResolvedPathWrapper::getRawLeafEntity)
         .map(CatalogRoleEntity::of)
         .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
@@ -225,15 +268,13 @@ public class PolarisAdminService {
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(null);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper rootContainerWrapper =
-        resolutionManifest.getResolvedRootContainerEntityAsPath();
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedPrincipalRoleEntities(),
-        op,
-        rootContainerWrapper,
-        null /* secondary */);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    PolarisSecurable rootSecurable =
+        newSecurable(
+            PolarisEntityType.ROOT, List.of(PolarisEntityConstants.getRootContainerName()));
+    authorizer.authorize(authzContext, newAuthorizationRequest(op, List.of(rootSecurable), null));
   }
 
   private PolarisResolutionManifest authorizeBasicTopLevelEntityOperationOrThrow(
@@ -251,13 +292,17 @@ public class PolarisAdminService {
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
           "TopLevelEntity of type %s does not exist: %s", entityType, topLevelEntityName);
     }
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
+    PolarisSecurable topLevelSecurable = newTopLevelSecurable(entityType, topLevelEntityName);
 
     PolarisEntity entity = topLevelEntityWrapper.getResolvedLeafEntity().getEntity();
     if (isSelfEntity(entity) && isSelfOperation(op)) {
@@ -266,12 +311,8 @@ public class PolarisAdminService {
           .addKeyValue("principalName", topLevelEntityName)
           .log("Allowing rotate own credentials");
     } else {
-      authorizer.authorizeOrThrow(
-          polarisPrincipal,
-          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          op,
-          topLevelEntityWrapper,
-          null /* secondary */);
+      authorizer.authorize(
+          authzContext, newAuthorizationRequest(op, List.of(topLevelSecurable), null));
     }
     return resolutionManifest;
   }
@@ -302,20 +343,22 @@ public class PolarisAdminService {
   private PolarisResolutionManifest authorizeBasicCatalogRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(catalogRoleName, true);
+        catalogRoleSecurable);
+    resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(catalogRoleSecurable, true);
     if (target == null) {
       throw new NotFoundException("CatalogRole does not exist: %s", catalogRoleName);
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer.authorize(
+        authzContext, newAuthorizationRequest(op, List.of(catalogRoleSecurable), null));
     return resolutionManifest;
   }
 
@@ -324,7 +367,15 @@ public class PolarisAdminService {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(null);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
+    PolarisSecurable rootSecurable =
+        newSecurable(
+            PolarisEntityType.ROOT, List.of(PolarisEntityConstants.getRootContainerName()));
+    PolarisSecurable principalRoleSecurable =
+        newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -332,18 +383,9 @@ public class PolarisAdminService {
           status.getFailedToResolvedEntityName(), principalRoleName);
     }
 
-    PolarisResolvedPathWrapper rootContainerWrapper =
-        resolutionManifest.getResolvedRootContainerEntityAsPath();
-    PolarisResolvedPathWrapper principalRoleWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(
-            principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        rootContainerWrapper,
-        principalRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(rootSecurable), List.of(principalRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -354,7 +396,14 @@ public class PolarisAdminService {
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     resolutionManifest.addTopLevelName(
         principalName, PolarisEntityType.PRINCIPAL, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
+    PolarisSecurable principalRoleSecurable =
+        newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
+    PolarisSecurable principalSecurable =
+        newTopLevelSecurable(PolarisEntityType.PRINCIPAL, principalName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -362,18 +411,9 @@ public class PolarisAdminService {
           status.getFailedToResolvedEntityName(), principalRoleName, principalName);
     }
 
-    PolarisResolvedPathWrapper principalRoleWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(
-            principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
-    PolarisResolvedPathWrapper principalWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(principalName, PolarisEntityType.PRINCIPAL);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        principalRoleWrapper,
-        principalWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(principalRoleSecurable), List.of(principalSecurable)));
     return resolutionManifest;
   }
 
@@ -383,12 +423,19 @@ public class PolarisAdminService {
       String catalogRoleName,
       String principalRoleName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
+        catalogRoleSecurable);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
+    PolarisSecurable principalRoleSecurable =
+        newTopLevelSecurable(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException(
@@ -400,18 +447,10 @@ public class PolarisAdminService {
           status.getFailedToResolvePath(), catalogName, catalogRoleName, principalRoleName);
     }
 
-    PolarisResolvedPathWrapper principalRoleWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(
-            principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
-    PolarisResolvedPathWrapper catalogRoleWrapper =
-        resolutionManifest.getResolvedPath(catalogRoleName, true);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        catalogRoleWrapper,
-        principalRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(
+            op, List.of(catalogRoleSecurable), List.of(principalRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -420,10 +459,17 @@ public class PolarisAdminService {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
     resolutionManifest.addTopLevelName(
         catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
+    PolarisSecurable catalogSecurable =
+        newTopLevelSecurable(PolarisEntityType.CATALOG, catalogName);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
+        catalogRoleSecurable);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -431,16 +477,9 @@ public class PolarisAdminService {
       throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
     }
 
-    PolarisResolvedPathWrapper catalogWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogRoleWrapper =
-        resolutionManifest.getResolvedPath(catalogRoleName, true);
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        catalogWrapper,
-        catalogRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(catalogSecurable), List.of(catalogRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -450,13 +489,21 @@ public class PolarisAdminService {
       Namespace namespace,
       String catalogRoleName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    PolarisSecurable namespaceSecurable = newNamespaceSecurable(namespace);
     resolutionManifest.addPassthroughPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
+        namespaceSecurable);
+    resolutionManifest.addPassthroughAlias(namespaceSecurable, namespace);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
+        catalogRoleSecurable);
+    resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -469,17 +516,9 @@ public class PolarisAdminService {
       }
     }
 
-    PolarisResolvedPathWrapper namespaceWrapper =
-        resolutionManifest.getResolvedPath(namespace, true);
-    PolarisResolvedPathWrapper catalogRoleWrapper =
-        resolutionManifest.getResolvedPath(catalogRoleName, true);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        namespaceWrapper,
-        catalogRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(namespaceSecurable), List.of(catalogRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -490,18 +529,28 @@ public class PolarisAdminService {
       TableIdentifier identifier,
       String catalogRoleName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    PolarisSecurable namespaceSecurable = newNamespaceSecurable(identifier.namespace());
+    PolarisSecurable tableLikeSecurable = newTableLikeSecurable(identifier);
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
-        identifier.namespace());
+        namespaceSecurable);
+    resolutionManifest.addPassthroughAlias(namespaceSecurable, identifier.namespace());
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
-        identifier);
+        tableLikeSecurable);
+    resolutionManifest.addPassthroughAlias(tableLikeSecurable, identifier);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
+        catalogRoleSecurable);
+    resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
 
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
@@ -516,7 +565,10 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
+            tableLikeSecurable,
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            true);
     boolean rbacForFederatedCatalogsEnabled =
         realmConfig.getConfig(
             FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
@@ -525,15 +577,9 @@ public class PolarisAdminService {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
 
-    PolarisResolvedPathWrapper catalogRoleWrapper =
-        resolutionManifest.getResolvedPath(catalogRoleName, true);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        tableLikeWrapper,
-        catalogRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(tableLikeSecurable), List.of(catalogRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -543,15 +589,23 @@ public class PolarisAdminService {
       PolicyIdentifier identifier,
       String catalogRoleName) {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
+    PolarisSecurable policySecurable = newPolicySecurable(identifier);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
             PolarisEntityType.POLICY),
-        identifier);
+        policySecurable);
+    resolutionManifest.addPathAlias(policySecurable, identifier);
+    PolarisSecurable catalogRoleSecurable =
+        newSecurable(PolarisEntityType.CATALOG_ROLE, List.of(catalogRoleName));
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
+        catalogRoleSecurable);
+    resolutionManifest.addPathAlias(catalogRoleSecurable, catalogRoleName);
+    AuthorizationState authzContext = authorizationState;
+    authzContext.setResolutionManifest(resolutionManifest);
+    authorizer.preAuthorize(authzContext, newAuthorizationRequest(op));
+    ResolverStatus status = resolutionManifest.getResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
@@ -562,16 +616,9 @@ public class PolarisAdminService {
       }
     }
 
-    PolarisResolvedPathWrapper policyWrapper = resolutionManifest.getResolvedPath(identifier, true);
-    PolarisResolvedPathWrapper catalogRoleWrapper =
-        resolutionManifest.getResolvedPath(catalogRoleName, true);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        policyWrapper,
-        catalogRoleWrapper);
+    authorizer.authorize(
+        authzContext,
+        newAuthorizationRequest(op, List.of(policySecurable), List.of(catalogRoleSecurable)));
     return resolutionManifest;
   }
 
@@ -1692,7 +1739,8 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
 
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getResolvedPath(newNamespaceSecurable(namespace));
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
       boolean rbacForFederatedCatalogsEnabled =
@@ -1735,7 +1783,8 @@ public class PolarisAdminService {
 
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
 
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getResolvedPath(newNamespaceSecurable(namespace));
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
       throw new NotFoundException("Namespace %s not found", namespace);
@@ -1808,7 +1857,7 @@ public class PolarisAdminService {
         syntheticNamespace = PolarisEntity.of(result.getEntity());
       } else if (result.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
         PolarisResolvedPathWrapper partialPath =
-            resolutionManifest.getPassthroughResolvedPath(namespace);
+            resolutionManifest.getPassthroughResolvedPath(newNamespaceSecurable(namespace));
         PolarisEntity partialLeafEntity =
             partialPath != null ? partialPath.getRawLeafEntity() : null;
         if (partialLeafEntity == null
@@ -1830,7 +1879,7 @@ public class PolarisAdminService {
       currentParent = syntheticNamespace;
     }
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getPassthroughResolvedPath(namespace);
+        resolutionManifest.getPassthroughResolvedPath(newNamespaceSecurable(namespace));
     return resolvedPathWrapper;
   }
 
@@ -2131,7 +2180,9 @@ public class PolarisAdminService {
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
         resolutionManifest.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+            newTableLikeSecurable(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
       boolean rbacForFederatedCatalogsEnabled =
@@ -2221,7 +2272,7 @@ public class PolarisAdminService {
         syntheticTableEntity);
 
     PolarisResolvedPathWrapper completePathWrapper =
-        resolutionManifest.getPassthroughResolvedPath(identifier);
+        resolutionManifest.getPassthroughResolvedPath(newTableLikeSecurable(identifier));
     PolarisEntity leafEntity =
         completePathWrapper != null ? completePathWrapper.getRawLeafEntity() : null;
     if (completePathWrapper == null
@@ -2276,7 +2327,8 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
 
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(identifier);
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getResolvedPath(newPolicySecurable(identifier));
     if (resolvedPathWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy not exists: %s", identifier));
     }
@@ -2300,7 +2352,8 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
 
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(identifier);
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getResolvedPath(newPolicySecurable(identifier));
     if (resolvedPathWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy not exists: %s", identifier));
     }

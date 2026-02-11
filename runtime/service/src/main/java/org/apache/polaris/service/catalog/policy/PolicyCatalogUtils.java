@@ -19,10 +19,9 @@
 package org.apache.polaris.service.catalog.policy;
 
 import jakarta.annotation.Nonnull;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -33,26 +32,27 @@ public class PolicyCatalogUtils {
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(
       @Nonnull PolarisResolutionManifest resolutionManifest,
-      @Nonnull PolicyAttachmentTarget target) {
+      @Nonnull PolicyAttachmentTarget target,
+      @Nonnull PolarisSecurable targetSecurable) {
     return switch (target.getType()) {
       // get the current catalog entity, since policy cannot apply across catalog at this moment
       case CATALOG -> resolutionManifest.getResolvedReferenceCatalogEntity();
       case NAMESPACE -> {
-        var namespace = Namespace.of(target.getPath().toArray(new String[0]));
-        var resolvedTargetEntity = resolutionManifest.getResolvedPath(namespace);
+        var resolvedTargetEntity = resolutionManifest.getResolvedPath(targetSecurable);
         if (resolvedTargetEntity == null) {
-          throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+          throw new NoSuchNamespaceException(
+              "Namespace does not exist: %s", targetSecurable.getNameParts());
         }
         yield resolvedTargetEntity;
       }
       case TABLE_LIKE -> {
-        var tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
         // only Iceberg tables are supported
         var resolvedTableEntity =
             resolutionManifest.getResolvedPath(
-                tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+                targetSecurable, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
-          throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
+          throw new NoSuchTableException(
+              "Iceberg Table does not exist: %s", targetSecurable.getNameParts());
         }
         yield resolvedTableEntity;
       }

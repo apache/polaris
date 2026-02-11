@@ -68,6 +68,18 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
 
+  public boolean hasResolution() {
+    return primaryResolverStatus != null;
+  }
+
+  public ResolverStatus getResolverStatus() {
+    diagnostics.checkNotNull(
+        primaryResolverStatus,
+        "resolver_not_run_before_access",
+        "resolveAll() must be called before reading resolution results");
+    return primaryResolverStatus;
+  }
+
   private boolean isResolveAllSucceeded() {
     diagnostics.checkNotNull(
         primaryResolverStatus,
@@ -106,6 +118,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
   }
 
+  public boolean hasTopLevelName(String entityName, PolarisEntityType entityType) {
+    return addedTopLevelNames.containsEntry(entityName, entityType);
+  }
+
   /**
    * Adds a path that will be statically resolved with the primary Resolver when resolveAll() is
    * called, and which contributes to the resolution status of whether all paths have successfully
@@ -131,6 +147,29 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     passthroughPaths.put(key, path);
   }
 
+  /** Adds an alias key for a previously added path key. */
+  public void addPathAlias(Object existingKey, Object aliasKey) {
+    diagnostics.check(
+        pathLookup.containsKey(existingKey),
+        "invalid_key_for_path_alias",
+        "existingKey={} pathLookup={}",
+        existingKey,
+        pathLookup);
+    pathLookup.put(aliasKey, pathLookup.get(existingKey));
+  }
+
+  /** Adds an alias key for a previously added passthrough path key. */
+  public void addPassthroughAlias(Object existingKey, Object aliasKey) {
+    diagnostics.check(
+        passthroughPaths.containsKey(existingKey),
+        "invalid_key_for_passthrough_alias",
+        "existingKey={} passthroughPaths={}",
+        existingKey,
+        passthroughPaths);
+    passthroughPaths.put(aliasKey, passthroughPaths.get(existingKey));
+    addPathAlias(existingKey, aliasKey);
+  }
+
   public ResolverStatus resolveAll() {
     primaryResolverStatus = primaryResolver.resolveAll();
     // TODO: This could be a race condition where a Principal is dropped after initial authn
@@ -140,6 +179,25 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
+    return primaryResolverStatus;
+  }
+
+  /**
+   * Resolves explicitly requested components.
+   *
+   * <p>Phase 1 behavior delegates to {@link #resolveAll()} to preserve existing semantics until
+   * resolver selection is fully implemented.
+   */
+  public ResolverStatus resolveSelections(Set<Resolvable> selections) {
+    boolean skipCallerPrincipal =
+        !selections.contains(Resolvable.CALLER_PRINCIPAL)
+            && !selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES);
+    if (!skipCallerPrincipal) {
+      return resolveAll();
+    }
+
+    primaryResolver.setSkipCallerPrincipalResolution(true);
+    primaryResolverStatus = primaryResolver.resolveAll();
     return primaryResolverStatus;
   }
 
@@ -179,12 +237,17 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    */
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
-    diagnostics.check(
-        passthroughPaths.containsKey(key),
-        "invalid_key_for_passthrough_resolved_path",
-        "key={} passthroughPaths={}",
-        key,
-        passthroughPaths);
+    if (!passthroughPaths.containsKey(key)) {
+      if (pathLookup.containsKey(key)) {
+        return getResolvedPath(key);
+      }
+      diagnostics.check(
+          false,
+          "invalid_key_for_passthrough_resolved_path",
+          "key={} passthroughPaths={}",
+          key,
+          passthroughPaths);
+    }
     ResolverPath requestedPath = passthroughPaths.get(key);
 
     // Run a single-use Resolver for this path.

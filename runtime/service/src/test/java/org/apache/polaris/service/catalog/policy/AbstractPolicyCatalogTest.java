@@ -74,6 +74,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.auth.RequestAuthorizationState;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -187,7 +188,8 @@ public abstract class AbstractPolicyCatalogTest {
             serviceIdentityProvider,
             authenticatedRoot,
             authorizer,
-            reservedProperties);
+            reservedProperties,
+            new RequestAuthorizationState());
 
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =

@@ -27,7 +27,28 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
+  /**
+   * Pre-authorization hook for resolving authorizer-specific inputs.
+   *
+   * <p>Implementations may resolve or validate any inputs needed to make an authorization decision.
+   */
+  void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
 
+  /** Core authorization entry point for the new SPI. */
+  void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
+
+  /**
+   * Backwards-compatible external API that throws on deny for legacy call sites.
+   *
+   * <p>Default implementation delegates to {@link #authorize(AuthorizationState,
+   * AuthorizationRequest)}.
+   */
+  default void authorizeOrThrow(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    authorize(ctx, request);
+  }
+
+  @Deprecated
   void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
@@ -35,6 +56,7 @@ public interface PolarisAuthorizer {
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary);
 
+  @Deprecated
   void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,

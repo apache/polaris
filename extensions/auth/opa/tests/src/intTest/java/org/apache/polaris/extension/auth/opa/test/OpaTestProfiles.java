@@ -42,6 +42,10 @@ public final class OpaTestProfiles {
       config.put(
           "polaris.authorization.opa.auth.bearer.static-token.value",
           "test-opa-bearer-token-12345");
+      config.put("polaris.authentication.authenticator.type", "passthrough");
+      config.put("polaris.authentication.token-broker.type", "symmetric-key");
+      config.put(
+          "polaris.authentication.token-broker.symmetric-key.secret", OpaTestConstants.JWT_SECRET);
       config.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
       config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
       config.put("polaris.readiness.ignore-severe-issues", "true");
@@ -71,6 +75,11 @@ public final class OpaTestProfiles {
         config.put(
             "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString());
         config.put("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S");
+        config.put("polaris.authentication.authenticator.type", "passthrough");
+        config.put("polaris.authentication.token-broker.type", "symmetric-key");
+        config.put(
+            "polaris.authentication.token-broker.symmetric-key.secret",
+            OpaTestConstants.JWT_SECRET);
         config.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
         config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
         config.put("polaris.readiness.ignore-severe-issues", "true");
