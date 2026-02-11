@@ -466,22 +466,46 @@ You can now publish Docker images on DockerHub:
 ```
 
 ### Upload the documentation
-Now that the release artifacts have been published, the next step is to publish the associated documentation on the website.  Checkout the `versioned-docs` branch locally and copy the documentation associated to the release tag at the root of the repository.
+Now that the release artifacts have been published, the next step is to publish the associated documentation on the website.
+
+First, checkout the release tag:
 
 ```
-git checkout -b versioned-docs-[major].[minor].[patch] versioned-docs
+git checkout apache-polaris-[major].[minor].[patch]-incubating
+```
+
+Set up a worktree for the versioned docs and create a new branch:
+
+```
+site/bin/checkout-releases.sh
+cd site/content/releases
+git checkout -b versioned-docs-[major].[minor].[patch]
 mkdir [major].[minor].[patch]
-git archive apache-polaris-[major].[minor].[patch]-incubating site/content/in-dev/unreleased | tar -x --strip-components=4 -C [major].[minor].[patch]/
 ```
 
-Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications.
+Copy the documentation from the release tag:
+
+```
+cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
+```
+
+Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications:
 * Change the title from `In Development` to `[major].[minor].[patch]`.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
-* Commit and push to your fork
+
+Commit and push to your fork:
 
 ```
 git add .
 git commit -m "Add documentation for [major].[minor].[patch]"
+git push <your-fork> versioned-docs-[major].[minor].[patch]
+```
+
+Clean up the worktree:
+
+```
+cd ../../..
+site/bin/remove-releases.sh
 ```
 
 Then open a PR against the `versioned-docs` branch with your changes.
