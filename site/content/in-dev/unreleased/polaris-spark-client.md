@@ -123,7 +123,7 @@ build a Spark client jar locally from source. Please check out the Polaris repo 
 The following describes the current limitations of the Polaris Spark client:
 
 ### General Limitations
-1. The Polaris Spark client supports Iceberg, Delta, Hudi, and Paimon tables. Other table formats like CSV, JSON, etc. are not supported for table operations through Spark.
+1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
 2. Generic tables (non-Iceberg tables) APIs do not currently support credential vending.
 
 ### Delta Table Limitations
@@ -132,21 +132,3 @@ The following describes the current limitations of the Polaris Spark client:
 2. Create a Delta table without explicit location is not supported.
 3. Rename a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
-
-### Paimon Table Limitations
-1. Paimon support requires the Paimon Spark connector to be included in the classpath. For example:
-   ```shell
-   --packages org.apache.paimon:paimon-spark-3.5:1.0.0
-   ```
-2. Create a Paimon table without explicit location is not supported.
-3. Rename a Paimon table is not supported.
-
-## Spark Catalog Configuration
-
-The following configuration options are available for customizing catalog behavior:
-
-| Configuration Key | Default Value | Description |
-|-------------------|---------------|-------------|
-| `delta-catalog-impl` | `org.apache.spark.sql.delta.catalog.DeltaCatalog` | Custom Delta catalog implementation class |
-| `hudi-catalog-impl` | `org.apache.spark.sql.hudi.catalog.HoodieCatalog` | Custom Hudi catalog implementation class |
-| `paimon-catalog-impl` | `org.apache.paimon.spark.SparkCatalog` | Custom Paimon catalog implementation class |
