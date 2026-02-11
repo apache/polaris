@@ -132,7 +132,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
           .catalogConfig("polaris.config.allow.overlapping.table.location")
-          .legacyConfig("allow.overlapping.table.location")
+          .legacyCatalogConfig("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
@@ -167,7 +167,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.unstructured.table.location")
-          .legacyConfig("allow.unstructured.table.location")
+          .legacyCatalogConfig("allow.unstructured.table.location")
           .description("If set to true, allows unstructured table locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -176,7 +176,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.external.table.location")
-          .legacyConfig("allow.external.table.location")
+          .legacyCatalogConfig("allow.external.table.location")
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
@@ -186,7 +186,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
           .catalogConfig("polaris.config.enable.credential.vending")
-          .legacyConfig("enable.credential.vending")
+          .legacyCatalogConfig("enable.credential.vending")
           .description("If set to true, allow credential vending for external catalogs.")
           .defaultValue(true)
           .buildFeatureConfiguration();
@@ -204,7 +204,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("polaris.config.supported.storage.types")
-          .legacyConfig("supported.storage.types")
+          .legacyCatalogConfig("supported.storage.types")
           .description("The list of supported storage types for a catalog")
           .defaultValue(
               List.of(
@@ -217,7 +217,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
           .catalogConfig("polaris.config.cleanup.on.namespace.drop")
-          .legacyConfig("cleanup.on.namespace.drop")
+          .legacyCatalogConfig("cleanup.on.namespace.drop")
           .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -226,7 +226,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
           .catalogConfig("polaris.config.cleanup.on.catalog.drop")
-          .legacyConfig("cleanup.on.catalog.drop")
+          .legacyCatalogConfig("cleanup.on.catalog.drop")
           .description("If set to true, clean up data when a catalog is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
@@ -235,7 +235,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
           .catalogConfig("polaris.config.drop-with-purge.enabled")
-          .legacyConfig("drop-with-purge.enabled")
+          .legacyCatalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(false)
