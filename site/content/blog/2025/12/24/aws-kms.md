@@ -28,8 +28,7 @@ a way to encrypt S3 data in AWS without exposing raw key material outside AWS se
 
 Apache Polaris supports using KMS in its catalogs backed by AWS S3 storage.
 
-The core functionality is available via Polaris REST API since the `1.2.0-incubating` release.
-CLI support will be made available in the release following `1.3.0-incubating`.
+This functionality is available since the `1.4.0-incubating` release.
 
 ## Configuring Polaris Catalog
 
