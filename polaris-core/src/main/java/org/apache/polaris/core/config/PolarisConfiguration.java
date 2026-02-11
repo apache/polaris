@@ -170,7 +170,7 @@ public abstract class PolarisConfiguration<T> {
     }
 
     /**
-     * @deprecated Use {@link #catalogConfig()} or {@link #legacyCatalogConfig(String)} instead.
+     * @deprecated Use {@link #legacyCatalogConfig(String)} instead.
      */
     @SuppressWarnings("DeprecatedIsStillUsed")
     @Deprecated
