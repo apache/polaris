@@ -53,7 +53,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -101,7 +101,7 @@ public class TestCatalogMaintenance {
   @Inject MaintenanceService maintenance;
   @Inject MutableMonotonicClock mutableMonotonicClock;
 
-  @Inject PolarisConfigurationStore configurationStore;
+  @Inject RealmConfigurationSource configurationSource;
   @Inject CacheBackend cacheBackend;
   @Inject RealmPersistenceFactory realmPersistenceFactory;
 
@@ -139,7 +139,7 @@ public class TestCatalogMaintenance {
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var callCtx = new PolarisCallContext(realmContext, session, configurationStore);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
     var persistence =
         realmPersistenceFactory.newBuilder().realmId(realmId).skipDecorators().build();
@@ -455,7 +455,7 @@ public class TestCatalogMaintenance {
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var callCtx = new PolarisCallContext(realmContext, session, configurationStore);
+    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
     for (var e : entities) {
       var result =
