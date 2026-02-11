@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 @Identifier("opa")
 class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
-  private static final Logger logger = LoggerFactory.getLogger(OpaPolarisAuthorizerFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpaPolarisAuthorizerFactory.class);
 
   private final OpaAuthorizationConfig opaConfig;
   private final Clock clock;
@@ -105,10 +105,10 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     if (bearerTokenProvider != null) {
       try {
         bearerTokenProvider.close();
-        logger.debug("Bearer token provider closed successfully");
+        LOGGER.debug("Bearer token provider closed successfully");
       } catch (Exception e) {
         // Log but don't throw - we're shutting down anyway
-        logger.warn("Error closing bearer token provider: {}", e.getMessage(), e);
+        LOGGER.warn("Error closing bearer token provider: {}", e.getMessage(), e);
       }
     }
 
@@ -116,10 +116,10 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     if (httpClient != null) {
       try {
         httpClient.close();
-        logger.debug("HTTP client closed successfully");
+        LOGGER.debug("HTTP client closed successfully");
       } catch (IOException e) {
         // Log but don't throw - we're shutting down anyway
-        logger.warn("Error closing HTTP client: {}", e.getMessage(), e);
+        LOGGER.warn("Error closing HTTP client: {}", e.getMessage(), e);
       }
     }
   }
