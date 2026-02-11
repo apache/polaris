@@ -194,7 +194,7 @@ public class DefaultConfigurationStoreTest {
             .description(prefix)
             .buildFeatureConfiguration();
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     FeatureConfiguration<Boolean> unsafeConfig =
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_unsafe", prefix))
@@ -203,7 +203,7 @@ public class DefaultConfigurationStoreTest {
             .description(prefix)
             .buildFeatureConfiguration();
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     FeatureConfiguration<Boolean> bothConfig =
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_both", prefix))

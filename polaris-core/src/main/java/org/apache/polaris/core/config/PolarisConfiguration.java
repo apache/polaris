@@ -173,7 +173,7 @@ public abstract class PolarisConfiguration<T> {
      * @deprecated Use {@link #legacyCatalogConfig(String)} instead.
      */
     @SuppressWarnings("DeprecatedIsStillUsed")
-    @Deprecated
+    @Deprecated(since = "1.0.0-incubating", forRemoval = true)
     public Builder<T> catalogConfigUnsafe(String catalogConfig) {
       return legacyCatalogConfig(catalogConfig);
     }
