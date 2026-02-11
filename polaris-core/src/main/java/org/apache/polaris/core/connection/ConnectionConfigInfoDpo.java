@@ -61,8 +61,6 @@ import org.slf4j.LoggerFactory;
   @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
-
   // The type of the connection
   private final int connectionTypeCode;
 

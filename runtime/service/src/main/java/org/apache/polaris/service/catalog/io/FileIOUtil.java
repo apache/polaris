@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FileIOUtil {
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileIOUtil.class);
 
   private FileIOUtil() {}
 
