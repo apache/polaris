@@ -128,13 +128,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
           .catalogConfig("polaris.config.allow.overlapping.table.location")
-          .catalogConfigUnsafe("allow.overlapping.table.location")
+          .legacyConfig("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
@@ -165,36 +163,30 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.unstructured.table.location")
-          .catalogConfigUnsafe("allow.unstructured.table.location")
+          .legacyConfig("allow.unstructured.table.location")
           .description("If set to true, allows unstructured table locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("polaris.config.allow.external.table.location")
-          .catalogConfigUnsafe("allow.external.table.location")
+          .legacyConfig("allow.external.table.location")
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
           .catalogConfig("polaris.config.enable.credential.vending")
-          .catalogConfigUnsafe("enable.credential.vending")
+          .legacyConfig("enable.credential.vending")
           .description("If set to true, allow credential vending for external catalogs.")
           .defaultValue(true)
           .buildFeatureConfiguration();
@@ -208,13 +200,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("polaris.config.supported.storage.types")
-          .catalogConfigUnsafe("supported.storage.types")
+          .legacyConfig("supported.storage.types")
           .description("The list of supported storage types for a catalog")
           .defaultValue(
               List.of(
@@ -223,35 +213,29 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.GCS.name()))
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
           .catalogConfig("polaris.config.cleanup.on.namespace.drop")
-          .catalogConfigUnsafe("cleanup.on.namespace.drop")
+          .legacyConfig("cleanup.on.namespace.drop")
           .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
           .catalogConfig("polaris.config.cleanup.on.catalog.drop")
-          .catalogConfigUnsafe("cleanup.on.catalog.drop")
+          .legacyConfig("cleanup.on.catalog.drop")
           .description("If set to true, clean up data when a catalog is dropped")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  @SuppressWarnings(
-      "deprecation") // catalogConfigUnsafe() is deprecated, not the feature config itself
   public static final FeatureConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
           .catalogConfig("polaris.config.drop-with-purge.enabled")
-          .catalogConfigUnsafe("drop-with-purge.enabled")
+          .legacyConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(false)
