@@ -29,6 +29,10 @@ github:
     - polaris
     - iceberg
     - apache
+    - lakehouse
+    - opencatalog
+    - metadata
+    - catalog
 
   enabled_merge_buttons:
     merge: false
@@ -75,7 +79,7 @@ notifications:
   commits:      commits@polaris.apache.org
   issues:       issues@polaris.apache.org
   pullrequests: issues@polaris.apache.org
-  discussions:  issues@polaris.apache.org
+  discussions:  dev@polaris.apache.org
   jira_options: link label
 
 publish:
