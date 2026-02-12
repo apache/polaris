@@ -193,6 +193,60 @@ public class QueryGenerator {
   }
 
   /**
+   * Builds an UPDATE query that updates only the specified columns and supports richer WHERE
+   * predicates (equality, greater-than, less-than, IS NULL, IS NOT NULL).
+   *
+   * <p>Callers should prefer passing an ordered map (e.g. {@link java.util.LinkedHashMap}) for the
+   * set clause so generated SQL and parameter order are consistent.
+   *
+   * @param tableColumns List of valid table columns.
+   * @param tableName Target table.
+   * @param setClause Column-value pairs to update.
+   * @param whereEquals Column-value pairs used in WHERE equality filtering.
+   * @param whereGreater Column-value pairs used in WHERE greater-than filtering.
+   * @param whereLess Column-value pairs used in WHERE less-than filtering.
+   * @param whereIsNull Columns that must be NULL.
+   * @param whereIsNotNull Columns that must be NOT NULL.
+   * @return UPDATE query with parameter bindings.
+   */
+  public static PreparedQuery generateUpdateQuery(
+      @Nonnull List<String> tableColumns,
+      @Nonnull String tableName,
+      @Nonnull Map<String, Object> setClause,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater,
+      @Nonnull Map<String, Object> whereLess,
+      @Nonnull Set<String> whereIsNull,
+      @Nonnull Set<String> whereIsNotNull) {
+    if (setClause.isEmpty()) {
+      throw new IllegalArgumentException("Empty setClause");
+    }
+
+    Set<String> columns = new HashSet<>(tableColumns);
+    validateColumns(columns, setClause.keySet());
+
+    QueryFragment where =
+        generateWhereClauseExtended(
+            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
+
+    List<String> setParts = new ArrayList<>();
+    List<Object> params = new ArrayList<>();
+    for (Map.Entry<String, Object> entry : setClause.entrySet()) {
+      setParts.add(entry.getKey() + " = ?");
+      params.add(entry.getValue());
+    }
+    params.addAll(where.parameters());
+
+    String sql =
+        "UPDATE "
+            + getFullyQualifiedTableName(tableName)
+            + " SET "
+            + String.join(", ", setParts)
+            + where.sql();
+    return new PreparedQuery(sql, params);
+  }
+
+  /**
    * Builds a DELETE query with the given conditions.
    *
    * @param tableColumns List of valid table columns.
@@ -205,6 +259,26 @@ public class QueryGenerator {
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
     QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    return new PreparedQuery(
+        "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
+  }
+
+  /**
+   * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
+   * IS NULL, IS NOT NULL).
+   */
+  public static PreparedQuery generateDeleteQuery(
+      @Nonnull List<String> tableColumns,
+      @Nonnull String tableName,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater,
+      @Nonnull Map<String, Object> whereLess,
+      @Nonnull Set<String> whereIsNull,
+      @Nonnull Set<String> whereIsNotNull) {
+    Set<String> columns = new HashSet<>(tableColumns);
+    QueryFragment where =
+        generateWhereClauseExtended(
+            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
@@ -231,21 +305,52 @@ public class QueryGenerator {
       @Nonnull Set<String> tableColumns,
       @Nonnull Map<String, Object> whereEquals,
       @Nonnull Map<String, Object> whereGreater) {
+    return generateWhereClauseExtended(
+        tableColumns, whereEquals, whereGreater, Map.of(), Set.of(), Set.of());
+  }
+
+  private static void validateColumns(
+      @Nonnull Set<String> tableColumns, @Nonnull Set<String> columns) {
+    for (String column : columns) {
+      if (!tableColumns.contains(column) && !column.equals("realm_id")) {
+        throw new IllegalArgumentException("Invalid query column: " + column);
+      }
+    }
+  }
+
+  @VisibleForTesting
+  static QueryFragment generateWhereClauseExtended(
+      @Nonnull Set<String> tableColumns,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater,
+      @Nonnull Map<String, Object> whereLess,
+      @Nonnull Set<String> whereIsNull,
+      @Nonnull Set<String> whereIsNotNull) {
+    validateColumns(tableColumns, whereEquals.keySet());
+    validateColumns(tableColumns, whereGreater.keySet());
+    validateColumns(tableColumns, whereLess.keySet());
+    validateColumns(tableColumns, whereIsNull);
+    validateColumns(tableColumns, whereIsNotNull);
+
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
-      if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
-        throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
-      }
       conditions.add(entry.getKey() + " = ?");
       parameters.add(entry.getValue());
     }
     for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {
-      if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
-        throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
-      }
       conditions.add(entry.getKey() + " > ?");
       parameters.add(entry.getValue());
+    }
+    for (Map.Entry<String, Object> entry : whereLess.entrySet()) {
+      conditions.add(entry.getKey() + " < ?");
+      parameters.add(entry.getValue());
+    }
+    for (String column : whereIsNull) {
+      conditions.add(column + " IS NULL");
+    }
+    for (String column : whereIsNotNull) {
+      conditions.add(column + " IS NOT NULL");
     }
     String clause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
     return new QueryFragment(clause, parameters);
