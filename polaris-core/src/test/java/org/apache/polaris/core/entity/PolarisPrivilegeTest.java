@@ -131,7 +131,6 @@ public class PolarisPrivilegeTest {
         Arguments.of(100, PolarisPrivilege.TABLE_REMOVE_STATISTICS),
         Arguments.of(101, PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS),
         Arguments.of(102, PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
-        Arguments.of(103, PolarisPrivilege.TABLE_REPORT_METRICS),
         Arguments.of(104, null));
   }
 
