@@ -33,12 +33,13 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 ## Features
 
 * Apache Iceberg REST catalog implementing the Iceberg REST specification
+* Support for multiple table formats, including Iceberg, Delta Lake, Hudi, and Lance
 * Multi-engine interoperability for Spark, Trino, Flink, and other Iceberg-compatible engines
 * Centralized security and governance with principals, roles, and fine-grained privileges
 * Centralized catalog, namespace, and table management
-* Kubernetes-native deployment with stateless services and horizontal scalability
+* Kubernetes-native deployment with support for horizontal scaling, Ingress, and Gateway API
 * Production-ready observability with health checks and metrics
-* Open source and vendor neutral, governed by the Apache Software Foundation
+* Open source and vendor neutral, governed by the Apache Polaris PPMC under the Apache Software Foundation
 
 ## Documentation
 
