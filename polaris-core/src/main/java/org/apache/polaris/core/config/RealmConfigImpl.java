@@ -106,12 +106,24 @@ public class RealmConfigImpl implements RealmConfig {
     }
 
     if (config.defaultValue() instanceof Boolean) {
+      if (value instanceof Boolean) {
+        return config.cast(value);
+      }
       return config.cast(Boolean.valueOf(String.valueOf(value)));
     } else if (config.defaultValue() instanceof Integer) {
+      if (value instanceof Integer) {
+        return config.cast(value);
+      }
       return config.cast(Integer.valueOf(String.valueOf(value)));
     } else if (config.defaultValue() instanceof Long) {
+      if (value instanceof Long) {
+        return config.cast(value);
+      }
       return config.cast(Long.valueOf(String.valueOf(value)));
     } else if (config.defaultValue() instanceof Double) {
+      if (value instanceof Double) {
+        return config.cast(value);
+      }
       return config.cast(Double.valueOf(String.valueOf(value)));
     } else if (config.defaultValue() instanceof List<?>) {
       return config.cast(new ArrayList<>((List<?>) value));
