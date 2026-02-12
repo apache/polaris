@@ -37,3 +37,15 @@ maintainers:  # Maintainers section is kept only to satisfy the Helm Chart Spec 
   - name: gerrit-k
   - name: snazy
   - name: flyrain
+annotations:
+  artifacthub.io/links: |
+    - name: Homepage
+      url: https://polaris.apache.org/
+    - name: Source Code
+      url: https://github.com/apache/polaris
+    - name: Documentation
+      url: https://polaris.apache.org/
+    - name: Support
+      url: https://github.com/apache/polaris/issues
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: database
