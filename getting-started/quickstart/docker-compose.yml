@@ -263,7 +263,7 @@ services:
         echo ""
         echo "To get started with Spark:"
         echo "  spark-sql \\"
-        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0 \\"
+        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \\"
         echo "    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\"
         echo "    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \\"
         echo "    --conf spark.sql.catalog.polaris.type=rest \\"

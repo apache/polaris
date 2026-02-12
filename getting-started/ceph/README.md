@@ -76,7 +76,7 @@ services:
 
 ```shell
 bin/spark-sql \
-    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,org.apache.iceberg:iceberg-aws-bundle:1.9.0 \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \
