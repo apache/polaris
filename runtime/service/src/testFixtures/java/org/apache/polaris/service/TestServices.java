@@ -31,7 +31,6 @@ import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -41,7 +40,6 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -51,13 +49,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -233,26 +229,6 @@ public record TestServices(
             @Override
             public void authorize(
                 @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {}
-
-            @Override
-            public void authorizeOrThrow(
-                @Nonnull PolarisPrincipal polarisPrincipal,
-                @Nonnull Set<PolarisBaseEntity> activatedEntities,
-                @Nonnull PolarisAuthorizableOperation authzOp,
-                @Nullable PolarisResolvedPathWrapper target,
-                @Nullable PolarisResolvedPathWrapper secondary) {
-              // No-op for tests.
-            }
-
-            @Override
-            public void authorizeOrThrow(
-                @Nonnull PolarisPrincipal polarisPrincipal,
-                @Nonnull Set<PolarisBaseEntity> activatedEntities,
-                @Nonnull PolarisAuthorizableOperation authzOp,
-                @Nullable List<PolarisResolvedPathWrapper> targets,
-                @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-              // No-op for tests.
-            }
           };
 
       // Application level

@@ -20,10 +20,20 @@ package org.apache.polaris.core.persistence.resolver;
 
 /** Explicit resolution components for {@link PolarisResolutionManifest#resolveSelections}. */
 public enum Resolvable {
+  /** Resolve the authenticated caller principal entity. */
   CALLER_PRINCIPAL,
+  /** Resolve the caller's activated principal-role entities. */
   CALLER_PRINCIPAL_ROLES,
+  /** Resolve catalog-role entities (e.g., roles attached in the reference catalog). */
   CATALOG_ROLES,
+  /** Resolve the reference catalog entity. */
   REFERENCE_CATALOG,
+  /** Resolve explicitly registered paths (via addPath/addPassthroughPath). */
   REQUESTED_PATHS,
-  TOP_LEVEL_ENTITIES
+  /**
+   * Resolve any additional top-level entities explicitly registered via addTopLevelName, such as
+   * catalog/principal/principal-role names used for authorization beyond the caller and reference
+   * catalog.
+   */
+  REQUESTED_TOP_LEVEL_ENTITIES
 }

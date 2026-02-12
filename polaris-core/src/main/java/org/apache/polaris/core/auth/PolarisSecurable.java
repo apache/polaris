@@ -19,56 +19,29 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Intent-only target reference for authorization decisions.
  *
  * <p>Represents the target name and entity type without any resolved RBAC state.
  */
-public final class PolarisSecurable {
-  private final PolarisEntityType entityType;
-  private final List<String> nameParts;
-
-  public PolarisSecurable(@Nonnull PolarisEntityType entityType, @Nonnull List<String> nameParts) {
-    this.entityType = Objects.requireNonNull(entityType, "entityType");
-    this.nameParts = List.copyOf(Objects.requireNonNull(nameParts, "nameParts"));
+@PolarisImmutable
+public interface PolarisSecurable {
+  static PolarisSecurable of(
+      @Nonnull PolarisEntityType entityType, @Nonnull List<String> nameParts) {
+    return ImmutablePolarisSecurable.builder().entityType(entityType).nameParts(nameParts).build();
   }
 
-  public @Nonnull PolarisEntityType getEntityType() {
-    return entityType;
-  }
+  @Nonnull
+  PolarisEntityType getEntityType();
 
-  public @Nonnull List<String> getNameParts() {
-    return Collections.unmodifiableList(nameParts);
-  }
+  @Nonnull
+  List<String> getNameParts();
 
-  public @Nonnull String getName() {
-    return String.join(".", nameParts);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    PolarisSecurable that = (PolarisSecurable) o;
-    return entityType == that.entityType && nameParts.equals(that.nameParts);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(entityType, nameParts);
-  }
-
-  @Override
-  public String toString() {
-    return "PolarisSecurable{" + "entityType=" + entityType + ", nameParts=" + nameParts + '}';
+  default @Nonnull String getName() {
+    return String.join(".", getNameParts());
   }
 }

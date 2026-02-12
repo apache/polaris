@@ -65,7 +65,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   }
 
   private PolarisSecurable newCatalogSecurable() {
-    return new PolarisSecurable(PolarisEntityType.CATALOG, List.of(catalogName()));
+    return PolarisSecurable.of(PolarisEntityType.CATALOG, List.of(catalogName()));
   }
 
   public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
@@ -150,14 +150,14 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
             PolarisEntityType.POLICY,
             true /* optional */),
-        policySecurable);
-    resolutionManifest.addPassthroughAlias(policySecurable, identifier);
+        identifier);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
-        .resolveAuthorizationInputs(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+        .resolveAuthorizationInputs(
+            authzContext, AuthorizationRequest.of(polarisPrincipal(), op, null, null));
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(policySecurable, true);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(identifier, true);
     if (target == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
@@ -165,7 +165,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authorizer()
         .authorize(
             authzContext,
-            new AuthorizationRequest(polarisPrincipal(), op, List.of(policySecurable), null));
+            AuthorizationRequest.of(polarisPrincipal(), op, List.of(policySecurable), null));
 
     initializeCatalog();
   }
@@ -198,7 +198,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
-        .resolveAuthorizationInputs(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+        .resolveAuthorizationInputs(
+            authzContext, AuthorizationRequest.of(polarisPrincipal(), op, null, null));
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
@@ -208,7 +209,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authorizer()
         .authorize(
             authzContext,
-            new AuthorizationRequest(polarisPrincipal(), op, List.of(newCatalogSecurable()), null));
+            AuthorizationRequest.of(polarisPrincipal(), op, List.of(newCatalogSecurable()), null));
 
     initializeCatalog();
   }
@@ -222,30 +223,28 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
             PolarisEntityType.POLICY,
             true /* optional */),
-        policySecurable);
-    resolutionManifest.addPassthroughAlias(policySecurable, identifier);
+        identifier);
 
     PolarisSecurable targetSecurable = null;
+    Namespace targetNamespace = null;
+    TableIdentifier targetIdentifier = null;
     switch (target.getType()) {
       case CATALOG -> targetSecurable = newCatalogSecurable();
       case NAMESPACE -> {
-        Namespace targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
+        targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
         targetSecurable = newNamespaceSecurable(targetNamespace);
         resolutionManifest.addPath(
             new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE),
-            targetSecurable);
-        resolutionManifest.addPathAlias(targetSecurable, targetNamespace);
+            targetNamespace);
       }
       case TABLE_LIKE -> {
-        TableIdentifier targetIdentifier =
-            TableIdentifier.of(target.getPath().toArray(new String[0]));
+        targetIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
         targetSecurable = newTableLikeSecurable(targetIdentifier);
         resolutionManifest.addPath(
             new ResolverPath(
                 PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
                 PolarisEntityType.TABLE_LIKE),
-            targetSecurable);
-        resolutionManifest.addPathAlias(targetSecurable, targetIdentifier);
+            targetIdentifier);
       }
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     }
@@ -256,27 +255,28 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authzContext, new AuthorizationRequest(polarisPrincipal(), preAuthOp, null, null));
+            authzContext, AuthorizationRequest.of(polarisPrincipal(), preAuthOp, null, null));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
     throwNotFoundExceptionIfFailToResolve(status, identifier);
 
     PolarisResolvedPathWrapper policyWrapper =
         resolutionManifest.getPassthroughResolvedPath(
-            policySecurable, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
     if (policyWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
 
     PolarisResolvedPathWrapper targetWrapper =
-        PolicyCatalogUtils.getResolvedPathWrapper(resolutionManifest, target, targetSecurable);
+        PolicyCatalogUtils.getResolvedPathWrapper(
+            resolutionManifest, target, targetNamespace, targetIdentifier);
 
     PolarisAuthorizableOperation op =
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
     authorizer()
         .authorize(
             authzContext,
-            new AuthorizationRequest(
+            AuthorizationRequest.of(
                 polarisPrincipal(), op, List.of(policySecurable), List.of(targetSecurable)));
 
     initializeCatalog();

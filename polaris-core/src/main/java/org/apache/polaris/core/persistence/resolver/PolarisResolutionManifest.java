@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -147,29 +148,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     passthroughPaths.put(key, path);
   }
 
-  /** Adds an alias key for a previously added path key. */
-  public void addPathAlias(Object existingKey, Object aliasKey) {
-    diagnostics.check(
-        pathLookup.containsKey(existingKey),
-        "invalid_key_for_path_alias",
-        "existingKey={} pathLookup={}",
-        existingKey,
-        pathLookup);
-    pathLookup.put(aliasKey, pathLookup.get(existingKey));
-  }
-
-  /** Adds an alias key for a previously added passthrough path key. */
-  public void addPassthroughAlias(Object existingKey, Object aliasKey) {
-    diagnostics.check(
-        passthroughPaths.containsKey(existingKey),
-        "invalid_key_for_passthrough_alias",
-        "existingKey={} passthroughPaths={}",
-        existingKey,
-        passthroughPaths);
-    passthroughPaths.put(aliasKey, passthroughPaths.get(existingKey));
-    addPathAlias(existingKey, aliasKey);
-  }
-
   public ResolverStatus resolveAll() {
     primaryResolverStatus = primaryResolver.resolveAll();
     // TODO: This could be a race condition where a Principal is dropped after initial authn
@@ -238,9 +216,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
     if (!passthroughPaths.containsKey(key)) {
-      if (pathLookup.containsKey(key)) {
-        return getResolvedPath(key);
-      }
       diagnostics.check(
           false,
           "invalid_key_for_passthrough_resolved_path",
@@ -383,25 +358,23 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return resolved.get(resolved.size() - 1).getEntity().getSubType();
   }
 
-  /**
-   * @param key the key associated with the path to retrieve that was specified in addPath
-   * @param prependRootContainer if true, also includes the rootContainer as the first element of
-   *     the path; otherwise, the first element begins with the referenceCatalog.
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional"
-   */
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, boolean prependRootContainer) {
-    diagnostics.check(
-        pathLookup.containsKey(key),
-        "never_registered_key_for_resolved_path",
-        "key={} pathLookup={}",
-        key,
-        pathLookup);
+  private @Nullable Integer findPathIndexByPath(
+      List<String> entityNames, PolarisEntityType lastEntityType) {
+    for (int i = 0; i < addedPaths.size(); i++) {
+      ResolverPath path = addedPaths.get(i);
+      if (Objects.equals(path.getLastEntityType(), lastEntityType)
+          && path.getEntityNames().equals(entityNames)) {
+        return i;
+      }
+    }
+    return null;
+  }
 
+  private @Nullable PolarisResolvedPathWrapper getResolvedPathByIndex(
+      int index, boolean prependRootContainer) {
     if (!isResolveAllSucceeded()) {
       return null;
     }
-    int index = pathLookup.get(key);
 
     // Return null for a partially-resolved "optional" path.
     ResolverPath requestedPath = addedPaths.get(index);
@@ -424,6 +397,50 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
     resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
     return new PolarisResolvedPathWrapper(resolvedEntities);
+  }
+
+  /**
+   * @param key the key associated with the path to retrieve that was specified in addPath
+   * @param prependRootContainer if true, also includes the rootContainer as the first element of
+   *     the path; otherwise, the first element begins with the referenceCatalog.
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional"
+   */
+  public PolarisResolvedPathWrapper getResolvedPath(Object key, boolean prependRootContainer) {
+    diagnostics.check(
+        pathLookup.containsKey(key),
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
+        pathLookup);
+
+    int index = pathLookup.get(key);
+    return getResolvedPathByIndex(index, prependRootContainer);
+  }
+
+  /**
+   * @return null if the path resolved for {@code entityNames} isn't fully-resolved when specified
+   *     as "optional", or if it was resolved but the subType doesn't match the specified subType.
+   */
+  public PolarisResolvedPathWrapper getResolvedPathByPath(
+      List<String> entityNames,
+      PolarisEntityType lastEntityType,
+      PolarisEntitySubType subType,
+      boolean prependRootContainer) {
+    Integer index = findPathIndexByPath(entityNames, lastEntityType);
+    if (index == null) {
+      return null;
+    }
+    PolarisResolvedPathWrapper resolvedPath = getResolvedPathByIndex(index, prependRootContainer);
+    if (resolvedPath == null) {
+      return null;
+    }
+    if (resolvedPath.getRawLeafEntity() != null
+        && subType != PolarisEntitySubType.ANY_SUBTYPE
+        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
+      return null;
+    }
+    return resolvedPath;
   }
 
   /**

@@ -340,7 +340,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           reservedProperties()
               .removeReservedProperties(
                   resolutionManifest
-                      .getPassthroughResolvedPath(newNamespaceSecurable(namespace))
+                      .getPassthroughResolvedPath(namespace)
                       .getRawLeafEntity()
                       .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
@@ -662,7 +662,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(newTableLikeSecurable(tableIdentifier));
+        resolutionManifest.getResolvedPath(
+            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
     PolarisEntity rawLeafEntity = target.getRawLeafEntity();
     if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(rawLeafEntity);
@@ -1324,16 +1325,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // 'prefix' as an output is the REST subpath that routes to the catalog
     //   resource, which may be URL-escaped catalogName or potentially a different
     //   unique identifier for the catalog being accessed.
-    if (catalogName() == null) {
-      throw new BadRequestException("Please specify a warehouse");
-    }
     PolarisResolutionManifest manifest = newResolutionManifest();
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(manifest);
     authorizer()
         .resolveAuthorizationInputs(
             authzContext,
-            new AuthorizationRequest(
+            AuthorizationRequest.of(
                 polarisPrincipal(), PolarisAuthorizableOperation.GET_CATALOG, null, null));
     ResolverStatus resolverStatus = manifest.getResolverStatus();
     if (resolverStatus == null

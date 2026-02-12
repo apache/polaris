@@ -138,6 +138,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -755,23 +756,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     return false;
   }
 
-  @Override
-  public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        polarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
-
-  @Override
-  public void authorizeOrThrow(
+  private void authorizeResolved(
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
@@ -915,13 +900,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void resolveAuthorizationInputs(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     if (manifest.hasResolution()) {
       return;
     }
 
-    // Phase 2: preserve existing RBAC ordering by resolving the manifest within resolveAuthorizationInputs.
+    // Phase 2: preserve existing RBAC ordering by resolving the manifest within
+    // resolveAuthorizationInputs.
     manifest.resolveSelections(
         EnumSet.of(
             Resolvable.CALLER_PRINCIPAL,
@@ -929,19 +916,19 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             Resolvable.CATALOG_ROLES,
             Resolvable.REFERENCE_CATALOG,
             Resolvable.REQUESTED_PATHS,
-            Resolvable.TOP_LEVEL_ENTITIES));
+            Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
   }
 
   @Override
   public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     Set<PolarisBaseEntity> activatedEntities =
-        manifest == null ? Set.of() : manifest.getAllActivatedCatalogRoleAndPrincipalRoles();
+        manifest.getAllActivatedCatalogRoleAndPrincipalRoles();
     List<PolarisResolvedPathWrapper> resolvedTargets =
         resolveSecurables(manifest, request.getTargets());
     List<PolarisResolvedPathWrapper> resolvedSecondaries =
         resolveSecurables(manifest, request.getSecondaries());
-    authorizeOrThrow(
+    authorizeResolved(
         request.getPrincipal(),
         activatedEntities,
         request.getOperation(),
@@ -976,7 +963,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           resolved.add(manifest.getResolvedTopLevelEntity(securable.getName(), type));
           break;
         default:
-          resolved.add(manifest.getResolvedPath(securable, true));
+          resolved.add(
+              manifest.getResolvedPathByPath(
+                  securable.getNameParts(), type, PolarisEntitySubType.ANY_SUBTYPE, true));
           break;
       }
     }

@@ -86,18 +86,18 @@ public abstract class CatalogHandler {
   }
 
   private AuthorizationRequest newAuthorizationRequest(PolarisAuthorizableOperation op) {
-    return new AuthorizationRequest(polarisPrincipal(), op, null, null);
+    return AuthorizationRequest.of(polarisPrincipal(), op, null, null);
   }
 
   private AuthorizationRequest newAuthorizationRequest(
       PolarisAuthorizableOperation op,
       List<PolarisSecurable> targets,
       List<PolarisSecurable> secondaries) {
-    return new AuthorizationRequest(polarisPrincipal(), op, targets, secondaries);
+    return AuthorizationRequest.of(polarisPrincipal(), op, targets, secondaries);
   }
 
   protected PolarisSecurable newSecurable(PolarisEntityType type, List<String> nameParts) {
-    return new PolarisSecurable(type, nameParts);
+    return PolarisSecurable.of(type, nameParts);
   }
 
   protected PolarisSecurable newNamespaceSecurable(Namespace namespace) {
@@ -136,47 +136,43 @@ public abstract class CatalogHandler {
     resolutionManifest = newResolutionManifest();
     PolarisSecurable namespaceSecurable = newNamespaceSecurable(namespace);
     resolutionManifest.addPath(
-        new ResolverPath(namespaceSecurable.getNameParts(), PolarisEntityType.NAMESPACE),
-        namespaceSecurable);
-    resolutionManifest.addPathAlias(namespaceSecurable, namespace);
+        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+        namespace);
 
     if (extraPassthroughNamespaces != null) {
       for (Namespace ns : extraPassthroughNamespaces) {
-        PolarisSecurable nsSecurable = newNamespaceSecurable(ns);
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
                 Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
-            nsSecurable);
-        resolutionManifest.addPassthroughAlias(nsSecurable, ns);
+            ns);
       }
     }
     if (extraPassthroughTableLikes != null) {
       for (TableIdentifier id : extraPassthroughTableLikes) {
-        PolarisSecurable tableSecurable = newTableLikeSecurable(id);
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
-                tableSecurable.getNameParts(), PolarisEntityType.TABLE_LIKE, true /* optional */),
-            tableSecurable);
-        resolutionManifest.addPassthroughAlias(tableSecurable, id);
+                PolarisCatalogHelpers.tableIdentifierToList(id),
+                PolarisEntityType.TABLE_LIKE,
+                true /* optional */),
+            id);
       }
     }
 
     if (extraPassThroughPolicies != null) {
       for (PolicyIdentifier id : extraPassThroughPolicies) {
-        PolarisSecurable policySecurable = newPolicySecurable(id);
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
-                policySecurable.getNameParts(), PolarisEntityType.POLICY, true /* optional */),
-            policySecurable);
-        resolutionManifest.addPassthroughAlias(policySecurable, id);
+                PolarisCatalogHelpers.identifierToList(id.getNamespace(), id.getName()),
+                PolarisEntityType.POLICY,
+                true /* optional */),
+            id);
       }
     }
 
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(namespaceSecurable, true);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -193,9 +189,8 @@ public abstract class CatalogHandler {
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     PolarisSecurable parentNamespaceSecurable = newNamespaceSecurable(parentNamespace);
     resolutionManifest.addPath(
-        new ResolverPath(parentNamespaceSecurable.getNameParts(), PolarisEntityType.NAMESPACE),
-        parentNamespaceSecurable);
-    resolutionManifest.addPathAlias(parentNamespaceSecurable, parentNamespace);
+        new ResolverPath(Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE),
+        parentNamespace);
 
     // When creating an entity under a namespace, the authz target is the parentNamespace, but we
     // must also add the actual path that will be created as an "optional" passthrough resolution
@@ -204,13 +199,11 @@ public abstract class CatalogHandler {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
-        newNamespaceSecurable(namespace));
-    resolutionManifest.addPassthroughAlias(newNamespaceSecurable(namespace), namespace);
+        namespace);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(parentNamespaceSecurable, true);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(parentNamespace, true);
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
     }
@@ -228,9 +221,8 @@ public abstract class CatalogHandler {
     resolutionManifest = newResolutionManifest();
     PolarisSecurable namespaceSecurable = newNamespaceSecurable(namespace);
     resolutionManifest.addPath(
-        new ResolverPath(namespaceSecurable.getNameParts(), PolarisEntityType.NAMESPACE),
-        namespaceSecurable);
-    resolutionManifest.addPathAlias(namespaceSecurable, namespace);
+        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+        namespace);
 
     // When creating an entity under a namespace, the authz target is the namespace, but we must
     // also
@@ -243,13 +235,11 @@ public abstract class CatalogHandler {
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */),
-        newTableLikeSecurable(identifier));
-    resolutionManifest.addPassthroughAlias(newTableLikeSecurable(identifier), identifier);
+        identifier);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(namespaceSecurable, true);
+    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
     if (target == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -270,17 +260,18 @@ public abstract class CatalogHandler {
 
       PolarisSecurable namespaceSecurable = newNamespaceSecurable(identifier.namespace());
       resolutionManifest.addPassthroughPath(
-          new ResolverPath(namespaceSecurable.getNameParts(), PolarisEntityType.NAMESPACE),
-          namespaceSecurable);
-      resolutionManifest.addPassthroughAlias(namespaceSecurable, identifier.namespace());
+          new ResolverPath(
+              Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
+          identifier.namespace());
 
       // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
       PolarisSecurable tableSecurable = newTableLikeSecurable(identifier);
       resolutionManifest.addPassthroughPath(
           new ResolverPath(
-              tableSecurable.getNameParts(), PolarisEntityType.TABLE_LIKE, true /* optional */),
-          tableSecurable);
-      resolutionManifest.addPassthroughAlias(tableSecurable, identifier);
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */),
+          identifier);
       AuthorizationState authzContext = authorizationState();
       authzContext.setResolutionManifest(resolutionManifest);
       authorizer()
@@ -305,8 +296,7 @@ public abstract class CatalogHandler {
     authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(primaryOp));
     PolarisSecurable targetSecurable = newTableLikeSecurable(identifier);
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            targetSecurable, PolarisEntityType.TABLE_LIKE, subType, true);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
@@ -331,8 +321,7 @@ public abstract class CatalogHandler {
               new ResolverPath(
                   PolarisCatalogHelpers.tableIdentifierToList(identifier),
                   PolarisEntityType.TABLE_LIKE),
-              tableSecurable);
-          resolutionManifest.addPassthroughAlias(tableSecurable, identifier);
+              identifier);
         });
 
     AuthorizationState authzContext = authorizationState();
@@ -355,7 +344,7 @@ public abstract class CatalogHandler {
                 identifier -> {
                   PolarisSecurable securable = newTableLikeSecurable(identifier);
                   if (resolutionManifest.getResolvedPath(
-                          securable, PolarisEntityType.TABLE_LIKE, subType, true)
+                          identifier, PolarisEntityType.TABLE_LIKE, subType, true)
                       == null) {
                     throw subType == ICEBERG_TABLE
                         ? new NoSuchTableException("Table does not exist: %s", identifier)
@@ -380,21 +369,18 @@ public abstract class CatalogHandler {
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE),
-        srcSecurable);
-    resolutionManifest.addPathAlias(srcSecurable, src);
+        src);
     PolarisSecurable dstNamespaceSecurable = newNamespaceSecurable(dst.namespace());
     resolutionManifest.addPath(
-        new ResolverPath(dstNamespaceSecurable.getNameParts(), PolarisEntityType.NAMESPACE),
-        dstNamespaceSecurable);
-    resolutionManifest.addPathAlias(dstNamespaceSecurable, dst.namespace());
+        new ResolverPath(Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE),
+        dst.namespace());
     PolarisSecurable dstSecurable = newTableLikeSecurable(dst);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(dst),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */),
-        dstSecurable);
-    resolutionManifest.addPathAlias(dstSecurable, dst);
+        dst);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
@@ -402,8 +388,7 @@ public abstract class CatalogHandler {
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
-    } else if (resolutionManifest.getResolvedPath(
-            srcSecurable, PolarisEntityType.TABLE_LIKE, subType)
+    } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {
       throwNotFoundExceptionForTableLikeEntity(dst, List.of(subType));
     }
@@ -415,7 +400,7 @@ public abstract class CatalogHandler {
     // type.
     // TODO: Possibly modify the exception thrown depending on whether the caller has privileges
     // on the parent namespace.
-    PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dstSecurable);
+    PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dst);
 
     switch (dstLeafSubType) {
       case ICEBERG_TABLE:
