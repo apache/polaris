@@ -20,5 +20,5 @@
 # Artifact Hub repository metadata file
 repositoryID: apache-polaris
 owners:
-  - name: Apache Polaris PMC
+  - name: Apache Polaris PPMC
     email: dev@polaris.apache.org

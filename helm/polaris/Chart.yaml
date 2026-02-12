@@ -44,7 +44,7 @@ annotations:
     - name: Source Code
       url: https://github.com/apache/polaris
     - name: Documentation
-      url: https://polaris.apache.org/releases/1.3.0/
+      url: https://polaris.apache.org/
     - name: Support
       url: https://github.com/apache/polaris/issues
   artifacthub.io/license: Apache-2.0
