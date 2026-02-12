@@ -151,13 +151,11 @@ public class PolarisConfigurationStoreTest {
 
   @Test
   public void testEntityOverrides() {
-    @SuppressWarnings({"deprecation", "removal"})
     Function<Integer, FeatureConfiguration<String>> cfg =
         i ->
             PolarisConfiguration.<String>builder()
                 .key("key" + i)
                 .catalogConfig("polaris.config.catalog-key" + i)
-                .catalogConfigUnsafe("legacy-key" + i)
                 .description("")
                 .defaultValue("test-default" + i)
                 .buildFeatureConfiguration();
@@ -175,7 +173,6 @@ public class PolarisConfigurationStoreTest {
     CatalogEntity entity =
         new CatalogEntity.Builder()
             .addProperty("polaris.config.catalog-key3", "entity-new3")
-            .addProperty("legacy-key4", "entity-legacy4")
             .build();
 
     Assertions.assertEquals(
@@ -184,7 +181,23 @@ public class PolarisConfigurationStoreTest {
         "config-value2", store.getConfiguration(testRealmContext, entity, cfg.apply(2)));
     Assertions.assertEquals(
         "entity-new3", store.getConfiguration(testRealmContext, entity, cfg.apply(3)));
+  }
+
+  @Test
+  public void testGetConfiguration() {
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @Override
+          public <T> @Nullable T getConfiguration(
+              @Nonnull RealmContext realmContext, String configName) {
+            //noinspection unchecked
+            return (T) Map.of("key3", "config-value3").get(configName);
+          }
+        };
+
     Assertions.assertEquals(
-        "entity-legacy4", store.getConfiguration(testRealmContext, entity, cfg.apply(4)));
+        "config-value3", store.getConfiguration(testRealmContext, "key3", "default3"));
+    Assertions.assertEquals(
+        "default3", store.getConfiguration(testRealmContext, "unknown", "default3"));
   }
 }
