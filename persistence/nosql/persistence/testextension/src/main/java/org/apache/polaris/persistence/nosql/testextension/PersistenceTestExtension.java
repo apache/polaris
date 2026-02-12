@@ -182,7 +182,7 @@ public class PersistenceTestExtension
   private MonotonicClock getOrCreateMonotonicClock(ExtensionContext extensionContext) {
     var store = extensionContext.getRoot().getStore(NAMESPACE);
     return store
-        .computeIfAbsent(
+        .getOrComputeIfAbsent(
             KEY_MONOTONIC_CLOCK,
             x -> new WrappedResource(MonotonicClockImpl.newDefaultInstance()),
             WrappedResource.class)
@@ -191,7 +191,7 @@ public class PersistenceTestExtension
 
   private SnowflakeIdGenerator getOrCreateSnowflakeIdGenerator(ExtensionContext extensionContext) {
     var store = extensionContext.getRoot().getStore(NAMESPACE);
-    return store.computeIfAbsent(
+    return store.getOrComputeIfAbsent(
         KEY_SNOWFLAKE_ID_GENERATOR,
         x ->
             new SnowflakeIdGeneratorFactory()
