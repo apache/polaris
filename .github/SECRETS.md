@@ -19,13 +19,15 @@
 
 # GitHub Secrets & Variables
 
-## Github Apache organization secrets
+## [GitHub `apache`](https://github.com/apache) organization secrets
 
 These secrets are provided and managed by ASF Infra.
 
+Note: Organization level secrets are _not_ shown the repository's list of secrets.
+
 | Secret                      | Purpose                                                                                               |
 |-----------------------------|-------------------------------------------------------------------------------------------------------|
-| `DEVELOCITY_ACCESS_KEY`     | Access key to https://develocity.apache.org, used to publish Gradle build scans                       |
+| `DEVELOCITY_ACCESS_KEY`     | Access key to [ASF Develocity](https://develocity.apache.org), used to publish Gradle build scans     |
 | `DOCKERHUB_USER`            | [Docker Hub](https://hub.docker.com/r/apache/polaris) user name, used to publish container images.    |
 | `DOCKERHUB_TOKEN`           | Token for the above.                                                                                  |
 | `NEXUS_STAGE_DEPLOYER_USER` | [Apache Nexus](https://repository.apache.org/) repository, used to stage and publish Maven artifacts. |
@@ -38,12 +40,12 @@ These secrets are provided and managed by ASF Infra.
 [These secrets](https://github.com/apache/polaris/settings/secrets/actions) are either provided and managed by Apache
 Infra or the Polaris (P)PMC.
 
-| Secret                     | Purpose                                                               | Provided by    |
-|----------------------------|-----------------------------------------------------------------------|----------------|
-| `POLARIS_GPG_PRIVATE_KEY`  | GPG signing key, used to sign release artifacts.                      | ASF Infra      |
-| `POLARIS_SVN_DEV_USERNAME` | [Apache SVN](https://dist.apache.org/repos/dist) username.            | ASF Infra      |
-| `POLARIS_SVN_DEV_PASSWORD` | Password for the above.                                               | ASF Infra      |
-| `TEST_PYPI_API_TOKEN`      | https://test.pypi.org/ API token, used to publish snapshot artifacts. | Polaris (P)PMC |
+| Secret                     | Purpose                                                                           | Provided by    |
+|----------------------------|-----------------------------------------------------------------------------------|----------------|
+| `POLARIS_GPG_PRIVATE_KEY`  | GPG signing key, used to sign release artifacts.                                  | ASF Infra      |
+| `POLARIS_SVN_DEV_USERNAME` | [Apache SVN](https://dist.apache.org/repos/dist) username.                        | ASF Infra      |
+| `POLARIS_SVN_DEV_PASSWORD` | Password for the above.                                                           | ASF Infra      |
+| `TEST_PYPI_API_TOKEN`      | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris (P)PMC |
 
 ### GitHub variables
 
@@ -56,9 +58,9 @@ None.
 [These secrets](https://github.com/apache/polaris-tools/settings/secrets/actions) are either provided and managed by
 Apache Infra or the Polaris (P)PMC.
 
-| Secret                | Purpose                                                               | Provided by    |
-|-----------------------|-----------------------------------------------------------------------|----------------|
-| `TEST_PYPI_API_TOKEN` | https://test.pypi.org/ API token, used to publish snapshot artifacts. | Polaris (P)PMC |
+| Secret                | Purpose                                                                           | Provided by    |
+|-----------------------|-----------------------------------------------------------------------------------|----------------|
+| `TEST_PYPI_API_TOKEN` | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris (P)PMC |
 
 ### GitHub Variables
 
