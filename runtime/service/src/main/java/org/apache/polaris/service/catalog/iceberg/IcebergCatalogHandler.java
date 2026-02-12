@@ -206,6 +206,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
+  
+  protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -461,10 +463,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    // Resolve the optimal delegation mode based on catalog capabilities
-    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
+    // Authorize first with original delegation modes to initialize resolution manifest
+    authorizeCreateTableDirect(namespace, request, delegationModes);
 
-    authorizeCreateTableDirect(namespace, request, resolvedModes);
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
 
     request.validate();
 
@@ -592,10 +595,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    // Resolve the optimal delegation mode based on catalog capabilities
-    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
+    // Authorize first with original delegation modes to initialize resolution manifest
+    authorizeCreateTableStaged(namespace, request, delegationModes);
 
-    authorizeCreateTableStaged(namespace, request, resolvedModes);
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -798,11 +802,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    // Resolve the optimal delegation mode based on catalog capabilities
-    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
-
+    // Authorize first with original delegation modes to initialize resolution manifest
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, resolvedModes);
+        authorizeLoadTable(tableIdentifier, delegationModes);
+
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    EnumSet<AccessDelegationMode> resolvedModes = resolveAccessDelegationModes(delegationModes);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1385,9 +1390,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return requestedModes;
     }
 
-    AccessDelegationModeResolver resolver = new AccessDelegationModeResolver(realmConfig());
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    return resolver.resolveToSet(requestedModes, catalogEntity);
+    return accessDelegationModeResolver().resolveToSet(requestedModes, catalogEntity);
   }
 
   @Override
