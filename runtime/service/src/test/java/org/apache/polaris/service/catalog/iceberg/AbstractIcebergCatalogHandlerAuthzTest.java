@@ -39,6 +39,10 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.metrics.CommitMetrics;
+import org.apache.iceberg.metrics.CommitMetricsResult;
+import org.apache.iceberg.metrics.CommitReport;
+import org.apache.iceberg.metrics.ImmutableCommitReport;
 import org.apache.iceberg.metrics.ImmutableScanReport;
 import org.apache.iceberg.metrics.ScanMetrics;
 import org.apache.iceberg.metrics.ScanMetricsResult;
@@ -115,9 +119,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     if (factory == callContextCatalogFactory) {
       return handler;
     }
-    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).metricsReporter(metricsReporter)
-        .clock(clock)
-        .build();
+    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).build();
   }
 
   protected void doTestInsufficientPrivileges(
@@ -2198,7 +2200,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @Test
-  public void testReportMetricsSufficientPrivileges() {
+  public void testReportReadMetricsSufficientPrivileges() {
     ImmutableScanReport report =
         ImmutableScanReport.builder()
             .tableName(TABLE_NS1A_1.name())
@@ -2211,16 +2213,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .build();
     ReportMetricsRequest request = ReportMetricsRequest.of(report);
     doTestSufficientPrivileges(
-        List.of(
-            PolarisPrivilege.TABLE_REPORT_METRICS,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        List.of(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
         null /* cleanupAction */);
   }
 
   @Test
-  public void testReportMetricsInsufficientPrivileges() {
+  public void testReportReadMetricsInsufficientPrivileges() {
     ImmutableScanReport report =
         ImmutableScanReport.builder()
             .tableName(TABLE_NS1A_1.name())
@@ -2235,9 +2234,45 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     doTestInsufficientPrivileges(
         List.of(
             PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
+  }
+
+  @Test
+  public void testReportWriteMetricsSufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportWriteMetricsInsufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),

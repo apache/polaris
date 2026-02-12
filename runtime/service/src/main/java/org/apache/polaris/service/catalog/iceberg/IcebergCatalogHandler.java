@@ -65,6 +65,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -661,10 +662,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void reportMetrics(TableIdentifier identifier, ReportMetricsRequest request) {
 
-    authorizeBasicTableLikeOperationOrThrow(
-        PolarisAuthorizableOperation.REPORT_METRICS,
-        PolarisEntitySubType.ICEBERG_TABLE,
-        identifier);
+    PolarisAuthorizableOperation op =
+        request.report() instanceof ScanReport
+            ? PolarisAuthorizableOperation.REPORT_READ_METRICS
+            : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
+
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
     metricsReporter().reportMetric(catalogName(), identifier, request.report(), clock().instant());
   }
