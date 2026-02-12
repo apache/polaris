@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,7 +39,8 @@ public abstract class PolarisConfiguration<T> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
 
-  private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
+  private static final List<PolarisConfiguration<?>> ALL_CONFIGURATIONS =
+      new CopyOnWriteArrayList<>();
 
   private final String key;
   private final String description;
@@ -55,7 +57,7 @@ public abstract class PolarisConfiguration<T> {
    * configs.
    */
   private static void registerConfiguration(PolarisConfiguration<?> configuration) {
-    for (PolarisConfiguration<?> existingConfiguration : allConfigurations) {
+    for (PolarisConfiguration<?> existingConfiguration : ALL_CONFIGURATIONS) {
       if (existingConfiguration.key.equals(configuration.key)) {
         throw new IllegalArgumentException(
             String.format("Config '%s' is already in use", configuration.key));
@@ -76,12 +78,12 @@ public abstract class PolarisConfiguration<T> {
         }
       }
     }
-    allConfigurations.add(configuration);
+    ALL_CONFIGURATIONS.add(configuration);
   }
 
   /** Returns a list of all PolarisConfigurations that have been registered */
   public static List<PolarisConfiguration<?>> getAllConfigurations() {
-    return List.copyOf(allConfigurations);
+    return List.copyOf(ALL_CONFIGURATIONS);
   }
 
   @SuppressWarnings("unchecked")
