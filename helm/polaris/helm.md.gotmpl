@@ -21,27 +21,6 @@ Title: Polaris Helm Chart
 type: docs
 weight: 675
 ---
-
-<!---
-  This README.md file was generated with:
-  https://github.com/norwoodj/helm-docs
-  Do not modify the README.md file directly, please modify README.md.gotmpl instead.
-  To re-generate the README.md file, install helm-docs then run from the repo root:
-  helm-docs --chart-search-root=helm
--->
-
-{{ template "chart.deprecationWarning" . }}
-
-{{ template "chart.badgesSection" . }}
-
-{{ template "chart.description" . }}.
-
-{{ template "chart.homepageLine" . }}
-
-{{ template "chart.sourcesSection" . }}
-
-{{ template "chart.requirementsSection" . }}
-
 ## Installation
 
 The instructions below are for the local Minikube cluster. They assume Minikube and Helm are installed.
@@ -57,9 +36,10 @@ kubectl create namespace polaris
 helm install polaris polaris/polaris --namespace polaris --devel
 ```
 
-> [!NOTE]
-> The --devel flag is required while Polaris is in the incubation phase.
-> Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
+{{ "{{" }}< alert note >}}
+The --devel flag is required while Polaris is in the incubation phase.
+Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
+{{ "{{" }}< /alert >}}
 
 Now the cluster should be up and running. You can run the built-in connection test to verify:
 ```bash
@@ -76,10 +56,11 @@ helm pull polaris \
   --untardir ./helm
 ```
 
-> [!WARNING]
-> The examples below use values files located in the `helm/polaris/ci` directory.
-> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
-> For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< alert warning >}}
+The examples below use values files located in the `helm/polaris/ci` directory.
+**These files are intended for testing purposes primarily, and may not be suitable for production use**.
+For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< /alert >}}
 
 Create required resources:
 ```bash
@@ -87,8 +68,9 @@ kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
-> [!WARNING]
-> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< alert warning >}}
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< /alert >}}
 
 Install the chart with a persistent backend:
 ```bash
@@ -149,10 +131,11 @@ kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubern
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
-> [!WARNING]
-> The examples below use values files located in the `helm/polaris/ci` directory.
-> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
-> For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< alert warning >}}
+The examples below use values files located in the `helm/polaris/ci` directory.
+**These files are intended for testing purposes primarily, and may not be suitable for production use**.
+For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< /alert >}}
 
 #### Non-persistent backend
 
@@ -164,8 +147,9 @@ helm upgrade --install --namespace polaris \
 
 #### Persistent backend
 
-> [!WARNING]
-> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< alert warning >}}
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< /alert >}}
 
 Install the chart with a persistent backend. From the Polaris repo root:
 ```bash
@@ -202,8 +186,9 @@ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/
 
 With that installed, you can enable and configure the `gateway` values. This will make it possible to use the HTTPRoute resource, enable and configure the `httproute` values. 
 
-> [!NOTE]
-> Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+{{ "{{" }}< alert note >}}
+Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+{{ "{{" }}< /alert >}}
 
 ### Uninstalling
 

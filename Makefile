@@ -219,8 +219,7 @@ helm-doc-generate: DEPENDENCIES := helm-docs
 .PHONY: helm-doc-generate
 helm-doc-generate: check-dependencies ## Generate Helm chart documentation
 	@echo "--- Generating Helm documentation ---"
-	@helm-docs --chart-search-root=helm
-	@$(PYTHON) helm/polaris/tools/prepare_helm_readme.py helm/polaris/README.md site/content/in-dev/unreleased/helm.md
+	@helm-docs --chart-search-root=helm --template-files helm.md.gotmpl --output-file ../../site/content/in-dev/unreleased/helm.md
 	@echo "--- Helm documentation generated and copied ---"
 
 helm-unittest: DEPENDENCIES := helm
