@@ -32,7 +32,7 @@ public interface PolarisAuthorizer {
    *
    * <p>Implementations may resolve or validate any inputs needed to make an authorization decision.
    */
-  void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
+  void resolveAuthorizationInputs(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
 
   /** Core authorization entry point for the new SPI. */
   void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);

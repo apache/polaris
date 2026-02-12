@@ -155,7 +155,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
-        .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+        .resolveAuthorizationInputs(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(policySecurable, true);
     if (target == null) {
@@ -198,7 +198,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
-        .preAuthorize(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
+        .resolveAuthorizationInputs(authzContext, new AuthorizationRequest(polarisPrincipal(), op, null, null));
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
@@ -255,7 +255,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     authorizer()
-        .preAuthorize(
+        .resolveAuthorizationInputs(
             authzContext, new AuthorizationRequest(polarisPrincipal(), preAuthOp, null, null));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 

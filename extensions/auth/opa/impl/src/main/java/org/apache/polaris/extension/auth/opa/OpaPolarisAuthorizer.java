@@ -115,7 +115,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @throws ForbiddenException if authorization is denied by OPA
    */
   @Override
-  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+  public void resolveAuthorizationInputs(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     if (manifest.hasResolution()) {
       return;
@@ -130,7 +130,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   @Override
   public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
-    if (request.isInternalPrincipalScope() || request.isInternalRoleScope()) {
+    if (request.isInternalPrincipalScope()
+        || request.isInternalPrincipalRoleScope()
+        || request.isInternalCatalogRoleScope()) {
       throw new ForbiddenException("OPA denied admin operation");
     }
     boolean allowed =

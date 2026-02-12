@@ -915,13 +915,13 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
-  public void preAuthorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+  public void resolveAuthorizationInputs(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest manifest = ctx.getResolutionManifest();
     if (manifest.hasResolution()) {
       return;
     }
 
-    // Phase 2: preserve existing RBAC ordering by resolving the manifest within preAuthorize.
+    // Phase 2: preserve existing RBAC ordering by resolving the manifest within resolveAuthorizationInputs.
     manifest.resolveSelections(
         EnumSet.of(
             Resolvable.CALLER_PRINCIPAL,

@@ -174,7 +174,7 @@ public abstract class CatalogHandler {
 
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(op));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(namespaceSecurable, true);
     if (target == null) {
@@ -208,7 +208,7 @@ public abstract class CatalogHandler {
     resolutionManifest.addPassthroughAlias(newNamespaceSecurable(namespace), namespace);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(op));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(parentNamespaceSecurable, true);
     if (target == null) {
@@ -247,7 +247,7 @@ public abstract class CatalogHandler {
     resolutionManifest.addPassthroughAlias(newTableLikeSecurable(identifier), identifier);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(op));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(namespaceSecurable, true);
     if (target == null) {
@@ -284,7 +284,7 @@ public abstract class CatalogHandler {
       AuthorizationState authzContext = authorizationState();
       authzContext.setResolutionManifest(resolutionManifest);
       authorizer()
-          .preAuthorize(
+          .resolveAuthorizationInputs(
               authzContext, newAuthorizationRequest(PolarisAuthorizableOperation.LOAD_TABLE));
     }
   }
@@ -302,7 +302,7 @@ public abstract class CatalogHandler {
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
     PolarisAuthorizableOperation primaryOp = ops.iterator().next();
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(primaryOp));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(primaryOp));
     PolarisSecurable targetSecurable = newTableLikeSecurable(identifier);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -337,7 +337,7 @@ public abstract class CatalogHandler {
 
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(op));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
 
     // If one of the paths failed to resolve, throw exception based on the one that
@@ -397,7 +397,7 @@ public abstract class CatalogHandler {
     resolutionManifest.addPathAlias(dstSecurable, dst);
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(resolutionManifest);
-    authorizer().preAuthorize(authzContext, newAuthorizationRequest(op));
+    authorizer().resolveAuthorizationInputs(authzContext, newAuthorizationRequest(op));
     ResolverStatus status = resolutionManifest.getResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {

@@ -1331,7 +1331,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     AuthorizationState authzContext = authorizationState();
     authzContext.setResolutionManifest(manifest);
     authorizer()
-        .preAuthorize(
+        .resolveAuthorizationInputs(
             authzContext,
             new AuthorizationRequest(
                 polarisPrincipal(), PolarisAuthorizableOperation.GET_CATALOG, null, null));

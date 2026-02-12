@@ -222,7 +222,7 @@ public record TestServices(
       PolarisAuthorizer authorizer =
           new PolarisAuthorizer() {
             @Override
-            public void preAuthorize(
+            public void resolveAuthorizationInputs(
                 @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
               if (ctx.getResolutionManifest() != null
                   && !ctx.getResolutionManifest().hasResolution()) {

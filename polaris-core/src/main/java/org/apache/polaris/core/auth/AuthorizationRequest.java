@@ -69,11 +69,16 @@ public final class AuthorizationRequest {
         || hasPrivilegeNameForPrincipalScope();
   }
 
-  public boolean isInternalRoleScope() {
-    return hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE, PolarisEntityType.CATALOG_ROLE)
-        || hasPrivilegeSecurableType(
-            PolarisEntityType.PRINCIPAL_ROLE, PolarisEntityType.CATALOG_ROLE)
-        || hasPrivilegeNameForRoleScope();
+  public boolean isInternalPrincipalRoleScope() {
+    return hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)
+        || hasPrivilegeSecurableType(PolarisEntityType.PRINCIPAL_ROLE)
+        || hasPrivilegeNameForPrincipalRoleScope();
+  }
+
+  public boolean isInternalCatalogRoleScope() {
+    return hasSecurableType(PolarisEntityType.CATALOG_ROLE)
+        || hasPrivilegeSecurableType(PolarisEntityType.CATALOG_ROLE)
+        || hasPrivilegeNameForCatalogRoleScope();
   }
 
   private boolean hasSecurableType(PolarisEntityType... types) {
@@ -93,9 +98,14 @@ public final class AuthorizationRequest {
         || containsPrivilegeNameForPrincipalScope(operation.getPrivilegesOnSecondary());
   }
 
-  private boolean hasPrivilegeNameForRoleScope() {
-    return containsPrivilegeNameForRoleScope(operation.getPrivilegesOnTarget())
-        || containsPrivilegeNameForRoleScope(operation.getPrivilegesOnSecondary());
+  private boolean hasPrivilegeNameForPrincipalRoleScope() {
+    return containsPrivilegeNameForPrincipalRoleScope(operation.getPrivilegesOnTarget())
+        || containsPrivilegeNameForPrincipalRoleScope(operation.getPrivilegesOnSecondary());
+  }
+
+  private boolean hasPrivilegeNameForCatalogRoleScope() {
+    return containsPrivilegeNameForCatalogRoleScope(operation.getPrivilegesOnTarget())
+        || containsPrivilegeNameForCatalogRoleScope(operation.getPrivilegesOnSecondary());
   }
 
   private static boolean containsPrivilegeType(
@@ -143,13 +153,28 @@ public final class AuthorizationRequest {
     return false;
   }
 
-  private static boolean containsPrivilegeNameForRoleScope(Set<PolarisPrivilege> privileges) {
+  private static boolean containsPrivilegeNameForPrincipalRoleScope(
+      Set<PolarisPrivilege> privileges) {
     if (privileges == null || privileges.isEmpty()) {
       return false;
     }
     for (PolarisPrivilege privilege : privileges) {
       String name = privilege.name();
-      if (name.startsWith("PRINCIPAL_ROLE_") || name.startsWith("CATALOG_ROLE_")) {
+      if (name.startsWith("PRINCIPAL_ROLE_")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean containsPrivilegeNameForCatalogRoleScope(
+      Set<PolarisPrivilege> privileges) {
+    if (privileges == null || privileges.isEmpty()) {
+      return false;
+    }
+    for (PolarisPrivilege privilege : privileges) {
+      String name = privilege.name();
+      if (name.startsWith("CATALOG_ROLE_")) {
         return true;
       }
     }
