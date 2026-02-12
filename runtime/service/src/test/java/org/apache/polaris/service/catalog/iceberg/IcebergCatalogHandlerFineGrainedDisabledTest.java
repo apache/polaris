@@ -31,6 +31,9 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
 
 /**

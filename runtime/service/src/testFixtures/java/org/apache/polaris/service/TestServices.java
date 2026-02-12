@@ -39,6 +39,8 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
@@ -64,6 +66,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.DefaultAccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -323,6 +326,24 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
+      // Create a simple PolarisConfigurationStore for testing
+      @SuppressWarnings("removal")
+      PolarisConfigurationStore testConfigurationStore = new PolarisConfigurationStore() {
+        @Override
+        public <T> T getConfiguration(RealmContext realmContext, String configName) {
+          return null; // Return null for string-based config lookups in tests
+        }
+
+        @Override
+        public <T> T getConfiguration(
+            RealmContext realmContext,
+            Map<String, String> catalogProperties,
+            PolarisConfiguration<T> config) {
+          // For test purposes, return the default value
+          return config.defaultValue();
+        }
+      };
+
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {
             @Override
@@ -347,6 +368,8 @@ public record TestServices(
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)
+                  .accessDelegationModeResolver(
+                      new DefaultAccessDelegationModeResolver(testConfigurationStore, realmContext))
                   .build();
             }
           };

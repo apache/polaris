@@ -23,12 +23,15 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -46,13 +49,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @SuppressWarnings("unchecked")
 class AccessDelegationModeResolverTest {
 
-  @Mock private RealmConfig realmConfig;
+  @Mock private PolarisConfigurationStore configurationStore;
+  @Mock private RealmContext realmContext;
 
   private AccessDelegationModeResolver resolver;
 
   @BeforeEach
   void setUp() {
-    resolver = new AccessDelegationModeResolver(realmConfig);
+    resolver = new DefaultAccessDelegationModeResolver(configurationStore, realmContext);
   }
 
   @Test
@@ -121,8 +125,10 @@ class AccessDelegationModeResolverTest {
   @Test
   void resolveBothModes_withCredentialSubscopingSkipped_returnsRemoteSigning() {
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // STS available
-    when(realmConfig.getConfig(
-            any(FeatureConfiguration.class), any(CatalogEntity.class)))
+    when(configurationStore.getConfiguration(
+            any(RealmContext.class),
+            any(CatalogEntity.class),
+            any(FeatureConfiguration.class)))
         .thenReturn(true);
 
     EnumSet<AccessDelegationMode> requestedModes =
