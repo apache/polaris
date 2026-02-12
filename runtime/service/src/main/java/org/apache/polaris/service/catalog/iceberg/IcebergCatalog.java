@@ -423,7 +423,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         dropTableLike(
             PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, storageProperties, purge);
     if (!dropEntityResult.isSuccess()) {
-      return false;
+      switch (dropEntityResult.getReturnStatus()) {
+        case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
+          throw new ForbiddenException(
+              "Table %s cannot be dropped: %s",
+              tableIdentifier, dropEntityResult.getExtraInformation());
+
+        default:
+          throw new ServiceFailureException(
+              "Failed to drop table %s, status=%s, extraInfo=%s",
+              tableIdentifier,
+              dropEntityResult.getReturnStatus(),
+              dropEntityResult.getExtraInformation());
+      }
     }
 
     if (purge && lastMetadata != null && dropEntityResult.getCleanupTaskId() != null) {
@@ -648,12 +663,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 Map.of(),
                 realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
-    if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
-      throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
+    if (!dropEntityResult.isSuccess()) {
+      switch (dropEntityResult.getReturnStatus()) {
+        case BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY:
+        case BaseResult.ReturnStatus.CATALOG_NOT_EMPTY:
+          throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
+
+        case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        default:
+          throw new ServiceFailureException(
+              "Failed to drop namespace %s, status=%s, extraInfo=%s",
+              namespace,
+              dropEntityResult.getReturnStatus(),
+              dropEntityResult.getExtraInformation());
+      }
     }
 
-    // return status of drop operation
-    return dropEntityResult.isSuccess();
+    return true;
   }
 
   @Override
@@ -835,8 +863,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     boolean purge =
         realmConfig.getConfig(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP, catalogEntity);
 
-    return dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), purge)
-        .isSuccess();
+    DropEntityResult dropEntityResult =
+        dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), purge);
+    if (!dropEntityResult.isSuccess()) {
+      switch (dropEntityResult.getReturnStatus()) {
+        case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
+          throw new ForbiddenException(
+              "View %s cannot be dropped: %s", identifier, dropEntityResult.getExtraInformation());
+
+        default:
+          throw new ServiceFailureException(
+              "Failed to drop view %s, status=%s, extraInfo=%s",
+              identifier,
+              dropEntityResult.getReturnStatus(),
+              dropEntityResult.getExtraInformation());
+      }
+    }
+    return true;
   }
 
   @Override
