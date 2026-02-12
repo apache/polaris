@@ -26,8 +26,8 @@ image:
   repository: apache/polaris
   # -- The image pull policy.
   pullPolicy: IfNotPresent
-  # -- The image tag.
-  tag: "latest"
+  # -- The image tag. If not set, the chart version is used.
+  tag: ""
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   configDir: /deployments/config
