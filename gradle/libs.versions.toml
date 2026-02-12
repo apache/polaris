@@ -58,7 +58,7 @@ hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.re
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
 hawkular-agent-prometheus-scraper = { module = "org.hawkular.agent:prometheus-scraper", version = "0.23.0.Final" }
-hive-metastore = { module = "org.apache.hive:hive-metastore", version = "4.2.0" }
+hive-metastore = { module = "org.apache.hive:hive-metastore", version = "3.1.3" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
 immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
 immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
