@@ -26,6 +26,7 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,10 +42,13 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
@@ -93,6 +97,19 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
+  }
+
+  @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "resolveAuthorizationInputs is not implemented yet for OpaPolarisAuthorizer");
+  }
+
+  @Override
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "authorize is not implemented yet for OpaPolarisAuthorizer");
   }
 
   /**
@@ -332,4 +349,5 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
     return builder.build();
   }
+
 }

@@ -731,6 +731,19 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     this.realmConfig = realmConfig;
   }
 
+  @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "resolveAuthorizationInputs is not implemented yet for PolarisAuthorizerImpl");
+  }
+
+  @Override
+  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "authorize is not implemented yet for PolarisAuthorizerImpl");
+  }
+
   /**
    * Checks whether the {@code grantedPrivilege} is sufficient to confer {@code desiredPrivilege},
    * assuming the privileges are referring to the same securable object. In other words, whether the

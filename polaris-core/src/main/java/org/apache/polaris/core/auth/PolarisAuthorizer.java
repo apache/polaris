@@ -27,6 +27,25 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
+  /**
+   * Resolve authorizer-specific inputs before authorization.
+   *
+   * <p>Implementations may resolve only the entities required for the request (for example, the
+   * caller principal, principal roles, catalog roles, and requested targets) and store that state
+   * in {@link AuthorizationState}.
+   *
+   * <p>This method should not perform authorization decisions directly.
+   */
+  void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
+
+  /**
+   * Core authorization entry point for the new SPI.
+   *
+   * <p>Implementations should rely on any required state in {@link AuthorizationState} and the
+   * intent captured by {@link AuthorizationRequest} (principal, operation, and target securables).
+   */
+  void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
 
   void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,

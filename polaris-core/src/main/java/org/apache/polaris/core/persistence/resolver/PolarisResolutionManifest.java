@@ -143,6 +143,22 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return primaryResolverStatus;
   }
 
+  /**
+   * Resolves explicitly requested components.
+   *
+   * <p>Selections control which resolver components are executed. Callers are expected to add
+   * paths or top-level entity names before invoking this method.
+   */
+  public ResolverStatus resolveSelections(Set<Resolvable> selections) {
+    diagnostics.checkNotNull(selections, "resolver_selections_is_null");
+    primaryResolverStatus = primaryResolver.resolveSelections(selections);
+    diagnostics.check(
+        primaryResolverStatus.getStatus()
+            != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
+        "caller_principal_does_not_exist_at_resolution_time");
+    return primaryResolverStatus;
+  }
+
   public boolean getIsPassthroughFacade() {
     return primaryResolver.getIsPassthroughFacade();
   }
