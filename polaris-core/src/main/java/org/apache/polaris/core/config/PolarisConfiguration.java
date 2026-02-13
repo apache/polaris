@@ -33,7 +33,8 @@ import java.util.stream.Stream;
  */
 public abstract class PolarisConfiguration<T> {
 
-  private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
+  // Only mutated via the `registerConfiguration` method, which is synchronized.
+  private static final List<PolarisConfiguration<?>> ALL_CONFIGURATIONS = new ArrayList<>();
 
   private final String key;
   private final String description;
@@ -49,8 +50,8 @@ public abstract class PolarisConfiguration<T> {
    * Helper method for building `allConfigurations` and checking for duplicate use of keys across
    * configs.
    */
-  private static void registerConfiguration(PolarisConfiguration<?> configuration) {
-    for (PolarisConfiguration<?> existingConfiguration : allConfigurations) {
+  private static synchronized void registerConfiguration(PolarisConfiguration<?> configuration) {
+    for (PolarisConfiguration<?> existingConfiguration : ALL_CONFIGURATIONS) {
       if (existingConfiguration.key.equals(configuration.key)) {
         throw new IllegalArgumentException(
             String.format("Config '%s' is already in use", configuration.key));
@@ -71,12 +72,12 @@ public abstract class PolarisConfiguration<T> {
         }
       }
     }
-    allConfigurations.add(configuration);
+    ALL_CONFIGURATIONS.add(configuration);
   }
 
   /** Returns a list of all PolarisConfigurations that have been registered */
   public static List<PolarisConfiguration<?>> getAllConfigurations() {
-    return List.copyOf(allConfigurations);
+    return List.copyOf(ALL_CONFIGURATIONS);
   }
 
   @SuppressWarnings("unchecked")
