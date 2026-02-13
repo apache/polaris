@@ -37,7 +37,15 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.metrics.CommitMetrics;
+import org.apache.iceberg.metrics.CommitMetricsResult;
+import org.apache.iceberg.metrics.CommitReport;
+import org.apache.iceberg.metrics.ImmutableCommitReport;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -45,6 +53,7 @@ import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
@@ -2188,5 +2197,85 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         () ->
             newWrapper()
                 .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
+  }
+
+  @Test
+  public void testReportReadMetricsSufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportReadMetricsInsufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
+  }
+
+  @Test
+  public void testReportWriteMetricsSufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportWriteMetricsInsufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
   }
 }

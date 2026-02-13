@@ -345,18 +345,15 @@ public record TestServices(
                   .externalCatalogFactories(externalCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
+                  .metricsReporter(new DefaultMetricsReporter())
+                  .clock(clock)
                   .build();
             }
           };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext,
-              new DefaultCatalogPrefixParser(),
-              reservedProperties,
-              new DefaultMetricsReporter(),
-              Clock.systemUTC(),
-              handlerFactory);
+              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

@@ -947,6 +947,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @Test
   public void testSendMetricsReport() {
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    restCatalog.buildTable(TableIdentifier.of(Namespace.of("ns1"), "tbl1"), SCHEMA).create();
+
     ScanReport scanReport =
         ImmutableScanReport.builder()
             .tableName("tbl1")
