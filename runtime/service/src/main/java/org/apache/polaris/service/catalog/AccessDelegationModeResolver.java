@@ -65,19 +65,4 @@ public interface AccessDelegationModeResolver {
   AccessDelegationMode resolve(
       @Nonnull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity);
-
-  /**
-   * Convenience method to resolve and return an EnumSet containing just the resolved mode.
-   *
-   * @param requestedModes The set of delegation modes requested by the client
-   * @param catalogEntity The catalog entity
-   * @return An EnumSet containing the single resolved mode
-   */
-  @Nonnull
-  default EnumSet<AccessDelegationMode> resolveToSet(
-      @Nonnull EnumSet<AccessDelegationMode> requestedModes,
-      @Nullable CatalogEntity catalogEntity) {
-    AccessDelegationMode resolved = resolve(requestedModes, catalogEntity);
-    return EnumSet.of(resolved);
-  }
 }
