@@ -26,6 +26,7 @@ dependencies {
   implementation(baselibs.jandex)
   implementation(baselibs.license.report)
   implementation(baselibs.nexus.publish)
+  implementation(baselibs.openapi.diff)
   implementation(baselibs.shadow)
   implementation(baselibs.spotless)
 }
