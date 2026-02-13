@@ -22,12 +22,9 @@ import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An ABC for Polaris configurations that alter the service's behavior TODO: deprecate unsafe
@@ -37,10 +34,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class PolarisConfiguration<T> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
-
-  private static final List<PolarisConfiguration<?>> ALL_CONFIGURATIONS =
-      new CopyOnWriteArrayList<>();
+  // Only mutated via the `registerConfiguration` method, which is synchronized.
+  private static final List<PolarisConfiguration<?>> ALL_CONFIGURATIONS = new ArrayList<>();
 
   private final String key;
   private final String description;
@@ -56,7 +51,7 @@ public abstract class PolarisConfiguration<T> {
    * Helper method for building `allConfigurations` and checking for duplicate use of keys across
    * configs.
    */
-  private static void registerConfiguration(PolarisConfiguration<?> configuration) {
+  private static synchronized void registerConfiguration(PolarisConfiguration<?> configuration) {
     for (PolarisConfiguration<?> existingConfiguration : ALL_CONFIGURATIONS) {
       if (existingConfiguration.key.equals(configuration.key)) {
         throw new IllegalArgumentException(
