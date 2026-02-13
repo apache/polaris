@@ -92,7 +92,7 @@ public class PolicyCatalog {
   public Policy createPolicy(
       PolicyIdentifier policyIdentifier, String type, String description, String content) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(policyIdentifier.getNamespace());
+        resolvedEntityView.getResolvedPath(policyIdentifier.namespace());
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -119,8 +119,7 @@ public class PolicyCatalog {
     }
 
     entity =
-        new PolicyEntity.Builder(
-                policyIdentifier.getNamespace(), policyIdentifier.getName(), policyType)
+        new PolicyEntity.Builder(policyIdentifier.namespace(), policyIdentifier.name(), policyType)
             .setCatalogId(catalogId)
             .setParentId(resolvedParent.getRawLeafEntity().getId())
             .setDescription(description)
@@ -180,10 +179,7 @@ public class PolicyCatalog {
       return listEntitiesResult.getEntities().stream()
           .map(
               entity ->
-                  PolicyIdentifier.builder()
-                      .setNamespace(namespace)
-                      .setName(entity.getName())
-                      .build())
+                  PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
           .toList();
     }
     // with a policyType filter we need to load the full PolicyEntity to apply the filter
@@ -198,10 +194,7 @@ public class PolicyCatalog {
         .filter(policyEntity -> policyEntity.getPolicyType() == policyType)
         .map(
             entity ->
-                PolicyIdentifier.builder()
-                    .setNamespace(namespace)
-                    .setName(entity.getName())
-                    .build())
+                PolicyIdentifier.builder().namespace(namespace).name(entity.getName()).build())
         .toList();
   }
 

@@ -18,168 +18,22 @@
  */
 package org.apache.polaris.spark.rest;
 
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
+import org.immutables.value.Value;
 
 // TODO: auto generate the class based on spec
-public class GenericTable {
+@Value.Builder
+public record GenericTable(
+    @NotNull @JsonProperty(value = "name", required = true) String name,
+    @NotNull @JsonProperty(value = "format", required = true) String format,
+    @Nullable @JsonProperty(value = "base-location") String baseLocation,
+    @Nullable @JsonProperty(value = "doc") String doc,
+    @Nullable @JsonProperty(value = "properties") Map<String, String> properties) {
 
-  @NotNull private final String name;
-  @NotNull private final String format;
-  private final String baseLocation;
-  private final String doc;
-  private final Map<String, String> properties;
-
-  /** */
-  @JsonProperty(value = "name", required = true)
-  public String getName() {
-    return name;
-  }
-
-  /** */
-  @JsonProperty(value = "format", required = true)
-  public String getFormat() {
-    return format;
-  }
-
-  /** */
-  @JsonProperty(value = "base-location")
-  public String getBaseLocation() {
-    return baseLocation;
-  }
-
-  /** */
-  @JsonProperty(value = "doc")
-  public String getDoc() {
-    return doc;
-  }
-
-  /** */
-  @JsonProperty(value = "properties")
-  public Map<String, String> getProperties() {
-    return properties;
-  }
-
-  @JsonCreator
-  public GenericTable(
-      @JsonProperty(value = "name", required = true) String name,
-      @JsonProperty(value = "format", required = true) String format,
-      @JsonProperty(value = "base-location") String baseLocation,
-      @JsonProperty(value = "doc") String doc,
-      @JsonProperty(value = "properties") Map<String, String> properties) {
-    this.name = name;
-    this.format = format;
-    this.baseLocation = baseLocation;
-    this.doc = doc;
-    this.properties = Objects.requireNonNullElse(properties, new HashMap<>());
-  }
-
-  public GenericTable(String name, String format) {
-    this.name = name;
-    this.format = format;
-    this.baseLocation = null;
-    this.doc = null;
-    this.properties = new HashMap<>();
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static Builder builder(String name, String format) {
-    return new Builder(name, format);
-  }
-
-  public static final class Builder {
-    private String name;
-    private String format;
-    private String baseLocation;
-    private String doc;
-    private Map<String, String> properties;
-
-    private Builder() {}
-
-    private Builder(String name, String format) {
-      this.name = name;
-      this.format = format;
-    }
-
-    public Builder setName(String name) {
-      this.name = name;
-      return this;
-    }
-
-    public Builder setFormat(String format) {
-      this.format = format;
-      return this;
-    }
-
-    public Builder setBaseLocation(String baseLocation) {
-      this.baseLocation = baseLocation;
-      return this;
-    }
-
-    public Builder setDoc(String doc) {
-      this.doc = doc;
-      return this;
-    }
-
-    public Builder setProperties(Map<String, String> properties) {
-      this.properties = properties;
-      return this;
-    }
-
-    public GenericTable build() {
-      GenericTable inst = new GenericTable(name, format, baseLocation, doc, properties);
-      return inst;
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof GenericTable genericTable)) {
-      return false;
-    }
-    return Objects.equals(this.name, genericTable.name)
-        && Objects.equals(this.format, genericTable.format)
-        && Objects.equals(this.baseLocation, genericTable.baseLocation)
-        && Objects.equals(this.doc, genericTable.doc)
-        && Objects.equals(this.properties, genericTable.properties);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, format, baseLocation, doc, properties);
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("class GenericTable {\n");
-
-    sb.append("    name: ").append(toIndentedString(name)).append("\n");
-    sb.append("    format: ").append(toIndentedString(format)).append("\n");
-    sb.append("    baseLocation: ").append(toIndentedString(baseLocation)).append("\n");
-    sb.append("    doc: ").append(toIndentedString(doc)).append("\n");
-    sb.append("    properties: ").append(toIndentedString(properties)).append("\n");
-    sb.append("}");
-    return sb.toString();
-  }
-
-  /**
-   * Convert the given object to string with each line indented by 4 spaces (except the first line).
-   */
-  private String toIndentedString(Object o) {
-    if (o == null) {
-      return "null";
-    }
-    return o.toString().replace("\n", "\n    ");
+  public static GenericTableBuilder builder() {
+    return new GenericTableBuilder();
   }
 }
