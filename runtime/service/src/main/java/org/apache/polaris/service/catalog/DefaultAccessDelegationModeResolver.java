@@ -135,30 +135,29 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     }
 
     // Check if credential subscoping is skipped - if so, VENDED_CREDENTIALS won't work properly
+    // Note: This config is realm-level only (not overridable at catalog level) and has a default value
     boolean skipCredentialSubscoping =
-        Boolean.TRUE.equals(
-            configurationStore.getConfiguration(
-                realmContext,
-                catalogEntity,
-                FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION));
+        configurationStore.getConfiguration(
+            realmContext, FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
 
     if (skipCredentialSubscoping) {
       LOGGER.debug(
-          "Credential subscoping is skipped for catalog {}, selecting REMOTE_SIGNING",
-          catalogEntity.getName());
+          "Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");
       return REMOTE_SIGNING;
     }
 
-    // Check STS availability from storage configuration
-    boolean stsAvailable = isStsAvailable(catalogEntity);
+    // Check credential vending availability from storage configuration
+    boolean credentialVendingAvailable = isCredentialVendingAvailable(catalogEntity);
 
-    if (stsAvailable) {
+    if (credentialVendingAvailable) {
       LOGGER.debug(
-          "STS is available for catalog {}, selecting VENDED_CREDENTIALS", catalogEntity.getName());
+          "Credential vending is available for catalog {}, selecting VENDED_CREDENTIALS",
+          catalogEntity.getName());
       return VENDED_CREDENTIALS;
     } else {
       LOGGER.debug(
-          "STS is not available for catalog {}, selecting REMOTE_SIGNING", catalogEntity.getName());
+          "Credential vending is not available for catalog {}, selecting REMOTE_SIGNING",
+          catalogEntity.getName());
       return REMOTE_SIGNING;
     }
   }
@@ -173,7 +172,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
    * @param catalogEntity The catalog entity to check
    * @return true if STS is available or the storage type doesn't require STS
    */
-  private boolean isStsAvailable(@Nonnull CatalogEntity catalogEntity) {
+  private boolean isCredentialVendingAvailable(@Nonnull CatalogEntity catalogEntity) {
     PolarisStorageConfigurationInfo storageConfig = catalogEntity.getStorageConfigurationInfo();
 
     if (storageConfig == null) {

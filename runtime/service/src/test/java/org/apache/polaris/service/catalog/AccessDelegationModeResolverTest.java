@@ -59,6 +59,14 @@ class AccessDelegationModeResolverTest {
     resolver = new DefaultAccessDelegationModeResolver(configurationStore, realmContext);
   }
 
+  /** Helper to set up config mock for tests that need it */
+  private void mockSkipCredentialSubscopingConfig(boolean skipCredentialSubscoping) {
+    when(configurationStore.getConfiguration(
+            any(RealmContext.class),
+            any(FeatureConfiguration.class)))
+        .thenReturn(skipCredentialSubscoping);
+  }
+
   @Test
   void resolveEmptyModes_returnsUnknown() {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
@@ -100,6 +108,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withStsAvailable_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // STS available
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -112,6 +121,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withStsUnavailable_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(true); // STS unavailable
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -124,12 +134,8 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withCredentialSubscopingSkipped_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(true); // Skip credential subscoping
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // STS available
-    when(configurationStore.getConfiguration(
-            any(RealmContext.class),
-            any(CatalogEntity.class),
-            any(FeatureConfiguration.class)))
-        .thenReturn(true);
 
     EnumSet<AccessDelegationMode> requestedModes =
         EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
@@ -151,6 +157,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withNoStorageConfig_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithoutStorageConfig();
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -163,6 +170,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withAzureStorageConfig_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAzureConfig();
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -176,6 +184,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withGcpStorageConfig_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithGcpConfig();
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -189,6 +198,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModesWithUnknown_withStsAvailable_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false);
 
     EnumSet<AccessDelegationMode> requestedModes =
@@ -200,25 +210,25 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolveToSet_returnsEnumSetWithResolvedMode() {
+  void resolve_withBothModes_returnsSingleResolvedMode() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(true); // STS unavailable
 
     EnumSet<AccessDelegationMode> requestedModes =
         EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    EnumSet<AccessDelegationMode> result =
-        resolver.resolveToSet(requestedModes, catalogEntity);
+    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).containsExactly(REMOTE_SIGNING);
+    assertThat(result).isEqualTo(REMOTE_SIGNING);
   }
 
   @Test
-  void resolveToSet_emptyModes_returnsUnknown() {
+  void resolve_emptyModes_returnsUnknown() {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
 
-    EnumSet<AccessDelegationMode> result = resolver.resolveToSet(requestedModes, null);
+    AccessDelegationMode result = resolver.resolve(requestedModes, null);
 
-    assertThat(result).containsExactly(UNKNOWN);
+    assertThat(result).isEqualTo(UNKNOWN);
   }
 
   private CatalogEntity createCatalogWithAwsConfig(boolean stsUnavailable) {
