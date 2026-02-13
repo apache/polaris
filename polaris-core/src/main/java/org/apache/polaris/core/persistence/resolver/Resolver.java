@@ -435,8 +435,7 @@ public class Resolver {
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
       // then resolve the reference catalog if one was specified
       if (plan.resolveReferenceCatalog) {
-        this.diagnostics.checkNotNull(
-            this.referenceCatalogName, "reference_catalog_expected");
+        this.diagnostics.checkNotNull(this.referenceCatalogName, "reference_catalog_expected");
         status =
             this.resolveReferenceCatalog(
                 toValidate, this.referenceCatalogName, plan.resolveCatalogRoles);
@@ -926,9 +925,7 @@ public class Resolver {
       boolean resolvePrincipalRoles =
           selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES) || resolveCatalogRoles;
       boolean resolveReferenceCatalog =
-          selections.contains(Resolvable.REFERENCE_CATALOG)
-              || resolvePaths
-              || resolveCatalogRoles;
+          selections.contains(Resolvable.REFERENCE_CATALOG) || resolvePaths || resolveCatalogRoles;
       boolean resolveCallerPrincipal =
           selections.contains(Resolvable.CALLER_PRINCIPAL)
               || resolvePrincipalRoles

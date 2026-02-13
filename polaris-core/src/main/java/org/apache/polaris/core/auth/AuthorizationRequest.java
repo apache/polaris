@@ -95,5 +95,4 @@ public interface AuthorizationRequest {
     }
     return false;
   }
-
 }

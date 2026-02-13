@@ -146,8 +146,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   /**
    * Resolves explicitly requested components.
    *
-   * <p>Selections control which resolver components are executed. Callers are expected to add
-   * paths or top-level entity names before invoking this method.
+   * <p>Selections control which resolver components are executed. Callers are expected to add paths
+   * or top-level entity names before invoking this method.
    */
   public ResolverStatus resolveSelections(Set<Resolvable> selections) {
     diagnostics.checkNotNull(selections, "resolver_selections_is_null");

@@ -34,10 +34,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 public interface PolarisSecurable {
   static PolarisSecurable of(
       @Nonnull PolarisEntityType entityType, @Nonnull List<String> nameParts) {
-    return ImmutablePolarisSecurable.builder()
-        .entityType(entityType)
-        .nameParts(nameParts)
-        .build();
+    return ImmutablePolarisSecurable.builder().entityType(entityType).nameParts(nameParts).build();
   }
 
   /** Returns the entity type of the securable. */

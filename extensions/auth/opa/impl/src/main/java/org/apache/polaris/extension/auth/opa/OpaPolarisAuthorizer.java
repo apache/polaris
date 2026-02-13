@@ -26,7 +26,6 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -48,7 +47,6 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
@@ -349,5 +347,4 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
     return builder.build();
   }
-
 }
