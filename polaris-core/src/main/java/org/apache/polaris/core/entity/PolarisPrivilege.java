@@ -24,7 +24,15 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 
-/** List of privileges */
+/**
+ * Enumerates the privileges used by the built-in RBAC authorizer ({@link
+ * org.apache.polaris.core.auth.PolarisAuthorizerImpl}). These privileges are granted to roles and
+ * checked against securables during authorization.
+ *
+ * <p>Alternative authorizer implementations such as the OPA-based authorizer may not use these
+ * privileges. They operate at the {@link org.apache.polaris.core.auth.PolarisAuthorizableOperation}
+ * level and delegates all privilege/permission logic to external PDPs.
+ */
 public enum PolarisPrivilege {
   SERVICE_MANAGE_ACCESS(1, PolarisEntityType.ROOT),
   CATALOG_MANAGE_ACCESS(2, PolarisEntityType.CATALOG),
