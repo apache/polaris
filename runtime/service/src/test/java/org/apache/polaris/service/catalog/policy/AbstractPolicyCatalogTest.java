@@ -521,7 +521,7 @@ public abstract class AbstractPolicyCatalogTest {
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(1);
     assertThat(applicablePolicies.getFirst().getName())
-        .isEqualTo(POLICY2.getName())
+        .isEqualTo(POLICY2.name())
         .as("Namespace level policy overwrite the catalog level policy with the same type");
   }
 

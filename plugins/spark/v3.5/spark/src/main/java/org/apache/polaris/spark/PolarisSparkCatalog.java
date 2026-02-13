@@ -72,7 +72,7 @@ public class PolarisSparkCatalog implements TableCatalog {
       GenericTable genericTable =
           this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
       // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
-      if (PolarisCatalogUtils.useHudi(genericTable.getFormat())) {
+      if (PolarisCatalogUtils.useHudi(genericTable.format())) {
         return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
       } else {
         return PolarisCatalogUtils.loadV2SparkTable(genericTable);

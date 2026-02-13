@@ -778,8 +778,8 @@ public abstract class BaseResolverTest {
       List<ResolvedPolarisEntity> resolvedPath) {
 
     // ensure same cardinality
-    if (!pathToResolve.isOptional()) {
-      Assertions.assertThat(resolvedPath).hasSameSizeAs(pathToResolve.getEntityNames());
+    if (!pathToResolve.optional()) {
+      Assertions.assertThat(resolvedPath).hasSameSizeAs(pathToResolve.entityNames());
     }
 
     // catalog path
@@ -789,10 +789,10 @@ public abstract class BaseResolverTest {
     // loop and validate each element
     for (int index = 0; index < resolvedPath.size(); index++) {
       ResolvedPolarisEntity cacheEntry = resolvedPath.get(index);
-      String entityName = pathToResolve.getEntityNames().get(index);
+      String entityName = pathToResolve.entityNames().get(index);
       PolarisEntityType entityType =
-          (index == pathToResolve.getEntityNames().size() - 1)
-              ? pathToResolve.getLastEntityType()
+          (index == pathToResolve.entityNames().size() - 1)
+              ? pathToResolve.lastEntityType()
               : PolarisEntityType.NAMESPACE;
 
       // ensure that this entity has been properly resolved

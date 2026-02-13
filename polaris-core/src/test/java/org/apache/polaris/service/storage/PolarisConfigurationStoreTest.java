@@ -105,16 +105,8 @@ public class PolarisConfigurationStoreTest {
         .buildFeatureConfiguration();
   }
 
-  private static class PolarisConfigurationConsumer {
-
-    private final RealmContext realmContext;
-    private final PolarisConfigurationStore configurationStore;
-
-    public PolarisConfigurationConsumer(
-        RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-      this.realmContext = realmContext;
-      this.configurationStore = configurationStore;
-    }
+  private record PolarisConfigurationConsumer(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
 
     public <T> T consumeConfiguration(
         PolarisConfiguration<Boolean> config, Supplier<T> code, T defaultVal) {

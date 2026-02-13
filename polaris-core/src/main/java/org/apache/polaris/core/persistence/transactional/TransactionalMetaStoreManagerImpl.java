@@ -1144,7 +1144,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       // update that entity, abort if it fails
       EntityResult updatedEntityResult =
           this.updateEntityPropertiesIfNotChanged(
-              callCtx, ms, entityWithPath.getCatalogPath(), entityWithPath.getEntity());
+              callCtx, ms, entityWithPath.catalogPath(), entityWithPath.entity());
 
       // if failed, rollback and return the last error
       if (updatedEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
@@ -2297,7 +2297,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // load the entity if something changed
     final PolarisBaseEntity entity;
-    if (entityVersion != entityVersions.getEntityVersion()) {
+    if (entityVersion != entityVersions.entityVersion()) {
       entity =
           ms.lookupEntityInCurrentTxn(callCtx, entityCatalogId, entityId, entityType.getCode());
 
@@ -2312,7 +2312,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // load the grant records if required
     final List<PolarisGrantRecord> grantRecords;
-    if (entityVersions.getGrantRecordsVersion() != entityGrantRecordsVersion) {
+    if (entityVersions.grantRecordsVersion() != entityGrantRecordsVersion) {
       if (entityType.isGrantee()) {
         grantRecords =
             new ArrayList<>(
@@ -2328,7 +2328,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // return the result
-    return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, entityVersions.grantRecordsVersion(), grantRecords);
   }
 
   /** {@inheritDoc} */
