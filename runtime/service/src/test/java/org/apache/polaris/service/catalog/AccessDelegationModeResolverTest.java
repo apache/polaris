@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.Map;
+import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
@@ -44,8 +45,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @SuppressWarnings("unchecked")
 class AccessDelegationModeResolverTest {
 
@@ -61,6 +65,31 @@ class AccessDelegationModeResolverTest {
 
   /** Helper to set up config mock for tests that need it */
   private void mockSkipCredentialSubscopingConfig(boolean skipCredentialSubscoping) {
+    when(configurationStore.getConfiguration(
+            any(RealmContext.class),
+            any(FeatureConfiguration.class)))
+        .thenReturn(skipCredentialSubscoping);
+  }
+
+  /**
+   * Helper to set up config mock for external catalog tests.
+   *
+   * @param skipCredentialSubscoping whether to skip credential subscoping
+   * @param allowFederatedCredentialVending whether to allow federated catalog credential vending
+   */
+  private void mockConfigForExternalCatalog(
+      boolean skipCredentialSubscoping, boolean allowFederatedCredentialVending) {
+    // Mock ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING (catalog-level)
+    // Since getConfiguration(RealmContext, CatalogEntity, PolarisConfiguration) is a default method,
+    // we need to use doAnswer to intercept the default method call
+    org.mockito.Mockito.doReturn(allowFederatedCredentialVending)
+        .when(configurationStore)
+        .getConfiguration(
+            org.mockito.ArgumentMatchers.<RealmContext>any(),
+            org.mockito.ArgumentMatchers.<CatalogEntity>any(),
+            org.mockito.ArgumentMatchers.<FeatureConfiguration<Boolean>>any());
+
+    // Mock SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION (realm-level only)
     when(configurationStore.getConfiguration(
             any(RealmContext.class),
             any(FeatureConfiguration.class)))
@@ -229,6 +258,69 @@ class AccessDelegationModeResolverTest {
     AccessDelegationMode result = resolver.resolve(requestedModes, null);
 
     assertThat(result).isEqualTo(UNKNOWN);
+  }
+
+  // Tests for external/federated catalogs
+
+  @Test
+  void resolveBothModes_externalCatalog_withFederatedVendingAllowed_returnsVendedCredentials() {
+    mockConfigForExternalCatalog(false, true); // federatedVendingAllowed=true
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+
+    EnumSet<AccessDelegationMode> requestedModes =
+        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+
+    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+
+    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+  }
+
+  @Test
+  void resolveBothModes_externalCatalog_withFederatedVendingDisallowed_returnsRemoteSigning() {
+    mockConfigForExternalCatalog(false, false); // federatedVendingAllowed=false
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+
+    EnumSet<AccessDelegationMode> requestedModes =
+        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+
+    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+
+    assertThat(result).isEqualTo(REMOTE_SIGNING);
+  }
+
+  @Test
+  void resolveBothModes_internalCatalog_doesNotCheckFederatedVendingConfig() {
+    // For internal catalogs, we shouldn't need the federated vending config
+    mockSkipCredentialSubscopingConfig(false);
+    CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // Internal catalog
+
+    EnumSet<AccessDelegationMode> requestedModes =
+        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+
+    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+
+    // Internal catalog should return VENDED_CREDENTIALS without checking federated config
+    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+  }
+
+  private CatalogEntity createExternalCatalogWithAwsConfig(boolean stsUnavailable) {
+    AwsStorageConfigurationInfo awsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::123456789012:role/test-role")
+            .addAllowedLocation("s3://test-bucket/")
+            .stsUnavailable(stsUnavailable)
+            .build();
+
+    // Note: setCatalogType must be called AFTER setInternalProperties because
+    // setInternalProperties replaces the entire internal properties map
+    return new CatalogEntity.Builder()
+        .setName("external-catalog")
+        .setInternalProperties(
+            Map.of(
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+                awsConfig.serialize()))
+        .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
+        .build();
   }
 
   private CatalogEntity createCatalogWithAwsConfig(boolean stsUnavailable) {

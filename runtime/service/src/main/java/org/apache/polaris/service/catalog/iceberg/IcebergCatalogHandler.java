@@ -1347,18 +1347,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Resolves the optimal access delegation mode from the set of requested modes based on the
-   * catalog's capabilities.
+   * Resolves the access delegation mode by delegating to the configured {@link
+   * AccessDelegationModeResolver}.
    *
-   * <p>When both VENDED_CREDENTIALS and REMOTE_SIGNING are requested, the resolver checks:
-   *
-   * <ul>
-   *   <li>STS availability from the catalog's storage configuration
-   *   <li>Whether credential subscoping is skipped
-   * </ul>
-   *
-   * <p>This ensures the optimal mode is selected based on actual catalog capabilities rather than
-   * simple heuristics.
+   * <p>If no modes are requested, returns {@link AccessDelegationMode#UNKNOWN} immediately.
+   * Otherwise, delegates to the resolver to determine the optimal mode based on catalog
+   * capabilities.
    *
    * @param requestedModes The set of delegation modes requested by the client
    * @return The resolved access delegation mode
