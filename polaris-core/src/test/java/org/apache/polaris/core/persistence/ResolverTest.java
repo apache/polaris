@@ -21,10 +21,21 @@ package org.apache.polaris.core.persistence;
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
 import java.time.Clock;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
+import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class ResolverTest extends BaseResolverTest {
@@ -61,5 +72,95 @@ public class ResolverTest extends BaseResolverTest {
       tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx());
     }
     return tm;
+  }
+
+  @Test
+  public void testResolveSelectionsSkipsCallerPrincipalForReferenceCatalog() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  @Test
+  public void testResolveSelectionsSkipsCallerPrincipalForRequestedPaths() {
+    Resolver pathResolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    pathResolver.addPath(new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE));
+    ResolverStatus pathStatus = pathResolver.resolveSelections(Set.of(Resolvable.REQUESTED_PATHS));
+    Assertions.assertThat(pathStatus.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  @Test
+  public void testResolveSelectionsSkipsCallerPrincipalForRequestedTopLevelEntities() {
+    Resolver entityResolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            null);
+    entityResolver.addEntityByName(PolarisEntityType.PRINCIPAL, "P1");
+    ResolverStatus entityStatus =
+        entityResolver.resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+    Assertions.assertThat(entityStatus.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  @Test
+  public void testResolveSelectionsRequiresCallerPrincipalForCatalogRoles() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CATALOG_ROLES));
+    Assertions.assertThat(status.getStatus())
+        .isEqualTo(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
+  }
+
+  @Test
+  public void testResolveSelectionsRequiresCallerPrincipalForCallerPrincipal() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL));
+    Assertions.assertThat(status.getStatus())
+        .isEqualTo(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
+  }
+
+  @Test
+  public void testResolveSelectionsRequiresCallerPrincipalForCallerPrincipalRoles() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_PRINCIPAL_ROLES));
+    Assertions.assertThat(status.getStatus())
+        .isEqualTo(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
   }
 }

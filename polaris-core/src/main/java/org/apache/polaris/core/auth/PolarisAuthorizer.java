@@ -59,7 +59,8 @@ public interface PolarisAuthorizer {
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     AuthorizationDecision decision = authorizeDecision(authzState, request);
     if (!decision.isAllowed()) {
-      throw new ForbiddenException(decision.getMessageOrDefault("Authorization denied"));
+      String message = decision.getMessageOrDefault("Authorization denied");
+      throw new ForbiddenException("%s", message);
     }
   }
 
