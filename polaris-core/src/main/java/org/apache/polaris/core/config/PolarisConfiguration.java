@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.core.config;
 
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An ABC for Polaris configurations that alter the service's behavior TODO: deprecate unsafe
@@ -32,6 +35,8 @@ import java.util.stream.Stream;
  * @param <T> The type of the configuration
  */
 public abstract class PolarisConfiguration<T> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
 
   private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
 
@@ -130,6 +135,59 @@ public abstract class PolarisConfiguration<T> {
 
   public final T defaultValue() {
     return defaultValue;
+  }
+
+  public T resolveValue(
+      Function<String, ?> globalProperties, Function<String, ?> catalogProperties) {
+    Object propertyValue = null;
+    if (hasCatalogConfig() || hasCatalogConfigUnsafe()) {
+      if (hasCatalogConfig()) {
+        propertyValue = catalogProperties.apply(catalogConfig());
+      }
+      if (propertyValue == null) {
+        if (hasCatalogConfigUnsafe()) {
+          propertyValue = catalogProperties.apply(catalogConfigUnsafe());
+        }
+        if (propertyValue != null) {
+          LOGGER.warn(
+              String.format(
+                  "Deprecated config %s is in use and will be removed in a future version",
+                  catalogConfigUnsafe()));
+        }
+      }
+    }
+
+    if (propertyValue == null) {
+      propertyValue = globalProperties.apply(key());
+    }
+
+    return tryCast(propertyValue);
+  }
+
+  /**
+   * In some cases, we may extract a value that doesn't match the expected type for a config. This
+   * method can be used to attempt to force-cast it using `String.valueOf`
+   */
+  private @Nonnull T tryCast(Object value) {
+    if (value == null) {
+      return defaultValue();
+    }
+
+    if (defaultValue() instanceof Boolean) {
+      return cast(Boolean.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Integer) {
+      return cast(Integer.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Long) {
+      return cast(Long.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Double) {
+      return cast(Double.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Float) {
+      return cast(Float.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof List<?>) {
+      return cast(new ArrayList<>((List<?>) value));
+    } else {
+      return cast(value);
+    }
   }
 
   public static class Builder<T> {
