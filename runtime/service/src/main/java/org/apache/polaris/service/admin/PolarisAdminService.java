@@ -87,6 +87,7 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -1518,8 +1519,17 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
 
-    return metaStoreManager.grantUsageOnRoleToGrantee(
-        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
+    PrivilegeResult result =
+        metaStoreManager.grantUsageOnRoleToGrantee(
+            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
+
+    // if granting catalog_admin, also grant catalog_role_manager to allow listing principal roles
+    if (result.isSuccess()
+        && PolarisEntityConstants.getNameOfCatalogAdminRole().equals(catalogRoleName)) {
+      grantCatalogRoleManagerIfNeeded(principalRoleEntity);
+    }
+
+    return result;
   }
 
   public PrivilegeResult revokeCatalogRoleFromPrincipalRole(
@@ -1534,8 +1544,17 @@ public class PolarisAdminService {
         getPrincipalRoleByName(resolutionManifest, principalRoleName);
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     CatalogRoleEntity catalogRoleEntity = getCatalogRoleByName(resolutionManifest, catalogRoleName);
-    return metaStoreManager.revokeUsageOnRoleFromGrantee(
-        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
+    PrivilegeResult result =
+        metaStoreManager.revokeUsageOnRoleFromGrantee(
+            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
+
+    // if revoking catalog_admin, check if principal still has catalog_admin on other catalogs
+    if (result.isSuccess()
+        && PolarisEntityConstants.getNameOfCatalogAdminRole().equals(catalogRoleName)) {
+      revokeCatalogRoleManagerIfNeeded(principalRoleEntity);
+    }
+
+    return result;
   }
 
   public List<PolarisEntity> listAssigneePrincipalsForPrincipalRole(String principalRoleName) {
@@ -2334,5 +2353,179 @@ public class PolarisAdminService {
                   + " supported for synthetic entities in external catalogs.",
               subTypes));
     }
+  }
+
+  /**
+   * Grants the catalog_role_manager principal role to all principals assigned to the specified
+   * principal role. This allows catalog admins to list principal roles.
+   */
+  private void grantCatalogRoleManagerIfNeeded(PrincipalRoleEntity principalRoleEntity) {
+    // Load catalog_role_manager directly from metastore
+    EntityResult catalogRoleManagerResult =
+        metaStoreManager.readEntityByName(
+            getCurrentPolarisContext(),
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+
+    if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
+      return;
+    }
+
+    PrincipalRoleEntity catalogRoleManagerEntity =
+        PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
+
+    // Find all principals that have this principal role and grant catalog_role_manager to them
+    LoadGrantsResult grantsResult =
+        metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), principalRoleEntity);
+
+    if (grantsResult.isSuccess()) {
+      for (PolarisGrantRecord grant : grantsResult.getGrantRecords()) {
+        // Check if this is a PRINCIPAL_ROLE_USAGE grant (principal using this role)
+        if (grant.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+          // Load the principal (grantee)
+          EntityResult principalResult =
+              metaStoreManager.loadEntity(
+                  getCurrentPolarisContext(),
+                  grant.getGranteeCatalogId(),
+                  grant.getGranteeId(),
+                  PolarisEntityType.PRINCIPAL);
+
+          if (principalResult.isSuccess() && principalResult.getEntity() != null) {
+            // Grant catalog_role_manager to this principal
+            metaStoreManager.grantUsageOnRoleToGrantee(
+                getCurrentPolarisContext(),
+                null,
+                catalogRoleManagerEntity,
+                PrincipalEntity.of(principalResult.getEntity()));
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Revokes the catalog_role_manager principal role from all principals assigned to the specified
+   * principal role if they no longer have any catalog_admin grants.
+   */
+  private void revokeCatalogRoleManagerIfNeeded(PrincipalRoleEntity principalRoleEntity) {
+    // Load catalog_role_manager directly from metastore
+    EntityResult catalogRoleManagerResult =
+        metaStoreManager.readEntityByName(
+            getCurrentPolarisContext(),
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+
+    if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
+      return;
+    }
+
+    PrincipalRoleEntity catalogRoleManagerEntity =
+        PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
+
+    // Find all principals that have this principal role
+    LoadGrantsResult grantsResult =
+        metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), principalRoleEntity);
+
+    if (grantsResult.isSuccess()) {
+      for (PolarisGrantRecord grant : grantsResult.getGrantRecords()) {
+        // Check if this is a PRINCIPAL_ROLE_USAGE grant
+        if (grant.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+          // Load the principal
+          EntityResult principalResult =
+              metaStoreManager.loadEntity(
+                  getCurrentPolarisContext(),
+                  grant.getGranteeCatalogId(),
+                  grant.getGranteeId(),
+                  PolarisEntityType.PRINCIPAL);
+
+          if (principalResult.isSuccess() && principalResult.getEntity() != null) {
+            PrincipalEntity principal = PrincipalEntity.of(principalResult.getEntity());
+
+            // Check if this principal still has catalog_admin on any other catalog
+            if (!hasCatalogAdminOnAnyCatalog(principal)) {
+              // Revoke catalog_role_manager from this principal
+              metaStoreManager.revokeUsageOnRoleFromGrantee(
+                  getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if the principal has catalog_admin on any catalog by examining all principal roles and
+   * their catalog role grants.
+   */
+  private boolean hasCatalogAdminOnAnyCatalog(PrincipalEntity principal) {
+    // Get all principal roles this principal has
+    LoadGrantsResult principalRolesGrants =
+        metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principal);
+
+    if (!principalRolesGrants.isSuccess()) {
+      return false;
+    }
+
+    // For each principal role, check if it has catalog_admin on any catalog
+    for (PolarisGrantRecord grant : principalRolesGrants.getGrantRecords()) {
+      if (grant.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+        // Load the principal role
+        EntityResult principalRoleResult =
+            metaStoreManager.loadEntity(
+                getCurrentPolarisContext(),
+                grant.getSecurableCatalogId(),
+                grant.getSecurableId(),
+                PolarisEntityType.PRINCIPAL_ROLE);
+
+        if (principalRoleResult.isSuccess() && principalRoleResult.getEntity() != null) {
+          PrincipalRoleEntity principalRole =
+              PrincipalRoleEntity.of(principalRoleResult.getEntity());
+
+          // Check if this principal role has any catalog role grants
+          if (hasCatalogAdminOnAnyCatalog(principalRole)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Checks if the principal role has catalog_admin on any catalog by examining all catalog role
+   * grants.
+   */
+  private boolean hasCatalogAdminOnAnyCatalog(PrincipalRoleEntity principalRoleEntity) {
+    LoadGrantsResult grantList =
+        metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principalRoleEntity);
+
+    if (!grantList.isSuccess()) {
+      return false;
+    }
+
+    for (PolarisGrantRecord grant : grantList.getGrantRecords()) {
+      if (grant.getPrivilegeCode() == PolarisPrivilege.CATALOG_ROLE_USAGE.getCode()) {
+        EntityResult roleEntityResult =
+            metaStoreManager.loadEntity(
+                getCurrentPolarisContext(),
+                grant.getSecurableCatalogId(),
+                grant.getSecurableId(),
+                PolarisEntityType.CATALOG_ROLE);
+
+        if (roleEntityResult.isSuccess()
+            && roleEntityResult.getEntity() != null
+            && PolarisEntityConstants.getNameOfCatalogAdminRole()
+                .equals(roleEntityResult.getEntity().getName())) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 }
