@@ -2393,12 +2393,29 @@ public class PolarisAdminService {
                   PolarisEntityType.PRINCIPAL);
 
           if (principalResult.isSuccess() && principalResult.getEntity() != null) {
-            // Grant catalog_role_manager to this principal
-            metaStoreManager.grantUsageOnRoleToGrantee(
-                getCurrentPolarisContext(),
-                null,
-                catalogRoleManagerEntity,
-                PrincipalEntity.of(principalResult.getEntity()));
+            PrincipalEntity principal = PrincipalEntity.of(principalResult.getEntity());
+
+            // Check if the principal already has catalog_role_manager
+            LoadGrantsResult principalGrantsResult =
+                metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principal);
+
+            boolean alreadyHasCatalogRoleManager = false;
+            if (principalGrantsResult.isSuccess()) {
+              for (PolarisGrantRecord existingGrant : principalGrantsResult.getGrantRecords()) {
+                if (existingGrant.getSecurableId() == catalogRoleManagerEntity.getId()
+                    && existingGrant.getPrivilegeCode()
+                        == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+                  alreadyHasCatalogRoleManager = true;
+                  break;
+                }
+              }
+            }
+
+            // Only grant if not already granted
+            if (!alreadyHasCatalogRoleManager) {
+              metaStoreManager.grantUsageOnRoleToGrantee(
+                  getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
+            }
           }
         }
       }
