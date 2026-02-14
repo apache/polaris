@@ -145,10 +145,9 @@ public class CreateGenericTableRequest {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof CreateGenericTableRequest)) {
+    if (!(o instanceof CreateGenericTableRequest createGenericTableRequest)) {
       return false;
     }
-    CreateGenericTableRequest createGenericTableRequest = (CreateGenericTableRequest) o;
     return Objects.equals(this.name, createGenericTableRequest.name)
         && Objects.equals(this.format, createGenericTableRequest.format)
         && Objects.equals(this.baseLocation, createGenericTableRequest.baseLocation)

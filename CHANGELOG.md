@@ -39,6 +39,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
 - The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
+- Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
 
 ### New Features
 
@@ -66,9 +67,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 - The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
+- `PolarisConfigurationStore` has been deprecated for removal.
 
 ### Fixes
 
+- Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
 
 ### Commits

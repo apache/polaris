@@ -28,7 +28,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.time.Clock;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.function.Function;
@@ -62,7 +61,6 @@ import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -79,12 +77,9 @@ public class IcebergCatalogAdapter
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
-  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
-  private final PolarisMetricsReporter metricsReporter;
-  private final Clock clock;
   private final IcebergCatalogHandlerFactory handlerFactory;
 
   @Inject
@@ -92,15 +87,10 @@ public class IcebergCatalogAdapter
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      PolarisMetricsReporter metricsReporter,
-      Clock clock,
       IcebergCatalogHandlerFactory handlerFactory) {
-    this.realmContext = callContext.getRealmContext();
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
-    this.metricsReporter = metricsReporter;
-    this.clock = clock;
     this.handlerFactory = handlerFactory;
   }
 
@@ -665,13 +655,15 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-
-    metricsReporter.reportMetric(
-        catalogName, tableIdentifier, reportMetricsRequest.report(), clock.instant());
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.reportMetrics(tableIdentifier, reportMetricsRequest);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override

@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +40,9 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+
+  @Inject PolicyCatalogHandlerFactory policyCatalogHandlerFactory;
+
   private PolicyCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
@@ -50,14 +54,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   private PolicyCatalogHandler newWrapper(Set<String> activatedPrincipalRoles, String catalogName) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return ImmutablePolicyCatalogHandler.builder()
-        .catalogName(catalogName)
-        .polarisPrincipal(authenticatedPrincipal)
-        .callContext(callContext)
-        .resolutionManifestFactory(resolutionManifestFactory)
-        .authorizer(polarisAuthorizer)
-        .metaStoreManager(metaStoreManager)
-        .build();
+    return policyCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
   }
 
   /**

@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /** Unit test for the default behaviors of the PolarisConfigurationStore interface. */
+@SuppressWarnings("removal")
 public class PolarisConfigurationStoreTest {
   private final RealmContext testRealmContext = () -> "testRealm";
 
@@ -150,7 +151,7 @@ public class PolarisConfigurationStoreTest {
 
   @Test
   public void testEntityOverrides() {
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     Function<Integer, FeatureConfiguration<String>> cfg =
         i ->
             PolarisConfiguration.<String>builder()

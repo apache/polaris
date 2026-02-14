@@ -333,10 +333,9 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof PolarisBaseEntity)) {
+    if (!(o instanceof PolarisBaseEntity that)) {
       return false;
     }
-    PolarisBaseEntity that = (PolarisBaseEntity) o;
     return subTypeCode == that.subTypeCode
         && createTimestamp == that.createTimestamp
         && dropTimestamp == that.dropTimestamp

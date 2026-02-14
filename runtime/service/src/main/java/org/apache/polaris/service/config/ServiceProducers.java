@@ -38,9 +38,9 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -123,17 +123,17 @@ public class ServiceProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      PolarisConfigurationStore configurationStore,
+      RealmConfigurationSource configurationSource,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
+    return new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
   }
 
   @Produces
   @RequestScoped
   public RealmConfig realmConfig(
-      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
-    return new RealmConfigImpl(configurationStore, realmContext);
+      RealmContext realmContext, RealmConfigurationSource configurationSource) {
+    return new RealmConfigImpl(configurationSource, realmContext);
   }
 
   @Produces

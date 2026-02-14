@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.entity;
 
+import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,7 +40,6 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -65,7 +65,7 @@ public class CatalogEntityTest {
   @BeforeEach
   public void setup() {
     RealmContext realmContext = () -> "realm";
-    this.realmConfig = new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
+    this.realmConfig = new RealmConfigImpl(EMPTY_CONFIG, realmContext);
     this.serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
     Mockito.when(serviceIdentityProvider.getServiceIdentityInfo(Mockito.any()))
         .thenReturn(

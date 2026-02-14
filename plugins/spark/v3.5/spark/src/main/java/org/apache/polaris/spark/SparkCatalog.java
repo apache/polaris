@@ -31,6 +31,7 @@ import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
+import org.apache.polaris.spark.utils.PaimonHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -71,6 +72,7 @@ public class SparkCatalog
   @VisibleForTesting protected PolarisSparkCatalog polarisSparkCatalog = null;
   @VisibleForTesting protected DeltaHelper deltaHelper = null;
   @VisibleForTesting protected HudiHelper hudiHelper = null;
+  @VisibleForTesting protected PaimonHelper paimonHelper = null;
 
   @Override
   public String name() {
@@ -133,6 +135,7 @@ public class SparkCatalog
     initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
     this.hudiHelper = new HudiHelper(options);
+    this.paimonHelper = new PaimonHelper(options);
   }
 
   @Override
@@ -167,6 +170,11 @@ public class SparkCatalog
         // to create the .hoodie folder in cloud storage
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.createTable(ident, schema, transforms, properties);
+      } else if (PolarisCatalogUtils.usePaimon(provider)) {
+        // For creating the paimon table, we load PaimonCatalog
+        // to create the paimon metadata in cloud storage
+        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.polarisSparkCatalog);
+        return paimonCatalog.createTable(ident, schema, transforms, properties);
       } else {
         return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
       }
@@ -190,6 +198,9 @@ public class SparkCatalog
       } else if (PolarisCatalogUtils.useHudi(provider)) {
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.alterTable(ident, changes);
+      } else if (PolarisCatalogUtils.usePaimon(provider)) {
+        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.polarisSparkCatalog);
+        return paimonCatalog.alterTable(ident, changes);
       } else {
         return this.polarisSparkCatalog.alterTable(ident);
       }

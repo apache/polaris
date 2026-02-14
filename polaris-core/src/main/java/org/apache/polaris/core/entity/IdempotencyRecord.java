@@ -14,26 +14,65 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.polaris.idempotency;
+package org.apache.polaris.core.entity;
 
 import java.time.Instant;
 
+/**
+ * Immutable snapshot of an idempotency reservation and its finalization status.
+ *
+ * <p>This is the persistence-agnostic representation used by higher layers; storage backends map
+ * their concrete schemas into this type.
+ */
 public final class IdempotencyRecord {
+
+  /** Logical tenant / realm identifier. */
   private final String realmId;
+
+  /** Client-provided idempotency key. */
   private final String idempotencyKey;
+
+  /** Logical operation type (e.g. {@code "commit-table"}). */
   private final String operationType;
+
+  /**
+   * Request-derived, fully-qualified identifier of the affected resource (see {@link
+   * #getNormalizedResourceId()}).
+   */
   private final String normalizedResourceId;
 
+  /** HTTP status code returned to the client once finalized; {@code null} while in-progress. */
   private final Integer httpStatus;
+
+  /** Optional error subtype/code when the operation failed. */
   private final String errorSubtype;
+
+  /** Minimal serialized representation of the response body for replay. */
   private final String responseSummary;
+
+  /** Serialized representation of a small, whitelisted set of response headers for replay. */
   private final String responseHeaders;
+
+  /** Timestamp when the operation was finalized; {@code null} while in-progress. */
   private final Instant finalizedAt;
 
+  /** Timestamp when the record was created. */
   private final Instant createdAt;
+
+  /** Timestamp when the record was last updated. */
   private final Instant updatedAt;
+
+  /**
+   * Timestamp of the most recent heartbeat while in-progress; {@code null} if never heartbeated.
+   */
   private final Instant heartbeatAt;
+
+  /**
+   * Identifier of the executor that owns the in-progress reservation; {@code null} if not owned.
+   */
   private final String executorId;
+
+  /** Timestamp after which the reservation is considered expired and eligible for purging. */
   private final Instant expiresAt;
 
   public IdempotencyRecord(
@@ -79,6 +118,17 @@ public final class IdempotencyRecord {
     return operationType;
   }
 
+  /**
+   * Normalized identifier of the resource affected by the operation.
+   *
+   * <p>This should be derived from the request (for example, a canonicalized and fully-qualified
+   * identifier like {@code "catalogs/<catalogId>/tables/ns.tbl"}), not from a generated internal
+   * entity id.
+   *
+   * <p>The identifier must be stable even on failure (before any entities are created) and must be
+   * scoped to avoid false conflicts (for example, include the catalog/warehouse identifier when
+   * applicable).
+   */
   public String getNormalizedResourceId() {
     return normalizedResourceId;
   }

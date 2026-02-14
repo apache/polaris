@@ -19,11 +19,11 @@
 
 package org.apache.polaris.core.storage;
 
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 
 public abstract class BaseStorageIntegrationTest {
 
   protected static final RealmConfigImpl EMPTY_REALM_CONFIG =
-      new RealmConfigImpl(new PolarisConfigurationStore() {}, () -> "realm");
+      new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "realm");
 }

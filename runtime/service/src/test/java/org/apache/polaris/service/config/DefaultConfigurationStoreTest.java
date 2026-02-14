@@ -26,7 +26,6 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.assertj.core.api.Assertions;
@@ -68,7 +67,10 @@ public class DefaultConfigurationStoreTest {
 
   private RealmContext realmContext;
 
-  @Inject PolarisConfigurationStore configurationStore;
+  @SuppressWarnings("removal")
+  @Inject
+  org.apache.polaris.core.config.PolarisConfigurationStore configurationStore;
+
   @Inject FeaturesConfiguration featuresConfiguration;
 
   @BeforeEach
@@ -81,6 +83,7 @@ public class DefaultConfigurationStoreTest {
     realmContext = () -> realmName;
   }
 
+  @SuppressWarnings("removal")
   @Test
   public void testGetConfiguration() {
     Object value = configurationStore.getConfiguration(realmContext, "missingKeyWithoutDefault");
@@ -97,6 +100,7 @@ public class DefaultConfigurationStoreTest {
         .isTrue();
   }
 
+  @SuppressWarnings("removal")
   @Test
   public void testGetRealmConfiguration() {
     // check the realmOne configuration
@@ -118,6 +122,7 @@ public class DefaultConfigurationStoreTest {
         .isFalse();
   }
 
+  @SuppressWarnings("removal")
   @Test
   void testGetConfigurationWithRealm() {
     // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
@@ -137,6 +142,7 @@ public class DefaultConfigurationStoreTest {
         .isFalse();
   }
 
+  @SuppressWarnings("removal")
   @Test
   public void testInjectedConfigurationStore() {
     // the default value for trueByDefaultKey is `true`
@@ -175,6 +181,7 @@ public class DefaultConfigurationStoreTest {
         .containsKey(trueByDefaultKey);
   }
 
+  @SuppressWarnings("removal")
   @Test
   public void testRegisterAndUseFeatureConfigurations() {
     String prefix = "testRegisterAndUseFeatureConfigurations";
@@ -187,6 +194,7 @@ public class DefaultConfigurationStoreTest {
             .description(prefix)
             .buildFeatureConfiguration();
 
+    @SuppressWarnings({"deprecation", "removal"})
     FeatureConfiguration<Boolean> unsafeConfig =
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_unsafe", prefix))
@@ -195,6 +203,7 @@ public class DefaultConfigurationStoreTest {
             .description(prefix)
             .buildFeatureConfiguration();
 
+    @SuppressWarnings({"deprecation", "removal"})
     FeatureConfiguration<Boolean> bothConfig =
         FeatureConfiguration.<Boolean>builder()
             .key(String.format("%s_both", prefix))

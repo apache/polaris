@@ -16,6 +16,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
+import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -23,11 +24,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
-import org.apache.polaris.idempotency.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -37,14 +39,17 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-public class PostgresIdempotencyStoreIT {
+public class RelationalJdbcIdempotencyStorePostgresIT {
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>("postgres:17.5-alpine");
+      new PostgreSQLContainer<>(
+          containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
+              .dockerImageName(null)
+              .asCompatibleSubstituteFor("postgres"));
 
   private static DataSource dataSource;
-  private static PostgresIdempotencyStore store;
+  private static RelationalJdbcIdempotencyStore store;
 
   @BeforeAll
   static void setup() throws Exception {
@@ -84,7 +89,7 @@ public class PostgresIdempotencyStoreIT {
       ops.executeScript(is);
     }
 
-    store = new PostgresIdempotencyStore(dataSource, cfg);
+    store = new RelationalJdbcIdempotencyStore(dataSource, cfg);
   }
 
   @AfterAll
@@ -97,7 +102,7 @@ public class PostgresIdempotencyStoreIT {
     String realm = "test-realm";
     String key = "K1";
     String op = "commit-table";
-    String rid = "tables/ns.tbl";
+    String rid = "catalogs/1/tables/ns.tbl";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
@@ -120,7 +125,7 @@ public class PostgresIdempotencyStoreIT {
     String realm = "test-realm";
     String key = "K2";
     String op = "commit-table";
-    String rid = "tables/ns.tbl2";
+    String rid = "catalogs/1/tables/ns.tbl2";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
@@ -162,7 +167,7 @@ public class PostgresIdempotencyStoreIT {
     String realm = "test-realm";
     String key = "K3";
     String op = "drop-table";
-    String rid = "tables/ns.tbl3";
+    String rid = "catalogs/1/tables/ns.tbl3";
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
@@ -176,9 +181,9 @@ public class PostgresIdempotencyStoreIT {
     String realm = "test-realm";
     String key = "K4";
     String op1 = "commit-table";
-    String rid1 = "tables/ns.tbl4";
+    String rid1 = "catalogs/1/tables/ns.tbl4";
     String op2 = "drop-table"; // different binding
-    String rid2 = "tables/ns.tbl4"; // same resource, different op
+    String rid2 = "catalogs/1/tables/ns.tbl4"; // same resource, different op
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 

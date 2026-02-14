@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.List;
@@ -38,7 +37,15 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.metrics.CommitMetrics;
+import org.apache.iceberg.metrics.CommitMetricsResult;
+import org.apache.iceberg.metrics.CommitReport;
+import org.apache.iceberg.metrics.ImmutableCommitReport;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -46,6 +53,7 @@ import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
@@ -55,7 +63,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -67,7 +74,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -94,16 +100,7 @@ import org.mockito.Mockito;
 public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Inject CallContextCatalogFactory callContextCatalogFactory;
-  @Inject Instance<ExternalCatalogFactory> externalCatalogFactories;
-  @Inject CatalogPrefixParser prefixParser;
-
-  @SuppressWarnings("unchecked")
-  private static Instance<ExternalCatalogFactory> emptyExternalCatalogFactory() {
-    Instance<ExternalCatalogFactory> mock = Mockito.mock(Instance.class);
-    Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
-    Mockito.when(mock.isUnsatisfied()).thenReturn(true);
-    return mock;
-  }
+  @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
@@ -117,24 +114,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
       Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
-    return ImmutableIcebergCatalogHandler.builder()
-        .catalogName(catalogName)
-        .polarisPrincipal(authenticatedPrincipal)
-        .diagnostics(diagServices)
-        .callContext(callContext)
-        .prefixParser(prefixParser)
-        .resolverFactory(resolverFactory)
-        .resolutionManifestFactory(resolutionManifestFactory)
-        .metaStoreManager(metaStoreManager)
-        .credentialManager(credentialManager)
-        .catalogFactory(factory)
-        .authorizer(polarisAuthorizer)
-        .reservedProperties(reservedProperties)
-        .catalogHandlerUtils(catalogHandlerUtils)
-        .externalCatalogFactories(emptyExternalCatalogFactory())
-        .storageAccessConfigProvider(storageAccessConfigProvider)
-        .eventAttributeMap(eventAttributeMap)
-        .build();
+    IcebergCatalogHandler handler =
+        icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
+    if (factory == callContextCatalogFactory) {
+      return handler;
+    }
+    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).build();
   }
 
   protected void doTestInsufficientPrivileges(
@@ -261,24 +246,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         PolarisPrincipal.of(newPrincipal.getPrincipal(), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
 
     IcebergCatalogHandler handler =
-        ImmutableIcebergCatalogHandler.builder()
-            .catalogName(CATALOG_NAME)
-            .polarisPrincipal(authenticatedPrincipal)
-            .diagnostics(diagServices)
-            .callContext(callContext)
-            .prefixParser(prefixParser)
-            .resolverFactory(resolverFactory)
-            .resolutionManifestFactory(resolutionManifestFactory)
-            .metaStoreManager(metaStoreManager)
-            .credentialManager(credentialManager)
-            .catalogFactory(callContextCatalogFactory)
-            .authorizer(polarisAuthorizer)
-            .reservedProperties(reservedProperties)
-            .catalogHandlerUtils(catalogHandlerUtils)
-            .externalCatalogFactories(emptyExternalCatalogFactory())
-            .storageAccessConfigProvider(storageAccessConfigProvider)
-            .eventAttributeMap(eventAttributeMap)
-            .build();
+        icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -1139,14 +1107,16 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Create a simple RealmConfig implementation that overrides just what we need
     RealmConfig customRealmConfig =
         new RealmConfig() {
+          @SuppressWarnings("removal")
           @Override
           public <T> T getConfig(String configName) {
-            return realmConfig.getConfig(configName);
+            throw new UnsupportedOperationException();
           }
 
+          @SuppressWarnings("removal")
           @Override
           public <T> T getConfig(String configName, T defaultValue) {
-            return realmConfig.getConfig(configName, defaultValue);
+            throw new UnsupportedOperationException();
           }
 
           @Override
@@ -1182,23 +1152,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Mockito.when(mockCallContext.getPolarisCallContext())
         .thenReturn(callContext.getPolarisCallContext());
 
+    IcebergCatalogHandler handler =
+        icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
+
     return ImmutableIcebergCatalogHandler.builder()
-        .catalogName(catalogName)
-        .polarisPrincipal(authenticatedPrincipal)
-        .diagnostics(diagServices)
+        .from(handler)
         .callContext(mockCallContext)
-        .prefixParser(prefixParser)
-        .resolverFactory(resolverFactory)
-        .resolutionManifestFactory(resolutionManifestFactory)
-        .metaStoreManager(metaStoreManager)
-        .credentialManager(credentialManager)
-        .catalogFactory(factory)
-        .authorizer(polarisAuthorizer)
-        .reservedProperties(reservedProperties)
-        .catalogHandlerUtils(catalogHandlerUtils)
-        .externalCatalogFactories(emptyExternalCatalogFactory())
-        .storageAccessConfigProvider(storageAccessConfigProvider)
-        .eventAttributeMap(eventAttributeMap)
         .build();
   }
 
@@ -2238,5 +2197,85 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         () ->
             newWrapper()
                 .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
+  }
+
+  @Test
+  public void testReportReadMetricsSufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportReadMetricsInsufficientPrivileges() {
+    ImmutableScanReport report =
+        ImmutableScanReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(123L)
+            .schemaId(456)
+            .projectedFieldIds(List.of(1, 2, 3))
+            .projectedFieldNames(List.of("f1", "f2", "f3"))
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(report);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
+  }
+
+  @Test
+  public void testReportWriteMetricsSufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testReportWriteMetricsInsufficientPrivileges() {
+    CommitReport commitReport =
+        ImmutableCommitReport.builder()
+            .tableName(TABLE_NS1A_1.name())
+            .snapshotId(23L)
+            .operation("DELETE")
+            .sequenceNumber(4L)
+            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
+            .build();
+    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
   }
 }

@@ -54,8 +54,7 @@ public class ResolverEntityName {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof ResolverEntityName)) return false;
-    ResolverEntityName that = (ResolverEntityName) o;
+    if (!(o instanceof ResolverEntityName that)) return false;
     return getEntityType() == that.getEntityType()
         && Objects.equals(getEntityName(), that.getEntityName());
   }

@@ -138,8 +138,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
-      if (!(o instanceof ValidationResult)) return false;
-      ValidationResult that = (ValidationResult) o;
+      if (!(o instanceof ValidationResult that)) return false;
       return success == that.success;
     }
 

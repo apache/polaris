@@ -151,15 +151,10 @@ tests:
                 - "chart-example2.local"
               secretName: secret1
 
-  # spec.rules (with ingress enabled)
-  - it: should set ingress TLS
+  # spec.rules (with ingress enabled - default values)
+  - it: should set ingress with default values
     set:
       ingress.enabled: true
-      ingress.hosts:
-        - host: chart-example.local
-          paths:
-            - path: /
-              pathType:  Prefix
     asserts:
       - equal:
           path: spec.rules
@@ -168,6 +163,30 @@ tests:
               http:
                 paths:
                   - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: polaris-release
+                        port:
+                          number: 8181
+
+  # spec.rules (with ingress enabled - custom paths)
+  - it: should set ingress with custom paths
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: chart-example.local
+          paths:
+            - path: /api
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: spec.rules
+          value:
+            - host: chart-example.local
+              http:
+                paths:
+                  - path: /api
                     pathType: Prefix
                     backend:
                       service:

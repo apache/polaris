@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -218,6 +220,131 @@ public class QueryGeneratorTest {
   void testGenerateWhereClause_emptyMap() {
     Map<String, Object> whereClause = Collections.emptyMap();
     assertEquals("", QueryGenerator.generateWhereClause(Set.of(), whereClause, Map.of()).sql());
+  }
+
+  @Test
+  void testGenerateWhereClauseExtended_allPredicatesAndStableParameterOrder() {
+    Map<String, Object> whereEquals = new LinkedHashMap<>();
+    whereEquals.put("a", "A");
+    Map<String, Object> whereGreater = new LinkedHashMap<>();
+    whereGreater.put("b", 2);
+    Map<String, Object> whereLess = new LinkedHashMap<>();
+    whereLess.put("c", 3);
+
+    Set<String> whereIsNull = new LinkedHashSet<>(List.of("d"));
+    Set<String> whereIsNotNull = new LinkedHashSet<>(List.of("e"));
+
+    QueryGenerator.QueryFragment where =
+        QueryGenerator.generateWhereClauseExtended(
+            Set.of("a", "b", "c", "d", "e"),
+            whereEquals,
+            whereGreater,
+            whereLess,
+            whereIsNull,
+            whereIsNotNull);
+
+    assertEquals(" WHERE a = ? AND b > ? AND c < ? AND d IS NULL AND e IS NOT NULL", where.sql());
+    Assertions.assertThat(where.parameters()).containsExactly("A", 2, 3);
+  }
+
+  @Test
+  void testGenerateUpdateQueryExtended_supportsNullSetValues() {
+    Map<String, Object> setClause = new LinkedHashMap<>();
+    setClause.put("error_subtype", null);
+    setClause.put("http_status", 200);
+
+    // Use ordered maps so WHERE clause order is deterministic.
+    Map<String, Object> whereEquals = new LinkedHashMap<>();
+    whereEquals.put("realm_id", "r1");
+    whereEquals.put("idempotency_key", "k1");
+    Map<String, Object> whereLess = new LinkedHashMap<>();
+    whereLess.put("http_status", 500);
+
+    QueryGenerator.PreparedQuery q =
+        QueryGenerator.generateUpdateQuery(
+            List.of("error_subtype", "http_status", "realm_id", "idempotency_key", "executor_id"),
+            "idempotency_records",
+            setClause,
+            whereEquals,
+            Map.of(),
+            whereLess,
+            Set.of("executor_id"),
+            Set.of());
+
+    assertEquals(
+        "UPDATE POLARIS_SCHEMA.idempotency_records SET error_subtype = ?, http_status = ?"
+            + " WHERE realm_id = ? AND idempotency_key = ? AND http_status < ? AND executor_id IS NULL",
+        q.sql());
+    Assertions.assertThat(q.parameters()).containsExactly(null, 200, "r1", "k1", 500);
+  }
+
+  @Test
+  void testGenerateUpdateQueryExtended_rejectsEmptySetClause() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateUpdateQuery(
+                List.of("a"),
+                "t",
+                Map.of(),
+                Map.of("a", 1),
+                Map.of(),
+                Map.of(),
+                Set.of(),
+                Set.of()));
+  }
+
+  @Test
+  void testGenerateDeleteQueryExtended_includesNullPredicatesAndLessThan() {
+    QueryGenerator.PreparedQuery q =
+        QueryGenerator.generateDeleteQuery(
+            List.of("realm_id", "expires_at", "finalized_at"),
+            "idempotency_records",
+            Map.of("realm_id", "r1"),
+            Map.of(),
+            Map.of("expires_at", 123),
+            Set.of("finalized_at"),
+            Set.of());
+
+    assertEquals(
+        "DELETE FROM POLARIS_SCHEMA.idempotency_records WHERE realm_id = ? AND expires_at < ? AND finalized_at IS NULL",
+        q.sql());
+    Assertions.assertThat(q.parameters()).containsExactly("r1", 123);
+  }
+
+  @Test
+  void testGenerateDeleteQueryExtended_allowsRealmIdEvenIfNotInTableColumns() {
+    QueryGenerator.PreparedQuery q =
+        QueryGenerator.generateDeleteQuery(
+            List.of("id"),
+            "some_table",
+            Map.of("realm_id", "r1"),
+            Map.of(),
+            Map.of(),
+            Set.of(),
+            Set.of());
+
+    assertEquals("DELETE FROM POLARIS_SCHEMA.some_table WHERE realm_id = ?", q.sql());
+    Assertions.assertThat(q.parameters()).containsExactly("r1");
+  }
+
+  @Test
+  void testGenerateUpdateQueryExtended_rejectsInvalidColumns() {
+    Map<String, Object> setClause = new LinkedHashMap<>();
+    setClause.put("not_a_real_column", 1);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            QueryGenerator.generateUpdateQuery(
+                List.of("a"),
+                "t",
+                setClause,
+                Map.of("a", 1),
+                Map.of(),
+                Map.of(),
+                Set.of(),
+                Set.of()));
   }
 
   @Test

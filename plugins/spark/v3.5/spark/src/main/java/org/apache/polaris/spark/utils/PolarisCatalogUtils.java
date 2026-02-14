@@ -63,6 +63,11 @@ public class PolarisCatalogUtils {
     return "hudi".equalsIgnoreCase(provider);
   }
 
+  /** Check whether the table provider is paimon. */
+  public static boolean usePaimon(String provider) {
+    return "paimon".equalsIgnoreCase(provider);
+  }
+
   /**
    * For tables whose location is managed by Spark Session Catalog, there will be no location or
    * path in the properties.

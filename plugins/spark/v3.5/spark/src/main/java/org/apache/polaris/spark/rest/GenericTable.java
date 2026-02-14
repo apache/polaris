@@ -144,10 +144,9 @@ public class GenericTable {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof GenericTable)) {
+    if (!(o instanceof GenericTable genericTable)) {
       return false;
     }
-    GenericTable genericTable = (GenericTable) o;
     return Objects.equals(this.name, genericTable.name)
         && Objects.equals(this.format, genericTable.format)
         && Objects.equals(this.baseLocation, genericTable.baseLocation)

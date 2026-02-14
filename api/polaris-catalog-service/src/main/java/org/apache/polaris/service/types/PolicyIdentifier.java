@@ -104,10 +104,9 @@ public class PolicyIdentifier {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof PolicyIdentifier)) {
+    if (!(o instanceof PolicyIdentifier policyIdentifier)) {
       return false;
     }
-    PolicyIdentifier policyIdentifier = (PolicyIdentifier) o;
     return Objects.equals(this.namespace, policyIdentifier.namespace)
         && Objects.equals(this.name, policyIdentifier.name);
   }

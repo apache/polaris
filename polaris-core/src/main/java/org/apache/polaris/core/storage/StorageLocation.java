@@ -95,8 +95,8 @@ public class StorageLocation {
    */
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof StorageLocation) {
-      return location.equals(((StorageLocation) obj).location);
+    if (obj instanceof StorageLocation storageLocation) {
+      return location.equals(storageLocation.location);
     } else {
       return false;
     }
