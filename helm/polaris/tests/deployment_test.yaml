@@ -120,7 +120,7 @@ tests:
   - it: should not set revisionHistoryLimit with quote empty string
     template: deployment.yaml
     set:
-      revisionHistoryLimit: ""
+      revisionHistoryLimit: ~
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit

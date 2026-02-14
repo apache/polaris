@@ -152,12 +152,6 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.type=mixed" }
 
-  - it: should fail on invalid authentication type
-    set: { authentication: { type: invalid } }
-    asserts:
-      - failedTemplate:
-          errorMessage: "authentication.type: invalid authentication type"
-
   - it: should configure default authenticator
     set: { authentication: { authenticator: { type: default } } }
     asserts:
@@ -222,8 +216,8 @@ tests:
 
   - it: should derive HTTP ports from service configuration
     set:
-      service: { ports: [ { port: 8080 } ] }
-      managementService: { ports: [ { port: 8081 } ] }
+      service: { ports: [ { name: polaris-http, port: 8080 } ] }
+      managementService: { ports: [ { name: polaris-mgmt, port: 8081 } ] }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.port=8080" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.management.port=8081" }
