@@ -758,3 +758,10 @@ tasks:
   maxConcurrentTasks: ~  # 100
   # -- The maximum number of tasks that can be queued up for execution. The default is Integer.MAX_VALUE.
   maxQueuedTasks: ~  # 1000
+
+# -- Polaris readiness configuration.
+readiness:
+  # -- Setting this to true means that Polaris will start up even if severe security risks have been
+  # detected, accepting the risk of denial-of-service, data-loss, corruption and other risks.
+  # This should only be set to true for testing purposes.
+  ignoreSevereIssues: false

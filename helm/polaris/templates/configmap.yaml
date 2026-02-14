@@ -32,6 +32,11 @@ data:
     {{- $map := dict -}}
     {{- $global := . -}}
 
+    {{- /* Readiness */ -}}
+    {{- if .Values.readiness.ignoreSevereIssues -}}
+    {{- $_ := set $map "polaris.readiness.ignore-severe-issues" "true" -}}
+    {{- end -}}
+
     {{- /* Realm Context */ -}}
     {{- $_ := set $map "polaris.realm-context.type" .Values.realmContext.type -}}
     {{- $_ =  set $map "polaris.realm-context.realms" (join "," .Values.realmContext.realms) -}}

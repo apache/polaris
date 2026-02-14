@@ -119,6 +119,18 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm1\".\"feature1\"=false" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.realm-overrides.\"realm2\".\"feature2\"=43" }
 
+  - it: should configure readiness ignore severe issues
+    set:
+      readiness: { ignoreSevereIssues: true }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.readiness.ignore-severe-issues=true" }
+
+  - it: should not configure readiness ignore severe issues when false
+    set:
+      readiness: { ignoreSevereIssues: false }
+    asserts:
+      - notMatchRegex: { path: 'data["application.properties"]', pattern: "polaris.readiness.ignore-severe-issues" }
+
   - it: should configure relational-jdbc persistence
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence" } } }

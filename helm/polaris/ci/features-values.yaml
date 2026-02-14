@@ -20,6 +20,11 @@
 image:
   pullPolicy: Never
 
+# CI tests need to ignore severe production readiness issues
+# since test configurations are intentionally non-production
+readiness:
+  ignoreSevereIssues: true
+
 features:
   ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
   SUPPORTED_CATALOG_STORAGE_TYPES:

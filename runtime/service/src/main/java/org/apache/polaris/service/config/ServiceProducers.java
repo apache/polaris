@@ -49,6 +49,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -74,6 +76,7 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.persistence.MetricsPersistenceConfiguration;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -222,6 +225,55 @@ public class ServiceProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  /**
+   * Produces a no-op {@link MetricsPersistence} bean.
+   *
+   * <p>This bean is selected when {@code polaris.persistence.metrics.type} is set to {@code "noop"}
+   * (the default). All write operations are silently ignored, and all query operations return empty
+   * pages.
+   *
+   * @return the no-op MetricsPersistence singleton
+   */
+  @Produces
+  @Identifier("noop")
+  public MetricsPersistence noopMetricsPersistence() {
+    return MetricsPersistence.NOOP;
+  }
+
+  /**
+   * Produces a no-op {@link MetricsSchemaBootstrap} bean.
+   *
+   * <p>This bean is selected for backends that don't support metrics schema bootstrap. The {@link
+   * MetricsSchemaBootstrap#bootstrap(String)} method does nothing, and {@link
+   * MetricsSchemaBootstrap#isBootstrapped(String)} always returns {@code true}.
+   *
+   * @return the no-op MetricsSchemaBootstrap singleton
+   */
+  @Produces
+  @Identifier("noop")
+  public MetricsSchemaBootstrap noopMetricsSchemaBootstrap() {
+    return MetricsSchemaBootstrap.NOOP;
+  }
+
+  /**
+   * Produces a {@link MetricsPersistence} bean for the current request.
+   *
+   * <p>This method selects a MetricsPersistence implementation based on the configured metrics
+   * persistence type. The type is configured independently from the entity metastore via {@code
+   * polaris.persistence.metrics.type}.
+   *
+   * @param config the metrics persistence configuration
+   * @param metricsPersistenceImpls all available MetricsPersistence implementations
+   * @return a MetricsPersistence implementation for the current realm
+   */
+  @Produces
+  @RequestScoped
+  public MetricsPersistence metricsPersistence(
+      MetricsPersistenceConfiguration config,
+      @Any Instance<MetricsPersistence> metricsPersistenceImpls) {
+    return metricsPersistenceImpls.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces

@@ -150,4 +150,35 @@ class JdbcBootstrapUtilsTest {
       assertEquals(-1, result);
     }
   }
+
+  @Nested
+  @ExtendWith(MockitoExtension.class)
+  class ShouldIncludeMetricsTests {
+
+    @Mock private BootstrapOptions mockBootstrapOptions;
+    @Mock private SchemaOptions mockSchemaOptions;
+
+    @Test
+    void whenSchemaOptionsIsNull_shouldReturnFalse() {
+      when(mockBootstrapOptions.schemaOptions()).thenReturn(null);
+      boolean result = JdbcBootstrapUtils.shouldIncludeMetrics(mockBootstrapOptions);
+      assertEquals(false, result);
+    }
+
+    @Test
+    void whenIncludeMetricsIsTrue_shouldReturnTrue() {
+      when(mockBootstrapOptions.schemaOptions()).thenReturn(mockSchemaOptions);
+      when(mockSchemaOptions.includeMetrics()).thenReturn(true);
+      boolean result = JdbcBootstrapUtils.shouldIncludeMetrics(mockBootstrapOptions);
+      assertEquals(true, result);
+    }
+
+    @Test
+    void whenIncludeMetricsIsFalse_shouldReturnFalse() {
+      when(mockBootstrapOptions.schemaOptions()).thenReturn(mockSchemaOptions);
+      when(mockSchemaOptions.includeMetrics()).thenReturn(false);
+      boolean result = JdbcBootstrapUtils.shouldIncludeMetrics(mockBootstrapOptions);
+      assertEquals(false, result);
+    }
+  }
 }

@@ -20,6 +20,11 @@
 image:
   pullPolicy: Never
 
+# CI tests need to ignore severe production readiness issues
+# since test configurations are intentionally non-production
+readiness:
+  ignoreSevereIssues: true
+
 authentication:
   tokenBroker:
     secret:

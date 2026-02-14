@@ -31,6 +31,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -80,9 +81,17 @@ public class AdminToolProducers {
   }
 
   @Produces
-  public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
-    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+  public RealmContext dummyRealmContext() {
+    // Use UUID to protect against accidental realm ID collisions.
+    // This is a dummy RealmContext for the admin tool - required by JdbcMetricsPersistenceProducer
+    // but not actually used since the admin tool doesn't persist metrics.
     String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationSource, () -> absentId);
+    return () -> absentId;
+  }
+
+  @Produces
+  public RealmConfig dummyRealmConfig(
+      RealmConfigurationSource configurationSource, RealmContext realmContext) {
+    return new RealmConfigImpl(configurationSource, realmContext);
   }
 }

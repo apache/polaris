@@ -170,6 +170,30 @@ public class QueryGenerator {
   }
 
   /**
+   * Generates an INSERT query for a given table without appending realm_id. Use this when the
+   * columns already include realm_id.
+   *
+   * @param allColumns Columns to insert values into (should already include realm_id if needed).
+   * @param tableName Target table name.
+   * @param values Values for each column (must match order of columns).
+   * @return INSERT query with value bindings.
+   */
+  public static PreparedQuery generateInsertQueryWithoutRealmId(
+      @Nonnull List<String> allColumns, @Nonnull String tableName, List<Object> values) {
+    String columns = String.join(", ", allColumns);
+    String placeholders = allColumns.stream().map(c -> "?").collect(Collectors.joining(", "));
+    String sql =
+        "INSERT INTO "
+            + getFullyQualifiedTableName(tableName)
+            + " ("
+            + columns
+            + ") VALUES ("
+            + placeholders
+            + ")";
+    return new PreparedQuery(sql, values);
+  }
+
+  /**
    * Builds an UPDATE query.
    *
    * @param allColumns Columns to update.
@@ -362,6 +386,13 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
+  static PreparedQuery generateMetricsVersionQuery() {
+    return new PreparedQuery(
+        "SELECT version_value FROM POLARIS_SCHEMA.metrics_version WHERE version_key = 'metrics_version'",
+        List.of());
+  }
+
+  @VisibleForTesting
   static PreparedQuery generateEntityTableExistQuery() {
     return new PreparedQuery(
         String.format(
@@ -422,7 +453,7 @@ public class QueryGenerator {
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
-  private static String getFullyQualifiedTableName(String tableName) {
+  static String getFullyQualifiedTableName(String tableName) {
     // TODO: make schema name configurable.
     return "POLARIS_SCHEMA." + tableName;
   }
