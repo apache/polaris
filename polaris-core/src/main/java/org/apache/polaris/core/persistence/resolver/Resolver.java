@@ -291,8 +291,7 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
-    this.diagnostics.check(
-        resolvedCallerPrincipal != null, "caller_principal_not_resolved");
+    this.diagnostics.check(resolvedCallerPrincipal != null, "caller_principal_not_resolved");
 
     return resolvedCallerPrincipal;
   }
