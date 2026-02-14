@@ -24,6 +24,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
+/**
+ * Request-scoped {@link AuthorizationState} implementation for runtime services.
+ *
+ * <p>Holds a single {@link PolarisResolutionManifest} reference that must be set once per request.
+ */
 @RequestScoped
 public class RequestAuthorizationState implements AuthorizationState {
   private final AtomicReference<PolarisResolutionManifest> resolutionManifest =
