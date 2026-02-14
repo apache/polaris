@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
@@ -37,7 +38,7 @@ public interface PolarisAuthorizer {
    * <p>This method should not perform authorization decisions directly.
    */
   void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
 
   /**
    * Core authorization entry point for the new SPI.
@@ -45,7 +46,22 @@ public interface PolarisAuthorizer {
    * <p>Implementations should rely on any required state in {@link AuthorizationState} and the
    * intent captured by {@link AuthorizationRequest} (principal, operation, and target securables).
    */
-  void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request);
+  @Nonnull
+  AuthorizationDecision authorizeDecision(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
+
+  /**
+   * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
+   *
+   * <p>Implementations should provide allow/deny decisions via {@link #authorizeDecision}.
+   */
+  default void authorizeOrThrow(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+    AuthorizationDecision decision = authorizeDecision(authzState, request);
+    if (!decision.isAllowed()) {
+      throw new ForbiddenException(decision.getMessageOrDefault("Authorization denied"));
+    }
+  }
 
   void authorizeOrThrow(
       @Nonnull PolarisPrincipal polarisPrincipal,

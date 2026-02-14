@@ -733,15 +733,16 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
         "resolveAuthorizationInputs is not implemented yet for PolarisAuthorizerImpl");
   }
 
   @Override
-  public void authorize(@Nonnull AuthorizationState ctx, @Nonnull AuthorizationRequest request) {
+  public AuthorizationDecision authorizeDecision(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
-        "authorize is not implemented yet for PolarisAuthorizerImpl");
+        "authorizeDecision is not implemented yet for PolarisAuthorizerImpl");
   }
 
   /**
