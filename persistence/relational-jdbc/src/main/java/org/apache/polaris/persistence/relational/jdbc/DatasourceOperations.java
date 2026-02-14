@@ -57,7 +57,9 @@ public class DatasourceOperations {
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
-  private static final String H2_RELATION_DOES_NOT_EXIST = "90079";
+  // 90079 = Schema not found, 42S02 = Table or view not found
+  private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
+  private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -402,7 +404,9 @@ public class DatasourceOperations {
   public boolean isRelationDoesNotExist(SQLException e) {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
             && databaseType == DatabaseType.POSTGRES)
-        || (H2_RELATION_DOES_NOT_EXIST.equals(e.getSQLState()) && databaseType == DatabaseType.H2);
+        || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
+                || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
+            && databaseType == DatabaseType.H2);
   }
 
   private Connection borrowConnection() throws SQLException {

@@ -88,4 +88,18 @@ public class JdbcBootstrapUtils {
     }
     return -1;
   }
+
+  /**
+   * Determines whether the metrics schema should be included during bootstrap.
+   *
+   * @param bootstrapOptions The bootstrap options containing schema information.
+   * @return true if the metrics schema should be included, false otherwise.
+   */
+  public static boolean shouldIncludeMetrics(BootstrapOptions bootstrapOptions) {
+    SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
+    if (schemaOptions != null) {
+      return schemaOptions.includeMetrics();
+    }
+    return false;
+  }
 }
