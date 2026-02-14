@@ -19,6 +19,7 @@
 package org.apache.polaris.service.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
@@ -47,18 +49,30 @@ public class StorageConfigurationTest {
   private static final String TEST_ACCESS_KEY = "test-access-key";
   private static final String TEST_GCP_TOKEN = "ya29.test-token";
   private static final String TEST_SECRET_KEY = "test-secret-key";
+  private static final String STORAGE_ACCESS_KEY = "storage-access-key";
+  private static final String STORAGE_SECRET_KEY = "storage-secret-key";
   private static final Duration TEST_TOKEN_LIFESPAN = Duration.ofMinutes(20);
 
   private StorageConfiguration configWithAwsCredentialsAndGcpToken() {
     return new StorageConfiguration() {
       @Override
-      public Optional<String> awsAccessKey() {
-        return Optional.of(TEST_ACCESS_KEY);
-      }
+      public AwsStorageConfig aws() {
+        return new AwsStorageConfig() {
+          @Override
+          public Optional<String> accessKey() {
+            return Optional.of(TEST_ACCESS_KEY);
+          }
 
-      @Override
-      public Optional<String> awsSecretKey() {
-        return Optional.of(TEST_SECRET_KEY);
+          @Override
+          public Optional<String> secretKey() {
+            return Optional.of(TEST_SECRET_KEY);
+          }
+
+          @Override
+          public Map<String, StorageConfig> storages() {
+            return Map.of();
+          }
+        };
       }
 
       @Override
@@ -116,13 +130,109 @@ public class StorageConfigurationTest {
   private StorageConfiguration configWithoutGcpToken() {
     return new StorageConfiguration() {
       @Override
-      public Optional<String> awsAccessKey() {
+      public AwsStorageConfig aws() {
+        return new AwsStorageConfig() {
+          @Override
+          public Optional<String> accessKey() {
+            return Optional.empty();
+          }
+
+          @Override
+          public Optional<String> secretKey() {
+            return Optional.empty();
+          }
+
+          @Override
+          public Map<String, StorageConfig> storages() {
+            return Map.of();
+          }
+        };
+      }
+
+      @Override
+      public Optional<String> gcpAccessToken() {
         return Optional.empty();
       }
 
       @Override
-      public Optional<String> awsSecretKey() {
+      public Optional<Duration> gcpAccessTokenLifespan() {
         return Optional.empty();
+      }
+
+      @Override
+      public OptionalInt clientsCacheMaxSize() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public OptionalInt maxHttpConnections() {
+        return OptionalInt.empty();
+      }
+
+      @Override
+      public Optional<Duration> readTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionAcquisitionTimeout() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionMaxIdleTime() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Duration> connectionTimeToLive() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<Boolean> expectContinueEnabled() {
+        return Optional.empty();
+      }
+    };
+  }
+
+  private StorageConfiguration configWithNamedStorage() {
+    return new StorageConfiguration() {
+      @Override
+      public AwsStorageConfig aws() {
+        return new AwsStorageConfig() {
+          @Override
+          public Optional<String> accessKey() {
+            return Optional.of(TEST_ACCESS_KEY);
+          }
+
+          @Override
+          public Optional<String> secretKey() {
+            return Optional.of(TEST_SECRET_KEY);
+          }
+
+          @Override
+          public Map<String, StorageConfig> storages() {
+            return Map.of(
+                "myStorage",
+                new StorageConfig() {
+                  @Override
+                  public String accessKey() {
+                    return STORAGE_ACCESS_KEY;
+                  }
+
+                  @Override
+                  public String secretKey() {
+                    return STORAGE_SECRET_KEY;
+                  }
+                });
+          }
+        };
       }
 
       @Override
@@ -248,5 +358,35 @@ public class StorageConfigurationTest {
       assertThat(result).isSameAs(mockDefaultCreds);
       mockedStatic.verify(GoogleCredentials::getApplicationDefault, times(1));
     }
+  }
+
+  @Test
+  public void testStsCredentialsWithNamedStorage() {
+    StorageConfiguration config = configWithNamedStorage();
+    AwsCredentialsProvider credentialsProvider = config.stsCredentials("myStorage");
+    assertThat(credentialsProvider).isInstanceOf(StaticCredentialsProvider.class);
+    assertThat(credentialsProvider.resolveCredentials().accessKeyId())
+        .isEqualTo(STORAGE_ACCESS_KEY);
+    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
+        .isEqualTo(STORAGE_SECRET_KEY);
+  }
+
+  @Test
+  public void testStsCredentialsWithUnknownStorageThrows() {
+    StorageConfiguration config = configWithNamedStorage();
+    assertThatThrownBy(() -> config.stsCredentials("unknownStorage"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unknownStorage")
+        .hasMessageContaining("not configured");
+  }
+
+  @Test
+  public void testStsCredentialsWithNullStorageNameFallsBackToDefault() {
+    StorageConfiguration config = configWithNamedStorage();
+    AwsCredentialsProvider credentialsProvider = config.stsCredentials(null);
+    assertThat(credentialsProvider).isInstanceOf(StaticCredentialsProvider.class);
+    assertThat(credentialsProvider.resolveCredentials().accessKeyId()).isEqualTo(TEST_ACCESS_KEY);
+    assertThat(credentialsProvider.resolveCredentials().secretAccessKey())
+        .isEqualTo(TEST_SECRET_KEY);
   }
 }
