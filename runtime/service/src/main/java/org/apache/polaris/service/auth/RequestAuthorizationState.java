@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -46,6 +47,7 @@ public class RequestAuthorizationState implements AuthorizationState {
 
   @Override
   public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
+    Objects.requireNonNull(resolutionManifest, "resolutionManifest");
     if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
       throw new IllegalStateException("AuthorizationState resolution manifest already set");
     }

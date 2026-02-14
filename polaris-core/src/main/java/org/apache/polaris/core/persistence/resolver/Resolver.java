@@ -105,6 +105,7 @@ public class Resolver {
   private final Map<Long, ResolvedPolarisEntity> resolvedEntriesById;
 
   private ResolverStatus resolverStatus;
+  private ResolvePlan lastResolvePlan;
 
   // Set if we determine the reference catalog is a passthrough facade, which impacts
   // leniency of resolution of in-catalog paths
@@ -238,6 +239,7 @@ public class Resolver {
    *     getResolvedXYZ() method can be called.
    */
   public ResolverStatus resolveAll() {
+    this.lastResolvePlan = null;
     return resolveWithPlan(ResolvePlan.all(referenceCatalogName));
   }
 
@@ -257,6 +259,7 @@ public class Resolver {
   private ResolverStatus resolveWithPlan(ResolvePlan plan) {
     // can only be called if the resolver has not yet been called
     this.diagnostics.check(resolverStatus == null, "resolver_called");
+    this.lastResolvePlan = plan;
 
     // retry until a pass terminates, or we reached the maximum iteration count. Note that we should
     // finish normally in no more than few passes so the 1000 limit is really to avoid spinning
@@ -266,7 +269,7 @@ public class Resolver {
     do {
       status = runResolvePass(plan);
       count++;
-    } while (status == null && ++count < 1000);
+    } while (status == null && count < 1000);
 
     // assert if status is null
     this.diagnostics.checkNotNull(status, "cannot_resolve_all_entities");
@@ -291,6 +294,10 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(
+          lastResolvePlan.resolveCallerPrincipal, "caller_principal_not_resolved");
+    }
 
     return resolvedCallerPrincipal;
   }
@@ -304,6 +311,10 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(
+          lastResolvePlan.resolvePrincipalRoles, "caller_principal_roles_not_resolved");
+    }
 
     return resolvedCallerPrincipalRoles;
   }
@@ -318,6 +329,10 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(
+          lastResolvePlan.resolveReferenceCatalog, "reference_catalog_not_resolved");
+    }
 
     return resolvedReferenceCatalog;
   }
@@ -334,6 +349,9 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(lastResolvePlan.resolveCatalogRoles, "catalog_roles_not_resolved");
+    }
 
     return resolvedCatalogRoles;
   }
@@ -351,6 +369,9 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(lastResolvePlan.resolvePaths, "paths_not_resolved");
+    }
     this.diagnostics.check(this.resolvedPaths.size() == 1, "only_if_single");
 
     return resolvedPaths.get(0);
@@ -367,6 +388,9 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    if (lastResolvePlan != null) {
+      this.diagnostics.check(lastResolvePlan.resolvePaths, "paths_not_resolved");
+    }
     this.diagnostics.check(!this.resolvedPaths.isEmpty(), "no_path_resolved");
 
     return resolvedPaths;
@@ -399,6 +423,10 @@ public class Resolver {
     if (entityType.isTopLevel()) {
       return this.resolvedEntriesByName.get(new EntityCacheByNameKey(entityType, entityName));
     } else {
+      if (lastResolvePlan != null) {
+        this.diagnostics.check(
+            lastResolvePlan.resolveReferenceCatalog, "reference_catalog_not_resolved");
+      }
       long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
       return this.resolvedEntriesByName.get(
           new EntityCacheByNameKey(catalogId, catalogId, entityType, entityName));
@@ -934,10 +962,10 @@ public class Resolver {
           selections.contains(Resolvable.CALLER_PRINCIPAL) || resolvePrincipalRoles;
 
       boolean hasReferenceCatalog = referenceCatalogName != null;
-      if (!hasReferenceCatalog) {
-        resolveReferenceCatalog = false;
-        resolveCatalogRoles = false;
-        resolvePaths = false;
+      if (!hasReferenceCatalog && resolveReferenceCatalog) {
+        throw new IllegalArgumentException(
+            "Reference-catalog-dependent selections were requested, but no reference catalog name "
+                + "was provided");
       }
 
       return new ResolvePlan(

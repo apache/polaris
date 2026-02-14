@@ -19,7 +19,8 @@
 package org.apache.polaris.core.persistence.resolver;
 
 /**
- * Explicit resolution components for {@link PolarisResolutionManifest#resolveSelections}.
+ * Explicit resolution components for {@link
+ * PolarisResolutionManifest#resolveSelections(java.util.Set)}.
  *
  * <p>Selections control which entity groups the resolver should fetch for a request.
  */

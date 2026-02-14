@@ -163,4 +163,21 @@ public class ResolverTest extends BaseResolverTest {
     Assertions.assertThat(status.getStatus())
         .isEqualTo(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
   }
+
+  @Test
+  public void testResolveSelectionsThrowsOnGetResolvedCallerPrincipal() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.REFERENCE_CATALOG));
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+    Assertions.assertThatThrownBy(resolver::getResolvedCallerPrincipal)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("caller_principal_not_resolved");
+  }
 }
