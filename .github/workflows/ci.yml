@@ -198,6 +198,16 @@ jobs:
           version: 'v3.16.0'
       - name: Set up chart-testing
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: Set up helm-docs
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Install Helm plugins
+        run: make helm-install-plugins
+      - name: Verify Helm schema is up to date
+        run: make helm-schema-verify
+      - name: Verify Helm documentation is up to date
+        run: make helm-doc-verify
       - name: Run 'helm template' validation
         run: |
           cd helm/polaris
@@ -207,10 +217,7 @@ jobs:
             echo "::endgroup::"
           done
       - name: Run Helm unit tests
-        run: |
-          # Pin version to 1.0.2 due to https://github.com/helm-unittest/helm-unittest/issues/790
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          helm unittest helm/polaris
+        run: make helm-unittest
       - name: Run chart-testing (lint)
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
       - name: Set up Minikube

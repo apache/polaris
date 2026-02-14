@@ -293,6 +293,7 @@ that they are unique.
 {{- end -}}
 {{- /* Extra service ports */ -}}
 {{- range $i, $svc := .Values.extraServices -}}
+{{- if $svc.nameSuffix -}}
 {{- range $j, $port := $svc.ports -}}
 {{- $portNumber := coalesce $port.targetPort $port.port -}}
 {{- if hasKey $ports $port.name -}}
@@ -307,6 +308,7 @@ that they are unique.
 {{- end -}}
 {{- $_ := set $ports $port.name $portNumber -}}
 {{- $_ = set $protocols $port.name ($port.protocol | default "TCP") -}}
+{{- end -}}
 {{- end -}}
 {{- end }}
 ports:
