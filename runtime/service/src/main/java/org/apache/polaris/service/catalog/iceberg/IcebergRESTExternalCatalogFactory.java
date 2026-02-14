@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.iceberg.CatalogProperties.URI;
+
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
@@ -50,13 +52,16 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
     }
 
     SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
+
     RESTCatalog federatedCatalog =
         new RESTCatalog(
             context,
-            (config) ->
-                HTTPClient.builder(config)
-                    .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                    .build());
+            (config) -> {
+              return HTTPClient.builder(config)
+                  .withHeaders(RESTUtil.configHeaders(config))
+                  .uri(config.get(URI))
+                  .build();
+            });
 
     // Merge properties with precedence: connection config properties override catalog properties
     // to ensure required settings like URI and authentication cannot be accidentally overwritten.
