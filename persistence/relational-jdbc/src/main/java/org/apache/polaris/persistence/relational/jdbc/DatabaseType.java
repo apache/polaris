@@ -60,4 +60,24 @@ public enum DatabaseType {
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     return classLoader.getResourceAsStream(resourceName);
   }
+
+  /**
+   * Open an InputStream that contains data from the metrics schema init script. This stream should
+   * be closed by the caller.
+   *
+   * @param metricsSchemaVersion the metrics schema version (currently only 1 is supported)
+   * @return an InputStream for the metrics schema SQL file
+   */
+  public InputStream openMetricsSchemaResource(int metricsSchemaVersion) {
+    if (metricsSchemaVersion != 1) {
+      throw new IllegalArgumentException(
+          "Unknown or invalid metrics schema version " + metricsSchemaVersion);
+    }
+
+    final String resourceName =
+        String.format("%s/schema-metrics-v%d.sql", this.getDisplayName(), metricsSchemaVersion);
+
+    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+    return classLoader.getResourceAsStream(resourceName);
+  }
 }

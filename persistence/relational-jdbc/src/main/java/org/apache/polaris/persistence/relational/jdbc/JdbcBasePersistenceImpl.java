@@ -777,6 +777,25 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  /**
+   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table.
+   *
+   * @param datasourceOperations the datasource operations to use for the check
+   * @return true if the metrics_version table exists and contains data, false otherwise
+   */
+  public static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
+    PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
+    try {
+      List<SchemaVersion> versions = datasourceOperations.executeSelect(query, new SchemaVersion());
+      return versions != null && !versions.isEmpty();
+    } catch (SQLException e) {
+      if (datasourceOperations.isRelationDoesNotExist(e)) {
+        return false;
+      }
+      throw new IllegalStateException("Failed to check if metrics tables exist", e);
+    }
+  }
+
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>

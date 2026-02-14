@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -394,5 +395,14 @@ public class QueryGeneratorTest {
                 .parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");
+  }
+
+  @Test
+  void testGenerateMetricsVersionQuery() {
+    PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
+    assertEquals(
+        "SELECT version_value FROM POLARIS_SCHEMA.metrics_version WHERE version_key = 'metrics_version'",
+        query.sql());
+    Assertions.assertThat(query.parameters()).isEmpty();
   }
 }
