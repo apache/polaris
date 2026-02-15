@@ -160,7 +160,7 @@ EOF
   if [[ "$TABLE_FORMAT" == "hudi" ]]; then
     cat << EOF >> ${SPARK_CONF}
 spark.jars.packages org.apache.polaris:polaris-spark-3.5_$SCALA_VERSION:$POLARIS_VERSION,org.apache.hudi:hudi-spark3.5-bundle_${SCALA_VERSION}:1.1.1
-# Note: Hudi package is passed via --packages on command line in spark_hudi.sh
+# Note: Hudi package is passed via --packages on command line in spark_sql_hudi.sh
 # to ensure it's resolved before Kryo initialization
 EOF
   else

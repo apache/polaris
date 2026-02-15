@@ -70,18 +70,45 @@ SPARK_VERSION="3.5.6"
 
 SPARK_SHELL_OPTIONS=("PACKAGE" "JAR")
 
-# Define test suites to run
-# Each suite specifies: test_file:table_format:test_shortname
-declare -a TEST_SUITES=(
-  "spark_sql.sh:delta:spark_sql"
-  "spark_hudi.sh:hudi:spark_hudi"
-)
+# Auto-discover test suites from the suites/ directory
+# Test files must follow naming convention: <name>_<table_format>.sh
+SUITES_DIR="${SCRIPT_DIR}/suites"
+
+if [[ ! -d "$SUITES_DIR" ]]; then
+  logred "Error: Test suites directory not found: ${SUITES_DIR}"
+  exit 1
+fi
+
+parse_test_suite() {
+  local filename="$1"
+  local base="${filename%.sh}"
+  TABLE_FORMAT="${base##*_}"
+  TEST_SHORTNAME="${base}"
+  TEST_FILE="${SUITES_DIR}/${filename}"
+}
+
+declare -a TEST_SUITES=()
+for test_file in "${SUITES_DIR}"/*.sh; do
+  [[ -f "$test_file" ]] || continue
+  TEST_SUITES+=("$(basename "$test_file")")
+done
+
+if [[ ${#TEST_SUITES[@]} -eq 0 ]]; then
+  logred "Error: No test suites found in ${SUITES_DIR}"
+  exit 1
+fi
 
 # Allow running specific test via environment variable
 echo "REGTEST_SUITE=${REGTEST_SUITE}"
 if [[ -n "$REGTEST_SUITE" ]]; then
+  REGTEST_SUITE="${REGTEST_SUITE%.sh}"
+  SUITE_FILE="${REGTEST_SUITE}.sh"
+  if [[ ! -f "${SUITES_DIR}/${SUITE_FILE}" ]]; then
+    logred "Error: Test suite not found: ${SUITES_DIR}/${SUITE_FILE}"
+    exit 1
+  fi
   echo "Overriding TEST_SUITES to run only: ${REGTEST_SUITE}"
-  TEST_SUITES=("${REGTEST_SUITE}")
+  TEST_SUITES=("${SUITE_FILE}")
 fi
 echo "Will run test suites: ${TEST_SUITES[@]}"
 
@@ -105,15 +132,8 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
 
   for SPARK_SHELL_OPTION in "${SPARK_SHELL_OPTIONS[@]}"; do
     # Loop through each test suite
-    for TEST_SUITE_CONFIG in "${TEST_SUITES[@]}"; do
-      # Parse test suite configuration (format: test_file:table_format:test_shortname)
-      IFS=':' read -r TEST_FILE TABLE_FORMAT TEST_SHORTNAME <<< "$TEST_SUITE_CONFIG"
-
-      # Skip this suite if REGTEST_SUITE is set and doesn't match
-      if [[ -n "$REGTEST_SUITE" ]] && [[ "$TEST_SUITE_CONFIG" != "$REGTEST_SUITE" ]]; then
-        echo "Skipping test suite ${TEST_SHORTNAME} (REGTEST_SUITE=${REGTEST_SUITE})"
-        continue
-      fi
+    for TEST_SUITE_FILE in "${TEST_SUITES[@]}"; do
+      parse_test_suite "$TEST_SUITE_FILE"
 
       loginfo "Setting up for test suite: ${TEST_SHORTNAME} with table format: ${TABLE_FORMAT}"
 
@@ -137,7 +157,7 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
       fi
 
       # run the test
-      loginfo "Starting test ${TEST_FILE}"
+      loginfo "Starting test ${TEST_SHORTNAME}"
 
       TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}_${SPARK_SHELL_OPTION}_${TABLE_FORMAT}"
       TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
@@ -145,14 +165,14 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
 
       mkdir -p ${TEST_TMPDIR}
       if (( ${VERBOSE} )); then
-        ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
+        ${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
       else
-        ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
+        ${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
       fi
       loginfo "Test run concluded for ${TEST_SHORTNAME}"
 
       # Compare output with reference
-      TEST_REF="$(realpath ${SCRIPT_DIR})/${TEST_SHORTNAME}.ref"
+      TEST_REF="${SUITES_DIR}/${TEST_SHORTNAME}.ref"
       if cmp --silent ${TEST_STDOUT} ${TEST_REF}; then
         loggreen "Test SUCCEEDED: ${TEST_SHORTNAME}"
       else

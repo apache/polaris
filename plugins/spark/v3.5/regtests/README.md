@@ -87,16 +87,25 @@ appropriately.
 
 ## Running Specific Test Suites
 
-By default, `run.sh` executes all test suites (Delta and Hudi). To run a specific suite, use the
-`REGTEST_SUITE` environment variable:
+By default, `run.sh` auto-discovers and executes all test suites in the `suites/` directory.
+To run a specific suite, use the `REGTEST_SUITE` environment variable with just the test name:
 
 ```bash
-# Run only Delta tests (existing spark_sql)
-env POLARIS_HOST=localhost REGTEST_SUITE="spark_sql.sh:delta:spark_sql" ./plugins/spark/v3.5/regtests/run.sh
+# Run only Delta tests
+env POLARIS_HOST=localhost REGTEST_SUITE=spark_sql_delta ./plugins/spark/v3.5/regtests/run.sh
 
 # Run only Hudi tests
-env POLARIS_HOST=localhost REGTEST_SUITE="spark_hudi.sh:hudi:spark_hudi" ./plugins/spark/v3.5/regtests/run.sh
+env POLARIS_HOST=localhost REGTEST_SUITE=spark_sql_hudi ./plugins/spark/v3.5/regtests/run.sh
 ```
+
+## Adding a New Test Suite
+
+Test suites are auto-discovered from the `suites/` directory. To add a new test:
+
+1. Create `suites/<descriptive_name>_<table_format>.sh` (must be executable)
+2. Create `suites/<descriptive_name>_<table_format>.ref` (expected output)
+3. The table format is automatically parsed from the last segment before `.sh`
+4. Supported table formats: `delta`, `hudi`
 
 ## Table Format Support
 

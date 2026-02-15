@@ -82,3 +82,4 @@ rm -rf /tmp/spark_hudi_catalog/
 
 curl -i -X DELETE -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/${CATALOG_NAME} > /dev/stderr
+
