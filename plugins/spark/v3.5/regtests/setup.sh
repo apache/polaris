@@ -232,12 +232,7 @@ fi
 echo "Launch spark-sql at ${SPARK_HOME}/bin/spark-sql"
 # bootstrap dependencies so that future queries don't need to wait for the downloads.
 # this is mostly useful for building the Docker image with all needed dependencies
-if [[ "$TABLE_FORMAT" == "hudi" ]]; then
-  # For Hudi: Pass --packages on command line to match official Hudi docs approach
-  ${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
-else
-  ${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
-fi
+${SPARK_HOME}/bin/spark-sql -e "SELECT 1"
 
 # ensure SPARK_HOME is setup for later tests
 export SPARK_HOME=$SPARK_HOME
