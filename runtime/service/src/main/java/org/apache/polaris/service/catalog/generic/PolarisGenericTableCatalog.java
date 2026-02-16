@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -28,7 +30,6 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -46,28 +47,25 @@ import org.slf4j.LoggerFactory;
 public class PolarisGenericTableCatalog implements GenericTableCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalog.class);
 
-  private String name;
-
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
-  private final CatalogEntity catalogEntity;
-  private long catalogId = -1;
-  private PolarisMetaStoreManager metaStoreManager;
+  private final long catalogId;
+  private final PolarisMetaStoreManager metaStoreManager;
 
   public PolarisGenericTableCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
-    this.resolvedEntityView = resolvedEntityView;
-    this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
-    this.catalogId = catalogEntity.getId();
+    this.resolvedEntityView = requireNonNull(resolvedEntityView, "No resolved entity view");
+    this.catalogId =
+        requireNonNull(resolvedEntityView.getResolvedCatalogEntity(), "No resolved catalog entity")
+            .getId();
     this.metaStoreManager = metaStoreManager;
   }
 
   @Override
   public void initialize(String name, Map<String, String> properties) {
-    this.name = name;
     if (!properties.isEmpty()) {
       throw new IllegalStateException("PolarisGenericTableCatalog does not support properties");
     }
