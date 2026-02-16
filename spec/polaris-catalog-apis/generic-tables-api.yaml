@@ -244,6 +244,10 @@ components:
       properties:
         table:
           $ref: '#/components/schemas/GenericTable'
+        storage-credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageCredential'
 
     ListGenericTablesResponse:
       type: object
@@ -255,6 +259,21 @@ components:
           uniqueItems: true
           items:
             $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableIdentifier'
+
+    StorageCredential:
+      type: object
+      required:
+        - prefix
+        - config
+      properties:
+        prefix:
+          type: string
+          description: Indicates a storage location prefix where the credential is relevant. Clients should choose the most
+            specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
+        config:
+          type: object
+          additionalProperties:
+            type: string
 
   responses:
 
