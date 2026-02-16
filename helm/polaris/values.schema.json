@@ -11,11 +11,9 @@
             "type": "object"
         },
         "authentication": {
-            "description": "Polaris authentication configuration.",
             "type": "object",
             "properties": {
                 "authenticator": {
-                    "description": "The `Authenticator` implementation to use. Only one built-in type is supported: default.",
                     "type": "object",
                     "properties": {
                         "type": {
@@ -29,7 +27,6 @@
                     "type": "object"
                 },
                 "tokenBroker": {
-                    "description": "The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key. Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.",
                     "type": "object",
                     "properties": {
                         "maxTokenGeneration": {
@@ -37,7 +34,6 @@
                             "type": "string"
                         },
                         "secret": {
-                            "description": "The secret name to pull the public and private keys, or the symmetric key secret from.",
                             "type": "object",
                             "properties": {
                                 "name": {
@@ -45,37 +41,35 @@
                                     "type": "string"
                                 },
                                 "privateKey": {
-                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead. Key name inside the secret for the private key",
+                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead. Key name inside the secret for the private key @ignored",
                                     "type": "string"
                                 },
                                 "publicKey": {
-                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead. Key name inside the secret for the public key",
+                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead. Key name inside the secret for the public key @ignored",
                                     "type": "string"
                                 },
                                 "rsaKeyPair": {
-                                    "description": "Optional: configuration specific to RSA key pair secret.",
                                     "type": "object",
                                     "properties": {
                                         "privateKey": {
-                                            "description": "Key name inside the secret for the private key",
+                                            "description": "Key name inside the secret for the RSA private key.",
                                             "type": "string"
                                         },
                                         "publicKey": {
-                                            "description": "Key name inside the secret for the public key",
+                                            "description": "Key name inside the secret for the RSA public key.",
                                             "type": "string"
                                         }
                                     }
                                 },
                                 "secretKey": {
-                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead. Key name inside the secret for the symmetric key",
+                                    "description": "DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead. Key name inside the secret for the symmetric key @ignored",
                                     "type": "string"
                                 },
                                 "symmetricKey": {
-                                    "description": "Optional: configuration specific to symmetric key secret.",
                                     "type": "object",
                                     "properties": {
                                         "secretKey": {
-                                            "description": "Key name inside the secret for the symmetric key",
+                                            "description": "Key name inside the secret for the symmetric key.",
                                             "type": "string"
                                         }
                                     }
@@ -83,17 +77,16 @@
                             }
                         },
                         "type": {
-                            "description": "The type of token broker to use.",
+                            "description": "The token broker implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key. Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.",
                             "type": "string"
                         }
                     }
                 },
                 "tokenService": {
-                    "description": "The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled. Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.",
                     "type": "object",
                     "properties": {
                         "type": {
-                            "description": "The type of token service to use.",
+                            "description": "The token service implementation to use. Two built-in types are supported: default and disabled. Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.",
                             "type": "string"
                         }
                     }
@@ -146,7 +139,6 @@
             "type": "object"
         },
         "cors": {
-            "description": "Polaris CORS configuration.",
             "type": "object",
             "properties": {
                 "accessControlAllowCredentials": {
@@ -205,7 +197,6 @@
             }
         },
         "extraServices": {
-            "description": "Additional service definitions. All service definitions always select all Polaris pods. Use this if you need to expose specific ports with different configurations, e.g. expose polaris-http with an alternate LoadBalancer service instead of ClusterIP.",
             "type": "array",
             "items": {
                 "type": "object",
@@ -245,7 +236,6 @@
                         "type": "string"
                     },
                     "ports": {
-                        "description": "The ports the extra service will listen on.",
                         "type": "array",
                         "minItems": 1,
                         "items": {
@@ -333,7 +323,6 @@
             }
         },
         "features": {
-            "description": "Polaris features configuration.",
             "type": "object",
             "properties": {
                 "realmOverrides": {
@@ -343,7 +332,6 @@
             }
         },
         "fileIo": {
-            "description": "Polaris FileIO configuration.",
             "type": "object",
             "properties": {
                 "type": {
@@ -378,7 +366,6 @@
                     "type": "boolean"
                 },
                 "listeners": {
-                    "description": "Gateway listeners configuration.",
                     "type": "array",
                     "minItems": 1,
                     "items": {
@@ -503,7 +490,6 @@
                     "type": "boolean"
                 },
                 "hosts": {
-                    "description": "A list of host paths used to configure the ingress.",
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -517,13 +503,13 @@
                                 "type": "string"
                             },
                             "paths": {
-                                "description": "A list of paths used to configure the ingress.",
                                 "type": "array",
                                 "minItems": 1,
                                 "items": {
                                     "type": "object",
                                     "properties": {
                                         "path": {
+                                            "description": "The path to match.",
                                             "type": "string"
                                         },
                                         "pathType": {
@@ -542,7 +528,6 @@
                     }
                 },
                 "tls": {
-                    "description": "A list of TLS certificates; each entry has a list of hosts in the certificate, along with the secret name used to terminate TLS traffic on port 443.",
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -559,7 +544,7 @@
                                 }
                             },
                             "secretName": {
-                                "description": "The name of the TLS secret. Required.",
+                                "description": "The name of the TLS secret to use to terminate TLS traffic on port 443. Required.",
                                 "type": "string"
                             }
                         }
@@ -568,7 +553,6 @@
             }
         },
         "livenessProbe": {
-            "description": "Configures the liveness probe for polaris pods.",
             "type": "object",
             "properties": {
                 "failureThreshold": {
@@ -604,7 +588,6 @@
             }
         },
         "logging": {
-            "description": "Logging configuration.",
             "type": "object",
             "properties": {
                 "categories": {
@@ -626,7 +609,6 @@
                     }
                 },
                 "console": {
-                    "description": "Configuration for the console appender.",
                     "type": "object",
                     "properties": {
                         "enabled": {
@@ -657,7 +639,6 @@
                     }
                 },
                 "file": {
-                    "description": "Configuration for the file appender.",
                     "type": "object",
                     "properties": {
                         "enabled": {
@@ -681,7 +662,6 @@
                             "type": "string"
                         },
                         "rotation": {
-                            "description": "Log rotation configuration.",
                             "type": "object",
                             "properties": {
                                 "fileSuffix": {
@@ -703,7 +683,6 @@
                             }
                         },
                         "storage": {
-                            "description": "The log storage configuration. A persistent volume claim will be created using these settings.",
                             "type": "object",
                             "properties": {
                                 "className": {
@@ -768,7 +747,6 @@
             }
         },
         "managementService": {
-            "description": "Management service settings. These settings are used to configure liveness and readiness probes, and to configure the dedicated headless service that will expose health checks and metrics, e.g. for metrics scraping and service monitoring.",
             "type": "object",
             "properties": {
                 "annotations": {
@@ -799,7 +777,6 @@
                     ]
                 },
                 "ports": {
-                    "description": "The ports the management service will listen on. At least one port is required; the first port implicitly becomes the HTTP port that the application will use for serving management requests. By default, it's 8182. Note: port names must be unique and no more than 15 characters long.",
                     "type": "array",
                     "minItems": 1,
                     "items": {
@@ -895,7 +872,6 @@
             }
         },
         "oidc": {
-            "description": "Polaris OIDC configuration. Only relevant when at least one realm is configured for external (or mixed) authentication. The currently supported configuration is for a single, default OIDC tenant. For more complex scenarios, including OIDC multi-tenancy, you will need to provide the relevant configuration using the `advancedConfig` section.",
             "type": "object",
             "properties": {
                 "authServeUrl": {
@@ -903,7 +879,6 @@
                     "type": "string"
                 },
                 "client": {
-                    "description": "The client to use when authenticating with the authentication server.",
                     "type": "object",
                     "properties": {
                         "id": {
@@ -911,7 +886,6 @@
                             "type": "string"
                         },
                         "secret": {
-                            "description": "The secret to pull the client secret from. If no client secret is required, leave the secret name unset.",
                             "type": "object",
                             "properties": {
                                 "key": {
@@ -927,7 +901,6 @@
                     }
                 },
                 "principalMapper": {
-                    "description": "Principal mapping configuration.",
                     "type": "object",
                     "properties": {
                         "idClaimPath": {
@@ -945,7 +918,6 @@
                     }
                 },
                 "principalRolesMapper": {
-                    "description": "Principal roles mapping configuration.",
                     "type": "object",
                     "properties": {
                         "filter": {
@@ -972,7 +944,6 @@
             }
         },
         "persistence": {
-            "description": "Polaris persistence configuration.",
             "type": "object",
             "properties": {
                 "nosql": {
@@ -1002,11 +973,9 @@
                     }
                 },
                 "relationalJdbc": {
-                    "description": "The configuration for the relational-jdbc persistence manager.",
                     "type": "object",
                     "properties": {
                         "secret": {
-                            "description": "The secret name to pull the database connection properties from.",
                             "type": "object",
                             "properties": {
                                 "jdbcUrl": {
@@ -1030,7 +999,7 @@
                     }
                 },
                 "type": {
-                    "description": "The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.",
+                    "description": "The type of persistence to use. Three built-in types are supported: in-memory, relational-jdbc, and nosql (beta).",
                     "type": "string"
                 }
             }
@@ -1043,7 +1012,6 @@
             }
         },
         "podDisruptionBudget": {
-            "description": "Pod disruption budget settings.",
             "type": "object",
             "properties": {
                 "annotations": {
@@ -1089,11 +1057,9 @@
             "type": "string"
         },
         "rateLimiter": {
-            "description": "Polaris rate limiter configuration.",
             "type": "object",
             "properties": {
                 "tokenBucket": {
-                    "description": "The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm.",
                     "type": "object",
                     "properties": {
                         "requestsPerSecond": {
@@ -1114,7 +1080,6 @@
             }
         },
         "readinessProbe": {
-            "description": "Configures the readiness probe for polaris pods.",
             "type": "object",
             "properties": {
                 "failureThreshold": {
@@ -1145,7 +1110,6 @@
             }
         },
         "realmContext": {
-            "description": "Realm context resolver configuration.",
             "type": "object",
             "properties": {
                 "realms": {
@@ -1178,7 +1142,6 @@
             ]
         },
         "service": {
-            "description": "Polaris main service settings.",
             "type": "object",
             "properties": {
                 "annotations": {
@@ -1209,7 +1172,6 @@
                     ]
                 },
                 "ports": {
-                    "description": "The ports the service will listen on. At least one port is required; the first port implicitly becomes the HTTP port that the application will use for serving API requests. By default, it's 8181. Note: port names must be unique and no more than 15 characters long.",
                     "type": "array",
                     "minItems": 1,
                     "items": {
@@ -1329,11 +1291,9 @@
             }
         },
         "storage": {
-            "description": "Storage credentials for the server. If the following properties are unset, default credentials will be used, in which case the pod must have the necessary permissions to access the storage.",
             "type": "object",
             "properties": {
                 "secret": {
-                    "description": "The secret to pull storage credentials from.",
                     "type": "object",
                     "properties": {
                         "awsAccessKeyId": {
@@ -1361,7 +1321,6 @@
             }
         },
         "tasks": {
-            "description": "Polaris asynchronous task executor configuration.",
             "type": "object",
             "properties": {
                 "maxConcurrentTasks": {

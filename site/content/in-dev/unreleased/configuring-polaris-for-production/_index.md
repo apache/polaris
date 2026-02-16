@@ -31,6 +31,10 @@ review and apply the following checklist:
 - [ ] Bootstrap valid realms in the metastore
 - [ ] Disable local FILE storage
 
+{{< alert note >}}
+If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../helm-chart/production" %}}) guide as well.
+{{< /alert >}}
+
 ### Configure OAuth2
 
 Polaris authentication requires specifying a token broker factory type. Two implementations are
@@ -173,7 +177,7 @@ Depending on your database, this may not be convenient as the generated credenti
 in clear text in the database.
 
 In order to provide your own credentials for `root` principal (so you can request tokens via
-`api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool](../../../../docs/admin-tool.md)
+`api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool](../admin-tool#bootstrapping-realms-and-principal-credentials) Bootstrap command.
 
 You can verify the setup by attempting a token issue for the `root` principal:
 
