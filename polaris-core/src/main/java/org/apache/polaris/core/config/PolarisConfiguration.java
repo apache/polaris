@@ -77,7 +77,7 @@ public abstract class PolarisConfiguration<T> {
   }
 
   /** Returns a list of all PolarisConfigurations that have been registered */
-  public static List<PolarisConfiguration<?>> getAllConfigurations() {
+  public static synchronized List<PolarisConfiguration<?>> getAllConfigurations() {
     return List.copyOf(ALL_CONFIGURATIONS);
   }
 
