@@ -40,7 +40,6 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
 public class GenericTableCatalogAdapter
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
 
-  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final ReservedProperties reservedProperties;
   private final CatalogPrefixParser prefixParser;
@@ -52,7 +51,6 @@ public class GenericTableCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       GenericTableCatalogHandlerFactory handlerFactory) {
-    this.realmContext = callContext.getRealmContext();
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
