@@ -19,11 +19,7 @@
 package org.apache.polaris.service.catalog.common;
 
 import jakarta.ws.rs.core.SecurityContext;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
@@ -31,10 +27,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
  * implementations
  */
 public interface CatalogAdapter {
-  default Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
-  }
-
   default PolarisPrincipal validatePrincipal(SecurityContext securityContext) {
     var authenticatedPrincipal = securityContext.getUserPrincipal();
     if (authenticatedPrincipal instanceof PolarisPrincipal polarisPrincipal) {
