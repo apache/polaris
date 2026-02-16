@@ -274,6 +274,8 @@ components:
         config:
           type: object
           description: |
+            Scoped credentials configs for AWS S3, GCP GCS and AZURE ADLS.
+            
             ## AWS Configurations
 
             The following configurations should be respected when working with tables stored in AWS S3
