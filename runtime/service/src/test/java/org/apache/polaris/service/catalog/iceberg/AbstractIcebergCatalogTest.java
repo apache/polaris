@@ -39,7 +39,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -100,8 +99,6 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -119,16 +116,13 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -144,7 +138,6 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
-import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -243,7 +236,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
-  @Inject UserSecretsManager userSecretsManager;
   @Inject CallContext callContext;
   @Inject RealmConfig realmConfig;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
@@ -251,17 +243,16 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject FileIOFactory fileIOFactory;
   @Inject TaskFileIOSupplier taskFileIOSupplier;
   @Inject PolarisPrincipal authenticatedRoot;
+  @Inject PolarisAdminService adminService;
+  @Inject ResolverFactory resolverFactory;
 
   private IcebergCatalog catalog;
   private String realmName;
   private PolarisCallContext polarisContext;
-  private PolarisAdminService adminService;
-  private ResolverFactory resolverFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
 
   private TestPolarisEventListener testPolarisEventListener;
-  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -269,12 +260,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
-
-  @Nullable
-  protected abstract EntityCache createEntityCache(
-      PolarisDiagnostics diagnostics,
-      RealmConfig realmConfig,
-      PolarisMetaStoreManager metaStoreManager);
 
   protected void bootstrapRealm(String realmName) {}
 
@@ -292,32 +277,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
-
-    EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
-    resolverFactory =
-        (principal, referenceCatalogName) ->
-            new Resolver(
-                diagServices,
-                polarisContext,
-                metaStoreManager,
-                principal,
-                entityCache,
-                referenceCatalogName);
-    QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
-
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
-    reservedProperties = new ReservedProperties() {};
-
-    adminService =
-        new PolarisAdminService(
-            polarisContext,
-            resolutionManifestFactory,
-            metaStoreManager,
-            userSecretsManager,
-            serviceIdentityProvider,
-            authenticatedRoot,
-            authorizer,
-            reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo storageConfigModel =
