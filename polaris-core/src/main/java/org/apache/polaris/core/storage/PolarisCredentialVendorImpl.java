@@ -31,6 +31,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 
 /**
  * Standalone implementation of {@link PolarisCredentialVendor} that decouples credential vending
@@ -89,6 +90,7 @@ public class PolarisCredentialVendorImpl implements PolarisCredentialVendor {
         credentialVendingContext);
   }
 
+  @SuppressWarnings("deprecation")
   @Override
   @Nonnull
   public ScopedCredentialsResult getSubscopedCredsForEntity(
@@ -100,9 +102,34 @@ public class PolarisCredentialVendorImpl implements PolarisCredentialVendor {
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
       @Nonnull CredentialVendingContext credentialVendingContext) {
+    // Delegate to the params-based overload by building a DefaultStorageAccessConfigParameters.
+    // This preserves backward compatibility for callers still using the old signature.
+    return getSubscopedCredsForEntity(
+        callCtx,
+        entity,
+        org.apache.polaris.core.storage.cache.ImmutableDefaultStorageAccessConfigParameters.of(
+            callCtx.getRealmContext().getRealmIdentifier(),
+            entity.getCatalogId(),
+            entity
+                .getInternalPropertiesAsMap()
+                .get(
+                    org.apache.polaris.core.entity.PolarisEntityConstants
+                        .getStorageConfigInfoPropertyName()),
+            allowListOperation,
+            allowedReadLocations,
+            allowedWriteLocations,
+            refreshCredentialsEndpoint));
+  }
+
+  @Override
+  @Nonnull
+  public ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntity entity,
+      @Nonnull StorageAccessConfigParameters params) {
 
     diagnostics.check(
-        !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
+        !params.allowedReadLocations().isEmpty() || !params.allowedWriteLocations().isEmpty(),
         "allowed_locations_to_subscope_is_required");
 
     // extract storage config directly from the provided entity
@@ -120,14 +147,7 @@ public class PolarisCredentialVendorImpl implements PolarisCredentialVendor {
 
     try {
       StorageAccessConfig storageAccessConfig =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations,
-              polarisPrincipal,
-              refreshCredentialsEndpoint,
-              credentialVendingContext);
+          storageIntegration.getSubscopedCreds(callCtx.getRealmConfig(), params);
       return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

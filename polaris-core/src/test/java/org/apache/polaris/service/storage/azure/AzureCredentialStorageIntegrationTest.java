@@ -45,17 +45,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.ImmutableAzureStorageAccessConfigParameters;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -355,12 +352,14 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         new AzureCredentialsStorageIntegration(azureConfig);
     return azureCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        allowListAction,
-        new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        ImmutableAzureStorageAccessConfigParameters.of(
+            "testRealm",
+            0L,
+            null,
+            allowListAction,
+            new HashSet<>(allowedReadLoc),
+            new HashSet<>(allowedWriteLoc),
+            Optional.empty()));
   }
 
   private BlobContainerClient createContainerClient(

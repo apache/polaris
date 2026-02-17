@@ -23,7 +23,6 @@ import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSes
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -86,32 +85,26 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
-    boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    List<String> sessionTagFieldNames =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    Set<SessionTagField> enabledSessionTagFields =
-        sessionTagFieldNames.stream()
-            .map(SessionTagField::fromConfigName)
-            .flatMap(Optional::stream)
-            .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
+    boolean allowListOperation = params.allowedListAction();
+    Set<String> allowedReadLocations = params.allowedReadLocations();
+    Set<String> allowedWriteLocations = params.allowedWriteLocations();
 
+    // Only embed the principal in the role session name when explicitly configured.
+    // principalName() may be present even when this is false (for session tags / cache key).
+    AwsStorageAccessConfigParameters awsParams = (AwsStorageAccessConfigParameters) params;
     String roleSessionName =
-        includePrincipalNameInSubscopedCredential
-            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName())
+        awsParams.includePrincipalInRoleSessionName()
+            ? awsParams
+                .principalName()
+                .map(name -> AwsRoleSessionNameSanitizer.sanitize("polaris-" + name))
+                .orElse("PolarisAwsCredentialsStorageIntegration")
             : "PolarisAwsCredentialsStorageIntegration";
 
     if (shouldUseSts(storageConfig)) {
@@ -130,13 +123,13 @@ public class AwsCredentialsStorageIntegration
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
-      // Add session tags for the configured fields.
-      // Note: trace_id is only present in context when the caller has included it
-      // (StorageAccessConfigProvider populates it when "trace_id" is in enabledSessionTagFields).
-      if (!enabledSessionTagFields.isEmpty()) {
+      // Add session tags when the credential vending context is non-empty.
+      // The context is non-empty iff INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL is enabled
+      // (decided by buildStorageAccessConfigParameters).
+      CredentialVendingContext credentialVendingContext = params.credentialVendingContext();
+      if (!credentialVendingContext.equals(CredentialVendingContext.empty())) {
         List<Tag> sessionTags =
-            buildSessionTags(
-                polarisPrincipal.getName(), credentialVendingContext, enabledSessionTagFields);
+            buildSessionTags(params.principalName().orElse(""), credentialVendingContext);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support
@@ -173,10 +166,12 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    params
+        .refreshCredentialsEndpoint()
+        .ifPresent(
+            endpoint -> {
+              accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+            });
 
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
@@ -413,11 +408,12 @@ public class AwsCredentialsStorageIntegration
   }
 
   /**
-   * Builds a cache key for AWS credentials. Includes principal name and credential vending context
-   * when the corresponding feature flags are enabled, since AWS STS AssumeRole embeds these in
-   * session tags and role session names which affect the vended credentials.
+   * Builds storage access config parameters for AWS credentials. Includes principal name and
+   * credential vending context when the corresponding feature flags are enabled, since AWS STS
+   * AssumeRole embeds these in session tags and role session names which affect the vended
+   * credentials.
    */
-  public static StorageCredentialCacheKey buildCacheKey(
+  public static AwsStorageAccessConfigParameters buildStorageAccessConfigParameters(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -435,14 +431,15 @@ public class AwsCredentialsStorageIntegration
         includePrincipalNameInSubscopedCredential || includeSessionTags;
     CredentialVendingContext contextForCacheKey =
         includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
-    return StorageCredentialCacheKey.of(
+    return AwsStorageAccessConfigParameters.of(
         realmId,
         entity,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
-        includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
+        includePrincipalInCacheKey ? Optional.of(polarisPrincipal.getName()) : Optional.empty(),
+        includePrincipalNameInSubscopedCredential,
         contextForCacheKey);
   }
 }

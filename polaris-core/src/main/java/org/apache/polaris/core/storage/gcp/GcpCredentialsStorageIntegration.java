@@ -57,7 +57,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,15 +92,11 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    // Note: GCP downscoped credentials do not support session tags like AWS STS.
-    // The credentialVendingContext is accepted for interface compatibility but not used.
+      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
+    boolean allowListOperation = params.allowedListAction();
+    Set<String> allowedReadLocations = params.allowedReadLocations();
+    Set<String> allowedWriteLocations = params.allowedWriteLocations();
+
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
@@ -140,10 +136,12 @@ public class GcpCredentialsStorageIntegration
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
 
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    params
+        .refreshCredentialsEndpoint()
+        .ifPresent(
+            endpoint -> {
+              accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+            });
 
     return accessConfig.build();
   }
@@ -295,10 +293,10 @@ public class GcpCredentialsStorageIntegration
   }
 
   /**
-   * Builds a cache key for GCP credentials. GCP downscoped credentials do not support session tags,
-   * so principal and credential vending context are never included in the cache key.
+   * Builds storage access config parameters for GCP credentials. GCP downscoped credentials do not
+   * support session tags, so principal and credential vending context are never included.
    */
-  public static StorageCredentialCacheKey buildCacheKey(
+  public static GcpStorageAccessConfigParameters buildStorageAccessConfigParameters(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -308,14 +306,12 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    return StorageCredentialCacheKey.of(
+    return GcpStorageAccessConfigParameters.of(
         realmId,
         entity,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        refreshCredentialsEndpoint);
   }
 }

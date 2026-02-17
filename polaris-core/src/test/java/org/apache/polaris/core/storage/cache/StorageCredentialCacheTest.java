@@ -40,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.aws.AwsStorageAccessConfigParameters;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -58,13 +59,12 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testBadResult() {
-    StorageCredentialCacheKey key =
+    StorageAccessConfigParameters key =
         buildKey(
             getPolarisEntities().get(0),
             true,
             Set.of("s3://bucket1/path"),
             Set.of("s3://bucket3/path"),
-            Optional.empty(),
             Optional.empty());
 
     Assertions.assertThatThrownBy(
@@ -90,13 +90,12 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    StorageCredentialCacheKey key =
+    StorageAccessConfigParameters key =
         buildKey(
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
-            Optional.empty(),
             Optional.empty());
 
     // add an item to the cache
@@ -129,13 +128,12 @@ public class StorageCredentialCacheTest {
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     // Key without principal — same key for different principals
-    StorageCredentialCacheKey key =
+    StorageAccessConfigParameters key =
         buildKey(
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
-            Optional.empty(),
             Optional.empty());
 
     storageCredentialCache.getOrLoad(
@@ -160,25 +158,31 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    // Key with principal1
-    StorageCredentialCacheKey key1 =
-        buildKey(
+    // Key with principal1 (using AWS parameters which include principalName)
+    StorageAccessConfigParameters key1 =
+        AwsStorageAccessConfigParameters.of(
+            realmContext.getRealmIdentifier(),
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),
-            Optional.of("principal"));
+            Optional.of("principal"),
+            true,
+            CredentialVendingContext.empty());
 
     // Key with principal2
-    StorageCredentialCacheKey key2 =
-        buildKey(
+    StorageAccessConfigParameters key2 =
+        AwsStorageAccessConfigParameters.of(
+            realmContext.getRealmIdentifier(),
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),
-            Optional.of("anotherPrincipal"));
+            Optional.of("anotherPrincipal"),
+            true,
+            CredentialVendingContext.empty());
 
     storageCredentialCache.getOrLoad(
         key1, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -202,13 +206,12 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    StorageCredentialCacheKey cacheKey =
+    StorageAccessConfigParameters cacheKey =
         buildKey(
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket/path"),
-            Optional.empty(),
             Optional.empty());
 
     // the entry will be evicted immediately because the token is expired
@@ -235,13 +238,12 @@ public class StorageCredentialCacheTest {
 
     // different catalogs will generate new cache entries
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               entity,
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -256,13 +258,12 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               PolarisEntity.of(updateEntity),
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -271,13 +272,12 @@ public class StorageCredentialCacheTest {
 
     // allowedListAction changed to FALSE — will generate new entry
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               entity,
               false,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -286,13 +286,12 @@ public class StorageCredentialCacheTest {
 
     // different allowedWriteLocations — will generate new entry
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               entity,
               false,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://differentbucket/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -306,13 +305,12 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               PolarisEntity.of(updateEntity),
               false,
               Set.of("s3://differentbucket/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -327,13 +325,12 @@ public class StorageCredentialCacheTest {
 
     List<PolarisEntity> entityList = getPolarisEntities();
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               entity,
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -342,13 +339,12 @@ public class StorageCredentialCacheTest {
 
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -357,13 +353,12 @@ public class StorageCredentialCacheTest {
 
     // other property changes do not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -372,13 +367,12 @@ public class StorageCredentialCacheTest {
 
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
               Set.of("s3://bucket2/path", "s3://bucket1/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -387,13 +381,12 @@ public class StorageCredentialCacheTest {
 
     // order of the allowedWriteLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
+      StorageAccessConfigParameters key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
               Set.of("s3://bucket2/path", "s3://bucket1/path"),
               Set.of("s3://bucket4/path", "s3://bucket3/path"),
-              Optional.empty(),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
@@ -412,13 +405,12 @@ public class StorageCredentialCacheTest {
 
     List<PolarisEntity> entityList = getPolarisEntities();
 
-    StorageCredentialCacheKey key =
+    StorageAccessConfigParameters key =
         buildKey(
             entityList.get(0),
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
-            Optional.empty(),
             Optional.empty());
 
     StorageAccessConfig result = storageCredentialCache.getOrLoad(key, realmConfig, () -> config);
@@ -429,23 +421,19 @@ public class StorageCredentialCacheTest {
             Map.of("s3.endpoint", "test-endpoint1", "s3.path-style-access", "true"));
   }
 
-  private StorageCredentialCacheKey buildKey(
+  private DefaultStorageAccessConfigParameters buildKey(
       PolarisEntity entity,
       boolean allowListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
-      Optional<String> principalName) {
-    return StorageCredentialCacheKey.of(
+      Optional<String> refreshCredentialsEndpoint) {
+    return DefaultStorageAccessConfigParameters.of(
         realmContext.getRealmIdentifier(),
         entity,
         allowListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
-        principalName.map(
-            name -> org.apache.polaris.core.auth.PolarisPrincipal.of(name, Map.of(), Set.of())),
-        CredentialVendingContext.empty());
+        refreshCredentialsEndpoint);
   }
 
   private static List<StorageAccessConfig> getFakeAccessConfigs(int number, boolean expireSoon) {

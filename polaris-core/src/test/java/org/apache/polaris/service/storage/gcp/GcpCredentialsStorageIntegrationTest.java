@@ -48,16 +48,14 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.ImmutableGcpStorageAccessConfigParameters;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
@@ -182,12 +180,14 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        allowListAction,
-        new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.of(REFRESH_ENDPOINT),
-        CredentialVendingContext.empty());
+        ImmutableGcpStorageAccessConfigParameters.of(
+            "testRealm",
+            0L,
+            null,
+            allowListAction,
+            new HashSet<>(allowedReadLoc),
+            new HashSet<>(allowedWriteLoc),
+            Optional.of(REFRESH_ENDPOINT)));
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
@@ -362,12 +362,14 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     integration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        true,
-        Set.of("gs://bucket/path"),
-        Set.of("gs://bucket/path"),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        ImmutableGcpStorageAccessConfigParameters.of(
+            "testRealm",
+            0L,
+            null,
+            true,
+            Set.of("gs://bucket/path"),
+            Set.of("gs://bucket/path"),
+            Optional.empty()));
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(

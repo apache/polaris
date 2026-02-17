@@ -62,7 +62,7 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -86,15 +86,12 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    // Note: Azure SAS tokens do not support session tags like AWS STS.
-    // The credentialVendingContext is accepted for interface compatibility but not used.
+      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
+    boolean allowListOperation = params.allowedListAction();
+    Set<String> allowedReadLocations = params.allowedReadLocations();
+    Set<String> allowedWriteLocations = params.allowedWriteLocations();
+    Optional<String> refreshCredentialsEndpoint = params.refreshCredentialsEndpoint();
+
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -450,10 +447,10 @@ public class AzureCredentialsStorageIntegration
   }
 
   /**
-   * Builds a cache key for Azure credentials. Azure SAS tokens do not support session tags, so
-   * principal and credential vending context are never included in the cache key.
+   * Builds storage access config parameters for Azure credentials. Azure SAS tokens do not support
+   * session tags, so principal and credential vending context are never included.
    */
-  public static StorageCredentialCacheKey buildCacheKey(
+  public static AzureStorageAccessConfigParameters buildStorageAccessConfigParameters(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -463,14 +460,12 @@ public class AzureCredentialsStorageIntegration
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    return StorageCredentialCacheKey.of(
+    return AzureStorageAccessConfigParameters.of(
         realmId,
         entity,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        refreshCredentialsEndpoint);
   }
 }
