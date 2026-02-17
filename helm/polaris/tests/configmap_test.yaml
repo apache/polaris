@@ -125,6 +125,22 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
 
+  - it: should configure nosql persistence with default values
+    set:
+      persistence: { type: "nosql" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=nosql" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.nosql.backend=MongoDb" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.mongodb.database=polaris" }
+
+  - it: should configure nosql persistence with custom values
+    set:
+      persistence: { type: "nosql", nosql: { backend: "InMemory", database: "db1" } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=nosql" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.nosql.backend=InMemory" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.mongodb.database=db1" }
+
   - it: should configure file-io
     set:
       fileIo.type: "custom"

@@ -127,6 +127,7 @@ fail if these resources are not created beforehand. You can find some examples i
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=mongodb --timeout=120s
 ```
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.

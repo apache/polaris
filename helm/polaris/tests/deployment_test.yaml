@@ -1263,6 +1263,20 @@ tests:
                 name: polaris-persistence
                 key: jdbcUrl
 
+  - it: should set nosql persistence environment variables
+    template: deployment.yaml
+    set:
+      persistence: { type: "nosql", nosql: { secret: { name: "polaris-persistence", connectionString: "connectionString" } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.connection-string
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: connectionString
+
   - it: should configure volume for file logging
     template: deployment.yaml
     set:
