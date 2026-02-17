@@ -246,7 +246,7 @@ components:
           $ref: '#/components/schemas/GenericTable'
         storage-credentials:
           type: array
-          description: Credentials for ADLS / GCS / S3. Clients must respect the credentials in the `storage-credentials` field if exist.
+          description: Credentials for ADLS / GCS / S3 to access the table.
           items:
             $ref: '#/components/schemas/StorageCredential'
 
@@ -274,7 +274,8 @@ components:
         config:
           type: object
           description: |
-            Scoped credentials configs for AWS S3, GCP GCS and AZURE ADLS.
+            Credential configurations for AWS S3, GCP GCS, and Azure ADLS are supported. The following outlines 
+            the currently supported configuration options:
             
             ## AWS Configurations
 
