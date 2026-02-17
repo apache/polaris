@@ -679,10 +679,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private void authorizeUpdateTableOverwriteOrThrow(TableIdentifier identifier) {
-    // UPDATE_TABLE operation requires TABLE_WRITE_PROPERTIES privilege (or higher), which
-    // automatically excludes users with only TABLE_WRITE_DATA. No custom grant checking needed.
+    // REGISTER_TABLE_OVERWRITE operation requires TABLE_FULL_METADATA privilege, which
+    // encompasses both TABLE_CREATE and TABLE_DROP. This ensures only users with full
+    // table management capabilities can replace an existing table's metadata pointer.
     authorizeBasicTableLikeOperationsOrThrow(
-        EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE),
+        EnumSet.of(PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE),
         PolarisEntitySubType.ICEBERG_TABLE,
         identifier);
   }

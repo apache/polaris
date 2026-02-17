@@ -859,11 +859,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @Test
   public void testRegisterTableOverwriteSufficientPrivileges() {
-    // For overwrite, the caller needs an UPDATE_TABLE-like privilege on the target table.
-    // In Polaris's privilege model this is represented by TABLE_WRITE_PROPERTIES or
-    // TABLE_FULL_METADATA (or a catalog-wide CATALOG_MANAGE_CONTENT). This test verifies
-    // that each of those privileges, granted at the catalog level to the test role,
-    // is sufficient to perform a registerTable with overwrite=true.
+    // For overwrite, the caller needs TABLE_FULL_METADATA or higher privileges on the target
+    // table. This is stricter than UPDATE_TABLE, which only requires TABLE_WRITE_PROPERTIES,
+    // because overwriting involves both dropping the old table pointer and creating a new one.
+    // In Polaris's privilege model, TABLE_FULL_METADATA or a catalog-wide CATALOG_MANAGE_CONTENT
+    // are sufficient. This test verifies that each of those privileges, granted at the catalog
+    // level to the test role, is sufficient to perform a registerTable with overwrite=true.
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
@@ -877,10 +878,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     Mockito.when(registerRequest.overwrite()).thenReturn(true);
 
     doTestSufficientPrivileges(
-        List.of(
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        List.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
         },
@@ -893,8 +891,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
      * Verifies that a variety of privileges are insufficient to authorize a registerTable operation
      * with overwrite enabled. Grants only TABLE_READ_PROPERTIES to the cleanup role, mocks a
      * RegisterTableRequest for overwriting an existing table, and asserts that privileges such as
-     * NAMESPACE_FULL_METADATA, VIEW_FULL_METADATA, TABLE_CREATE, TABLE_DROP, TABLE_READ_PROPERTIES,
-     * TABLE_READ_DATA, and TABLE_LIST do not permit the overwrite operation.
+     * TABLE_WRITE_PROPERTIES (insufficient, only covers metadata updates), TABLE_CREATE, TABLE_DROP,
+     * NAMESPACE_FULL_METADATA, VIEW_FULL_METADATA, TABLE_READ_PROPERTIES, TABLE_READ_DATA, and
+     * TABLE_LIST do not permit the overwrite operation. Note that TABLE_CREATE and TABLE_DROP
+     * individually are insufficient - TABLE_FULL_METADATA (which combines all metadata operations)
+     * is the minimum required.
      */
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
@@ -910,10 +911,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     doTestInsufficientPrivileges(
         List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
             PolarisPrivilege.TABLE_READ_PROPERTIES,
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_LIST),
