@@ -19,8 +19,9 @@
 
 package org.apache.polaris.service.catalog.common;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -100,6 +101,6 @@ public class CatalogUtils {
   }
 
   public static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
+    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, UTF_8));
   }
 }
