@@ -63,30 +63,6 @@ public class PolarisEntity extends PolarisBaseEntity {
     }
   }
 
-  public static class TypeSubTypeAndName {
-    private final PolarisEntityType type;
-    private final PolarisEntitySubType subType;
-    private final String name;
-
-    public TypeSubTypeAndName(PolarisEntityType type, PolarisEntitySubType subType, String name) {
-      this.type = type;
-      this.subType = subType;
-      this.name = name;
-    }
-
-    public PolarisEntityType getType() {
-      return type;
-    }
-
-    public PolarisEntitySubType getSubType() {
-      return subType;
-    }
-
-    public String getName() {
-      return name;
-    }
-  }
-
   @JsonCreator
   private PolarisEntity(
       @JsonProperty("catalogId") long catalogId,
