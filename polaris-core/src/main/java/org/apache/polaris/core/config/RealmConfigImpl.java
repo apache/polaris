@@ -18,19 +18,13 @@
  */
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RealmConfigImpl implements RealmConfig {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RealmConfigImpl.class);
 
   private final RealmConfigurationSource configurationSource;
   private final RealmContext realmContext;
@@ -69,54 +63,12 @@ public class RealmConfigImpl implements RealmConfig {
     return getConfig(config, catalogEntity.getPropertiesAsMap());
   }
 
-  @Override
-  public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-    Object propertyValue = null;
-    if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
-      if (config.hasCatalogConfig()) {
-        propertyValue = catalogProperties.get(config.catalogConfig());
-      }
-      if (propertyValue == null) {
-        if (config.hasCatalogConfigUnsafe()) {
-          propertyValue = catalogProperties.get(config.catalogConfigUnsafe());
-        }
-        if (propertyValue != null) {
-          LOGGER.warn(
-              String.format(
-                  "Deprecated config %s is in use and will be removed in a future version",
-                  config.catalogConfigUnsafe()));
-        }
-      }
-    }
-
-    if (propertyValue == null) {
-      propertyValue = configurationSource.getConfigValue(realmContext, config.key());
-    }
-
-    return tryCast(config, propertyValue);
+  private Object realmConfigValue(String configName) {
+    return configurationSource.getConfigValue(realmContext, configName);
   }
 
-  /**
-   * In some cases, we may extract a value that doesn't match the expected type for a config. This
-   * method can be used to attempt to force-cast it using `String.valueOf`
-   */
-  private <T> @Nonnull T tryCast(PolarisConfiguration<T> config, Object value) {
-    if (value == null) {
-      return config.defaultValue();
-    }
-
-    if (config.defaultValue() instanceof Boolean) {
-      return config.cast(Boolean.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Integer) {
-      return config.cast(Integer.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Long) {
-      return config.cast(Long.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof Double) {
-      return config.cast(Double.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue() instanceof List<?>) {
-      return config.cast(new ArrayList<>((List<?>) value));
-    } else {
-      return config.cast(value);
-    }
+  @Override
+  public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+    return config.resolveValue(this::realmConfigValue, catalogProperties::get);
   }
 }
