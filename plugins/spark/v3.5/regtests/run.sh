@@ -79,6 +79,10 @@ if [[ ! -d "$SUITES_DIR" ]]; then
   exit 1
 fi
 
+# Parses a test suite filename (e.g. "spark_sql_delta.sh") to extract:
+#   TABLE_FORMAT    - the table format suffix after the last '_' (e.g. "delta")
+#   TEST_SHORTNAME  - the base name without the .sh extension (e.g. "spark_sql_delta")
+#   TEST_FILE       - the full path to the suite file under SUITES_DIR
 parse_test_suite() {
   local filename="$1"
   local base="${filename%.sh}"
