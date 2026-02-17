@@ -172,6 +172,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
               datasourceOperations
                   .getDatabaseType()
                   .openInitScriptResource(effectiveSchemaVersion));
+
+          // Run the metrics schema script if requested
+          if (JdbcBootstrapUtils.shouldIncludeMetrics(bootstrapOptions)) {
+            LOGGER.info("Including metrics schema for realm: {}", realm);
+            datasourceOperations.executeScript(
+                datasourceOperations.getDatabaseType().openMetricsSchemaResource(1));
+          }
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
