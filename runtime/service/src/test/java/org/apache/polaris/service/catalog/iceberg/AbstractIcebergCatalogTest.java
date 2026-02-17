@@ -103,7 +103,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -138,6 +137,7 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -238,6 +238,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
   @Inject RealmConfig realmConfig;
+  @Inject RealmContextHolder realmContextHolder;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
@@ -274,8 +275,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     bootstrapRealm(realmName);
 
-    RealmContext realmContext = () -> realmName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    realmContextHolder.set(() -> realmName);
     polarisContext = callContext.getPolarisCallContext();
 
     String storageLocation = "s3://my-bucket/path/to/data";
