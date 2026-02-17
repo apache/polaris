@@ -40,4 +40,3 @@ persistence:
     secret:
       name: polaris-nosql-persistence
       connectionString: connectionString
-
