@@ -33,7 +33,7 @@ Download and extract the binary distribution:
 
 ```bash
 curl -L https://downloads.apache.org/incubator/polaris/1.3.0-incubating/polaris-bin-1.3.0-incubating.tgz | tar xz
-cd polaris-distribution-1.3.0-incubating
+cd polaris-bin-1.3.0-incubating
 ```
 
 Start the Polaris server:
