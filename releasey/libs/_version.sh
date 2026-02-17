@@ -108,6 +108,7 @@ function update_helm_version {
   local new_version="$1"
   exec_process sed -E -i~ "s/^version: .+/version: ${new_version}/g" "$HELM_CHART_YAML_FILE"
   exec_process sed -E -i~ "s/^appVersion: .+/appVersion: ${new_version}/g" "$HELM_CHART_YAML_FILE"
+  exec_process sed -E -i~ "/- name: Documentation/{n;s|url: https://polaris.apache.org/$|url: https://polaris.apache.org/releases/${new_version}/|;}" "$HELM_CHART_YAML_FILE"
   exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(-incubating)?-SNAPSHOT/${new_version}/g" "$HELM_README_FILE"
   # The readme file may contain version with double dash for shields.io badges
   # We need a second `sed` command to ensure that the version replacement preserves this double-dash syntax.
@@ -118,6 +119,7 @@ function update_helm_version {
   exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(--incubating)?--SNAPSHOT/${version_with_dash}/g" "$HELM_README_FILE"
   exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_FILE"
   exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_SCHEMA_FILE"
+  exec_process sed -E -i~ 's/^(  tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
 }
 
 function find_next_rc_number {
