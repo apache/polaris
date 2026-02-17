@@ -75,6 +75,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.admin.PolarisAuthzTestsFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -83,7 +84,6 @@ import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DynamicNode;
-import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.mockito.Mockito;
@@ -106,15 +106,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Inject CallContextCatalogFactory callContextCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
-  protected IcebergCatalogHandler newWrapper() {
-    return newWrapper(Set.of());
+  protected IcebergCatalogHandler newHandler() {
+    return newHandler(Set.of());
   }
 
-  private IcebergCatalogHandler newWrapper(Set<String> activatedPrincipalRoles) {
-    return newWrapper(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
+  private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
+    return newHandler(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
   }
 
-  private IcebergCatalogHandler newWrapper(
+  private IcebergCatalogHandler newHandler(
       Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
@@ -127,29 +127,19 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testListNamespacesSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "listNamespaces",
-        List.of(
-            PolarisPrivilege.NAMESPACE_LIST,
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().listNamespaces(Namespace.of()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testListNamespacesInsufficientPrivileges() {
-    return doTestInsufficientPrivileges(
-        "listNamespaces",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_DROP),
-        () -> newWrapper().listNamespaces(Namespace.of()));
+  Stream<DynamicNode> testListNamespacesPrivileges() {
+    return authzTestsBuilder("listNamespaces")
+        .action(() -> newHandler().listNamespaces(Namespace.of()))
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DROP)
+        .createTests();
   }
 
   @TestFactory
@@ -175,25 +165,26 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // a variety of actions are all disallowed because the principal's credentials must be rotated
 
     Namespace ns3 = Namespace.of("ns3");
-    Stream<DynamicTest> beforeRotationTests =
+    Stream<DynamicNode> beforeRotationTests =
         Stream.of(
-                doTestInsufficientPrivileges(
-                    "listNamespaces (before rotation)",
-                    List.of(PolarisPrivilege.values()),
-                    () -> handler.listNamespaces(Namespace.of()),
-                    principalName),
-                doTestInsufficientPrivileges(
-                    "createNamespace (before rotation)",
-                    List.of(PolarisPrivilege.values()),
-                    () ->
-                        handler.createNamespace(
-                            CreateNamespaceRequest.builder().withNamespace(ns3).build()),
-                    principalName),
-                doTestInsufficientPrivileges(
-                    "listTables (before rotation)",
-                    List.of(PolarisPrivilege.values()),
-                    () -> handler.listTables(NS1),
-                    principalName))
+                authzTestsBuilder("listNamespaces (before rotation)")
+                    .action(() -> handler.listNamespaces(Namespace.of()))
+                    .principalName(principalName)
+                    .shouldFailWithAnyPrivilege()
+                    .createTests(),
+                authzTestsBuilder("createNamespace (before rotation)")
+                    .action(
+                        () ->
+                            handler.createNamespace(
+                                CreateNamespaceRequest.builder().withNamespace(ns3).build()))
+                    .principalName(principalName)
+                    .shouldFailWithAnyPrivilege()
+                    .createTests(),
+                authzTestsBuilder("listTables (before rotation)")
+                    .action(() -> handler.listTables(NS1))
+                    .principalName(principalName)
+                    .shouldFailWithAnyPrivilege()
+                    .createTests())
             .flatMap(s -> s);
 
     // Rotate credentials and create refreshed wrapper
@@ -217,26 +208,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     // Tests after credential rotation - actions should succeed with proper privileges
     Stream<DynamicNode> afterRotationTests =
         Stream.of(
-                doTestSufficientPrivileges(
-                    "listNamespaces (after rotation)",
-                    List.of(PolarisPrivilege.NAMESPACE_LIST),
-                    () -> refreshedWrapper.listNamespaces(Namespace.of()),
-                    null,
-                    principalName),
-                doTestSufficientPrivileges(
-                    "createNamespace (after rotation)",
-                    List.of(PolarisPrivilege.NAMESPACE_CREATE),
-                    () ->
-                        refreshedWrapper.createNamespace(
-                            CreateNamespaceRequest.builder().withNamespace(ns3).build()),
-                    null,
-                    principalName),
-                doTestSufficientPrivileges(
-                    "listTables (after rotation)",
-                    List.of(PolarisPrivilege.TABLE_LIST),
-                    () -> refreshedWrapper.listTables(ns3),
-                    null,
-                    principalName))
+                authzTestsBuilder("listNamespaces (after rotation)")
+                    .action(() -> refreshedWrapper.listNamespaces(Namespace.of()))
+                    .principalName(principalName)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
+                    .createTests(),
+                authzTestsBuilder("createNamespace (after rotation)")
+                    .action(
+                        () ->
+                            refreshedWrapper.createNamespace(
+                                CreateNamespaceRequest.builder().withNamespace(ns3).build()))
+                    .principalName(principalName)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+                    .createTests(),
+                authzTestsBuilder("listTables (after rotation)")
+                    .action(() -> refreshedWrapper.listTables(ns3))
+                    .principalName(principalName)
+                    .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+                    .createTests())
             .flatMap(s -> s);
 
     return Stream.concat(beforeRotationTests, afterRotationTests);
@@ -248,17 +237,17 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-    Assertions.assertThat(newWrapper().listNamespaces(Namespace.of()).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(Namespace.of()).namespaces())
         .containsAll(List.of(NS1, NS2));
 
     // Just activating PRINCIPAL_ROLE1 should also work.
     Assertions.assertThat(
-            newWrapper(Set.of(PRINCIPAL_ROLE1)).listNamespaces(Namespace.of()).namespaces())
+            newHandler(Set.of(PRINCIPAL_ROLE1)).listNamespaces(Namespace.of()).namespaces())
         .containsAll(List.of(NS1, NS2));
 
     // If we only activate PRINCIPAL_ROLE2 it won't have the privilege.
     Assertions.assertThatThrownBy(
-            () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).listNamespaces(Namespace.of()))
+            () -> newHandler(Set.of(PRINCIPAL_ROLE2)).listNamespaces(Namespace.of()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("is not authorized");
 
@@ -266,7 +255,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     assertSuccess(
         adminService.revokePrivilegeOnCatalogFromRole(
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.NAMESPACE_LIST));
-    Assertions.assertThatThrownBy(() -> newWrapper().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -278,225 +267,166 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.NAMESPACE_LIST));
 
     // Listing directly on NS1 succeeds
-    Assertions.assertThat(newWrapper().listNamespaces(NS1).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(NS1).namespaces())
         .containsAll(List.of(NS1A, NS1B));
 
     // Root listing fails
-    Assertions.assertThatThrownBy(() -> newWrapper().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
         .isInstanceOf(ForbiddenException.class);
 
     // NS2 listing fails
-    Assertions.assertThatThrownBy(() -> newWrapper().listNamespaces(Namespace.of()))
+    Assertions.assertThatThrownBy(() -> newHandler().listNamespaces(Namespace.of()))
         .isInstanceOf(ForbiddenException.class);
 
     // Listing on a child of NS1 succeeds
-    Assertions.assertThat(newWrapper().listNamespaces(NS1A).namespaces())
+    Assertions.assertThat(newHandler().listNamespaces(NS1A).namespaces())
         .containsAll(List.of(NS1AA));
   }
 
   @TestFactory
-  Stream<DynamicNode> testCreateNamespaceAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateNamespacePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DROP));
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "createNamespace",
-        List.of(
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createNamespace(
-                  CreateNamespaceRequest.builder().withNamespace(Namespace.of("newns")).build());
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createNamespace(
-                  CreateNamespaceRequest.builder()
-                      .withNamespace(Namespace.of("ns1", "ns1a", "newns"))
-                      .build());
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropNamespace(Namespace.of("newns"));
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropNamespace(Namespace.of("ns1", "ns1a", "newns"));
-        });
+    return authzTestsBuilder("createNamespace")
+        .action(
+            () -> {
+              newHandler(Set.of(PRINCIPAL_ROLE1))
+                  .createNamespace(
+                      CreateNamespaceRequest.builder()
+                          .withNamespace(Namespace.of("newns"))
+                          .build());
+              newHandler(Set.of(PRINCIPAL_ROLE1))
+                  .createNamespace(
+                      CreateNamespaceRequest.builder()
+                          .withNamespace(Namespace.of("ns1", "ns1a", "newns"))
+                          .build());
+            })
+        .cleanupAction(
+            () -> {
+              newHandler(Set.of(PRINCIPAL_ROLE2)).dropNamespace(Namespace.of("newns"));
+              newHandler(Set.of(PRINCIPAL_ROLE2))
+                  .dropNamespace(Namespace.of("ns1", "ns1a", "newns"));
+            })
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DROP)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateNamespacesInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "createNamespace",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_DROP,
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_LIST),
-        () ->
-            newWrapper()
-                .createNamespace(
-                    CreateNamespaceRequest.builder().withNamespace(Namespace.of("newns")).build()));
+  Stream<DynamicNode> testLoadNamespaceMetadataPrivileges() {
+    return authzTestsBuilder("loadNamespaceMetadata")
+        .action(() -> newHandler().loadNamespaceMetadata(NS1A))
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_LIST)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadNamespaceMetadataSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadNamespaceMetadata",
-        List.of(
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadNamespaceMetadata(NS1A),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testLoadNamespaceMetadataInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadNamespaceMetadata",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_LIST,
-            PolarisPrivilege.NAMESPACE_DROP),
-        () -> newWrapper().loadNamespaceMetadata(NS1A));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testNamespaceExistsAllSufficientPrivileges() {
+  Stream<DynamicNode> testNamespaceExistsPrivileges() {
     // TODO: If we change the behavior of existence-check to return 404 on unauthorized,
     // the overall test structure will need to change (other tests catching ForbiddenException
     // need to still have catalog-level "REFERENCE" equivalent privileges, and the exists()
     // tests need to expect 404 instead).
-    return doTestSufficientPrivileges(
-        "namespaceExists",
-        List.of(
-            PolarisPrivilege.NAMESPACE_LIST,
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().namespaceExists(NS1A),
-        null /* cleanupAction */);
+    return authzTestsBuilder("namespaceExists")
+        .action(() -> newHandler().namespaceExists(NS1A))
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testNamespaceExistsInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "namespaceExists",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_DROP),
-        () -> newWrapper().namespaceExists(NS1A));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testDropNamespaceSufficientPrivileges() {
+  Stream<DynamicNode> testDropNamespacePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_CREATE));
 
-    return doTestSufficientPrivileges(
-        "dropNamespace",
-        List.of(
-            PolarisPrivilege.NAMESPACE_DROP,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropNamespace(NS1AA);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2))
-              .createNamespace(CreateNamespaceRequest.builder().withNamespace(NS1AA).build());
-        });
+    return authzTestsBuilder("dropNamespace")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropNamespace(NS1AA))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .createNamespace(CreateNamespaceRequest.builder().withNamespace(NS1AA).build()))
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_DROP)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_LIST)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testDropNamespaceInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "dropNamespace",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_LIST,
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES),
-        () -> newWrapper().dropNamespace(NS1AA));
+  Stream<DynamicNode> testUpdateNamespacePropertiesPrivileges() {
+    return authzTestsBuilder("updateNamespaceProperties")
+        .action(
+            () -> {
+              newHandler()
+                  .updateNamespaceProperties(
+                      NS1A,
+                      UpdateNamespacePropertiesRequest.builder().update("foo", "bar").build());
+              newHandler()
+                  .updateNamespaceProperties(
+                      NS1A, UpdateNamespacePropertiesRequest.builder().remove("foo").build());
+            })
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_LIST)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testUpdateNamespacePropertiesAllSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "updateNamespaceProperties",
-        List.of(
-            PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper()
-              .updateNamespaceProperties(
-                  NS1A, UpdateNamespacePropertiesRequest.builder().update("foo", "bar").build());
-          newWrapper()
-              .updateNamespaceProperties(
-                  NS1A, UpdateNamespacePropertiesRequest.builder().remove("foo").build());
-        },
-        null /* cleanupAction */);
+  Stream<DynamicNode> testListTablesPrivileges() {
+    return authzTestsBuilder("listTables")
+        .action(() -> newHandler().listTables(NS1A))
+        .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testUpdateNamespacePropertiesInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "updateNamespaceProperties",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_LIST,
-            PolarisPrivilege.NAMESPACE_READ_PROPERTIES,
-            PolarisPrivilege.NAMESPACE_CREATE,
-            PolarisPrivilege.NAMESPACE_DROP),
-        () ->
-            newWrapper()
-                .updateNamespaceProperties(
-                    NS1A, UpdateNamespacePropertiesRequest.builder().update("foo", "bar").build()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testListTablesAllSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "listTables",
-        List.of(
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().listTables(NS1A),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testListTablesInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "listTables",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().listTables(NS1A));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateTableDirectAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateTableDirectPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -509,43 +439,25 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "createTableDirect",
-        List.of(
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createTableDirect(NS2, createRequest);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
-        });
+    return authzTestsBuilder("createTableDirect")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableDirect(NS2, createRequest))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateTableDirectInsufficientPermissions() {
-    final CreateTableRequest createRequest =
-        CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).build();
-
-    return doTestInsufficientPrivileges(
-        "createTableDirect",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createTableDirect(NS2, createRequest);
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateTableDirectWithWriteDelegationAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateTableDirectWithWriteDelegationPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -557,52 +469,30 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     final CreateTableRequest createDirectWithWriteDelegationRequest =
         CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).stageCreate().build();
 
-    return doTestSufficientPrivilegeSets(
-        "createTableDirectWithWriteDelegation",
-        List.of(
-            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest, Optional.empty());
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
-        },
-        PRINCIPAL_NAME);
+    return authzTestsBuilder("createTableDirectWithWriteDelegation")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableDirectWithWriteDelegation(
+                        NS2, createDirectWithWriteDelegationRequest, Optional.empty()))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(
+            PolarisPrivilege.TABLE_CREATE) // TABLE_CREATE itself is insufficient for delegation
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateTableDirectWithWriteDelegationInsufficientPermissions() {
-    final CreateTableRequest createDirectWithWriteDelegationRequest =
-        CreateTableRequest.builder()
-            .withName("directtable")
-            .withSchema(SCHEMA)
-            .stageCreate()
-            .build();
-
-    return doTestInsufficientPrivileges(
-        "createTableDirectWithWriteDelegation",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_CREATE, // TABLE_CREATE itself is insufficient for delegation
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest, Optional.empty());
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateTableStagedAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateTableStagedPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -615,46 +505,26 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "createTableStaged",
-        List.of(
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest);
-        },
-        // createTableStaged doesn't actually commit any metadata
-        null);
+    // createTableStaged doesn't actually commit any metadata
+    return authzTestsBuilder("createTableStaged")
+        .action(
+            () -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateTableStagedInsufficientPermissions() {
-    final CreateTableRequest createStagedRequest =
-        CreateTableRequest.builder()
-            .withName("stagetable")
-            .withSchema(SCHEMA)
-            .stageCreate()
-            .build();
-
-    return doTestInsufficientPrivileges(
-        "createTableStaged",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest);
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateTableStagedWithWriteDelegationAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateTableStagedWithWriteDelegationPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -666,51 +536,30 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .stageCreate()
             .build();
 
-    return doTestSufficientPrivilegeSets(
-        "createTableStagedWithWriteDelegation",
-        List.of(
-            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, Optional.empty());
-        },
-        // createTableStagedWithWriteDelegation doesn't actually commit any metadata
-        null,
-        PRINCIPAL_NAME);
+    // createTableStagedWithWriteDelegation doesn't actually commit any metadata
+    return authzTestsBuilder("createTableStagedWithWriteDelegation")
+        .action(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE1))
+                    .createTableStagedWithWriteDelegation(
+                        NS2, createStagedWithWriteDelegationRequest, Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(
+            PolarisPrivilege.TABLE_CREATE) // TABLE_CREATE itself is insufficient for delegation
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateTableStagedWithWriteDelegationInsufficientPermissions() {
-    final CreateTableRequest createStagedWithWriteDelegationRequest =
-        CreateTableRequest.builder()
-            .withName("stagetable")
-            .withSchema(SCHEMA)
-            .stageCreate()
-            .build();
-
-    return doTestInsufficientPrivileges(
-        "createTableStagedWithWriteDelegation",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_CREATE, // TABLE_CREATE itself is insufficient for delegation
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, Optional.empty());
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testRegisterTableAllSufficientPrivileges() {
+  Stream<DynamicNode> testRegisterTablePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -720,8 +569,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // To get a handy metadata file we can use one from another table.
     // to avoid overlapping directories, drop the original table and recreate it via registerTable
-    final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
-    newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
+    final String metadataLocation = newHandler().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
     final RegisterTableRequest registerRequest =
         new RegisterTableRequest() {
@@ -737,305 +586,189 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         };
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "registerTable",
-        List.of(
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
-        });
+    return authzTestsBuilder("registerTable")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testRegisterTableInsufficientPermissions() {
-    assertSuccess(
-        adminService.grantPrivilegeOnCatalogToRole(
-            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
-
-    // To get a handy metadata file we can use one from another table.
-    final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
-
-    final RegisterTableRequest registerRequest =
-        new RegisterTableRequest() {
-          @Override
-          public String name() {
-            return "newtable";
-          }
-
-          @Override
-          public String metadataLocation() {
-            return metadataLocation;
-          }
-        };
-
-    return doTestInsufficientPrivileges(
-        "registerTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest);
-        });
+  Stream<DynamicNode> testLoadTablePrivileges() {
+    return authzTestsBuilder("loadTable")
+        .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTable",
-        List.of(
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTable(TABLE_NS1A_2, "all"),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testLoadTableIfStalePrivileges() {
+    return authzTestsBuilder("loadTableIfStale")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testLoadTableInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTable(TABLE_NS1A_2, "all"));
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationPrivileges() {
+    return authzTestsBuilder("loadTableWithAccessDelegation")
+        .action(
+            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableIfStaleSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTableIfStale",
-        List.of(
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () ->
-            newWrapper().loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationPrivileges() {
+    // TODO: Once we give different creds for read/write privilege, move this
+    // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
+    // to receive a read-only credential.
+    return authzTestsBuilder("loadTableWithAccessDelegation (write)")
+        .action(
+            () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testLoadTableIfStaleInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTableIfStale",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper()
-                .loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
+  Stream<DynamicNode> testLoadTableWithReadAccessDelegationIfStalePrivileges() {
+    return authzTestsBuilder("loadTableWithAccessDelegationIfStale")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegationIfStale(
+                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithReadAccessDelegationSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTableWithAccessDelegation",
-        List.of(
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationIfStalePrivileges() {
+    // TODO: Once we give different creds for read/write privilege, move this
+    // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
+    // to receive a read-only credential.
+    return authzTestsBuilder("loadTableWithAccessDelegationIfStale (write)")
+        .action(
+            () ->
+                newHandler()
+                    .loadTableWithAccessDelegationIfStale(
+                        TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testLoadTableWithReadAccessDelegationInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTableWithAccessDelegation",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()));
+  Stream<DynamicNode> testUpdateTablePrivileges() {
+    return authzTestsBuilder("updateTable")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, new UpdateTableRequest()))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTableWithAccessDelegation (write)",
-        List.of(
-            // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
-            // to receive a read-only credential.
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testLoadTableWithWriteAccessDelegationInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTableWithAccessDelegation (write)",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testLoadTableWithReadAccessDelegationIfStaleSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTableWithAccessDelegationIfStale",
-        List.of(
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () ->
-            newWrapper()
-                .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testLoadTableWithReadAccessDelegationIfStaleInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTableWithAccessDelegationIfStale",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper()
-                .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testLoadTableWithWriteAccessDelegationIfStaleSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadTableWithAccessDelegationIfStale (write)",
-        List.of(
-            // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
-            // to receive a read-only credential.
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () ->
-            newWrapper()
-                .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testLoadTableWithWriteAccessDelegationIfStaleInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadTableWithAccessDelegationIfStale (write)",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper()
-                .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testUpdateTableSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "updateTable",
-        List.of(
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, new UpdateTableRequest()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testUpdateTableInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "updateTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, new UpdateTableRequest()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testUpdateTableForStagedCreateSufficientPrivileges() {
+  Stream<DynamicNode> testUpdateTableForStagedCreatePrivileges() {
     // Note: This is kind of cheating by only leaning on the PolarisCatalogHandlerWrapper level
     // of differentiation between updateForStageCreate vs regular update so that we don't need
     // to actually set up the staged create but still test the privileges. If the underlying
     // behavior diverges, we need to change this test to actually start with a stageCreate.
-    return doTestSufficientPrivileges(
-        "updateTableForStagedCreate",
-        List.of(
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTableForStagedCreate(TABLE_NS1A_2, new UpdateTableRequest()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testUpdateTableForStagedCreateInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "updateTableForStagedCreate",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> newWrapper().updateTableForStagedCreate(TABLE_NS1A_2, new UpdateTableRequest()));
+    return authzTestsBuilder("updateTableForStagedCreate")
+        .action(
+            () -> newHandler().updateTableForStagedCreate(TABLE_NS1A_2, new UpdateTableRequest()))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
@@ -1051,15 +784,13 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // With fine-grained authorization disabled, TABLE_WRITE_PROPERTIES should work
     // even for operations that would require specific privileges when enabled
-    return doTestSufficientPrivileges(
-        "updateTable (coarse-grained fallback)",
-        List.of(
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapperWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */);
+    return authzTestsBuilder("updateTable (coarse-grained fallback)")
+        .action(() -> newWrapperWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
   }
 
   /**
@@ -1146,7 +877,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
-  Stream<DynamicNode> testDropTableWithoutPurgeAllSufficientPrivileges() {
+  Stream<DynamicNode> testDropTableWithoutPurgePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
@@ -1155,41 +886,28 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "dropTableWithoutPurge",
-        List.of(
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropTableWithoutPurge(TABLE_NS1_1);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2))
-              .createTableDirect(TABLE_NS1_1.namespace(), createRequest);
-        });
+    return authzTestsBuilder("dropTableWithoutPurge")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithoutPurge(TABLE_NS1_1))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+        .shouldPassWith(PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testDropTableWithoutPurgeInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "dropTableWithoutPurge",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropTableWithoutPurge(TABLE_NS1_1);
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testDropTableWithPurgeAllSufficientPrivileges() {
+  Stream<DynamicNode> testDropTableWithPurgePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
@@ -1198,72 +916,48 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         CreateTableRequest.builder().withName(TABLE_NS1_1.name()).withSchema(SCHEMA).build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivilegeSets(
-        "dropTableWithPurge",
-        List.of(
-            Set.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA),
-            Set.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropTableWithPurge(TABLE_NS1_1);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2))
-              .createTableDirect(TABLE_NS1_1.namespace(), createRequest);
-        },
-        PRINCIPAL_NAME);
+    return authzTestsBuilder("dropTableWithPurge")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropTableWithPurge(TABLE_NS1_1))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP) // TABLE_DROP itself is insufficient for purge
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testDropTableWithPurgeInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "dropTableWithPurge",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP, // TABLE_DROP itself is insufficient for purge
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropTableWithPurge(TABLE_NS1_1);
-        });
+  Stream<DynamicNode> testTableExistsPrivileges() {
+    return authzTestsBuilder("tableExists")
+        .action(() -> newHandler().tableExists(TABLE_NS1A_2))
+        .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testTableExistsSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "tableExists",
-        List.of(
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().tableExists(TABLE_NS1A_2),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testTableExistsInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "tableExists",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().tableExists(TABLE_NS1A_2));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testRenameTableAllSufficientPrivileges() {
+  Stream<DynamicNode> testRenameTablePrivileges() {
     final TableIdentifier srcTable = TABLE_NS1_1;
     final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
     final RenameTableRequest rename1 =
@@ -1271,43 +965,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     final RenameTableRequest rename2 =
         RenameTableRequest.builder().withSource(dstTable).withDestination(srcTable).build();
 
-    return doTestSufficientPrivilegeSets(
-        "renameTable",
-        List.of(
-            Set.of(PolarisPrivilege.TABLE_FULL_METADATA),
-            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_DROP),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameTable(rename1);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameTable(rename2);
-        },
-        PRINCIPAL_NAME);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testRenameTableInsufficientPermissions() {
-    final TableIdentifier srcTable = TABLE_NS1_1;
-    final TableIdentifier dstTable = TableIdentifier.of(NS1AA, "newtable");
-    final RenameTableRequest rename1 =
-        RenameTableRequest.builder().withSource(srcTable).withDestination(dstTable).build();
-
-    return doTestInsufficientPrivileges(
-        "renameTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameTable(rename1);
-        });
+    return authzTestsBuilder("renameTable")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename1))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename2))
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @Test
@@ -1328,10 +1001,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, dstTable.namespace(), PolarisPrivilege.TABLE_CREATE));
 
     // Initial rename should succeed
-    newWrapper().renameTable(rename1);
+    newHandler().renameTable(rename1);
 
     // Inverse operation should fail
-    Assertions.assertThatThrownBy(() -> newWrapper().renameTable(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameTable(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Now grant TABLE_DROP on dst
@@ -1340,7 +1013,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, dstTable, PolarisPrivilege.TABLE_DROP));
 
     // Still not enough without TABLE_CREATE at source
-    Assertions.assertThatThrownBy(() -> newWrapper().renameTable(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameTable(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Even grant CATALOG_MANAGE_CONTENT under all of NS1
@@ -1349,18 +1022,18 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
 
     // Still not enough to rename back to src since src was NS2.
-    Assertions.assertThatThrownBy(() -> newWrapper().renameTable(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameTable(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Finally, grant TABLE_CREATE on NS2 and it should succeed to rename back to src.
     assertSuccess(
         adminService.grantPrivilegeOnNamespaceToRole(
             CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.TABLE_CREATE));
-    newWrapper().renameTable(rename2);
+    newHandler().renameTable(rename2);
   }
 
   @TestFactory
-  Stream<DynamicNode> testCommitTransactionSufficientPrivileges() {
+  Stream<DynamicNode> testCommitTransactionPrivileges() {
     CommitTransactionRequest req =
         new CommitTransactionRequest(
             List.of(
@@ -1369,41 +1042,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 UpdateTableRequest.create(TABLE_NS1B_1, List.of(), List.of()),
                 UpdateTableRequest.create(TABLE_NS2_1, List.of(), List.of())));
 
-    return doTestSufficientPrivilegeSets(
-        "commitTransaction",
-        List.of(
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            Set.of(PolarisPrivilege.TABLE_FULL_METADATA),
-            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA),
-            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_PROPERTIES)),
-        () -> newWrapper().commitTransaction(req),
-        null /* cleanupAction */,
-        PRINCIPAL_NAME);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testCommitTransactionInsufficientPermissions() {
-    CommitTransactionRequest req =
-        new CommitTransactionRequest(
-            List.of(
-                UpdateTableRequest.create(TABLE_NS1_1, List.of(), List.of()),
-                UpdateTableRequest.create(TABLE_NS1A_1, List.of(), List.of()),
-                UpdateTableRequest.create(TABLE_NS1B_1, List.of(), List.of()),
-                UpdateTableRequest.create(TABLE_NS2_1, List.of(), List.of())));
-
-    return doTestInsufficientPrivileges(
-        "commitTransaction",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().commitTransaction(req));
+    return authzTestsBuilder("commitTransaction")
+        .action(() -> newHandler().commitTransaction(req))
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @Test
@@ -1420,35 +1074,35 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     assertSuccess(
         adminService.grantPrivilegeOnNamespaceToRole(
             CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.TABLE_CREATE));
-    Assertions.assertThatThrownBy(() -> newWrapper().commitTransaction(req))
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_FULL_METADATA directly on TABLE_NS1_1
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, PolarisPrivilege.TABLE_FULL_METADATA));
-    Assertions.assertThatThrownBy(() -> newWrapper().commitTransaction(req))
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_PROPERTIES on NS1A namespace
     assertSuccess(
         adminService.grantPrivilegeOnNamespaceToRole(
             CATALOG_NAME, CATALOG_ROLE1, NS1A, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
-    Assertions.assertThatThrownBy(() -> newWrapper().commitTransaction(req))
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_DATA directly on TABLE_NS1B_1
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1B_1, PolarisPrivilege.TABLE_WRITE_DATA));
-    Assertions.assertThatThrownBy(() -> newWrapper().commitTransaction(req))
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Grant TABLE_WRITE_PROPERTIES directly on TABLE_NS2_1
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_WRITE_PROPERTIES));
-    Assertions.assertThatThrownBy(() -> newWrapper().commitTransaction(req))
+    Assertions.assertThatThrownBy(() -> newHandler().commitTransaction(req))
         .isInstanceOf(ForbiddenException.class);
 
     // Also grant TABLE_CREATE directly on TABLE_NS2_1
@@ -1458,37 +1112,27 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     assertSuccess(
         adminService.grantPrivilegeOnTableToRole(
             CATALOG_NAME, CATALOG_ROLE1, TABLE_NS2_1, PolarisPrivilege.TABLE_CREATE));
-    newWrapper().commitTransaction(req);
+    newHandler().commitTransaction(req);
   }
 
   @TestFactory
-  Stream<DynamicNode> testListViewsAllSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "listViews",
-        List.of(
-            PolarisPrivilege.VIEW_LIST,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().listViews(NS1A),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testListViewsPrivileges() {
+    return authzTestsBuilder("listViews")
+        .action(() -> newHandler().listViews(NS1A))
+        .shouldPassWith(PolarisPrivilege.VIEW_LIST)
+        .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testListViewsInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "listViews",
-        List.of(
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_DROP),
-        () -> newWrapper().listViews(NS1A));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateViewAllSufficientPrivileges() {
+  Stream<DynamicNode> testCreateViewPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_DROP));
@@ -1512,108 +1156,55 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .build())
             .build();
 
-    return doTestSufficientPrivileges(
-        "createView",
-        List.of(
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createView(NS2, createRequest);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropView(newview);
-        });
+    return authzTestsBuilder("createView")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).createView(NS2, createRequest))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropView(newview))
+        .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .shouldFailWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateViewInsufficientPermissions() {
-    final CreateViewRequest createRequest =
-        ImmutableCreateViewRequest.builder()
-            .name("newview")
-            .schema(SCHEMA)
-            .viewVersion(
-                ImmutableViewVersion.builder()
-                    .versionId(1)
-                    .timestampMillis(System.currentTimeMillis())
-                    .schemaId(1)
-                    .defaultNamespace(NS1)
-                    .addRepresentations(
-                        ImmutableSQLViewRepresentation.builder()
-                            .sql(VIEW_QUERY)
-                            .dialect("spark")
-                            .build())
-                    .build())
-            .build();
-
-    return doTestInsufficientPrivileges(
-        "createView",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_DROP,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createView(NS2, createRequest);
-        });
+  Stream<DynamicNode> testLoadViewPrivileges() {
+    return authzTestsBuilder("loadView")
+        .action(() -> newHandler().loadView(VIEW_NS1A_2))
+        .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldFailWith(PolarisPrivilege.VIEW_LIST)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadViewSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadView",
-        List.of(
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadView(VIEW_NS1A_2),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testUpdateViewPrivileges() {
+    return authzTestsBuilder("replaceView")
+        .action(() -> newHandler().replaceView(VIEW_NS1A_2, new UpdateTableRequest()))
+        .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldFailWith(PolarisPrivilege.VIEW_LIST)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testLoadViewInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "loadView",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_LIST,
-            PolarisPrivilege.VIEW_DROP),
-        () -> newWrapper().loadView(VIEW_NS1A_2));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testUpdateViewSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "replaceView",
-        List.of(
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().replaceView(VIEW_NS1A_2, new UpdateTableRequest()),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testUpdateViewInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "replaceView",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_LIST,
-            PolarisPrivilege.VIEW_DROP),
-        () -> newWrapper().replaceView(VIEW_NS1A_2, new UpdateTableRequest()));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testDropViewAllSufficientPrivileges() {
+  Stream<DynamicNode> testDropViewPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.VIEW_CREATE));
@@ -1637,64 +1228,42 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .build();
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "dropView",
-        List.of(
-            PolarisPrivilege.VIEW_DROP,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropView(VIEW_NS1_1);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).createView(VIEW_NS1_1.namespace(), createRequest);
-        });
+    return authzTestsBuilder("dropView")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).dropView(VIEW_NS1_1))
+        .cleanupAction(
+            () ->
+                newHandler(Set.of(PRINCIPAL_ROLE2))
+                    .createView(VIEW_NS1_1.namespace(), createRequest))
+        .shouldPassWith(PolarisPrivilege.VIEW_DROP)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldFailWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testDropViewInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "dropView",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropView(VIEW_NS1_1);
-        });
+  Stream<DynamicNode> testViewExistsPrivileges() {
+    return authzTestsBuilder("viewExists")
+        .action(() -> newHandler().viewExists(VIEW_NS1A_2))
+        .shouldPassWith(PolarisPrivilege.VIEW_LIST)
+        .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testViewExistsSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "viewExists",
-        List.of(
-            PolarisPrivilege.VIEW_LIST,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().viewExists(VIEW_NS1A_2),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testViewExistsInsufficientPermissions() {
-    return doTestInsufficientPrivileges(
-        "viewExists",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_DROP),
-        () -> newWrapper().viewExists(VIEW_NS1A_2));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testRenameViewAllSufficientPrivileges() {
+  Stream<DynamicNode> testRenameViewPrivileges() {
     final TableIdentifier srcView = VIEW_NS1_1;
     final TableIdentifier dstView = TableIdentifier.of(NS1AA, "newview");
     final RenameTableRequest rename1 =
@@ -1702,41 +1271,20 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     final RenameTableRequest rename2 =
         RenameTableRequest.builder().withSource(dstView).withDestination(srcView).build();
 
-    return doTestSufficientPrivilegeSets(
-        "renameView",
-        List.of(
-            Set.of(PolarisPrivilege.VIEW_FULL_METADATA),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            Set.of(PolarisPrivilege.VIEW_DROP, PolarisPrivilege.VIEW_CREATE)),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameView(rename1);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameView(rename2);
-        },
-        PRINCIPAL_NAME);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testRenameViewInsufficientPermissions() {
-    final TableIdentifier srcView = VIEW_NS1_1;
-    final TableIdentifier dstView = TableIdentifier.of(NS1AA, "newview");
-    final RenameTableRequest rename1 =
-        RenameTableRequest.builder().withSource(srcView).withDestination(dstView).build();
-
-    return doTestInsufficientPrivileges(
-        "renameView",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_DROP,
-            PolarisPrivilege.VIEW_CREATE,
-            PolarisPrivilege.VIEW_READ_PROPERTIES,
-            PolarisPrivilege.VIEW_WRITE_PROPERTIES,
-            PolarisPrivilege.VIEW_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).renameView(rename1);
-        });
+    return authzTestsBuilder("renameView")
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameView(rename1))
+        .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameView(rename2))
+        .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.VIEW_DROP, PolarisPrivilege.VIEW_CREATE)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_DROP)
+        .shouldFailWith(PolarisPrivilege.VIEW_CREATE)
+        .shouldFailWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.VIEW_LIST)
+        .createTests();
   }
 
   @Test
@@ -1757,10 +1305,10 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, dstView.namespace(), PolarisPrivilege.VIEW_CREATE));
 
     // Initial rename should succeed
-    newWrapper().renameView(rename1);
+    newHandler().renameView(rename1);
 
     // Inverse operation should fail
-    Assertions.assertThatThrownBy(() -> newWrapper().renameView(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameView(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Now grant VIEW_DROP on dst
@@ -1769,7 +1317,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, dstView, PolarisPrivilege.VIEW_DROP));
 
     // Still not enough without VIEW_CREATE at source
-    Assertions.assertThatThrownBy(() -> newWrapper().renameView(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameView(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Even grant CATALOG_MANAGE_CONTENT under all of NS1
@@ -1778,14 +1326,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, NS1, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
 
     // Still not enough to rename back to src since src was NS2.
-    Assertions.assertThatThrownBy(() -> newWrapper().renameView(rename2))
+    Assertions.assertThatThrownBy(() -> newHandler().renameView(rename2))
         .isInstanceOf(ForbiddenException.class);
 
     // Finally, grant VIEW_CREATE on NS2 and it should succeed to rename back to src.
     assertSuccess(
         adminService.grantPrivilegeOnNamespaceToRole(
             CATALOG_NAME, CATALOG_ROLE1, NS2, PolarisPrivilege.VIEW_CREATE));
-    newWrapper().renameView(rename2);
+    newHandler().renameView(rename2);
   }
 
   @TestFactory
@@ -1902,67 +1450,67 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
           }
         };
 
-    List<Set<PolarisPrivilege>> sufficientPrivilegeSets =
-        List.of(
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            Set.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.NAMESPACE_FULL_METADATA),
-            Set.of(
+    PolarisAuthzTestsFactory.Builder builder =
+        authzTestsBuilder()
+            .catalogName(externalCatalog)
+            .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+            .shouldPassWith(
+                PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.NAMESPACE_FULL_METADATA)
+            .shouldPassWith(
                 PolarisPrivilege.TABLE_FULL_METADATA,
                 PolarisPrivilege.NAMESPACE_CREATE,
-                PolarisPrivilege.NAMESPACE_DROP),
-            Set.of(
+                PolarisPrivilege.NAMESPACE_DROP)
+            .shouldPassWith(
                 PolarisPrivilege.TABLE_CREATE,
                 PolarisPrivilege.TABLE_DROP,
                 PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-                PolarisPrivilege.NAMESPACE_FULL_METADATA),
-            Set.of(
+                PolarisPrivilege.NAMESPACE_FULL_METADATA)
+            .shouldPassWith(
                 PolarisPrivilege.TABLE_CREATE,
                 PolarisPrivilege.TABLE_DROP,
                 PolarisPrivilege.TABLE_WRITE_PROPERTIES,
                 PolarisPrivilege.NAMESPACE_CREATE,
-                PolarisPrivilege.NAMESPACE_DROP));
+                PolarisPrivilege.NAMESPACE_DROP);
 
     Stream<DynamicNode> allNotificationsTests =
-        doTestSufficientPrivilegeSets(
-            "sendNotification (all types)",
-            sufficientPrivilegeSets,
-            () -> {
-              newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-                  .sendNotification(table, createRequest);
-              newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-                  .sendNotification(table, updateRequest);
-              newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-                  .sendNotification(table, dropRequest);
-              newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-                  .sendNotification(table, validateRequest);
-            },
-            () -> {
-              newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
-                  .dropNamespace(Namespace.of("extns1", "extns2"));
-              newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
-                  .dropNamespace(Namespace.of("extns1"));
-            },
-            PRINCIPAL_NAME,
-            externalCatalog);
+        builder
+            .operationName("sendNotification (all types)")
+            .action(
+                () -> {
+                  newHandler(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+                      .sendNotification(table, createRequest);
+                  newHandler(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+                      .sendNotification(table, updateRequest);
+                  newHandler(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+                      .sendNotification(table, dropRequest);
+                  newHandler(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+                      .sendNotification(table, validateRequest);
+                })
+            .cleanupAction(
+                () -> {
+                  newHandler(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
+                      .dropNamespace(Namespace.of("extns1", "extns2"));
+                  newHandler(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
+                      .dropNamespace(Namespace.of("extns1"));
+                })
+            .createTests();
 
     // Also test VALIDATE in isolation
     Stream<DynamicNode> validateOnlyTests =
-        doTestSufficientPrivilegeSets(
-            "sendNotification (VALIDATE only)",
-            sufficientPrivilegeSets,
-            () -> {
-              newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-                  .sendNotification(table, validateRequest);
-            },
-            null /* cleanupAction */,
-            PRINCIPAL_NAME,
-            externalCatalog);
+        builder
+            .operationName("sendNotification (VALIDATE only)")
+            .action(
+                () ->
+                    newHandler(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+                        .sendNotification(table, validateRequest))
+            .cleanupAction(Optional.empty())
+            .createTests();
 
     return Stream.concat(allNotificationsTests, validateOnlyTests);
   }
 
   @TestFactory
-  Stream<DynamicTest> testSendNotificationInsufficientPermissions() {
+  Stream<DynamicNode> testSendNotificationInsufficientPermissions() {
     Namespace namespace = Namespace.of("ns1", "ns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
 
@@ -2002,42 +1550,44 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     validateUpdate.setTimestamp(230950845L);
     validateRequest.setPayload(validateUpdate);
 
-    List<PolarisPrivilege> insufficientPrivileges =
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA);
+    PolarisAuthzTestsFactory.Builder builder =
+        authzTestsBuilder()
+            .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+            .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+            .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA);
 
-    return Stream.of(
-            doTestInsufficientPrivileges(
-                "sendNotification (CREATE)",
-                insufficientPrivileges,
-                () -> {
-                  newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, createRequest);
-                }),
-            doTestInsufficientPrivileges(
-                "sendNotification (UPDATE)",
-                insufficientPrivileges,
-                () -> {
-                  newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, updateRequest);
-                }),
-            doTestInsufficientPrivileges(
-                "sendNotification (DROP)",
-                insufficientPrivileges,
-                () -> {
-                  newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, dropRequest);
-                }),
-            doTestInsufficientPrivileges(
-                "sendNotification (VALIDATE)",
-                insufficientPrivileges,
-                () -> {
-                  newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, validateRequest);
-                }))
-        .flatMap(s -> s);
+    Stream<DynamicNode> createTests =
+        builder
+            .operationName("sendNotification (CREATE)")
+            .action(
+                () -> newHandler(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, createRequest))
+            .createTests();
+
+    Stream<DynamicNode> updateTests =
+        builder
+            .operationName("sendNotification (UPDATE)")
+            .action(
+                () -> newHandler(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, updateRequest))
+            .createTests();
+
+    Stream<DynamicNode> dropTests =
+        builder
+            .operationName("sendNotification (DROP)")
+            .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, dropRequest))
+            .createTests();
+
+    Stream<DynamicNode> validateTests =
+        builder
+            .operationName("sendNotification (VALIDATE)")
+            .action(
+                () -> newHandler(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, validateRequest))
+            .createTests();
+
+    return Stream.of(createTests, updateTests, dropTests, validateTests).flatMap(s -> s);
   }
 
   @TestFactory
-  Stream<DynamicNode> testUpdateTableWith_AssignUuid_Privilege() {
+  Stream<DynamicNode> testUpdateTableWith_AssignUuid_Privileges() {
     // Test that TABLE_ASSIGN_UUID privilege is required for AssignUUID MetadataUpdate
     UpdateTableRequest request =
         UpdateTableRequest.create(
@@ -2045,39 +1595,24 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             List.of(), // no requirements
             List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
 
-    return doTestSufficientPrivileges(
-        "updateTable (AssignUUID)",
-        List.of(
-            PolarisPrivilege.TABLE_ASSIGN_UUID,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testUpdateTableWith_AssignUuidInsufficientPermissions() {
-    UpdateTableRequest request =
-        UpdateTableRequest.create(
-            TABLE_NS1A_2,
-            List.of(), // no requirements
-            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
-
-    return doTestInsufficientPrivileges(
-        "updateTable (AssignUUID)",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP,
-            // Test that other fine-grained privileges don't work
-            PolarisPrivilege.TABLE_ADD_SCHEMA,
-            PolarisPrivilege.TABLE_SET_LOCATION),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
+    return authzTestsBuilder("updateTable (AssignUUID)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_ASSIGN_UUID)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Should also work with broader privilege
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        // Test that other fine-grained privileges don't work
+        .shouldFailWith(PolarisPrivilege.TABLE_ADD_SCHEMA)
+        .shouldFailWith(PolarisPrivilege.TABLE_SET_LOCATION)
+        .createTests();
   }
 
   @TestFactory
@@ -2090,15 +1625,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             List.of(), // no requirements
             List.of(new MetadataUpdate.UpgradeFormatVersion(2)));
 
-    return doTestSufficientPrivileges(
-        "updateTable (UpgradeFormatVersion)",
-        List.of(
-            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */);
+    return authzTestsBuilder("updateTable (UpgradeFormatVersion)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Should also work with broader privilege
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
   }
 
   @TestFactory
@@ -2110,15 +1644,14 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             List.of(), // no requirements
             List.of(new MetadataUpdate.SetProperties(Map.of("test.property", "test.value"))));
 
-    return doTestSufficientPrivileges(
-        "updateTable (SetProperties)",
-        List.of(
-            PolarisPrivilege.TABLE_SET_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */);
+    return authzTestsBuilder("updateTable (SetProperties)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Should also work with broader privilege
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
   }
 
   @TestFactory
@@ -2130,19 +1663,18 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             List.of(), // no requirements
             List.of(new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
 
-    return doTestSufficientPrivileges(
-        "updateTable (RemoveProperties)",
-        List.of(
-            PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */);
+    return authzTestsBuilder("updateTable (RemoveProperties)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Should also work with broader privilege
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testUpdateTableWith_MultipleUpdates_Privilege() {
+  Stream<DynamicNode> testUpdateTableWith_MultipleUpdates_Privileges() {
     // Test that multiple MetadataUpdate types require multiple specific privileges
     UpdateTableRequest request =
         UpdateTableRequest.create(
@@ -2152,42 +1684,20 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 new MetadataUpdate.UpgradeFormatVersion(2),
                 new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
 
-    return doTestSufficientPrivilegeSets(
-        "updateTable (multiple updates)",
-        List.of(
-            Set.of(
-                PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
-                PolarisPrivilege.TABLE_SET_PROPERTIES),
-            Set.of(PolarisPrivilege.TABLE_WRITE_PROPERTIES), // Broader privilege should work
-            Set.of(PolarisPrivilege.TABLE_FULL_METADATA),
-            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        null /* cleanupAction */,
-        PRINCIPAL_NAME,
-        CATALOG_NAME);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testUpdateTableWith_MultipleUpdatesInsufficientPermissions() {
-    // Test that having only one of the required privileges fails
-    UpdateTableRequest request =
-        UpdateTableRequest.create(
-            TABLE_NS1A_2,
-            List.of(), // no requirements
-            List.of(
-                new MetadataUpdate.UpgradeFormatVersion(2),
-                new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
-
-    // Test that having only one specific privilege fails (need both)
-    return doTestInsufficientPrivileges(
-        "updateTable (multiple updates)",
-        List.of(
-            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION, // Only one of the two needed
-            PolarisPrivilege.TABLE_SET_PROPERTIES, // Only one of the two needed
-            PolarisPrivilege.TABLE_ASSIGN_UUID, // Wrong privilege
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_CREATE),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
+    return authzTestsBuilder("updateTable (multiple updates)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION, PolarisPrivilege.TABLE_SET_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Broader privilege should work
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        // Test that having only one specific privilege fails (need both)
+        .shouldFailWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION) // Only one of the two needed
+        .shouldFailWith(PolarisPrivilege.TABLE_SET_PROPERTIES) // Only one of the two needed
+        .shouldFailWith(PolarisPrivilege.TABLE_ASSIGN_UUID) // Wrong privilege
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .createTests();
   }
 
   @TestFactory
@@ -2206,15 +1716,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 new MetadataUpdate.SetProperties(Map.of("test.property", "test.value")),
                 new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
 
-    return doTestSufficientPrivileges(
-        "updateTable (TABLE_MANAGE_STRUCTURE super privilege)",
-        List.of(
-            PolarisPrivilege.TABLE_MANAGE_STRUCTURE, // Should work for all structural operations
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, structuralRequest),
-        null /* cleanupAction */);
+    return authzTestsBuilder("updateTable (TABLE_MANAGE_STRUCTURE super privilege)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, structuralRequest))
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_MANAGE_STRUCTURE) // Should work for all structural operations
+        .shouldPassWith(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES) // Should also work with broader privilege
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
   }
 
   @TestFactory
@@ -2232,28 +1742,29 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                 new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
                 new MetadataUpdate.SetProperties(Map.of("structure.test", "value"))));
 
-    Stream<DynamicNode> sufficientTests =
-        doTestSufficientPrivileges(
-            "updateTable (TABLE_MANAGE_STRUCTURE for non-snapshot ops)",
-            List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
-            () -> newWrapper().updateTable(TABLE_NS1A_2, nonSnapshotRequest),
-            null /* cleanupAction */);
-
     // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
     // different privilege categories (like read operations)
-    Stream<DynamicTest> insufficientTests =
-        doTestInsufficientPrivileges(
-            "loadTable (TABLE_MANAGE_STRUCTURE insufficient)",
-            List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
+    return authzTestsBuilder("updateTable/loadTable (TABLE_MANAGE_STRUCTURE)")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, nonSnapshotRequest))
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadTableWith_TableManageStructureInsufficient() {
+    // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
+    // different privilege categories (like read operations)
+    return authzTestsBuilder("loadTable (TABLE_MANAGE_STRUCTURE insufficient)")
+        .action(
             () ->
-                newWrapper()
-                    .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
-
-    return Stream.concat(sufficientTests, insufficientTests);
+                newHandler()
+                    .loadTable(TABLE_NS1A_2, "all")) // Load table requires different privileges
+        .shouldFailWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testReportReadMetricsSufficientPrivileges() {
+  Stream<DynamicNode> testReportReadMetricsPrivileges() {
     ImmutableScanReport report =
         ImmutableScanReport.builder()
             .tableName(TABLE_NS1A_1.name())
@@ -2265,39 +1776,20 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
             .build();
     ReportMetricsRequest request = ReportMetricsRequest.of(report);
-    return doTestSufficientPrivileges(
-        "reportMetrics (read)",
-        List.of(PolarisPrivilege.TABLE_READ_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
-        null /* cleanupAction */);
+    return authzTestsBuilder("reportMetrics (read)")
+        .action(() -> newHandler().reportMetrics(TABLE_NS1A_1, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testReportReadMetricsInsufficientPrivileges() {
-    ImmutableScanReport report =
-        ImmutableScanReport.builder()
-            .tableName(TABLE_NS1A_1.name())
-            .snapshotId(123L)
-            .schemaId(456)
-            .projectedFieldIds(List.of(1, 2, 3))
-            .projectedFieldNames(List.of("f1", "f2", "f3"))
-            .filter(Expressions.alwaysTrue())
-            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
-            .build();
-    ReportMetricsRequest request = ReportMetricsRequest.of(report);
-    return doTestInsufficientPrivileges(
-        "reportMetrics (read)",
-        List.of(
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testReportWriteMetricsSufficientPrivileges() {
+  Stream<DynamicNode> testReportWriteMetricsPrivileges() {
     CommitReport commitReport =
         ImmutableCommitReport.builder()
             .tableName(TABLE_NS1A_1.name())
@@ -2307,32 +1799,15 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
             .build();
     ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
-    return doTestSufficientPrivileges(
-        "reportMetrics (write)",
-        List.of(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testReportWriteMetricsInsufficientPrivileges() {
-    CommitReport commitReport =
-        ImmutableCommitReport.builder()
-            .tableName(TABLE_NS1A_1.name())
-            .snapshotId(23L)
-            .operation("DELETE")
-            .sequenceNumber(4L)
-            .commitMetrics(CommitMetricsResult.from(CommitMetrics.noop(), Map.of()))
-            .build();
-    ReportMetricsRequest request = ReportMetricsRequest.of(commitReport);
-    return doTestInsufficientPrivileges(
-        "reportMetrics (write)",
-        List.of(
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().reportMetrics(TABLE_NS1A_1, request));
+    return authzTestsBuilder("reportMetrics (write)")
+        .action(() -> newHandler().reportMetrics(TABLE_NS1A_1, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 }

@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.generic;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -30,7 +29,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.junit.jupiter.api.DynamicNode;
-import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
@@ -55,35 +53,25 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   }
 
   @TestFactory
-  Stream<DynamicNode> testListGenericTablesSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "listGenericTables",
-        List.of(
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().listGenericTables(NS1A),
-        null /* cleanupAction */);
+  Stream<DynamicNode> testListGenericTablesPrivileges() {
+    return authzTestsBuilder("listGenericTables")
+        .action(() -> newWrapper().listGenericTables(NS1A))
+        .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testListGenericTablesInsufficientPrivileges() {
-    return doTestInsufficientPrivileges(
-        "listGenericTables",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().listGenericTables(NS1A));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testCreateGenericTableSufficientPrivileges() {
+  Stream<DynamicNode> testCreateGenericTablePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
@@ -94,105 +82,68 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
 
     // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
-    return doTestSufficientPrivileges(
-        "createGenericTable",
-        List.of(
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of());
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable);
-        });
+    return authzTestsBuilder("createGenericTable")
+        .action(
+            () ->
+                newWrapper(Set.of(PRINCIPAL_ROLE1))
+                    .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of()))
+        .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicTest> testCreateGenericTableInsufficientPrivileges() {
-    return doTestInsufficientPrivileges(
-        "createGenericTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createGenericTable(
-                  TableIdentifier.of(NS2, "newtable"), "format", null, "doc", Map.of());
-        });
+  Stream<DynamicNode> testLoadGenericTablePrivileges() {
+    return authzTestsBuilder("loadGenericTable")
+        .action(() -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 
   @TestFactory
-  Stream<DynamicNode> testLoadGenericTableSufficientPrivileges() {
-    return doTestSufficientPrivileges(
-        "loadGenericTable",
-        List.of(
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC),
-        null /* cleanupAction */);
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testLoadGenericTableInsufficientPrivileges() {
-    return doTestInsufficientPrivileges(
-        "loadGenericTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC));
-  }
-
-  @TestFactory
-  Stream<DynamicNode> testDropGenericTableSufficientPrivileges() {
+  Stream<DynamicNode> testDropGenericTablePrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
             CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
-    return doTestSufficientPrivileges(
-        "dropGenericTable",
-        List.of(
-            PolarisPrivilege.TABLE_DROP,
-            PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
-        },
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2))
-              .createGenericTable(TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of());
-        });
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testDropGenericTableInsufficientPrivileges() {
-    return doTestInsufficientPrivileges(
-        "dropGenericTable",
-        List.of(
-            PolarisPrivilege.NAMESPACE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_WRITE_DATA,
-            PolarisPrivilege.TABLE_LIST),
-        () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
-        });
+    return authzTestsBuilder("dropGenericTable")
+        .action(() -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC))
+        .cleanupAction(
+            () ->
+                newWrapper(Set.of(PRINCIPAL_ROLE2))
+                    .createGenericTable(
+                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+        .shouldPassWith(PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .createTests();
   }
 }

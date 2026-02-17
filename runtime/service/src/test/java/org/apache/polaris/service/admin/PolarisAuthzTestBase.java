@@ -30,22 +30,17 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -68,13 +63,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -100,9 +93,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DynamicContainer;
-import org.junit.jupiter.api.DynamicNode;
-import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestInfo;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -556,328 +546,11 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
-  protected Stream<DynamicNode> doTestSufficientPrivileges(
-      String operationName,
-      List<PolarisPrivilege> sufficientPrivileges,
-      Runnable action,
-      Runnable cleanupAction) {
-    return doTestSufficientPrivilegeSets(
-        operationName, sufficientPrivileges.stream().map(Set::of).toList(), action, cleanupAction);
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder() {
+    return PolarisAuthzTestsFactory.builder().adminService(adminService);
   }
 
-  protected Stream<DynamicNode> doTestSufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> sufficientPrivilegeSets,
-      Runnable action,
-      Runnable cleanupAction) {
-    return doTestSufficientPrivilegeSets(
-        operationName, sufficientPrivilegeSets, action, cleanupAction, PRINCIPAL_NAME);
-  }
-
-  protected Stream<DynamicNode> doTestSufficientPrivileges(
-      String operationName,
-      List<PolarisPrivilege> sufficientPrivileges,
-      Runnable action,
-      Runnable cleanupAction,
-      String principalName) {
-    return doTestSufficientPrivilegeSets(
-        operationName,
-        sufficientPrivileges.stream().map(Set::of).toList(),
-        action,
-        cleanupAction,
-        principalName);
-  }
-
-  protected Stream<DynamicNode> doTestSufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> sufficientPrivilegeSets,
-      Runnable action,
-      Runnable cleanupAction,
-      String principalName) {
-    return doTestSufficientPrivilegeSets(
-        operationName, sufficientPrivilegeSets, action, cleanupAction, principalName, CATALOG_NAME);
-  }
-
-  protected Stream<DynamicNode> doTestSufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> sufficientPrivileges,
-      Runnable action,
-      Runnable cleanupAction,
-      String principalName,
-      String catalogName) {
-    return doTestSufficientPrivilegeSets(
-        operationName,
-        sufficientPrivileges,
-        action,
-        cleanupAction,
-        principalName,
-        privilege ->
-            adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
-        privilege ->
-            adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
-  }
-
-  protected Stream<DynamicNode> doTestSufficientPrivileges(
-      String operationName,
-      List<PolarisPrivilege> sufficientPrivileges,
-      Runnable action,
-      Runnable cleanupAction,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    return doTestSufficientPrivilegeSets(
-        operationName,
-        sufficientPrivileges.stream().map(Set::of).toList(),
-        action,
-        cleanupAction,
-        PRINCIPAL_NAME,
-        grantAction,
-        revokeAction);
-  }
-
-  protected Stream<DynamicNode> doTestSufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> sufficientPrivilegeSets,
-      Runnable action,
-      Runnable cleanupAction,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    return doTestSufficientPrivilegeSets(
-        operationName,
-        sufficientPrivilegeSets,
-        action,
-        cleanupAction,
-        PRINCIPAL_NAME,
-        grantAction,
-        revokeAction);
-  }
-
-  /**
-   * Tests each "sufficient" privilege individually by invoking {@code grantAction} for each set of
-   * privileges, running the action being tested, revoking after each test set, and also ensuring
-   * that the request fails after each revocation.
-   *
-   * @param sufficientPrivilegeSets each set of concurrent privileges expected to be sufficient
-   *     together.
-   * @param action The operation being tested; could also be multiple operations that should all
-   *     succeed with the sufficient privilege
-   * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
-   *     in case the action has side effects. Called before revoking the sufficient privilege;
-   *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
-   * @param principalName the name expected to appear in forbidden errors
-   * @param grantAction the grantPrivilege action to use for each test privilege that will apply the
-   *     privilege to whatever context is used in the {@code action}
-   * @param revokeAction the revokePrivilege action to clean up after each granted test privilege
-   */
-  protected Stream<DynamicNode> doTestSufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> sufficientPrivilegeSets,
-      Runnable action,
-      Runnable cleanupAction,
-      String principalName,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-
-    return sufficientPrivilegeSets.stream()
-        .map(
-            privilegeSet -> {
-              List<DynamicTest> tests = new ArrayList<>();
-              tests.add(
-                  DynamicTest.dynamicTest(
-                      operationName + " should succeed with " + formatPrivilegeSet(privilegeSet),
-                      () -> {
-                        for (PolarisPrivilege privilege : privilegeSet) {
-                          // Grant the single privilege at a catalog level to cascade to all
-                          // objects.
-                          assertSuccess(grantAction.apply(privilege));
-                        }
-
-                        // Should run without issues.
-                        try {
-                          action.run();
-                        } catch (Throwable t) {
-                          Assertions.fail(
-                              String.format(
-                                  "Expected success with sufficientPrivileges '%s', got throwable instead.",
-                                  privilegeSet),
-                              t);
-                        }
-                        if (cleanupAction != null) {
-                          try {
-                            cleanupAction.run();
-                          } catch (Throwable t) {
-                            Assertions.fail(
-                                String.format(
-                                    "Running cleanupAction with sufficientPrivileges '%s', got throwable.",
-                                    privilegeSet),
-                                t);
-                          }
-                        }
-                      }));
-
-              if (privilegeSet.size() > 1) {
-                // Knockout testing - Revoke single privileges and the same action should throw
-                // NotAuthorizedException.
-                for (PolarisPrivilege privilege : privilegeSet) {
-                  tests.add(
-                      DynamicTest.dynamicTest(
-                          operationName + " should fail without " + privilege.name(),
-                          () -> {
-                            assertSuccess(revokeAction.apply(privilege));
-
-                            try {
-                              Assertions.assertThatThrownBy(() -> action.run())
-                                  .isInstanceOf(ForbiddenException.class)
-                                  .hasMessageContaining(principalName)
-                                  .hasMessageContaining("is not authorized");
-                            } catch (Throwable t) {
-                              Assertions.fail(
-                                  String.format(
-                                      "Expected failure after revoking sufficientPrivilege '%s' from set '%s'",
-                                      privilege, privilegeSet),
-                                  t);
-                            }
-
-                            // Grant the single privilege at a catalog level to cascade to all
-                            // objects.
-                            assertSuccess(grantAction.apply(privilege));
-                          }));
-                }
-              }
-              tests.add(
-                  DynamicTest.dynamicTest(
-                      operationName + " should fail with all privileges revoked",
-                      () -> {
-                        // Now remove all the privileges
-                        for (PolarisPrivilege privilege : privilegeSet) {
-                          assertSuccess(revokeAction.apply(privilege));
-                        }
-                        try {
-                          Assertions.assertThatThrownBy(() -> action.run())
-                              .isInstanceOf(ForbiddenException.class)
-                              .hasMessageContaining(principalName)
-                              .hasMessageContaining("is not authorized");
-                        } catch (Throwable t) {
-                          Assertions.fail(
-                              String.format(
-                                  "Expected failure after revoking all sufficientPrivileges '%s'",
-                                  privilegeSet),
-                              t);
-                        }
-                      }));
-
-              return DynamicContainer.dynamicContainer(
-                  operationName + " with " + formatPrivilegeSet(privilegeSet), tests);
-            });
-  }
-
-  protected Stream<DynamicTest> doTestInsufficientPrivileges(
-      String operationName, List<PolarisPrivilege> insufficientPrivileges, Runnable action) {
-    return doTestInsufficientPrivilegeSets(
-        operationName, insufficientPrivileges.stream().map(Set::of).toList(), action);
-  }
-
-  protected Stream<DynamicTest> doTestInsufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
-      Runnable action) {
-    return doTestInsufficientPrivilegeSets(
-        operationName, insufficientPrivilegeSets, action, PRINCIPAL_NAME);
-  }
-
-  /**
-   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
-   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
-   */
-  protected Stream<DynamicTest> doTestInsufficientPrivileges(
-      String operationName,
-      List<PolarisPrivilege> insufficientPrivileges,
-      Runnable action,
-      String principalName) {
-    return doTestInsufficientPrivilegeSets(
-        operationName,
-        insufficientPrivileges.stream().map(Set::of).toList(),
-        action,
-        principalName);
-  }
-
-  protected Stream<DynamicTest> doTestInsufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
-      Runnable action,
-      String principalName) {
-    return doTestInsufficientPrivilegeSets(
-        operationName,
-        insufficientPrivilegeSets,
-        action,
-        principalName,
-        privilege ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
-        privilege ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
-  }
-
-  protected Stream<DynamicTest> doTestInsufficientPrivileges(
-      String operationName,
-      List<PolarisPrivilege> insufficientPrivileges,
-      Runnable action,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    return doTestInsufficientPrivilegeSets(
-        operationName,
-        insufficientPrivileges.stream().map(Set::of).toList(),
-        action,
-        PRINCIPAL_NAME,
-        grantAction,
-        revokeAction);
-  }
-
-  /**
-   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
-   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
-   */
-  protected Stream<DynamicTest> doTestInsufficientPrivilegeSets(
-      String operationName,
-      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
-      Runnable action,
-      String principalName,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    return insufficientPrivilegeSets.stream()
-        .map(
-            privilegeSet ->
-                DynamicTest.dynamicTest(
-                    operationName + " should fail with " + formatPrivilegeSet(privilegeSet),
-                    () -> {
-                      try {
-                        // Grant the whole privilege set
-                        for (PolarisPrivilege privilege : privilegeSet) {
-                          assertSuccess(grantAction.apply(privilege));
-                        }
-
-                        // Should be insufficient
-                        try {
-                          Assertions.assertThatThrownBy(action::run)
-                              .isInstanceOf(ForbiddenException.class)
-                              .hasMessageContaining(principalName)
-                              .hasMessageContaining("is not authorized");
-                        } catch (Throwable t) {
-                          Assertions.fail(
-                              String.format(
-                                  "Expected failure with insufficient privilege set '%s'",
-                                  privilegeSet),
-                              t);
-                        }
-                      } finally {
-                        // Always revoke privileges
-                        for (PolarisPrivilege privilege : privilegeSet) {
-                          assertSuccess(revokeAction.apply(privilege));
-                        }
-                      }
-                    }));
-  }
-
-  private static String formatPrivilegeSet(Set<PolarisPrivilege> privilegeSet) {
-    return privilegeSet.stream().map(Object::toString).collect(Collectors.joining(" + "));
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
+    return authzTestsBuilder().operationName(operationName);
   }
 }

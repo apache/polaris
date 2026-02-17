@@ -32,7 +32,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 /**
@@ -45,7 +45,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
-  private IcebergCatalogHandler newWrapper() {
+  private IcebergCatalogHandler newHandler() {
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
     return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
@@ -61,7 +61,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
   }
 
   @TestFactory
-  Stream<DynamicTest> testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
+  Stream<DynamicNode> testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
     // Test that when fine-grained authorization is disabled, fine-grained privileges alone are
     // insufficient
     // This ensures the feature flag properly controls behavior and fine-grained privileges don't
@@ -74,21 +74,21 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
     // With fine-grained authorization disabled, even having the specific fine-grained privilege
     // should be insufficient - the system should require the broader privileges
-    return doTestInsufficientPrivileges(
-        "updateTable",
-        List.of(
+    return authzTestsBuilder("updateTable")
+        .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldFailWith(
             PolarisPrivilege
-                .TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
-            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
-            PolarisPrivilege.TABLE_SET_PROPERTIES,
-            PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
-            PolarisPrivilege.TABLE_ADD_SCHEMA,
-            PolarisPrivilege.TABLE_SET_LOCATION,
-            PolarisPrivilege.TABLE_READ_PROPERTIES,
-            PolarisPrivilege.TABLE_READ_DATA,
-            PolarisPrivilege.TABLE_CREATE,
-            PolarisPrivilege.TABLE_LIST,
-            PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
+                .TABLE_ASSIGN_UUID) // This alone should be insufficient when feature disabled
+        .shouldFailWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
+        .shouldFailWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_ADD_SCHEMA)
+        .shouldFailWith(PolarisPrivilege.TABLE_SET_LOCATION)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
+        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
+        .createTests();
   }
 }
