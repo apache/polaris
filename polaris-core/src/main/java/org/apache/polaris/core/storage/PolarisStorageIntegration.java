@@ -20,10 +20,9 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -52,28 +51,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Subscope the creds against the allowed read and write locations.
    *
-   * @param realmConfig the call context
-   * @param allowListOperation whether to allow LIST on all the provided allowed read/write
-   *     locations
-   * @param allowedReadLocations a set of allowed to read locations
-   * @param allowedWriteLocations a set of allowed to write locations
-   * @param polarisPrincipal the principal requesting credentials
-   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
-   *     supported by the storage type it will be returned to the client in the appropriate
-   *     properties. The endpoint may be relative to the base URI and the client is responsible for
-   *     handling the relative path
-   * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
+   * @param realmConfig the realm configuration (used for credential TTL and other runtime settings)
+   * @param params the storage access config parameters containing allowed locations, principal
+   *     name, credential vending context, and other fields needed for credential vending
    * @return An enum map including the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
+      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params);
 
   /**
    * Validate access for the provided operation actions and locations.

@@ -25,7 +25,8 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.apache.polaris.core.storage.cache.DefaultStorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
@@ -37,14 +38,14 @@ public interface PolarisStorageIntegrationProvider {
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**
-   * Builds a cache key for credential caching. Different storage backends may include different
-   * fields in the cache key based on which parameters actually affect the vended credentials.
+   * Builds storage access config parameters for credential caching. Different storage backends may
+   * include different fields based on which parameters actually affect the vended credentials.
    *
-   * <p>The default implementation includes principal and context based on feature flags for all
-   * backends (today's behavior). Implementations should override to dispatch to backend-specific
-   * key building logic.
+   * <p>The default implementation uses {@link DefaultStorageAccessConfigParameters} which excludes
+   * principal and context. Implementations should override to dispatch to backend-specific
+   * parameter building logic.
    */
-  default StorageCredentialCacheKey buildCacheKey(
+  default StorageAccessConfigParameters buildStorageAccessConfigParameters(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -54,14 +55,12 @@ public interface PolarisStorageIntegrationProvider {
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    return StorageCredentialCacheKey.of(
+    return DefaultStorageAccessConfigParameters.of(
         realmId,
         entity,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
-        Optional.empty(),
-        CredentialVendingContext.empty());
+        refreshCredentialsEndpoint);
   }
 }

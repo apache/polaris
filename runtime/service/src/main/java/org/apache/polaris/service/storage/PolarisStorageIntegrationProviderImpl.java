@@ -46,7 +46,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -115,13 +115,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new PolarisStorageIntegration<>((T) polarisStorageConfigurationInfo, "file") {
               @Override
               public StorageAccessConfig getSubscopedCreds(
-                  @Nonnull RealmConfig realmConfig,
-                  boolean allowListOperation,
-                  @Nonnull Set<String> allowedReadLocations,
-                  @Nonnull Set<String> allowedWriteLocations,
-                  @Nonnull PolarisPrincipal polarisPrincipal,
-                  Optional<String> refreshCredentialsEndpoint,
-                  @Nonnull CredentialVendingContext credentialVendingContext) {
+                  @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
                 // FILE storage does not support credential vending
                 return StorageAccessConfig.builder().supportsCredentialVending(false).build();
               }
@@ -145,7 +139,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   }
 
   @Override
-  public StorageCredentialCacheKey buildCacheKey(
+  public StorageAccessConfigParameters buildStorageAccessConfigParameters(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -159,14 +153,14 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    StorageCredentialCacheKey result;
+    StorageAccessConfigParameters result;
     if (storageConfigStr != null) {
       PolarisStorageConfigurationInfo storageConfig =
           PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
       switch (storageConfig.getStorageType()) {
         case S3:
           result =
-              AwsCredentialsStorageIntegration.buildCacheKey(
+              AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
                   realmId,
                   entity,
                   realmConfig,
@@ -179,7 +173,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
           break;
         case GCS:
           result =
-              GcpCredentialsStorageIntegration.buildCacheKey(
+              GcpCredentialsStorageIntegration.buildStorageAccessConfigParameters(
                   realmId,
                   entity,
                   realmConfig,
@@ -192,7 +186,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
           break;
         case AZURE:
           result =
-              AzureCredentialsStorageIntegration.buildCacheKey(
+              AzureCredentialsStorageIntegration.buildStorageAccessConfigParameters(
                   realmId,
                   entity,
                   realmConfig,
@@ -205,7 +199,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
           break;
         default:
           result =
-              PolarisStorageIntegrationProvider.super.buildCacheKey(
+              PolarisStorageIntegrationProvider.super.buildStorageAccessConfigParameters(
                   realmId,
                   entity,
                   realmConfig,
@@ -220,7 +214,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     } else {
       // Fall back to default behavior for missing config
       result =
-          PolarisStorageIntegrationProvider.super.buildCacheKey(
+          PolarisStorageIntegrationProvider.super.buildStorageAccessConfigParameters(
               realmId,
               entity,
               realmConfig,

@@ -45,8 +45,8 @@ import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,9 +151,9 @@ public class StorageAccessConfigProvider {
 
     RealmConfig realmConfig = callContext.getRealmConfig();
 
-    // Build cache key via the storage integration provider
-    StorageCredentialCacheKey key =
-        storageIntegrationProvider.buildCacheKey(
+    // Build storage access config parameters via the storage integration provider
+    StorageAccessConfigParameters key =
+        storageIntegrationProvider.buildStorageAccessConfigParameters(
             callContext.getRealmContext().getRealmIdentifier(),
             storageInfoEntity,
             realmConfig,
@@ -168,18 +168,9 @@ public class StorageAccessConfigProvider {
             key,
             realmConfig,
             () -> {
-              // Use credentialVendingContext from the cache key for correctness.
-              // The key may transform the context (e.g., GCP/Azure use empty context).
               ScopedCredentialsResult result =
                   credentialVendor.getSubscopedCredsForEntity(
-                      callContext.getPolarisCallContext(),
-                      storageInfoEntity,
-                      allowList,
-                      tableLocations,
-                      writeLocations,
-                      polarisPrincipal,
-                      refreshCredentialsEndpoint,
-                      key.credentialVendingContext());
+                      callContext.getPolarisCallContext(), storageInfoEntity, key);
               if (result.isSuccess()) {
                 return result.getStorageAccessConfig();
               }

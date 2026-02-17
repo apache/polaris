@@ -26,6 +26,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -47,9 +48,8 @@ public interface PolarisCredentialVendor {
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @return an enum map containing the scoped credentials
-   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity, boolean,
-   *     Set, Set, PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will
-   *     be removed in a future release.
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity,
+   *     StorageAccessConfigParameters)} instead. This method will be removed in a future release.
    */
   @Deprecated(forRemoval = true)
   @Nonnull
@@ -96,9 +96,8 @@ public interface PolarisCredentialVendor {
    * @param credentialVendingContext context containing metadata for session tags (catalog,
    *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
-   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity, boolean,
-   *     Set, Set, PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will
-   *     be removed in a future release.
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity,
+   *     StorageAccessConfigParameters)} instead. This method will be removed in a future release.
    */
   @Deprecated(forRemoval = true)
   @Nonnull
@@ -117,12 +116,6 @@ public interface PolarisCredentialVendor {
   /**
    * Get sub-scoped credentials for an entity, using the entity directly instead of primitive IDs.
    *
-   * <p>This overload avoids the need for implementations to reload the entity by ID. The default
-   * implementation extracts IDs from the entity and delegates to {@link
-   * #getSubscopedCredsForEntity(PolarisCallContext, long, long, PolarisEntityType, boolean, Set,
-   * Set, PolarisPrincipal, Optional, CredentialVendingContext)}, so existing implementations work
-   * without changes.
-   *
    * @param callCtx the polaris call context
    * @param entity the entity to scope credentials for
    * @param allowListOperation whether to allow LIST operation on the provided locations
@@ -132,7 +125,10 @@ public interface PolarisCredentialVendor {
    * @param refreshCredentialsEndpoint an optional endpoint for refreshing credentials
    * @param credentialVendingContext context containing metadata for session tags
    * @return an enum map containing the scoped credentials
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, PolarisEntity,
+   *     StorageAccessConfigParameters)} instead. This method will be removed in a future release.
    */
+  @Deprecated(forRemoval = true)
   @Nonnull
   default ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,
@@ -155,4 +151,22 @@ public interface PolarisCredentialVendor {
         refreshCredentialsEndpoint,
         credentialVendingContext);
   }
+
+  /**
+   * Get sub-scoped credentials for an entity using pre-built storage access config parameters.
+   *
+   * <p>This is the preferred overload. The {@link StorageAccessConfigParameters} object carries all
+   * credential-scoping fields (allowed locations, principal name, credential vending context) and
+   * already encodes feature flag decisions made by the storage integration provider.
+   *
+   * @param callCtx the polaris call context
+   * @param entity the entity to scope credentials for
+   * @param params the storage access config parameters
+   * @return an enum map containing the scoped credentials
+   */
+  @Nonnull
+  ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntity entity,
+      @Nonnull StorageAccessConfigParameters params);
 }

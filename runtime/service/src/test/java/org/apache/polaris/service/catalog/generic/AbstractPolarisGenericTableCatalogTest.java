@@ -134,7 +134,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     doCallRealMethod()
         .when(mock)
-        .buildCacheKey(any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
+        .buildStorageAccessConfigParameters(
+            any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
