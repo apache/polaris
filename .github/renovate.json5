@@ -53,6 +53,7 @@
         "gradle", "gradle-wrapper",
         "pip_requirements", "pip_setup", "uv", "setup-cfg",
         "dockerfile", "devcontainer", "docker-compose",
+        "helm-requirements", "helm-values",
         "github-actions"],
       automerge: false, // just be explicit (false is the default)
     },
