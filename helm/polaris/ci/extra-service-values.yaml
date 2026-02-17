@@ -32,7 +32,7 @@ service:
       protocol: TCP
     - name: polaris-http2
       port: 28181
-      targetPort: 8181
+      targetPort: 8183
       protocol: TCP
 
 extraServices:
@@ -44,4 +44,4 @@ extraServices:
     ports:
     - name: polaris-http2
       port: 38181
-      targetPort: 8181
+      targetPort: 8183
