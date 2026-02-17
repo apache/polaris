@@ -601,6 +601,19 @@ persistence:
       password: password
       # -- The secret key holding the database JDBC connection URL
       jdbcUrl: jdbcUrl
+  # The configuration for the NoSQL persistence manager (currently in beta).
+  nosql:
+    # -- The NoSQL backend to use. Two built-in types are supported: MongoDb and InMemory.
+    # Only MongoDb is supported for production use.
+    backend: MongoDb
+    # -- The MongoDB database name to use.
+    database: polaris
+    # The secret to pull the MongoDB connection string from.
+    secret:
+      # -- The secret name to pull the MongoDB connection string from.
+      name: ~
+      # -- The secret key holding the MongoDB connection string.
+      connectionString: connectionString
 
 # -- Polaris FileIO configuration.
 fileIo:

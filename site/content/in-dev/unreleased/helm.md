@@ -126,6 +126,7 @@ fail if these resources are not created beforehand. You can find some examples i
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=mongodb --timeout=120s
 ```
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
@@ -381,7 +382,11 @@ ct install --namespace polaris --charts ./helm/polaris
 | oidc.principalRolesMapper.mappings | list | `[]` | A list of regex mappings that will be applied to each role name in the identity. This can be used to transform the role names in the identity into role names as expected by Polaris. The default Authenticator expects the security identity to expose role names in the format `POLARIS_ROLE:<role name>`. |
 | oidc.principalRolesMapper.rolesClaimPath | string | `nil` | The path to the claim that contains the principal roles. Nested paths can be expressed using "/" as a separator, e.g. "polaris/principal_roles" would look for the "principal_roles" field inside the "polaris" object in the token claims. If not set, Quarkus looks for roles in standard locations. See https://quarkus.io/guides/security-oidc-bearer-token-authentication#token-claims-and-security-identity-roles. |
 | oidc.principalRolesMapper.type | string | `"default"` | The `PrincipalRolesMapper` implementation to use. Only one built-in type is supported: default. |
-| persistence | object | `{"relationalJdbc":{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}},"type":"in-memory"}` | Polaris persistence configuration. |
+| persistence | object | `{"nosql":{"backend":"MongoDb","database":"polaris","secret":{"connectionString":"connectionString","name":null}},"relationalJdbc":{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}},"type":"in-memory"}` | Polaris persistence configuration. |
+| persistence.nosql.backend | string | `"MongoDb"` | The NoSQL backend to use. Two built-in types are supported: MongoDb and InMemory. Only MongoDb is supported for production use. |
+| persistence.nosql.database | string | `"polaris"` | The MongoDB database name to use. |
+| persistence.nosql.secret.connectionString | string | `"connectionString"` | The secret key holding the MongoDB connection string. |
+| persistence.nosql.secret.name | string | `nil` | The secret name to pull the MongoDB connection string from. |
 | persistence.relationalJdbc | object | `{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}}` | The configuration for the relational-jdbc persistence manager. |
 | persistence.relationalJdbc.secret | object | `{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}` | The secret name to pull the database connection properties from. |
 | persistence.relationalJdbc.secret.jdbcUrl | string | `"jdbcUrl"` | The secret key holding the database JDBC connection URL |

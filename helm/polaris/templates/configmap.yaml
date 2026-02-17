@@ -50,6 +50,10 @@ data:
 
     {{- /* Persistence */ -}}
     {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
+    {{- if eq .Values.persistence.type "nosql" -}}
+    {{- $_ = set $map "polaris.persistence.nosql.backend" .Values.persistence.nosql.backend -}}
+    {{- $_ = set $map "quarkus.mongodb.database" .Values.persistence.nosql.database -}}
+    {{- end -}}
 
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}
