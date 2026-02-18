@@ -53,11 +53,29 @@ public interface AuthorizationRequest {
   @Nonnull
   PolarisAuthorizableOperation getOperation();
 
-  /** Returns the primary target securables, if any. */
+  /**
+   * Returns the primary target securables, if any.
+   *
+   * <p>Targets are the primary resources the operation applies to (for example, the table being
+   * created or dropped).
+   */
   @Nullable
   List<PolarisSecurable> getTargets();
 
-  /** Returns the secondary securables, if any. */
+  /**
+   * Returns the secondary securables, if any.
+   *
+   * <p>Secondaries are related resources needed to evaluate the authorization decision but are not
+   * the direct object of the operation. Examples in current handlers include:
+   *
+   * <ul>
+   *   <li>Table rename: the destination namespace (target is the source table).
+   *   <li>Role grants: the grantee role/principal (target may be the role or the resource being
+   *       granted on).
+   *   <li>Policy attach/detach: the catalog/namespace/table being attached to (target is the
+   *       policy).
+   * </ul>
+   */
   @Nullable
   List<PolarisSecurable> getSecondaries();
 

@@ -44,9 +44,4 @@ public interface PolarisSecurable {
   /** Returns the name parts that identify the securable in hierarchical order. */
   @Nonnull
   List<String> getNameParts();
-
-  /** Returns the dot-joined name derived from {@link #getNameParts()}. */
-  default @Nonnull String getName() {
-    return String.join(".", getNameParts());
-  }
 }
