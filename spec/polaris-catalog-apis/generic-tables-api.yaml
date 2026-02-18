@@ -248,7 +248,7 @@ components:
           type: array
           description: Credentials for ADLS / GCS / S3 to access the table.
           items:
-            $ref: '#/components/schemas/StorageCredential'
+            $ref: '#/components/schemas/StorageAccessCredential'
 
 
     ListGenericTablesResponse:
@@ -263,7 +263,7 @@ components:
             $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableIdentifier'
 
 
-    StorageCredential:
+    StorageAccessCredential:
       type: object
       required:
         - prefix
