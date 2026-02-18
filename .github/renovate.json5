@@ -74,16 +74,23 @@
       matchPackageNames: ["amazon/aws-cli"],
       extends: ["schedule:weekly"],
     },
-    // Quarkus platform + plugin together
+    // Quarkus platform
+    // The Quarkus platform BOM is usually released a couple of days after all other Quarkus "components".
+    // We only want to bump Quarkus when the platform BOM itself is available.
     {
-      groupName: "Quarkus Platform and Group",
+      groupName: "Quarkus Platform",
+      matchManagers: ["gradle"],
+      matchPackageNames: ["io.quarkus.platform:quarkus-bom"],
+    },
+    {
+      groupName: "Quarkus, ignore non Platform",
       matchManagers: ["gradle"],
       matchPackageNames: [
-        "io.quarkus.platform:quarkus-bom",
         "io.quarkus.platform:quarkus-amazon-services-bom",
         "io.quarkus.platform:quarkus-google-cloud-services-bom",
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
+      enabled: false
     },
     // Disable update for openapi-generator-cli due to our OpenAPI spec version
     {
