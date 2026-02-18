@@ -188,6 +188,100 @@ public class PolarisAdminService {
     return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
   }
 
+  /** Public helper to resolve a namespace entity. Used by storage config management endpoints. */
+  public PolarisEntity resolveNamespaceEntity(String catalogName, String namespaceParam) {
+    // Parse namespace parameter - it's a single string with unit separator (0x1F) between parts
+    List<String> namespaceParts = List.of(namespaceParam.split("\u001F"));
+    PolarisResolutionManifest manifest = newResolutionManifest(catalogName);
+    String key = "namespace";
+    manifest.addPath(new ResolverPath(namespaceParts, PolarisEntityType.NAMESPACE), key);
+    ResolverStatus status = manifest.resolveAll();
+
+    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      throw new NotFoundException(
+          "Namespace %s not found in catalog %s", namespaceParam, catalogName);
+    }
+
+    PolarisResolvedPathWrapper resolved = manifest.getResolvedPath(key, true);
+    if (resolved == null || resolved.getRawLeafEntity() == null) {
+      throw new NotFoundException(
+          "Namespace %s not found in catalog %s", namespaceParam, catalogName);
+    }
+
+    return resolved.getRawLeafEntity();
+  }
+
+  /** Public helper to resolve a table entity. Used by storage config management endpoints. */
+  public PolarisEntity resolveTableEntity(
+      String catalogName, String namespaceParam, String tableName) {
+    PolarisResolvedPathWrapper resolved = resolveTablePath(catalogName, namespaceParam, tableName);
+    if (resolved == null || resolved.getRawLeafEntity() == null) {
+      throw new NotFoundException(
+          "Table %s.%s not found in catalog %s", namespaceParam, tableName, catalogName);
+    }
+
+    return resolved.getRawLeafEntity();
+  }
+
+  /**
+   * Public helper to resolve a full table path. Used by storage config management endpoints for
+   * effective table-level fallback across full namespace ancestry.
+   */
+  public PolarisResolvedPathWrapper resolveTablePath(
+      String catalogName, String namespaceParam, String tableName) {
+    List<String> namespaceParts = List.of(namespaceParam.split("\u001F"));
+    List<String> fullPath = new java.util.ArrayList<>(namespaceParts);
+    fullPath.add(tableName);
+
+    PolarisResolutionManifest manifest = newResolutionManifest(catalogName);
+    String key = "table";
+    manifest.addPath(new ResolverPath(fullPath, PolarisEntityType.TABLE_LIKE), key);
+    ResolverStatus status = manifest.resolveAll();
+
+    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      throw new NotFoundException(
+          "Table %s.%s not found in catalog %s", namespaceParam, tableName, catalogName);
+    }
+
+    return manifest.getResolvedPath(key, true);
+  }
+
+  public void updateEntity(long catalogId, PolarisEntity entity) {
+    // Get the catalog entity to build the catalog path
+    EntityResult catalogResult =
+        metaStoreManager.loadEntity(
+            getCurrentPolarisContext(), 0, catalogId, PolarisEntityType.CATALOG);
+
+    if (!catalogResult.isSuccess()) {
+      throw new IllegalStateException("Failed to load catalog: " + catalogResult.getReturnStatus());
+    }
+
+    CatalogEntity catalogEntity = CatalogEntity.of(catalogResult.getEntity());
+    List<PolarisEntityCore> catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
+
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            getCurrentPolarisContext(), catalogPath, entity);
+
+    if (result.isSuccess()) {
+      return;
+    }
+
+    BaseResult.ReturnStatus returnStatus = result.getReturnStatus();
+    if (returnStatus == BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED
+        || returnStatus == BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED
+        || returnStatus == BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED) {
+      throw new CommitConflictException(
+          "Concurrent modification while updating entity '%s'; retry later", entity.getName());
+    }
+
+    if (returnStatus == BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+      throw new NotFoundException("Entity %s not found while updating", entity.getName());
+    }
+
+    throw new IllegalStateException("Failed to update entity: " + returnStatus);
+  }
+
   private static PrincipalEntity getPrincipalByName(
       PolarisResolutionManifest resolutionManifest, String principalName) {
     return Optional.ofNullable(

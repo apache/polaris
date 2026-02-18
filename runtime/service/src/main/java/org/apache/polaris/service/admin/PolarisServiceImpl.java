@@ -23,15 +23,18 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -43,11 +46,14 @@ import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.GrantResources;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.NamespaceStorageConfigResponse;
 import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
@@ -58,6 +64,7 @@ import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
+import org.apache.polaris.core.admin.model.TableStorageConfigResponse;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
@@ -68,15 +75,28 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
+import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
@@ -774,5 +794,588 @@ public class PolarisServiceImpl
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
     GrantResources grantResources = new GrantResources(grantList);
     return Response.ok(grantResources).build();
+  }
+
+  /** Storage Configuration Management Endpoints */
+
+  /** Convert API model to internal storage configuration model. */
+  private PolarisStorageConfigurationInfo toInternalModel(StorageConfigInfo apiModel) {
+    if (apiModel == null) {
+      return null;
+    }
+
+    if (apiModel instanceof AwsStorageConfigInfo awsApi) {
+      return AwsStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(awsApi.getAllowedLocations())
+          .storageName(awsApi.getStorageName())
+          .roleARN(awsApi.getRoleArn())
+          .externalId(awsApi.getExternalId())
+          .userARN(awsApi.getUserArn())
+          .currentKmsKey(awsApi.getCurrentKmsKey())
+          .allowedKmsKeys(awsApi.getAllowedKmsKeys())
+          .region(awsApi.getRegion())
+          .endpoint(awsApi.getEndpoint())
+          .stsEndpoint(awsApi.getStsEndpoint())
+          .endpointInternal(awsApi.getEndpointInternal())
+          .pathStyleAccess(awsApi.getPathStyleAccess())
+          .stsUnavailable(awsApi.getStsUnavailable())
+          .kmsUnavailable(awsApi.getKmsUnavailable())
+          .build();
+    }
+
+    if (apiModel instanceof AzureStorageConfigInfo azureApi) {
+      return AzureStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(azureApi.getAllowedLocations())
+          .storageName(azureApi.getStorageName())
+          .tenantId(azureApi.getTenantId())
+          .multiTenantAppName(azureApi.getMultiTenantAppName())
+          .consentUrl(azureApi.getConsentUrl())
+          .hierarchical(azureApi.getHierarchical())
+          .build();
+    }
+
+    if (apiModel instanceof GcpStorageConfigInfo gcpApi) {
+      return GcpStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(gcpApi.getAllowedLocations())
+          .storageName(gcpApi.getStorageName())
+          .gcpServiceAccount(gcpApi.getGcsServiceAccount())
+          .build();
+    }
+
+    if (apiModel instanceof FileStorageConfigInfo fileApi) {
+      return FileStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(fileApi.getAllowedLocations())
+          .storageName(fileApi.getStorageName())
+          .build();
+    }
+
+    throw new IllegalArgumentException("Unsupported storage config type: " + apiModel.getClass());
+  }
+
+  /** Convert internal storage configuration model to API model. */
+  private StorageConfigInfo toApiModel(PolarisStorageConfigurationInfo internal) {
+    if (internal == null) {
+      return null;
+    }
+
+    if (internal instanceof AwsStorageConfigurationInfo awsInternal) {
+      return AwsStorageConfigInfo.builder()
+          .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+          .setStorageName(awsInternal.getStorageName())
+          .setAllowedLocations(awsInternal.getAllowedLocations())
+          .setRoleArn(awsInternal.getRoleARN())
+          .setExternalId(awsInternal.getExternalId())
+          .setUserArn(awsInternal.getUserARN())
+          .setCurrentKmsKey(awsInternal.getCurrentKmsKey())
+          .setAllowedKmsKeys(awsInternal.getAllowedKmsKeys())
+          .setRegion(awsInternal.getRegion())
+          .setEndpoint(awsInternal.getEndpoint())
+          .setStsEndpoint(awsInternal.getStsEndpoint())
+          .setEndpointInternal(awsInternal.getEndpointInternal())
+          .setPathStyleAccess(awsInternal.getPathStyleAccess())
+          .setStsUnavailable(awsInternal.getStsUnavailable())
+          .setKmsUnavailable(awsInternal.getKmsUnavailable())
+          .build();
+    }
+
+    if (internal instanceof AzureStorageConfigurationInfo azureInternal) {
+      return AzureStorageConfigInfo.builder()
+          .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+          .setStorageName(azureInternal.getStorageName())
+          .setAllowedLocations(azureInternal.getAllowedLocations())
+          .setTenantId(azureInternal.getTenantId())
+          .setMultiTenantAppName(azureInternal.getMultiTenantAppName())
+          .setConsentUrl(azureInternal.getConsentUrl())
+          .setHierarchical(azureInternal.isHierarchical())
+          .build();
+    }
+
+    if (internal instanceof GcpStorageConfigurationInfo gcpInternal) {
+      return GcpStorageConfigInfo.builder()
+          .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+          .setStorageName(gcpInternal.getStorageName())
+          .setAllowedLocations(gcpInternal.getAllowedLocations())
+          .setGcsServiceAccount(gcpInternal.getGcpServiceAccount())
+          .build();
+    }
+
+    if (internal instanceof FileStorageConfigurationInfo fileInternal) {
+      return new FileStorageConfigInfo(
+          StorageConfigInfo.StorageTypeEnum.FILE,
+          fileInternal.getAllowedLocations(),
+          fileInternal.getStorageName());
+    }
+
+    throw new IllegalArgumentException("Unsupported storage config type: " + internal.getClass());
+  }
+
+  /** Helper to get catalog entity and its metastore manager. */
+  private CatalogEntity getCatalogEntity(String catalogName) {
+    return adminService.getCatalog(catalogName);
+  }
+
+  /** Helper to resolve a namespace entity within a catalog. */
+  private PolarisEntity resolveNamespaceEntity(String catalogName, String namespaceStr) {
+    return adminService.resolveNamespaceEntity(catalogName, namespaceStr);
+  }
+
+  /** Helper to resolve a table entity within a catalog. */
+  private PolarisEntity resolveTableEntity(
+      String catalogName, String namespaceStr, String tableName) {
+    return adminService.resolveTableEntity(catalogName, namespaceStr, tableName);
+  }
+
+  private PolarisStorageConfigurationInfo resolveEffectiveTableStorageConfig(
+      String catalogName, String namespace, String table) {
+    resolveNamespaceEntity(catalogName, namespace);
+    resolveTableEntity(catalogName, namespace, table);
+
+    PolarisResolvedPathWrapper resolvedPath =
+        adminService.resolveTablePath(catalogName, namespace, table);
+
+    return FileIOUtil.findStorageInfoFromHierarchy(resolvedPath)
+        .map(this::storageConfigFromEntity)
+        .orElse(null);
+  }
+
+  private PolarisStorageConfigurationInfo storageConfigFromEntity(PolarisEntity entity) {
+    if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
+      return IcebergTableLikeEntity.of(entity).getStorageConfigurationInfo();
+    }
+    if (entity.getType() == PolarisEntityType.NAMESPACE) {
+      return NamespaceEntity.of(entity).getStorageConfigurationInfo();
+    }
+    if (entity.getType() == PolarisEntityType.CATALOG) {
+      return CatalogEntity.of(entity).getStorageConfigurationInfo();
+    }
+    return null;
+  }
+
+  @Override
+  public Response getNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      // Resolve the namespace entity
+      PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
+
+      // Get storage configuration from the entity
+      NamespaceEntity nsEntity = NamespaceEntity.of(namespaceEntity);
+      PolarisStorageConfigurationInfo storageConfig = nsEntity.getStorageConfigurationInfo();
+
+      if (storageConfig == null) {
+        // If namespace has no config, check catalog
+        CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+        storageConfig = catalogEntity.getStorageConfigurationInfo();
+      }
+
+      if (storageConfig == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity(
+                ErrorResponse.builder()
+                    .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                    .withType("NOT_FOUND")
+                    .withMessage("No storage configuration found for namespace")
+                    .build())
+            .build();
+      }
+
+      // Convert to API model and return
+      StorageConfigInfo apiModel = toApiModel(storageConfig);
+      return Response.ok(apiModel).build();
+
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error getting namespace storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response setNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      // Validate storage config
+      validateStorageConfig(storageConfigInfo);
+
+      // Resolve the namespace entity
+      PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
+      CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+
+      // Convert API model to internal model
+      PolarisStorageConfigurationInfo internalConfig = toInternalModel(storageConfigInfo);
+
+      // Update entity with new config using builder
+      PolarisEntity.Builder entityBuilder = new PolarisEntity.Builder(namespaceEntity);
+      entityBuilder.addInternalProperty(
+          PolarisEntityConstants.getStorageConfigInfoPropertyName(), internalConfig.serialize());
+      PolarisEntity updatedEntity = entityBuilder.build();
+
+      // Persist to metastore
+      adminService.updateEntity(catalogEntity.getId(), updatedEntity);
+
+      // Build proper response with namespace parts
+      List<String> namespaceParts = List.of(namespace.split("\\u001F"));
+      NamespaceStorageConfigResponse response =
+          NamespaceStorageConfigResponse.builder(namespaceParts, storageConfigInfo)
+              .setMessage("Storage configuration updated successfully")
+              .build();
+
+      return Response.ok(response).build();
+
+    } catch (CommitConflictException e) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.CONFLICT.getStatusCode())
+                  .withType("CONFLICT")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (IllegalArgumentException e) {
+      LOGGER.warn("Invalid storage config", e);
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.BAD_REQUEST.getStatusCode())
+                  .withType("BAD_REQUEST")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error setting namespace storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response deleteNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      // Resolve the namespace entity
+      PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
+      CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+
+      // Remove storage configuration using builder
+      Map<String, String> internalProps =
+          new HashMap<>(namespaceEntity.getInternalPropertiesAsMap());
+      internalProps.remove(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+
+      PolarisEntity updatedEntity =
+          new PolarisEntity.Builder(namespaceEntity).setInternalProperties(internalProps).build();
+
+      // Persist to metastore
+      adminService.updateEntity(catalogEntity.getId(), updatedEntity);
+
+      // Return 204 No Content
+      return Response.noContent().build();
+
+    } catch (CommitConflictException e) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.CONFLICT.getStatusCode())
+                  .withType("CONFLICT")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error deleting namespace storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response getTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      getCatalogEntity(catalogName);
+
+      PolarisStorageConfigurationInfo storageConfig =
+          resolveEffectiveTableStorageConfig(catalogName, namespace, table);
+
+      if (storageConfig == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity(
+                ErrorResponse.builder()
+                    .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                    .withType("NOT_FOUND")
+                    .withMessage("No storage configuration found for table")
+                    .build())
+            .build();
+      }
+
+      // Convert to API model and return
+      StorageConfigInfo apiModel = toApiModel(storageConfig);
+      return Response.ok(apiModel).build();
+
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error getting table storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response setTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      // Validate storage config
+      validateStorageConfig(storageConfigInfo);
+
+      // Resolve the table entity
+      PolarisEntity tableEntity = resolveTableEntity(catalogName, namespace, table);
+      CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+
+      // Convert API model to internal model
+      PolarisStorageConfigurationInfo internalConfig = toInternalModel(storageConfigInfo);
+
+      // Update entity with new config using builder
+      PolarisEntity.Builder entityBuilder = new PolarisEntity.Builder(tableEntity);
+      entityBuilder.addInternalProperty(
+          PolarisEntityConstants.getStorageConfigInfoPropertyName(), internalConfig.serialize());
+      PolarisEntity updatedEntity = entityBuilder.build();
+
+      // Persist to metastore
+      adminService.updateEntity(catalogEntity.getId(), updatedEntity);
+
+      // Build proper response with namespace parts and table name
+      List<String> namespaceParts = List.of(namespace.split("\\u001F"));
+      TableStorageConfigResponse response =
+          TableStorageConfigResponse.builder(namespaceParts, table, storageConfigInfo)
+              .setMessage("Storage configuration updated successfully")
+              .build();
+
+      return Response.ok(response).build();
+
+    } catch (CommitConflictException e) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.CONFLICT.getStatusCode())
+                  .withType("CONFLICT")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (IllegalArgumentException e) {
+      LOGGER.warn("Invalid storage config", e);
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.BAD_REQUEST.getStatusCode())
+                  .withType("BAD_REQUEST")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error setting table storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
+  }
+
+  @Override
+  public Response deleteTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    try {
+      // Resolve the table entity
+      PolarisEntity tableEntity = resolveTableEntity(catalogName, namespace, table);
+      CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+
+      // Remove storage configuration using builder
+      Map<String, String> internalProps = new HashMap<>(tableEntity.getInternalPropertiesAsMap());
+      internalProps.remove(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+
+      PolarisEntity updatedEntity =
+          new PolarisEntity.Builder(tableEntity).setInternalProperties(internalProps).build();
+
+      // Persist to metastore
+      adminService.updateEntity(catalogEntity.getId(), updatedEntity);
+
+      // Return 204 No Content
+      return Response.noContent().build();
+
+    } catch (CommitConflictException e) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.CONFLICT.getStatusCode())
+                  .withType("CONFLICT")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (ForbiddenException e) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.FORBIDDEN.getStatusCode())
+                  .withType("FORBIDDEN")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (jakarta.ws.rs.NotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.NOT_FOUND.getStatusCode())
+                  .withType("NOT_FOUND")
+                  .withMessage(e.getMessage())
+                  .build())
+          .build();
+    } catch (Exception e) {
+      LOGGER.error("Error deleting table storage config", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              ErrorResponse.builder()
+                  .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                  .withType("INTERNAL_ERROR")
+                  .withMessage("Internal error: " + e.getMessage())
+                  .build())
+          .build();
+    }
   }
 }

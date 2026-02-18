@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity.table;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -28,7 +29,9 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /**
  * An entity type for all table-like entities including Iceberg tables, Iceberg views, and generic
@@ -56,5 +59,21 @@ public abstract class TableLikeEntity extends PolarisEntity implements LocationB
       return Namespace.empty();
     }
     return RESTUtil.decodeNamespace(encodedNamespace);
+  }
+
+  /**
+   * Get the storage configuration for this table entity, if present. This allows table-level
+   * storage configuration overrides.
+   *
+   * @return the storage configuration, or null if not set
+   */
+  @JsonIgnore
+  public @Nullable PolarisStorageConfigurationInfo getStorageConfigurationInfo() {
+    String configStr =
+        getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    if (configStr != null) {
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
+    }
+    return null;
   }
 }

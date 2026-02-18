@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -601,6 +602,51 @@ public class PolarisAdminServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage(
             "Failed to create or find table entity 'test-table' in federated catalog 'test-catalog'");
+  }
+
+  @Test
+  void testUpdateEntity_ConcurrentModificationThrowsCommitConflict() {
+    EntityResult catalogLoadResult = mock(EntityResult.class);
+    when(catalogLoadResult.isSuccess()).thenReturn(true);
+    when(catalogLoadResult.getEntity())
+        .thenReturn(createEntity("test-catalog", PolarisEntityType.CATALOG, 1L));
+    when(metaStoreManager.loadEntity(any(), eq(0L), eq(1L), eq(PolarisEntityType.CATALOG)))
+        .thenReturn(catalogLoadResult);
+
+    EntityResult updateResult = mock(EntityResult.class);
+    when(updateResult.isSuccess()).thenReturn(false);
+    when(updateResult.getReturnStatus())
+        .thenReturn(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    when(metaStoreManager.updateEntityPropertiesIfNotChanged(any(), any(), any()))
+        .thenReturn(updateResult);
+
+    PolarisEntity namespaceEntity = createEntity("test-ns", PolarisEntityType.NAMESPACE, 2L);
+
+    assertThatThrownBy(() -> adminService.updateEntity(1L, namespaceEntity))
+        .isInstanceOf(CommitConflictException.class)
+        .hasMessageContaining("Concurrent modification while updating entity");
+  }
+
+  @Test
+  void testUpdateEntity_EntityNotFoundThrowsNotFound() {
+    EntityResult catalogLoadResult = mock(EntityResult.class);
+    when(catalogLoadResult.isSuccess()).thenReturn(true);
+    when(catalogLoadResult.getEntity())
+        .thenReturn(createEntity("test-catalog", PolarisEntityType.CATALOG, 1L));
+    when(metaStoreManager.loadEntity(any(), eq(0L), eq(1L), eq(PolarisEntityType.CATALOG)))
+        .thenReturn(catalogLoadResult);
+
+    EntityResult updateResult = mock(EntityResult.class);
+    when(updateResult.isSuccess()).thenReturn(false);
+    when(updateResult.getReturnStatus()).thenReturn(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    when(metaStoreManager.updateEntityPropertiesIfNotChanged(any(), any(), any()))
+        .thenReturn(updateResult);
+
+    PolarisEntity namespaceEntity = createEntity("test-ns", PolarisEntityType.NAMESPACE, 2L);
+
+    assertThatThrownBy(() -> adminService.updateEntity(1L, namespaceEntity))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("Entity test-ns not found while updating");
   }
 
   private PolarisEntity createEntity(String name, PolarisEntityType type) {
