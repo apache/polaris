@@ -136,7 +136,7 @@ data:
     {{- /* Logging */ -}}
     {{- $_ = set $map "quarkus.log.level" .Values.logging.level -}}
     {{- if .Values.logging.console.enabled -}}
-    {{- $_ = set $map "quarkus.log.console.enable" "true" -}}
+    {{- $_ = set $map "quarkus.log.console.enabled" "true" -}}
     {{- $_ = set $map "quarkus.log.console.level" .Values.logging.console.threshold -}}
     {{- if .Values.logging.console.json -}}
     {{- $_ = set $map "quarkus.log.console.json.enabled" "true" -}}
@@ -144,10 +144,10 @@ data:
     {{- $_ = set $map "quarkus.log.console.format" .Values.logging.console.format -}}
     {{- end -}}
     {{- else -}}
-    {{- $_ = set $map "quarkus.log.console.enable" "false" -}}
+    {{- $_ = set $map "quarkus.log.console.enabled" "false" -}}
     {{- end -}}
     {{- if .Values.logging.file.enabled -}}
-    {{- $_ = set $map "quarkus.log.file.enable" "true" -}}
+    {{- $_ = set $map "quarkus.log.file.enabled" "true" -}}
     {{- $_ = set $map "quarkus.log.file.level" .Values.logging.file.threshold -}}
     {{- $_ = set $map "quarkus.log.file.path" (printf "%s/%s" .Values.logging.file.logsDir .Values.logging.file.fileName) -}}
     {{- $_ = set $map "quarkus.log.file.rotation.max-file-size" (include "polaris.quantity" .Values.logging.file.rotation.maxFileSize) -}}
@@ -161,7 +161,7 @@ data:
     {{- $_ = set $map "quarkus.log.file.format" .Values.logging.file.format -}}
     {{- end -}}
     {{- else -}}
-    {{- $_ = set $map "quarkus.log.file.enable" "false" -}}
+    {{- $_ = set $map "quarkus.log.file.enabled" "false" -}}
     {{- end -}}
     {{- $categories := dict -}}
     {{- list .Values.logging.categories "" $categories | include "polaris.mergeConfigTree" -}}

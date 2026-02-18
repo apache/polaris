@@ -32,7 +32,7 @@ services:
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
-      quarkus.log.file.enable: "false"
+      quarkus.log.file.enabled: "false"
       quarkus.otel.sdk.disabled: "true"
       polaris.features."DROP_WITH_PURGE_ENABLED": "true"
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
