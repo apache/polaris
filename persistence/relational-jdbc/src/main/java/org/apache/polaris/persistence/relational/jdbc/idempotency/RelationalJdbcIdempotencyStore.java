@@ -191,6 +191,32 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
+  public boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey,
+                  ModelIdempotencyRecord.EXECUTOR_ID,
+                  executorId),
+              Map.of(),
+              Map.of(),
+              Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+              Set.of());
+      return datasourceOperations.executeUpdate(delete) > 0;
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException(
+          "Failed to cancel in-progress idempotency reservation", e);
+    }
+  }
+
+  @Override
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
