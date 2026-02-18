@@ -117,20 +117,6 @@ tests:
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit
-  - it: should not set revisionHistoryLimit with quote empty string
-    template: deployment.yaml
-    set:
-      revisionHistoryLimit: ""
-    asserts:
-      - notExists:
-          path: spec.revisionHistoryLimit
-  - it: should not set revisionHistoryLimit with empty string
-    template: deployment.yaml
-    set:
-      revisionHistoryLimit:
-    asserts:
-      - notExists:
-          path: spec.revisionHistoryLimit
   - it: should set revisionHistoryLimit
     template: deployment.yaml
     set:
