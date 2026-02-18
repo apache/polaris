@@ -26,13 +26,13 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 
 public class PolicyCatalogUtils {
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(
-      @Nonnull PolarisResolutionManifest resolutionManifest,
+      @Nonnull PolarisResolutionManifestCatalogView resolutionManifest,
       @Nonnull PolicyAttachmentTarget target) {
     return switch (target.getType()) {
       // get the current catalog entity, since policy cannot apply across catalog at this moment
