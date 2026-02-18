@@ -207,6 +207,59 @@ jobs:
           Artifacts and Helm chart moved from dist dev to dist release
           EOT
 
+      - name: Clean up old releases from dist release repository
+        env:
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris"
+          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
+
+          # List and remove old release artifact versions
+          old_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_artifacts_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-incubating/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+
+          if [[ -n "${old_versions}" ]]; then
+            echo "## Old Releases Cleanup" >> $GITHUB_STEP_SUMMARY
+            echo "Removing old release versions:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${old_versions}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            for old_version in ${old_versions}; do
+              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+                "${release_artifacts_url}/${old_version}" \
+                -m "Remove old release ${old_version} (superseded by ${version_without_rc})"
+            done
+          else
+            echo "## Old Releases Cleanup" >> $GITHUB_STEP_SUMMARY
+            echo "No old release versions found to remove" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # List and remove old Helm chart versions
+          old_helm_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-incubating/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+
+          if [[ -n "${old_helm_versions}" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Removing old Helm chart versions:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${old_helm_versions}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            for old_helm_version in ${old_helm_versions}; do
+              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+                "${release_helm_url}/${old_helm_version}" \
+                -m "Remove old Helm chart ${old_helm_version} (superseded by ${version_without_rc})"
+            done
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No old Helm chart versions found to remove" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Transfer Helm index from dev to release
         env:
           SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
@@ -376,6 +429,7 @@ jobs:
           | --- | --- |
           | Distribution artifacts | ✅ Moved to release space |
           | Helm chart and index | ✅ Updated in release space |
+          | Old releases cleanup | ✅ Removed from dist release |
           | Git release tag | ✅ Created and pushed |
           | GitHub release | ✅ Created with artifacts attached |
           | Docker images | ✅ Published to Docker Hub |
