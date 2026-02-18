@@ -132,6 +132,24 @@ public interface IdempotencyStore {
       String realmId, String idempotencyKey, String executorId, Instant now);
 
   /**
+   * Cancels (deletes) an in-progress idempotency reservation owned by {@code executorId}.
+   *
+   * <p>This is used for cases where an idempotency key was reserved but the request should not be
+   * tracked for replay (for example, 401/403/408/429 responses per the proposal). Implementations
+   * should only cancel the record if it is still in-progress (i.e., not finalized) and owned by the
+   * given executor.
+   *
+   * @param realmId logical tenant or realm identifier
+   * @param idempotencyKey application-provided idempotency key
+   * @param executorId identifier of the executor that owns the reservation
+   * @return {@code true} if a record was cancelled, {@code false} otherwise
+   */
+  default boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    return false;
+  }
+
+  /**
    * Marks an idempotency record as finalized, recording HTTP status and response metadata.
    *
    * <p>Implementations should be tolerant of idempotent re-finalization attempts and typically
