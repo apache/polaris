@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import software.amazon.awssdk.services.sts.model.Tag;
 
@@ -40,63 +41,25 @@ public final class AwsSessionTagsBuilder {
   }
 
   /**
-   * Builds a list of AWS STS session tags from the principal name and credential vending context.
-   * These tags will appear in CloudTrail events for correlation purposes.
+   * Builds a list of AWS STS session tags from the principal name and credential vending context,
+   * including only the fields specified in {@code enabledFields}.
    *
-   * <p>The trace ID tag is only included if {@link CredentialVendingContext#traceId()} is present.
-   * This is controlled at the source (StorageAccessConfigProvider) based on the
-   * INCLUDE_TRACE_ID_IN_SESSION_TAGS feature flag.
+   * <p>Only fields present in {@code enabledFields} will be included in the returned list. The
+   * trace ID tag is only included if {@link SessionTagField#TRACE_ID} is in {@code enabledFields}
+   * and {@link CredentialVendingContext#traceId()} is present (the context's traceId is populated
+   * by the caller based on configuration).
    *
    * @param principalName the name of the principal requesting credentials
-   * @param context the credential vending context containing catalog, namespace, table, roles, and
-   *     optionally trace ID
+   * @param context the credential vending context
+   * @param enabledFields the set of {@link SessionTagField}s to include
    * @return a list of STS Tags to attach to the AssumeRole request
    */
-  public static List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
-    List<Tag> tags = new ArrayList<>();
-
-    // Always include all tags with "unknown" placeholder for missing values
-    // This ensures consistent tag presence in CloudTrail for correlation
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_PRINCIPAL)
-            .value(truncateTagValue(principalName))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_ROLES)
-            .value(truncateTagValue(context.activatedRoles().orElse(TAG_VALUE_UNKNOWN)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_CATALOG)
-            .value(truncateTagValue(context.catalogName().orElse(TAG_VALUE_UNKNOWN)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_NAMESPACE)
-            .value(truncateTagValue(context.namespace().orElse(TAG_VALUE_UNKNOWN)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_TABLE)
-            .value(truncateTagValue(context.tableName().orElse(TAG_VALUE_UNKNOWN)))
-            .build());
-
-    // Only include trace ID if it's present in the context.
-    // The context's traceId is only populated when INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled.
-    // This allows efficient credential caching when trace IDs are not needed in session tags.
-    context
-        .traceId()
-        .ifPresent(
-            traceId ->
-                tags.add(
-                    Tag.builder()
-                        .key(CredentialVendingContext.TAG_KEY_TRACE_ID)
-                        .value(truncateTagValue(traceId))
-                        .build()));
-
-    return tags;
+  public static List<Tag> buildSessionTags(
+      String principalName, CredentialVendingContext context, Set<SessionTagField> enabledFields) {
+    return enabledFields.stream()
+        .map(field -> field.buildTag(principalName, context))
+        .flatMap(java.util.Optional::stream)
+        .collect(Collectors.toList());
   }
 
   /**

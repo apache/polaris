@@ -91,31 +91,45 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL =
-      PolarisConfiguration.<Boolean>builder()
-          .key("INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL")
-          .description(
-              "If set to true, session tags (catalog, namespace, table, principal, roles) will be included\n"
-                  + "in AWS STS AssumeRole requests for credential vending. These tags appear in CloudTrail events,\n"
-                  + "enabling correlation between catalog operations and S3 data access.\n"
-                  + "Requires the IAM role trust policy to allow sts:TagSession action.\n"
-                  + "Note that enabling this feature may lead to degradation in temporary credential caching as \n"
-                  + "catalog will no longer be able to reuse credentials for different tables/namespaces/roles.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
+  /**
+   * The set of fields that are supported as AWS STS session tag labels in credential vending.
+   *
+   * <p>Supported values:
+   *
+   * <ul>
+   *   <li>{@code realm} - The realm identifier for the request
+   *   <li>{@code catalog} - The name of the catalog vending credentials
+   *   <li>{@code namespace} - The namespace being accessed (dot-separated)
+   *   <li>{@code table} - The table name being accessed
+   *   <li>{@code principal} - The principal name requesting credentials
+   *   <li>{@code roles} - Comma-separated list of activated principal roles
+   *   <li>{@code trace_id} - OpenTelemetry trace ID (WARNING: disables credential caching)
+   * </ul>
+   */
+  public static final List<String> SUPPORTED_SESSION_TAG_FIELDS =
+      List.<String>of("realm", "catalog", "namespace", "table", "principal", "roles", "trace_id");
 
-  public static final FeatureConfiguration<Boolean> INCLUDE_TRACE_ID_IN_SESSION_TAGS =
-      PolarisConfiguration.<Boolean>builder()
-          .key("INCLUDE_TRACE_ID_IN_SESSION_TAGS")
+  public static final FeatureConfiguration<List> SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL =
+      PolarisConfiguration.<List>builder()
+          .key("SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL")
           .description(
-              "If set to true (and INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL is also true), the OpenTelemetry\n"
-                  + "trace ID will be included as a session tag in AWS STS AssumeRole requests. This enables\n"
-                  + "end-to-end correlation between catalog operations (Polaris events), credential vending (CloudTrail),\n"
-                  + "and metrics reports from compute engines.\n"
-                  + "WARNING: Enabling this feature completely disables credential caching because every request\n"
+              "A comma-separated list of fields to include as session tags in AWS STS AssumeRole requests\n"
+                  + "for credential vending. These tags appear in CloudTrail events, enabling correlation between\n"
+                  + "catalog operations and S3 data access. An empty list (default) disables session tags entirely.\n"
+                  + "Requires the IAM role trust policy to allow sts:TagSession action.\n"
+                  + "\n"
+                  + "Supported fields: "
+                  + String.join(", ", SUPPORTED_SESSION_TAG_FIELDS)
+                  + "\n"
+                  + "\n"
+                  + "Note: each additional field may contribute to AWS STS packed policy size (max 2048 characters).\n"
+                  + "Fields with long values (e.g. deeply nested namespaces) can cause STS policy size limit errors.\n"
+                  + "Choose only the fields needed for your CloudTrail correlation requirements.\n"
+                  + "\n"
+                  + "WARNING: Including 'trace_id' completely disables credential caching because every request\n"
                   + "has a unique trace ID. This may significantly increase latency and STS API costs.\n"
-                  + "Consider leaving this disabled unless end-to-end tracing correlation is critical.")
-          .defaultValue(false)
+                  + "Fields that vary per-request (table, namespace, roles) degrade caching but do not disable it.")
+          .defaultValue(List.<String>of())
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
