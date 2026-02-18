@@ -84,3 +84,48 @@ Note: the regression tests expect Polaris to run with certain options, e.g. with
 storage, default realm `POLARIS` and root credentials `root:secret`; if you run the above command,
 this will be the case. If you run Polaris in a different way, make sure that Polaris is configured
 appropriately.
+
+## Running Specific Test Suites
+
+By default, `run.sh` auto-discovers and executes all test suites in the `suites/` directory.
+To run a specific suite, use the `REGTEST_SUITE` environment variable with just the test name:
+
+```bash
+# Run only Delta tests
+env POLARIS_HOST=localhost REGTEST_SUITE=spark_sql_delta ./plugins/spark/v3.5/regtests/run.sh
+
+# Run only Hudi tests
+env POLARIS_HOST=localhost REGTEST_SUITE=spark_sql_hudi ./plugins/spark/v3.5/regtests/run.sh
+```
+
+## Adding a New Test Suite
+
+Test suites are auto-discovered from the `suites/` directory. To add a new test:
+
+1. Create `suites/<descriptive_name>_<table_format>.sh` (must be executable)
+2. Create `suites/<descriptive_name>_<table_format>.ref` (expected output)
+3. The table format is automatically parsed from the last segment before `.sh`
+4. Supported table formats: `delta`, `hudi`
+
+## Table Format Support
+
+The regression tests support multiple table formats through the `--tableFormat` parameter in `setup.sh`:
+
+- **Delta** (default): Uses `DeltaCatalog` for `spark_catalog`. Tests both Iceberg and Delta tables.
+- **Hudi**: Uses `HoodieCatalog` for `spark_catalog`. Tests both Iceberg and Hudi tables.
+
+Each test suite is isolated with its own Spark configuration and catalog setup. The `spark_catalog`
+can only be configured to one catalog implementation at a time, which is why separate test suites
+are needed for Delta and Hudi formats.
+
+### Manual Setup
+
+You can manually run `setup.sh` with a specific table format:
+
+```bash
+# Setup for Delta tables (default)
+./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.6 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat delta
+
+# Setup for Hudi tables
+./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.6 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat hudi
+```
