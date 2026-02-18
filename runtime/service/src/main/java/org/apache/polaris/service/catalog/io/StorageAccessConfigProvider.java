@@ -204,7 +204,7 @@ public class StorageAccessConfigProvider {
     // Only include trace ID when "trace_id" is in the configured session tag fields.
     // When included, trace IDs become part of the credential cache key (since they affect
     // the vended credentials), which disables effective credential caching.
-    if (sessionTagFields.contains("trace_id")) {
+    if (sessionTagFields.contains(FeatureConfiguration.SESSION_TAG_FIELD_TRACE_ID)) {
       builder.traceId(getCurrentTraceId());
     }
 

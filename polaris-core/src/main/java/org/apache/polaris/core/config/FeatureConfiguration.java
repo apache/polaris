@@ -109,8 +109,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final List<String> SUPPORTED_SESSION_TAG_FIELDS =
       List.<String>of("realm", "catalog", "namespace", "table", "principal", "roles", "trace_id");
 
-  public static final FeatureConfiguration<List> SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL =
-      PolarisConfiguration.<List>builder()
+  /**
+   * The config name for the trace ID session tag field. Included as a constant because callers need
+   * to check for its presence specifically — enabling it populates the trace ID into the credential
+   * vending context, which disables credential caching.
+   */
+  public static final String SESSION_TAG_FIELD_TRACE_ID = "trace_id";
+
+  public static final FeatureConfiguration<List<String>> SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL =
+      PolarisConfiguration.<List<String>>builder()
           .key("SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL")
           .description(
               "A comma-separated list of fields to include as session tags in AWS STS AssumeRole requests\n"
