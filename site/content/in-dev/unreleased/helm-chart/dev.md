@@ -250,8 +250,7 @@ Uninstall the chart, remove resources and delete the namespace:
 
 ```bash
 helm uninstall --namespace polaris polaris
-kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/
-kubectl delete namespace polaris
+kubectl delete namespace polaris --wait=true --ignore-not-found
 ```
 
 The stop Minikube if desired:

@@ -308,8 +308,7 @@ helm-fixtures-cleanup: DEPENDENCIES := kubectl
 .PHONY: helm-fixtures-cleanup
 helm-fixtures-cleanup: check-dependencies ## Remove fixtures and namespace for Helm chart testing
 	@echo "--- Removing fixtures and namespace ---"
-	@kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/ --ignore-not-found
-	@kubectl delete namespace polaris --ignore-not-found
+	@kubectl delete namespace polaris --wait=true --ignore-not-found
 	@echo "--- Fixtures and namespace removed ---"
 
 helm-integration-test: DEPENDENCIES := ct

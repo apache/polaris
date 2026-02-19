@@ -211,5 +211,5 @@ Replace `$ROOT_PASSWORD` with a strong, unique password for the root credentials
 
 ```bash
 helm uninstall --namespace polaris polaris
-kubectl delete namespace polaris
+kubectl delete namespace polaris --wait=true --ignore-not-found
 ```
