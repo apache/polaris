@@ -117,20 +117,6 @@ tests:
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit
-  - it: should not set revisionHistoryLimit with quote empty string
-    template: deployment.yaml
-    set:
-      revisionHistoryLimit: ""
-    asserts:
-      - notExists:
-          path: spec.revisionHistoryLimit
-  - it: should not set revisionHistoryLimit with empty string
-    template: deployment.yaml
-    set:
-      revisionHistoryLimit:
-    asserts:
-      - notExists:
-          path: spec.revisionHistoryLimit
   - it: should set revisionHistoryLimit
     template: deployment.yaml
     set:
@@ -514,7 +500,7 @@ tests:
             containerPort: 8183
             protocol: TCP
 
-  - it: should fail if port name is not unique (#1)
+  - it: should fail when duplicate port names have different port numbers in service
     template: deployment.yaml
     set:
       service:
@@ -525,9 +511,9 @@ tests:
             port: 18181
     asserts:
       - failedTemplate:
-          errorPattern: "service.ports\\[\\d\\]: port name already taken: polaris-http"
+          errorMessage: "service.ports[1]: port name polaris-http has conflicting number, expected 8181, got 18181"
 
-  - it: should fail if port name is not unique (#2)
+  - it: should fail when duplicate port names have different port numbers in managementService
     template: deployment.yaml
     set:
       managementService:
@@ -538,9 +524,39 @@ tests:
             port: 18182
     asserts:
       - failedTemplate:
-          errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris-mgmt"
+          errorMessage: "managementService.ports[1]: port name polaris-mgmt has conflicting number, expected 8182, got 18182"
 
-  - it: should fail if port name is not unique (#3)
+  - it: should fail when duplicate port names have different port numbers in extraServices (#1)
+    template: deployment.yaml
+    set:
+      extraServices:
+        - nameSuffix: ext
+          ports:
+            - name: polaris-extra
+              port: 8183
+            - name: polaris-extra
+              port: 18183
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0].ports[1]: port name polaris-extra has conflicting number, expected 8183, got 18183"
+
+  - it: should fail when duplicate port names have different port numbers in extraServices (#2)
+    template: deployment.yaml
+    set:
+      extraServices:
+        - nameSuffix: ext1
+          ports:
+            - name: polaris-extra
+              port: 8183
+        - nameSuffix: ext
+          ports:
+            - name: polaris-extra
+              port: 18183
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[1].ports[0]: port name polaris-extra has conflicting number, expected 8183, got 18183"
+
+  - it: should fail when duplicate port names have different port numbers across services (#1)
     template: deployment.yaml
     set:
       service:
@@ -553,9 +569,25 @@ tests:
             port: 8182
     asserts:
       - failedTemplate:
-          errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris"
+          errorMessage: "managementService.ports[0]: port name polaris has conflicting number, expected 8181, got 8182"
 
-  - it: should not fail when extra service references the same port name and number
+  - it: should fail when duplicate port names have different port numbers across services (#2)
+    template: deployment.yaml
+    set:
+      service:
+        ports:
+          - name: polaris
+            port: 8181
+      extraServices:
+        - nameSuffix: ext
+          ports:
+            - name: polaris
+              port: 8182
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0].ports[0]: port number 8182 has conflicting name, expected polaris-mgmt, got polaris"
+
+  - it: should deduplicate when extra service references the same port number and name
     template: deployment.yaml
     set:
       extraServices:
@@ -581,6 +613,26 @@ tests:
             containerPort: 8182
             protocol: TCP
 
+  - it: should add extra service port with different number and name
+    template: deployment.yaml
+    set:
+      extraServices:
+        - nameSuffix: "-extra"
+          type: LoadBalancer
+          ports:
+            - name: polaris-extra
+              port: 9999
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 3
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-extra
+            containerPort: 9999
+            protocol: TCP
+
   - it: should fail when extra service references the same port name with different number (#1)
     template: deployment.yaml
     set:
@@ -591,8 +643,8 @@ tests:
             - name: polaris-http
               port: 9999
     asserts:
-        - failedTemplate:
-            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-http, expected 8181, got 9999"
+      - failedTemplate:
+          errorMessage: "extraServices[0].ports[0]: port name polaris-http has conflicting number, expected 8181, got 9999"
 
   - it: should fail when extra service references the same port name with different number (#2)
     template: deployment.yaml
@@ -604,29 +656,111 @@ tests:
             - name: polaris-mgmt
               port: 9999
     asserts:
-        - failedTemplate:
-            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-mgmt, expected 8182, got 9999"
+      - failedTemplate:
+          errorMessage: "extraServices[0].ports[0]: port name polaris-mgmt has conflicting number, expected 8182, got 9999"
 
-  - it: should fail when extra service references the same port name with different number (#3)
+  - it: should fail when same port number has conflicting name in service
     template: deployment.yaml
     set:
       service:
         ports:
           - name: polaris-http
             port: 8181
-          - name: polaris-https
-            port: 8043
+          - name: polaris-http2
+            port: 8181
+    asserts:
+        - failedTemplate:
+            errorMessage: "service.ports[1]: port number 8181 has conflicting name, expected polaris-http, got polaris-http2"
+
+  - it: should fail when same port number has conflicting name in managementService
+    template: deployment.yaml
+    set:
+      managementService:
+        ports:
+          - name: polaris-mgmt
+            port: 8182
+          - name: polaris-mgmt2
+            port: 8182
+    asserts:
+        - failedTemplate:
+            errorMessage: "managementService.ports[1]: port number 8182 has conflicting name, expected polaris-mgmt, got polaris-mgmt2"
+
+  - it: should fail when same port number has conflicting name in extraServices (#1)
+    template: deployment.yaml
+    set:
+      extraServices:
+        - nameSuffix: ext
+          ports:
+            - name: polaris-extra
+              port: 8183
+            - name: polaris-extra2
+              port: 8183
+    asserts:
+        - failedTemplate:
+            errorMessage: "extraServices[0].ports[1]: port number 8183 has conflicting name, expected polaris-extra, got polaris-extra2"
+
+  - it: should fail when same port number has conflicting name in extraServices (#2)
+    template: deployment.yaml
+    set:
+      extraServices:
+        - nameSuffix: ext1
+          ports:
+            - name: polaris-extra
+              port: 8183
+        - nameSuffix: ext2
+          ports:
+            - name: polaris-extra2
+              port: 8183
+    asserts:
+        - failedTemplate:
+            errorMessage: "extraServices[1].ports[0]: port number 8183 has conflicting name, expected polaris-extra, got polaris-extra2"
+
+  - it: should fail when extra service has conflicting name for same port number
+    template: deployment.yaml
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
       extraServices:
         - nameSuffix: "-extra"
           type: LoadBalancer
           ports:
-            - name: polaris-https
-              port: 9999
+            - name: polaris-extra
+              port: 8181
     asserts:
         - failedTemplate:
-            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-https, expected 8043, got 9999"
+            errorMessage: "extraServices[0].ports[0]: port number 8181 has conflicting name, expected polaris-http, got polaris-extra"
 
-  - it: should fail when extra service references the same port name with different protocol
+  - it: should fail when same port number has conflicting protocol in service
+    template: deployment.yaml
+    set:
+      service:
+        ports:
+          - name: polaris-http
+            port: 8181
+          - name: polaris-http
+            port: 8181
+            protocol: UDP
+    asserts:
+        - failedTemplate:
+            errorMessage: "service.ports[1]: port number 8181 has conflicting protocol, expected TCP, got UDP"
+
+  - it: should fail when same port number has conflicting protocol in managementService
+    template: deployment.yaml
+    set:
+      managementService:
+        ports:
+          - name: polaris-mgmt
+            port: 8182
+          - name: polaris-mgmt
+            port: 8182
+            protocol: UDP
+    asserts:
+        - failedTemplate:
+            errorMessage: "managementService.ports[1]: port number 8182 has conflicting protocol, expected TCP, got UDP"
+
+  - it: should fail when same port number has conflicting protocol in extraServices
     template: deployment.yaml
     set:
       service:
@@ -642,34 +776,28 @@ tests:
               protocol: UDP
     asserts:
         - failedTemplate:
-            errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong protocol for port polaris-http, expected TCP, got UDP"
+            errorMessage: "extraServices[0].ports[0]: port number 8181 has conflicting protocol, expected TCP, got UDP"
 
-  - it: should create 2 ports with same number
+  - it: should deduplicate ports with same number and name
     template: deployment.yaml
     set:
       service:
         ports:
           - name: polaris-http
             port: 8181
-          - name: polaris-http2
+          - name: polaris-http
             port: 8181
     asserts:
       - lengthEqual:
           path: spec.template.spec.containers[0].ports
-          count: 3
+          count: 2
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
             name: polaris-http
             containerPort: 8181
             protocol: TCP
-      - contains:
-          path: spec.template.spec.containers[0].ports
-          content:
-            name: polaris-http2
-            containerPort: 8181
-            protocol: TCP
-  - it: should create 2 ports with same number using targetPort
+  - it: should deduplicate ports with same number and name using targetPort
     template: deployment.yaml
     set:
       service:
@@ -677,23 +805,17 @@ tests:
           - name: polaris-http
             port: 18181
             targetPort: 8181
-          - name: polaris-http2
+          - name: polaris-http
             port: 18181
             targetPort: 8181
     asserts:
       - lengthEqual:
           path: spec.template.spec.containers[0].ports
-          count: 3
+          count: 2
       - contains:
           path: spec.template.spec.containers[0].ports
           content:
             name: polaris-http
-            containerPort: 8181
-            protocol: TCP
-      - contains:
-          path: spec.template.spec.containers[0].ports
-          content:
-            name: polaris-http2
             containerPort: 8181
             protocol: TCP
   - it: should set port protocols
@@ -1262,6 +1384,20 @@ tests:
               secretKeyRef:
                 name: polaris-persistence
                 key: jdbcUrl
+
+  - it: should set nosql persistence environment variables
+    template: deployment.yaml
+    set:
+      persistence: { type: "nosql", nosql: { secret: { name: "polaris-persistence", connectionString: "connectionString" } } }
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: quarkus.mongodb.connection-string
+            valueFrom:
+              secretKeyRef:
+                name: polaris-persistence
+                key: connectionString
 
   - it: should configure volume for file logging
     template: deployment.yaml

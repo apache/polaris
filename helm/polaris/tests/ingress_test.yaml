@@ -132,7 +132,7 @@ tests:
     set:
       ingress.enabled: true
     asserts:
-      - notExists:
+      - isNullOrEmpty:
           path: spec.tls
   - it: should set ingress TLS
     set:

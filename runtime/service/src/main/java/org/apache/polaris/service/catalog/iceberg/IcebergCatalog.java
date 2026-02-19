@@ -183,11 +183,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
 
   private final String catalogName;
-  private long catalogId = -1;
+  private final long catalogId;
   private String defaultBaseLocation;
   private Map<String, String> catalogProperties;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
-  private FileIOFactory fileIOFactory;
+  private final FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
   /**

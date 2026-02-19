@@ -36,6 +36,7 @@ import org.apache.iceberg.spark.actions.SparkActions;
 import org.apache.iceberg.spark.source.SparkTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
+import org.apache.polaris.spark.utils.PaimonHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.SparkContext;
 import org.apache.spark.sql.SparkSession;
@@ -110,6 +111,7 @@ public class SparkCatalogTest {
 
       this.deltaHelper = new DeltaHelper(options);
       this.hudiHelper = new HudiHelper(options);
+      this.paimonHelper = new PaimonHelper(options);
     }
   }
 
@@ -129,6 +131,8 @@ public class SparkCatalogTest {
     catalogConfig.put(
         DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog");
     catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
+    catalogConfig.put(
+        PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopPaimonCatalog");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
 
@@ -433,7 +437,7 @@ public class SparkCatalogTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"delta", "hudi", "csv"})
+  @ValueSource(strings = {"delta", "hudi", "csv", "paimon"})
   void testCreateAndLoadGenericTable(String format) throws Exception {
     Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
     createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, format);
@@ -650,6 +654,9 @@ public class SparkCatalogTest {
         // Mock the routing utility methods
         mockedStaticUtils
             .when(() -> PolarisCatalogUtils.useHudi(Mockito.eq(format)))
+            .thenCallRealMethod();
+        mockedStaticUtils
+            .when(() -> PolarisCatalogUtils.usePaimon(Mockito.eq(format)))
             .thenCallRealMethod();
 
         if ("hudi".equalsIgnoreCase(format)) {

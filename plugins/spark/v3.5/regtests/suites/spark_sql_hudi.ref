@@ -1,0 +1,45 @@
+{"defaults":{"default-base-location":"file:///tmp/spark_hudi_catalog"},"overrides":{"prefix":"spark_hudi_catalog"},"endpoints":["GET /v1/{prefix}/namespaces","GET /v1/{prefix}/namespaces/{namespace}","HEAD /v1/{prefix}/namespaces/{namespace}","POST /v1/{prefix}/namespaces","POST /v1/{prefix}/namespaces/{namespace}/properties","DELETE /v1/{prefix}/namespaces/{namespace}","GET /v1/{prefix}/namespaces/{namespace}/tables","GET /v1/{prefix}/namespaces/{namespace}/tables/{table}","HEAD /v1/{prefix}/namespaces/{namespace}/tables/{table}","POST /v1/{prefix}/namespaces/{namespace}/tables","POST /v1/{prefix}/namespaces/{namespace}/tables/{table}","DELETE /v1/{prefix}/namespaces/{namespace}/tables/{table}","POST /v1/{prefix}/tables/rename","POST /v1/{prefix}/namespaces/{namespace}/register","POST /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics","POST /v1/{prefix}/transactions/commit","GET /v1/{prefix}/namespaces/{namespace}/views","GET /v1/{prefix}/namespaces/{namespace}/views/{view}","HEAD /v1/{prefix}/namespaces/{namespace}/views/{view}","POST /v1/{prefix}/namespaces/{namespace}/views","POST /v1/{prefix}/namespaces/{namespace}/views/{view}","DELETE /v1/{prefix}/namespaces/{namespace}/views/{view}","POST /v1/{prefix}/views/rename","GET polaris/v1/{prefix}/namespaces/{namespace}/generic-tables","POST polaris/v1/{prefix}/namespaces/{namespace}/generic-tables","DELETE polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}","GET polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}","GET /polaris/v1/{prefix}/namespaces/{namespace}/policies","POST /polaris/v1/{prefix}/namespaces/{namespace}/policies","GET /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}","PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}","DELETE /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}","PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings","POST /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings","GET /polaris/v1/{prefix}/applicable-policies"]}
+Catalog created
+spark-sql (default)> use polaris;
+spark-sql ()> create namespace hudi_db1;
+spark-sql ()> create namespace hudi_db2;
+spark-sql ()> show namespaces;
+hudi_db1
+hudi_db2
+spark-sql ()> 
+            > create namespace hudi_db1.schema1;
+spark-sql ()> show namespaces in hudi_db1;
+hudi_db1.schema1
+spark-sql ()> 
+            > create table hudi_db1.schema1.hudi_tb1 (id int, name string) using hudi location 'file:///tmp/spark_hudi_catalog/hudi_tb1';
+spark-sql ()> show tables in hudi_db1;
+spark-sql ()> show tables in hudi_db1.schema1;
+spark-sql ()> 
+            > use hudi_db1.schema1;
+spark-sql (hudi_db1.schema1)> insert into hudi_tb1 values (1, 'alice'), (2, 'bob');
+spark-sql (hudi_db1.schema1)> select * from hudi_tb1 order by id;
+spark-sql (hudi_db1.schema1)> 
+                            > create table hudi_tb2 (name string, age int, country string) using hudi partitioned by (country) location 'file:///tmp/spark_hudi_catalog/hudi_tb2';
+spark-sql (hudi_db1.schema1)> insert into hudi_tb2 values ('anna', 10, 'US'), ('james', 32, 'US'), ('yan', 16, 'CHINA');
+spark-sql (hudi_db1.schema1)> select name, country from hudi_tb2 order by age;
+spark-sql (hudi_db1.schema1)> 
+                            > show tables;
+spark-sql (hudi_db1.schema1)> 
+                            > use hudi_db1;
+spark-sql (hudi_db1)> create table iceberg_tb (col1 int);
+spark-sql (hudi_db1)> insert into iceberg_tb values (100), (200);
+spark-sql (hudi_db1)> select * from iceberg_tb order by col1;
+100
+200
+spark-sql (hudi_db1)> 
+                    > show tables;
+iceberg_tb
+spark-sql (hudi_db1)> show tables in hudi_db1.schema1;
+spark-sql (hudi_db1)> 
+                    > drop table hudi_db1.schema1.hudi_tb1;
+spark-sql (hudi_db1)> drop table hudi_db1.schema1.hudi_tb2;
+spark-sql (hudi_db1)> drop namespace hudi_db1.schema1;
+spark-sql (hudi_db1)> drop table iceberg_tb;
+spark-sql (hudi_db1)> drop namespace hudi_db1;
+spark-sql (hudi_db1)> drop namespace hudi_db2;
+spark-sql (hudi_db1)> 

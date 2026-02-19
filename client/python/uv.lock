@@ -50,7 +50,7 @@ dev = [
     { name = "flake8", specifier = ">=4.0.0" },
     { name = "mypy", specifier = ">=1.19,<=1.19.1" },
     { name = "openapi-generator-cli", specifier = "==7.12.0" },
-    { name = "pip-licenses-cli", specifier = "==3.0.1" },
+    { name = "pip-licenses-cli", specifier = "==4.0.0" },
     { name = "pre-commit", specifier = "==4.5.1" },
     { name = "pyiceberg", specifier = "==0.10.0" },
     { name = "pytest", specifier = ">=7.2.1" },
@@ -619,25 +619,25 @@ wheels = [
 
 [[package]]
 name = "pip-licenses-cli"
-version = "3.0.1"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pip-licenses-lib" },
     { name = "prettytable" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/89/fb4e266729965a23bc4400aff022ddbafe38668d544b3bc3b11394473551/pip_licenses_cli-3.0.1.tar.gz", hash = "sha256:6d9262325dff114897aa52b2bb996496506be5c41119ecf7b7aba237dc7b3d88", size = 23049, upload-time = "2025-11-06T08:26:38.264Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/de/b25cc7133f38fbf175df9f467a36da1a530fc1c7b023b72d76f51e888980/pip_licenses_cli-4.0.0.tar.gz", hash = "sha256:f500e46f8062dfc846df008a0f91c4f6e18fe8c457fa413ce80934a715883f0d", size = 23553, upload-time = "2026-02-16T11:41:20.501Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/d9/fdd6f01b51e11f9a612fad3407726f9b192d3d4025888872e99e3a5ac17b/pip_licenses_cli-3.0.1-py3-none-any.whl", hash = "sha256:d5aec7414c4d7b00bd53d3f2b7ddb1898f2d596f057c1d3c305edc1b60ab5229", size = 16495, upload-time = "2025-11-06T08:26:36.902Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/3e/96f05ff44de30c09930e111680ef983150f6e2be53dafbe6e872e973aeca/pip_licenses_cli-4.0.0-py3-none-any.whl", hash = "sha256:85d90734379fb638413d72e4e61d029504186a661fe46ee194ef98b013f2d64f", size = 16616, upload-time = "2026-02-16T11:41:18.93Z" },
 ]
 
 [[package]]
 name = "pip-licenses-lib"
-version = "1.0.0"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f1/9d/526e66475bc532c7d5a30eda41841b7e19582ad5e98160059888d7a4f0c9/pip_licenses_lib-1.0.0.tar.gz", hash = "sha256:aff6a67c7adc5498b3225a71dd8391cbd78c8179a0deacb16b360a971fecd381", size = 14324, upload-time = "2025-10-20T08:11:20.13Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/df/58ac443f45b150fb0d7811a3fafc1594b2782e3f2bbd3ebfcfd6bb38c8e0/pip_licenses_lib-1.1.0.tar.gz", hash = "sha256:6d4c8c869ea3e3302af826f163d128ec1ffb29f20d7e83ffb742c2efeedf53ed", size = 15120, upload-time = "2026-02-16T10:49:05.286Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/7e/418c30cd52375ee9fefd3a2fd9fc98688d3467577e0ab256c96c444dc06b/pip_licenses_lib-1.0.0-py3-none-any.whl", hash = "sha256:6e3bc3ef60f61e0ae3c46d3fd7849caa4d13d99fc42abd41df7562d64951a3a2", size = 9332, upload-time = "2025-10-20T08:11:19.085Z" },
+    { url = "https://files.pythonhosted.org/packages/66/a0/8262127c7872e4e950fab53bffa8b4dffa4965f950708d3ba0299a789330/pip_licenses_lib-1.1.0-py3-none-any.whl", hash = "sha256:4f44e50743202677034f58ec56af1cbd95d9d2aad5a9f20d86004fee8bc1e1e7", size = 9693, upload-time = "2026-02-16T10:49:04.236Z" },
 ]
 
 [[package]]

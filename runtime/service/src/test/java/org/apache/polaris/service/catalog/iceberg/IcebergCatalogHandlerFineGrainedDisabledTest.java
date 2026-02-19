@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -35,6 +36,8 @@ import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 /**
  * Test class specifically for testing fine-grained authorization when the feature is DISABLED. This
@@ -61,8 +64,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     }
   }
 
-  @Test
-  public void testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
+  @TestFactory
+  Stream<DynamicTest> testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
     // Test that when fine-grained authorization is disabled, fine-grained privileges alone are
     // insufficient
     // This ensures the feature flag properly controls behavior and fine-grained privileges don't
@@ -75,7 +78,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
     // With fine-grained authorization disabled, even having the specific fine-grained privilege
     // should be insufficient - the system should require the broader privileges
-    doTestInsufficientPrivileges(
+    return doTestInsufficientPrivileges(
+        "updateTable",
         List.of(
             PolarisPrivilege
                 .TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
@@ -89,11 +93,6 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        PRINCIPAL_NAME,
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        (privilege) ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
-        (privilege) ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
   }
 }

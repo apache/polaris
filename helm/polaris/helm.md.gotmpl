@@ -127,6 +127,7 @@ fail if these resources are not created beforehand. You can find some examples i
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=mongodb --timeout=120s
 ```
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
@@ -209,12 +210,13 @@ This section is intended for developers who want to run the Polaris Helm chart t
 The following tools are required to run the tests:
 
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
+* [Helm JSON Schema](https://github.com/losisin/helm-values-schema-json)
 * [Chart Testing](https://github.com/helm/chart-testing)
 * [yamllint](https://github.com/adrienverge/yamllint)
 
 Quick installation instructions for these tools:
 ```bash
-helm plugin install https://github.com/helm-unittest/helm-unittest.git
+make helm-install-plugins
 brew install chart-testing
 brew install yamllint
 ```

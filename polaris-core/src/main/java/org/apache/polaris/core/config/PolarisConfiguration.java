@@ -18,12 +18,17 @@
  */
 package org.apache.polaris.core.config;
 
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An ABC for Polaris configurations that alter the service's behavior TODO: deprecate unsafe
@@ -33,7 +38,11 @@ import java.util.stream.Stream;
  */
 public abstract class PolarisConfiguration<T> {
 
-  private static final List<PolarisConfiguration<?>> allConfigurations = new ArrayList<>();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
+
+  private static final Map<String, PolarisConfiguration<?>> ALL_CONFIGURATIONS =
+      new ConcurrentHashMap<>();
+  private static final Set<String> ALL_CATALOG_CONFIGS = new ConcurrentSkipListSet<>();
 
   private final String key;
   private final String description;
@@ -50,33 +59,33 @@ public abstract class PolarisConfiguration<T> {
    * configs.
    */
   private static void registerConfiguration(PolarisConfiguration<?> configuration) {
-    for (PolarisConfiguration<?> existingConfiguration : allConfigurations) {
-      if (existingConfiguration.key.equals(configuration.key)) {
+    if (ALL_CONFIGURATIONS.putIfAbsent(configuration.key(), configuration) != null) {
+      throw new IllegalArgumentException(
+          String.format("Config '%s' is already in use", configuration.key));
+    }
+    if (configuration.hasCatalogConfig()) {
+      if (!ALL_CATALOG_CONFIGS.add(configuration.catalogConfig())) {
         throw new IllegalArgumentException(
-            String.format("Config '%s' is already in use", configuration.key));
-      } else {
-        var configs =
-            Stream.of(
-                    configuration.catalogConfigImpl,
-                    configuration.catalogConfigUnsafeImpl,
-                    existingConfiguration.catalogConfigImpl,
-                    existingConfiguration.catalogConfigUnsafeImpl)
-                .flatMap(Optional::stream)
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        for (var entry : configs.entrySet()) {
-          if (entry.getValue() > 1) {
-            throw new IllegalArgumentException(
-                String.format("Catalog config %s is already in use", entry.getKey()));
-          }
-        }
+            String.format("Catalog config '%s' is already in use", configuration.catalogConfig()));
       }
     }
-    allConfigurations.add(configuration);
+    if (configuration.hasCatalogConfigUnsafe()) {
+      if (!ALL_CATALOG_CONFIGS.add(configuration.catalogConfigUnsafe())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Catalog config '%s' is already in use", configuration.catalogConfigUnsafe()));
+      }
+    }
   }
 
-  /** Returns a list of all PolarisConfigurations that have been registered */
+  /** Returns a list of all PolarisConfigurations that have been registered. */
   public static List<PolarisConfiguration<?>> getAllConfigurations() {
-    return List.copyOf(allConfigurations);
+    return List.copyOf(ALL_CONFIGURATIONS.values());
+  }
+
+  /** Returns a set of all catalog config keys that have been registered. */
+  public static Set<String> getAllCatalogConfigs() {
+    return Set.copyOf(ALL_CATALOG_CONFIGS);
   }
 
   @SuppressWarnings("unchecked")
@@ -130,6 +139,59 @@ public abstract class PolarisConfiguration<T> {
 
   public final T defaultValue() {
     return defaultValue;
+  }
+
+  public T resolveValue(
+      Function<String, ?> globalProperties, Function<String, ?> catalogProperties) {
+    Object propertyValue = null;
+    if (hasCatalogConfig() || hasCatalogConfigUnsafe()) {
+      if (hasCatalogConfig()) {
+        propertyValue = catalogProperties.apply(catalogConfig());
+      }
+      if (propertyValue == null) {
+        if (hasCatalogConfigUnsafe()) {
+          propertyValue = catalogProperties.apply(catalogConfigUnsafe());
+        }
+        if (propertyValue != null) {
+          LOGGER.warn(
+              String.format(
+                  "Deprecated config %s is in use and will be removed in a future version",
+                  catalogConfigUnsafe()));
+        }
+      }
+    }
+
+    if (propertyValue == null) {
+      propertyValue = globalProperties.apply(key());
+    }
+
+    return tryCast(propertyValue);
+  }
+
+  /**
+   * In some cases, we may extract a value that doesn't match the expected type for a config. This
+   * method can be used to attempt to force-cast it using `String.valueOf`
+   */
+  private @Nonnull T tryCast(Object value) {
+    if (value == null) {
+      return defaultValue();
+    }
+
+    if (defaultValue() instanceof Boolean) {
+      return cast(Boolean.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Integer) {
+      return cast(Integer.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Long) {
+      return cast(Long.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Double) {
+      return cast(Double.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof Float) {
+      return cast(Float.valueOf(String.valueOf(value)));
+    } else if (defaultValue() instanceof List<?>) {
+      return cast(new ArrayList<>((List<?>) value));
+    } else {
+      return cast(value);
+    }
   }
 
   public static class Builder<T> {

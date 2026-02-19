@@ -29,7 +29,7 @@ services:
       AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       polaris.realm-context.realms: POLARIS
-      quarkus.log.file.enable: "false"
+      quarkus.log.file.enabled: "false"
       quarkus.otel.sdk.disabled: "true"
       polaris.features."DROP_WITH_PURGE_ENABLED": "true"
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"

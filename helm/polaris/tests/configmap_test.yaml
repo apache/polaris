@@ -125,6 +125,22 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=relational-jdbc" }
 
+  - it: should configure nosql persistence with default values
+    set:
+      persistence: { type: "nosql" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=nosql" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.nosql.backend=MongoDb" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.mongodb.database=polaris" }
+
+  - it: should configure nosql persistence with custom values
+    set:
+      persistence: { type: "nosql", nosql: { backend: "InMemory", database: "db1" } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=nosql" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.nosql.backend=InMemory" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.mongodb.database=db1" }
+
   - it: should configure file-io
     set:
       fileIo.type: "custom"
@@ -151,12 +167,6 @@ tests:
     set: { authentication: { type: mixed } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.type=mixed" }
-
-  - it: should fail on invalid authentication type
-    set: { authentication: { type: invalid } }
-    asserts:
-      - failedTemplate:
-          errorMessage: "authentication.type: invalid authentication type"
 
   - it: should configure default authenticator
     set: { authentication: { authenticator: { type: default } } }
@@ -222,8 +232,8 @@ tests:
 
   - it: should derive HTTP ports from service configuration
     set:
-      service: { ports: [ { port: 8080 } ] }
-      managementService: { ports: [ { port: 8081 } ] }
+      service: { ports: [ { name: polaris-http, port: 8080 } ] }
+      managementService: { ports: [ { name: polaris-mgmt, port: 8081 } ] }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.port=8080" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.management.port=8081" }
@@ -233,7 +243,7 @@ tests:
       logging: { level: DEBUG, console: { enabled: true, threshold: INFO, format: custom } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.level=DEBUG" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.level=INFO" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.format=custom" }
 
@@ -241,7 +251,7 @@ tests:
     set:
       logging: { file: { enabled: true, threshold: DEBUG, format: custom, logsDir: /mnt/logs, fileName: custom.log, rotation: { maxFileSize: 50Mi, maxBackupIndex: 2, fileSuffix: .yyyy-MM-dd } } }
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.level=DEBUG" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.path=/mnt/logs/custom.log" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.rotation.max-file-size=52428800" }
@@ -252,15 +262,15 @@ tests:
     set:
       logging: { file: { enabled: false }, console: { enabled: false } }
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=false" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=false" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enabled=false" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enabled=false" }
 
   - it: should enable JSON logging
     set:
       logging: { file: { enabled: true, json: true }, console: { enabled: true, json: true } }
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=true" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enabled=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.json.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.json.enabled=true" }
 

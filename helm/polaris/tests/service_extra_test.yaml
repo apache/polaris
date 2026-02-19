@@ -37,14 +37,6 @@ tests:
           apiVersion: v1
         not: true
 
-  - it: should fail to create extra service if suffix is not set
-    set:
-      extraServices:
-        - nameSuffix: ""
-    asserts:
-      - failedTemplate:
-          errorMessage: "extraServices[0]: missing required nameSuffix"
-
   - it: should fail to create extra service if suffix is invalid
     set:
       extraServices:
@@ -300,11 +292,11 @@ tests:
     set:
       extraServices:
         - nameSuffix: "extra"
-          trafficDistribution: Local
+          trafficDistribution: PreferClose
     asserts:
       - equal:
           path: spec.trafficDistribution
-          value: Local
+          value: PreferClose
   - it: should not set service traffic distribution if Kubernetes version < 1.31
     capabilities:
       majorVersion: 1
@@ -312,7 +304,7 @@ tests:
     set:
       extraServices:
         - nameSuffix: "extra"
-          trafficDistribution: Local
+          trafficDistribution: PreferClose
     asserts:
       - notExists:
           path: spec.trafficDistribution

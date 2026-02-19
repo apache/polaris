@@ -215,6 +215,47 @@ client-cleanup: ## Cleanup virtual environment and Python cache files
 
 ##@ Helm
 
+helm-install-plugins: DEPENDENCIES := helm
+.PHONY: helm-install-plugins
+helm-install-plugins: check-dependencies ## Install required Helm plugins (unittest, schema)
+	@echo "--- Installing Helm plugins ---"
+	@HELM_MAJOR_VERSION=$$(helm version --short | sed 's/^v//' | cut -d. -f1); \
+	if [ "$$HELM_MAJOR_VERSION" -ge 4 ] 2>/dev/null; then \
+		HELM_PLUGIN_FLAGS="--verify=false"; \
+	else \
+		HELM_PLUGIN_FLAGS=""; \
+	fi; \
+	if helm plugin list | grep -q "^unittest"; then \
+		echo "Plugin 'unittest' is already installed."; \
+	else \
+		echo "Installing 'unittest' plugin..."; \
+		helm plugin install $$HELM_PLUGIN_FLAGS https://github.com/helm-unittest/helm-unittest.git; \
+	fi; \
+	if helm plugin list | grep -q "^schema"; then \
+		echo "Plugin 'schema' is already installed."; \
+	else \
+		echo "Installing 'schema' plugin..."; \
+		helm plugin install $$HELM_PLUGIN_FLAGS https://github.com/losisin/helm-values-schema-json.git; \
+	fi
+	@echo "--- Helm plugins installed ---"
+
+helm-schema-verify: DEPENDENCIES := helm git
+.PHONY: helm-schema-verify
+helm-schema-verify: helm-schema-generate ## Verify Helm chart JSON schema is up to date
+	@echo "--- Verifying Helm values schema is up to date ---"
+	@if ! git diff --exit-code helm/polaris/values.schema.json; then \
+		echo "ERROR: Helm schema is out of date. Please run 'make helm-schema-generate' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Helm values schema is up to date ---"
+
+helm-schema-generate: DEPENDENCIES := helm
+.PHONY: helm-schema-generate
+helm-schema-generate: helm-install-plugins ## Generate Helm chart JSON schema from values.yaml
+	@echo "--- Generating Helm values schema ---"
+	@helm schema -f helm/polaris/values.yaml -o helm/polaris/values.schema.json --use-helm-docs --draft 7
+	@echo "--- Helm values schema generated ---"
+
 helm-doc-generate: DEPENDENCIES := helm-docs
 .PHONY: helm-doc-generate
 helm-doc-generate: check-dependencies ## Generate Helm chart documentation
@@ -222,9 +263,19 @@ helm-doc-generate: check-dependencies ## Generate Helm chart documentation
 	@helm-docs --chart-search-root=helm --template-files helm.md.gotmpl --output-file ../../site/content/in-dev/unreleased/helm.md
 	@echo "--- Helm documentation generated and copied ---"
 
+helm-doc-verify: DEPENDENCIES := helm-docs git
+.PHONY: helm-doc-verify
+helm-doc-verify: helm-doc-generate ## Verify Helm chart documentation is up to date
+	@echo "--- Verifying Helm documentation is up to date ---"
+	@if ! git diff --exit-code site/content/in-dev/unreleased/helm.md; then \
+		echo "ERROR: Helm documentation is out of date. Please run 'make helm-doc-generate' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Helm documentation is up to date ---"
+
 helm-unittest: DEPENDENCIES := helm
 .PHONY: helm-unittest
-helm-unittest: check-dependencies ## Run Helm chart unittest
+helm-unittest: helm-install-plugins ## Run Helm chart unittest
 	@echo "--- Running Helm chart unittest ---"
 	@helm unittest helm/polaris
 	@echo "--- Helm chart unittest complete ---"
@@ -235,6 +286,9 @@ helm-lint: check-dependencies ## Run Helm chart lint check
 	@echo "--- Running Helm chart linting ---"
 	@ct lint --charts helm/polaris
 	@echo "--- Helm chart linting complete ---"
+
+.PHONY: helm
+helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run all Helm targets (schema, docs, unittest, lint)
 
 ##@ Minikube
 
