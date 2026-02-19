@@ -452,6 +452,241 @@ class MetricsReportPersistenceTest {
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
 
+  /**
+   * Tests that writing the same reportId twice is idempotent and doesn't throw an exception. This
+   * verifies that the ON CONFLICT DO NOTHING (PostgreSQL) / MERGE INTO (H2) logic works correctly.
+   */
+  @Test
+  void testWriteDuplicateScanReportIsIdempotent() {
+    String reportId = UUID.randomUUID().toString();
+
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId(12345L)
+            .tableId(99999L)
+            .timestampMs(System.currentTimeMillis())
+            .resultDataFiles(10L)
+            .resultDeleteFiles(0L)
+            .totalFileSizeBytes(1000L)
+            .totalDataManifests(1L)
+            .totalDeleteManifests(0L)
+            .scannedDataManifests(1L)
+            .scannedDeleteManifests(0L)
+            .skippedDataManifests(0L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(0L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(10L)
+            .equalityDeleteFiles(0L)
+            .positionalDeleteFiles(0L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(0L)
+            .build();
+
+    // First write should succeed
+    metricsPersistence.writeScanMetricsReport(report);
+
+    // Second write with same reportId should NOT throw (idempotent)
+    metricsPersistence.writeScanMetricsReport(report);
+
+    // Verify only one report exists
+    var results =
+        metricsPersistence.queryScanMetricsReports(12345L, 99999L, null, null, null, 10);
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getReportId()).isEqualTo(reportId);
+  }
+
+  /**
+   * Tests that writing the same reportId twice for commit reports is idempotent and doesn't throw
+   * an exception.
+   */
+  @Test
+  void testWriteDuplicateCommitReportIsIdempotent() {
+    String reportId = UUID.randomUUID().toString();
+
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId(12345L)
+            .tableId(88888L)
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(100L)
+            .sequenceNumber(1L)
+            .operation("append")
+            .addedDataFiles(5L)
+            .removedDataFiles(0L)
+            .totalDataFiles(5L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(0L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(1000L)
+            .removedRecords(0L)
+            .totalRecords(1000L)
+            .addedFileSizeBytes(10000L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(10000L)
+            .totalDurationMs(50L)
+            .attempts(1)
+            .build();
+
+    // First write should succeed
+    metricsPersistence.writeCommitMetricsReport(report);
+
+    // Second write with same reportId should NOT throw (idempotent)
+    metricsPersistence.writeCommitMetricsReport(report);
+
+    // Verify only one report exists
+    var results =
+        metricsPersistence.queryCommitMetricsReports(12345L, 88888L, null, null, null, 10);
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getReportId()).isEqualTo(reportId);
+  }
+
+  /**
+   * Tests that pagination works correctly when records have different timestamps. This test
+   * verifies that cursor-based pagination using report_id correctly paginates through all records
+   * regardless of their timestamp values.
+   */
+  @Test
+  void testPaginationAcrossTimestampBoundaries() {
+    long baseTime = System.currentTimeMillis();
+
+    // Create 6 reports with varying timestamps (not in order)
+    // We use specific UUIDs that we can sort to verify ordering
+    String[] reportIds = new String[6];
+    long[] timestamps = {
+      baseTime + 5000, // Report 0: future
+      baseTime + 1000, // Report 1: near future
+      baseTime - 1000, // Report 2: recent past
+      baseTime + 3000, // Report 3: future
+      baseTime - 2000, // Report 4: past
+      baseTime // Report 5: now
+    };
+
+    for (int i = 0; i < 6; i++) {
+      reportIds[i] = UUID.randomUUID().toString();
+      ModelScanMetricsReport report =
+          ImmutableModelScanMetricsReport.builder()
+              .reportId(reportIds[i])
+              .realmId("TEST_REALM")
+              .catalogId(55555L)
+              .tableId(66666L)
+              .timestampMs(timestamps[i])
+              .resultDataFiles((long) i)
+              .resultDeleteFiles(0L)
+              .totalFileSizeBytes(100L)
+              .totalDataManifests(1L)
+              .totalDeleteManifests(0L)
+              .scannedDataManifests(1L)
+              .scannedDeleteManifests(0L)
+              .skippedDataManifests(0L)
+              .skippedDeleteManifests(0L)
+              .skippedDataFiles(0L)
+              .skippedDeleteFiles(0L)
+              .totalPlanningDurationMs(10L)
+              .equalityDeleteFiles(0L)
+              .positionalDeleteFiles(0L)
+              .indexedDeleteFiles(0L)
+              .totalDeleteFileSizeBytes(0L)
+              .build();
+      metricsPersistence.writeScanMetricsReport(report);
+    }
+
+    // Get first page of 2 results
+    var page1 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, null, 2);
+    assertThat(page1).hasSize(2);
+
+    // Use last report_id from page 1 as cursor for page 2
+    String cursor1 = page1.get(page1.size() - 1).getReportId();
+    var page2 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor1, 2);
+    assertThat(page2).hasSize(2);
+
+    // Use last report_id from page 2 as cursor for page 3
+    String cursor2 = page2.get(page2.size() - 1).getReportId();
+    var page3 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor2, 2);
+    assertThat(page3).hasSize(2);
+
+    // Use last report_id from page 3 as cursor - should get no more results
+    String cursor3 = page3.get(page3.size() - 1).getReportId();
+    var page4 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor3, 2);
+    assertThat(page4).isEmpty();
+
+    // Verify no duplicates across pages - collect all report IDs
+    java.util.Set<String> allReportIds = new java.util.HashSet<>();
+    page1.forEach(r -> allReportIds.add(r.getReportId()));
+    page2.forEach(r -> allReportIds.add(r.getReportId()));
+    page3.forEach(r -> allReportIds.add(r.getReportId()));
+
+    // Should have exactly 6 unique report IDs (no duplicates, no missing)
+    assertThat(allReportIds).hasSize(6);
+  }
+
+  /**
+   * Tests pagination for commit metrics reports across timestamp boundaries.
+   */
+  @Test
+  void testCommitPaginationAcrossTimestampBoundaries() {
+    long baseTime = System.currentTimeMillis();
+
+    // Create 4 reports with varying timestamps
+    for (int i = 0; i < 4; i++) {
+      // Alternate between past and future timestamps
+      long timestamp = (i % 2 == 0) ? baseTime - (i * 1000) : baseTime + (i * 1000);
+      ModelCommitMetricsReport report =
+          ImmutableModelCommitMetricsReport.builder()
+              .reportId(UUID.randomUUID().toString())
+              .realmId("TEST_REALM")
+              .catalogId(44444L)
+              .tableId(55555L)
+              .timestampMs(timestamp)
+              .snapshotId(100L + i)
+              .sequenceNumber((long) i)
+              .operation("append")
+              .addedDataFiles((long) i)
+              .removedDataFiles(0L)
+              .totalDataFiles((long) i)
+              .addedDeleteFiles(0L)
+              .removedDeleteFiles(0L)
+              .totalDeleteFiles(0L)
+              .addedEqualityDeleteFiles(0L)
+              .removedEqualityDeleteFiles(0L)
+              .addedPositionalDeleteFiles(0L)
+              .removedPositionalDeleteFiles(0L)
+              .addedRecords((long) (i * 100))
+              .removedRecords(0L)
+              .totalRecords((long) (i * 100))
+              .addedFileSizeBytes((long) (i * 1000))
+              .removedFileSizeBytes(0L)
+              .totalFileSizeBytes((long) (i * 1000))
+              .totalDurationMs(50L)
+              .attempts(1)
+              .build();
+      metricsPersistence.writeCommitMetricsReport(report);
+    }
+
+    // Paginate through all results
+    java.util.Set<String> allReportIds = new java.util.HashSet<>();
+
+    var page1 = metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, null, 2);
+    assertThat(page1).hasSize(2);
+    page1.forEach(r -> allReportIds.add(r.getReportId()));
+
+    String cursor1 = page1.get(page1.size() - 1).getReportId();
+    var page2 = metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, cursor1, 2);
+    assertThat(page2).hasSize(2);
+    page2.forEach(r -> allReportIds.add(r.getReportId()));
+
+    // Verify all 4 unique reports were retrieved
+    assertThat(allReportIds).hasSize(4);
+  }
+
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {
     @Override
     public Optional<Integer> maxRetries() {
