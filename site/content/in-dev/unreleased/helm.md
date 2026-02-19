@@ -36,6 +36,11 @@ kubectl create namespace polaris
 helm install polaris polaris/polaris --namespace polaris
 ```
 
+{{ "{{" }}< alert note >}}
+For Apache Polaris releases up to 1.3.0-incubating, the `--devel` flag is required for `helm` invocations.
+Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
+{{ "{{" }}< /alert >}}
+
 Now the cluster should be up and running. You can run the built-in connection test to verify:
 ```bash
 helm test polaris --namespace polaris
