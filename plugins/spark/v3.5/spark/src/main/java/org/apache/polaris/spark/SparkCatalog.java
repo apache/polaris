@@ -247,7 +247,20 @@ public class SparkCatalog
 
   @Override
   public boolean dropTable(Identifier ident) {
-    return this.icebergsSparkCatalog.dropTable(ident) || this.polarisSparkCatalog.dropTable(ident);
+    boolean dropped =
+        this.icebergsSparkCatalog.dropTable(ident) || this.polarisSparkCatalog.dropTable(ident);
+
+    // Also try to drop from Paimon catalog if it exists
+    try {
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      if (paimonCatalog.dropTable(ident)) {
+        dropped = true;
+      }
+    } catch (Exception e) {
+      // Paimon catalog not configured or table not found, ignore
+    }
+
+    return dropped;
   }
 
   @Override
