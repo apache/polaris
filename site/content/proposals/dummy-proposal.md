@@ -9,6 +9,10 @@ Here is some "meaningless" dummy text—a mix of *Bacon Ipsum* and *Standard Lor
 
 # 🌀 Project Andromeda: The Great Synthesis
 
+## 0. More Stuff
+
+Some more nonsense!
+
 ## 1. Executive Summary of Non-Sequiturs
 
 The **interdisciplinary synergy** of the *retro-encabulator* remains a primary concern for the stakeholders of Sector 7G. If the output of the `main()` function returns a null pointer, please consult the nearest rubber duck.
