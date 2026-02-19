@@ -161,8 +161,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
    * Writes a scan metrics report to the database.
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect. The primary
-   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure
-   * idempotency.
+   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure idempotency.
    *
    * @param report the scan metrics report to persist
    */
@@ -186,8 +185,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
    * Writes a commit metrics report to the database.
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect. The primary
-   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure
-   * idempotency.
+   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure idempotency.
    *
    * @param report the commit metrics report to persist
    */
