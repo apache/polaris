@@ -105,10 +105,6 @@ COMMENT ON COLUMN scan_metrics_report.report_trace_id IS 'Trace ID from report m
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp
     ON scan_metrics_report(realm_id, timestamp_ms DESC);
 
--- Composite index for query performance
-CREATE INDEX IF NOT EXISTS idx_scan_report_query
-    ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
-
 -- ============================================================================
 -- COMMIT METRICS REPORT TABLE
 -- ============================================================================
@@ -180,6 +176,3 @@ COMMENT ON COLUMN commit_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp
     ON commit_metrics_report(realm_id, timestamp_ms DESC);
 
--- Composite index for query performance
-CREATE INDEX IF NOT EXISTS idx_commit_report_query
-    ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
