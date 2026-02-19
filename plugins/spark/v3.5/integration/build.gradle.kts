@@ -155,11 +155,7 @@ dependencies {
 
 // Exclude Paimon tests from Scala 2.13 builds since paimon-spark-3.5 only supports Scala 2.12
 if (scalaVersion == "2.13") {
-  sourceSets.named("intTest") {
-    java {
-      exclude("**/SparkPaimonIT.java")
-    }
-  }
+  sourceSets.named("intTest") { java { exclude("**/SparkPaimonIT.java") } }
 }
 
 tasks.named<Test>("intTest").configure {
