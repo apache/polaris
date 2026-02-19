@@ -69,7 +69,6 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
-import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -775,26 +774,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         return false;
       }
       throw new IllegalStateException("Failed to check if Entities table exists", e);
-    }
-  }
-
-  /**
-   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table.
-   *
-   * @param datasourceOperations the datasource operations to use for the check
-   * @return true if the metrics_version table exists and contains data, false otherwise
-   */
-  public static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
-    PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
-    try {
-      List<MetricsSchemaVersion> versions =
-          datasourceOperations.executeSelect(query, new MetricsSchemaVersion());
-      return versions != null && !versions.isEmpty();
-    } catch (SQLException e) {
-      if (datasourceOperations.isRelationDoesNotExist(e)) {
-        return false;
-      }
-      throw new IllegalStateException("Failed to check if metrics tables exist", e);
     }
   }
 

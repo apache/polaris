@@ -84,7 +84,7 @@ class MetricsPersistenceBootstrapValidationTest {
     @Test
     void whenMetricsTableDoesNotExist_shouldReturnFalse() {
       // No schema loaded - metrics table doesn't exist
-      boolean result = JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations);
+      boolean result = JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations);
       assertThat(result).isFalse();
     }
 
@@ -93,7 +93,7 @@ class MetricsPersistenceBootstrapValidationTest {
       // Load only the entity schema (v4), not the metrics schema
       loadSchema("h2/schema-v4.sql");
 
-      boolean result = JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations);
+      boolean result = JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations);
       assertThat(result).isFalse();
     }
 
@@ -102,7 +102,7 @@ class MetricsPersistenceBootstrapValidationTest {
       // Load the metrics schema
       loadSchema("h2/schema-metrics-v1.sql");
 
-      boolean result = JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations);
+      boolean result = JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations);
       assertThat(result).isTrue();
     }
 
@@ -112,7 +112,7 @@ class MetricsPersistenceBootstrapValidationTest {
       loadSchema("h2/schema-v4.sql");
       loadSchema("h2/schema-metrics-v1.sql");
 
-      boolean result = JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations);
+      boolean result = JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations);
       assertThat(result).isTrue();
     }
   }
@@ -125,7 +125,7 @@ class MetricsPersistenceBootstrapValidationTest {
       // No schema loaded - metrics table doesn't exist
       assertThatThrownBy(
               () -> {
-                if (!JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations)) {
+                if (!JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations)) {
                   throw new IllegalStateException(
                       "Metrics persistence is enabled but the metrics tables have not been bootstrapped. "
                           + "Please run the bootstrap command with the --include-metrics flag to create "
@@ -143,7 +143,7 @@ class MetricsPersistenceBootstrapValidationTest {
       loadSchema("h2/schema-metrics-v1.sql");
 
       // Should not throw
-      boolean exists = JdbcBasePersistenceImpl.metricsTableExists(datasourceOperations);
+      boolean exists = JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations);
       assertThat(exists).isTrue();
     }
   }

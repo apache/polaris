@@ -25,10 +25,13 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
+import java.util.List;
 import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
+import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
+import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +78,7 @@ public class JdbcMetricsPersistenceProducer {
     try {
       ops = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
       // Check if metrics tables exist by querying the metrics_version table
-      supported = JdbcBasePersistenceImpl.metricsTableExists(ops);
+      supported = metricsTableExists(ops);
       if (!supported) {
         LOGGER.warn(
             "Metrics tables not found. Metrics persistence operations will be no-ops. "
@@ -144,5 +147,25 @@ public class JdbcMetricsPersistenceProducer {
       return MetricsSchemaBootstrap.NOOP;
     }
     return new JdbcMetricsSchemaBootstrap(datasourceOperations);
+  }
+
+  /**
+   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table.
+   *
+   * @param datasourceOperations the datasource operations to use for the check
+   * @return true if the metrics_version table exists and contains data, false otherwise
+   */
+  static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
+    PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
+    try {
+      List<MetricsSchemaVersion> versions =
+          datasourceOperations.executeSelect(query, new MetricsSchemaVersion());
+      return versions != null && !versions.isEmpty();
+    } catch (SQLException e) {
+      if (datasourceOperations.isRelationDoesNotExist(e)) {
+        return false;
+      }
+      throw new IllegalStateException("Failed to check if metrics tables exist", e);
+    }
   }
 }
