@@ -25,6 +25,7 @@ val genTesting by configurations.creating
 
 dependencies {
   implementation(project(":polaris-config-docs-annotations"))
+  implementation(project(":polaris-core"))
 
   implementation(libs.commons.text)
 
@@ -33,6 +34,7 @@ dependencies {
   annotationProcessor(libs.picocli.codegen)
 
   genTesting(project(":polaris-config-docs-annotations"))
+  genTesting(project(":polaris-core"))
   genTesting(libs.smallrye.config.core)
 }
 

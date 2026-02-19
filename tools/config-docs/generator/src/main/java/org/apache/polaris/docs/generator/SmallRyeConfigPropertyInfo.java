@@ -17,6 +17,7 @@ package org.apache.polaris.docs.generator;
 
 import com.sun.source.doctree.DocCommentTree;
 import io.smallrye.config.ConfigMappingInterface.Property;
+import io.smallrye.config.WithUnnamedKey;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -79,6 +80,21 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
       return ci == null || ci.value().isEmpty() ? "name" : ci.value();
     }
     return "";
+  }
+
+  /**
+   * Returns the unnamed key value if the property has {@link WithUnnamedKey} annotation. This
+   * indicates that the map property can be accessed without specifying a key name (using the
+   * default/unnamed key).
+   */
+  public Optional<String> unnamedKey() {
+    if (property.isMap()) {
+      var annotation = element.getAnnotation(WithUnnamedKey.class);
+      if (annotation != null) {
+        return Optional.of(annotation.value());
+      }
+    }
+    return Optional.empty();
   }
 
   @Override

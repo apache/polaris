@@ -20,7 +20,7 @@
 title: Configuring Polaris for Production
 linkTitle: Production Configuration
 type: docs
-weight: 600
+weight: 200
 ---
 
 The default server configuration is intended for development and testing. When you deploy Polaris in production,
