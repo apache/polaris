@@ -49,6 +49,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -74,6 +75,7 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.persistence.MetricsPersistenceConfiguration;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -436,5 +438,20 @@ public class ServiceProducers {
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     return reporters.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @Identifier("noop")
+  @RequestScoped
+  public MetricsPersistence noopMetricsPersistence() {
+    return MetricsPersistence.NOOP;
+  }
+
+  @Produces
+  @RequestScoped
+  public MetricsPersistence metricsPersistence(
+      MetricsPersistenceConfiguration config,
+      @Any Instance<MetricsPersistence> metricsPersistenceImpls) {
+    return metricsPersistenceImpls.select(Identifier.Literal.of(config.type())).get();
   }
 }

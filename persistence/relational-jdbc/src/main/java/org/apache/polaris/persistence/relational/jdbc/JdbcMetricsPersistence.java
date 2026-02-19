@@ -165,7 +165,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
     try {
       PreparedQuery pq =
-          QueryGenerator.generateInsertQueryWithoutRealmId(
+          buildInsertQuery(
               ModelScanMetricsReport.ALL_COLUMNS,
               ModelScanMetricsReport.TABLE_NAME,
               report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
@@ -187,7 +187,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
     try {
       PreparedQuery pq =
-          QueryGenerator.generateInsertQueryWithoutRealmId(
+          buildInsertQuery(
               ModelCommitMetricsReport.ALL_COLUMNS,
               ModelCommitMetricsReport.TABLE_NAME,
               report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
@@ -199,6 +199,21 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
     }
+  }
+
+  private static PreparedQuery buildInsertQuery(
+      List<String> columns, String tableName, List<Object> values) {
+    String columnList = String.join(", ", columns);
+    String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
+    String sql =
+        "INSERT INTO "
+            + QueryGenerator.getFullyQualifiedTableName(tableName)
+            + " ("
+            + columnList
+            + ") VALUES ("
+            + placeholders
+            + ")";
+    return new PreparedQuery(sql, values);
   }
 
   /**
