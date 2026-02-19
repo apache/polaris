@@ -128,10 +128,16 @@ dependencyResolutionManagement {
     val useApacheSnapshots =
       providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
     if (useApacheSnapshots) {
+      // This is a hack to let Renovate _not_ query the Apache snapshot repository for all
+      // dependencies.
+      // See https://github.com/renovatebot/renovate/discussions/41291
+      fun configureIndirectForRenovate(asfSnap: MavenArtifactRepository) {
+        asfSnap.url = uri("https://repository.apache.org/content/repositories/snapshots/")
+        asfSnap.mavenContent { snapshotsOnly() }
+      }
       maven {
         name = "ApacheSnapshots"
-        url = uri("https://repository.apache.org/content/repositories/snapshots/")
-        mavenContent { snapshotsOnly() }
+        configureIndirectForRenovate(this)
       }
     }
     gradlePluginPortal()

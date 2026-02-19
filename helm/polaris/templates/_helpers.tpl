@@ -315,8 +315,10 @@ or port names.
 {{- end -}}
 {{- /* Extra service ports */ -}}
 {{- range $i, $svc := .Values.extraServices -}}
+{{- if $svc.nameSuffix -}}
 {{- range $j, $port := $svc.ports -}}
 {{- include "polaris.validateContainerPort" (list $ports $names (printf "extraServices[%d].ports[%d]" $i $j) $port) -}}
+{{- end -}}
 {{- end -}}
 {{- end }}
 ports:

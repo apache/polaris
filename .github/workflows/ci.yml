@@ -177,9 +177,18 @@ jobs:
           path: *test-archive-path
 
   helm-tests:
-    name: Helm Tests
+    name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - helm-version: 'v3.20.0'
+            kubernetes-version: 'v1.33.8'
+          - helm-version: 'v4.0.5'
+            kubernetes-version: 'v1.34.4'
+          - helm-version: 'v4.1.1'
+            kubernetes-version: 'v1.35.1'
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -195,9 +204,19 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
-          version: 'v3.16.0'
+          version: ${{ matrix.helm-version }}
       - name: Set up chart-testing
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: Set up helm-docs
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Install Helm plugins
+        run: make helm-install-plugins
+      - name: Verify Helm schema is up to date
+        run: make helm-schema-verify
+      - name: Verify Helm documentation is up to date
+        run: make helm-doc-verify
       - name: Run 'helm template' validation
         run: |
           cd helm/polaris
@@ -207,14 +226,13 @@ jobs:
             echo "::endgroup::"
           done
       - name: Run Helm unit tests
-        run: |
-          # Pin version to 1.0.2 due to https://github.com/helm-unittest/helm-unittest/issues/790
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          helm unittest helm/polaris
+        run: make helm-unittest
       - name: Run chart-testing (lint)
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
       - name: Set up Minikube
         uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
+        with:
+          kubernetes-version: ${{ matrix.kubernetes-version }}
       - name: Print Docker info
         run: |
           docker -v
@@ -226,8 +244,6 @@ jobs:
           ./gradlew \
             :polaris-server:assemble \
             :polaris-server:quarkusAppPartsBuild --rerun \
-            :polaris-admin:assemble \
-            :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true
           minikube image ls
       - name: Install fixtures

@@ -17,6 +17,7 @@
 # under the License.
 #
 
+# @schema minimum: 1
 # -- The number of replicas to deploy (horizontal scaling).
 # Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
 replicaCount: 1
@@ -24,6 +25,7 @@ replicaCount: 1
 image:
   # -- The image repository to pull from.
   repository: apache/polaris
+  # @schema enum: [Always, IfNotPresent, Never]
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
@@ -32,9 +34,10 @@ image:
   # files, if any, should be mounted.
   configDir: /deployments/config
 
+# @schema item: string
 # -- References to secrets in the same namespace to use for pulling any of the images used by this
-# chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret
-# must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See
+# chart. Each entry is a string referring to an existing secret in the namespace. The secret must
+# contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See
 # https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more
 # information.
 imagePullSecrets: []
@@ -44,6 +47,7 @@ imagePullSecrets: []
 serviceAccount:
   # -- Specifies whether a service account should be created.
   create: true
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the service account.
   annotations: {}
   # -- The name of the service account to use.
@@ -51,12 +55,15 @@ serviceAccount:
   name: ""
 
 
+# @schema additionalProperties: {type: string}
 # -- Annotations to apply to polaris pods.
 podAnnotations: {}
 
+# @schema additionalProperties: {type: string}
 # -- Additional Labels to apply to polaris pods.
 podLabels: {}
 
+# @schema additionalProperties: {type: string}
 # -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
@@ -64,92 +71,117 @@ configMapLabels: {}
 podDisruptionBudget:
   # -- Specifies whether a pod disruption budget should be created.
   enabled: false
+  # @schema type:[string, integer]
   # -- The minimum number of pods that should remain available during disruptions.
   # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
   # IMPORTANT: Cannot be used simultaneously with maxUnavailable.
-  minAvailable: ~
+  minAvailable: 0
+  # @schema type:[string, integer]
   # -- The maximum number of pods that can be unavailable during disruptions.
   # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
   # IMPORTANT: Cannot be used simultaneously with minAvailable.
-  maxUnavailable: ~
+  maxUnavailable: 0
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the pod disruption budget.
   annotations: {}
 
+# @schema type:[integer, null]
 # -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
 revisionHistoryLimit: ~
 
+# @schema type: object
 # -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
 podSecurityContext:
+  # @schema hidden
   # -- GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image.
   fsGroup: 10001
+  # @schema hidden
   seccompProfile:
     type: RuntimeDefault
 
+# @schema type: object
 # -- Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
 containerSecurityContext:
+  # @schema hidden
   allowPrivilegeEscalation: false
+  # @schema hidden
   runAsNonRoot: true
+  # @schema hidden
   # -- UID 10000 is compatible with Polaris OSS default images; change this if you are using a different image.
   runAsUser: 10000
+  # @schema hidden
   capabilities:
     drop: ["ALL"]
+  # @schema hidden
   seccompProfile:
     type: RuntimeDefault
 
 # -- Polaris main service settings.
 service:
+  # @schema enum: [ExternalName, ClusterIP, NodePort, LoadBalancer]
   # -- The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer.
   # The default value is ClusterIP.
   type: ClusterIP
+  # @schema minItems: 1
   # -- The ports the service will listen on.
   # At least one port is required; the first port implicitly becomes the HTTP port that the
   # application will use for serving API requests. By default, it's 8181.
   # Note: port names must be unique and no more than 15 characters long.
   ports:
+    -  # @schema required
       # -- The name of the port. Required.
-    - name: polaris-http
+      name: polaris-http
+      # @schema required
       # -- The port the service listens on. By default, the HTTP port is 8181.
       port: 8181
       # -- Number of the port to access on the pods targeted by the service.
-      # If this is not specified, the value of the 'port' field is used.
-      targetPort: ~  # polaris-service
+      # If this is not specified or zero, the value of the 'port' field is used.
+      targetPort: 0  # 8181
       # -- The port on each node on which this service is exposed when type is NodePort or LoadBalancer.
-      # Usually assigned by the system. If not specified, a port will be allocated if this Service requires one. If this field is specified when creating a Service which does not need it, creation will fail.
-      nodePort: ~  # 30000
+      # Usually assigned by the system. If not specified or zero, a port will be allocated if this
+      # Service requires one. If this field is specified when creating a Service which does not need
+      # it, creation will fail.
+      nodePort: 0  # 30000
+      # @schema enum: [TCP, UDP, SCTP]
       # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
-      protocol: ~
+      protocol: TCP
     # - name: polaris-https
     #  port: 18181
+  # @schema enum: [None, ClientIP]
   # -- The session affinity for the service. Valid values are: None, ClientIP. The default value is None.
   # ClientIP enables sticky sessions based on the client's IP address.
   # This is generally beneficial to Polaris deployments, but some testing may be
   # required in order to make sure that the load is distributed evenly among the pods.
   # Also, this setting affects only internal clients, not external ones.
   # If Ingress is enabled, it is recommended to set sessionAffinity to None.
-  sessionAffinity: ~
+  sessionAffinity: None
   # -- You can specify your own cluster IP address
   # If you define a Service that has the .spec.clusterIP set to "None" then Kubernetes does not assign an IP address.
   # Instead, DNS records for the service will return the IP addresses of each pod targeted by the server. This is
   # called a headless service.
   # See https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
-  clusterIP: ~
+  clusterIP: ""
+  # @schema enum: [Cluster, Local]
   # -- Controls how traffic from internal sources is routed.
   # Valid values are Cluster and Local. The default value is Cluster.
   # Set the field to Cluster to route traffic to all ready endpoints.
   # Set the field to Local to only route to ready node-local endpoints.
   # If the traffic policy is Local and there are no node-local endpoints, traffic is dropped by kube-proxy.
-  internalTrafficPolicy: ~
+  internalTrafficPolicy: Cluster
+  # @schema enum: [Cluster, Local]
   # -- Controls how traffic from external sources is routed.
   # Valid values are Cluster and Local. The default value is Cluster.
   # Set the field to Cluster to route traffic to all ready endpoints.
   # Set the field to Local to only route to ready node-local endpoints.
   # If the traffic policy is Local and there are no node-local endpoints, traffic is dropped by kube-proxy.
-  externalTrafficPolicy: ~
+  externalTrafficPolicy: Cluster
+  # @schema oneOf: [{type: string, enum: [PreferClose]}, {type: "null"}]
   # -- The traffic distribution field provides another way to influence traffic routing within a Kubernetes Service.
   # While traffic policies focus on strict semantic guarantees, traffic distribution allows you to express preferences
   # such as routing to topologically closer endpoints.
   # The only valid value is: PreferClose. The default value is implementation-specific.
   trafficDistribution: ~
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the service.
   annotations: {}
 
@@ -157,60 +189,102 @@ service:
 # and to configure the dedicated headless service that will expose health checks and metrics, e.g.
 # for metrics scraping and service monitoring.
 managementService:
+  # @schema enum: [ExternalName, ClusterIP, NodePort, LoadBalancer]
   # -- The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer.
   # The default value is ClusterIP.
   type: ClusterIP
+  # @schema minItems: 1
   # -- The ports the management service will listen on.
   # At least one port is required; the first port implicitly becomes the HTTP port that the
   # application will use for serving management requests. By default, it's 8182.
   # Note: port names must be unique and no more than 15 characters long.
   ports:
+    -  # @schema required
       # -- The name of the management port. Required.
-    - name: polaris-mgmt
+      name: polaris-mgmt
+      # @schema required
       # -- The port the management service listens on. By default, the management interface is exposed
       # on HTTP port 8182.
       port: 8182
       # -- Number of the port to access on the pods targeted by the service.
-      # If this is not specified, the value of the 'port' field is used.
-      targetPort: ~  # polaris-service
+      # If this is not specified or zero, the value of the 'port' field is used.
+      targetPort: 0  # 8181
       # -- The port on each node on which this service is exposed when type is NodePort or LoadBalancer.
-      # Usually assigned by the system. If not specified, a port will be allocated if this Service requires one. If this field is specified when creating a Service which does not need it, creation will fail.
-      nodePort: ~  # 30000
+      # Usually assigned by the system. If not specified or zero, a port will be allocated if this
+      # Service requires one. If this field is specified when creating a Service which does not need
+      # it, creation will fail.
+      nodePort: 0  # 30000
+      # @schema enum: [TCP, UDP, SCTP]
       # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
-      protocol: ~
+      protocol: TCP
   # -- By default, the management service is headless, i.e. it does not have a cluster IP.
   # This is generally the right option for exposing health checks and metrics, e.g. for metrics
   # scraping and service monitoring.
   clusterIP: None
-  sessionAffinity: ~
-  internalTrafficPolicy: ~
-  externalTrafficPolicy: ~
+  # @schema enum: [None, ClientIP]
+  # -- The session affinity for the service.
+  sessionAffinity: None
+  # @schema enum: [Cluster, Local]
+  # -- Controls how traffic from internal sources is routed.
+  internalTrafficPolicy: Cluster
+  # @schema enum: [Cluster, Local]
+  # -- Controls how traffic from external sources is routed.
+  externalTrafficPolicy: Cluster
+  # @schema oneOf: [{type: string, enum: [PreferClose]}, {type: "null"}]
+  # -- The traffic distribution field.
   trafficDistribution: ~
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the service.
   annotations: {}
 
 # -- Additional service definitions. All service definitions always select all Polaris pods. Use
 # this if you need to expose specific ports with different configurations, e.g. expose polaris-http
 # with an alternate LoadBalancer service instead of ClusterIP.
-extraServices: []
-  #  - # -- The suffix to append to the service name. Required. It must be unique. If it does not
-  #    # start with a hyphen, a hyphen will be inserted between the base service name and the suffix.
-  #    nameSuffix: "ext"
-  #    # -- The type of service to create.
-  #    type: LoadBalancer
-  #    # -- The ports the service will listen on.
-  #    ports:
-  #    - name: polaris-http
-  #      number: 8181
-  #      targetPort: 8181
-  #      nodePort: 30000
-  #      protocol: TCP
-  #    sessionAffinity: None
-  #    clusterIP: ""
-  #    internalTrafficPolicy: Cluster
-  #    externalTrafficPolicy: Cluster
-  #    trafficDistribution: PreferClose
-  #    annotations: {}
+extraServices:
+  -  # @schema required
+    # -- The suffix to append to the service name. Required. It must be unique. If it does not
+    # start with a hyphen, a hyphen will be inserted between the base service name and the suffix.
+    nameSuffix: ""
+    # @schema enum: [ExternalName, ClusterIP, NodePort, LoadBalancer]
+    # -- The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer.
+    type: LoadBalancer
+    # @schema minItems: 1
+    # -- The ports the extra service will listen on.
+    ports:
+    -  # @schema required
+      # -- The name of the port. Required.
+      name: polaris-extra
+      # @schema required
+      # -- The port the extra service listens on.
+      port: 8183
+      # -- Number of the port to access on the pods targeted by the service.
+      # If this is not specified or zero, the value of the 'port' field is used.
+      targetPort: 0  # 8181
+      # -- The port on each node on which this extra service is exposed when type is NodePort or LoadBalancer.
+      # Usually assigned by the system. If not specified or zero, a port will be allocated if this
+      # Service requires one. If this field is specified when creating a Service which does not need
+      # it, creation will fail.
+      nodePort: 0  # 30000
+      # @schema enum: [TCP, UDP, SCTP]
+      # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
+      protocol: TCP
+    # -- The cluster IP for the extra service.
+    clusterIP: ""
+    # @schema enum: [None, ClientIP]
+    # -- The session affinity for the extra service. Valid values are: None, ClientIP. The default value is None.
+    sessionAffinity: None
+    # @schema enum: [Cluster, Local]
+    # -- Controls how traffic from internal sources is routed.
+    internalTrafficPolicy: Cluster
+    # @schema enum: [Cluster, Local]
+    # -- Controls how traffic from external sources is routed.
+    externalTrafficPolicy: Cluster
+    # @schema oneOf: [{type: string, enum: [PreferClose]}, {type: "null"}]
+    # -- The traffic distribution field.
+    trafficDistribution: ~
+    # @schema additionalProperties: {type: string}
+    # -- Annotations to add to the extra service.
+    annotations: {}
 
 # Polaris Ingress settings.
 # These settings generate an Ingress resource that routes external traffic to the Polaris service
@@ -220,27 +294,38 @@ extraServices: []
 # required in order to make sure that the load is distributed evenly among the pods.
 # Check your ingress controller's documentation.
 ingress:
-  # -- Specifies the ingressClassName; leave empty if you don't want to customize it
+  # -- Specifies the ingressClassName; leave empty if you don't want to customize it.
   className: ""
   # -- Specifies whether an ingress should be created.
   enabled: false
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the ingress.
   annotations: {
     # nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
   }
   # -- A list of host paths used to configure the ingress.
   hosts:
-    - host: chart-example.local
+    -  # @schema required
+      # -- The host name. Required.
+      host: chart-example.local
+      # @schema required; minItems: 1
+      # -- A list of paths used to configure the ingress.
       paths:
         - path: /
+          # @schema enum: [Exact, Prefix, ImplementationSpecific]
+          # -- The type of path. Valid values are: Exact, Prefix, and ImplementationSpecific.
           pathType: Prefix
   # -- A list of TLS certificates; each entry has a list of hosts in the certificate,
   # along with the secret name used to terminate TLS traffic on port 443.
-  tls: []
-#    - hosts:
-#        - chart-example1.local
-#        - chart-example2.local
-#      secretName: secret1
+  tls:
+    -  # @schema required
+      # -- The name of the TLS secret. Required.
+      secretName: ""
+      # @schema minItems: 1
+      # -- A list of hosts in the certificate.
+      hosts:
+        - chart-example1.local
+        - chart-example2.local
 
 # Polaris Gateway settings.
 # These settings generate a Gateway resource for Gateway API-based routing.
@@ -248,19 +333,31 @@ ingress:
 gateway:
   # -- Specifies whether a Gateway should be created.
   enabled: false
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the Gateway.
   annotations: {}
   # -- The name of the GatewayClass to use.
   className: ""
+  # @schema minItems: 1
   # -- Gateway listeners configuration.
   listeners:
-    - name: http
+    -  # @schema required
+      # -- The name of the listener. Required.
+      name: "http"
+      # -- Protocol specifies the network protocol this listener expects to receive.
       protocol: HTTP
+      # -- The port number to use for the listener.
       port: 80
-      # hostname: "*.example.local"
-      # allowedRoutes:
-      #   namespaces:
-      #     from: Same
+      # -- Hostname specifies the virtual hostname to match for protocol types that define this
+      # concept. When unspecified, all hostnames are matched.
+      hostname: ""  # *.example.local
+      # -- AllowedRoutes defines the types of routes that MAY be attached to a Listener and the
+      # trusted namespaces where those Route resources MAY be present.
+      allowedRoutes: {}
+        # namespaces:
+        #   from: Same
+
+  # @schema item: object
   # -- Optional addresses to request for the Gateway.
   addresses: []
   #  - type: IPAddress
@@ -272,11 +369,14 @@ gateway:
 httproute:
   # -- Specifies whether an HTTPRoute should be created.
   enabled: false
+  # @schema additionalProperties: {type: string}
   # -- Annotations to add to the HTTPRoute.
   annotations: {}
-  # -- Name of the Gateway resource to attach to.
+  # @schema required
+  # -- Name of the Gateway resource to attach to. Required.
   gatewayName: ""
-  # -- Namespace where the Gateway is deployed.
+  # @schema required
+  # -- Namespace where the Gateway is deployed. Required.
   gatewayNamespace: default
   # -- Section name within the gateway to use (optional).
   sectionName: ""
@@ -284,6 +384,7 @@ httproute:
   hosts:
     - chart-example.local
 
+# @schema type: object
 # -- Configures the resources requests and limits for polaris pods.
 # We usually recommend not to specify default resources and to leave this as a conscious
 # choice for the user. This also increases chances charts run on environments with little
@@ -309,16 +410,18 @@ autoscaling:
   # -- Optional; set to zero or empty to disable.
   targetCPUUtilizationPercentage: 80
   # -- Optional; set to zero or empty to disable.
-  targetMemoryUtilizationPercentage:
+  targetMemoryUtilizationPercentage: 0
 
 # -- Priority class name for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
-priorityClassName: ~
+priorityClassName: ""
 
+# @schema additionalProperties: {type: string}
 # -- Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector.
 nodeSelector:
   {}
   # kubernetes.io/os: linux
 
+# @schema item: object
 # -- A list of tolerations to apply to polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/.
 tolerations: []
 #  - key: "node-role.kubernetes.io/control-plane"
@@ -339,6 +442,7 @@ affinity: {}
 #                values:
 #                  - polaris
 
+# @schema item: object
 # -- Topology spread constraints for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#topologyspreadconstraints-field.
 topologySpreadConstraints: []
   # - maxSkew: 1
@@ -347,29 +451,40 @@ topologySpreadConstraints: []
 
 # -- Configures the liveness probe for polaris pods.
 livenessProbe:
+  # @schema minimum: 0
   # -- Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0.
   initialDelaySeconds: 5
+  # @schema minimum: 1
   # -- How often (in seconds) to perform the probe. Minimum value is 1.
   periodSeconds: 10
+  # @schema minimum: 1
   # -- Minimum consecutive successes for the probe to be considered successful after having failed. Minimum value is 1.
   successThreshold: 1
+  # @schema minimum: 1
   # -- Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1.
   failureThreshold: 3
+  # @schema minimum: 1
   # -- Number of seconds after which the probe times out. Minimum value is 1.
   timeoutSeconds: 10
+  # @schema minimum: 1
   # -- Optional duration in seconds the pod needs to terminate gracefully upon probe failure. Minimum value is 1.
   terminationGracePeriodSeconds: 30
 
 # -- Configures the readiness probe for polaris pods.
 readinessProbe:
+  # @schema minimum: 0
   # -- Number of seconds after the container has started before readiness probes are initiated. Minimum value is 0.
   initialDelaySeconds: 5
+  # @schema minimum: 1
   # -- How often (in seconds) to perform the probe. Minimum value is 1.
   periodSeconds: 10
+  # @schema minimum: 1
   # -- Minimum consecutive successes for the probe to be considered successful after having failed. Minimum value is 1.
   successThreshold: 1
+  # @schema minimum: 1
   # -- Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1.
   failureThreshold: 3
+  # @schema minimum: 1
   # -- Number of seconds after which the probe times out. Minimum value is 1.
   timeoutSeconds: 10
 
@@ -403,6 +518,7 @@ advancedConfig:
 #       trusted-proxies: "127.0.0.1"
   {}
 
+# @schema item: object
 # -- Advanced configuration via Environment Variables.
 # Extra environment variables to add to the Polaris server container.
 # You can pass here any valid EnvVar object:
@@ -423,16 +539,19 @@ extraEnv:
 #        name: aws-secret
 #        key: secret_access_key
 
+# @schema item: object
 # -- Extra volumes to add to the polaris pod. See https://kubernetes.io/docs/concepts/storage/volumes/.
 extraVolumes: []
   # - name: extra-volume
   #   emptyDir: {}
 
+# @schema item: object
 # -- Extra volume mounts to add to the polaris container. See https://kubernetes.io/docs/concepts/storage/volumes/.
 extraVolumeMounts: []
   # - name: extra-volume
   #   mountPath: /usr/share/extra-volume
 
+# @schema item: object
 # -- Add additional init containers to the polaris pod(s) See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/.
 extraInitContainers: []
   # - name: your-image-name
@@ -452,6 +571,7 @@ tracing:
   # "1.0d" (inclusive). E.g. "0.5d" means that 50% of the requests will be sampled.
   # Note: avoid entering numbers here, always prefer a string representation of the ratio.
   sample: "1.0d"
+  # @schema additionalProperties: {type: string}
   # -- Resource attributes to identify the polaris service among other tracing sources.
   # See https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/#service.
   # If left empty, traces will be attached to a service named "Apache Polaris"; to change this,
@@ -463,6 +583,7 @@ tracing:
 metrics:
   # -- Specifies whether metrics for the polaris server should be enabled.
   enabled: true
+  # @schema additionalProperties: {type: string}
   # -- Additional tags (dimensional labels) to add to the metrics.
   tags:
     {}
@@ -474,9 +595,11 @@ serviceMonitor:
   enabled: true
   # -- The scrape interval; leave empty to let Prometheus decide. Must be a valid duration, e.g. 1d, 1h30m, 5m, 10s.
   interval: ""
+  # @schema additionalProperties: {type: string}
   # -- Labels for the created ServiceMonitor so that Prometheus operator can properly pick it up.
   labels:
     {}
+  # @schema item: object
   # release: prometheus
   # -- Relabeling rules to apply to metrics. Ref https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config.
   metricRelabelings: []
@@ -489,6 +612,7 @@ serviceMonitor:
 
 # -- Logging configuration.
 logging:
+  # @schema enum: [TRACE, DEBUG, INFO, WARN, ERROR, OFF, ALL]
   # -- The log level of the root category, which is used as the default log level for all categories.
   level: INFO
   # -- The header name to use for the request ID.
@@ -497,6 +621,7 @@ logging:
   console:
     # -- Whether to enable the console appender.
     enabled: true
+    # @schema enum: [TRACE, DEBUG, INFO, WARN, ERROR, OFF, ALL]
     # -- The log level of the console appender.
     threshold: ALL
     # -- Whether to log in JSON format.
@@ -508,6 +633,7 @@ logging:
   file:
     # -- Whether to enable the file appender.
     enabled: false
+    # @schema enum: [TRACE, DEBUG, INFO, WARN, ERROR, OFF, ALL]
     # -- The log level of the file appender.
     threshold: ALL
     # -- Whether to log in JSON format.
@@ -524,8 +650,10 @@ logging:
     rotation:
       # -- The maximum size of the log file before it is rotated. Should be expressed as a Kubernetes quantity.
       maxFileSize: 100Mi
+      # @schema minimum: 1
       # -- The maximum number of backup files to keep.
       maxBackupIndex: 5
+      # @schema type:[string, null]
       # -- An optional suffix to append to the rotated log files. If present, the rotated log files
       # will be grouped in time buckets, and each bucket will contain at most maxBackupIndex files.
       # The suffix must be in a date-time format that is understood by DateTimeFormatter. If the
@@ -539,17 +667,20 @@ logging:
       className: standard
       # -- The size of the persistent volume claim to create.
       size: 512Gi
+      # @schema additionalProperties: {type: string}
       # -- Labels to add to the persistent volume claim spec selector; a persistent volume with
       # matching labels must exist. Leave empty if using dynamic provisioning.
       selectorLabels: {}
         # app.kubernetes.io/name: polaris
       # app.kubernetes.io/instance: RELEASE-NAME
-  # -- Configuration for specific log categories.
+  # @schema additionalProperties: {type: [string, object]}
+  # -- Configuration for specific log categories. Keys are category names (e.g., org.apache.polaris), values are log levels.
   categories:
     org.apache.polaris: INFO
     org.apache.iceberg.rest: INFO
     # Useful to debug configuration issues:
     # io.smallrye.config: DEBUG
+  # @schema additionalProperties: {type: [string, object]}
   # -- Configuration for MDC (Mapped Diagnostic Context). Values specified here will be added to the
   # log context of all incoming requests and can be used in log patterns.
   mdc:
@@ -577,6 +708,7 @@ features:
   #   - GCS
   #   - AZURE
   #   - FILE
+
   # -- Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of
   # feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used.
   realmOverrides: {}
@@ -592,7 +724,7 @@ persistence:
     # -- The secret name to pull the database connection properties from.
     secret:
       # -- The secret name to pull database connection properties from
-      name: ~
+      name: ""
       # -- The secret key holding the database username for authentication
       username: username
       # -- The secret key holding the database password for authentication
@@ -609,13 +741,13 @@ persistence:
     # The secret to pull the MongoDB connection string from.
     secret:
       # -- The secret name to pull the MongoDB connection string from.
-      name: ~
+      name: ""
       # -- The secret key holding the MongoDB connection string.
       connectionString: connectionString
 
 # -- Polaris FileIO configuration.
 fileIo:
-    # -- The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones.
+  # -- The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones.
   type: default
 
 # -- Storage credentials for the server. If the following properties are unset, default
@@ -624,30 +756,34 @@ storage:
   # -- The secret to pull storage credentials from.
   secret:
     # -- The name of the secret to pull storage credentials from.
-    name: ~
+    name: ""
     # -- The key in the secret to pull the AWS access key ID from. Only required when using AWS.
-    awsAccessKeyId: ~
+    awsAccessKeyId: ""
     # -- The key in the secret to pull the AWS secret access key from. Only required when using AWS.
-    awsSecretAccessKey: ~
+    awsSecretAccessKey: ""
     # -- The key in the secret to pull the GCP token from. Only required when using GCP.
-    gcpToken: ~
+    gcpToken: ""
     # -- The key in the secret to pull the GCP token expiration time from. Only required when using GCP. Must be a valid ISO 8601 duration. The default is PT1H (1 hour).
-    gcpTokenLifespan: ~
+    gcpTokenLifespan: ""
 
 # -- Polaris authentication configuration.
 authentication:
+  # @schema enum: [internal, external, mixed]
   # -- The type of authentication to use. Three built-in types are supported: internal, external, and mixed.
   type: internal
   # -- The `Authenticator` implementation to use. Only one built-in type is supported: default.
   authenticator:
+    # -- The type of authenticator to use.
     type: default
   # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
   # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
   tokenService:
+    # -- The type of token service to use.
     type: default
   # -- The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
   # Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.
   tokenBroker:
+    # -- The type of token broker to use.
     type: rsa-key-pair  # symmetric-key
     # -- Maximum token generation duration (e.g., PT1H for 1 hour).
     maxTokenGeneration: PT1H
@@ -655,7 +791,7 @@ authentication:
     secret:
       # -- The name of the secret to pull the keys from. If not provided, a key pair will be generated.
       # This is not recommended for production.
-      name: ~
+      name: ""
       # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead.
       # Key name inside the secret for the public key
       publicKey: public.pem
@@ -689,7 +825,7 @@ authentication:
 oidc:
   # -- The authentication server URL. Must be provided if at least one realm is configured for external
   # authentication.
-  authServeUrl: ~  # https://auth.example.com/realms/polaris
+  authServeUrl: ""  # https://auth.example.com/realms/polaris
   # -- The client to use when authenticating with the authentication server.
   client:
     # -- The client ID to use when contacting the authentication server's introspection endpoint in
@@ -700,7 +836,7 @@ oidc:
     secret:
       # -- The name of the secret to pull the client secret from. If not provided, the client is assumed
       # to not require a client secret when contacting the introspection endpoint.
-      name: ~
+      name: ""
       # -- The key name inside the secret to pull the client secret from.
       key: clientSecret
   # -- Principal mapping configuration.
@@ -710,11 +846,11 @@ oidc:
     # -- The path to the claim that contains the principal ID. Nested paths can be expressed using
     # "/" as a separator, e.g. "polaris/principal_id" would look for the "principal_id" field inside
     # the "polaris" object in the token claims. Optional. Either this option or `nameClaimPath` (or both) must be provided.
-    idClaimPath: ~
+    idClaimPath: ""
     # -- The claim that contains the principal name. Nested paths can be expressed using "/" as a
     # separator, e.g. "polaris/principal_name" would look for the "principal_name" field inside
     # the "polaris" object in the token claims. Optional. Either this option or `idClaimPath` (or both) must be provided.
-    nameClaimPath: ~
+    nameClaimPath: ""
   # -- Principal roles mapping configuration.
   principalRolesMapper:
     # -- The `PrincipalRolesMapper` implementation to use. Only one built-in type is supported: default.
@@ -723,10 +859,11 @@ oidc:
     # "/" as a separator, e.g. "polaris/principal_roles" would look for the "principal_roles" field inside
     # the "polaris" object in the token claims. If not set, Quarkus looks for roles in standard locations.
     # See https://quarkus.io/guides/security-oidc-bearer-token-authentication#token-claims-and-security-identity-roles.
-    rolesClaimPath: ~
+    rolesClaimPath: ""
     # -- A regular expression that matches the role names in the identity. Only roles that match this
     # regex will be included in the Polaris-specific roles.
-    filter: ~  # ^(?!profile$|email$).*
+    filter: ""  # ^(?!profile$|email$).*
+    # @schema item: object
     # -- A list of regex mappings that will be applied to each role name in the identity. This can
     # be used to transform the role names in the identity into role names as expected by Polaris.
     # The default Authenticator expects the security identity to expose role names in the
@@ -737,16 +874,21 @@ oidc:
 
 # -- Polaris CORS configuration.
 cors:
+  # @schema item: string
   # -- Origins allowed for CORS, e.g. http://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression.
   allowedOrigins: []
+  # @schema item: string
   # -- HTTP methods allowed for CORS, ex: GET, PUT, POST. If this is not set or empty, all requested methods are considered allowed.
   allowedMethods: []
+  # @schema item: string
   # -- HTTP headers allowed for CORS, ex: X-Custom, Content-Disposition. If this is not set or empty, all requested headers are considered allowed.
   allowedHeaders: []
+  # @schema item: string
   # -- HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list.
   exposedHeaders: []
   # -- The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration.
-  accessControlMaxAge: ~  # PT10M
+  accessControlMaxAge: ""  # PT10M
+  # @schema type:[boolean, null]
   # -- The `Access-Control-Allow-Credentials` response header.
   # The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header.
   accessControlAllowCredentials: ~  # true
@@ -760,12 +902,13 @@ rateLimiter:
   tokenBucket:
     # -- The type of the token bucket rate limiter. Only the default type is supported out of the box.
     type: default
+    # @schema minimum: 1
     # -- The maximum number of requests (permits) per second allowed for each realm.
     requestsPerSecond: 9999
 
 # -- Polaris asynchronous task executor configuration.
 tasks:
-  # -- The maximum number of concurrent tasks that can be executed at the same time. The default is the number of available cores.
-  maxConcurrentTasks: ~  # 100
-  # -- The maximum number of tasks that can be queued up for execution. The default is Integer.MAX_VALUE.
-  maxQueuedTasks: ~  # 1000
+  # -- The maximum number of concurrent tasks that can be executed at the same time. If unspecified or zero, defaults to the number of available cores.
+  maxConcurrentTasks: 0  # 100
+  # -- The maximum number of tasks that can be queued up for execution. If unspecified or zero, defaults to Integer.MAX_VALUE.
+  maxQueuedTasks: 0  # 1000

@@ -32,6 +32,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
+- The Helm chart now includes a JSON schema file for easy validation of values files. Because types 
+  are now validated, existing values files may need to be updated to match the new schema.
+  
 
 ### Breaking changes
 

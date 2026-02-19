@@ -57,7 +57,7 @@ dev = [
     "pre-commit==4.5.1",
     # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
     "openapi-generator-cli==7.12.0",
-    "pip-licenses-cli==3.0.1",
+    "pip-licenses-cli==4.0.0",
 ]
 
 [tool.hatch.build.targets.sdist]

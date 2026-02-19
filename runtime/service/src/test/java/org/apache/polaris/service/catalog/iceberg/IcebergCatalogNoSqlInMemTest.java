@@ -25,11 +25,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 
 @QuarkusTest
 @TestProfile(IcebergCatalogNoSqlInMemTest.Profile.class)
@@ -52,13 +48,5 @@ public class IcebergCatalogNoSqlInMemTest extends AbstractIcebergCatalogTest {
             List.of(realmName),
             RootCredentialsSet.fromList(List.of(realmName + ",aClientId,aSecret")))
         .get(realmName);
-  }
-
-  @Override
-  protected EntityCache createEntityCache(
-      PolarisDiagnostics diagnostics,
-      RealmConfig realmConfig,
-      PolarisMetaStoreManager metaStoreManager) {
-    return null;
   }
 }
