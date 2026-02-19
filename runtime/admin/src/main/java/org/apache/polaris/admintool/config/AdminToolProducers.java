@@ -31,6 +31,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -79,10 +80,24 @@ public class AdminToolProducers {
     return RealmConfigurationSource.EMPTY_CONFIG;
   }
 
+  /**
+   * Produces a dummy {@link RealmContext} for admin CLI contexts.
+   *
+   * <p>The admin tool doesn't operate within the context of a specific realm, so we generate a
+   * random UUID to satisfy CDI dependencies that require a RealmContext.
+   *
+   * @return a RealmContext with a random realm identifier
+   */
   @Produces
-  public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
-    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+  @ApplicationScoped
+  public RealmContext dummyRealmContext() {
     String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationSource, () -> absentId);
+    return () -> absentId;
+  }
+
+  @Produces
+  public RealmConfig dummyRealmConfig(
+      RealmConfigurationSource configurationSource, RealmContext realmContext) {
+    return new RealmConfigImpl(configurationSource, realmContext);
   }
 }
