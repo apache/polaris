@@ -492,8 +492,7 @@ class MetricsReportPersistenceTest {
     metricsPersistence.writeScanMetricsReport(report);
 
     // Verify only one report exists
-    var results =
-        metricsPersistence.queryScanMetricsReports(12345L, 99999L, null, null, null, 10);
+    var results = metricsPersistence.queryScanMetricsReports(12345L, 99999L, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(reportId);
   }
@@ -628,9 +627,7 @@ class MetricsReportPersistenceTest {
     assertThat(allReportIds).hasSize(6);
   }
 
-  /**
-   * Tests pagination for commit metrics reports across timestamp boundaries.
-   */
+  /** Tests pagination for commit metrics reports across timestamp boundaries. */
   @Test
   void testCommitPaginationAcrossTimestampBoundaries() {
     long baseTime = System.currentTimeMillis();
@@ -679,7 +676,8 @@ class MetricsReportPersistenceTest {
     page1.forEach(r -> allReportIds.add(r.getReportId()));
 
     String cursor1 = page1.get(page1.size() - 1).getReportId();
-    var page2 = metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, cursor1, 2);
+    var page2 =
+        metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, cursor1, 2);
     assertThat(page2).hasSize(2);
     page2.forEach(r -> allReportIds.add(r.getReportId()));
 
