@@ -118,38 +118,5 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * Result of calling {@link #validateAccessToLocations(RealmConfig,
    * PolarisStorageConfigurationInfo, Set, Set)}
    */
-  public static final class ValidationResult {
-    private final boolean success;
-    private final String message;
-
-    public ValidationResult(boolean success, String message) {
-      this.success = success;
-      this.message = message;
-    }
-
-    public boolean isSuccess() {
-      return success;
-    }
-
-    public String getMessage() {
-      return message;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof ValidationResult that)) return false;
-      return success == that.success;
-    }
-
-    @Override
-    public int hashCode() {
-      return Boolean.hashCode(success);
-    }
-
-    @Override
-    public String toString() {
-      return "ValidationResult{" + "success=" + success + ", message='" + message + '\'' + '}';
-    }
-  }
+  public record ValidationResult(boolean success, String message) {}
 }

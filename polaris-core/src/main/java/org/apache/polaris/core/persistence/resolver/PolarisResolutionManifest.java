@@ -203,14 +203,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     // TODO: For passthrough facade semantics, consider whether this should be where we generate
     // the JIT-created entities that would get committed after we find them in the remote
     // catalog.
-    if (requestedPath.isOptional() && !getIsPassthroughFacade()) {
-      if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
+    if (requestedPath.optional() && !getIsPassthroughFacade()) {
+      if (resolvedPath.size() != requestedPath.entityNames().size()) {
         LOGGER.debug(
             "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
             key,
             resolvedPath,
-            requestedPath.getEntityNames());
+            requestedPath.entityNames());
         return null;
       }
     }
@@ -348,8 +348,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     // TODO: For passthrough facade semantics, consider whether this should be where we generate
     // the JIT-created entities that would get committed after we find them in the remote
     // catalog.
-    if (requestedPath.isOptional() && !getIsPassthroughFacade()) {
-      if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
+    if (requestedPath.optional() && !getIsPassthroughFacade()) {
+      if (resolvedPath.size() != requestedPath.entityNames().size()) {
         return null;
       }
     }

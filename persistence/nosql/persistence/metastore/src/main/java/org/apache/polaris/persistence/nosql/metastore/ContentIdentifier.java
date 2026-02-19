@@ -53,7 +53,7 @@ public interface ContentIdentifier {
   }
 
   static ContentIdentifier identifierFor(PolicyIdentifier identifier) {
-    return identifier(identifier.getNamespace().levels(), identifier.getName());
+    return identifier(identifier.namespace().levels(), identifier.name());
   }
 
   static ContentIdentifier identifierFor(TableIdentifier identifier) {

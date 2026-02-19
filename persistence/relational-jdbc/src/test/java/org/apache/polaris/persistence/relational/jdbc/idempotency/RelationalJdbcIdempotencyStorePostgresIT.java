@@ -107,17 +107,17 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, exp, "A", now);
-    assertThat(r1.getType()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
     IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, exp, "B", now);
-    assertThat(r2.getType()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
-    assertThat(r2.getExisting()).isPresent();
-    IdempotencyRecord rec = r2.getExisting().get();
-    assertThat(rec.getRealmId()).isEqualTo(realm);
-    assertThat(rec.getIdempotencyKey()).isEqualTo(key);
-    assertThat(rec.getOperationType()).isEqualTo(op);
-    assertThat(rec.getNormalizedResourceId()).isEqualTo(rid);
-    assertThat(rec.getHttpStatus()).isNull();
+    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    assertThat(r2.existing()).isPresent();
+    IdempotencyRecord rec = r2.existing().get();
+    assertThat(rec.realmId()).isEqualTo(realm);
+    assertThat(rec.idempotencyKey()).isEqualTo(key);
+    assertThat(rec.operationType()).isEqualTo(op);
+    assertThat(rec.normalizedResourceId()).isEqualTo(rid);
+    assertThat(rec.httpStatus()).isNull();
   }
 
   @Test
@@ -159,7 +159,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Optional<IdempotencyRecord> rec = store.load(realm, key);
     assertThat(rec).isPresent();
     assertThat(rec.get().isFinalized()).isTrue();
-    assertThat(rec.get().getHttpStatus()).isEqualTo(201);
+    assertThat(rec.get().httpStatus()).isEqualTo(201);
   }
 
   @Test
@@ -188,17 +188,17 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op1, rid1, exp, "A", now);
-    assertThat(r1.getType()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
     // Second reserve with different op/resource should *not* overwrite the original binding.
     // The store must return DUPLICATE with the *original* (op1, rid1); the HTTP layer
     // (IdempotencyFilter)
     // will detect the mismatch and return 422.
     IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op2, rid2, exp, "B", now);
-    assertThat(r2.getType()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
-    assertThat(r2.getExisting()).isPresent();
-    IdempotencyRecord rec = r2.getExisting().get();
-    assertThat(rec.getOperationType()).isEqualTo(op1);
-    assertThat(rec.getNormalizedResourceId()).isEqualTo(rid1);
+    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    assertThat(r2.existing()).isPresent();
+    IdempotencyRecord rec = r2.existing().get();
+    assertThat(rec.operationType()).isEqualTo(op1);
+    assertThat(rec.normalizedResourceId()).isEqualTo(rid1);
   }
 }

@@ -126,8 +126,8 @@ public class QueryGenerator {
     String placeholders = entityIds.stream().map(e -> "(?, ?)").collect(Collectors.joining(", "));
     List<Object> params = new ArrayList<>();
     for (PolarisEntityId id : entityIds) {
-      params.add(id.getCatalogId());
-      params.add(id.getId());
+      params.add(id.catalogId());
+      params.add(id.id());
     }
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
