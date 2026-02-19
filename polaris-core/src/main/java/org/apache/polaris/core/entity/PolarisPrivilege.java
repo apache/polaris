@@ -26,12 +26,15 @@ import java.util.List;
 
 /**
  * Enumerates the privileges used by the built-in RBAC authorizer ({@link
- * org.apache.polaris.core.auth.PolarisAuthorizerImpl}). These privileges are granted to roles and
- * checked against securables during authorization.
+ * org.apache.polaris.core.auth.PolarisAuthorizerImpl}). In Polaris' RBAC model, a
+ * <em>securable</em> is a Polaris entity (such as a catalog, namespace, table, or policy) on which
+ * access may be controlled by granting privileges to a grantee (typically a catalog role or
+ * principal role). Each privilege in this enum targets a specific {@link PolarisEntityType} of
+ * securable and is checked against that securable during authorization.
  *
  * <p>Alternative authorizer implementations such as the OPA-based authorizer may not use these
  * privileges. They operate at the {@link org.apache.polaris.core.auth.PolarisAuthorizableOperation}
- * level and delegates all privilege/permission logic to external PDPs.
+ * level and delegate all privilege/permission logic to external PDPs.
  */
 public enum PolarisPrivilege {
   SERVICE_MANAGE_ACCESS(1, PolarisEntityType.ROOT),
