@@ -32,17 +32,11 @@ dependencies {
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  implementation(project(":polaris-persistence-nosql-api"))
-  implementation(project(":polaris-persistence-nosql-maintenance-api"))
-  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
-  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
-  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
-  runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
-  runtimeOnly(project(":polaris-persistence-nosql-authz-store-nosql"))
-
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
 
+  implementation(project(":polaris-persistence-nosql-api"))
+  implementation(project(":polaris-persistence-nosql-maintenance-api"))
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
