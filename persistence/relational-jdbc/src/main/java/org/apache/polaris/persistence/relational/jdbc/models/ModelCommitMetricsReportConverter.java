@@ -42,7 +42,7 @@ public class ModelCommitMetricsReportConverter implements Converter<ModelCommitM
         .otelTraceId(rs.getString(ModelCommitMetricsReport.OTEL_TRACE_ID))
         .otelSpanId(rs.getString(ModelCommitMetricsReport.OTEL_SPAN_ID))
         .reportTraceId(rs.getString(ModelCommitMetricsReport.REPORT_TRACE_ID))
-        .snapshotId(rs.getObject(ModelCommitMetricsReport.SNAPSHOT_ID, Long.class))
+        .snapshotId(rs.getLong(ModelCommitMetricsReport.SNAPSHOT_ID))
         .sequenceNumber(rs.getObject(ModelCommitMetricsReport.SEQUENCE_NUMBER, Long.class))
         .operation(rs.getString(ModelCommitMetricsReport.OPERATION))
         .addedDataFiles(rs.getLong(ModelCommitMetricsReport.ADDED_DATA_FILES))
@@ -64,8 +64,8 @@ public class ModelCommitMetricsReportConverter implements Converter<ModelCommitM
         .addedFileSizeBytes(rs.getLong(ModelCommitMetricsReport.ADDED_FILE_SIZE_BYTES))
         .removedFileSizeBytes(rs.getLong(ModelCommitMetricsReport.REMOVED_FILE_SIZE_BYTES))
         .totalFileSizeBytes(rs.getLong(ModelCommitMetricsReport.TOTAL_FILE_SIZE_BYTES))
-        .totalDurationMs(rs.getObject(ModelCommitMetricsReport.TOTAL_DURATION_MS, Long.class))
-        .attempts(rs.getObject(ModelCommitMetricsReport.ATTEMPTS, Integer.class))
+        .totalDurationMs(rs.getLong(ModelCommitMetricsReport.TOTAL_DURATION_MS))
+        .attempts(rs.getInt(ModelCommitMetricsReport.ATTEMPTS))
         .metadata(rs.getString(ModelCommitMetricsReport.METADATA))
         .build();
   }
