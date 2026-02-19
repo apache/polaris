@@ -160,19 +160,22 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   /**
    * Writes a scan metrics report to the database.
    *
+   * <p>This operation is idempotent - writing the same reportId twice has no effect. The primary
+   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure
+   * idempotency.
+   *
    * @param report the scan metrics report to persist
    */
   void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
     try {
       PreparedQuery pq =
-          buildInsertQuery(
+          buildIdempotentInsertQuery(
               ModelScanMetricsReport.ALL_COLUMNS,
               ModelScanMetricsReport.TABLE_NAME,
-              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
-      int updated = datasourceOperations.executeUpdate(pq);
-      if (updated == 0) {
-        throw new SQLException("Scan metrics report was not inserted.");
-      }
+              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList(),
+              datasourceOperations.getDatabaseType());
+      // Note: updated may be 0 if the report already exists (idempotent insert)
+      datasourceOperations.executeUpdate(pq);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
@@ -182,37 +185,69 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   /**
    * Writes a commit metrics report to the database.
    *
+   * <p>This operation is idempotent - writing the same reportId twice has no effect. The primary
+   * key (realm_id, report_id) constraint is used with ON CONFLICT DO NOTHING to ensure
+   * idempotency.
+   *
    * @param report the commit metrics report to persist
    */
   void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
     try {
       PreparedQuery pq =
-          buildInsertQuery(
+          buildIdempotentInsertQuery(
               ModelCommitMetricsReport.ALL_COLUMNS,
               ModelCommitMetricsReport.TABLE_NAME,
-              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
-      int updated = datasourceOperations.executeUpdate(pq);
-      if (updated == 0) {
-        throw new SQLException("Commit metrics report was not inserted.");
-      }
+              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList(),
+              datasourceOperations.getDatabaseType());
+      // Note: updated may be 0 if the report already exists (idempotent insert)
+      datasourceOperations.executeUpdate(pq);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
     }
   }
 
-  private static PreparedQuery buildInsertQuery(
-      List<String> columns, String tableName, List<Object> values) {
+  /**
+   * Builds an idempotent INSERT query that ignores conflicts on the primary key.
+   *
+   * <p>This ensures that duplicate reportIds are silently ignored, fulfilling the idempotency
+   * contract of the {@link MetricsPersistence} interface.
+   *
+   * @param columns the column names
+   * @param tableName the table name
+   * @param values the values to insert
+   * @param databaseType the database type (for dialect-specific syntax)
+   * @return a PreparedQuery with the idempotent INSERT statement
+   */
+  private static PreparedQuery buildIdempotentInsertQuery(
+      List<String> columns, String tableName, List<Object> values, DatabaseType databaseType) {
     String columnList = String.join(", ", columns);
     String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String sql =
-        "INSERT INTO "
-            + QueryGenerator.getFullyQualifiedTableName(tableName)
-            + " ("
-            + columnList
-            + ") VALUES ("
-            + placeholders
-            + ")";
+
+    String sql;
+    if (databaseType == DatabaseType.H2) {
+      // H2 uses MERGE INTO for idempotent inserts, but INSERT ... ON CONFLICT also works in newer
+      // versions
+      // Using standard SQL MERGE syntax for H2 compatibility
+      sql =
+          "MERGE INTO "
+              + QueryGenerator.getFullyQualifiedTableName(tableName)
+              + " ("
+              + columnList
+              + ") KEY (realm_id, report_id) VALUES ("
+              + placeholders
+              + ")";
+    } else {
+      // PostgreSQL: Use INSERT ... ON CONFLICT DO NOTHING
+      sql =
+          "INSERT INTO "
+              + QueryGenerator.getFullyQualifiedTableName(tableName)
+              + " ("
+              + columnList
+              + ") VALUES ("
+              + placeholders
+              + ") ON CONFLICT (realm_id, report_id) DO NOTHING";
+    }
     return new PreparedQuery(sql, values);
   }
 
@@ -254,12 +289,15 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         values.add(lastReportId);
       }
 
+      // Order by report_id only to ensure consistent pagination with report_id cursor.
+      // The report_id (UUID) provides a stable, unique ordering that works correctly
+      // with the cursor-based pagination using `report_id > ?`.
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
+              + " ORDER BY report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
@@ -311,12 +349,15 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         values.add(lastReportId);
       }
 
+      // Order by report_id only to ensure consistent pagination with report_id cursor.
+      // The report_id (UUID) provides a stable, unique ordering that works correctly
+      // with the cursor-based pagination using `report_id > ?`.
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
+              + " ORDER BY report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
