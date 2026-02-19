@@ -112,9 +112,9 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     List<ScanMetricsRecord> records =
         models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
 
-    // Build continuation token if we have results (there may be more pages)
+    // Build continuation token only when we might have more pages
     Token nextToken =
-        records.isEmpty() ? null : ReportIdToken.fromReportId(records.getLast().reportId());
+        records.size() >= limit ? ReportIdToken.fromReportId(records.getLast().reportId()) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -148,9 +148,9 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     List<CommitMetricsRecord> records =
         models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
 
-    // Build continuation token if we have results (there may be more pages)
+    // Build continuation token only when we might have more pages
     Token nextToken =
-        records.isEmpty() ? null : ReportIdToken.fromReportId(records.getLast().reportId());
+        records.size() >= limit ? ReportIdToken.fromReportId(records.getLast().reportId()) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -244,7 +244,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY report_id ASC LIMIT "
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
@@ -301,7 +301,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY report_id ASC LIMIT "
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);

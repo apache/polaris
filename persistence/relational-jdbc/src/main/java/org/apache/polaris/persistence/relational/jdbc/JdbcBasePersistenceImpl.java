@@ -69,6 +69,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -786,7 +787,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
     PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
     try {
-      List<SchemaVersion> versions = datasourceOperations.executeSelect(query, new SchemaVersion());
+      List<MetricsSchemaVersion> versions =
+          datasourceOperations.executeSelect(query, new MetricsSchemaVersion());
       return versions != null && !versions.isEmpty();
     } catch (SQLException e) {
       if (datasourceOperations.isRelationDoesNotExist(e)) {

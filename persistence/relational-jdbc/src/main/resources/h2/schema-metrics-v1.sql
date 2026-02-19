@@ -99,6 +99,9 @@ COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class ent
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
 
+-- Composite index for query performance
+CREATE INDEX IF NOT EXISTS idx_scan_report_query ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
 -- ============================================================================
 -- COMMIT METRICS REPORT TABLE
 -- ============================================================================
@@ -164,3 +167,6 @@ COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class
 
 -- Index for retention cleanup by timestamp
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
+
+-- Composite index for query performance
+CREATE INDEX IF NOT EXISTS idx_commit_report_query ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
