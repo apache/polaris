@@ -36,7 +36,7 @@ ensuring that your Iceberg tables remain interoperable and secure.
 
 By providing a vendor-neutral implementation of the **Apache Iceberg REST Catalog spec**,
 Polaris solves one of the biggest headaches in modern data architecture: **vendor lock-in.**
-Whether you are using Dremio, Snowflake, Spark, Trino, or Flink, Polaris ensures they are all looking
+Whether you are using Dremio, Snowflake, Apache Spark, Trino, or Apache Flink, Polaris ensures they are all looking
 at the same source of truth.
 
 ### Why Graduation Matters
