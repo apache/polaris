@@ -31,6 +31,7 @@ import picocli.CommandLine.HelpCommand;
     subcommands = {
       HelpCommand.class,
       BootstrapCommand.class,
+      BootstrapMetricsCommand.class,
       PurgeCommand.class,
       NoSqlCommand.class,
     })

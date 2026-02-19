@@ -99,18 +99,30 @@ public class JdbcMetricsPersistenceProducer {
    * MetricsPersistence#NOOP}. Otherwise, it creates a {@link JdbcMetricsPersistence} configured
    * with the current realm.
    *
-   * @param realmContext the current realm context (request-scoped)
+   * <p>Note: We use {@code Instance<RealmContext>} instead of direct injection because {@link
+   * RealmContext} is only available in the service runtime context, not in the admin CLI context.
+   * Using {@code Instance} makes this a lazy/optional dependency that CDI won't validate at build
+   * time.
+   *
+   * @param realmContextInstance the realm context instance (lazy lookup)
    * @return a MetricsPersistence implementation for JDBC, or NOOP if not supported
    */
   @Produces
   @RequestScoped
   @Identifier("relational-jdbc")
-  public MetricsPersistence metricsPersistence(RealmContext realmContext) {
+  public MetricsPersistence metricsPersistence(Instance<RealmContext> realmContextInstance) {
     if (!metricsSupported || datasourceOperations == null) {
       return MetricsPersistence.NOOP;
     }
 
-    String realmId = realmContext.getRealmIdentifier();
+    if (realmContextInstance.isUnsatisfied()) {
+      LOGGER.warn(
+          "RealmContext not available. Returning NOOP MetricsPersistence. "
+              + "This is expected in CLI contexts.");
+      return MetricsPersistence.NOOP;
+    }
+
+    String realmId = realmContextInstance.get().getRealmIdentifier();
     return new JdbcMetricsPersistence(datasourceOperations, realmId);
   }
 
