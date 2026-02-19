@@ -24,21 +24,21 @@ weight: 400
 ---
 
 This page describes how to configure persistence for Polaris when deploying with the Helm chart.
-For more information on persistence in Polaris, see the [Metastores]({{% ref "../metastores" %}}) page.
+For general information on persistence in Polaris, see the [Metastores]({{% ref "../metastores" %}}) page.
 
-Polaris supports three persistence backends:
+Polaris supports three metastore implementations:
 
-- [In-Memory](#in-memory-backend) - for testing only
-- [PostgreSQL (JDBC)](#postgresql-jdbc-backend) - recommended for production
-- [MongoDB (NoSQL)](#mongodb-nosql-backend) - experimental (beta)
+- [In-Memory](#in-memory-metastore) - for testing only
+- [PostgreSQL (JDBC)](#postgresql-jdbc-metastore) - recommended for production
+- [MongoDB (NoSQL)](#mongodb-nosql-metastore) - experimental (beta)
 
 {{< alert warning >}}
-The default `in-memory` backend is **not suitable for production**. Data will be lost when pods restart, and you cannot run multiple replicas.
+The default `in-memory` metastore is **not suitable for production**. Data will be lost when pods restart, and you cannot run multiple replicas.
 {{< /alert >}}
 
-## In-Memory Backend
+## In-Memory Metastore
 
-The in-memory backend is the default and requires no configuration. It is useful for quick testing and development:
+The in-memory metastore is the default and requires no configuration. It is useful for quick testing and development:
 
 ```yaml
 persistence:
@@ -46,12 +46,12 @@ persistence:
 ```
 
 {{< alert note >}}
-When using the in-memory backend, you must set `replicaCount: 1` as data is not shared between pods. Also, you cannot enable horizontal autoscaling.
+When using the in-memory metastore, you must set `replicaCount: 1` as data is not shared between pods. Also, you cannot enable horizontal autoscaling.
 {{< /alert >}}
 
-## PostgreSQL (JDBC) Backend
+## PostgreSQL (JDBC) Metastore
 
-The PostgreSQL backend stores all Polaris metadata in a PostgreSQL database. This is the recommended backend for production deployments.
+The PostgreSQL metastore stores all Polaris metadata in a PostgreSQL database. This is the recommended metastore for production deployments.
 
 ### Prerequisites
 
@@ -78,7 +78,7 @@ The secret must contain three keys:
 
 ### Configuring the Chart
 
-Configure the chart to use the PostgreSQL backend:
+Configure the chart to use the PostgreSQL metastore:
 
 ```yaml
 persistence:
@@ -105,13 +105,13 @@ advancedConfig:
 
 See the [Quarkus Datasource configuration reference](https://quarkus.io/guides/datasource#configuration-reference) for all available options.
 
-## MongoDB (NoSQL) Backend
+## MongoDB (NoSQL) Metastore
 
 {{< alert note >}}
-The MongoDB backend is currently in **beta**.
+The MongoDB NoSQL metastore is currently in **beta**.
 {{< /alert >}}
 
-The MongoDB backend stores all Polaris metadata in a MongoDB database.
+The MongoDB metastore stores all Polaris metadata in a MongoDB database.
 
 ### Prerequisites
 
@@ -145,7 +145,7 @@ kubectl create secret generic polaris-mongodb \
 
 ### Configuring the Chart
 
-Configure the chart to use the MongoDB backend:
+Configure the chart to use the NoSQL metastore with `MongoDb` backend:
 
 ```yaml
 persistence:

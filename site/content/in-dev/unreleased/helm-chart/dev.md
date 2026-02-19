@@ -30,7 +30,7 @@ This guide provides instructions for developers who want to work with the Polari
 ### Prerequisites
 
 - [Minikube](https://minikube.sigs.k8s.io/docs/start/) installed
-- [Helm](https://helm.sh/docs/intro/install/) 3.x ou 4.x installed
+- [Helm](https://helm.sh/docs/intro/install/) 3.x or 4.x installed
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) installed
 
 ### Starting Minikube

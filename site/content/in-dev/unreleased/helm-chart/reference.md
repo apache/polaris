@@ -250,7 +250,8 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
+| features | object | `{"realmOverrides":{}}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. |
+| features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the global value is used. |
 
 ### Persistence
 

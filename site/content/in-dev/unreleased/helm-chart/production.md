@@ -77,9 +77,9 @@ See the [Authentication]({{% relref "authentication" %}}) page for detailed conf
 
 ### Persistence
 
-By default, the Polaris Helm chart uses the `in-memory` metastore, which is not suitable for production. A persistent backend must be configured to ensure data is not lost when pods restart.
+By default, the Polaris Helm chart uses the `in-memory` metastore, which is not suitable for production. A persistent metastore must be configured to ensure data is not lost when pods restart.
 
-Polaris supports PostgreSQL (JDBC) and MongoDB (NoSQL, beta) as production-ready persistence backends. See the [Persistence]({{% relref "persistence" %}}) page for detailed configuration instructions.
+Polaris supports PostgreSQL (JDBC) and MongoDB (NoSQL, beta) as production-ready metastores. See the [Persistence]({{% relref "persistence" %}}) page for detailed configuration instructions.
 
 ### Networking
 
@@ -105,7 +105,7 @@ Adjust these values based on expected workload and available cluster resources.
 
 ### Scaling
 
-For high availability, multiple replicas of the Polaris server can be run. This requires a persistent backend to be configured as described above.
+For high availability, multiple replicas of the Polaris server can be run. This requires a persistent metastore to be configured as described above.
 
 #### Static Replicas
 
@@ -116,7 +116,6 @@ replicaCount: 3
 ```
 
 #### Autoscaling
-
 
 Horizontal autoscaling can be enabled to define the minimum and maximum number of replicas, and CPU or memory utilization targets:
 
@@ -170,7 +169,7 @@ When installing Polaris for the first time, it is necessary to bootstrap each re
 
 For more information on bootstrapping realms, see the [Admin Tool]({{% relref "../admin-tool#bootstrapping-realms-and-principal-credentials" %}}) guide.
 
-Example for the PostgreSQL backend:
+Example for the PostgreSQL metastore:
 
 ```bash
 kubectl run polaris-bootstrap \
@@ -183,10 +182,10 @@ kubectl run polaris-bootstrap \
   --env="quarkus.datasource.password=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.password}' | base64 --decode)" \
   --env="quarkus.datasource.jdbc.url=$(kubectl get secret polaris-persistence -n polaris -o jsonpath='{.data.jdbcUrl}' | base64 --decode)" \
   -- \
-  bootstrap -r POLARIS -c POLARIS,root,$ROOT_PASSWORD
+  bootstrap -r polaris-realm1 -c polaris-realm1,root,$ROOT_PASSWORD
 ```
 
-Example for the NoSQL (MongoDB) backend:
+Example for the NoSQL (MongoDB) metastore:
 
 ```bash
 kubectl run polaris-bootstrap \
@@ -199,10 +198,10 @@ kubectl run polaris-bootstrap \
   --env="quarkus.mongodb.database=polaris" \
   --env="quarkus.mongodb.connection-string=$(kubectl get secret polaris-nosql-persistence -n polaris -o jsonpath='{.data.connectionString}' | base64 --decode)" \
   -- \
-  bootstrap -r POLARIS -c POLARIS,root,$ROOT_PASSWORD
+  bootstrap -r polaris-realm1 -c polaris-realm1,root,$ROOT_PASSWORD
 ```
 
-Both commands above bootstrap a realm named `POLARIS` with root password: `$ROOT_PASSWORD`.
+Both commands above bootstrap a realm named `polaris-realm1` with root password: `$ROOT_PASSWORD`.
 
 {{< alert warning >}}
 Replace `$ROOT_PASSWORD` with a strong, unique password for the root credentials.
