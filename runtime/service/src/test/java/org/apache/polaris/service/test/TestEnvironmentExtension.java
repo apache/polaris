@@ -45,7 +45,7 @@ public class TestEnvironmentExtension implements ParameterResolver {
     // This must be cached because the TestEnvironment has a randomly generated ID
     return extensionContext
         .getStore(Namespace.create(extensionContext.getRequiredTestClass()))
-        .getOrComputeIfAbsent(
+        .computeIfAbsent(
             ENV_PROPERTY_KEY,
             (k) -> getTestEnvironmentResolver().resolveTestEnvironment(extensionContext),
             TestEnvironment.class);
