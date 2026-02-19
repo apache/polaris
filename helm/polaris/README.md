@@ -27,8 +27,8 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 
 ## Requirements
 
-- Kubernetes 1.32+ cluster
-- Helm 3.0+
+- Kubernetes 1.33+ cluster
+- Helm 3.x or 4.x
 
 ## Features
 
