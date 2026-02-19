@@ -1,0 +1,98 @@
+{{/*
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+*/}}
+{{- $state := .Get "state" -}}
+{{- $url := printf "https://api.github.com/search/issues?q=repo:apache/polaris+state:%s+label:proposal+sort:updated-desc" $state -}}
+{{- $listCacheKey := print $url (now.Format "2006-01-02-13-05") -}}
+{{- $options := dict "Authorization" (printf "Bearer %s" (getenv "GITHUB_TOKEN")) "Key" $listCacheKey -}}
+
+{{- $data := dict -}}
+{{- $page := .Page -}}
+{{- with resources.GetRemote $url $options -}}
+    {{- with .Err -}}
+        {{- errorf "Error loading GitHub data for %s: %s" $url . -}}
+    {{- else -}}
+        {{- $data = . | transform.Unmarshal -}}
+        {{- if $data.items -}}
+            <table>
+            {{- range $data.items -}}
+                <tr>
+                    <td>
+                        <span><a href="{{- .html_url -}}">#{{- .number -}}</a></span>
+                    </td>
+                    <td>
+                        <span><b>{{ .title -}}</b></span>
+                        {{ if .pull_request -}}(Pull Request){{- end -}}
+                        {{- if .milestone -}}
+                            <br/>
+                            <span>Planned for <a href="{{- .milestone.html_url -}}">{{- .milestone.title -}}</a></span>
+                        {{- end -}}
+
+                        {{- if .pull_request -}}
+                          {{- $prUrl := .pull_request.url -}}
+                          {{- $prFilesUrl := printf "%s/files" $prUrl -}}
+                          {{- $prOptions := dict "Authorization" (printf "Bearer %s" (getenv "GITHUB_TOKEN")) -}}
+                          {{- with resources.GetRemote $prUrl $prOptions -}}
+                            {{- with .Err -}}
+                              {{- errorf "Error loading GitHub data for %s: %s" $prUrl . -}}
+                            {{- else -}}
+                              {{- $pr := . | transform.Unmarshal -}}
+                              {{- $prFilesCacheKey := print $prFilesUrl (now.Format "2006-01-02-13-05") -}}
+                              {{- $prFilesOptions := dict "Authorization" (printf "Bearer %s" (getenv "GITHUB_TOKEN")) "Key" $prFilesCacheKey -}}
+                              {{- with resources.GetRemote $prFilesUrl $prFilesOptions -}}
+                                {{- with .Err -}}
+                                    {{- errorf "Error loading GitHub data for %s: %s" $prFilesUrl . -}}
+                                {{- else -}}
+                                  {{- $prFiles := . | transform.Unmarshal -}}
+                                  {{- $prProposalFile := where $prFiles ".filename" "like" "site/content/proposals/.*" -}}
+                                  {{- if $prProposalFile -}}
+                                    <div>
+                                    <em>Proposal contents:</em>
+                                    <table>
+                                    {{- range $prProposalFile -}}
+                                      <tr>
+                                          <td><code>{{ .filename }}</code></td>
+                                          <td><a href="https://github.com/{{ $pr.head.repo.full_name }}/blob/{{ $pr.head.ref }}/{{ .filename }}">View &amp; Edit</a></td>
+                                          <td><a href="{{ $pr.html_url }}/changes?diff=unified">PR Changes & Comments</a></td>
+                                      </tr>
+                                    {{- end -}}
+                                    </table>
+                                    </div>
+                                  {{- end -}}
+                                {{- end -}}
+                              {{- end -}}
+
+                            {{- end -}}
+                          {{- end -}}
+                        {{- end -}}
+                    </td>
+                    {{/*
+                        Intentionally NOT rendering the `body` here, because:
+                        1. It could allow execution of Hugo shortcodes (code injection!)
+                        2. It's just tricky to render the GitHub Markdown correctly here
+                    */}}
+                </tr>
+            {{- end -}}
+            </table>
+        {{- else -}}
+            <p>No proposals found.</p>
+        {{- end -}}
+    {{- end -}}
+{{- else -}}
+    {{- errorf "Error loading GitHub data for %s" $url -}}
+{{- end -}}
