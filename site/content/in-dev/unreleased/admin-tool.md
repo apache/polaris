@@ -22,33 +22,30 @@ type: docs
 weight: 300
 ---
 
-Polaris includes a tool for administrators to manage the metastore.
+Polaris includes a tool for administrators to manage the [metastore]({{% ref "metastores" %}}).
 
-The tool must be built with the necessary JDBC drivers to access the metastore database. For
-example, to build the tool with support for Postgres, run the following:
+The tool is available as a Docker image: `apache/polaris-admin-tool`. It can also be downloaded as part of the [binary distribution]({{% ref "getting-started/binary-distribution" %}}).
 
-```shell
-./gradlew \
-  :polaris-admin:assemble \
-  :polaris-admin:quarkusAppPartsBuild --rerun \
-  -Dquarkus.container-image.build=true
-```
-
-The above command will generate:
-
-- One Fast-JAR in `runtime/admin/build/quarkus-app/quarkus-run.jar`
-- Two Docker images named `apache/polaris-admin-tool:latest` and `apache/polaris-admin-tool:<version>`
+{{< alert note >}} 
+The tool must be built with the necessary database drivers to access the metastore database. 
+The default build includes drivers for the PostgreSQL and NoSQL (MongoDB) backends.
+{{< /alert >}}
 
 ## Usage
 
 Please make sure the admin tool and Polaris server are with the same version before using it.
 To run the standalone JAR, use the following command:
 
+If you downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you
+can run the admin tool as follows:
+
 ```shell
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar --help
+java -jar polaris-bin-<version>/admin/quarkus-run.jar --help
 ```
 
-To run the Docker image, use the following command:
+Make sure to replace `<version>` with the actual version of Polaris you are using.
+
+To run the Docker image instead, use the following command:
 
 ```shell
 docker run apache/polaris-admin-tool:latest --help
@@ -87,8 +84,17 @@ for the Polaris server. This command is idempotent and can be run multiple times
 issues. If a realm is already bootstrapped, running the `bootstrap` command again will not have any
 effect on that realm.
 
+If you have downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}),
+you can run the `bootstrap` command as follows:
+
 ```shell
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap --help
+java -jar polaris-bin-<version>/admin/quarkus-run.jar bootstrap --help
+```
+
+You can also use the Docker image to run the `bootstrap` command:
+
+```shell
+docker run apache/polaris-admin-tool:latest bootstrap --help
 ```
 
 The basic usage of the `bootstrap` command is outlined below:
@@ -117,11 +123,33 @@ File Input Options:
 ```
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
-client ID `admin` and client secret `admin`, you can run the following command:
+client ID `admin` and client secret `admin`, you can run the following commands:
 
-```shell
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -r realm1 -c realm1,admin,admin
+Example for the PostgreSQL backend:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=relational-jdbc" \
+  --env="quarkus.datasource.username=<your-username>" \
+  --env="quarkus.datasource.password=<your-password>" \
+  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  apache/polaris-admin-tool:latest bootstrap -r realm1 -c realm1,admin,admin
 ```
+
+Example for the NoSQL (MongoDB) backend:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=nosql" \
+  --env="polaris.persistence.nosql.backend=MongoDb" \
+  --env="quarkus.mongodb.database=polaris" \
+  --env="quarkus.mongodb.connection-string=<mongodb-connection-string>" \
+  apache/polaris-admin-tool:latest bootstrap -r realm1 -c realm1,admin,admin
+```
+
+As you can see, the Polaris Admin Tool must be executed with appropriate configuration to connect to the same database used by the Polaris server. The configuration can be done via environment variables (as above) or system properties.
+
+To know which configuration options you should use, read the [Metastores]({{% ref "metastores" %}}) section and the documentation of the specific metastore backend you are using.
 
 ## Purging Realms and Principal Credentials
 
@@ -133,8 +161,16 @@ This includes all entities (catalogs, namespaces, tables, views, roles), all pri
 credentials, grants, and any other data associated with the realms.
 {{< /alert >}}
 
+If you have downloaded the [binary distribution]({{% ref "getting-started/binary-distribution" %}}), you can run the `purge` command as follows:
+
 ```shell
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar purge --help
+java -jar polaris-bin-<version>/admin/quarkus-run.jar purge --help
+```
+
+You can also use the Docker image to run the `purge` command:
+
+```shell
+docker run apache/polaris-admin-tool:latest purge --help
 ```
 
 The basic usage of the `purge` command is outlined below:
@@ -147,8 +183,28 @@ Purge realms and all associated entities.
   -V, --version         Print version information and exit.
 ```
 
-For example, to purge the `realm1` realm, you can run the following command:
+For example, to purge the `realm1` realm, you can run the following commands:
 
-```shell
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar purge -r realm1
+Example for the PostgreSQL backend:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=relational-jdbc" \
+  --env="quarkus.datasource.username=<your-username>" \
+  --env="quarkus.datasource.password=<your-password>" \
+  --env="quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>" \
+  apache/polaris-admin-tool:latest purge -r realm1
 ```
+
+Example for the NoSQL (MongoDB) backend:
+
+```bash
+docker run --rm -it \
+  --env="polaris.persistence.type=nosql" \
+  --env="polaris.persistence.nosql.backend=MongoDb" \
+  --env="quarkus.mongodb.database=polaris" \
+  --env="quarkus.mongodb.connection-string=<mongodb-connection-string>" \
+  apache/polaris-admin-tool:latest purge -r realm1
+```
+
+Again, the Polaris Admin Tool must be executed with appropriate configuration to connect to the same database used by the Polaris server. The configuration can be done via environment variables (as above) or system properties.
