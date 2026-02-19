@@ -68,4 +68,4 @@ export ASSETS_PATH=$(pwd)/getting-started/assets/
 docker compose -p polaris -f getting-started/jdbc/docker-compose.yml down
 ```
 
-To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../../configuring-polaris-for-production" %}}) page.
+To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../../configuration/configuring-polaris-for-production" %}}) page.

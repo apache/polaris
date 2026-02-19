@@ -206,6 +206,28 @@ public abstract class MarkdownFormatter {
     }
   }
 
+  // In <pre> blocks, preserve the text as-is (including newlines)
+  static class PreTarget extends Target {
+    PreTarget(String indent) {
+      super(indent);
+    }
+
+    @Override
+    void addText(String text) {
+      this.text.append(text);
+    }
+
+    @Override
+    void addTextOrCode(String text, boolean code) {
+      this.text.append(text);
+    }
+
+    @Override
+    void addCode(String text) {
+      this.text.append(text);
+    }
+  }
+
   abstract static class Target {
     final StringBuilder text = new StringBuilder();
     final String indent;
@@ -476,6 +498,10 @@ public abstract class MarkdownFormatter {
               case "code":
                 target.text.append('`');
                 break;
+              case "pre":
+                target.text.append("\n\n```");
+                stack.addLast(new PreTarget(target.indent));
+                break;
               default:
                 break;
             }
@@ -528,6 +554,11 @@ public abstract class MarkdownFormatter {
                 break;
               case "code":
                 target.text.append('`');
+                break;
+              case "pre":
+                var pre = (PreTarget) stack.removeLast();
+                target = stack.peekLast();
+                requireNonNull(target).text.append(pre.text).append("```\n\n");
                 break;
               default:
                 break;

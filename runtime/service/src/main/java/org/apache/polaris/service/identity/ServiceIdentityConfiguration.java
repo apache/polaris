@@ -25,6 +25,7 @@ import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.docs.ConfigDocs;
 
 /**
  * Configuration interface for managing service identities across multiple realms in Polaris.
@@ -50,7 +51,6 @@ import org.apache.polaris.core.context.RealmContext;
  * polaris.service-identity.aws-iam.access-key-id=<access-key-id>
  * polaris.service-identity.aws-iam.secret-access-key=<secret-access-key>
  * polaris.service-identity.aws-iam.session-token=<optional-session-token>
- *
  * # Realm-specific service identity for multi-tenant deployments
  * polaris.service-identity.my-realm.aws-iam.iam-arn=arn:aws:iam::123456789012:user/my-realm-user
  * polaris.service-identity.my-realm.aws-iam.access-key-id=<access-key-id>
@@ -75,6 +75,7 @@ public interface ServiceIdentityConfiguration {
   @WithParentName
   @WithUnnamedKey(DEFAULT_REALM_KEY)
   @WithDefaults
+  @ConfigDocs.ConfigPropertyName("realm")
   Map<String, RealmServiceIdentityConfiguration> realms();
 
   /**

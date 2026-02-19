@@ -27,7 +27,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
 public interface AuthenticationRealmConfiguration {
 
-  /** The type of authentication for this realm. */
+  /** The type of authentication to use. */
   @WithDefault("internal")
   AuthenticationType type();
 
