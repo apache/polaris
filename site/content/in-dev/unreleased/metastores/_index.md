@@ -23,20 +23,25 @@ weight: 700
 ---
 
 
+A metastore is the persistence backend that stores and manages catalog metadata. This includes:
+
+- Polaris [entities](../entities): catalogs, namespaces, tables, views, principals, roles, etc.
+- Polaris [RBAC data](../managing-security/access-control): authorization and access control information (when using the built-in authorizer).
+- Polaris [policies](../policy): policy configurations for data governance and security.
+
 Polaris supports three metastore implementations and persistence backends:
 
-| Backend           | Type              | Production Ready | Description                                                                                     |
-|-------------------|-------------------|------------------|-------------------------------------------------------------------------------------------------|
-| In-Memory         | `in-memory`       | ❌                | Data is stored in memory and lost when pods restart. Suitable for development and testing only. |
-| PostgreSQL (JDBC) | `relational-jdbc` | ✅                | Data is stored in a PostgreSQL database using JDBC. Recommended for production.                 |
-| MongoDB (NoSQL)   | `nosql`           | ⚠️ (Beta)        | Data is stored in a MongoDB database. Currently in beta.                                        |
+| Backend           | Type              | Support Level | Description                                                                                     |
+|-------------------|-------------------|---------------|-------------------------------------------------------------------------------------------------|
+| In-Memory         | `in-memory`       | Test only     | Data is stored in memory and lost when pods restart. Suitable for development and testing only. |
+| PostgreSQL (JDBC) | `relational-jdbc` | Ready to use  | Data is stored in a PostgreSQL database using JDBC. Recommended for production.                 |
+| MongoDB (NoSQL)   | `nosql`           | Experimental  | Data is stored in a MongoDB database. Currently in beta.                                        |
 
 {{< alert warning >}}
 The default `in-memory` backend is **not suitable for production**. Data will be lost when the server restarts!
 {{< /alert >}}
 
-This section explains how to configure and use Polaris production-ready metastores with the available persistence backends:
+This section explains how to configure and use Polaris with the following backends:
 
 - [Relational JDBC](relational-jdbc)
 - [NoSQL MongoDB](nosql-mongodb)
-
