@@ -31,7 +31,7 @@ keywords:
   - polaris
   - iceberg
 maintainers:
-  - name: Apache Polaris PPMC
+  - name: Apache Polaris PMC
     email: dev@polaris.apache.org
     url: https://polaris.apache.org/
 annotations:
