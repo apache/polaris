@@ -94,4 +94,4 @@ export STORAGE_LOCATION="s3://$S3_BUCKET_NAME/quickstart_catalog/"
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -p polaris -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
+docker compose -p polaris -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/jdbc/docker-compose.yml up -d
