@@ -244,6 +244,12 @@ components:
       properties:
         table:
           $ref: '#/components/schemas/GenericTable'
+        storage-credentials:
+          type: array
+          description: Credentials for ADLS / GCS / S3 to access the table.
+          items:
+            $ref: '#/components/schemas/StorageAccessCredential'
+
 
     ListGenericTablesResponse:
       type: object
@@ -255,6 +261,53 @@ components:
           uniqueItems: true
           items:
             $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableIdentifier'
+
+
+    StorageAccessCredential:
+      type: object
+      required:
+        - prefix
+        - config
+      properties:
+        prefix:
+          type: string
+          description: Indicates a storage location prefix where the credential is relevant. Clients should choose the most 
+            specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
+        config:
+          type: object
+          description: |
+            Credential configurations for AWS S3, GCP GCS, and Azure ADLS are supported. The following outlines 
+            the currently supported configuration options:
+              
+            ## S3 Configurations
+              
+            The following configurations should be respected when working with tables stored in AWS S3
+              - `s3.access-key-id`: id for credentials that provide access to the data in S3
+              - `s3.secret-access-key`: secret for credentials that provide access to data in S3
+              - `s3.session-token`: if present, this value should be used for as the session token
+              - `s3.session-token-expires-at-ms`: the time the aws session token expires, in milliseconds
+            Extra properties:
+              - `client.region`: region to configure client for making requests to AWS
+              - `client.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+              
+            ## GCP GCS Configurations
+            
+            The following configurations should be respected when working with tables stored in GCP GCS
+              - `gcs.oauth2.token`: the gcs scoped access token
+              - `gcs.oauth2.token-expires-at`: the time the gcs access token expires, in milliseconds
+            Extra properties:
+              - `gcs.oauth2.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+            
+            # AZURE ADLS Configuration
+            
+            The following configurations should be respected when working with tables stored in AZURE ADLS
+              - `adls.sas-token.<hostname>`: an azure shared access signature token
+              - `adls.sas-token-expires-at-ms.<hostname>`: the expiration time for the access token, in milliseconds
+            Extra properties:
+              - `adls.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+
+          additionalProperties:
+            type: string
 
   responses:
 
