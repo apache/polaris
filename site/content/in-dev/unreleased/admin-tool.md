@@ -62,6 +62,7 @@ Commands:
   help       Display help information about the specified command.
   bootstrap  Bootstraps realms and root principal credentials.
   purge      Purge realms and all associated entities.
+  nosql      Sub-commands specific to NoSQL persistence.
 ```
 
 ## Configuration
@@ -208,3 +209,85 @@ docker run --rm -it \
 ```
 
 Again, the Polaris Admin Tool must be executed with appropriate configuration to connect to the same database used by the Polaris server. The configuration can be done via environment variables (as above) or system properties.
+
+## NoSQL Specific Operations
+
+The `nosql` admin tool command is used to perform NoSQL metastore specific operations.
+```
+Usage: polaris-admin-tool.jar nosql [-hV] [COMMAND]
+Sub-commands specific to NoSQL persistence.
+  -h, --help      Show this help message and exit.
+  -V, --version   Print version information and exit.
+Commands:
+  maintenance-info  Polaris NoSQL persistence maintenance information.
+  maintenance-log   Show Polaris persistence maintenance log.
+  maintenance-run   Run Polaris persistence maintenance.
+```
+
+### Running NoSQL maintenance
+
+NoSQL maintenance is run using the `nosql maintenance-run` command.
+Maintenance covers the deletion of stale database entries.
+
+{{< alert note >}}
+It is recommended to run the `nosql maintenance-run` command regulary, for example, once per day.
+{{< /alert >}}
+
+The output shows a bunch of configuration options, most of which are automatically determined by the tool.
+
+```
+Maintenance configuration:
+            created-at grace time: PT3H
+                delete batch size: 10
+                    retained runs: 50
+            expected object count: 100000
+         expected reference count: 100
+              last-run multiplier: 1.100000
+                  initialized FPP: 0.000010
+                     expected FPP: 0.000050
+  reference scan rate limit / sec: (unlimited)
+  object    scan rate limit / sec: (unlimited)
+```
+
+The remaining output is a detailed report of the maintenance run.
+
+The implementation of NoSQL maintenance is self-tuning and does usually not require additional configuration.
+
+If you encounter that the maintenance run operation puts too much load on the database,
+you can adjust scan rates to reduce the load.
+The option for the reference and object scan rates are
+`polaris.persistence.nosql.maintenance.object-scan-rate-limit-per-second` and
+`polaris.persistence.nosql.maintenance.reference-scan-rate-limit-per-second`, both default to 'unlimited.'
+It is safe to let the maintenance run for a long time, there is no runtime limit.
+Alternatively, you can run maintenance at high or the default unlimited scan rate during off-peak hours.
+
+{{< alert note >}}
+The `nosql maintenance-run` command may emit a warning that not all purgable database entries have been deleted.
+In this case, the tool has already determined the parameters that will be effective in the next maintenance run.
+This warning is informative and can usually be ignored.
+
+The number of expected objects and references is calculated from the actual number of objects and references
+scanned during the last run, multiplied by the `count-from-last-run-multiplier` value.
+
+Encountering this warning often, especially in multiple consecutive maintenance runs, is a sign that
+more data is added to the database than expected. In such a case, update the
+`polaris.persistence.nosql.maintenance.count-from-last-run-multiplier` configuration option to a higher value.
+It defaults to `1.1`.
+{{< /alert >}}
+
+All NoSQL maintenance configuration options are under the `polaris.persistence.nosql.maintenance` namespace.
+See the `Configuration Reference` pages for more information.
+
+Avoid running multiple instances of the `nosql maintenance-run` command at the same time to avoid an unnecessary
+database load, although this does not cause any other issues.
+
+### Inspecting NoSQL maintenance run logs
+
+The `nosql maintenance-log` command shows the logs of the recent NoSQL maintenance run.
+
+This command is useful for auditing and debugging purposes.
+
+### Inspecting NoSQL maintenance information
+
+The `nosql maintenance-info` command shows the effective maintenance parameters.
+This information is also shown in the output of the `nosql maintenance-run` command.
