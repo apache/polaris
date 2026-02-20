@@ -124,31 +124,46 @@ public class JdbcMetricsPersistenceProducer {
    * schema tables independently from the entity schema.
    *
    * @return a MetricsSchemaBootstrap implementation for JDBC
+   * @throws IllegalStateException if DatasourceOperations is not available
    */
   @Produces
   @ApplicationScoped
   @Identifier("relational-jdbc")
   public MetricsSchemaBootstrap metricsSchemaBootstrap() {
     if (datasourceOperations == null) {
-      LOGGER.warn(
-          "DatasourceOperations not available. Returning NOOP MetricsSchemaBootstrap implementation.");
-      return MetricsSchemaBootstrap.NOOP;
+      throw new IllegalStateException(
+          "DatasourceOperations not available. Cannot create MetricsSchemaBootstrap. "
+              + "Ensure the database is properly configured.");
     }
     return new JdbcMetricsSchemaBootstrap(datasourceOperations);
   }
 
   /**
-   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table.
+   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table and
+   * validating the version is within the supported range.
    *
    * @param datasourceOperations the datasource operations to use for the check
-   * @return true if the metrics_version table exists and contains data, false otherwise
+   * @return true if the metrics_version table exists and contains a valid version (>= 1 and <=
+   *     LATEST_METRICS_SCHEMA_VERSION), false otherwise
    */
   static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
     PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
     try {
       List<MetricsSchemaVersion> versions =
           datasourceOperations.executeSelect(query, new MetricsSchemaVersion());
-      return versions != null && !versions.isEmpty();
+      if (versions == null || versions.isEmpty()) {
+        return false;
+      }
+      int version = versions.getFirst().getValue();
+      if (version < 1 || version > JdbcMetricsSchemaBootstrap.LATEST_METRICS_SCHEMA_VERSION) {
+        LOGGER.warn(
+            "Metrics schema version {} is out of supported range [1, {}]. "
+                + "Treating metrics as not supported.",
+            version,
+            JdbcMetricsSchemaBootstrap.LATEST_METRICS_SCHEMA_VERSION);
+        return false;
+      }
+      return true;
     } catch (SQLException e) {
       if (datasourceOperations.isRelationDoesNotExist(e)) {
         return false;
