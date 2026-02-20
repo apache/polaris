@@ -284,7 +284,7 @@ public class PolicyCatalog {
 
   public boolean attachPolicy(
       PolicyIdentifier policyIdentifier,
-      PolicyAttachmentTarget target,
+      @Nonnull PolicyAttachmentTarget target,
       Map<String, String> parameters) {
 
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
@@ -322,7 +322,8 @@ public class PolicyCatalog {
     return true;
   }
 
-  public boolean detachPolicy(PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
+  public boolean detachPolicy(
+      PolicyIdentifier policyIdentifier, @Nonnull PolicyAttachmentTarget target) {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policyCatalogPath = PolarisEntity.toCoreList(resolvedPolicyPath.getRawParentPath());
     var policyEntity = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());

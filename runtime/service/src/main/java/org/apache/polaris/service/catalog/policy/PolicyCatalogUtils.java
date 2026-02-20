@@ -30,6 +30,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 
 public class PolicyCatalogUtils {
+  private PolicyCatalogUtils() {}
 
   public static PolarisResolvedPathWrapper getResolvedPathWrapper(
       @Nonnull PolarisResolutionManifestCatalogView resolutionManifest,
