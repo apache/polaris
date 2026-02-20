@@ -84,7 +84,8 @@ For a comprehensive reference of all Polaris configuration options, see the [Con
 
 ## Quarkus Configuration Options
 
-There are many Quarkus configuration properties that can be useful, for example:
+Some often useful Quarkus configuration properties are listed below.
+Please refer to the [Quarkus documentation](https://quarkus.io/guides/) for more details.
 
 | Configuration Property                               | Default Value                   | Description                                                                 |
 |------------------------------------------------------|---------------------------------|-----------------------------------------------------------------------------|
@@ -104,8 +105,6 @@ There are many Quarkus configuration properties that can be useful, for example:
 | `quarkus.management.port`                            | `8182`                          | Define the port number of the Polaris management server.                    |
 | `quarkus.management.root-path`                       |                                 | Define the root path where `/metrics` and `/health` endpoints are based on. |
 | `quarkus.otel.sdk.disabled`                          | `true`                          | Enable the OpenTelemetry layer.                                             |
-
-Read Quarkus [configuration guide](https://quarkus.io/guides/config) for more information.
 
 ## JVM Configuration Options
 
@@ -130,6 +129,7 @@ There are many other actionable environment variables available in the official 
 | `GC_METASPACE_SIZE`              | The initial metaspace size. There is no default (example: "20").                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `GC_MAX_METASPACE_SIZE`          | The maximum metaspace size. There is no default (example: "100").                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `GC_CONTAINER_OPTIONS`           | Specify Java GC to use. The value of this variable should contain the necessary JRE command-line options to specify the required GC, which will override the default of `-XX:+UseParallelGC` (example: `-XX:+UseG1GC`).                                                                                                                                                                                                                                                                                                                |
+
 Here are some examples:
 
 | Example                                    | `docker run` option                                                                                                 |
