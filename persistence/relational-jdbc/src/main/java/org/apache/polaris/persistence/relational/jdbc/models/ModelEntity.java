@@ -219,23 +219,21 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
     var modelEntity =
         ModelEntity.builder()
-            .catalogId(r.getObject("catalog_id", Long.class))
-            .id(r.getObject("id", Long.class))
-            .parentId(r.getObject("parent_id", Long.class))
-            .typeCode(r.getObject("type_code", Integer.class))
-            .name(r.getObject("name", String.class))
-            .entityVersion(r.getObject("entity_version", Integer.class))
-            .subTypeCode(r.getObject("sub_type_code", Integer.class))
-            .createTimestamp(r.getObject("create_timestamp", Long.class))
-            .dropTimestamp(r.getObject("drop_timestamp", Long.class))
-            .purgeTimestamp(r.getObject("purge_timestamp", Long.class))
-            .toPurgeTimestamp(r.getObject("to_purge_timestamp", Long.class))
-            .lastUpdateTimestamp(r.getObject("last_update_timestamp", Long.class))
-            // JSONB: use getString(), not getObject().
+            .catalogId(r.getLong("catalog_id"))
+            .id(r.getLong("id"))
+            .parentId(r.getLong("parent_id"))
+            .typeCode(r.getInt("type_code"))
+            .name(r.getString("name"))
+            .entityVersion(r.getInt("entity_version"))
+            .subTypeCode(r.getInt("sub_type_code"))
+            .createTimestamp(r.getLong("create_timestamp"))
+            .dropTimestamp(r.getLong("drop_timestamp"))
+            .purgeTimestamp(r.getLong("purge_timestamp"))
+            .toPurgeTimestamp(r.getLong("to_purge_timestamp"))
+            .lastUpdateTimestamp(r.getLong("last_update_timestamp"))
             .properties(r.getString("properties"))
-            // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
-            .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
+            .grantRecordsVersion(r.getInt("grant_records_version"))
             .locationWithoutScheme(
                 this.schemaVersion >= 2 ? r.getString("location_without_scheme") : null)
             .build();
