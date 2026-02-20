@@ -26,3 +26,7 @@
 
 # Contains old javax.* annotations that we do not want
 com.google.code.findbugs:jsr305
+
+# See https://github.com/RoaringBitmap/RoaringBitmap/issues/749, should only use org.roaringbitmap:RoaringBitmap
+com.github.RoaringBitmap.RoaringBitmap
+org.roaringbitmap:roaringbitmap

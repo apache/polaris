@@ -121,10 +121,6 @@ dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
     mavenCentral()
-    maven {
-      url = uri("https://jitpack.io")
-      content { includeModule("com.github.RoaringBitmap.RoaringBitmap", "roaringbitmap") }
-    }
     val useApacheSnapshots =
       providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
     if (useApacheSnapshots) {
