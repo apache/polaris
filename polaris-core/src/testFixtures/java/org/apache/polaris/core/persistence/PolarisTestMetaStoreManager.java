@@ -1906,24 +1906,37 @@ public class PolarisTestMetaStoreManager {
                 PageToken.readEverything())
             .getEntities();
 
-    // ensure not null, one element only
-    Assertions.assertThat(principalRoles).isNotNull().hasSize(1);
+    // ensure not null, two elements (service_admin and catalog_role_manager)
+    Assertions.assertThat(principalRoles).isNotNull().hasSize(2);
 
-    // get catalog list information
-    EntityNameLookupRecord roleListInfo = principalRoles.get(0);
+    // validate service_admin principal role
+    PolarisBaseEntity serviceAdminRole = null;
+    PolarisBaseEntity catalogRoleManagerRole = null;
+    for (EntityNameLookupRecord roleListInfo : principalRoles) {
+      PolarisBaseEntity role =
+          this.ensureExistsById(
+              null,
+              roleListInfo.getId(),
+              true,
+              roleListInfo.getName(),
+              PolarisEntityType.PRINCIPAL_ROLE,
+              PolarisEntitySubType.NULL_SUBTYPE);
 
-    // now make sure this principal role was properly persisted
-    PolarisBaseEntity principalRole =
-        this.ensureExistsById(
-            null,
-            roleListInfo.getId(),
-            true,
-            PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE);
+      if (role.getName().equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())) {
+        serviceAdminRole = role;
+      } else if (role.getName()
+          .equals(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole())) {
+        catalogRoleManagerRole = role;
+      }
+    }
 
-    // also between the principal_role and the principal
-    this.ensureGrantRecordExists(principalRole, principal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE);
+    // ensure both roles were found
+    Assertions.assertThat(serviceAdminRole).isNotNull();
+    Assertions.assertThat(catalogRoleManagerRole).isNotNull();
+
+    // validate grant record between service_admin and root principal
+    this.ensureGrantRecordExists(
+        serviceAdminRole, principal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE);
   }
 
   public void testCreateTestCatalog() {
@@ -2071,7 +2084,7 @@ public class PolarisTestMetaStoreManager {
             ImmutablePair.of("P1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("P2", PolarisEntitySubType.NULL_SUBTYPE)));
 
-    // 3 principal roles with the bootstrap service_admin
+    // 4 principal roles with the bootstrap service_admin and catalog_role_manager
     this.validateListReturn(
         null,
         PolarisEntityType.PRINCIPAL_ROLE,
@@ -2080,6 +2093,9 @@ public class PolarisTestMetaStoreManager {
             ImmutablePair.of("PR2", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of(
                 PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
+                PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of(
+                PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole(),
                 PolarisEntitySubType.NULL_SUBTYPE)));
 
     // three namespaces under top-level namespace N1
@@ -2146,6 +2162,9 @@ public class PolarisTestMetaStoreManager {
         List.of(
             ImmutablePair.of(
                 PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
+                PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of(
+                PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole(),
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR2", PolarisEntitySubType.NULL_SUBTYPE)));
