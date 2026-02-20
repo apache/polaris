@@ -19,7 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -28,20 +28,18 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * Authorization request inputs for pre-authorization and core authorization.
  *
  * <p>This wrapper keeps authorization inputs together and conveys the intent to be authorized via
- * {@link PolarisSecurable} targets and secondaries.
+ * {@link AuthorizationTargetBinding} target bindings.
  */
 @PolarisImmutable
 public interface AuthorizationRequest {
   static AuthorizationRequest of(
       @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizableOperation operation,
-      @Nullable List<PolarisSecurable> targets,
-      @Nullable List<PolarisSecurable> secondaries) {
+      @Nonnull List<AuthorizationTargetBinding> targetBindings) {
     return ImmutableAuthorizationRequest.builder()
         .principal(principal)
         .operation(operation)
-        .targets(targets)
-        .secondaries(secondaries)
+        .targetBindings(targetBindings)
         .build();
   }
 
@@ -53,62 +51,54 @@ public interface AuthorizationRequest {
   @Nonnull
   PolarisAuthorizableOperation getOperation();
 
+  /** Returns the target/secondary target bindings. */
+  @Nonnull
+  List<AuthorizationTargetBinding> getTargetBindings();
+
   /**
    * Returns the primary target securables, if any.
    *
-   * <p>Targets are the primary resources the operation applies to (for example, the table being
-   * created or dropped).
+   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
-  @Nullable
-  List<PolarisSecurable> getTargets();
+  @Nonnull
+  default List<PolarisSecurable> getTargets() {
+    return getTargetBindings().stream().map(AuthorizationTargetBinding::getTarget).toList();
+  }
 
   /**
-   * Returns the secondary securables, if any.
+   * Returns secondary securables, if any.
    *
-   * <p>Secondaries are related resources needed to evaluate the authorization decision but are not
-   * the direct object of the operation. Examples in current handlers include:
-   *
-   * <ul>
-   *   <li>Table rename: the destination namespace (target is the source table).
-   *   <li>Role grants: the grantee role/principal (target may be the role or the resource being
-   *       granted on).
-   *   <li>Policy attach/detach: the catalog/namespace/table being attached to (target is the
-   *       policy).
-   * </ul>
+   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
-  @Nullable
-  List<PolarisSecurable> getSecondaries();
-
-  /** Returns true if the request targets principal entities. */
-  default boolean hasPrincipalTarget() {
-    return hasSecurableType(PolarisEntityType.PRINCIPAL);
-  }
-
-  /** Returns true if the request targets principal role entities. */
-  default boolean hasPrincipalRoleTarget() {
-    return hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE);
-  }
-
-  /** Returns true if the request targets catalog role entities. */
-  default boolean hasCatalogRoleTarget() {
-    return hasSecurableType(PolarisEntityType.CATALOG_ROLE);
-  }
-
-  private boolean hasSecurableType(PolarisEntityType... types) {
-    if (getTargets() != null && containsType(getTargets(), types)) {
-      return true;
+  @Nonnull
+  default List<PolarisSecurable> getSecondaries() {
+    List<PolarisSecurable> secondaries = new ArrayList<>();
+    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
+      if (targetBinding.getSecondary() != null) {
+        secondaries.add(targetBinding.getSecondary());
+      }
     }
-    return getSecondaries() != null && containsType(getSecondaries(), types);
+    return secondaries;
   }
 
-  private static boolean containsType(
-      List<PolarisSecurable> securables, PolarisEntityType... types) {
-    for (PolarisSecurable securable : securables) {
-      PolarisEntityType entityType = securable.getEntityType();
-      for (PolarisEntityType type : types) {
-        if (entityType == type) {
-          return true;
-        }
+  default boolean hasSecurableType(PolarisEntityType... types) {
+    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
+      if (containsType(targetBinding.getTarget(), types)) {
+        return true;
+      }
+      if (targetBinding.getSecondary() != null
+          && containsType(targetBinding.getSecondary(), types)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
+    PolarisEntityType entityType = securable.getEntityType();
+    for (PolarisEntityType type : types) {
+      if (entityType == type) {
+        return true;
       }
     }
     return false;

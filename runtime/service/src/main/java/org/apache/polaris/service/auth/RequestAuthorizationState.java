@@ -18,38 +18,16 @@
  */
 package org.apache.polaris.service.auth;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
+import jakarta.enterprise.inject.Produces;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-/**
- * Request-scoped {@link AuthorizationState} implementation for runtime services.
- *
- * <p>Holds a single {@link PolarisResolutionManifest} reference that must be set once per request.
- */
+/** Request-scoped producer for {@link AuthorizationState} in runtime services. */
 @RequestScoped
-public class RequestAuthorizationState implements AuthorizationState {
-  private final AtomicReference<PolarisResolutionManifest> resolutionManifest =
-      new AtomicReference<>();
-
-  @Override
-  @Nonnull
-  public PolarisResolutionManifest getResolutionManifest() {
-    PolarisResolutionManifest manifest = resolutionManifest.get();
-    if (manifest == null) {
-      throw new IllegalStateException("AuthorizationState resolution manifest is not set");
-    }
-    return manifest;
-  }
-
-  @Override
-  public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
-    Objects.requireNonNull(resolutionManifest, "resolutionManifest");
-    if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
-      throw new IllegalStateException("AuthorizationState resolution manifest already set");
-    }
+public class RequestAuthorizationState {
+  @Produces
+  @RequestScoped
+  public AuthorizationState get() {
+    return new AuthorizationState();
   }
 }

@@ -19,6 +19,8 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 /**
@@ -28,11 +30,25 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
  * carry authorization-specific data, such as a {@link PolarisResolutionManifest} created by the
  * caller and populated by the authorizer.
  */
-public interface AuthorizationState {
+public class AuthorizationState {
+  private final AtomicReference<PolarisResolutionManifest> resolutionManifest =
+      new AtomicReference<>();
+
   /** Returns the request-scoped resolution manifest used for authorization. */
   @Nonnull
-  PolarisResolutionManifest getResolutionManifest();
+  public PolarisResolutionManifest getResolutionManifest() {
+    PolarisResolutionManifest manifest = resolutionManifest.get();
+    if (manifest == null) {
+      throw new IllegalStateException("AuthorizationState resolution manifest is not set");
+    }
+    return manifest;
+  }
 
   /** Sets the request-scoped resolution manifest used for authorization. */
-  void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest);
+  public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
+    Objects.requireNonNull(resolutionManifest, "resolutionManifest");
+    if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
+      throw new IllegalStateException("AuthorizationState resolution manifest already set");
+    }
+  }
 }
