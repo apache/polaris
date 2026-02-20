@@ -279,7 +279,7 @@ components:
             Credential configurations for AWS S3, GCP GCS, and Azure ADLS are supported. The following outlines 
             the currently supported configuration options:
               
-            ## AWS Configurations
+            ## S3 Configurations
               
             The following configurations should be respected when working with tables stored in AWS S3
               - `s3.access-key-id`: id for credentials that provide access to the data in S3
@@ -287,12 +287,10 @@ components:
               - `s3.session-token`: if present, this value should be used for as the session token
               - `s3.session-token-expires-at-ms`: the time the aws session token expires, in milliseconds
             Extra properties:
-              - `s3.endpoint`: the S3 endpoint to use for requests
-              - `s3.path-style-access`: whether to use S3 path style access
               - `client.region`: region to configure client for making requests to AWS
               - `client.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
               
-            ## GCP Configurations
+            ## GCP GCS Configurations
             
             The following configurations should be respected when working with tables stored in GCP GCS
               - `gcs.oauth2.token`: the gcs scoped access token
@@ -300,7 +298,7 @@ components:
             Extra properties:
               - `gcs.oauth2.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
             
-            # AZURE Configuration
+            # AZURE ADLS Configuration
             
             The following configurations should be respected when working with tables stored in AZURE ADLS
               - `adls.sas-token.<hostname>`: an azure shared access signature token
