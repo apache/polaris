@@ -90,7 +90,7 @@ Alternatively, the `--base-url` option can be used instead of `--host` and `--po
 If your Polaris server is configured to use a realm other than the default, you can use the `--realm` option to specify a realm. If `--realm` is not provided, the CLI will check the `REALM` environment variable. If neither is provided, the CLI will not send the realm context header.
 Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
 
-Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris server to work with multiple realms. 
+Read [here]({{% ref "configuration/configuring-polaris.md" %}}) more about configuring polaris server to work with multiple realms.
 
 ### PATH
 

@@ -26,14 +26,19 @@ description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
   ":polaris-async-api",
+  ":polaris-core",
+  ":polaris-extensions-auth-opa",
   ":polaris-nodes-api",
   ":polaris-persistence-nosql-api",
   ":polaris-persistence-nosql-impl",
   ":polaris-persistence-nosql-cdi-quarkus",
   ":polaris-persistence-nosql-cdi-quarkus-distcache",
+  ":polaris-persistence-nosql-inmemory",
   ":polaris-persistence-nosql-maintenance-api",
+  ":polaris-persistence-nosql-metastore-maintenance",
   ":polaris-persistence-nosql-mongodb",
   ":polaris-persistence-nosql-metastore-types",
+  ":polaris-runtime-common",
   ":polaris-runtime-service",
 )
 
@@ -44,6 +49,7 @@ val doclet by configurations.creating
 dependencies {
   doclet(project(":polaris-config-docs-annotations"))
   doclet(project(":polaris-config-docs-generator"))
+  doclet(project(":polaris-core"))
   doclet(libs.smallrye.config.core)
 
   genProjects(project(":polaris-config-docs-annotations"))
@@ -130,4 +136,59 @@ val generateDocs by tasks.registering(Sync::class) {
   duplicatesStrategy = DuplicatesStrategy.FAIL
 
   doLast { delete(targetDir.get().dir("org")) }
+}
+
+val copyConfigSectionsToSite by tasks.registering(Copy::class) {
+  dependsOn(generateDocs)
+
+  description = "Copies the generated configuration section files to the site content directory as a headless bundle"
+  group = "documentation"
+
+  from(layout.buildDirectory.dir("markdown-docs")) {
+    include("smallrye-*.md")
+    include("flags-*.md")
+  }
+
+  into(rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections"))
+
+  doFirst {
+    val targetDir = rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections").asFile
+    if (targetDir.exists()) {
+      targetDir.listFiles()?.filter { it.name.endsWith(".md") && it.name != "_index.md" }?.forEach { it.delete() }
+    }
+  }
+
+  doLast {
+    val targetDir = rootProject.layout.projectDirectory.dir("site/content/in-dev/unreleased/configuration/config-sections").asFile
+    val frontMatterTemplate = """---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: %s
+build:
+  list: never
+  render: never
+---
+
+"""
+    targetDir.listFiles()?.filter { it.name.endsWith(".md") && it.name != "_index.md" }?.forEach { file ->
+      val content = file.readText()
+      file.writeText(frontMatterTemplate.format(file.nameWithoutExtension) + content)
+    }
+  }
 }

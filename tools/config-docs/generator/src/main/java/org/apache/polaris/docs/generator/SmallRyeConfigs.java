@@ -78,10 +78,13 @@ public class SmallRyeConfigs {
 
   public SmallRyeConfigMappingInfo getConfigMappingInfo(Class<?> type) {
     var typeName = type.getName();
-    var info = configMappingByType.get(typeName);
+    // Normalize the type name to use '.' instead of '$' for inner classes
+    // This ensures consistency with TypeElement.getQualifiedName()
+    var normalizedTypeName = typeName.replace('$', '.');
+    var info = configMappingByType.get(normalizedTypeName);
     if (info == null) {
       info = new SmallRyeConfigMappingInfo("");
-      configMappingByType.put(typeName, info);
+      configMappingByType.put(normalizedTypeName, info);
       getTypeElement(typeName).accept(visitor(), null);
     }
     return info;
@@ -104,29 +107,37 @@ public class SmallRyeConfigs {
             SmallRyeConfigMappingInfo mappingInfo;
             ConfigMappingInterface configMappingInterface;
 
+            // Use qualified name (with '.') for map lookups
             var className = e.getQualifiedName().toString();
+            // Use binary name (with '$' for inner classes) for class loading
+            var binaryName = env.getElementUtils().getBinaryName(e).toString();
 
             Class<?> clazz;
             if (configMapping != null) {
 
-              mappingInfo =
-                  configMappingInfos.computeIfAbsent(
-                      configMapping.prefix(), SmallRyeConfigMappingInfo::new);
+              String prefix = configMapping.prefix();
 
-              clazz = loadClass(className);
+              if (prefix.equals("polaris.features") || prefix.equals("polaris.behavior-changes")) {
+                return null;
+              }
+
+              mappingInfo =
+                  configMappingInfos.computeIfAbsent(prefix, SmallRyeConfigMappingInfo::new);
+
+              clazz = loadClass(binaryName);
               try {
                 configMappingInterface = ConfigMappingInterface.getConfigurationInterface(clazz);
               } catch (RuntimeException ex) {
                 throw new RuntimeException("Failed to process mapped " + clazz, ex);
               }
-              configMappingByType.put(
-                  configMappingInterface.getInterfaceType().getName(), mappingInfo);
+              // Store with qualified name (using '.') for consistency
+              configMappingByType.put(className, mappingInfo);
             } else {
               mappingInfo = configMappingByType.get(className);
               if (mappingInfo == null) {
                 return null;
               }
-              clazz = loadClass(className);
+              clazz = loadClass(binaryName);
               try {
                 configMappingInterface = ConfigMappingInterface.getConfigurationInterface(clazz);
               } catch (RuntimeException ex) {

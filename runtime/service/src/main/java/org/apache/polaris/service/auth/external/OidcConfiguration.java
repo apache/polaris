@@ -25,6 +25,7 @@ import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
+import org.apache.polaris.docs.ConfigDocs;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 
@@ -41,6 +42,7 @@ public interface OidcConfiguration {
   @WithParentName
   @WithUnnamedKey(DEFAULT_TENANT_KEY)
   @WithDefaults
+  @ConfigDocs.ConfigPropertyName("tenant")
   Map<String, OidcTenantConfiguration> tenants();
 
   /**
