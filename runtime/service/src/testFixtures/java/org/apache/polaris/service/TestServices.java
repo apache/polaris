@@ -293,7 +293,7 @@ public record TestServices(
           new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal);
+              storageCredentialCache, storageCredentialsVendor, principal, realmContext);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
