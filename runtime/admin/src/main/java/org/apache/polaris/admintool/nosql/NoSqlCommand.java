@@ -33,7 +33,7 @@ import picocli.CommandLine;
       NoSqlMaintenanceRunCommand.class,
     },
     mixinStandardHelpOptions = true,
-    description = "Polaris NoSQL persistence.")
+    description = "Sub-commands specific to NoSQL persistence.")
 public class NoSqlCommand extends BaseNoSqlCommand {
   @Inject protected Backend backend;
 

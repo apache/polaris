@@ -62,7 +62,7 @@ Commands:
   help       Display help information about the specified command.
   bootstrap  Bootstraps realms and root principal credentials.
   purge      Purge realms and all associated entities.
-  nosql      Polaris NoSQL persistence.
+  nosql      Sub-commands specific to NoSQL persistence.
 ```
 
 ## Configuration
@@ -215,7 +215,7 @@ Again, the Polaris Admin Tool must be executed with appropriate configuration to
 The `nosql` admin tool command is used to perform NoSQL metastore specific operations.
 ```
 Usage: polaris-admin-tool.jar nosql [-hV] [COMMAND]
-Polaris NoSQL persistence.
+Sub-commands specific to NoSQL persistence.
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
 Commands:
