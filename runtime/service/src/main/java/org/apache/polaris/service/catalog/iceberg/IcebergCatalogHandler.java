@@ -62,6 +62,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
@@ -617,75 +618,128 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     boolean overwrite = request.overwrite();
 
-    if (overwrite) {
-      // Resolve the namespace and table (optional) so we can distinguish overwrite from create.
-      resolutionManifest = newResolutionManifest();
-      resolutionManifest.addPath(
-          new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-          namespace);
-      ResolverPath tablePath =
-          new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.TABLE_LIKE,
-              true /* optional */);
-      resolutionManifest.addPassthroughPath(tablePath, identifier);
-      resolutionManifest.resolveAll();
+    LOGGER.debug(
+        "registerTable: identifier={}, overwrite={}, request={}", identifier, overwrite, request);
 
-      boolean tableExists =
-          resolutionManifest.getResolvedPath(
-                  identifier,
-                  PolarisEntityType.TABLE_LIKE,
-                  PolarisEntitySubType.ICEBERG_TABLE,
-                  true)
-              != null;
-      if (tableExists) {
-        authorizeUpdateTableOverwriteOrThrow(identifier);
-        LOGGER.debug(
-            "registerTable: overwrite=true, authorized for UPDATE_TABLE on existing table");
-      } else {
-        // Table doesn't exist, fall back to REGISTER_TABLE authorization
-        LOGGER.debug(
-            "registerTable: overwrite=true, table not found, falling back to REGISTER_TABLE");
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
-      }
-    } else {
-      // Creating new table requires REGISTER_TABLE privilege
-      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    if (overwrite) {
+      LOGGER.debug("registerTable: overwrite requested for {}", identifier);
+      authorizeRegisterTableOverwriteOrCreate(identifier);
+      return registerTableWithOverwrite(identifier, request);
     }
 
-    // Handle Polaris-specific overwrite logic
-    if (overwrite) {
-      if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-        // Use the overwrite-capable registration path for IcebergCatalog
-        Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
-        if (table instanceof BaseTable baseTable) {
-          return LoadTableResponse.builder()
-              .withTableMetadata(baseTable.operations().current())
-              .build();
-        }
-        throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-      } else {
-        // For non-Polaris catalogs, reject overwrite to prevent accidental overwrites
-        throw new BadRequestException(
-            "Register table overwrite is not supported for catalog type: %s",
-            baseCatalog.getClass().getName());
-      }
-    }
-
-    // Standard registration path (no overwrite)
+    // Creating new table requires REGISTER_TABLE privilege
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    LOGGER.debug("registerTable: authorized REGISTER_TABLE for {}", identifier);
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
   }
 
-  private void authorizeUpdateTableOverwriteOrThrow(TableIdentifier identifier) {
-    // REGISTER_TABLE_OVERWRITE operation requires TABLE_FULL_METADATA privilege, which
-    // encompasses both TABLE_CREATE and TABLE_DROP. This ensures only users with full
-    // table management capabilities can replace an existing table's metadata pointer.
-    authorizeBasicTableLikeOperationsOrThrow(
-        EnumSet.of(PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE),
-        PolarisEntitySubType.ICEBERG_TABLE,
+  /**
+   * Authorize registerTable with overwrite=true.
+   *
+   * <p>If the table exists, require REGISTER_TABLE_OVERWRITE on the table; otherwise require
+   * REGISTER_TABLE on the parent namespace.
+   *
+   * <p>Resolve both the namespace and an optional passthrough table path in one pass because the
+   * standard helpers either assume the table exists or always authorize against the namespace.
+   * Also, baseCatalog.tableExists() cannot be used here since initializeCatalog() has not run.
+   */
+  private void authorizeRegisterTableOverwriteOrCreate(TableIdentifier identifier) {
+    LOGGER.debug("authorizeRegisterTableOverwriteOrCreate: start for {}", identifier);
+    // Build a resolution manifest that includes the namespace and optional table path.
+    resolutionManifest = newResolutionManifest();
+    resolutionManifest.addPath(
+        new ResolverPath(
+            Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
+        identifier.namespace());
+    resolutionManifest.addPassthroughPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            true /* optional */),
         identifier);
+    resolutionManifest.resolveAll();
+    PolarisResolvedPathWrapper tableTarget =
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, true);
+
+    if (tableTarget != null) {
+      LOGGER.debug(
+          "authorizeRegisterTableOverwriteOrCreate: found existing table target for {}, requiring REGISTER_TABLE_OVERWRITE",
+          identifier);
+      // Overwrite on an existing table requires full metadata permissions.
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+              tableTarget,
+              null /* secondary */);
+      initializeCatalog();
+      LOGGER.debug(
+          "registerTable: overwrite=true, authorized for REGISTER_TABLE_OVERWRITE on existing table {}",
+          identifier);
+      return;
+    }
+
+    // Table doesn't exist, fall back to standard register-table authorization.
+    LOGGER.debug(
+        "authorizeRegisterTableOverwriteOrCreate: table not found for {}, falling back to REGISTER_TABLE on namespace",
+        identifier);
+    PolarisResolvedPathWrapper namespaceTarget =
+        resolutionManifest.getResolvedPath(identifier.namespace(), true);
+    if (namespaceTarget == null) {
+      LOGGER.debug(
+          "authorizeRegisterTableOverwriteOrCreate: namespace not found for {}",
+          identifier.namespace());
+      throw new NoSuchNamespaceException("Namespace does not exist: %s", identifier.namespace());
+    }
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            PolarisAuthorizableOperation.REGISTER_TABLE,
+            namespaceTarget,
+            null /* secondary */);
+    initializeCatalog();
+    LOGGER.debug(
+        "authorizeRegisterTableOverwriteOrCreate: authorized REGISTER_TABLE on namespace {}",
+        identifier.namespace());
+  }
+
+  private LoadTableResponse registerTableWithOverwrite(
+      TableIdentifier identifier, RegisterTableRequest request) {
+    LOGGER.debug(
+        "registerTableWithOverwrite: identifier={}, metadataLocation={}",
+        identifier,
+        request.metadataLocation());
+    // Handle Polaris-specific overwrite logic
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      LOGGER.debug(
+          "registerTableWithOverwrite: using IcebergCatalog.registerTable for {}", identifier);
+      // Use the overwrite-capable registration path for IcebergCatalog
+      Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
+      if (table instanceof BaseTable baseTable) {
+        TableMetadata metadata = baseTable.operations().current();
+        LOGGER.debug(
+            "registerTableWithOverwrite: registered and loaded metadata for {} (metadataLocation={})",
+            identifier,
+            metadata.location());
+        return LoadTableResponse.builder().withTableMetadata(metadata).build();
+      }
+      LOGGER.debug(
+          "registerTableWithOverwrite: unexpected table implementation for {}", identifier);
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    }
+
+    // For non-Polaris catalogs, reject overwrite to prevent accidental overwrites
+    LOGGER.debug(
+        "registerTableWithOverwrite: unsupported baseCatalog type {} for overwrite on {}",
+        baseCatalog.getClass().getName(),
+        identifier);
+    throw new BadRequestException(
+        "Register table overwrite is not supported for catalog type: %s",
+        baseCatalog.getClass().getName());
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
