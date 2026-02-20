@@ -239,19 +239,20 @@ class MetricsReportPersistenceTest {
       metricsPersistence.writeScanMetricsReport(report);
     }
 
-    // Query all reports for the table
-    var results = metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 10);
+    // Query all reports for the table (no cursor: null, null for cursorTimestampMs, cursorReportId)
+    var results =
+        metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, null, 10);
     assertThat(results).hasSize(5);
 
     // Query with time range
     var rangeResults =
         metricsPersistence.queryScanMetricsReports(
-            12345L, 88888L, baseTime + 1000, baseTime + 4000, null, 10);
+            12345L, 88888L, baseTime + 1000, baseTime + 4000, null, null, 10);
     assertThat(rangeResults).hasSize(3);
 
     // Query with limit
     var limitedResults =
-        metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, 2);
+        metricsPersistence.queryScanMetricsReports(12345L, 88888L, null, null, null, null, 2);
     assertThat(limitedResults).hasSize(2);
   }
 
@@ -362,7 +363,8 @@ class MetricsReportPersistenceTest {
     assertThat(deleted).isEqualTo(1);
 
     // Query to verify only recent report remains
-    var results = metricsPersistence.queryScanMetricsReports(11111L, 67890L, null, null, null, 10);
+    var results =
+        metricsPersistence.queryScanMetricsReports(11111L, 67890L, null, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -447,7 +449,7 @@ class MetricsReportPersistenceTest {
 
     // Query to verify only recent report remains
     var results =
-        metricsPersistence.queryCommitMetricsReports(11111L, 67890L, null, null, null, 10);
+        metricsPersistence.queryCommitMetricsReports(11111L, 67890L, null, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
@@ -492,7 +494,8 @@ class MetricsReportPersistenceTest {
     metricsPersistence.writeScanMetricsReport(report);
 
     // Verify only one report exists
-    var results = metricsPersistence.queryScanMetricsReports(12345L, 99999L, null, null, null, 10);
+    var results =
+        metricsPersistence.queryScanMetricsReports(12345L, 99999L, null, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(reportId);
   }
@@ -543,15 +546,15 @@ class MetricsReportPersistenceTest {
 
     // Verify only one report exists
     var results =
-        metricsPersistence.queryCommitMetricsReports(12345L, 88888L, null, null, null, 10);
+        metricsPersistence.queryCommitMetricsReports(12345L, 88888L, null, null, null, null, 10);
     assertThat(results).hasSize(1);
     assertThat(results.get(0).getReportId()).isEqualTo(reportId);
   }
 
   /**
    * Tests that pagination works correctly when records have different timestamps. This test
-   * verifies that cursor-based pagination using report_id correctly paginates through all records
-   * regardless of their timestamp values.
+   * verifies that cursor-based pagination using (timestamp_ms, report_id) correctly paginates
+   * through all records in chronological order.
    */
   @Test
   void testPaginationAcrossTimestampBoundaries() {
@@ -598,23 +601,30 @@ class MetricsReportPersistenceTest {
       metricsPersistence.writeScanMetricsReport(report);
     }
 
-    // Get first page of 2 results
-    var page1 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, null, 2);
+    // Get first page of 2 results (no cursor: null, null for cursorTimestampMs, cursorReportId)
+    var page1 =
+        metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, null, null, 2);
     assertThat(page1).hasSize(2);
 
-    // Use last report_id from page 1 as cursor for page 2
-    String cursor1 = page1.get(page1.size() - 1).getReportId();
-    var page2 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor1, 2);
+    // Use composite cursor from page 1 for page 2 (timestamp_ms, report_id)
+    var lastPage1 = page1.get(page1.size() - 1);
+    var page2 =
+        metricsPersistence.queryScanMetricsReports(
+            55555L, 66666L, null, null, lastPage1.getTimestampMs(), lastPage1.getReportId(), 2);
     assertThat(page2).hasSize(2);
 
-    // Use last report_id from page 2 as cursor for page 3
-    String cursor2 = page2.get(page2.size() - 1).getReportId();
-    var page3 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor2, 2);
+    // Use composite cursor from page 2 for page 3
+    var lastPage2 = page2.get(page2.size() - 1);
+    var page3 =
+        metricsPersistence.queryScanMetricsReports(
+            55555L, 66666L, null, null, lastPage2.getTimestampMs(), lastPage2.getReportId(), 2);
     assertThat(page3).hasSize(2);
 
-    // Use last report_id from page 3 as cursor - should get no more results
-    String cursor3 = page3.get(page3.size() - 1).getReportId();
-    var page4 = metricsPersistence.queryScanMetricsReports(55555L, 66666L, null, null, cursor3, 2);
+    // Use composite cursor from page 3 - should get no more results
+    var lastPage3 = page3.get(page3.size() - 1);
+    var page4 =
+        metricsPersistence.queryScanMetricsReports(
+            55555L, 66666L, null, null, lastPage3.getTimestampMs(), lastPage3.getReportId(), 2);
     assertThat(page4).isEmpty();
 
     // Verify no duplicates across pages - collect all report IDs
@@ -671,13 +681,16 @@ class MetricsReportPersistenceTest {
     // Paginate through all results
     java.util.Set<String> allReportIds = new java.util.HashSet<>();
 
-    var page1 = metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, null, 2);
+    var page1 =
+        metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, null, null, 2);
     assertThat(page1).hasSize(2);
     page1.forEach(r -> allReportIds.add(r.getReportId()));
 
-    String cursor1 = page1.get(page1.size() - 1).getReportId();
+    // Use composite cursor from page 1 for page 2 (timestamp_ms, report_id)
+    var lastPage1 = page1.get(page1.size() - 1);
     var page2 =
-        metricsPersistence.queryCommitMetricsReports(44444L, 55555L, null, null, cursor1, 2);
+        metricsPersistence.queryCommitMetricsReports(
+            44444L, 55555L, null, null, lastPage1.getTimestampMs(), lastPage1.getReportId(), 2);
     assertThat(page2).hasSize(2);
     page2.forEach(r -> allReportIds.add(r.getReportId()));
 

@@ -27,7 +27,8 @@ import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
- * Pagination {@linkplain Token token} for metrics queries, backed by the report ID (UUID).
+ * Pagination {@linkplain Token token} for metrics queries, using a composite cursor of timestamp
+ * and report ID.
  *
  * <p><strong>Note:</strong> This is a reference implementation provided for convenience. It is
  * <em>not required</em> by the {@link MetricsPersistence} SPI contract. Persistence backends are
@@ -39,21 +40,20 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * SPI contract.
  *
  * <p>This token enables cursor-based pagination for metrics queries across different storage
- * backends. The report ID is used as the cursor because it is:
+ * backends. It uses a composite cursor of (timestamp_ms, report_id) to provide:
  *
  * <ul>
- *   <li>Guaranteed unique across all reports
- *   <li>Present in both scan and commit metrics records
- *   <li>Stable (doesn't change over time)
+ *   <li>Chronological ordering - results are returned in timestamp order
+ *   <li>Deterministic pagination - report_id breaks ties for same-millisecond entries
+ *   <li>Efficient queries - can use compound indexes on (timestamp_ms, report_id)
  * </ul>
  *
- * <p>Each backend implementation can use this cursor value to implement efficient pagination in
- * whatever way is optimal for that storage system:
+ * <p>Each backend implementation can use this cursor value to implement efficient pagination:
  *
  * <ul>
- *   <li>RDBMS: {@code WHERE report_id > :lastReportId ORDER BY report_id}
- *   <li>NoSQL: Use report ID as partition/sort key cursor
- *   <li>Time-series: Combine with timestamp for efficient range scans
+ *   <li>RDBMS: {@code WHERE (timestamp_ms, report_id) > (:ts, :id) ORDER BY timestamp_ms,
+ *       report_id}
+ *   <li>NoSQL: Use timestamp as partition key and report_id as sort key
  * </ul>
  *
  * <p><b>Note:</b> This type is part of the experimental Metrics Persistence SPI and may change in
@@ -69,13 +69,22 @@ public interface ReportIdToken extends Token {
   String ID = "r";
 
   /**
-   * The report ID to use as the cursor.
+   * The report ID to use as the cursor (tie-breaker for same-timestamp entries).
    *
-   * <p>Results should start after this report ID. This is typically the {@code reportId} of the
-   * last item from the previous page.
+   * <p>Results should start after this report ID within the same timestamp. This is typically the
+   * {@code reportId} of the last item from the previous page.
    */
   @JsonProperty("r")
   String reportId();
+
+  /**
+   * The timestamp in milliseconds to use as the primary cursor.
+   *
+   * <p>Results should start at or after this timestamp. Combined with {@link #reportId()}, this
+   * provides a composite cursor for deterministic chronological pagination.
+   */
+  @JsonProperty("ts")
+  long timestampMs();
 
   @Override
   default String getT() {
@@ -83,42 +92,43 @@ public interface ReportIdToken extends Token {
   }
 
   /**
-   * Creates a token from a report ID.
+   * Creates a token from a report ID and timestamp.
    *
    * @param reportId the report ID to use as cursor
+   * @param timestampMs the timestamp in milliseconds
    * @return the token, or null if reportId is null
    */
-  static @Nullable ReportIdToken fromReportId(@Nullable String reportId) {
+  static @Nullable ReportIdToken from(@Nullable String reportId, long timestampMs) {
     if (reportId == null) {
       return null;
     }
-    return ImmutableReportIdToken.builder().reportId(reportId).build();
+    return ImmutableReportIdToken.builder().reportId(reportId).timestampMs(timestampMs).build();
   }
 
   /**
-   * Creates a token from a metrics record.
+   * Creates a token from a scan metrics record.
    *
-   * @param record the record whose report ID should be used as cursor
+   * @param record the record whose report ID and timestamp should be used as cursor
    * @return the token, or null if record is null
    */
   static @Nullable ReportIdToken fromRecord(@Nullable ScanMetricsRecord record) {
     if (record == null) {
       return null;
     }
-    return fromReportId(record.reportId());
+    return from(record.reportId(), record.timestamp().toEpochMilli());
   }
 
   /**
    * Creates a token from a commit metrics record.
    *
-   * @param record the record whose report ID should be used as cursor
+   * @param record the record whose report ID and timestamp should be used as cursor
    * @return the token, or null if record is null
    */
   static @Nullable ReportIdToken fromRecord(@Nullable CommitMetricsRecord record) {
     if (record == null) {
       return null;
     }
-    return fromReportId(record.reportId());
+    return from(record.reportId(), record.timestamp().toEpochMilli());
   }
 
   /** Token type registration for service loader. */

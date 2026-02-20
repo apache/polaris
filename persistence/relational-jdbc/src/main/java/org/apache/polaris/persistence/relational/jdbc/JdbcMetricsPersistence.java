@@ -94,9 +94,11 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
-    // Extract cursor from page token if present
-    String lastReportId =
-        pageToken.valueAs(ReportIdToken.class).map(ReportIdToken::reportId).orElse(null);
+    // Extract composite cursor from page token if present
+    // The cursor is (timestamp_ms, report_id) for chronological pagination
+    var cursorToken = pageToken.valueAs(ReportIdToken.class);
+    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
+    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
 
     List<ModelScanMetricsReport> models =
         queryScanMetricsReports(
@@ -104,15 +106,15 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
             criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
-            lastReportId,
+            cursorTimestampMs,
+            cursorReportId,
             limit);
 
     List<ScanMetricsRecord> records =
         models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
-    Token nextToken =
-        records.size() >= limit ? ReportIdToken.fromReportId(records.getLast().reportId()) : null;
+    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -130,9 +132,11 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
     Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
     Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
 
-    // Extract cursor from page token if present
-    String lastReportId =
-        pageToken.valueAs(ReportIdToken.class).map(ReportIdToken::reportId).orElse(null);
+    // Extract composite cursor from page token if present
+    // The cursor is (timestamp_ms, report_id) for chronological pagination
+    var cursorToken = pageToken.valueAs(ReportIdToken.class);
+    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
+    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
 
     List<ModelCommitMetricsReport> models =
         queryCommitMetricsReports(
@@ -140,15 +144,15 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
             criteria.tableId().getAsLong(),
             startTimeMs,
             endTimeMs,
-            lastReportId,
+            cursorTimestampMs,
+            cursorReportId,
             limit);
 
     List<CommitMetricsRecord> records =
         models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
-    Token nextToken =
-        records.size() >= limit ? ReportIdToken.fromReportId(records.getLast().reportId()) : null;
+    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -254,8 +258,10 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
    * @param tableId the table entity ID
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
-   * @param lastReportId cursor for pagination: return results after this report ID, or null for
-   *     first page
+   * @param cursorTimestampMs cursor timestamp for pagination: return results after this timestamp,
+   *     or null for first page
+   * @param cursorReportId cursor report ID for pagination: used as tie-breaker for same-timestamp
+   *     entries, or null for first page
    * @param limit maximum number of results to return
    * @return list of scan metrics reports matching the criteria
    */
@@ -265,7 +271,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       long tableId,
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
-      @Nullable String lastReportId,
+      @Nullable Long cursorTimestampMs,
+      @Nullable String cursorReportId,
       int limit) {
     try {
       StringBuilder whereClause = new StringBuilder();
@@ -280,20 +287,24 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         whereClause.append(" AND timestamp_ms < ?");
         values.add(endTimeMs);
       }
-      if (lastReportId != null) {
-        whereClause.append(" AND report_id > ?");
-        values.add(lastReportId);
+      // Composite cursor: (timestamp_ms, report_id) > (cursorTs, cursorId)
+      // This is equivalent to: timestamp_ms > cursorTs OR (timestamp_ms = cursorTs AND report_id >
+      // cursorId)
+      if (cursorTimestampMs != null && cursorReportId != null) {
+        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
+        values.add(cursorTimestampMs);
+        values.add(cursorTimestampMs);
+        values.add(cursorReportId);
       }
 
-      // Order by report_id only to ensure consistent pagination with report_id cursor.
-      // The report_id (UUID) provides a stable, unique ordering that works correctly
-      // with the cursor-based pagination using `report_id > ?`.
+      // Order by (timestamp_ms, report_id) for chronological pagination.
+      // timestamp_ms provides chronological order, report_id breaks ties.
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY report_id ASC LIMIT "
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
@@ -312,8 +323,10 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
    * @param tableId the table entity ID
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
-   * @param lastReportId cursor for pagination: return results after this report ID, or null for
-   *     first page
+   * @param cursorTimestampMs cursor timestamp for pagination: return results after this timestamp,
+   *     or null for first page
+   * @param cursorReportId cursor report ID for pagination: used as tie-breaker for same-timestamp
+   *     entries, or null for first page
    * @param limit maximum number of results to return
    * @return list of commit metrics reports matching the criteria
    */
@@ -323,7 +336,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
       long tableId,
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
-      @Nullable String lastReportId,
+      @Nullable Long cursorTimestampMs,
+      @Nullable String cursorReportId,
       int limit) {
     try {
       List<Object> values = new ArrayList<>(List.of(realmId, catalogId, tableId));
@@ -339,20 +353,24 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         whereClause.append(" AND timestamp_ms < ?");
         values.add(endTimeMs);
       }
-      if (lastReportId != null) {
-        whereClause.append(" AND report_id > ?");
-        values.add(lastReportId);
+      // Composite cursor: (timestamp_ms, report_id) > (cursorTs, cursorId)
+      // This is equivalent to: timestamp_ms > cursorTs OR (timestamp_ms = cursorTs AND report_id >
+      // cursorId)
+      if (cursorTimestampMs != null && cursorReportId != null) {
+        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
+        values.add(cursorTimestampMs);
+        values.add(cursorTimestampMs);
+        values.add(cursorReportId);
       }
 
-      // Order by report_id only to ensure consistent pagination with report_id cursor.
-      // The report_id (UUID) provides a stable, unique ordering that works correctly
-      // with the cursor-based pagination using `report_id > ?`.
+      // Order by (timestamp_ms, report_id) for chronological pagination.
+      // timestamp_ms provides chronological order, report_id breaks ties.
       String sql =
           "SELECT * FROM "
               + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY report_id ASC LIMIT "
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
