@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.admintool;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.util.List;
 import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
@@ -45,9 +44,7 @@ import picocli.CommandLine;
     description = "Bootstraps or upgrades the metrics schema for existing realms.")
 public class BootstrapMetricsCommand extends BaseCommand {
 
-  @Inject
-  @Identifier("relational-jdbc")
-  MetricsSchemaBootstrap metricsSchemaBootstrap;
+  @Inject MetricsSchemaBootstrap metricsSchemaBootstrap;
 
   @CommandLine.Option(
       names = {"-r", "--realm"},

@@ -54,46 +54,6 @@ import com.google.common.annotations.Beta;
 public interface MetricsSchemaBootstrap {
 
   /**
-   * A no-op implementation for backends that don't support metrics schema bootstrap.
-   *
-   * <p>This implementation always reports the schema as bootstrapped and does nothing when {@link
-   * #bootstrap(String)} is called.
-   */
-  MetricsSchemaBootstrap NOOP =
-      new MetricsSchemaBootstrap() {
-        @Override
-        public void bootstrap(String realmId) {
-          // No-op: metrics schema bootstrap not supported
-        }
-
-        @Override
-        public void bootstrap(String realmId, int targetVersion) {
-          // No-op: metrics schema bootstrap not supported
-        }
-
-        @Override
-        public boolean isBootstrapped(String realmId) {
-          // Always report as bootstrapped to avoid errors
-          return true;
-        }
-
-        @Override
-        public int getCurrentVersion(String realmId) {
-          return 0;
-        }
-
-        @Override
-        public int getLatestVersion() {
-          return 0;
-        }
-
-        @Override
-        public String toString() {
-          return "MetricsSchemaBootstrap.NOOP";
-        }
-      };
-
-  /**
    * Bootstraps the metrics schema for the specified realm to the latest version.
    *
    * <p>This operation is idempotent - calling it multiple times on the same realm should have no
