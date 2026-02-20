@@ -169,9 +169,7 @@ public class ModelScanMetricsReportTest {
 
   @Test
   public void testConverterFromResultSet() throws SQLException {
-    // Test the separate ModelScanMetricsReportConverter class (used in query methods)
-    ModelScanMetricsReportConverter converter = new ModelScanMetricsReportConverter();
-
+    // Test the CONVERTER constant (used in query methods)
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockResultSet.getString(ModelScanMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
     when(mockResultSet.getString(ModelScanMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
@@ -229,7 +227,7 @@ public class ModelScanMetricsReportTest {
         .thenReturn(TEST_DELETE_FILE_SIZE);
     when(mockResultSet.getString(ModelScanMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
-    ModelScanMetricsReport result = converter.fromResultSet(mockResultSet);
+    ModelScanMetricsReport result = ModelScanMetricsReport.CONVERTER.fromResultSet(mockResultSet);
 
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
