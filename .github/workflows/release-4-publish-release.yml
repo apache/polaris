@@ -118,7 +118,7 @@ jobs:
           find_next_patch_number "${major}" "${minor}"
 
           # Build the version string for the patch with RC tags
-          version_without_rc="${major}.${minor}.${patch}-incubating"
+          version_without_rc="${major}.${minor}.${patch}"
 
           # Find the latest RC tag for this version
           find_next_rc_number "${version_without_rc}"
@@ -188,11 +188,11 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Define source and destination URLs
-          dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
-          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris/${version_without_rc}"
+          dev_artifacts_url="${APACHE_DIST_URL}/dev/polaris/${version_without_rc}"
+          release_artifacts_url="${APACHE_DIST_URL}/release/polaris/${version_without_rc}"
 
-          dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
-          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
+          dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
+          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
 
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_artifacts_url}" "${release_artifacts_url}" \
@@ -217,11 +217,11 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris"
-          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
+          release_artifacts_url="${APACHE_DIST_URL}/release/polaris"
+          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
 
           # List and remove old release artifact versions
-          old_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_artifacts_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-incubating/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+          old_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_artifacts_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
 
           if [[ -n "${old_versions}" ]]; then
             echo "## Old Releases Cleanup" >> $GITHUB_STEP_SUMMARY
@@ -241,7 +241,7 @@ jobs:
           fi
 
           # List and remove old Helm chart versions
-          old_helm_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+-incubating/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+          old_helm_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
 
           if [[ -n "${old_helm_versions}" ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -271,8 +271,8 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Define source and destination URLs for the Helm index
-          dev_helm_index_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/index.yaml"
-          release_helm_index_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/index.yaml"
+          dev_helm_index_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/index.yaml"
+          release_helm_index_url="${APACHE_DIST_URL}/release/polaris/helm-chart/index.yaml"
 
           # Move the index.yaml from dev to release
           # The index was already properly generated in workflow 3 with relative URLs for the current
@@ -364,8 +364,8 @@ jobs:
           exec_process mkdir -p "${artifacts_dir}"
 
           # Download artifacts from Apache dist release space
-          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris/${version_without_rc}"
-          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
+          release_artifacts_url="${APACHE_DIST_URL}/release/polaris/${version_without_rc}"
+          release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
 
           # Download main artifacts
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \

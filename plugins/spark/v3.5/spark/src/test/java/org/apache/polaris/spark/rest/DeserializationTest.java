@@ -71,25 +71,21 @@ public class DeserializationTest {
   public void testLoadGenericTableRESTResponse(
       String baseLocation, String doc, Map<String, String> properties, String format)
       throws JsonProcessingException {
-    GenericTable.Builder tableBuilder =
-        GenericTable.builder()
-            .setFormat(format)
-            .setName("test-table")
-            .setProperties(properties)
-            .setDoc(doc);
+    GenericTableBuilder tableBuilder =
+        GenericTable.builder().format(format).name("test-table").properties(properties).doc(doc);
     if (baseLocation != null) {
-      tableBuilder.setBaseLocation(baseLocation);
+      tableBuilder.baseLocation(baseLocation);
     }
     GenericTable table = tableBuilder.build();
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
     String json = mapper.writeValueAsString(response);
     LoadGenericTableRESTResponse deserializedResponse =
         mapper.readValue(json, LoadGenericTableRESTResponse.class);
-    assertThat(deserializedResponse.getTable().getFormat()).isEqualTo(format);
-    assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
-    assertThat(deserializedResponse.getTable().getDoc()).isEqualTo(doc);
-    assertThat(deserializedResponse.getTable().getProperties().size()).isEqualTo(properties.size());
-    assertThat(deserializedResponse.getTable().getBaseLocation()).isEqualTo(baseLocation);
+    assertThat(deserializedResponse.getTable().format()).isEqualTo(format);
+    assertThat(deserializedResponse.getTable().name()).isEqualTo("test-table");
+    assertThat(deserializedResponse.getTable().doc()).isEqualTo(doc);
+    assertThat(deserializedResponse.getTable().properties().size()).isEqualTo(properties.size());
+    assertThat(deserializedResponse.getTable().baseLocation()).isEqualTo(baseLocation);
   }
 
   @ParameterizedTest
@@ -150,11 +146,11 @@ public class DeserializationTest {
   public void testLoadGenericTableRestResponse() throws JsonProcessingException {
     LoadGenericTableRESTResponse request =
         new LoadGenericTableRESTResponse(
-            GenericTable.builder().setName("test-table").setFormat("delta").build());
+            GenericTable.builder().name("test-table").format("delta").build());
     String json = mapper.writeValueAsString(request);
     LoadGenericTableRESTResponse deserializedResponse =
         mapper.readValue(json, LoadGenericTableRESTResponse.class);
-    assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
+    assertThat(deserializedResponse.getTable().name()).isEqualTo("test-table");
   }
 
   private static Stream<Arguments> genericTableTestCases() {

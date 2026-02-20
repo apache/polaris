@@ -370,11 +370,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   EntitiesResult updateEntities(List<EntityWithPath> entities) {
     LOGGER
         .atDebug()
-        .addArgument(
-            () -> logEntitiesInfo(entities.stream().map(EntityWithPath::getEntity).toList()))
+        .addArgument(() -> logEntitiesInfo(entities.stream().map(EntityWithPath::entity).toList()))
         .log("update entities: {}");
 
-    return createOrUpdateEntities(entities.stream().map(EntityWithPath::getEntity), UPDATE);
+    return createOrUpdateEntities(entities.stream().map(EntityWithPath::entity), UPDATE);
   }
 
   private EntityResult createOrUpdateEntity(EntityUpdate.Operation op, PolarisBaseEntity entity) {

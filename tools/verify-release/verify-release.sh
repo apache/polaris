@@ -32,8 +32,8 @@ Usage: $0 [options]
   Mandatory options:
     -s | --git-sha | --sha <GIT_SHA>   Git commit (full, not abbreviated)
                                        Example: b7188a07511935e7c9c64128dc047107c26f97f6
-    -v | --version <version>           Release version, including '-incubating' and RC
-                                       Example: 1.3.0-incubating-rc0
+    -v | --version <version>           Release version, including RC
+                                       Example: 1.4.0-rc0
     -m | --maven-repo-id <staging-ID>  Staging Maven repository staging ID
                                        Example: 1234
                                        This will be prefixed with ${maven_repo_url_prefix}
@@ -44,7 +44,7 @@ Usage: $0 [options]
 
 
 Full example for RC4 of version 9.8.0, staging repo ID 4568.
-  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 9.8.0-incubating-rc4 -m 4568
+  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 9.8.0-rc4 -m 4568
 !
 }
 
@@ -90,7 +90,7 @@ RESET='\033[m'
 # Allow leading characters, but only extract the version and rc.
 VERSION_RC_REGEX="^([a-z-]+)?([0-9]+\.[0-9]+\.[0-9]+(-incubating)?)-rc([0-9]+)$"
 if [[ ! ${version} =~ ${VERSION_RC_REGEX} ]]; then
-  echo "Version '${version}' does not match the version pattern 0.0.0-incubating-rc0" > /dev/stderr
+  echo "Version '${version}' does not match the version pattern 0.0.0-rc0" > /dev/stderr
   exit 1
 fi
 version="${BASH_REMATCH[2]}"
@@ -147,8 +147,8 @@ ulimit -n 16384
 
 failures_file="$(pwd)/${run_id}.log"
 
-dist_url_prefix="https://dist.apache.org/repos/dist/dev/incubator/polaris/"
-keys_file_url="https://downloads.apache.org/incubator/polaris/KEYS"
+dist_url_prefix="https://dist.apache.org/repos/dist/dev/polaris/"
+keys_file_url="https://downloads.apache.org/polaris/KEYS"
 
 git_tag_full="apache-polaris-${version}-rc${rc_num}"
 
@@ -462,7 +462,6 @@ log_info "Git commit on tag '${git_tag_full}':   ${git_sha_on_tag}"
 log_part_end
 
 log_part_start "Verify mandatory files in source tree"
-  [[ -e "${worktree_dir}/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in source tree"
   [[ -e "${worktree_dir}/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in source tree"
   [[ -e "${worktree_dir}/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in source tree"
   [[ "$(cat "${worktree_dir}/version.txt")" == "${version}" ]] || log_fatal "version.txt in source tree does not contain expected version"
@@ -522,11 +521,11 @@ log_part_start "Comparing main distribution artifacts"
 compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
 dist_file_prefix="polaris-bin-${version}"
 compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
-  log_fatal "${dist_file_prefix}.tgz: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
+[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 3 ]] && \
+  log_fatal "${dist_file_prefix}.tgz: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
 compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
-  log_fatal "${dist_file_prefix}.zip: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
+[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 3 ]] && \
+  log_fatal "${dist_file_prefix}.zip: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
 log_part_end
 
 log_part_start "Comparing helm chart artifacts"
@@ -539,7 +538,6 @@ helm_package_file="polaris-${version}.tgz"
 tar ${tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
 tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
 proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
-[[ -e "${helm_work_dir}/staged/polaris/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in Helm package ${helm_package_file}"
 log_part_end

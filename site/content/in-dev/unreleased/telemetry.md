@@ -87,7 +87,7 @@ The collector must talk the OpenTelemetry protocol (OTLP) and the port must be i
 By default, Polaris adds a few attributes to the [OpenTelemetry Resource] to identify the server,
 and notably:
 
-- `service.name`: set to `Apache Polaris Server (incubating)`;
+- `service.name`: set to `Apache Polaris Server`;
 - `service.version`: set to the Polaris version.
 
 [OpenTelemetry Resource]: https://opentelemetry.io/docs/languages/js/resources/

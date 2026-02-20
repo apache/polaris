@@ -950,10 +950,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           prepareToPersistEntityAfterChange(
               callCtx,
               ms,
-              new PolarisBaseEntity.Builder(entityWithPath.getEntity()).build(),
+              new PolarisBaseEntity.Builder(entityWithPath.entity()).build(),
               false,
-              entityWithPath.getEntity());
-      originalEntities.add(entityWithPath.getEntity());
+              entityWithPath.entity());
+      originalEntities.add(entityWithPath.entity());
       updatedEntities.add(updatedEntity);
     }
 
@@ -1776,7 +1776,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // load the entity if something changed
     final PolarisBaseEntity entity;
-    if (entityVersion != entityVersions.getEntityVersion()) {
+    if (entityVersion != entityVersions.entityVersion()) {
       entity = ms.lookupEntity(callCtx, entityCatalogId, entityId, entityType.getCode());
 
       // if not found, return null
@@ -1793,7 +1793,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // load the grant records if required
     final List<PolarisGrantRecord> grantRecords;
-    if (entityVersions.getGrantRecordsVersion() != entityGrantRecordsVersion) {
+    if (entityVersions.grantRecordsVersion() != entityGrantRecordsVersion) {
       if (entityType.isGrantee()) {
         grantRecords =
             new ArrayList<>(ms.loadAllGrantRecordsOnGrantee(callCtx, entityCatalogId, entityId));
@@ -1806,7 +1806,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // return the result
-    return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, entityVersions.grantRecordsVersion(), grantRecords);
   }
 
   /** {@inheritDoc} */

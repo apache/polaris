@@ -94,7 +94,7 @@ jobs:
           find_next_patch_number "${major}" "${minor}"
 
           # Build the target version using branch major.minor and determined patch
-          version_without_rc="${major}.${minor}.${patch}-incubating"
+          version_without_rc="${major}.${minor}.${patch}"
 
           # Find the next available RC number by checking existing tags
           find_next_rc_number "${version_without_rc}"

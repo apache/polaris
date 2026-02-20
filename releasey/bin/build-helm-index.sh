@@ -19,8 +19,8 @@
 
 #
 # Build a Helm index.yaml file for Apache Polaris charts from both
-# https://archive.apache.org/dist/incubator/polaris/helm-chart/ and
-# https://downloads.apache.org/incubator/polaris/helm-chart/
+# https://archive.apache.org/dist/polaris/helm-chart/ and
+# https://downloads.apache.org/polaris/helm-chart/
 #
 # The current release workflows force a regeneration of the Helm index
 # after the old (unmaintained) releases are removed from the Apache dist
@@ -52,14 +52,14 @@ set -euo pipefail
 get_helm_chart_version_from_url() {
   local base_url="$1"
   curl -sL "$base_url/" |
-    grep -oE 'href="[0-9]+\.[0-9]+\.[0-9]+-incubating/"' |
+    grep -oE 'href="[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/"' |
     sed 's/href="//;s/\/"//' |
     sort -V | uniq
 }
 
 # Base URLs for Apache Polaris helm charts
-ARCHIVE_URL="https://archive.apache.org/dist/incubator/polaris/helm-chart"
-DOWNLOADS_URL="https://downloads.apache.org/incubator/polaris/helm-chart"
+ARCHIVE_URL="https://archive.apache.org/dist/polaris/helm-chart"
+DOWNLOADS_URL="https://downloads.apache.org/polaris/helm-chart"
 
 # Temporary directory for downloads
 WORK_DIR=$(mktemp -d)
