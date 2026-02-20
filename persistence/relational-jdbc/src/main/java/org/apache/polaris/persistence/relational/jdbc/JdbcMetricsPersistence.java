@@ -36,9 +36,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReportConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
-import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReportConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -299,8 +297,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
-      var results =
-          datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
+      var results = datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -359,8 +356,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + limit;
 
       PreparedQuery query = new PreparedQuery(sql, values);
-      var results =
-          datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
+      var results = datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -383,8 +379,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + " WHERE realm_id = ? AND otel_trace_id = ? ORDER BY timestamp_ms DESC";
 
       PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
-      var results =
-          datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
+      var results = datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -410,8 +405,7 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + " WHERE realm_id = ? AND otel_trace_id = ? ORDER BY timestamp_ms DESC";
 
       PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
-      var results =
-          datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
+      var results = datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
       return results == null ? Collections.emptyList() : results;
     } catch (SQLException e) {
       throw new RuntimeException(

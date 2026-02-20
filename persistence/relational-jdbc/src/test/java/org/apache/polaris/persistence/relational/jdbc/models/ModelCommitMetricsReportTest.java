@@ -168,9 +168,7 @@ public class ModelCommitMetricsReportTest {
 
   @Test
   public void testConverterFromResultSet() throws SQLException {
-    // Test the separate ModelCommitMetricsReportConverter class (used in query methods)
-    ModelCommitMetricsReportConverter converter = new ModelCommitMetricsReportConverter();
-
+    // Test the CONVERTER constant (used in query methods)
     ResultSet mockResultSet = mock(ResultSet.class);
     when(mockResultSet.getString(ModelCommitMetricsReport.REPORT_ID)).thenReturn(TEST_REPORT_ID);
     when(mockResultSet.getString(ModelCommitMetricsReport.REALM_ID)).thenReturn(TEST_REALM_ID);
@@ -230,7 +228,8 @@ public class ModelCommitMetricsReportTest {
         .thenReturn(TEST_ATTEMPTS);
     when(mockResultSet.getString(ModelCommitMetricsReport.METADATA)).thenReturn(TEST_METADATA);
 
-    ModelCommitMetricsReport result = converter.fromResultSet(mockResultSet);
+    ModelCommitMetricsReport result =
+        ModelCommitMetricsReport.CONVERTER.fromResultSet(mockResultSet);
 
     assertEquals(TEST_REPORT_ID, result.getReportId());
     assertEquals(TEST_REALM_ID, result.getRealmId());
