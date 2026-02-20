@@ -730,7 +730,7 @@ extraVolumeMounts: []
 extraInitContainers: []
 
 tracing:
-  # -- Specifies whether tracing for the polaris server should be enabled. See <a href="{{% ref "telemetry/#traces" %}}">Traces</a> for details.
+  # -- Specifies whether tracing for the polaris server should be enabled. See <a href="{{% ref "../telemetry/#traces" %}}">Traces</a> for details.
   # @section -- Observability
   enabled: false
   # -- The collector endpoint URL to connect to (required).
@@ -755,7 +755,7 @@ tracing:
     # service.name: my-polaris
 
 metrics:
-  # -- Specifies whether metrics for the polaris server should be enabled. See <a href="{{% ref "telemetry/#metrics" %}}">Metrics</a> for details.
+  # -- Specifies whether metrics for the polaris server should be enabled. See <a href="{{% ref "../telemetry/#metrics" %}}">Metrics</a> for details.
   # @section -- Observability
   enabled: true
   # @schema additionalProperties: {type: string}
@@ -825,7 +825,7 @@ logging:
     # -- Whether to log in JSON format.
     # @section -- Logging
     json: false
-    # -- The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "telemetry/#logging" %}}">Logging</a> for details.
+    # -- The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "../telemetry/#logging" %}}">Logging</a> for details.
     # @section -- Logging
     format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
   # Configuration for the file appender.
@@ -840,7 +840,7 @@ logging:
     # -- Whether to log in JSON format.
     # @section -- Logging
     json: false
-    # -- The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "telemetry/#logging" %}}">Logging</a> for details.
+    # -- The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "../telemetry/#logging" %}}">Logging</a> for details.
     # @section -- Logging
     format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
     # -- The local directory where log files are stored. The persistent volume claim will be mounted
