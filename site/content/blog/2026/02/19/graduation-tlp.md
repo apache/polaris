@@ -45,8 +45,10 @@ Graduating to a TLP is more than just a change in title. It’s a "seal of appro
 the project has demonstrated:
 
 * **The Apache Way:** Demonstrated the ability to operate as a healthy, self-governing Apache project with
-  the commitment to collaborative, transparent, and meritocratic development.
+  the commitment to collaborative, transparent, peer-based, and meritocratic development using
+  consensus-based decision-making and responsible oversight.
 * **Community Health:** A diverse, sustainable, and growing group of contributors from various organizations.
+  Open governance driven by the community, in transparency, vendor neutrality.
 * **Technical Maturity:** A stable codebase that is ready for enterprise-grade production environments.
 
 ### The Journey So Far
