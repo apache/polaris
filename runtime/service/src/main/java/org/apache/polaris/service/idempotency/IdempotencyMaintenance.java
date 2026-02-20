@@ -20,12 +20,14 @@ package org.apache.polaris.service.idempotency;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.slf4j.Logger;
@@ -44,13 +46,31 @@ public class IdempotencyMaintenance {
   @Inject Vertx vertx;
 
   private volatile Long purgeTimerId;
+  private final AtomicBoolean purgeRunning = new AtomicBoolean(false);
 
   void onStart(@Observes StartupEvent event) {
     if (!configuration.enabled() || !configuration.purgeEnabled()) {
       return;
     }
     long intervalMs = Math.max(1000L, configuration.purgeIntervalSeconds() * 1000L);
-    purgeTimerId = vertx.setPeriodic(intervalMs, ignored -> purgeOnce());
+    purgeTimerId =
+        vertx.setPeriodic(
+            intervalMs,
+            ignored -> {
+              // Timer callbacks run on a Vert.x event-loop thread; offload blocking store I/O.
+              if (!purgeRunning.compareAndSet(false, true)) {
+                return;
+              }
+              Infrastructure.getDefaultWorkerPool()
+                  .execute(
+                      () -> {
+                        try {
+                          purgeOnce();
+                        } finally {
+                          purgeRunning.set(false);
+                        }
+                      });
+            });
   }
 
   void onStop(@Observes ShutdownEvent event) {

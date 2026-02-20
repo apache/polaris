@@ -148,81 +148,91 @@ public class IdempotencyFilter {
         now.plusSeconds(Math.max(0L, configuration.ttlSeconds()))
             .plusSeconds(Math.max(0L, configuration.ttlGraceSeconds()));
 
-    final IdempotencyStore.ReserveResult r;
-    try {
-      r =
-          store.reserve(
-              realmId, key, operationType, resourceId, expiresAt, configuration.executorId(), now);
-    } catch (RuntimeException e) {
-      return Uni.createFrom()
-          .item(
-              error(
-                  503,
-                  "idempotency_store_unavailable",
-                  "Idempotency store unavailable; retry later"));
-    }
+    return Uni.createFrom()
+        .item(
+            () ->
+                store.reserve(
+                    realmId,
+                    key,
+                    operationType,
+                    resourceId,
+                    expiresAt,
+                    configuration.executorId(),
+                    now))
+        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+        .onItem()
+        .transformToUni(
+            r -> {
+              if (r.getType() == IdempotencyStore.ReserveResultType.OWNED) {
+                rc.setProperty(PROP_IDEMPOTENCY_KEY, key);
+                rc.setProperty(PROP_IDEMPOTENCY_OPERATION, operationType);
+                rc.setProperty(PROP_IDEMPOTENCY_RESOURCE, resourceId);
+                rc.setProperty(PROP_IDEMPOTENCY_OWNED, Boolean.TRUE);
+                maybeStartHeartbeat(rc, realmId, key);
+                return Uni.createFrom().nullItem();
+              }
 
-    if (r.getType() == IdempotencyStore.ReserveResultType.OWNED) {
-      rc.setProperty(PROP_IDEMPOTENCY_KEY, key);
-      rc.setProperty(PROP_IDEMPOTENCY_OPERATION, operationType);
-      rc.setProperty(PROP_IDEMPOTENCY_RESOURCE, resourceId);
-      rc.setProperty(PROP_IDEMPOTENCY_OWNED, Boolean.TRUE);
-      maybeStartHeartbeat(rc, realmId, key);
-      return Uni.createFrom().nullItem();
-    }
+              Optional<IdempotencyRecord> existingOpt = r.getExisting();
+              if (existingOpt.isEmpty()) {
+                // Should not happen: DUPLICATE should always return an existing record.
+                return Uni.createFrom()
+                    .item(error(500, "IdempotencyInvariantViolation", "Missing existing record"));
+              }
 
-    Optional<IdempotencyRecord> existingOpt = r.getExisting();
-    if (existingOpt.isEmpty()) {
-      // Should not happen: DUPLICATE should always return an existing record.
-      return Uni.createFrom()
-          .item(error(500, "IdempotencyInvariantViolation", "Missing existing record"));
-    }
+              IdempotencyRecord existing = existingOpt.get();
+              if (!operationType.equals(existing.getOperationType())
+                  || !resourceId.equals(existing.getNormalizedResourceId())) {
+                return Uni.createFrom()
+                    .item(
+                        error(
+                            422,
+                            "idempotency_key_conflict",
+                            "Idempotency key was already used for a different operation/resource"));
+              }
 
-    IdempotencyRecord existing = existingOpt.get();
-    if (!operationType.equals(existing.getOperationType())
-        || !resourceId.equals(existing.getNormalizedResourceId())) {
-      return Uni.createFrom()
-          .item(
-              error(
-                  422,
-                  "idempotency_key_conflict",
-                  "Idempotency key was already used for a different operation/resource"));
-    }
+              if (!existing.isFinalized()) {
+                // If the owner appears stale (no recent heartbeat), don't wait indefinitely. Full
+                // reconciliation/takeover is out of scope for this change; return a retryable 503.
+                Instant hb = existing.getHeartbeatAt();
+                if (hb != null
+                    && Duration.between(hb, clock.instant()).getSeconds()
+                        > Math.max(0L, configuration.leaseTtlSeconds())) {
+                  return Uni.createFrom()
+                      .item(
+                          error(
+                              503,
+                              "idempotency_in_progress",
+                              "Operation with this idempotency key may be stale; retry later"));
+                }
+                Instant deadline =
+                    clock
+                        .instant()
+                        .plusSeconds(Math.max(0L, configuration.inProgressWaitSeconds()));
+                return waitForFinalized(realmId, key, deadline)
+                    .onItem()
+                    .transform(this::replayResponse)
+                    .onFailure(TimeoutException.class)
+                    .recoverWithItem(
+                        error(
+                            503,
+                            "idempotency_in_progress",
+                            "Operation with this idempotency key is still in progress; retry later"))
+                    .onFailure()
+                    .recoverWithItem(
+                        error(
+                            503,
+                            "idempotency_store_unavailable",
+                            "Idempotency store unavailable; retry later"));
+              }
 
-    if (!existing.isFinalized()) {
-      // If the owner appears stale (no recent heartbeat), don't wait indefinitely. Full
-      // reconciliation/takeover is out of scope for this change; return a retryable 503.
-      Instant hb = existing.getHeartbeatAt();
-      if (hb != null
-          && Duration.between(hb, clock.instant()).getSeconds()
-              > Math.max(0L, configuration.leaseTtlSeconds())) {
-        return Uni.createFrom()
-            .item(
-                error(
-                    503,
-                    "idempotency_in_progress",
-                    "Operation with this idempotency key may be stale; retry later"));
-      }
-      Instant deadline =
-          clock.instant().plusSeconds(Math.max(0L, configuration.inProgressWaitSeconds()));
-      return waitForFinalized(realmId, key, deadline)
-          .onItem()
-          .transform(this::replayResponse)
-          .onFailure(TimeoutException.class)
-          .recoverWithItem(
-              error(
-                  503,
-                  "idempotency_in_progress",
-                  "Operation with this idempotency key is still in progress; retry later"))
-          .onFailure()
-          .recoverWithItem(
-              error(
-                  503,
-                  "idempotency_store_unavailable",
-                  "Idempotency store unavailable; retry later"));
-    }
-
-    return Uni.createFrom().item(replayResponse(existing));
+              return Uni.createFrom().item(replayResponse(existing));
+            })
+        .onFailure()
+        .recoverWithItem(
+            error(
+                503,
+                "idempotency_store_unavailable",
+                "Idempotency store unavailable; retry later"));
   }
 
   @ServerResponseFilter
@@ -250,29 +260,37 @@ public class IdempotencyFilter {
 
     int status = response.getStatus();
     if (!shouldFinalize(status)) {
-      // do not reserve/finalize/replay for 401/403/408/429. If we reserved this
-      // key for such a request, release the in-progress record so the key does not linger.
-      if (status == 401 || status == 403 || status == 408 || status == 429) {
-        try {
-          store.cancelInProgressReservation(realmId, key, configuration.executorId());
-        } catch (RuntimeException ignored) {
-          // Best-effort.
-        }
+      // Do not finalize/replay for 401/403/408/429 or any 5xx. If we reserved this key for such a
+      // request, release the in-progress record so the key does not linger and block retries.
+      if (status == 401 || status == 403 || status == 408 || status == 429 || status >= 500) {
+        Infrastructure.getDefaultWorkerPool()
+            .execute(
+                () -> {
+                  try {
+                    store.cancelInProgressReservation(realmId, key, configuration.executorId());
+                  } catch (RuntimeException ignored) {
+                    // Best-effort.
+                  }
+                });
       }
       return;
     }
-    String body = responseEntityAsString(response, objectMapper);
-    body = truncate(body, configuration.maxResponseBodyChars());
-    String headers =
+    final String body =
+        truncate(responseEntityAsString(response, objectMapper), configuration.maxResponseBodyChars());
+    final String headers =
         headerSnapshotJson(response, configuration.responseHeaderAllowlist(), objectMapper);
     Instant now = clock.instant();
 
-    try {
-      store.finalizeRecord(realmId, key, status, null, body, headers, now);
-    } catch (RuntimeException ignored) {
-      // Best-effort: the main request already completed. If this fails, replay may be unavailable
-      // until a later retry or reconciliation.
-    }
+    Infrastructure.getDefaultWorkerPool()
+        .execute(
+            () -> {
+              try {
+                store.finalizeRecord(realmId, key, status, null, body, headers, now);
+              } catch (RuntimeException ignored) {
+                // Best-effort: the main request already completed. If this fails, replay may be
+                // unavailable until a later retry or reconciliation.
+              }
+            });
   }
 
   private void maybeStartHeartbeat(ContainerRequestContext rc, String realmId, String key) {
@@ -284,11 +302,16 @@ public class IdempotencyFilter {
         vertx.setPeriodic(
             intervalMs,
             ignored -> {
-              try {
-                store.updateHeartbeat(realmId, key, configuration.executorId(), clock.instant());
-              } catch (RuntimeException ignored2) {
-                // Best-effort.
-              }
+              Infrastructure.getDefaultWorkerPool()
+                  .execute(
+                      () -> {
+                        try {
+                          store.updateHeartbeat(
+                              realmId, key, configuration.executorId(), clock.instant());
+                        } catch (RuntimeException ignored2) {
+                          // Best-effort.
+                        }
+                      });
             });
     rc.setProperty(PROP_IDEMPOTENCY_HEARTBEAT_TIMER_ID, timerId);
   }
