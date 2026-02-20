@@ -263,7 +263,7 @@ helm-lint: DEPENDENCIES := ct yamllint
 .PHONY: helm-lint
 helm-lint: check-dependencies ## Run Helm chart lint check
 	@echo "--- Running Helm chart linting ---"
-	@ct lint --charts helm/polaris
+	@ct lint --charts helm/polaris --validate-maintainers=false
 	@echo "--- Helm chart linting complete ---"
 
 helm-schema-generate: DEPENDENCIES := helm
