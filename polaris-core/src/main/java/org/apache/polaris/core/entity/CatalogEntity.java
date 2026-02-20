@@ -164,6 +164,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setAllowedKmsKeys(awsConfig.getAllowedKmsKeys())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
+            .setStorageName(awsConfig.getStorageName())
             .setRegion(awsConfig.getRegion())
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
@@ -180,6 +181,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setConsentUrl(azureConfig.getConsentUrl())
             .setStorageType(AZURE)
             .setAllowedLocations(azureConfig.getAllowedLocations())
+            .setStorageName(azureConfig.getStorageName())
             .setHierarchical(azureConfig.isHierarchical())
             .build();
       }
@@ -188,11 +190,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
+            .setStorageName(gcpConfigModel.getStorageName())
             .build();
       }
       if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
-        return new FileStorageConfigInfo(
-            StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
+        return FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(fileConfigModel.getAllowedLocations())
+            .setStorageName(fileConfigModel.getStorageName())
+            .build();
       }
       return null;
     }
@@ -307,6 +313,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             AwsStorageConfigurationInfo awsConfig =
                 AwsStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .roleARN(awsConfigModel.getRoleArn())
                     .currentKmsKey(awsConfigModel.getCurrentKmsKey())
                     .allowedKmsKeys(awsConfigModel.getAllowedKmsKeys())
@@ -326,6 +333,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             config =
                 AzureStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .tenantId(azureConfigModel.getTenantId())
                     .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
                     .consentUrl(azureConfigModel.getConsentUrl())
@@ -336,13 +344,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             config =
                 GcpStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .gcpServiceAccount(
                         ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
                     .build();
             break;
           case FILE:
             config =
-                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
+                FileStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
+                    .build();
             break;
           default:
             throw new IllegalStateException(

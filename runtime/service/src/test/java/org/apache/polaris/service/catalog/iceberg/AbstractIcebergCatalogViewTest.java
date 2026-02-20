@@ -185,7 +185,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
                 .setStorageConfigurationInfo(
                     realmConfig,
                     new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*"), null),
                     "file://tmp")
                 .build()
                 .asCatalog(serviceIdentityProvider)));
