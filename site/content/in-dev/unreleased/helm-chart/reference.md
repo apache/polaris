@@ -1169,7 +1169,7 @@ false
 false
 </pre>
 </td>
-			<td>Specifies whether tracing for the polaris server should be enabled. See <a href="{{% ref "telemetry/#traces" %}}">Traces</a> for details.</td>
+			<td>Specifies whether tracing for the polaris server should be enabled. See <a href="{{% ref "../telemetry/#traces" %}}">Traces</a> for details.</td>
 		</tr>
 		<tr>
 			<td>tracing.endpoint</td>
@@ -1205,7 +1205,7 @@ false
 true
 </pre>
 </td>
-			<td>Specifies whether metrics for the polaris server should be enabled. See <a href="{{% ref "telemetry/#metrics" %}}">Metrics</a> for details.</td>
+			<td>Specifies whether metrics for the polaris server should be enabled. See <a href="{{% ref "../telemetry/#metrics" %}}">Metrics</a> for details.</td>
 		</tr>
 		<tr>
 			<td>metrics.tags</td>
@@ -1315,7 +1315,7 @@ false
 "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
 </pre>
 </td>
-			<td>The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "telemetry/#logging" %}}">Logging</a> for details.</td>
+			<td>The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "../telemetry/#logging" %}}">Logging</a> for details.</td>
 		</tr>
 		<tr>
 			<td>logging.file.enabled</td>
@@ -1351,7 +1351,7 @@ false
 "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
 </pre>
 </td>
-			<td>The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "telemetry/#logging" %}}">Logging</a> for details.</td>
+			<td>The log format to use. Ignored if JSON format is enabled. See <a href="{{% ref "../telemetry/#logging" %}}">Logging</a> for details.</td>
 		</tr>
 		<tr>
 			<td>logging.file.logsDir</td>
