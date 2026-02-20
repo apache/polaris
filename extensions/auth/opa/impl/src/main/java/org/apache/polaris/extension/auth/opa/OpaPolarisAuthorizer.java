@@ -41,6 +41,9 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -93,6 +96,20 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
+  }
+
+  @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "resolveAuthorizationInputs is not implemented yet for OpaPolarisAuthorizer");
+  }
+
+  @Override
+  public AuthorizationDecision authorizeDecision(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+        "authorizeDecision is not implemented yet for OpaPolarisAuthorizer");
   }
 
   /**
