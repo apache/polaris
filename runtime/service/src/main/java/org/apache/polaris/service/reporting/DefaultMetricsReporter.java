@@ -44,33 +44,40 @@ import org.slf4j.LoggerFactory;
 public class DefaultMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMetricsReporter.class);
 
-  private final QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer;
+  private final ReportConsumer reportConsumer;
 
   /** Functional interface for consuming metrics reports with timestamp. */
   @FunctionalInterface
-  interface QuadConsumer<T1, T2, T3, T4> {
-    void accept(T1 t1, T2 t2, T3 t3, T4 t4);
+  interface ReportConsumer {
+    void accept(
+        String catalogName,
+        long catalogId,
+        TableIdentifier table,
+        long tableId,
+        MetricsReport metricsReport,
+        Instant receivedTimestamp);
   }
 
   /** Creates a new DefaultMetricsReporter that logs metrics to the class logger. */
   public DefaultMetricsReporter() {
     this(
-        (catalogName, table, metricsReport, receivedTimestamp) ->
+        (catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp) ->
             LOGGER.info("{}.{} (ts={}): {}", catalogName, table, receivedTimestamp, metricsReport));
   }
 
   @VisibleForTesting
-  DefaultMetricsReporter(
-      QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer) {
+  DefaultMetricsReporter(ReportConsumer reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
 
   @Override
   public void reportMetric(
       String catalogName,
+      long catalogId,
       TableIdentifier table,
+      long tableId,
       MetricsReport metricsReport,
       Instant receivedTimestamp) {
-    reportConsumer.accept(catalogName, table, metricsReport, receivedTimestamp);
+    reportConsumer.accept(catalogName, catalogId, table, tableId, metricsReport, receivedTimestamp);
   }
 }

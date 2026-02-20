@@ -672,7 +672,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    metricsReporter().reportMetric(catalogName(), identifier, request.report(), clock().instant());
+    // Get catalog and table IDs from resolved entities (already resolved during authorization)
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    long catalogId = catalogEntity.getId();
+
+    // Get the table ID from the resolved path
+    PolarisResolvedPathWrapper resolvedTable = resolutionManifest.getResolvedPath(identifier);
+    PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
+    long tableId = tableEntity.getId();
+
+    metricsReporter()
+        .reportMetric(
+            catalogName(), catalogId, identifier, tableId, request.report(), clock().instant());
   }
 
   /**

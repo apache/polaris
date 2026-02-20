@@ -26,21 +26,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanReport;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.metrics.iceberg.MetricsRecordConverter;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -58,8 +48,9 @@ import org.slf4j.LoggerFactory;
  * <p>This reporter is selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code
  * "persisting"}.
  *
- * <p>The reporter looks up the catalog entity by name to obtain the catalog ID, then uses {@link
- * MetricsRecordConverter} to convert Iceberg metrics reports to SPI records before persisting them.
+ * <p>The reporter receives catalog and table IDs from the caller (already resolved during
+ * authorization), avoiding redundant entity lookups. It uses {@link MetricsRecordConverter} to
+ * convert Iceberg metrics reports to SPI records before persisting them.
  *
  * @see PolarisMetricsReporter
  * @see MetricsPersistence
@@ -70,19 +61,12 @@ import org.slf4j.LoggerFactory;
 public class PersistingMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
-  private final CallContext callContext;
-  private final PolarisMetaStoreManager metaStoreManager;
   private final MetricsPersistence metricsPersistence;
   private final SecurityContext securityContext;
 
   @Inject
   public PersistingMetricsReporter(
-      CallContext callContext,
-      PolarisMetaStoreManager metaStoreManager,
-      MetricsPersistence metricsPersistence,
-      SecurityContext securityContext) {
-    this.callContext = callContext;
-    this.metaStoreManager = metaStoreManager;
+      MetricsPersistence metricsPersistence, SecurityContext securityContext) {
     this.metricsPersistence = metricsPersistence;
     this.securityContext = securityContext;
   }
@@ -90,74 +74,11 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
   @Override
   public void reportMetric(
       String catalogName,
+      long catalogId,
       TableIdentifier table,
+      long tableId,
       MetricsReport metricsReport,
       Instant receivedTimestamp) {
-
-    // Look up the catalog entity to get the catalog ID
-    EntityResult catalogResult =
-        metaStoreManager.readEntityByName(
-            callContext.getPolarisCallContext(),
-            null, // catalogPath is null for top-level entities
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            catalogName);
-
-    if (!catalogResult.isSuccess()) {
-      LOGGER.warn(
-          "Failed to find catalog '{}' for metrics persistence. Metrics will not be stored.",
-          catalogName);
-      return;
-    }
-
-    PolarisBaseEntity catalogEntity = catalogResult.getEntity();
-    long catalogId = catalogEntity.getId();
-
-    // Build the full path from catalog through namespace to resolve the table.
-    // The path contains the catalog, then each namespace level.
-    // The last element in the path becomes the parent for the lookup.
-    List<PolarisEntityCore> entityPath = new ArrayList<>();
-    entityPath.add(PolarisEntity.toCore(catalogEntity));
-
-    // Resolve each namespace level
-    String[] namespaceLevels = table.namespace().levels();
-    for (String nsLevel : namespaceLevels) {
-      EntityResult nsResult =
-          metaStoreManager.readEntityByName(
-              callContext.getPolarisCallContext(),
-              entityPath,
-              PolarisEntityType.NAMESPACE,
-              PolarisEntitySubType.ANY_SUBTYPE,
-              nsLevel);
-
-      if (!nsResult.isSuccess()) {
-        LOGGER.warn(
-            "Failed to find namespace '{}' in catalog '{}' for metrics persistence. Metrics will not be stored.",
-            nsLevel,
-            catalogName);
-        return;
-      }
-      entityPath.add(PolarisEntity.toCore(nsResult.getEntity()));
-    }
-
-    // Now look up the table with the full namespace path
-    EntityResult tableResult =
-        metaStoreManager.readEntityByName(
-            callContext.getPolarisCallContext(),
-            entityPath,
-            PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            table.name());
-
-    if (!tableResult.isSuccess()) {
-      LOGGER.warn(
-          "Failed to find table '{}' in catalog '{}' for metrics persistence. Metrics will not be stored.",
-          table,
-          catalogName);
-      return;
-    }
-
-    long tableId = tableResult.getEntity().getId();
 
     // Get request context for correlation fields
     String principalName = getPrincipalName();
