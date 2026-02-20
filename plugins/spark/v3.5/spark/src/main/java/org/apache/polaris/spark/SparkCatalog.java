@@ -143,7 +143,29 @@ public class SparkCatalog
     try {
       return this.icebergsSparkCatalog.loadTable(ident);
     } catch (NoSuchTableException e) {
-      return this.polarisSparkCatalog.loadTable(ident);
+      // For generic tables, first try to load from Polaris to check the format
+      try {
+        Table table = this.polarisSparkCatalog.loadTable(ident);
+        String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+        if (PolarisCatalogUtils.usePaimon(provider)) {
+          // For Paimon tables, use Paimon's SparkCatalog to load the table
+          // This ensures proper handling of Paimon's metadata and schema files
+          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+          return paimonCatalog.loadTable(ident);
+        }
+        return table;
+      } catch (NoSuchTableException polarisException) {
+        // Table not found in Polaris, try Paimon directly
+        // Paimon tables created via Paimon's SparkCatalog may not be registered in Polaris
+        try {
+          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+          return paimonCatalog.loadTable(ident);
+        } catch (Exception paimonException) {
+          // Paimon catalog not configured or table not found there either
+          // Rethrow the original Polaris exception
+          throw polarisException;
+        }
+      }
     }
   }
 
@@ -155,6 +177,14 @@ public class SparkCatalog
     String provider = properties.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
     if (PolarisCatalogUtils.useIceberg(provider)) {
       return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
+    } else if (PolarisCatalogUtils.usePaimon(provider)) {
+      // For Paimon tables, use Paimon's SparkCatalog directly.
+      // Paimon manages its own table paths at warehouse/database.db/table_name
+      // so we don't require a location to be specified.
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      // Ensure namespace exists in Paimon before creating table
+      paimonHelper.ensureNamespaceExists(ident.namespace());
+      return paimonCatalog.createTable(ident, schema, transforms, properties);
     } else {
       if (PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)) {
         throw new UnsupportedOperationException(
@@ -170,11 +200,6 @@ public class SparkCatalog
         // to create the .hoodie folder in cloud storage
         TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
         return hudiCatalog.createTable(ident, schema, transforms, properties);
-      } else if (PolarisCatalogUtils.usePaimon(provider)) {
-        // For creating the paimon table, we load PaimonCatalog
-        // to create the paimon metadata in cloud storage
-        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.polarisSparkCatalog);
-        return paimonCatalog.createTable(ident, schema, transforms, properties);
       } else {
         return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
       }
@@ -186,30 +211,56 @@ public class SparkCatalog
     try {
       return this.icebergsSparkCatalog.alterTable(ident, changes);
     } catch (NoSuchTableException e) {
-      Table table = this.polarisSparkCatalog.loadTable(ident);
-      String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
-      if (PolarisCatalogUtils.useDelta(provider)) {
-        // For delta table, most of the alter operations is a delta log manipulation,
-        // we load the delta catalog to help handling the alter table operation.
-        // NOTE: This currently doesn't work for changing file location and file format
-        //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
-        TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
-        return deltaCatalog.alterTable(ident, changes);
-      } else if (PolarisCatalogUtils.useHudi(provider)) {
-        TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
-        return hudiCatalog.alterTable(ident, changes);
-      } else if (PolarisCatalogUtils.usePaimon(provider)) {
-        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.polarisSparkCatalog);
-        return paimonCatalog.alterTable(ident, changes);
-      } else {
-        return this.polarisSparkCatalog.alterTable(ident);
+      // Try to load from Polaris first
+      try {
+        Table table = this.polarisSparkCatalog.loadTable(ident);
+        String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+        if (PolarisCatalogUtils.useDelta(provider)) {
+          // For delta table, most of the alter operations is a delta log manipulation,
+          // we load the delta catalog to help handling the alter table operation.
+          // NOTE: This currently doesn't work for changing file location and file format
+          //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
+          TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
+          return deltaCatalog.alterTable(ident, changes);
+        } else if (PolarisCatalogUtils.useHudi(provider)) {
+          TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
+          return hudiCatalog.alterTable(ident, changes);
+        } else if (PolarisCatalogUtils.usePaimon(provider)) {
+          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+          return paimonCatalog.alterTable(ident, changes);
+        } else {
+          return this.polarisSparkCatalog.alterTable(ident);
+        }
+      } catch (NoSuchTableException polarisException) {
+        // Table not found in Polaris, try Paimon directly
+        // Paimon tables created via Paimon's SparkCatalog may not be registered in Polaris
+        try {
+          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+          return paimonCatalog.alterTable(ident, changes);
+        } catch (Exception paimonException) {
+          // Paimon catalog not configured or table not found there either
+          throw polarisException;
+        }
       }
     }
   }
 
   @Override
   public boolean dropTable(Identifier ident) {
-    return this.icebergsSparkCatalog.dropTable(ident) || this.polarisSparkCatalog.dropTable(ident);
+    boolean dropped =
+        this.icebergsSparkCatalog.dropTable(ident) || this.polarisSparkCatalog.dropTable(ident);
+
+    // Also try to drop from Paimon catalog if it exists
+    try {
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      if (paimonCatalog.dropTable(ident)) {
+        dropped = true;
+      }
+    } catch (Exception e) {
+      // Paimon catalog not configured or table not found, ignore
+    }
+
+    return dropped;
   }
 
   @Override

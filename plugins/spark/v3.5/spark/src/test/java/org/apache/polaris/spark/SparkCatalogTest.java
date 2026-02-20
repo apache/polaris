@@ -133,6 +133,7 @@ public class SparkCatalogTest {
     catalogConfig.put(HudiHelper.HUDI_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopHudiCatalog");
     catalogConfig.put(
         PaimonHelper.PAIMON_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopPaimonCatalog");
+    catalogConfig.put(PaimonHelper.PAIMON_WAREHOUSE_KEY, "/tmp/test-paimon-warehouse");
     catalog = new InMemorySparkCatalog();
     Configuration conf = new Configuration();
 
@@ -442,21 +443,28 @@ public class SparkCatalogTest {
     Identifier identifier = Identifier.of(defaultNS, "generic-test-table");
     createAndValidateGenericTableWithLoad(catalog, identifier, defaultSchema, format);
 
-    Identifier[] icebergTables = catalog.listTables(defaultNS);
-    assertThat(icebergTables.length).isEqualTo(1);
-    assertThat(icebergTables[0]).isEqualTo(Identifier.of(defaultNS, "generic-test-table"));
+    // Paimon tables are managed separately by PaimonCatalog and not listed in Polaris
+    if (!PolarisCatalogUtils.usePaimon(format)) {
+      Identifier[] icebergTables = catalog.listTables(defaultNS);
+      assertThat(icebergTables.length).isEqualTo(1);
+      assertThat(icebergTables[0]).isEqualTo(Identifier.of(defaultNS, "generic-test-table"));
 
-    Map<String, String> newProperties = Maps.newHashMap();
-    newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "parquet");
-    newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
-    assertThatThrownBy(
-            () -> catalog.createTable(identifier, defaultSchema, new Transform[0], newProperties))
-        .isInstanceOf(TableAlreadyExistsException.class);
+      Map<String, String> newProperties = Maps.newHashMap();
+      newProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "parquet");
+      newProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/path/to/table/");
+      assertThatThrownBy(
+              () -> catalog.createTable(identifier, defaultSchema, new Transform[0], newProperties))
+          .isInstanceOf(TableAlreadyExistsException.class);
+    }
 
     catalog.dropTable(identifier);
     assertThatThrownBy(() -> catalog.loadTable(identifier))
         .isInstanceOf(NoSuchTableException.class);
-    assertThat(catalog.listTables(defaultNS)).isEmpty();
+
+    // Paimon tables are not in Polaris listTables
+    if (!PolarisCatalogUtils.usePaimon(format)) {
+      assertThat(catalog.listTables(defaultNS)).isEmpty();
+    }
   }
 
   @Test
@@ -641,8 +649,17 @@ public class SparkCatalogTest {
       // verify iceberg SparkTable is returned for iceberg tables
       assertThat(createdTable).isInstanceOf(SparkTable.class);
       assertThat(loadedTable).isInstanceOf(SparkTable.class);
+    } else if (PolarisCatalogUtils.usePaimon(format)) {
+      // For Paimon tables, NoopPaimonCatalog handles creation and returns the table directly
+      Table createdTable =
+          sparkCatalog.createTable(identifier, schema, new Transform[0], properties);
+      Table loadedTable = sparkCatalog.loadTable(identifier);
+
+      // Paimon tables are returned by NoopPaimonCatalog
+      assertThat(createdTable).isNotNull();
+      assertThat(loadedTable).isNotNull();
     } else {
-      // For non-Iceberg tables, use mocking
+      // For other non-Iceberg tables (Delta, Hudi, CSV), use mocking
       try (MockedStatic<DataSource> mockedStaticDS = Mockito.mockStatic(DataSource.class);
           MockedStatic<DataSourceV2Utils> mockedStaticDSV2 =
               Mockito.mockStatic(DataSourceV2Utils.class);
