@@ -82,11 +82,11 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   public PolarisGrantRecord fromResultSet(ResultSet rs) throws SQLException {
     var modelGrantRecord =
         ModelGrantRecord.builder()
-            .securableCatalogId(rs.getObject("securable_catalog_id", Long.class))
-            .securableId(rs.getObject("securable_id", Long.class))
-            .granteeCatalogId(rs.getObject("grantee_catalog_id", Long.class))
-            .granteeId(rs.getObject("grantee_id", Long.class))
-            .privilegeCode(rs.getObject("privilege_code", Integer.class))
+            .securableCatalogId(rs.getLong("securable_catalog_id"))
+            .securableId(rs.getLong("securable_id"))
+            .granteeCatalogId(rs.getLong("grantee_catalog_id"))
+            .granteeId(rs.getLong("grantee_id"))
+            .privilegeCode(rs.getInt("privilege_code"))
             .build();
 
     return toGrantRecord(modelGrantRecord);
