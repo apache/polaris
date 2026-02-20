@@ -38,14 +38,14 @@ Note: Organization level secrets are _not_ shown the repository's list of secret
 ### GitHub Secrets
 
 [These secrets](https://github.com/apache/polaris/settings/secrets/actions) are either provided and managed by Apache
-Infra or the Polaris (P)PMC.
+Infra or the Polaris PMC.
 
-| Secret                     | Purpose                                                                           | Provided by    |
-|----------------------------|-----------------------------------------------------------------------------------|----------------|
-| `POLARIS_GPG_PRIVATE_KEY`  | GPG signing key, used to sign release artifacts.                                  | ASF Infra      |
-| `POLARIS_SVN_DEV_USERNAME` | [Apache SVN](https://dist.apache.org/repos/dist) username.                        | ASF Infra      |
-| `POLARIS_SVN_DEV_PASSWORD` | Password for the above.                                                           | ASF Infra      |
-| `TEST_PYPI_API_TOKEN`      | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris (P)PMC |
+| Secret                     | Purpose                                                                           | Provided by |
+|----------------------------|-----------------------------------------------------------------------------------|-------------|
+| `POLARIS_GPG_PRIVATE_KEY`  | GPG signing key, used to sign release artifacts.                                  | ASF Infra   |
+| `POLARIS_SVN_DEV_USERNAME` | [Apache SVN](https://dist.apache.org/repos/dist) username.                        | ASF Infra   |
+| `POLARIS_SVN_DEV_PASSWORD` | Password for the above.                                                           | ASF Infra   |
+| `TEST_PYPI_API_TOKEN`      | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris PMC |
 
 ### GitHub variables
 
@@ -56,11 +56,11 @@ None.
 ### GitHub Secrets
 
 [These secrets](https://github.com/apache/polaris-tools/settings/secrets/actions) are either provided and managed by
-Apache Infra or the Polaris (P)PMC.
+Apache Infra or the Polaris PMC.
 
-| Secret                | Purpose                                                                           | Provided by    |
-|-----------------------|-----------------------------------------------------------------------------------|----------------|
-| `TEST_PYPI_API_TOKEN` | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris (P)PMC |
+| Secret                | Purpose                                                                           | Provided by |
+|-----------------------|-----------------------------------------------------------------------------------|-------------|
+| `TEST_PYPI_API_TOKEN` | [TestPyPI](https://test.pypi.org/) API token, used to publish snapshot artifacts. | Polaris PMC |
 
 ### GitHub Variables
 

@@ -228,7 +228,7 @@ jobs:
       - name: Run Helm unit tests
         run: make helm-unittest
       - name: Run chart-testing (lint)
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris --validate-maintainers=false
       - name: Set up Minikube
         uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
         with:

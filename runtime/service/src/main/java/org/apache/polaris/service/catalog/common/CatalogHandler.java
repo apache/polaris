@@ -127,7 +127,7 @@ public abstract class CatalogHandler {
       for (PolicyIdentifier id : extraPassThroughPolicies) {
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
-                PolarisCatalogHelpers.identifierToList(id.getNamespace(), id.getName()),
+                PolarisCatalogHelpers.identifierToList(id.namespace(), id.name()),
                 PolarisEntityType.POLICY,
                 true /* optional */),
             id);
@@ -289,7 +289,7 @@ public abstract class CatalogHandler {
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
       TableIdentifier identifier =
           PolarisCatalogHelpers.listToTableIdentifier(
-              status.getFailedToResolvePath().getEntityNames());
+              status.getFailedToResolvePath().entityNames());
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
 
@@ -341,7 +341,7 @@ public abstract class CatalogHandler {
         dst);
     ResolverStatus status = resolutionManifest.resolveAll();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
-        && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
+        && status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
     } else if (resolutionManifest.getResolvedPath(src, PolarisEntityType.TABLE_LIKE, subType)
         == null) {

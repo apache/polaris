@@ -68,7 +68,7 @@ public class StorageCredentialCache {
                               0,
                               Math.min(
                                   (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                  entry.getMaxCacheDurationMs()));
+                                  entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
             .build(

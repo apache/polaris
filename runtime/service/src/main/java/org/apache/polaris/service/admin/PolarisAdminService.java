@@ -461,9 +461,9 @@ public class PolarisAdminService {
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
+      if (status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {
         throw new NoSuchNamespaceException(
-            "Namespace does not exist: %s", status.getFailedToResolvePath().getEntityNames());
+            "Namespace does not exist: %s", status.getFailedToResolvePath().entityNames());
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
       }
@@ -506,7 +506,7 @@ public class PolarisAdminService {
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
+      if (status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.TABLE_LIKE) {
         CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
@@ -545,7 +545,7 @@ public class PolarisAdminService {
     PolarisResolutionManifest resolutionManifest = newResolutionManifest(catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
-            PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
+            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY),
         identifier);
     resolutionManifest.addPath(
@@ -555,7 +555,7 @@ public class PolarisAdminService {
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.POLICY) {
+      if (status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.POLICY) {
         throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
       } else {
         throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);

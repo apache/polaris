@@ -112,25 +112,23 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
             + " got: "
             + secretManagerType);
 
-    String encryptedSecretCipherTextBase64 = rawSecretStore.get(secretReference.getUrn());
+    String encryptedSecretCipherTextBase64 = rawSecretStore.get(secretReference.urn());
     if (encryptedSecretCipherTextBase64 == null) {
       // Secret at this URN no longer exists.
       return null;
     }
 
-    String encryptedSecretKeyBase64 = secretReference.getReferencePayload().get(ENCRYPTION_KEY);
+    String encryptedSecretKeyBase64 = secretReference.referencePayload().get(ENCRYPTION_KEY);
 
     // Validate integrity of the base64-encoded ciphertext which was retrieved from the secret
     // store against the hash we stored in the referencePayload.
-    String expecteCipherTextBase64Hash = secretReference.getReferencePayload().get(CIPHERTEXT_HASH);
+    String expecteCipherTextBase64Hash = secretReference.referencePayload().get(CIPHERTEXT_HASH);
     String retrievedCipherTextBase64Hash = DigestUtils.sha256Hex(encryptedSecretCipherTextBase64);
     if (!Objects.equals(retrievedCipherTextBase64Hash, expecteCipherTextBase64Hash)) {
       throw new IllegalArgumentException(
           String.format(
               "Ciphertext hash mismatch for URN %s; expected %s got %s",
-              secretReference.getUrn(),
-              expecteCipherTextBase64Hash,
-              retrievedCipherTextBase64Hash));
+              secretReference.urn(), expecteCipherTextBase64Hash, retrievedCipherTextBase64Hash));
     }
 
     byte[] cipherTextBytes = Base64.getDecoder().decode(encryptedSecretCipherTextBase64);
@@ -148,6 +146,6 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   /** {@inheritDoc} */
   @Override
   public void deleteSecret(@Nonnull SecretReference secretReference) {
-    rawSecretStore.remove(secretReference.getUrn());
+    rawSecretStore.remove(secretReference.urn());
   }
 }

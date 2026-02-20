@@ -21,19 +21,17 @@ package org.apache.polaris.extension.auth.opa.token;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.Strings;
+import jakarta.annotation.Nonnull;
 
 /** A simple token provider that returns a static string value. */
-public class StaticBearerTokenProvider implements BearerTokenProvider {
+public record StaticBearerTokenProvider(String token) implements BearerTokenProvider {
 
-  private final String token;
-
-  public StaticBearerTokenProvider(String token) {
+  public StaticBearerTokenProvider {
     checkArgument(!Strings.isNullOrEmpty(token), "Token cannot be null or empty");
-    this.token = token;
   }
 
   @Override
-  public String getToken() {
+  public @Nonnull String getToken() {
     return token;
   }
 }

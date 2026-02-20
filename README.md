@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Apache Polaris (incubating)
+# Apache Polaris
 
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
@@ -208,9 +208,3 @@ Advanced configuration options for publishing build scans (only local and non-`a
 ## License
 
 Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENSE).
-
-## ASF Incubator disclaimer
-
-Apache Polaris&trade; is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
- 
-<sub>Apache&reg;, Apache Polaris&trade;, Apache Iceberg&trade;, Apache Spark&trade; are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</sub>

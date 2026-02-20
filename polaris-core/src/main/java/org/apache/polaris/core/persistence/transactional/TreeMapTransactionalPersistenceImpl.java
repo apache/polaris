@@ -247,7 +247,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             id ->
                 this.store
                     .getSliceEntities()
-                    .read(this.store.buildKeyComposite(id.getCatalogId(), id.getId())))
+                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
         .collect(Collectors.toList());
   }
 
@@ -261,7 +261,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             id ->
                 this.store
                     .getSliceEntitiesChangeTracking()
-                    .read(this.store.buildKeyComposite(id.getCatalogId(), id.getId())))
+                    .read(this.store.buildKeyComposite(id.catalogId(), id.id())))
         .map(
             entity ->
                 (entity != null)

@@ -68,7 +68,7 @@ public class PolarisCatalogHelpers {
     for (int i = 0; i < fullName.length - 1; ++i) {
       fullName[i] = catalogPath.get(i + 1).getName();
     }
-    fullName[fullName.length - 1] = entity.getName();
+    fullName[fullName.length - 1] = entity.name();
     return Namespace.of(fullName);
   }
 
@@ -98,7 +98,7 @@ public class PolarisCatalogHelpers {
     }
     Namespace sharedNamespace = Namespace.of(parentNamespaces);
     return entities.stream()
-        .map(entity -> TableIdentifier.of(sharedNamespace, entity.getName()))
+        .map(entity -> TableIdentifier.of(sharedNamespace, entity.name()))
         .collect(Collectors.toList());
   }
 }

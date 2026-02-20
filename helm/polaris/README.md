@@ -27,8 +27,8 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 
 ## Requirements
 
-- Kubernetes 1.32+ cluster
-- Helm 3.0+
+- Kubernetes 1.33+ cluster
+- Helm 3.x or 4.x
 
 ## Features
 
@@ -39,7 +39,7 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 * Centralized catalog, namespace, and table management
 * Kubernetes-native deployment with support for horizontal scaling, Ingress, and Gateway API
 * Production-ready observability with health checks and metrics
-* Open source and vendor neutral, governed by the Apache Polaris PPMC under the Apache Software Foundation
+* Open source and vendor neutral, governed by the Apache Polaris PMC under the Apache Software Foundation
 
 ## Documentation
 
