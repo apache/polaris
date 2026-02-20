@@ -41,14 +41,14 @@ Instructions how to verify a release candidate are available [here](../release-v
 To create a release candidate, you will need:
 
 * your Apache credentials (for repository.apache.org and dist.apache.org repositories)
-* a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) file
+* a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/polaris/KEYS) file
 
 ### Publish your GPG key
 
 If you haven't published your GPG key yet, you must publish it before starting the release process:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
+svn checkout https://dist.apache.org/repos/dist/release/polaris polaris-dist-release
 cd polaris-dist-release
 echo "" >> KEYS # append a new line
 gpg --list-sigs <YOUR KEY ID HERE> >> KEYS # append signatures
@@ -120,7 +120,6 @@ This step can be useful to gather ongoing patches that the community thinks shou
 The communication can be started via a `[DISCUSS]` mail on the dev@polaris.apache.org mailing list and the desired tickets can be added to the github milestone of the next release.
 
 Note, creating a milestone in github requires a committer. However, a non-committer can assign tasks to a milestone if added to the list of collaborators in [.asf.yaml](https://github.com/apache/polaris/blob/main/.asf.yaml).
-Also note since Polaris is an incubating project, make sure what every branch / tag you are creating is suffixed with `-incubating`.
 
 ### Create release branch
 
@@ -213,7 +212,7 @@ The binary distributions (for convenience) are available in:
 Now, we can stage the artifacts to dist dev repository:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
+svn checkout https://dist.apache.org/repos/dist/dev/polaris polaris-dist-dev
 cd polaris-dist-dev
 mkdir x.y.z
 cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
@@ -306,14 +305,14 @@ Apache Polaris x.y.z release.
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
+* https://dist.apache.org/repos/dist/dev/polaris/x.y.z
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
+* https://dist.apache.org/repos/dist/dev/polaris/helm-chart
 NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
-* https://downloads.apache.org/incubator/polaris/KEYS
+* https://downloads.apache.org/polaris/KEYS
 
 Convenience binary artifacts are staged on Nexus. The Maven
 repositories URLs are:
@@ -327,14 +326,10 @@ Please vote in the next 72 hours.
 [ ] +0
 [ ] -1 Do not release this because...
 
-Only PPMC members and mentors have binding votes, but other community
-members are
-encouraged to cast non-binding votes. This vote will pass if there are
-3 binding +1 votes and more binding +1 votes than -1 votes.
-
-NB: if this vote passes, a new vote has to be started on the Incubator
-general mailing
-list.
+Only PMC members have binding votes, but other community
+members are encouraged to cast non-binding votes.
+This vote will pass if there are 3 binding +1 votes and
+more binding +1 votes than -1 votes.
 ```
 
 When a candidate is passed or rejected, reply with the vote result:
@@ -352,75 +347,7 @@ The vote result is:
 +0: c (binding), d (non-binding)
 -1: e (binding), f (non-binding)
 
-A new vote is starting in the Apache Incubator general mailing list.
-```
-
-### Start a new vote on the Incubator general mailing list
-
-As Polaris is an Apache Incubator project, you now have to start a new vote on the Apache Incubator general mailing list.
-
-You have to send this email to general@incubator.apache.org:
-
-```
-[VOTE] Release Apache Polaris x.y.z (rci)
-```
-
-```
-Hello everyone,
-
-The Apache Polaris community has voted and approved the release of Apache Polaris x.y.z (rci).
-We now kindly request the IPMC members review and vote for this release.
-
-Polaris community vote thread:
-* https://lists.apache.org/thread/<VOTE THREAD>
-
-Vote result thread:
-* https://lists.apache.org/thread/<VOTE RESULT>
-
-The release candidate:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
-
-Git tag for the release:
-* https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z-rci
-
-Git commit for the release:
-* https://github.com/apache/polaris/commit/<COMMIT>
-
-Maven staging repository:
-* https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
-
-Please download, verify and test.
-
-Please vote in the next 72 hours.
-
-[ ] +1 approve
-[ ] +0 no opinion
-[ ] -1 disapprove with the reason
-
-To learn more about apache Polaris, please see https://polaris.apache.org/
-
-Checklist for reference:
-
-[ ] Download links are valid.
-[ ] Checksums and signatures.
-[ ] LICENSE/NOTICE files exist
-[ ] No unexpected binary files
-[ ] All source files have ASF headers
-[ ] Can compile from source
-```
-
-Binding votes are the votes from the IPMC members. Similar to the previous vote, send the result on the Incubator general mailing list:
-
-```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
-```
-
-```
-Hi everyone,
-
-This vote passed with the following result:
-
-
+We will proceed with publishing the approved artifacts and sending out the announcement soon.
 ```
 
 ## Finishing the release
@@ -432,14 +359,14 @@ After the release votes passed, you need to release the last candidate's artifac
 First, copy the distribution from the dist dev space to the dist release space:
 
 ```
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart
+svn mv https://dist.apache.org/repos/dist/dev/polaris/x.y.z https://dist.apache.org/repos/dist/release/polaris
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/polaris/helm-chart
 ```
 
-Then, update the Helm Chart repository index on https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart/index.yaml:
+Then, update the Helm Chart repository index on https://dist.apache.org/repos/dist/release/polaris/helm-chart/index.yaml:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart polaris-dist-release-helm-chart
+svn checkout https://dist.apache.org/repos/dist/release/polaris/helm-chart polaris-dist-release-helm-chart
 cd polaris-dist-release-helm-chart
 helm repo index .
 svn add index.yaml
@@ -471,7 +398,7 @@ Now that the release artifacts have been published, the next step is to publish 
 First, checkout the release tag:
 
 ```
-git checkout apache-polaris-[major].[minor].[patch]-incubating
+git checkout apache-polaris-[major].[minor].[patch]
 ```
 
 Set up a worktree for the versioned docs and create a new branch:
@@ -551,7 +478,7 @@ The Apache Polaris team is pleased to announce Apache Polaris x.y.z.
 
 <Add Quick Description of the Release>
 
-This release can be downloaded https://www.apache.org/dyn/closer.cgi/incubator/polaris/apache-polaris-x.y.z.
+This release can be downloaded https://www.apache.org/dyn/closer.cgi/polaris/apache-polaris-x.y.z.
 
 Artifacts are available on Maven Central.
 
@@ -579,7 +506,7 @@ After downloading the distributions archives, signatures, checksums, and KEYS fi
 First, import the keys in your local keyring:
 
 ```
-curl https://downloads.apache.org/incubator/polaris/KEYS -o KEYS
+curl https://downloads.apache.org/polaris/KEYS -o KEYS
 gpg --import KEYS
 ```
 
@@ -607,5 +534,5 @@ In the source distribution:
 
 Votes are cast by replying on the vote email on the dev mailing list, with either `+1`, `0`, `-1`.
 
-In addition to your vote, it's customary to specify if your vote is binding or non-binding. Only members of the PPMC and mentors have formally binding votes, and IPMC on the vote on the Incubator general mailing list. 
+In addition to your vote, it's customary to specify if your vote is binding or non-binding. Only members of the PMC have formally binding votes. 
 If you're unsure, you can specify that your vote is non-binding. You can find more details on https://www.apache.org/foundation/voting.html.

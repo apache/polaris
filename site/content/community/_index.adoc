@@ -73,30 +73,30 @@ cascade:
 |===
 
 | https://github.com/ajantha-bhat[Ajantha Bhat] | Committer | link:https://www.dremio.com/[Dremio]
-| https://github.com/adutra[Alex Dutra] | PPMC Member | link:https://www.dremio.com/[Dremio]
+| https://github.com/adutra[Alex Dutra] | PMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
-| Anoop Johnson | PPMC Member | link:https://www.google.com/[Google]
-| https://github.com/ashvina[Ashvin Agrawal] | PPMC Member | link:https://www.microsoft.com/[Microsoft]
-| https://github.com/dennishuo[Dennis Huo] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/dimas-b[Dmitri Bourlatchkov] | PPMC Member | link:https://www.dremio.com/[Dremio]
+| Anoop Johnson | PMC Member | link:https://www.google.com/[Google]
+| https://github.com/ashvina[Ashvin Agrawal] | PMC Member | link:https://www.microsoft.com/[Microsoft]
+| https://github.com/dennishuo[Dennis Huo] | PMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/dimas-b[Dmitri Bourlatchkov] | PMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/eric-maynard[Eric Maynard] | Committer |
-| https://github.com/fpapon[François Papon] | Mentor |
-| Holden Karau | Mentor |
-| https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
-| https://github.com/jbonofre[JB Onofre] | Champion, Mentor, PPMC Member | link:https://www.dremio.com/[Dremio]
-| https://github.com/vvcephei[John Roesler] | PPMC Member | link:https://www.confluent.io/[Confluent]
+| https://github.com/fpapon[François Papon] | PMC Member |
+| Holden Karau | PMC Member |
+| https://github.com/jackye1995[Jack Ye] | PMC Member | link:https://lancedb.com/[LanceDB]
+| https://github.com/jbonofre[JB Onofre] | PMC Member, Chair | link:https://www.dremio.com/[Dremio]
+| https://github.com/vvcephei[John Roesler] | PMC Member | link:https://www.confluent.io/[Confluent]
 | https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
-| Kent Yao | Mentor |
-| https://github.com/collado-mike[Michael Collado] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
+| Kent Yao | PMC Member |
+| https://github.com/collado-mike[Michael Collado] | PMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/singhpk234[Prashant Singh] | Committer | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/snazy[Robert Stupp] | PPMC Member | link:https://www.dremio.com/[Dremio]
-| https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
-| Ryan Blue | Mentor |
+| https://github.com/snazy[Robert Stupp] | PMC Member | link:https://www.dremio.com/[Dremio]
+| https://github.com/russellspitzer[Russell Spitzer] | PMC Member | link:https://www.snowflake.com/[Snowflake]
+| Ryan Blue | PMC Member |
 | https://github.com/sungwy[Sung Yun] | Committer | link:https://www.bloomberg.com/[Bloomberg]
-| https://github.com/takidau[Tyler Akidau] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/MonkeyCanCode[Yong Zheng] | PPMC Member |
-| https://github.com/flyrain[Yufei Gu] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/takidau[Tyler Akidau] | PMC Member | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/MonkeyCanCode[Yong Zheng] | PMC Member |
+| https://github.com/flyrain[Yufei Gu] | PMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===
 {{% /blocks/feature %}}

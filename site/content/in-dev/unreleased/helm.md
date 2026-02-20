@@ -30,14 +30,14 @@ The instructions below are for the local Minikube cluster. They assume Minikube 
 Start the Minikube cluster, add the official Polaris Helm repository, create the target namespace, and install the chart:
 ```bash
 minikube start
-helm repo add polaris https://downloads.apache.org/incubator/polaris/helm-chart
+helm repo add polaris https://downloads.apache.org/polaris/helm-chart
 helm repo update
 kubectl create namespace polaris
-helm install polaris polaris/polaris --namespace polaris --devel
+helm install polaris polaris/polaris --namespace polaris
 ```
 
 {{< alert note >}}
-The --devel flag is required while Polaris is in the incubation phase.
+For Apache Polaris releases up to 1.3.0-incubating, the `--devel` flag is required for `helm` invocations.
 Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
 {{< /alert >}}
 
@@ -50,8 +50,7 @@ Default Polaris Helm chart values are for a non-persistent backend. To use a per
 Polaris Helm chart package includes a number of files that can be used as a starting point for such configuration. To use them, download the chart into a local directory:
 ```bash
 helm pull polaris \
-  --repo https://downloads.apache.org/incubator/polaris/helm-chart \
-  --devel \
+  --repo https://downloads.apache.org/polaris/helm-chart \
   --untar \
   --untardir ./helm
 ```

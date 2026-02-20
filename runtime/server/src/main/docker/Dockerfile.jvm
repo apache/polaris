@@ -19,7 +19,7 @@
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24-2.1771324986
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris \
-      org.opencontainers.image.description="Apache Polaris (incubating)" \
+      org.opencontainers.image.description="Apache Polaris" \
       org.opencontainers.image.licenses=Apache-2.0
 
 ENV LANGUAGE='en_US:en' \
@@ -47,6 +47,5 @@ COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
 COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
 COPY --chown=polaris:polaris distribution/LICENSE /deployments/
 COPY --chown=polaris:polaris distribution/NOTICE /deployments/
-COPY --chown=polaris:polaris distribution/DISCLAIMER /deployments/
 
 EXPOSE 8181 8182

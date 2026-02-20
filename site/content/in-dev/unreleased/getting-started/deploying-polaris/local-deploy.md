@@ -80,7 +80,7 @@ Run the following command to start Polaris server:
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [io.quarkus] [,] [,,,] (main) Apache Polaris Server (incubating) <version> on JVM (powered by Quarkus <version>) started in 1.911s. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (main) Apache Polaris Server <version> on JVM (powered by Quarkus <version>) started in 1.911s. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (main) Profile prod activated.
 INFO  [io.quarkus] [,] [,,,] (main) Installed features: [...]
 ```

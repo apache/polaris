@@ -34,7 +34,7 @@ Regular issue reports should be directed to GitHub Issue or the dev@polaris.apac
 The general process for handling security vulnerabilities as follows:
 
 * The reporter privately reports the vulnerability to the security@apache.org and private@polaris.apache.org mailing lists (including as much information as possible, such as reproducible versions, relevant descriptions, reproduction methods, and the scope of impact).
-* The Polaris PPMC collaborates privately with the reporter to discuss if the report is accepted, vulnerability resolution (after preliminary confirmation, a `CVE` can be requested).
+* The Polaris PMC collaborates privately with the reporter to discuss if the report is accepted, vulnerability resolution (after preliminary confirmation, a `CVE` can be requested).
 * The podling creates a new release to include the vulnerability fix.
 * At an appropriate date, a general description of the vulnerability and how to apply fix will be publicly disclosed (in compliance with The ASF standards) both on this page and on the dev@polaris.apache.org mailing list.
 
