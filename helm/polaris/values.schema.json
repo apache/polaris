@@ -617,7 +617,7 @@
                             "type": "boolean"
                         },
                         "format": {
-                            "description": "The log format to use. Ignored if JSON format is enabled. See \u003ca href=\"{{% ref \"telemetry/#logging\" %}}\"\u003eLogging\u003c/a\u003e for details.",
+                            "description": "The log format to use. Ignored if JSON format is enabled. See \u003ca href=\"{{% ref \"../telemetry/#logging\" %}}\"\u003eLogging\u003c/a\u003e for details.",
                             "type": "string"
                         },
                         "json": {
@@ -651,7 +651,7 @@
                             "type": "string"
                         },
                         "format": {
-                            "description": "The log format to use. Ignored if JSON format is enabled. See \u003ca href=\"{{% ref \"telemetry/#logging\" %}}\"\u003eLogging\u003c/a\u003e for details.",
+                            "description": "The log format to use. Ignored if JSON format is enabled. See \u003ca href=\"{{% ref \"../telemetry/#logging\" %}}\"\u003eLogging\u003c/a\u003e for details.",
                             "type": "string"
                         },
                         "json": {
@@ -853,7 +853,7 @@
             "type": "object",
             "properties": {
                 "enabled": {
-                    "description": "Specifies whether metrics for the polaris server should be enabled. See \u003ca href=\"{{% ref \"telemetry/#metrics\" %}}\"\u003eMetrics\u003c/a\u003e for details.",
+                    "description": "Specifies whether metrics for the polaris server should be enabled. See \u003ca href=\"{{% ref \"../telemetry/#metrics\" %}}\"\u003eMetrics\u003c/a\u003e for details.",
                     "type": "boolean"
                 },
                 "tags": {
@@ -1359,7 +1359,7 @@
                     }
                 },
                 "enabled": {
-                    "description": "Specifies whether tracing for the polaris server should be enabled. See \u003ca href=\"{{% ref \"telemetry/#traces\" %}}\"\u003eTraces\u003c/a\u003e for details.",
+                    "description": "Specifies whether tracing for the polaris server should be enabled. See \u003ca href=\"{{% ref \"../telemetry/#traces\" %}}\"\u003eTraces\u003c/a\u003e for details.",
                     "type": "boolean"
                 },
                 "endpoint": {
