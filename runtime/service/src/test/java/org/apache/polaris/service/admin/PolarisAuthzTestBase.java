@@ -546,11 +546,9 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
-  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder() {
-    return PolarisAuthzTestsFactory.builder().adminService(adminService);
-  }
-
   protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
-    return authzTestsBuilder().operationName(operationName);
+    return PolarisAuthzTestsFactory.builder()
+        .adminService(adminService)
+        .operationName(operationName);
   }
 }

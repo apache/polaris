@@ -57,16 +57,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return authzTestsBuilder("listGenericTables")
         .action(() -> newWrapper().listGenericTables(NS1A))
         .shouldPassWith(PolarisPrivilege.TABLE_LIST)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
         .createTests();
   }
 
@@ -89,16 +79,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
                     .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of()))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
         .createTests();
   }
 
@@ -107,16 +87,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     return authzTestsBuilder("loadGenericTable")
         .action(() -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
-        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
         .createTests();
   }
 
@@ -134,16 +104,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
                     .createGenericTable(
                         TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldFailWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.VIEW_FULL_METADATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_DATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
         .createTests();
   }
 }

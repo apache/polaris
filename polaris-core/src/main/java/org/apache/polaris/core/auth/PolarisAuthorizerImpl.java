@@ -122,11 +122,13 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -155,7 +157,8 @@ import org.slf4j.LoggerFactory;
 public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizerImpl.class);
 
-  private static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
+  @VisibleForTesting
+  static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
       HashMultimap.create();
 
   static {
@@ -723,6 +726,16 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         TABLE_DETACH_POLICY,
         List.of(TABLE_DETACH_POLICY, CATALOG_MANAGE_METADATA, CATALOG_MANAGE_CONTENT));
+  }
+
+  /**
+   * Returns all the privileges that subsume the given privilege. Note that the returned set always
+   * includes the given privilege itself.
+   */
+  public static Set<PolarisPrivilege> subsumingPrivilegesOf(PolarisPrivilege privilege) {
+    return SUPER_PRIVILEGES.containsKey(privilege)
+        ? SUPER_PRIVILEGES.get(privilege)
+        : EnumSet.of(privilege);
   }
 
   private final RealmConfig realmConfig;

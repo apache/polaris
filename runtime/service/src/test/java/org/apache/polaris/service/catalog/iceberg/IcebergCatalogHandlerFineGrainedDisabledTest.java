@@ -76,19 +76,11 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     // should be insufficient - the system should require the broader privileges
     return authzTestsBuilder("updateTable")
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldFailWith(
             PolarisPrivilege
                 .TABLE_ASSIGN_UUID) // This alone should be insufficient when feature disabled
-        .shouldFailWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
-        .shouldFailWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_ADD_SCHEMA)
-        .shouldFailWith(PolarisPrivilege.TABLE_SET_LOCATION)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
-        .shouldFailWith(PolarisPrivilege.TABLE_READ_DATA)
-        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldFailWith(PolarisPrivilege.TABLE_LIST)
-        .shouldFailWith(PolarisPrivilege.TABLE_DROP)
         .createTests();
   }
 }
