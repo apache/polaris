@@ -112,7 +112,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   /**
    * The config name for the trace ID session tag field. Included as a constant because callers need
    * to check for its presence specifically — enabling it populates the trace ID into the credential
-   * vending context, which disables credential caching.
+   * vending context, which effectively eliminates credential cache reuse since each request has a
+   * unique trace ID.
    */
   public static final String SESSION_TAG_FIELD_TRACE_ID = "trace_id";
 
@@ -133,9 +134,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Fields with long values (e.g. deeply nested namespaces) can cause STS policy size limit errors.\n"
                   + "Choose only the fields needed for your CloudTrail correlation requirements.\n"
                   + "\n"
-                  + "WARNING: Including 'trace_id' completely disables credential caching because every request\n"
-                  + "has a unique trace ID. This may significantly increase latency and STS API costs.\n"
-                  + "Fields that vary per-request (table, namespace, roles) degrade caching but do not disable it.")
+                  + "WARNING: Including 'trace_id' effectively eliminates credential cache reuse because every\n"
+                  + "request has a unique trace ID. This may significantly increase latency and STS API costs.")
           .defaultValue(List.<String>of())
           .buildFeatureConfiguration();
 

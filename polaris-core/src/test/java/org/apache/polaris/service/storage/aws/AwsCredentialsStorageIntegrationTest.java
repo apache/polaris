@@ -1492,8 +1492,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .noneMatch(tag -> tag.key().equals("polaris:trace_id"));
   }
 
-  @Test
-  public void testRealmSessionTagIncludedWhenConfigured() {
+  /**
+   * Helper method to invoke getSubscopedCreds and capture the AssumeRoleRequest for assertions.
+   *
+   * @param realmConfig the realm configuration to use
+   * @param context the credential vending context
+   * @return the captured AssumeRoleRequest
+   */
+  private AssumeRoleRequest invokeGetSubscopedCredsAndCaptureRequest(
+      RealmConfig realmConfig, CredentialVendingContext context) {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -1504,6 +1511,27 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            realmConfig,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            context);
+
+    return requestCaptor.getValue();
+  }
+
+  @Test
+  public void testRealmSessionTagIncludedWhenConfigured() {
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .realm(Optional.of("my-realm"))
@@ -1513,23 +1541,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .activatedRoles(Optional.of("admin"))
             .build();
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
-        .getSubscopedCreds(
-            SESSION_TAGS_WITH_REALM_CONFIG,
-            true,
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            POLARIS_PRINCIPAL,
-            Optional.empty(),
-            context);
+    AssumeRoleRequest capturedRequest =
+        invokeGetSubscopedCredsAndCaptureRequest(SESSION_TAGS_WITH_REALM_CONFIG, context);
 
-    AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     // 6 tags: realm + catalog + namespace + table + principal + roles
     Assertions.assertThat(capturedRequest.tags()).hasSize(6);
     Assertions.assertThat(capturedRequest.tags())
@@ -1541,16 +1555,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testRealmSessionTagNotIncludedWhenNotConfigured() {
-    StsClient stsClient = Mockito.mock(StsClient.class);
-    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
-    String externalId = "externalId";
-    String bucket = "bucket";
-    String warehouseKeyPrefix = "path/to/warehouse";
-
-    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
-        ArgumentCaptor.forClass(AssumeRoleRequest.class);
-    Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
-
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .realm(Optional.of("my-realm"))
@@ -1558,23 +1562,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
 
     // SESSION_TAGS_ENABLED_CONFIG does NOT include "realm" in the field list
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
-        .getSubscopedCreds(
-            SESSION_TAGS_ENABLED_CONFIG,
-            true,
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            POLARIS_PRINCIPAL,
-            Optional.empty(),
-            context);
+    AssumeRoleRequest capturedRequest =
+        invokeGetSubscopedCredsAndCaptureRequest(SESSION_TAGS_ENABLED_CONFIG, context);
 
-    AssumeRoleRequest capturedRequest = requestCaptor.getValue();
     Assertions.assertThat(capturedRequest.tags())
         .noneMatch(tag -> tag.key().equals("polaris:realm"));
   }
