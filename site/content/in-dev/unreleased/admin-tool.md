@@ -262,7 +262,7 @@ It is safe to let the maintenance run for a long time, there is no runtime limit
 Alternatively, you can run maintenance at high or the default unlimited scan rate during off-peak hours.
 
 {{< alert note >}}
-The `nosql maintenance-run` command may emit a warning that not all purgable database entried have been deleted.
+The `nosql maintenance-run` command may emit a warning that not all purgable database entries have been deleted.
 In this case, the tool has already determined the parameters that will be effective in the next maintenance run.
 This warning is informative and can usually be ignored.
 
