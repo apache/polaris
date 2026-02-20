@@ -27,6 +27,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
@@ -117,7 +118,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return serviceIdentity;
   }
 
-  private static final ObjectMapper DEFAULT_MAPPER;
+  @VisibleForTesting static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER =

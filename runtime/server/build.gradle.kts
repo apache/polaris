@@ -51,7 +51,10 @@ dependencies {
   }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "com.google.protobuf", module = "protobuf-java")
+    exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+  }
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
