@@ -73,12 +73,19 @@ public final class MetricsRecordConverter {
     return new CommitReportBuilder(commitReport);
   }
 
+  /** Well-known metadata key for client-provided report trace ID. */
+  public static final String REPORT_TRACE_ID_KEY = "report-trace-id";
+
   /** Builder for converting ScanReport to ScanMetricsRecord. */
   public static final class ScanReportBuilder {
     private final ScanReport scanReport;
     private long catalogId;
     private long tableId;
     private Instant timestamp;
+    private String principalName;
+    private String requestId;
+    private String otelTraceId;
+    private String otelSpanId;
 
     private ScanReportBuilder(ScanReport scanReport) {
       this.scanReport = scanReport;
@@ -116,16 +123,68 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /**
+     * Sets the principal name (authenticated user) for the metrics record.
+     *
+     * @param principalName the principal name
+     * @return this builder
+     */
+    public ScanReportBuilder principalName(String principalName) {
+      this.principalName = principalName;
+      return this;
+    }
+
+    /**
+     * Sets the server-generated request ID for correlation.
+     *
+     * @param requestId the request ID
+     * @return this builder
+     */
+    public ScanReportBuilder requestId(String requestId) {
+      this.requestId = requestId;
+      return this;
+    }
+
+    /**
+     * Sets the OpenTelemetry trace ID.
+     *
+     * @param otelTraceId the trace ID
+     * @return this builder
+     */
+    public ScanReportBuilder otelTraceId(String otelTraceId) {
+      this.otelTraceId = otelTraceId;
+      return this;
+    }
+
+    /**
+     * Sets the OpenTelemetry span ID.
+     *
+     * @param otelSpanId the span ID
+     * @return this builder
+     */
+    public ScanReportBuilder otelSpanId(String otelSpanId) {
+      this.otelSpanId = otelSpanId;
+      return this;
+    }
+
     public ScanMetricsRecord build() {
       ScanMetricsResult metrics = scanReport.scanMetrics();
       Map<String, String> reportMetadata =
           scanReport.metadata() != null ? scanReport.metadata() : Collections.emptyMap();
+
+      // Extract client-provided report trace ID from Iceberg report metadata
+      String reportTraceId = reportMetadata.get(REPORT_TRACE_ID_KEY);
 
       return ScanMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
+          .principalName(Optional.ofNullable(principalName))
+          .requestId(Optional.ofNullable(requestId))
+          .otelTraceId(Optional.ofNullable(otelTraceId))
+          .otelSpanId(Optional.ofNullable(otelSpanId))
+          .reportTraceId(Optional.ofNullable(reportTraceId))
           .snapshotId(Optional.of(scanReport.snapshotId()))
           .schemaId(Optional.of(scanReport.schemaId()))
           .filterExpression(
@@ -167,6 +226,10 @@ public final class MetricsRecordConverter {
     private long catalogId;
     private long tableId;
     private Instant timestamp;
+    private String principalName;
+    private String requestId;
+    private String otelTraceId;
+    private String otelSpanId;
 
     private CommitReportBuilder(CommitReport commitReport) {
       this.commitReport = commitReport;
@@ -204,16 +267,68 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /**
+     * Sets the principal name (authenticated user) for the metrics record.
+     *
+     * @param principalName the principal name
+     * @return this builder
+     */
+    public CommitReportBuilder principalName(String principalName) {
+      this.principalName = principalName;
+      return this;
+    }
+
+    /**
+     * Sets the server-generated request ID for correlation.
+     *
+     * @param requestId the request ID
+     * @return this builder
+     */
+    public CommitReportBuilder requestId(String requestId) {
+      this.requestId = requestId;
+      return this;
+    }
+
+    /**
+     * Sets the OpenTelemetry trace ID.
+     *
+     * @param otelTraceId the trace ID
+     * @return this builder
+     */
+    public CommitReportBuilder otelTraceId(String otelTraceId) {
+      this.otelTraceId = otelTraceId;
+      return this;
+    }
+
+    /**
+     * Sets the OpenTelemetry span ID.
+     *
+     * @param otelSpanId the span ID
+     * @return this builder
+     */
+    public CommitReportBuilder otelSpanId(String otelSpanId) {
+      this.otelSpanId = otelSpanId;
+      return this;
+    }
+
     public CommitMetricsRecord build() {
       CommitMetricsResult metrics = commitReport.commitMetrics();
       Map<String, String> reportMetadata =
           commitReport.metadata() != null ? commitReport.metadata() : Collections.emptyMap();
+
+      // Extract client-provided report trace ID from Iceberg report metadata
+      String reportTraceId = reportMetadata.get(REPORT_TRACE_ID_KEY);
 
       return CommitMetricsRecord.builder()
           .reportId(UUID.randomUUID().toString())
           .catalogId(catalogId)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
+          .principalName(Optional.ofNullable(principalName))
+          .requestId(Optional.ofNullable(requestId))
+          .otelTraceId(Optional.ofNullable(otelTraceId))
+          .otelSpanId(Optional.ofNullable(otelSpanId))
+          .reportTraceId(Optional.ofNullable(reportTraceId))
           .snapshotId(commitReport.snapshotId())
           .sequenceNumber(Optional.of(commitReport.sequenceNumber()))
           .operation(commitReport.operation())

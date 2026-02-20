@@ -26,6 +26,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -71,6 +72,7 @@ public class PersistingMetricsReporterTest {
   private PolarisCallContext polarisCallContext;
   private PolarisMetaStoreManager metaStoreManager;
   private MetricsPersistence metricsPersistence;
+  private SecurityContext securityContext;
   private PersistingMetricsReporter reporter;
 
   @BeforeEach
@@ -81,8 +83,11 @@ public class PersistingMetricsReporterTest {
 
     metaStoreManager = mock(PolarisMetaStoreManager.class);
     metricsPersistence = mock(MetricsPersistence.class);
+    securityContext = mock(SecurityContext.class);
 
-    reporter = new PersistingMetricsReporter(callContext, metaStoreManager, metricsPersistence);
+    reporter =
+        new PersistingMetricsReporter(
+            callContext, metaStoreManager, metricsPersistence, securityContext);
   }
 
   @Test
