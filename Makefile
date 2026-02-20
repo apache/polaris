@@ -232,7 +232,7 @@ helm-doc-verify: DEPENDENCIES := helm-docs git
 .PHONY: helm-doc-verify
 helm-doc-verify: helm-doc-generate ## Verify Helm chart documentation is up to date
 	@echo "--- Verifying Helm documentation is up to date ---"
-	@if ! git diff --exit-code site/content/in-dev/unreleased/helm.md; then \
+	@if ! git diff --exit-code site/content/in-dev/unreleased/helm-chart/reference.md; then \
 		echo "ERROR: Helm documentation is out of date. Please run 'make helm-doc-generate' and commit the changes."; \
 		exit 1; \
 	fi
