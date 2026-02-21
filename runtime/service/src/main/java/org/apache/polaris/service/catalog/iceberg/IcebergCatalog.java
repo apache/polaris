@@ -319,7 +319,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         "Cannot register an empty metadata file location as a table");
 
     int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
-    LOGGER.debug("Computed lastSlashIndex={} for metadataFileLocation={}", lastSlashIndex, metadataFileLocation);
+    LOGGER.debug(
+        "Computed lastSlashIndex={} for metadataFileLocation={}",
+        lastSlashIndex,
+        metadataFileLocation);
     Preconditions.checkArgument(
         lastSlashIndex != -1,
         "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
@@ -334,13 +337,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
-    LOGGER.debug("Derived locationDir={} for metadataFileLocation={}", locationDir, metadataFileLocation);
+    LOGGER.debug(
+        "Derived locationDir={} for metadataFileLocation={}", locationDir, metadataFileLocation);
     if (!tableExists) {
-      LOGGER.debug("Registering new table for identifier={}, metadataFileLocation={}", identifier, metadataFileLocation);
+      LOGGER.debug(
+          "Registering new table for identifier={}, metadataFileLocation={}",
+          identifier,
+          metadataFileLocation);
       return registerNewTable(identifier, metadataFileLocation, locationDir);
     }
 
-    LOGGER.debug("Overwriting registered table for identifier={}, metadataFileLocation={}", identifier, metadataFileLocation);
+    LOGGER.debug(
+        "Overwriting registered table for identifier={}, metadataFileLocation={}",
+        identifier,
+        metadataFileLocation);
     return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
   }
 
@@ -410,7 +420,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     validateLocationForTableLike(identifier, metadataFileLocation, resolvedPath);
 
     // Configure FileIO for the resolved storage and read the metadata file.
-    LOGGER.debug("Loading FileIO for identifier={} to read metadata at {}", identifier, locationDir);
+    LOGGER.debug(
+        "Loading FileIO for identifier={} to read metadata at {}", identifier, locationDir);
     FileIO fileIO =
         loadFileIOForTableLike(
             identifier,
@@ -419,7 +430,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             new HashMap<>(tableDefaultProperties),
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
-    LOGGER.debug("Reading TableMetadata from metadataFileLocation={} using resolved FileIO", metadataFileLocation);
+    LOGGER.debug(
+        "Reading TableMetadata from metadataFileLocation={} using resolved FileIO",
+        metadataFileLocation);
     TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
     LOGGER.debug(
         "Parsed TableMetadata for identifier={} -> uuid={}, location={}",
@@ -427,31 +440,33 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         metadata.uuid(),
         metadata.location());
 
-    LOGGER.debug("Validating metadata.location()={} for identifier={}", metadata.location(), identifier);
+    LOGGER.debug(
+        "Validating metadata.location()={} for identifier={}", metadata.location(), identifier);
     validateLocationForTableLike(identifier, metadata.location(), resolvedPath);
     validateMetadataFileInTableDir(identifier, metadata);
-    LOGGER.debug("Metadata file validated to be within table directory for identifier={}", identifier);
+    LOGGER.debug(
+        "Metadata file validated to be within table directory for identifier={}", identifier);
 
     PolarisResolvedPathWrapper resolvedStorageEntity = resolvedPath;
 
     List<PolarisEntity> resolvedNamespace = resolvedPath.getRawParentPath();
     Set<String> dataLocations =
-      StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
+        StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
     LOGGER.debug(
         "Validating data locations {} for identifier={} against resolved storage entity",
         dataLocations,
         identifier);
     // Mirror updateTable location validation to prevent invalid or overlapping locations.
     CatalogUtils.validateLocationsForTableLike(
-      realmConfig, identifier, dataLocations, resolvedStorageEntity);
+        realmConfig, identifier, dataLocations, resolvedStorageEntity);
     dataLocations.forEach(
-      location ->
-        validateNoLocationOverlap(
-          catalogEntity,
-          identifier,
-          resolvedNamespace,
-          location,
-          resolvedStorageEntity.getRawLeafEntity()));
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity,
+                identifier,
+                resolvedNamespace,
+                location,
+                resolvedStorageEntity.getRawLeafEntity()));
     LOGGER.debug("Location overlap validation completed for identifier={}", identifier);
 
     // Ensure the raw entity is an Iceberg table-like entity (not a view/generic table).
@@ -459,17 +474,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug(
         "Existing entity for identifier={} has subType={}", identifier, rawEntity.getSubType());
     if (rawEntity.getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-      LOGGER.debug("Existing entity is a view for identifier={} - cannot overwrite as table", identifier);
+      LOGGER.debug(
+          "Existing entity is a view for identifier={} - cannot overwrite as table", identifier);
       throw new AlreadyExistsException("View with same name already exists: %s", identifier);
     } else if (rawEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
-      LOGGER.debug("Existing entity is a generic table for identifier={} - cannot overwrite as iceberg table", identifier);
+      LOGGER.debug(
+          "Existing entity is a generic table for identifier={} - cannot overwrite as iceberg table",
+          identifier);
       throw new AlreadyExistsException(
           "Generic table with same name already exists: %s", identifier);
     }
 
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
     if (existingEntity == null) {
-      LOGGER.debug("Failed to convert rawEntity to IcebergTableLikeEntity for identifier={}", identifier);
+      LOGGER.debug(
+          "Failed to convert rawEntity to IcebergTableLikeEntity for identifier={}", identifier);
       throw new NoSuchTableException("Table does not exist: %s", identifier);
     }
 
@@ -505,7 +524,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     ops.refresh();
     LOGGER.debug("TableOperations refresh completed for identifier={}", identifier);
     Table result = new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
-    LOGGER.debug("Returning BaseTable for identifier={} with tableName={}", identifier, result.name());
+    LOGGER.debug(
+        "Returning BaseTable for identifier={} with tableName={}", identifier, result.name());
     return result;
   }
 
