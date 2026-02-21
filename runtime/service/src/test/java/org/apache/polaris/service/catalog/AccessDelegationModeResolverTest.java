@@ -23,8 +23,6 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
@@ -66,8 +64,7 @@ class AccessDelegationModeResolverTest {
   /** Helper to set up config mock for tests that need it */
   private void mockSkipCredentialSubscopingConfig(boolean skipCredentialSubscoping) {
     when(configurationStore.getConfiguration(
-            any(RealmContext.class),
-            any(FeatureConfiguration.class)))
+            any(RealmContext.class), any(FeatureConfiguration.class)))
         .thenReturn(skipCredentialSubscoping);
   }
 
@@ -80,7 +77,8 @@ class AccessDelegationModeResolverTest {
   private void mockConfigForExternalCatalog(
       boolean skipCredentialSubscoping, boolean allowFederatedCredentialVending) {
     // Mock ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING (catalog-level)
-    // Since getConfiguration(RealmContext, CatalogEntity, PolarisConfiguration) is a default method,
+    // Since getConfiguration(RealmContext, CatalogEntity, PolarisConfiguration) is a default
+    // method,
     // we need to use doAnswer to intercept the default method call
     org.mockito.Mockito.doReturn(allowFederatedCredentialVending)
         .when(configurationStore)
@@ -91,8 +89,7 @@ class AccessDelegationModeResolverTest {
 
     // Mock SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION (realm-level only)
     when(configurationStore.getConfiguration(
-            any(RealmContext.class),
-            any(FeatureConfiguration.class)))
+            any(RealmContext.class), any(FeatureConfiguration.class)))
         .thenReturn(skipCredentialSubscoping);
   }
 
@@ -140,8 +137,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // STS available
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -153,8 +149,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(true); // STS unavailable
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -166,8 +161,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(true); // Skip credential subscoping
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // STS available
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -176,8 +170,7 @@ class AccessDelegationModeResolverTest {
 
   @Test
   void resolveBothModes_withNullCatalogEntity_returnsVendedCredentials() {
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, null);
 
@@ -189,8 +182,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithoutStorageConfig();
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -202,8 +194,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAzureConfig();
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -216,8 +207,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithGcpConfig();
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -243,8 +233,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(true); // STS unavailable
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -267,8 +256,7 @@ class AccessDelegationModeResolverTest {
     mockConfigForExternalCatalog(false, true); // federatedVendingAllowed=true
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -280,8 +268,7 @@ class AccessDelegationModeResolverTest {
     mockConfigForExternalCatalog(false, false); // federatedVendingAllowed=false
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -294,8 +281,7 @@ class AccessDelegationModeResolverTest {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // Internal catalog
 
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
@@ -317,8 +303,7 @@ class AccessDelegationModeResolverTest {
         .setName("external-catalog")
         .setInternalProperties(
             Map.of(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                awsConfig.serialize()))
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(), awsConfig.serialize()))
         .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
         .build();
   }
@@ -335,8 +320,7 @@ class AccessDelegationModeResolverTest {
         .setName("test-catalog")
         .setInternalProperties(
             Map.of(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                awsConfig.serialize()))
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(), awsConfig.serialize()))
         .build();
   }
 
@@ -355,8 +339,7 @@ class AccessDelegationModeResolverTest {
         .setName("test-catalog")
         .setInternalProperties(
             Map.of(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                azureConfig.serialize()))
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(), azureConfig.serialize()))
         .build();
   }
 
@@ -371,8 +354,7 @@ class AccessDelegationModeResolverTest {
         .setName("test-catalog")
         .setInternalProperties(
             Map.of(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                gcpConfig.serialize()))
+                PolarisEntityConstants.getStorageConfigInfoPropertyName(), gcpConfig.serialize()))
         .build();
   }
 }

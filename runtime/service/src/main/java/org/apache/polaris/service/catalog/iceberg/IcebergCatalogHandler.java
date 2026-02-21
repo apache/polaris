@@ -204,7 +204,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
-  
+
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
@@ -1365,13 +1365,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    resolvedAccessDelegationMode = accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
+    resolvedAccessDelegationMode =
+        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
     return resolvedAccessDelegationMode;
   }
 
   /**
-   * Returns the resolved access delegation mode. Must be called after
-   * {@link #resolveAccessDelegationModes(EnumSet)} has been invoked.
+   * Returns the resolved access delegation mode. Must be called after {@link
+   * #resolveAccessDelegationModes(EnumSet)} has been invoked.
    *
    * @return The resolved access delegation mode, or null if not yet resolved
    */
