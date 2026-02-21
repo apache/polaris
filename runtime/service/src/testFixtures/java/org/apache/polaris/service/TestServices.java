@@ -328,21 +328,22 @@ public record TestServices(
 
       // Create a simple PolarisConfigurationStore for testing
       @SuppressWarnings("removal")
-      PolarisConfigurationStore testConfigurationStore = new PolarisConfigurationStore() {
-        @Override
-        public <T> T getConfiguration(RealmContext realmContext, String configName) {
-          return null; // Return null for string-based config lookups in tests
-        }
+      PolarisConfigurationStore testConfigurationStore =
+          new PolarisConfigurationStore() {
+            @Override
+            public <T> T getConfiguration(RealmContext realmContext, String configName) {
+              return null; // Return null for string-based config lookups in tests
+            }
 
-        @Override
-        public <T> T getConfiguration(
-            RealmContext realmContext,
-            Map<String, String> catalogProperties,
-            PolarisConfiguration<T> config) {
-          // For test purposes, return the default value
-          return config.defaultValue();
-        }
-      };
+            @Override
+            public <T> T getConfiguration(
+                RealmContext realmContext,
+                Map<String, String> catalogProperties,
+                PolarisConfiguration<T> config) {
+              // For test purposes, return the default value
+              return config.defaultValue();
+            }
+          };
 
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {
