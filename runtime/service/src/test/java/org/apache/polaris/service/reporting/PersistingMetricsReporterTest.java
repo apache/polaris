@@ -24,7 +24,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -63,15 +62,13 @@ public class PersistingMetricsReporterTest {
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
   private MetricsPersistence metricsPersistence;
-  private SecurityContext securityContext;
   private PersistingMetricsReporter reporter;
 
   @BeforeEach
   void setUp() {
     metricsPersistence = mock(MetricsPersistence.class);
-    securityContext = mock(SecurityContext.class);
 
-    reporter = new PersistingMetricsReporter(metricsPersistence, securityContext);
+    reporter = new PersistingMetricsReporter(metricsPersistence);
   }
 
   @Test

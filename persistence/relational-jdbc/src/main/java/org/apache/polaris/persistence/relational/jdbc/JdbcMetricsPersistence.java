@@ -31,6 +31,7 @@ import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
 import org.apache.polaris.core.persistence.metrics.ReportIdToken;
+import org.apache.polaris.core.persistence.metrics.RequestContextProvider;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -57,27 +58,49 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
 
   private final DatasourceOperations datasourceOperations;
   private final String realmId;
+  private final RequestContextProvider requestContextProvider;
 
   /**
    * Creates a new JdbcMetricsPersistence instance.
    *
    * @param datasourceOperations the datasource operations for JDBC access
    * @param realmId the realm ID for multi-tenancy
+   * @param requestContextProvider provider for obtaining request context fields
    */
-  public JdbcMetricsPersistence(DatasourceOperations datasourceOperations, String realmId) {
+  public JdbcMetricsPersistence(
+      DatasourceOperations datasourceOperations,
+      String realmId,
+      RequestContextProvider requestContextProvider) {
     this.datasourceOperations = datasourceOperations;
     this.realmId = realmId;
+    this.requestContextProvider = requestContextProvider;
   }
 
   @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
-    ModelScanMetricsReport model = SpiModelConverter.toModelScanReport(record, realmId);
+    // Obtain request context fields from provider
+    String principalName = requestContextProvider.getPrincipalName();
+    String requestId = requestContextProvider.getRequestId();
+    String otelTraceId = requestContextProvider.getOtelTraceId();
+    String otelSpanId = requestContextProvider.getOtelSpanId();
+
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(
+            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
     writeScanMetricsReport(model);
   }
 
   @Override
   public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
-    ModelCommitMetricsReport model = SpiModelConverter.toModelCommitReport(record, realmId);
+    // Obtain request context fields from provider
+    String principalName = requestContextProvider.getPrincipalName();
+    String requestId = requestContextProvider.getRequestId();
+    String otelTraceId = requestContextProvider.getOtelTraceId();
+    String otelSpanId = requestContextProvider.getOtelSpanId();
+
+    ModelCommitMetricsReport model =
+        SpiModelConverter.toModelCommitReport(
+            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
     writeCommitMetricsReport(model);
   }
 

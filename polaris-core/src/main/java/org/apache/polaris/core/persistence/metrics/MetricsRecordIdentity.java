@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.metrics;
 import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Base interface containing common identification fields shared by all metrics records.
@@ -93,45 +92,4 @@ public interface MetricsRecordIdentity {
    * store and index specific metadata fields as needed.
    */
   Map<String, String> metadata();
-
-  // === Request Context Fields ===
-
-  /**
-   * Name of the principal (user) who made the request.
-   *
-   * <p>This is the authenticated principal name from the security context when the metrics report
-   * was received. Useful for auditing and tracking which users are accessing which tables.
-   */
-  Optional<String> principalName();
-
-  /**
-   * Server-generated request ID for correlation.
-   *
-   * <p>This is the request ID assigned by the Polaris server when the metrics report was received.
-   * It can be used to correlate metrics with server logs and other telemetry.
-   */
-  Optional<String> requestId();
-
-  /**
-   * OpenTelemetry trace ID.
-   *
-   * <p>The trace ID from the OpenTelemetry context when the metrics report was received. This
-   * enables correlation with distributed traces across services.
-   */
-  Optional<String> otelTraceId();
-
-  /**
-   * OpenTelemetry span ID.
-   *
-   * <p>The span ID from the OpenTelemetry context when the metrics report was received.
-   */
-  Optional<String> otelSpanId();
-
-  /**
-   * Client-provided report trace ID.
-   *
-   * <p>An optional trace ID provided by the Iceberg client in the report metadata. This can be used
-   * by clients to correlate metrics reports with their own internal tracing systems.
-   */
-  Optional<String> reportTraceId();
 }
