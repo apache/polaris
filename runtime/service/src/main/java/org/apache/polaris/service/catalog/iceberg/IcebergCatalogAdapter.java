@@ -253,9 +253,7 @@ public class IcebergCatalogAdapter
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
     // TODO remove when remote signing is implemented
     Preconditions.checkArgument(
-        !modes.contains(REMOTE_SIGNING),
-        "Unsupported access delegation mode: %s",
-        REMOTE_SIGNING);
+        !modes.contains(REMOTE_SIGNING), "Unsupported access delegation mode: %s", REMOTE_SIGNING);
     return modes;
   }
 

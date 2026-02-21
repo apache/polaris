@@ -136,7 +136,8 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
 
     // Check if credential subscoping is authorized for this catalog.
     // For internal catalogs, credential subscoping is always authorized.
-    // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is enabled.
+    // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is
+    // enabled.
     boolean credentialSubscopingAuthorized =
         !catalogEntity.isExternal()
             || configurationStore.getConfiguration(
@@ -152,14 +153,14 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     }
 
     // Check if credential subscoping is skipped - if so, VENDED_CREDENTIALS won't work properly
-    // Note: This config is realm-level only (not overridable at catalog level) and has a default value
+    // Note: This config is realm-level only (not overridable at catalog level) and has a default
+    // value
     boolean skipCredentialSubscoping =
         configurationStore.getConfiguration(
             realmContext, FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
 
     if (skipCredentialSubscoping) {
-      LOGGER.debug(
-          "Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");
+      LOGGER.debug("Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");
       return REMOTE_SIGNING;
     }
 

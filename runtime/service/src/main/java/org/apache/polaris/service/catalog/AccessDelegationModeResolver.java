@@ -63,6 +63,5 @@ public interface AccessDelegationModeResolver {
    */
   @Nonnull
   AccessDelegationMode resolve(
-      @Nonnull EnumSet<AccessDelegationMode> requestedModes,
-      @Nullable CatalogEntity catalogEntity);
+      @Nonnull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);
 }

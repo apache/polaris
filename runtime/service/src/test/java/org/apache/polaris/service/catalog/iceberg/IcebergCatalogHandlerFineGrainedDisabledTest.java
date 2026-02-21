@@ -38,6 +38,8 @@ import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 /**
  * Test class specifically for testing fine-grained authorization when the feature is DISABLED. This
