@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
@@ -246,13 +247,16 @@ public class IcebergCatalogAdapter
   }
 
   private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    EnumSet<AccessDelegationMode> delegationModes =
+    // Parse the modes from the header - validation will happen after mode resolution
+    // in IcebergCatalogHandler.resolveAccessDelegationModes()
+    EnumSet<AccessDelegationMode> modes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
+    // TODO remove when remote signing is implemented
     Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        !modes.contains(REMOTE_SIGNING),
         "Unsupported access delegation mode: %s",
-        accessDelegationMode);
-    return delegationModes;
+        REMOTE_SIGNING);
+    return modes;
   }
 
   @Override
