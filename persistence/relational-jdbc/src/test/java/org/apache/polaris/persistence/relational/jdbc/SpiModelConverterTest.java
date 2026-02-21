@@ -89,7 +89,8 @@ public class SpiModelConverterTest {
   void testScanRecordRoundTrip() {
     ScanMetricsRecord original = createTestScanRecord();
 
-    ModelScanMetricsReport model = SpiModelConverter.toModelScanReport(original, TEST_REALM_ID);
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(original, TEST_REALM_ID, null, null, null, null);
     ScanMetricsRecord roundTripped = SpiModelConverter.toScanMetricsRecord(model);
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
@@ -142,7 +143,8 @@ public class SpiModelConverterTest {
   void testCommitRecordRoundTrip() {
     CommitMetricsRecord original = createTestCommitRecord();
 
-    ModelCommitMetricsReport model = SpiModelConverter.toModelCommitReport(original, TEST_REALM_ID);
+    ModelCommitMetricsReport model =
+        SpiModelConverter.toModelCommitReport(original, TEST_REALM_ID, null, null, null, null);
     CommitMetricsRecord roundTripped = SpiModelConverter.toCommitMetricsRecord(model);
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
@@ -181,7 +183,8 @@ public class SpiModelConverterTest {
             .totalDeleteFileSizeBytes(0L)
             .build();
 
-    ModelScanMetricsReport model = SpiModelConverter.toModelScanReport(record, TEST_REALM_ID);
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
     assertThat(model.getSnapshotId()).isNull();
     assertThat(model.getSchemaId()).isNull();
     assertThat(model.getFilterExpression()).isNull();
@@ -215,7 +218,8 @@ public class SpiModelConverterTest {
             .totalDeleteFileSizeBytes(0L)
             .build();
 
-    ModelScanMetricsReport model = SpiModelConverter.toModelScanReport(record, TEST_REALM_ID);
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
     assertThat(model.getMetadata()).isEqualTo("{}");
   }
 

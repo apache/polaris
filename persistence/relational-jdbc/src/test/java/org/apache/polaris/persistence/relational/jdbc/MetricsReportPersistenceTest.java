@@ -59,7 +59,8 @@ class MetricsReportPersistenceTest {
     InputStream metricsSchemaStream = classLoader.getResourceAsStream("h2/schema-metrics-v1.sql");
     datasourceOperations.executeScript(metricsSchemaStream);
 
-    metricsPersistence = new JdbcMetricsPersistence(datasourceOperations, "TEST_REALM");
+    metricsPersistence =
+        new JdbcMetricsPersistence(datasourceOperations, "TEST_REALM", RequestContextProvider.NOOP);
   }
 
   @Test

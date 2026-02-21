@@ -63,20 +63,33 @@ public final class SpiModelConverter {
    *
    * @param record the SPI record
    * @param realmId the realm ID for multi-tenancy
+   * @param principalName the principal name from request context
+   * @param requestId the request ID from request context
+   * @param otelTraceId the OpenTelemetry trace ID from request context
+   * @param otelSpanId the OpenTelemetry span ID from request context
    * @return the JDBC model
    */
-  public static ModelScanMetricsReport toModelScanReport(ScanMetricsRecord record, String realmId) {
+  public static ModelScanMetricsReport toModelScanReport(
+      ScanMetricsRecord record,
+      String realmId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId) {
+    // Extract client-provided report trace ID from metadata
+    String reportTraceId = record.metadata().get("report-trace-id");
+
     return ImmutableModelScanMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
-        .principalName(record.principalName().orElse(null))
-        .requestId(record.requestId().orElse(null))
-        .otelTraceId(record.otelTraceId().orElse(null))
-        .otelSpanId(record.otelSpanId().orElse(null))
-        .reportTraceId(record.reportTraceId().orElse(null))
+        .principalName(principalName)
+        .requestId(requestId)
+        .otelTraceId(otelTraceId)
+        .otelSpanId(otelSpanId)
+        .reportTraceId(reportTraceId)
         .snapshotId(record.snapshotId().orElse(null))
         .schemaId(record.schemaId().orElse(null))
         .filterExpression(record.filterExpression().orElse(null))
@@ -107,21 +120,33 @@ public final class SpiModelConverter {
    *
    * @param record the SPI record
    * @param realmId the realm ID for multi-tenancy
+   * @param principalName the principal name from request context
+   * @param requestId the request ID from request context
+   * @param otelTraceId the OpenTelemetry trace ID from request context
+   * @param otelSpanId the OpenTelemetry span ID from request context
    * @return the JDBC model
    */
   public static ModelCommitMetricsReport toModelCommitReport(
-      CommitMetricsRecord record, String realmId) {
+      CommitMetricsRecord record,
+      String realmId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId) {
+    // Extract client-provided report trace ID from metadata
+    String reportTraceId = record.metadata().get("report-trace-id");
+
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(record.reportId())
         .realmId(realmId)
         .catalogId(record.catalogId())
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
-        .principalName(record.principalName().orElse(null))
-        .requestId(record.requestId().orElse(null))
-        .otelTraceId(record.otelTraceId().orElse(null))
-        .otelSpanId(record.otelSpanId().orElse(null))
-        .reportTraceId(record.reportTraceId().orElse(null))
+        .principalName(principalName)
+        .requestId(requestId)
+        .otelTraceId(otelTraceId)
+        .otelSpanId(otelSpanId)
+        .reportTraceId(reportTraceId)
         .snapshotId(record.snapshotId())
         .sequenceNumber(record.sequenceNumber().orElse(null))
         .operation(record.operation())
@@ -159,11 +184,6 @@ public final class SpiModelConverter {
         .catalogId(model.getCatalogId())
         .tableId(model.getTableId())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
-        .principalName(Optional.ofNullable(model.getPrincipalName()))
-        .requestId(Optional.ofNullable(model.getRequestId()))
-        .otelTraceId(Optional.ofNullable(model.getOtelTraceId()))
-        .otelSpanId(Optional.ofNullable(model.getOtelSpanId()))
-        .reportTraceId(Optional.ofNullable(model.getReportTraceId()))
         .snapshotId(Optional.ofNullable(model.getSnapshotId()))
         .schemaId(Optional.ofNullable(model.getSchemaId()))
         .filterExpression(Optional.ofNullable(model.getFilterExpression()))
@@ -201,11 +221,6 @@ public final class SpiModelConverter {
         .catalogId(model.getCatalogId())
         .tableId(model.getTableId())
         .timestamp(Instant.ofEpochMilli(model.getTimestampMs()))
-        .principalName(Optional.ofNullable(model.getPrincipalName()))
-        .requestId(Optional.ofNullable(model.getRequestId()))
-        .otelTraceId(Optional.ofNullable(model.getOtelTraceId()))
-        .otelSpanId(Optional.ofNullable(model.getOtelSpanId()))
-        .reportTraceId(Optional.ofNullable(model.getReportTraceId()))
         .snapshotId(model.getSnapshotId())
         .sequenceNumber(Optional.ofNullable(model.getSequenceNumber()))
         .operation(model.getOperation())

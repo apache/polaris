@@ -30,6 +30,7 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
+import org.apache.polaris.core.persistence.metrics.RequestContextProvider;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.slf4j.Logger;
@@ -100,21 +101,28 @@ public class JdbcMetricsPersistenceProducer {
    *
    * <p>If metrics tables are not available (determined at startup), this returns {@link
    * MetricsPersistence#NOOP}. Otherwise, it creates a {@link JdbcMetricsPersistence} configured
-   * with the current realm.
+   * with the current realm and request context provider.
    *
    * @param realmContext the realm context for the current request
+   * @param requestContextProvider provider for obtaining request context fields
    * @return a MetricsPersistence implementation for JDBC, or NOOP if not supported
    */
   @Produces
   @RequestScoped
   @Identifier("relational-jdbc")
-  public MetricsPersistence metricsPersistence(RealmContext realmContext) {
+  public MetricsPersistence metricsPersistence(
+      RealmContext realmContext, Instance<RequestContextProvider> requestContextProvider) {
     if (!metricsSupported || datasourceOperations == null) {
       return MetricsPersistence.NOOP;
     }
 
     String realmId = realmContext.getRealmIdentifier();
-    return new JdbcMetricsPersistence(datasourceOperations, realmId);
+    // Use Instance to safely get RequestContextProvider (may not be available in all contexts)
+    RequestContextProvider provider =
+        requestContextProvider.isResolvable()
+            ? requestContextProvider.get()
+            : RequestContextProvider.NOOP;
+    return new JdbcMetricsPersistence(datasourceOperations, realmId, provider);
   }
 
   /**
