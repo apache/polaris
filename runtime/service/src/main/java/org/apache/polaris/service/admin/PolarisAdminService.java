@@ -650,50 +650,47 @@ public class PolarisAdminService {
    * references to the stored secret.
    */
   private Map<String, SecretReference> extractSecretReferences(
-      CreateCatalogRequest catalogRequest, PolarisEntity forEntity) {
+      ExternalCatalog catalog, PolarisEntity forEntity) {
     Map<String, SecretReference> secretReferences = new HashMap<>();
-    Catalog catalog = catalogRequest.getCatalog();
     UserSecretsManager secretsManager = getUserSecretsManager();
-    if (catalog instanceof ExternalCatalog externalCatalog) {
-      if (externalCatalog.getConnectionConfigInfo() != null) {
-        ConnectionConfigInfo connectionConfig = externalCatalog.getConnectionConfigInfo();
-        AuthenticationParameters authenticationParameters =
-            connectionConfig.getAuthenticationParameters();
+    if (catalog.getConnectionConfigInfo() != null) {
+      ConnectionConfigInfo connectionConfig = catalog.getConnectionConfigInfo();
+      AuthenticationParameters authenticationParameters =
+          connectionConfig.getAuthenticationParameters();
 
-        switch (authenticationParameters.getAuthenticationType()) {
-          case OAUTH:
-            {
-              OAuthClientCredentialsParameters oauthClientCredentialsModel =
-                  (OAuthClientCredentialsParameters) authenticationParameters;
-              String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
-              SecretReference secretReference =
-                  secretsManager.writeSecret(inlineClientSecret, forEntity);
-              secretReferences.put(
-                  AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
-              break;
-            }
-          case BEARER:
-            {
-              BearerAuthenticationParameters bearerAuthenticationParametersModel =
-                  (BearerAuthenticationParameters) authenticationParameters;
-              String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
-              SecretReference secretReference =
-                  secretsManager.writeSecret(inlineBearerToken, forEntity);
-              secretReferences.put(
-                  AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
-              break;
-            }
-          case SIGV4:
-            {
-              // SigV4 authentication is not based on users provided secrets but based on the
-              // service identity managed by Polaris. Nothing to do here.
-              break;
-            }
-          default:
-            throw new IllegalStateException(
-                "Unsupported authentication type: "
-                    + authenticationParameters.getAuthenticationType());
-        }
+      switch (authenticationParameters.getAuthenticationType()) {
+        case OAUTH:
+          {
+            OAuthClientCredentialsParameters oauthClientCredentialsModel =
+                (OAuthClientCredentialsParameters) authenticationParameters;
+            String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
+            SecretReference secretReference =
+                secretsManager.writeSecret(inlineClientSecret, forEntity);
+            secretReferences.put(
+                AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
+            break;
+          }
+        case BEARER:
+          {
+            BearerAuthenticationParameters bearerAuthenticationParametersModel =
+                (BearerAuthenticationParameters) authenticationParameters;
+            String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
+            SecretReference secretReference =
+                secretsManager.writeSecret(inlineBearerToken, forEntity);
+            secretReferences.put(
+                AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
+            break;
+          }
+        case SIGV4:
+          {
+            // SigV4 authentication is not based on users provided secrets but based on the
+            // service identity managed by Polaris. Nothing to do here.
+            break;
+          }
+        default:
+          throw new IllegalStateException(
+              "Unsupported authentication type: "
+                  + authenticationParameters.getAuthenticationType());
       }
     }
     return secretReferences;
@@ -709,14 +706,14 @@ public class PolarisAdminService {
   }
 
   public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
-    authorizeBasicRootOperationOrThrow(op);
+    authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.CREATE_CATALOG);
+    Catalog catalog = catalogRequest.getCatalog();
 
-    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalogRequest.getCatalog());
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalog);
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
-    if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
+    if (catalogOverlapsWithExistingCatalog(entity)) {
       throw new ValidationException(
           "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
           entity.getName());
@@ -730,7 +727,6 @@ public class PolarisAdminService {
             .setProperties(reservedProperties.removeReservedProperties(entity.getPropertiesAsMap()))
             .build();
 
-    Catalog catalog = catalogRequest.getCatalog();
     if (catalog instanceof ExternalCatalog externalCatalog) {
       ConnectionConfigInfo connectionConfigInfo = externalCatalog.getConnectionConfigInfo();
 
@@ -760,7 +756,7 @@ public class PolarisAdminService {
                       .name()),
               "Authentication type %s is not supported.",
               connectionConfigInfo.getAuthenticationParameters().getAuthenticationType());
-          processedSecretReferences = extractSecretReferences(catalogRequest, entity);
+          processedSecretReferences = extractSecretReferences(externalCatalog, entity);
         } else {
           // Support no-auth catalog federation only when the feature is enabled.
           checkState(
