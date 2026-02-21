@@ -31,6 +31,17 @@ logging:
     json: true
     storage:
       size: 50Mi
+  categories:
+    org.apache.iceberg.rest: DEBUG
+    org.apache.polaris:
+      core: WARN
+      persistence.nosql: DEBUG
+  mdc:
+    env.name: ci
+    env.region: us-west-2
+    application:
+      name: polaris
+      version: 0.1.0
 
 persistence:
   type: nosql
@@ -40,3 +51,10 @@ persistence:
     secret:
       name: polaris-nosql-persistence
       connectionString: connectionString
+
+advancedConfig:
+  quarkus.mongodb.connect-timeout: 10S
+  quarkus:
+    mongodb:
+      write-concern:
+        safe: true
