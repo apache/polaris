@@ -70,7 +70,6 @@ distributions {
       }
 
       from("README.md")
-      from("DISCLAIMER")
       from("LICENSE")
       from("NOTICE")
     }

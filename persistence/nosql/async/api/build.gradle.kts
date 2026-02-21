@@ -50,7 +50,8 @@ dependencies {
 
   testFixturesApi(project(":polaris-idgen-api"))
 
-  testFixturesImplementation(libs.weld.se.core)
+  testFixturesImplementation(platform(libs.weld.core.bom))
+  testFixturesImplementation("org.jboss.weld.se:weld-se-core")
   testFixturesImplementation(libs.weld.junit5)
   testFixturesImplementation(libs.guava)
   testFixturesRuntimeOnly(libs.smallrye.jandex)

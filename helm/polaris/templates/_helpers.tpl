@@ -267,53 +267,65 @@ https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
 {{- end -}}
 
 {{/*
-Prints the ports section of the container spec. Also validates all port names to ensure
-that they are unique.
+Helper template to validate and register a container port.
+Arguments (passed as a list):
+  0: $ports dict (mutated) - maps port number to {name, protocol}
+  1: $names dict (mutated) - maps port name to port number
+  2: $errorPrefix string - prefix for error messages (e.g. "service.ports[0]")
+  3: $port object - the port definition from the values.yaml with name, port, targetPort, protocol
+*/}}
+{{- define "polaris.validateContainerPort" -}}
+{{- $ports := index . 0 -}}
+{{- $names := index . 1 -}}
+{{- $errorPrefix := index . 2 -}}
+{{- $port := index . 3 -}}
+{{- $portNumber := coalesce $port.targetPort $port.port | toString -}}
+{{- $protocol := $port.protocol | default "TCP" -}}
+{{- if hasKey $ports $portNumber -}}
+{{- $existing := get $ports $portNumber -}}
+{{- if ne $port.name (index $existing "name") -}}
+{{- fail (printf "%s: port number %s has conflicting name, expected %v, got %v" $errorPrefix $portNumber (index $existing "name") $port.name) -}}
+{{- end -}}
+{{- if ne $protocol (index $existing "protocol") -}}
+{{- fail (printf "%s: port number %s has conflicting protocol, expected %v, got %v" $errorPrefix $portNumber (index $existing "protocol") $protocol) -}}
+{{- end -}}
+{{- else if hasKey $names $port.name -}}
+{{- fail (printf "%s: port name %s has conflicting number, expected %v, got %v" $errorPrefix $port.name (get $names $port.name) $portNumber) -}}
+{{- else -}}
+{{- $_ := set $ports $portNumber (dict "name" $port.name "protocol" $protocol) -}}
+{{- $_ = set $names $port.name $portNumber -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Prints the ports section of the container spec. Iterates over all service port declarations
+and determines which ports the container should expose, ensuring no duplicate port numbers
+or port names.
 */}}
 {{- define "polaris.containerPorts" -}}
 {{- $ports := dict -}}
-{{- $protocols := dict -}}
+{{- $names := dict -}}
 {{- /* Main service ports */ -}}
 {{- range $i, $port := .Values.service.ports -}}
-{{- if hasKey $ports $port.name -}}
-{{- fail (printf "service.ports[%d]: port name already taken: %v" $i $port.name) -}}
-{{- end -}}
-{{- $portNumber := coalesce $port.targetPort $port.port -}}
-{{- $_ := set $ports $port.name $portNumber -}}
-{{- $_ = set $protocols $port.name ($port.protocol | default "TCP") -}}
+{{- include "polaris.validateContainerPort" (list $ports $names (printf "service.ports[%d]" $i) $port) -}}
 {{- end -}}
 {{- /* Management service ports */ -}}
 {{- range $i, $port := .Values.managementService.ports -}}
-{{- if hasKey $ports $port.name -}}
-{{- fail (printf "managementService.ports[%d]: port name already taken: %v" $i $port.name) -}}
-{{- end -}}
-{{- $portNumber := coalesce $port.targetPort $port.port -}}
-{{- $_ := set $ports $port.name $portNumber }}
-{{- $_ = set $protocols $port.name ($port.protocol | default "TCP") -}}
+{{- include "polaris.validateContainerPort" (list $ports $names (printf "managementService.ports[%d]" $i) $port) -}}
 {{- end -}}
 {{- /* Extra service ports */ -}}
 {{- range $i, $svc := .Values.extraServices -}}
+{{- if $svc.nameSuffix -}}
 {{- range $j, $port := $svc.ports -}}
-{{- $portNumber := coalesce $port.targetPort $port.port -}}
-{{- if hasKey $ports $port.name -}}
-{{- if ne $portNumber (get $ports $port.name) -}}
-{{- fail (printf "extraServices[%d].ports[%d]: wrong port number for port %s, expected %v, got %v" $i $j $port.name (get $ports $port.name) $portNumber) -}}
+{{- include "polaris.validateContainerPort" (list $ports $names (printf "extraServices[%d].ports[%d]" $i $j) $port) -}}
 {{- end -}}
-{{- end -}}
-{{- if hasKey $protocols $port.name -}}
-{{- if ne ($port.protocol | default "TCP") (get $protocols $port.name) -}}
-{{- fail (printf "extraServices[%d].ports[%d]: wrong protocol for port %s, expected %v, got %v" $i $j $port.name (get $protocols $port.name) $port.protocol) -}}
-{{- end -}}
-{{- end -}}
-{{- $_ := set $ports $port.name $portNumber -}}
-{{- $_ = set $protocols $port.name ($port.protocol | default "TCP") -}}
 {{- end -}}
 {{- end }}
 ports:
-{{- range $portName, $portNumber := $ports }}
-  - name: {{ $portName }}
+{{- range $portNumber, $portInfo := $ports }}
+  - name: {{ index $portInfo "name" }}
     containerPort: {{ $portNumber }}
-    protocol: {{ get $protocols $portName }}
+    protocol: {{ index $portInfo "protocol" }}
 {{- end }}
 {{- end -}}
 

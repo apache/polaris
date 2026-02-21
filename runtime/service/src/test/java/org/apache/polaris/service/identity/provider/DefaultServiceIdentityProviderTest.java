@@ -191,7 +191,7 @@ public class DefaultServiceIdentityProviderTest {
     Assertions.assertThat(serviceIdentityDpo).isInstanceOf(AwsIamServiceIdentityInfoDpo.class);
     Assertions.assertThat(serviceIdentityDpo.getIdentityType())
         .isEqualTo(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(serviceIdentityDpo.getIdentityInfoReference().getUrn())
+    Assertions.assertThat(serviceIdentityDpo.getIdentityInfoReference().urn())
         .contains("default-identity-provider");
   }
 
@@ -352,7 +352,7 @@ public class DefaultServiceIdentityProviderTest {
         DefaultServiceIdentityProvider.buildIdentityInfoReference(
             DEFAULT_REALM_KEY, ServiceIdentityType.AWS_IAM);
 
-    Assertions.assertThat(ref.getUrn())
+    Assertions.assertThat(ref.urn())
         .isEqualTo("urn:polaris-secret:default-identity-provider:system:default:AWS_IAM");
   }
 
@@ -363,7 +363,7 @@ public class DefaultServiceIdentityProviderTest {
         DefaultServiceIdentityProvider.buildIdentityInfoReference(
             "custom-realm", ServiceIdentityType.AWS_IAM);
 
-    Assertions.assertThat(ref.getUrn())
+    Assertions.assertThat(ref.urn())
         .isEqualTo("urn:polaris-secret:default-identity-provider:custom-realm:AWS_IAM");
   }
 }

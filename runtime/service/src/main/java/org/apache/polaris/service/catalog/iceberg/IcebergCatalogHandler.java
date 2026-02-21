@@ -32,6 +32,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import java.io.Closeable;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -64,6 +65,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -72,6 +74,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
@@ -121,6 +124,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,6 +199,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
   protected abstract EventAttributeMap eventAttributeMap();
+
+  protected abstract PolarisMetricsReporter metricsReporter();
+
+  protected abstract Clock clock();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -650,6 +658,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
     return baseCatalog instanceof SupportsNotifications notificationCatalog
         && notificationCatalog.sendNotification(identifier, request);
+  }
+
+  public void reportMetrics(TableIdentifier identifier, ReportMetricsRequest request) {
+
+    PolarisAuthorizableOperation op =
+        request.report() instanceof ScanReport
+            ? PolarisAuthorizableOperation.REPORT_READ_METRICS
+            : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
+
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
+
+    metricsReporter().reportMetric(catalogName(), identifier, request.report(), clock().instant());
   }
 
   /**

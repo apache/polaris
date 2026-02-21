@@ -96,7 +96,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
       manifest.addPath(
           new ResolverPath(
               PolarisCatalogHelpers.identifierToList(
-                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
+                  policyIdentifier.namespace(), policyIdentifier.name()),
               entityType),
           policyIdentifier);
       manifest.resolveAll();
@@ -139,7 +139,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
       manifest.addPassthroughPath(
           new ResolverPath(
               PolarisCatalogHelpers.identifierToList(
-                  policyIdentifier.getNamespace(), policyIdentifier.getName()),
+                  policyIdentifier.namespace(), policyIdentifier.name()),
               entityType),
           policyIdentifier);
       return manifest.getPassthroughResolvedPath(policyIdentifier, entityType, subType);

@@ -19,6 +19,8 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
+
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;

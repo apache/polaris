@@ -33,8 +33,8 @@ import java.util.stream.Collectors;
 @Priority(1)
 public class ResolvedFeaturesConfiguration implements FeaturesConfiguration {
 
-  private Map<String, String> cleanedDefaults;
-  private Map<String, RealmOverrides> realmOverrides;
+  private final Map<String, String> cleanedDefaults;
+  private final Map<String, RealmOverrides> realmOverrides;
 
   public ResolvedFeaturesConfiguration(RawFeaturesConfiguration raw) {
     this.realmOverrides = raw.realmOverrides();

@@ -22,13 +22,13 @@ LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Git/SVN repository constants
 APACHE_DIST_URL=${APACHE_DIST_URL:-"https://dist.apache.org/repos/dist"}
-APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/incubator/polaris"}
+APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/polaris"}
 
 # Execution mode constants
 DRY_RUN=${DRY_RUN:-1}
 
 # Version validation regex patterns
-VERSION_REGEX="([0-9]+)\.([0-9]+)\.([0-9]+)-incubating"
+VERSION_REGEX="([0-9]+)\.([0-9]+)\.([0-9]+)"
 VERSION_REGEX_GIT_TAG="^apache-polaris-$VERSION_REGEX-rc([0-9]+)$"
 # Branch validation regex pattern for major.minor.x format
 BRANCH_VERSION_REGEX="([0-9]+)\.([0-9]+)\.x"

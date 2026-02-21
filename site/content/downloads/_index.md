@@ -28,7 +28,7 @@ params:
 ---
 
 ## Helm Chart
-Repo: https://downloads.apache.org/incubator/polaris/helm-chart
+Repo: https://downloads.apache.org/polaris/helm-chart
 
 ## 1.3.0
 | Artifact                                                                                                                                                                             | PGP Sig                                                                                                                                                  | SHA-512                                                                                                                                                        |

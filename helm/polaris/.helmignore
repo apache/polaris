@@ -40,3 +40,7 @@
 .idea/
 *.tmproj
 .vscode/
+helm.md
+helm.md.gotmpl
+ci/
+tests/

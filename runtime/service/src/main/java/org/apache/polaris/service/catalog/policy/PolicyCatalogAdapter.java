@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
+
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -45,7 +47,6 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 @RequestScoped
 public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, CatalogAdapter {
 
-  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final CatalogPrefixParser prefixParser;
   private final PolicyCatalogHandlerFactory handlerFactory;
@@ -55,7 +56,6 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       PolicyCatalogHandlerFactory handlerFactory) {
-    this.realmContext = callContext.getRealmContext();
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.handlerFactory = handlerFactory;

@@ -37,20 +37,20 @@ These pages refer to the current state of the main branch, which is still under 
 Functionalities can be changed, removed or added without prior notice.
 {{< /alert >}}
 
-Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
+Apache Polaris is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
 With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
 
-![Conceptual diagram of Apache Polaris (Incubating).](/img/overview.svg "Apache Polaris (Incubating) overview")
+![Conceptual diagram of Apache Polaris.](/img/overview.svg "Apache Polaris overview")
 
 ## Key concepts
 
-This section introduces key concepts associated with using Apache Polaris (Incubating).
+This section introduces key concepts associated with using Apache Polaris.
 
-In the following diagram, a sample [Apache Polaris (Incubating) structure](#catalog) with nested [namespaces](#namespace) is shown for Catalog1. No tables
+In the following diagram, a sample [Apache Polaris structure](#catalog) with nested [namespaces](#namespace) is shown for Catalog1. No tables
 or namespaces have been created yet for Catalog2 or Catalog3.
 
-![Diagram that shows an example Apache Polaris (Incubating) structure.](/img/sample-catalog-structure.svg "Sample Apache Polaris (Incubating) structure")
+![Diagram that shows an example Apache Polaris structure.](/img/sample-catalog-structure.svg "Sample Apache Polaris structure")
 
 ### Catalog
 
@@ -136,7 +136,7 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
     has the privileges to perform this action. Alice
     creates an unmanaged table in Snowflake to read data from Table1.
 
-![Diagram that shows an example workflow for Apache Polaris (Incubating)](/img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
+![Diagram that shows an example workflow for Apache Polaris](/img/example-workflow.svg "Example workflow for Apache Polaris")
 
 ## Security and access control
 

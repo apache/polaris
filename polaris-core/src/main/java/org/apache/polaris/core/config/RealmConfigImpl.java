@@ -19,42 +19,56 @@
 package org.apache.polaris.core.config;
 
 import jakarta.annotation.Nullable;
+import java.util.Collections;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 public class RealmConfigImpl implements RealmConfig {
 
-  private final PolarisConfigurationStore configurationStore;
+  private final RealmConfigurationSource configurationSource;
   private final RealmContext realmContext;
 
-  public RealmConfigImpl(PolarisConfigurationStore configurationStore, RealmContext realmContext) {
-    this.configurationStore = configurationStore;
+  public RealmConfigImpl(RealmConfigurationSource configurationSource, RealmContext realmContext) {
+    this.configurationSource = configurationSource;
     this.realmContext = realmContext;
   }
 
+  @SuppressWarnings("removal")
   @Override
   public <T> @Nullable T getConfig(String configName) {
-    return configurationStore.getConfiguration(realmContext, configName);
+    @SuppressWarnings("unchecked")
+    T value = (T) configurationSource.getConfigValue(realmContext, configName);
+    return value;
   }
 
+  @SuppressWarnings("removal")
   @Override
   public <T> T getConfig(String configName, T defaultValue) {
-    return configurationStore.getConfiguration(realmContext, configName, defaultValue);
+    @SuppressWarnings("unchecked")
+    T value = (T) getConfig(configName);
+    if (value == null) {
+      return defaultValue;
+    }
+    return value;
   }
 
   @Override
   public <T> T getConfig(PolarisConfiguration<T> config) {
-    return configurationStore.getConfiguration(realmContext, config);
+    return getConfig(config, Collections.emptyMap());
   }
 
   @Override
   public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
-    return configurationStore.getConfiguration(realmContext, catalogEntity, config);
+    return getConfig(config, catalogEntity.getPropertiesAsMap());
+  }
+
+  private Object realmConfigValue(String configName) {
+    return configurationSource.getConfigValue(realmContext, configName);
   }
 
   @Override
   public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-    return configurationStore.getConfiguration(realmContext, catalogProperties, config);
+    return config.resolveValue(this::realmConfigValue, catalogProperties::get);
   }
 }

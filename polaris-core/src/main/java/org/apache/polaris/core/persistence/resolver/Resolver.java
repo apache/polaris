@@ -560,8 +560,8 @@ public class Resolver {
         // refresh the resolved entity if the entity or grant records version is different
         final ResolvedPolarisEntity refreshedResolvedEntity;
         if (versions == null
-            || entity.getEntityVersion() != versions.getEntityVersion()
-            || entity.getGrantRecordsVersion() != versions.getGrantRecordsVersion()) {
+            || entity.getEntityVersion() != versions.entityVersion()
+            || entity.getGrantRecordsVersion() != versions.grantRecordsVersion()) {
           // if null version we need to invalidate the cached entry since it has probably been
           // dropped
           if (versions == null) {
@@ -576,8 +576,8 @@ public class Resolver {
                   this.cache.getAndRefreshIfNeeded(
                       this.polarisCallContext,
                       entity,
-                      versions.getEntityVersion(),
-                      versions.getGrantRecordsVersion());
+                      versions.entityVersion(),
+                      versions.grantRecordsVersion());
             } else {
               ResolvedEntityResult result =
                   this.polarisMetaStoreManager.refreshResolvedEntity(
@@ -654,13 +654,13 @@ public class Resolver {
     for (ResolverEntityName entityName : entitiesToResolve) {
       // resolve that entity
       ResolvedPolarisEntity resolvedEntity =
-          this.resolveByName(toValidate, entityName.getEntityType(), entityName.getEntityName());
+          this.resolveByName(toValidate, entityName.entityType(), entityName.entityName());
 
       // if not found, we can exit unless the entity is optional
       // TODO: Consider how this interacts with CATALOG_ROLE in the isPassthroughFacade case.
-      if (!entityName.isOptional()
+      if (!entityName.optional()
           && (resolvedEntity == null || resolvedEntity.getEntity().isDropped())) {
-        return new ResolverStatus(entityName.getEntityType(), entityName.getEntityName());
+        return new ResolverStatus(entityName.entityType(), entityName.entityName());
       }
     }
 
@@ -693,14 +693,14 @@ public class Resolver {
       long parentId = catalogId;
 
       // resolve each segment
-      Iterator<String> pathIt = path.getEntityNames().iterator();
-      for (int segmentIndex = 0; segmentIndex < path.getEntityNames().size(); segmentIndex++) {
+      Iterator<String> pathIt = path.entityNames().iterator();
+      for (int segmentIndex = 0; segmentIndex < path.entityNames().size(); segmentIndex++) {
         // get segment name
         String segmentName = pathIt.next();
 
         // determine the segment type
         PolarisEntityType segmentType =
-            pathIt.hasNext() ? PolarisEntityType.NAMESPACE : path.getLastEntityType();
+            pathIt.hasNext() ? PolarisEntityType.NAMESPACE : path.lastEntityType();
 
         // resolve that entity
         ResolvedPolarisEntity segment =
@@ -710,7 +710,7 @@ public class Resolver {
         if (segment == null || segment.getEntity().isDropped()) {
           // If we've determined the catalog is a passthrough facade, treat all paths as
           // optional.
-          if (path.isOptional() || this.isPassthroughFacade) {
+          if (path.optional() || this.isPassthroughFacade) {
             // we have resolved as much as what we could have
             break;
           } else {
@@ -904,7 +904,7 @@ public class Resolver {
         "reference_catalog_must_be_specified");
 
     // one more to resolve
-    this.entitiesToResolve.add(new ResolverEntityName(entityType, entityName, optional));
+    this.entitiesToResolve.add(ImmutableResolverEntityName.of(entityType, entityName, optional));
   }
 
   /**
@@ -981,18 +981,18 @@ public class Resolver {
       if (lookupResult == null) {
         // not found
         return null;
-      } else if (lookupResult.isCacheHit()) {
+      } else if (lookupResult.cacheHit()) {
         // found in the cache, we will have to validate this entity
-        toValidate.add(lookupResult.getCacheEntry());
+        toValidate.add(lookupResult.cacheEntry());
       } else {
         // entry cannot be null
-        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        this.diagnostics.checkNotNull(lookupResult.cacheEntry(), "cache_entry_is_null");
         // if not found in cache, it was loaded from backend, hence it has been resolved
-        this.addToResolved(lookupResult.getCacheEntry());
+        this.addToResolved(lookupResult.cacheEntry());
       }
 
       // return the cache entry
-      return lookupResult.getCacheEntry();
+      return lookupResult.cacheEntry();
     } else {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =
@@ -1037,19 +1037,19 @@ public class Resolver {
       // if not found, return null
       if (lookupResult == null) {
         return null;
-      } else if (lookupResult.isCacheHit()) {
+      } else if (lookupResult.cacheHit()) {
         // found in the cache, we will have to validate this entity
-        toValidate.add(lookupResult.getCacheEntry());
+        toValidate.add(lookupResult.cacheEntry());
       } else {
         // entry cannot be null
-        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        this.diagnostics.checkNotNull(lookupResult.cacheEntry(), "cache_entry_is_null");
 
         // if not found in cache, it was loaded from backend, hence it has been resolved
-        this.addToResolved(lookupResult.getCacheEntry());
+        this.addToResolved(lookupResult.cacheEntry());
       }
 
       // return the cache entry
-      return lookupResult.getCacheEntry();
+      return lookupResult.cacheEntry();
     } else {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =

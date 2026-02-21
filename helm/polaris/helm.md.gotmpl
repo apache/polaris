@@ -21,27 +21,6 @@ Title: Polaris Helm Chart
 type: docs
 weight: 675
 ---
-
-<!---
-  This README.md file was generated with:
-  https://github.com/norwoodj/helm-docs
-  Do not modify the README.md file directly, please modify README.md.gotmpl instead.
-  To re-generate the README.md file, install helm-docs then run from the repo root:
-  helm-docs --chart-search-root=helm
--->
-
-{{ template "chart.deprecationWarning" . }}
-
-{{ template "chart.badgesSection" . }}
-
-{{ template "chart.description" . }}.
-
-{{ template "chart.homepageLine" . }}
-
-{{ template "chart.sourcesSection" . }}
-
-{{ template "chart.requirementsSection" . }}
-
 ## Installation
 
 The instructions below are for the local Minikube cluster. They assume Minikube and Helm are installed.
@@ -51,15 +30,16 @@ The instructions below are for the local Minikube cluster. They assume Minikube 
 Start the Minikube cluster, add the official Polaris Helm repository, create the target namespace, and install the chart:
 ```bash
 minikube start
-helm repo add polaris https://downloads.apache.org/incubator/polaris/helm-chart
+helm repo add polaris https://downloads.apache.org/polaris/helm-chart
 helm repo update
 kubectl create namespace polaris
-helm install polaris polaris/polaris --namespace polaris --devel
+helm install polaris polaris/polaris --namespace polaris
 ```
 
-> [!NOTE]
-> The --devel flag is required while Polaris is in the incubation phase.
-> Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
+{{ "{{" }}< alert note >}}
+For Apache Polaris releases up to 1.3.0-incubating, the `--devel` flag is required for `helm` invocations.
+Helm treats the -incubating suffix as a pre‑release by SemVer rules, and will skip charts that are not in a stable versioning scheme by default.
+{{ "{{" }}< /alert >}}
 
 Now the cluster should be up and running. You can run the built-in connection test to verify:
 ```bash
@@ -70,16 +50,16 @@ Default Polaris Helm chart values are for a non-persistent backend. To use a per
 Polaris Helm chart package includes a number of files that can be used as a starting point for such configuration. To use them, download the chart into a local directory:
 ```bash
 helm pull polaris \
-  --repo https://downloads.apache.org/incubator/polaris/helm-chart \
-  --devel \
+  --repo https://downloads.apache.org/polaris/helm-chart \
   --untar \
   --untardir ./helm
 ```
 
-> [!WARNING]
-> The examples below use values files located in the `helm/polaris/ci` directory.
-> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
-> For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< alert warning >}}
+The examples below use values files located in the `helm/polaris/ci` directory.
+**These files are intended for testing purposes primarily, and may not be suitable for production use**.
+For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< /alert >}}
 
 Create required resources:
 ```bash
@@ -87,8 +67,9 @@ kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
 ```
 
-> [!WARNING]
-> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< alert warning >}}
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< /alert >}}
 
 Install the chart with a persistent backend:
 ```bash
@@ -145,14 +126,16 @@ fail if these resources are not created beforehand. You can find some examples i
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=mongodb --timeout=120s
 ```
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
-> [!WARNING]
-> The examples below use values files located in the `helm/polaris/ci` directory.
-> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
-> For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< alert warning >}}
+The examples below use values files located in the `helm/polaris/ci` directory.
+**These files are intended for testing purposes primarily, and may not be suitable for production use**.
+For production deployments, create your own values files based on the provided examples.
+{{ "{{" }}< /alert >}}
 
 #### Non-persistent backend
 
@@ -164,8 +147,9 @@ helm upgrade --install --namespace polaris \
 
 #### Persistent backend
 
-> [!WARNING]
-> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< alert warning >}}
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{ "{{" }}< /alert >}}
 
 Install the chart with a persistent backend. From the Polaris repo root:
 ```bash
@@ -202,8 +186,9 @@ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/
 
 With that installed, you can enable and configure the `gateway` values. This will make it possible to use the HTTPRoute resource, enable and configure the `httproute` values. 
 
-> [!NOTE]
-> Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+{{ "{{" }}< alert note >}}
+Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+{{ "{{" }}< /alert >}}
 
 ### Uninstalling
 
@@ -224,12 +209,13 @@ This section is intended for developers who want to run the Polaris Helm chart t
 The following tools are required to run the tests:
 
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
+* [Helm JSON Schema](https://github.com/losisin/helm-values-schema-json)
 * [Chart Testing](https://github.com/helm/chart-testing)
 * [yamllint](https://github.com/adrienverge/yamllint)
 
 Quick installation instructions for these tools:
 ```bash
-helm plugin install https://github.com/helm-unittest/helm-unittest.git
+make helm-install-plugins
 brew install chart-testing
 brew install yamllint
 ```
@@ -255,7 +241,7 @@ helm unittest helm/polaris
 You can also lint the chart using the Chart Testing tool, with the following command:
 
 ```bash
-ct lint --charts helm/polaris
+ct lint --charts helm/polaris --validate-maintainers=false
 ```
 
 ### Running the integration tests

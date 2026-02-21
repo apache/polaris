@@ -44,8 +44,6 @@ import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInf
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo defined in the API model.
@@ -61,8 +59,6 @@ import org.slf4j.LoggerFactory;
   @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
-
   // The type of the connection
   private final int connectionTypeCode;
 

@@ -23,51 +23,62 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import io.quarkus.security.identity.CurrentIdentityAssociation;
+import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
+import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
-public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
+public class DefaultAuthenticatorTest {
 
-  private static final String PRINCIPAL_NO_ROLES = "principal-no-roles";
+  private static final String PRINCIPAL_NAME = "principal1";
+  private static final String PRINCIPAL_NAME_NO_ROLES = "principal-no-roles";
+
+  private static final String PRINCIPAL_ROLE1 = "principal_role1";
+  private static final String PRINCIPAL_ROLE2 = "principal_role2";
 
   @Inject
   @Identifier("default")
   DefaultAuthenticator authenticator;
 
-  private PrincipalEntity principalNoRoles;
+  @Inject
+  @SuppressWarnings("CdiInjectionPointsInspection")
+  CurrentIdentityAssociation identityAssociation;
+
+  @Inject PolarisAdminService adminService;
+  @Inject RealmContextHolder realmContextHolder;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject CallContext callContext;
+
+  private PrincipalEntity principalEntity;
+  private PrincipalEntity principalEntityNoRoles;
 
   @BeforeEach
-  @Override
-  public void before(TestInfo testInfo) {
-    super.before(testInfo);
-
-    PrincipalWithCredentials principal =
-        adminService.createPrincipal(
-            new PrincipalEntity.Builder()
-                .setName(PRINCIPAL_NO_ROLES)
-                .setCreateTimestamp(Instant.now().toEpochMilli())
-                .build());
-
-    principalNoRoles =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, PRINCIPAL_NO_ROLES, principal.getCredentials(), polarisContext);
+  public void setup(TestInfo testInfo) {
+    realmContextHolder.set(() -> testInfo.getTestMethod().orElseThrow().getName());
+    PolarisPrincipal root =
+        PolarisPrincipal.of(PolarisEntityConstants.getRootPrincipalName(), Map.of(), Set.of());
+    identityAssociation.setIdentity(QuarkusSecurityIdentity.builder().setPrincipal(root).build());
+    principalEntity = createPrincipal(PRINCIPAL_NAME, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    principalEntityNoRoles = createPrincipal(PRINCIPAL_NAME_NO_ROLES);
   }
 
   @Test
@@ -109,7 +120,8 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
         PolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     metaStoreManager = Mockito.spy(metaStoreManager);
-    when(metaStoreManager.loadEntity(polarisContext, 0L, 123L, PolarisEntityType.PRINCIPAL))
+    when(metaStoreManager.loadEntity(
+            callContext.getPolarisCallContext(), 0L, 123L, PolarisEntityType.PRINCIPAL))
         .thenThrow(new RuntimeException("Metastore exception"));
 
     assertUnauthorized(credentials);
@@ -131,6 +143,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
 
   @Test
   void testPrincipalFoundByName() {
+
     // Given: credentials with existing principal name
     PolarisCredential credentials =
         PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
@@ -194,13 +207,13 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials for a principal with no assigned roles
     PolarisCredential credentials =
         PolarisCredential.of(
-            null, PRINCIPAL_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+            null, PRINCIPAL_NAME_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(credentials);
 
     // Then: should return principal with empty roles set
-    assertPrincipal(result, principalNoRoles);
+    assertPrincipal(result, principalEntityNoRoles);
   }
 
   @Test
@@ -288,6 +301,36 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
 
     // Then: should return principal resolved by ID, not name
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+  }
+
+  private PrincipalEntity createPrincipal(String name, String... roles) {
+
+    PrincipalWithCredentialsCredentials credentials =
+        adminService
+            .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
+            .getCredentials();
+
+    metaStoreManager.rotatePrincipalSecrets(
+        callContext.getPolarisCallContext(),
+        credentials.getClientId(),
+        metaStoreManager
+            .findPrincipalByName(callContext.getPolarisCallContext(), name)
+            .orElseThrow()
+            .getId(),
+        false,
+        credentials.getClientSecret()); // This should actually be the secret's hash
+
+    PrincipalEntity principalEntity =
+        metaStoreManager
+            .findPrincipalByName(callContext.getPolarisCallContext(), name)
+            .orElseThrow();
+
+    for (String role : roles) {
+      adminService.createPrincipalRole(new PrincipalRoleEntity.Builder().setName(role).build());
+      adminService.assignPrincipalRole(name, role);
+    }
+
+    return principalEntity;
   }
 
   private void assertPrincipal(PolarisPrincipal result, PrincipalEntity entity, String... roles) {

@@ -67,7 +67,7 @@ public interface ReservedProperties {
    * prefix
    */
   default Set<String> allowlist() {
-    return AllowlistHolder.INSTANCE;
+    return PolarisConfiguration.getAllCatalogConfigs();
   }
 
   /** If true, attempts to modify a reserved property should throw an exception. */
@@ -154,24 +154,5 @@ public interface ReservedProperties {
       }
       default -> update;
     };
-  }
-
-  class AllowlistHolder {
-    static final Set<String> INSTANCE = computeAllowlist();
-
-    private static Set<String> computeAllowlist() {
-      Set<String> allowlist = new HashSet<>();
-      PolarisConfiguration.getAllConfigurations()
-          .forEach(
-              c -> {
-                if (c.hasCatalogConfig()) {
-                  allowlist.add(c.catalogConfig());
-                }
-                if (c.hasCatalogConfigUnsafe()) {
-                  allowlist.add(c.catalogConfigUnsafe());
-                }
-              });
-      return allowlist;
-    }
   }
 }

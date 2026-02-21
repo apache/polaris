@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FileBearerTokenProvider implements BearerTokenProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileBearerTokenProvider.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileBearerTokenProvider.class);
 
   private final Path tokenFilePath;
   private final Duration refreshInterval;
@@ -107,7 +107,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     // start refreshing the token (immediately)
     scheduleRefreshAttempt(Duration.ZERO);
 
-    logger.debug(
+    LOGGER.debug(
         "Created file token provider for path: {} with refresh interval: {}, JWT expiration refresh: {}, JWT buffer: {}, next refresh: {}",
         tokenFilePath,
         refreshInterval,
@@ -168,7 +168,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     String newToken = loadTokenFromFile();
     // Only update cached token if we successfully loaded a new one
     if (newToken == null) {
-      logger.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
+      LOGGER.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
       return false;
     }
     cachedToken = newToken;
@@ -178,7 +178,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     // Calculate next refresh time based on current token (may be cached)
     nextRefresh = calculateNextRefresh(cachedToken);
 
-    logger.debug(
+    LOGGER.debug(
         "Token refreshed from file: {} (token present: {}), next refresh: {}",
         tokenFilePath,
         cachedToken != null,
@@ -203,12 +203,12 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       // Ensure refresh time is in the future and not too soon (at least 1 second)
       Instant minRefreshTime = clock.get().plus(Duration.ofSeconds(1));
       if (refreshTime.isBefore(minRefreshTime)) {
-        logger.warn(
+        LOGGER.warn(
             "JWT expires too soon ({}), using minimum refresh interval instead", expiration.get());
         return lastRefresh.plus(refreshInterval);
       }
 
-      logger.debug(
+      LOGGER.debug(
           "Using JWT expiration-based refresh: token expires at {}, refreshing at {}",
           expiration.get(),
           refreshTime);
@@ -216,7 +216,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     }
 
     // Fall back to fixed interval (token is not a valid JWT or has no expiration)
-    logger.debug("Token is not a valid JWT or has no expiration, using fixed refresh interval");
+    LOGGER.debug("Token is not a valid JWT or has no expiration, using fixed refresh interval");
     return lastRefresh.plus(refreshInterval);
   }
 
@@ -228,7 +228,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
         return token;
       }
     } catch (IOException e) {
-      logger.debug("Failed to read token from file", e);
+      LOGGER.debug("Failed to read token from file", e);
     }
     return null;
   }
@@ -245,7 +245,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       Date expiresAt = decodedJWT.getExpiresAt();
       return expiresAt != null ? Optional.of(expiresAt.toInstant()) : Optional.empty();
     } catch (JWTDecodeException e) {
-      logger.debug("Failed to decode JWT token: {}", e.getMessage());
+      LOGGER.debug("Failed to decode JWT token: {}", e.getMessage());
       return Optional.empty();
     }
   }

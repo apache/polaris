@@ -147,10 +147,10 @@ internal fun configureOnRootProject(project: Project) =
               * https://github.com/apache/$asfName/tree/$gitCommitId
 
               The release tarball, signature, and checksums are here:
-              * https://dist.apache.org/repos/dist/dev/incubator/$asfName/apache-$asfName-$version
+              * https://dist.apache.org/repos/dist/dev/$asfName/apache-$asfName-$version
 
               You can find the KEYS file here:
-              * https://downloads.apache.org/incubator/$asfName/KEYS
+              * https://downloads.apache.org/$asfName/KEYS
 
               Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
               * $staginRepoUrl
@@ -163,12 +163,9 @@ internal fun configureOnRootProject(project: Project) =
               [ ] +0
               [ ] -1 Do not release this because...
 
-              Only PPMC members and mentors have binding votes, but other community members are
+              Only PMC members have binding votes, but other community members are
               encouraged to cast non-binding votes. This vote will pass if there are
               3 binding +1 votes and more binding +1 votes than -1 votes.
-
-              NB: if this vote pass, a new vote has to be started on the Incubator general mailing
-              list.
 
               Thanks
               Regards

@@ -75,6 +75,9 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.microprofile.fault.tolerance.api)
+
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 }
 
 val rootDir = rootProject.layout.projectDirectory

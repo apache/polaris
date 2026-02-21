@@ -23,7 +23,7 @@ type: docs
 weight: 300
 ---
 
-This section provides information about integrating Apache Polaris (Incubating) with external Policy Decision Points (PDPs) for authorization.
+This section provides information about integrating Apache Polaris with external Policy Decision Points (PDPs) for authorization.
 
 ## Overview
 

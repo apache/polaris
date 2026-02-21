@@ -28,9 +28,9 @@ import java.time.Clock;
 import java.util.UUID;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -74,15 +74,15 @@ public class AdminToolProducers {
   }
 
   @Produces
-  public PolarisConfigurationStore configurationStore() {
-    // A configuration store is not required when running the admin tool.
-    return new PolarisConfigurationStore() {};
+  public RealmConfigurationSource configurationStore() {
+    // A configuration source is not required when running the admin tool.
+    return RealmConfigurationSource.EMPTY_CONFIG;
   }
 
   @Produces
-  public RealmConfig dummyRealmConfig(PolarisConfigurationStore configurationStore) {
+  public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
     // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
     String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationStore, () -> absentId);
+    return new RealmConfigImpl(configurationSource, () -> absentId);
   }
 }

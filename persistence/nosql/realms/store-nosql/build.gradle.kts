@@ -52,7 +52,8 @@ dependencies {
   testFixturesRuntimeOnly(project(":polaris-persistence-nosql-cdi-weld"))
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-cdi-weld")))
 
-  testFixturesApi(libs.weld.se.core)
+  testFixturesApi(platform(libs.weld.core.bom))
+  testFixturesApi("org.jboss.weld.se:weld-se-core")
   testFixturesApi(libs.weld.junit5)
   testFixturesRuntimeOnly(libs.smallrye.jandex)
 
