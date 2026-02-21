@@ -269,6 +269,24 @@ public abstract class BaseResolverTest {
     Assertions.assertThat(resolvedPath.get(3)).hasSize(2);
   }
 
+  /** Test that path-only resolution skips principal and role activation. */
+  @ParameterizedTest
+  @MethodSource("useCacheValueSource")
+  protected void testResolvePathsOnlySkipsPrincipalAndRoles(boolean useCache) {
+    this.shouldUseCache = useCache;
+
+    Resolver resolver = allocateResolver(null, Set.of("PR1"), "test");
+    ResolverPath path = new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.TABLE_LIKE);
+    resolver.addPath(path);
+
+    ResolverStatus status = resolver.resolvePathsOnly();
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles()).isEmpty();
+    Assertions.assertThat(resolver.getResolvedCatalogRoles()).isEmpty();
+    Assertions.assertThat(resolver.getResolvedReferenceCatalog()).isNotNull();
+    Assertions.assertThat(resolver.getResolvedPath()).isNotEmpty();
+  }
+
   /**
    * Ensure that if data changes while entities are cached, we will always resolve to the latest
    * version

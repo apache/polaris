@@ -65,14 +65,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   private int currentPathIndex = 0;
 
-  // Set when resolveAll is called
+  // Set when resolveAll() or resolvePathsOnly() is called
   private ResolverStatus primaryResolverStatus = null;
 
   private boolean isResolveAllSucceeded() {
     diagnostics.checkNotNull(
         primaryResolverStatus,
         "resolver_not_run_before_access",
-        "resolveAll() must be called before reading resolution results");
+        "resolveAll() or resolvePathsOnly() must be called before reading resolution results");
     return primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS;
   }
 
@@ -140,6 +140,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
+    return primaryResolverStatus;
+  }
+
+  /**
+   * Resolve only reference catalog, entities, and paths without resolving caller principal or
+   * roles. Returns SUCCESS, PATH_COULD_NOT_BE_FULLY_RESOLVED, or ENTITY_COULD_NOT_BE_RESOLVED and
+   * never returns CALLER_PRINCIPAL_DOES_NOT_EXIST.
+   */
+  public ResolverStatus resolvePathsOnly() {
+    primaryResolverStatus = primaryResolver.resolvePathsOnly();
     return primaryResolverStatus;
   }
 
