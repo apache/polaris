@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
+
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import java.util.Arrays;
@@ -25,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -296,8 +297,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
                 PolarisCatalogHelpers.listToTableIdentifier(
                     status.getFailedToResolvePath().entityNames()));
         case PolarisEntityType.NAMESPACE ->
-            throw new NoSuchNamespaceException(
-                "Namespace does not exist: %s",
+            throw noSuchNamespaceException(
                 Namespace.of(status.getFailedToResolvePath().entityNames().toArray(new String[0])));
         case PolarisEntityType.POLICY ->
             throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));

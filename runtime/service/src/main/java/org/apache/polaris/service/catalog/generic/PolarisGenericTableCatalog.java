@@ -19,14 +19,14 @@
 package org.apache.polaris.service.catalog.generic;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -109,8 +109,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
               .setCreateTimestamp(System.currentTimeMillis())
               .build();
     } else {
-      throw new AlreadyExistsException(
-          "Iceberg table, view, or generic table already exists: %s", tableIdentifier);
+      throw alreadyExistsExceptionForTableLikeEntity(tableIdentifier, entity.getSubType());
     }
 
     EntityResult res =
@@ -119,17 +118,14 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             PolarisEntity.toCoreList(catalogPath),
             entity);
     if (!res.isSuccess()) {
-      switch (res.getReturnStatus()) {
-        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
-          throw new AlreadyExistsException(
-              "Iceberg table, view, or generic table already exists: %s", tableIdentifier);
-
-        default:
-          throw new IllegalStateException(
-              String.format(
-                  "Unknown error status for identifier %s: %s with extraInfo: %s",
-                  tableIdentifier, res.getReturnStatus(), res.getExtraInformation()));
+      if (requireNonNull(res.getReturnStatus()) == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
+        throw alreadyExistsExceptionForTableLikeEntity(
+            tableIdentifier, res.getAlreadyExistsEntitySubType());
       }
+      throw new IllegalStateException(
+          String.format(
+              "Unknown error status for identifier %s: %s with extraInfo: %s",
+              tableIdentifier, res.getReturnStatus(), res.getExtraInformation()));
     }
     GenericTableEntity resultEntity = GenericTableEntity.of(res.getEntity());
     LOGGER.debug(
@@ -146,7 +142,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
     if (null == entity) {
-      throw new NoSuchTableException("Generic table does not exist: %s", tableIdentifier);
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.GENERIC_TABLE);
     } else {
       return entity;
     }
@@ -159,7 +156,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
 
     if (resolvedEntities == null) {
-      throw new NoSuchTableException("Generic table does not exist: %s", tableIdentifier);
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.GENERIC_TABLE);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
@@ -180,7 +178,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
-      throw new NoSuchNamespaceException("Namespace '%s' does not exist", namespace);
+      throw noSuchNamespaceException(namespace);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();

@@ -21,6 +21,8 @@ package org.apache.polaris.service.catalog.iceberg;
 import static org.apache.iceberg.TableProperties.COMMIT_MAX_RETRY_WAIT_MS_DEFAULT;
 import static org.apache.iceberg.TableProperties.COMMIT_MIN_RETRY_WAIT_MS_DEFAULT;
 import static org.apache.iceberg.TableProperties.COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -59,9 +61,6 @@ import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.CommitFailedException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
@@ -90,6 +89,7 @@ import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,7 +225,7 @@ public class CatalogHandlerUtils {
   public void dropNamespace(SupportsNamespaces catalog, Namespace namespace) {
     boolean dropped = catalog.dropNamespace(namespace);
     if (!dropped) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+      throw noSuchNamespaceException(namespace);
     }
   }
 
@@ -310,14 +310,14 @@ public class CatalogHandlerUtils {
   public void dropTable(Catalog catalog, TableIdentifier ident) {
     boolean dropped = catalog.dropTable(ident, false);
     if (!dropped) {
-      throw new NoSuchTableException("Table does not exist: %s", ident);
+      throw notFoundExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
     }
   }
 
   public void purgeTable(Catalog catalog, TableIdentifier ident) {
     boolean dropped = catalog.dropTable(ident, true);
     if (!dropped) {
-      throw new NoSuchTableException("Table does not exist: %s", ident);
+      throw notFoundExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
     }
   }
 
@@ -330,7 +330,7 @@ public class CatalogHandlerUtils {
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", ident.toString());
+      throw notFoundExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
@@ -742,7 +742,7 @@ public class CatalogHandlerUtils {
   public void dropView(ViewCatalog catalog, TableIdentifier viewIdentifier) {
     boolean dropped = catalog.dropView(viewIdentifier);
     if (!dropped) {
-      throw new NoSuchViewException("View does not exist: %s", viewIdentifier);
+      throw notFoundExceptionForTableLikeEntity(viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
   }
 
