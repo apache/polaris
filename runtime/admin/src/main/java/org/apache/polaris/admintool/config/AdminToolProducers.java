@@ -31,7 +31,9 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -43,6 +45,15 @@ public class AdminToolProducers {
       QuarkusPersistenceConfiguration persistenceConfiguration,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories
+        .select(Identifier.Literal.of(persistenceConfiguration.type()))
+        .get();
+  }
+
+  @Produces
+  public MetricsSchemaBootstrap metricsSchemaBootstrap(
+      QuarkusPersistenceConfiguration persistenceConfiguration,
+      @Any Instance<MetricsSchemaBootstrap> metricsSchemaBootstraps) {
+    return metricsSchemaBootstraps
         .select(Identifier.Literal.of(persistenceConfiguration.type()))
         .get();
   }
@@ -79,10 +90,24 @@ public class AdminToolProducers {
     return RealmConfigurationSource.EMPTY_CONFIG;
   }
 
+  /**
+   * Produces a dummy {@link RealmContext} for admin CLI contexts.
+   *
+   * <p>The admin tool doesn't operate within the context of a specific realm, so we generate a
+   * random UUID to satisfy CDI dependencies that require a RealmContext.
+   *
+   * @return a RealmContext with a random realm identifier
+   */
   @Produces
-  public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
-    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+  @ApplicationScoped
+  public RealmContext dummyRealmContext() {
     String absentId = UUID.randomUUID().toString();
-    return new RealmConfigImpl(configurationSource, () -> absentId);
+    return () -> absentId;
+  }
+
+  @Produces
+  public RealmConfig dummyRealmConfig(
+      RealmConfigurationSource configurationSource, RealmContext realmContext) {
+    return new RealmConfigImpl(configurationSource, realmContext);
   }
 }

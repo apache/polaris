@@ -73,6 +73,9 @@ public final class MetricsRecordConverter {
     return new CommitReportBuilder(commitReport);
   }
 
+  /** Well-known metadata key for client-provided report trace ID. */
+  public static final String REPORT_TRACE_ID_KEY = "report-trace-id";
+
   /** Builder for converting ScanReport to ScanMetricsRecord. */
   public static final class ScanReportBuilder {
     private final ScanReport scanReport;
