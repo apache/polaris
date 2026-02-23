@@ -223,6 +223,7 @@ This product bundles and includes code from Netty.
 * Maven group:artifact IDs: io.netty:netty-buffer
 * Maven group:artifact IDs: io.netty:netty-codec
 * Maven group:artifact IDs: io.netty:netty-codec-dns
+* Maven group:artifact IDs: io.netty:netty-codec-haproxy
 * Maven group:artifact IDs: io.netty:netty-codec-http
 * Maven group:artifact IDs: io.netty:netty-codec-http2
 * Maven group:artifact IDs: io.netty:netty-codec-socks
@@ -282,13 +283,12 @@ License: BSD 2-Clause
 
 This product bundles Quarkus.
 
-* Maven group:artifact IDs: io.quarkus:quarkus-apache-httpclient
-* Maven group:artifact IDs: io.quarkus:quarkus-bootstrap-runner
-* Maven group:artifact IDs: io.quarkus:quarkus-classloader-commons
-* Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
 * Maven group:artifact IDs: io.quarkus.arc:arc
 * Maven group:artifact IDs: io.quarkus:quarkus-agroal
+* Maven group:artifact IDs: io.quarkus:quarkus-apache-httpclient
 * Maven group:artifact IDs: io.quarkus:quarkus-arc
+* Maven group:artifact IDs: io.quarkus:quarkus-bootstrap-runner
+* Maven group:artifact IDs: io.quarkus:quarkus-classloader-commons
 * Maven group:artifact IDs: io.quarkus:quarkus-container-image
 * Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker
 * Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker-common
@@ -296,14 +296,29 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-credentials
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
+* Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
+* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
+* Maven group:artifact IDs: io.quarkus:quarkus-jsonp
+* Maven group:artifact IDs: io.quarkus:quarkus-micrometer
+* Maven group:artifact IDs: io.quarkus:quarkus-mongodb-client
 * Maven group:artifact IDs: io.quarkus:quarkus-mutiny
+* Maven group:artifact IDs: io.quarkus:quarkus-mutiny-reactive-streams-operators
 * Maven group:artifact IDs: io.quarkus:quarkus-narayana-jta
 * Maven group:artifact IDs: io.quarkus:quarkus-netty
 * Maven group:artifact IDs: io.quarkus:quarkus-picocli
+* Maven group:artifact IDs: io.quarkus:quarkus-registry
+* Maven group:artifact IDs: io.quarkus:quarkus-security-runtime-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-smallrye-context-propagation
+* Maven group:artifact IDs: io.quarkus:quarkus-tls-registry
+* Maven group:artifact IDs: io.quarkus:quarkus-tls-registry-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-transaction-annotations
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx-http
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx-latebound-mdc-provider
+* Maven group:artifact IDs: io.quarkus:quarkus-virtual-threads
+* Maven group:artifact IDs: io.quarkus.security:quarkus-security
 
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -312,6 +327,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles several SmallRye project artifacts.
 
+* Maven group:artifact IDs: io.smallrye.certs:smallrye-private-key-pem-parser
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-annotation
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-classloader
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-constraint
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-cpu
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-expression
@@ -320,20 +338,29 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-net
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-os
 * Maven group:artifact IDs: io.smallrye.common:smallrye-common-ref
-* Maven group:artifact IDs: io.smallrye.common:smallrye-common-annotation
-* Maven group:artifact IDs: io.smallrye.common:smallrye-common-classloader
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-vertx-context
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config-common
 * Maven group:artifact IDs: io.smallrye.config:smallrye-config-core
 * Maven group:artifact IDs: io.smallrye.reactive:mutiny
+* Maven group:artifact IDs: io.smallrye.reactive:mutiny-reactive-streams-operators
 * Maven group:artifact IDs: io.smallrye.reactive:mutiny-smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye.reactive:mutiny-zero-flow-adapters
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-auth-common
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-bridge-common
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-core
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-runtime
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-uri-template
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
+* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-storage
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-vertx
 
 Project URL: https://smallrye.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -360,6 +387,16 @@ This product bundles JBoss Logging.
 
 Project URL: http://www.jboss.org
 License: Apache License 2.0 - https://repository.jboss.org/licenses/apache-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Brotli4j.
+
+* Maven group:artifact IDs: com.aayushatharva.brotli4j:brotli4j
+* Maven group:artifact IDs: com.aayushatharva.brotli4j:service
+
+Project URL: https://github.com/hyperxpro/Brotli4j
+License: Apache License 2.0 - https://github.com/hyperxpro/Brotli4j/blob/v1.16.0/LICENSE
 
 --------------------------------------------------------------------------------
 
@@ -531,8 +568,10 @@ This product bundles Google Cloud Storage APIs.
 
 * Maven group:artifact IDs: com.google.api.grpc:gapic-google-cloud-storage-v2
 * Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-iamcredentials-v1
 * Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-monitoring-v3
 * Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.apis:google-api-services-storage
 
 Project URL: https://github.com/googleapis/java-storage
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -540,6 +579,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 --------------------------------------------------------------------------------
 
 This product bundles Google SDK Platform for Java.
+
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-common-protos
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-iam-v1
 
 Project URL: https://github.com/googleapis/sdk-platform-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -598,6 +640,7 @@ This product bundles Google Cloud APIs for Java.
 * Maven group:artifact IDs: com.google.cloud:google-cloud-core
 * Maven group:artifact IDs: com.google.cloud:google-cloud-core-grpc
 * Maven group:artifact IDs: com.google.cloud:google-cloud-core-http
+* Maven group:artifact IDs: com.google.cloud:google-cloud-iamcredentials
 * Maven group:artifact IDs: com.google.cloud:google-cloud-monitoring
 * Maven group:artifact IDs: com.google.cloud:google-cloud-storage
 
@@ -628,7 +671,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles ErrorProne annotations.
 
-Group: com.google.errorprone Name: error_prone_annotations Version: 2.42.0
+* Maven group:artifact IDs: com.google.errorprone:error_prone_annotations
 
 Project URL: https://errorprone.info
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -905,7 +948,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles OpenTelemetry.
 
 * Maven group:artifact IDs: io.opentelemetry:opentelemetry-api
-* Maven group:artifact IDs: io.opentelemetry:opentelemetry-api-incubator
 * Maven group:artifact IDs: io.opentelemetry:opentelemetry-common
 * Maven group:artifact IDs: io.opentelemetry:opentelemetry-context
 * Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk
@@ -965,6 +1007,21 @@ This product bundles Swagger.
 * Maven group:artifact IDs: io.swagger:swagger-models
 
 Project URL: https://github.com/swagger-api/swagger-core
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles VertX.
+
+* Maven group:artifact IDs: io.vertx:vertx-auth-common
+* Maven group:artifact IDs: io.vertx:vertx-bridge-common
+* Maven group:artifact IDs: io.vertx:vertx-codegen
+* Maven group:artifact IDs: io.vertx:vertx-core
+* Maven group:artifact IDs: io.vertx:vertx-uri-template
+* Maven group:artifact IDs: io.vertx:vertx-web
+* Maven group:artifact IDs: io.vertx:vertx-web-common
+
+Project URL: https://vertx.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
@@ -1037,7 +1094,7 @@ This product bundles Jakarta JSON API.
 * Maven group:artifact IDs: jakarta.json:jakarta.json-api
 
 Project URL: https://github.com/eclipse-ee4j/jsonp
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1045,7 +1102,7 @@ This product bundles Jakarta Resource API.
 
 * Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
 
-Project URL: https://github.com/jakartaee/connectors
+Project URL: https://jakarta.ee/specifications/connectors/
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
@@ -1095,24 +1152,6 @@ License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta Validation API.
-
-* Maven group:artifact IDs: javax.validation:validation-api
-
-Project URL: https://beanvalidation.org
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles JSR311 API.
-
-* Maven group:artifact IDs: javax.ws.rs:jsr311-api
-
-Project URL: https://jsr311.dev.java.net
-License: CDDL License - http://www.opensource.org/licenses/cddl1.php
-
---------------------------------------------------------------------------------
-
 This product bundles JNA.
 
 * Maven group:artifact IDs: net.java.dev.jna:jna
@@ -1156,6 +1195,7 @@ This product bundles Apache HttpComponents (core and client).
 * Maven group:artifact IDs: org.apache.httpcomponents.core5:httpcore5
 * Maven group:artifact IDs: org.apache.httpcomponents.core5:httpcore5-h2
 * Maven group:artifact IDs: org.apache.httpcomponents:httpclient
+* Maven group:artifact IDs: org.apache.httpcomponents:httpcore
 
 Project URL: https://hc.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1276,6 +1316,7 @@ This product bundles Microprofile.
 * Maven group:artifact IDs: org.eclipse.microprofile.config:microprofile-config-api
 * Maven group:artifact IDs: org.eclipse.microprofile.context-propagation:microprofile-context-propagation-api
 * Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-api
+* Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-core
 
 Project URL: http://microprofile.io
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1613,6 +1654,38 @@ This product bundles AWS EventStream Java.
 * Maven group:artifact IDs: software.amazon.eventstream:eventstream
 
 Project URL: https://github.com/awslabs/aws-eventstream-java
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles MongoDB Java Driver.
+
+* Maven group:artifact IDs: org.mongodb:bson
+* Maven group:artifact IDs: org.mongodb:bson-record-codec
+* Maven group:artifact IDs: org.mongodb:mongodb-crypt
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-core
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-reactivestreams
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-sync
+
+Project URL: https://github.com/mongodb/mongo-java-driver
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Projectnessie CEL.
+
+* Maven group:artifact IDs: org.projectnessie.cel:cel-standalone
+
+Project URL: https://github.com/projectnessie/cel-java
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Agrona.
+
+* Maven group:artifact IDs: org.agrona:agrona
+
+Project URL: https://github.com/aeron-io/agrona
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
