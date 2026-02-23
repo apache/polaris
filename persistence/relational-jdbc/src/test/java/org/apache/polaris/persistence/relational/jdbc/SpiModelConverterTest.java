@@ -48,7 +48,8 @@ public class SpiModelConverterTest {
   void testToModelScanReport() {
     ScanMetricsRecord record = createTestScanRecord();
 
-    ModelScanMetricsReport model = SpiModelConverter.toModelScanReport(record, TEST_REALM_ID);
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
@@ -106,7 +107,8 @@ public class SpiModelConverterTest {
   void testToModelCommitReport() {
     CommitMetricsRecord record = createTestCommitRecord();
 
-    ModelCommitMetricsReport model = SpiModelConverter.toModelCommitReport(record, TEST_REALM_ID);
+    ModelCommitMetricsReport model =
+        SpiModelConverter.toModelCommitReport(record, TEST_REALM_ID, null, null, null, null);
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
