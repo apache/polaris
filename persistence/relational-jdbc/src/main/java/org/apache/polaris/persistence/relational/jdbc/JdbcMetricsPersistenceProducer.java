@@ -130,11 +130,14 @@ public class JdbcMetricsPersistenceProducer {
   public MetricsPersistence metricsPersistence(
       RealmContext realmContext,
       Instance<PolarisPrincipal> polarisPrincipal,
-      RequestIdSupplier requestIdSupplier) {
+      Instance<RequestIdSupplier> requestIdSupplier) {
     String realmId = realmContext.getRealmIdentifier();
     // PolarisPrincipal may not be available in all contexts (e.g., Admin CLI)
     PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
-    return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, requestIdSupplier);
+    // RequestIdSupplier may not be available in all contexts (e.g., Admin CLI)
+    RequestIdSupplier supplier =
+        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : () -> "no-request-id";
+    return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, supplier);
   }
 
   /**

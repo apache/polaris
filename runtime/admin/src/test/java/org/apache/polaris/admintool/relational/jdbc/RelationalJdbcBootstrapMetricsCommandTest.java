@@ -60,23 +60,24 @@ public class RelationalJdbcBootstrapMetricsCommandTest extends BootstrapMetricsC
 
   @Test
   public void testBootstrapMetricsForSingleRealm(QuarkusMainLauncher launcher) {
-    // Bootstrap entity schema and metrics schema in one launch using --include-metrics.
+    // Bootstrap entity schema first
     LaunchResult bootstrapResult =
-        launcher.launch(
-            "bootstrap",
-            "-r",
-            "metrics-realm1",
-            "-c",
-            "metrics-realm1,root,s3cr3t",
-            "--include-metrics");
+        launcher.launch("bootstrap", "-r", "metrics-realm1", "-c", "metrics-realm1,root,s3cr3t");
     assertThat(bootstrapResult.exitCode()).isEqualTo(0);
     assertThat(bootstrapResult.getOutput())
         .contains("Realm 'metrics-realm1' successfully bootstrapped.");
+
+    // Then bootstrap metrics schema separately
+    LaunchResult metricsResult = launcher.launch("bootstrap-metrics", "-r", "metrics-realm1");
+    assertThat(metricsResult.exitCode()).isEqualTo(0);
+    assertThat(metricsResult.getOutput())
+        .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm1'...")
+        .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm1'.");
   }
 
   @Test
   public void testBootstrapMetricsMultipleRealmsInSingleLaunch(QuarkusMainLauncher launcher) {
-    // Bootstrap entity schema and metrics schema for multiple realms in one launch
+    // Bootstrap entity schema for multiple realms
     LaunchResult result =
         launcher.launch(
             "bootstrap",
@@ -87,13 +88,23 @@ public class RelationalJdbcBootstrapMetricsCommandTest extends BootstrapMetricsC
             "-c",
             "metrics-realm3,root,s3cr3t",
             "-c",
-            "metrics-realm4,root,s3cr3t",
-            "--include-metrics");
+            "metrics-realm4,root,s3cr3t");
     assertThat(result.exitCode()).isEqualTo(0);
     assertThat(result.getOutput())
         .contains("Realm 'metrics-realm3' successfully bootstrapped.")
         .contains("Realm 'metrics-realm4' successfully bootstrapped.")
         .contains("Bootstrap completed successfully.");
+
+    // Bootstrap metrics schema for multiple realms in one command
+    LaunchResult metricsResult =
+        launcher.launch("bootstrap-metrics", "-r", "metrics-realm3", "-r", "metrics-realm4");
+    assertThat(metricsResult.exitCode()).isEqualTo(0);
+    assertThat(metricsResult.getOutput())
+        .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm3'...")
+        .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm3'.")
+        .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm4'...")
+        .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm4'.")
+        .contains("Metrics bootstrap completed successfully.");
   }
 
   @Test

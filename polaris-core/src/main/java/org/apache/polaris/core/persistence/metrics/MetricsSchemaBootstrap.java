@@ -36,14 +36,17 @@ import com.google.common.annotations.Beta;
  * deployment module should provide a {@code @Produces} method that creates the appropriate
  * implementation based on the configured persistence backend.
  *
+ * <p>Metrics schema versioning is independent of entity schema versioning, allowing metrics to be
+ * added to existing deployments without re-bootstrapping the entity schema.
+ *
  * <h3>Usage</h3>
  *
  * <p>The metrics schema can be bootstrapped:
  *
  * <ul>
- *   <li>During initial realm bootstrap with the {@code --include-metrics} flag
  *   <li>Independently via the {@code bootstrap-metrics} CLI command
- *   <li>Programmatically by injecting this interface and calling {@link #bootstrap(String)}
+ *   <li>Programmatically by injecting this interface and calling {@link #bootstrap(String)} or
+ *       {@link #bootstrap(String, int)}
  * </ul>
  *
  * <p><b>Note:</b> This SPI is currently experimental. The API may change in future releases.
@@ -56,11 +59,24 @@ public interface MetricsSchemaBootstrap {
   /**
    * Bootstraps the metrics schema for the specified realm to the latest version.
    *
-   * <p>This operation is idempotent - calling it multiple times on the same realm should have no
-   * effect after the first successful call when already at the latest version.
+   * <p>This is a convenience method that delegates to {@link #bootstrap(String, int)} with the
+   * latest version.
    *
-   * <p>If the schema is already bootstrapped at a lower version, this will upgrade to the latest
-   * version.
+   * @param realmId the realm identifier to bootstrap the metrics schema for
+   * @throws RuntimeException if the bootstrap operation fails
+   */
+  default void bootstrap(String realmId) {
+    bootstrap(realmId, getLatestVersion());
+  }
+
+  /**
+   * Bootstraps the metrics schema for the specified realm to the specified target version.
+   *
+   * <p>This operation is idempotent - calling it multiple times on the same realm should have no
+   * effect after the first successful call when already at the target version or higher.
+   *
+   * <p>If the schema is already bootstrapped at a lower version, this will upgrade to the target
+   * version. If already at a higher version, this operation has no effect.
    *
    * <p>Implementations should:
    *
@@ -68,12 +84,16 @@ public interface MetricsSchemaBootstrap {
    *   <li>Create the necessary tables/collections for storing metrics data
    *   <li>Create any required indexes for efficient querying
    *   <li>Record the metrics schema version for future migrations
+   *   <li>Apply any migration scripts needed to upgrade from current to target version
    * </ul>
    *
    * @param realmId the realm identifier to bootstrap the metrics schema for
+   * @param targetVersion the target schema version to bootstrap to
    * @throws RuntimeException if the bootstrap operation fails
+   * @throws IllegalArgumentException if targetVersion is invalid (e.g., less than 1 or greater than
+   *     latest version)
    */
-  void bootstrap(String realmId);
+  void bootstrap(String realmId, int targetVersion);
 
   /**
    * Checks if the metrics schema has been bootstrapped for the specified realm.

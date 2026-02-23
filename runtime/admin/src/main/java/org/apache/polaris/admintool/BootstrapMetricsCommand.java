@@ -30,20 +30,30 @@ import picocli.CommandLine;
  * deployment without re-bootstrapping the entity schema. It is idempotent - running it multiple
  * times on the same realm has no effect after the first successful run.
  *
- * <p>The command always bootstraps to the latest available schema version. If the schema is already
- * bootstrapped at an older version, it will be upgraded to the latest version.
+ * <p>By default, the command bootstraps to the latest available schema version. You can optionally
+ * specify a target version using the {@code --version} flag. If the schema is already bootstrapped
+ * at an older version, it will be upgraded to the target version.
+ *
+ * <p>Metrics schema versioning is independent of entity schema versioning, allowing metrics to be
+ * added to existing deployments without re-bootstrapping the entity schema.
  *
  * <p>Example usage:
  *
  * <pre>{@code
+ * # Bootstrap to latest version
  * polaris-admin bootstrap-metrics -r my-realm
+ *
+ * # Bootstrap multiple realms
  * polaris-admin bootstrap-metrics -r realm1 -r realm2
+ *
+ * # Bootstrap to a specific version
+ * polaris-admin bootstrap-metrics -r my-realm --version 1
  * }</pre>
  */
 @CommandLine.Command(
     name = "bootstrap-metrics",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps or upgrades the metrics schema to the latest version.")
+    description = "Bootstraps or upgrades the metrics schema.")
 public class BootstrapMetricsCommand extends BaseCommand {
 
   @Inject MetricsSchemaBootstrap metricsSchemaBootstrap;
@@ -55,42 +65,48 @@ public class BootstrapMetricsCommand extends BaseCommand {
       description = "The name of a realm to bootstrap metrics for.")
   List<String> realms;
 
+  @CommandLine.Option(
+      names = {"-v", "--version"},
+      paramLabel = "<version>",
+      description = "The target metrics schema version to bootstrap to (default: latest).")
+  Integer version;
+
   @Override
   public Integer call() {
     boolean success = true;
-    int latestVersion = metricsSchemaBootstrap.getLatestVersion();
+    int targetVersion = (version != null) ? version : metricsSchemaBootstrap.getLatestVersion();
 
     for (String realm : realms) {
       try {
         int currentVersion = metricsSchemaBootstrap.getCurrentVersion(realm);
-        if (currentVersion >= latestVersion) {
+        if (currentVersion >= targetVersion) {
           spec.commandLine()
               .getOut()
               .printf(
-                  "Metrics schema already at latest version %d for realm '%s'. Skipping.%n",
-                  currentVersion, realm);
+                  "Metrics schema already at version %d (target: %d) for realm '%s'. Skipping.%n",
+                  currentVersion, targetVersion, realm);
         } else if (currentVersion == 0) {
           spec.commandLine()
               .getOut()
-              .printf("Bootstrapping metrics schema v%d for realm '%s'...%n", latestVersion, realm);
-          metricsSchemaBootstrap.bootstrap(realm);
+              .printf("Bootstrapping metrics schema v%d for realm '%s'...%n", targetVersion, realm);
+          metricsSchemaBootstrap.bootstrap(realm, targetVersion);
           spec.commandLine()
               .getOut()
               .printf(
                   "Metrics schema v%d successfully bootstrapped for realm '%s'.%n",
-                  latestVersion, realm);
+                  targetVersion, realm);
         } else {
           spec.commandLine()
               .getOut()
               .printf(
                   "Upgrading metrics schema from v%d to v%d for realm '%s'...%n",
-                  currentVersion, latestVersion, realm);
-          metricsSchemaBootstrap.bootstrap(realm);
+                  currentVersion, targetVersion, realm);
+          metricsSchemaBootstrap.bootstrap(realm, targetVersion);
           spec.commandLine()
               .getOut()
               .printf(
                   "Metrics schema successfully upgraded to v%d for realm '%s'.%n",
-                  latestVersion, realm);
+                  targetVersion, realm);
         }
       } catch (Exception e) {
         spec.commandLine()

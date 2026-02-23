@@ -46,21 +46,9 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
   }
 
   @Test
-  public void testBootstrapWithIncludeMetrics(QuarkusMainLauncher launcher) {
-    // Test that --include-metrics option is accepted and bootstrap completes successfully.
-    // The metrics tables are created during bootstrap when this flag is set.
-    LaunchResult result =
-        launcher.launch(
-            "bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t", "--include-metrics");
-    assertThat(result.exitCode()).isEqualTo(0);
-    assertThat(result.getOutput())
-        .contains("Realm 'realm1' successfully bootstrapped.")
-        .contains("Bootstrap completed successfully.");
-  }
-
-  @Test
-  public void testBootstrapWithoutIncludeMetrics(QuarkusMainLauncher launcher) {
-    // Test that bootstrap works without --include-metrics (default behavior)
+  public void testBootstrap(QuarkusMainLauncher launcher) {
+    // Test that bootstrap command works successfully.
+    // Metrics schema is now bootstrapped separately via bootstrap-metrics command.
     LaunchResult result = launcher.launch("bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t");
     assertThat(result.exitCode()).isEqualTo(0);
     assertThat(result.getOutput())

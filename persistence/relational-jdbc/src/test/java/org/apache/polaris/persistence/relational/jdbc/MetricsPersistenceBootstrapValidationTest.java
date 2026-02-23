@@ -128,13 +128,13 @@ class MetricsPersistenceBootstrapValidationTest {
                 if (!JdbcMetricsPersistenceProducer.metricsTableExists(datasourceOperations)) {
                   throw new IllegalStateException(
                       "Metrics persistence is enabled but the metrics tables have not been bootstrapped. "
-                          + "Please run the bootstrap command with the --include-metrics flag to create "
+                          + "Please run the 'bootstrap-metrics' command to create "
                           + "the required schema before enabling this feature.");
                 }
               })
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("metrics tables have not been bootstrapped")
-          .hasMessageContaining("--include-metrics");
+          .hasMessageContaining("bootstrap-metrics");
     }
 
     @Test
