@@ -28,8 +28,8 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -62,14 +62,11 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DefaultAccessDelegationModeResolver.class);
 
-  private final PolarisConfigurationStore configurationStore;
-  private final RealmContext realmContext;
+  private final RealmConfig realmConfig;
 
   @Inject
-  public DefaultAccessDelegationModeResolver(
-      PolarisConfigurationStore configurationStore, RealmContext realmContext) {
-    this.configurationStore = configurationStore;
-    this.realmContext = realmContext;
+  public DefaultAccessDelegationModeResolver(CallContext callContext) {
+    this.realmConfig = callContext.getRealmConfig();
   }
 
   @Override
@@ -105,11 +102,9 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       return resolveVendedCredentialsVsRemoteSigning(catalogEntity);
     }
 
-    // Case 4: Unknown combination - default to VENDED_CREDENTIALS for backward compatibility
-    LOGGER.warn(
-        "Unknown access delegation mode combination: {}, defaulting to VENDED_CREDENTIALS",
-        requestedModes);
-    return VENDED_CREDENTIALS;
+    // Case 4: Unknown combination - reject to prevent unintended credential exposure
+    throw new IllegalArgumentException(
+        "Unsupported access delegation mode combination: " + requestedModes);
   }
 
   /**
@@ -140,10 +135,8 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // enabled.
     boolean credentialSubscopingAuthorized =
         !catalogEntity.isExternal()
-            || configurationStore.getConfiguration(
-                realmContext,
-                catalogEntity,
-                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING);
+            || realmConfig.getConfig(
+                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity);
 
     if (!credentialSubscopingAuthorized) {
       LOGGER.debug(
@@ -156,8 +149,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // Note: This config is realm-level only (not overridable at catalog level) and has a default
     // value
     boolean skipCredentialSubscoping =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+        realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
 
     if (skipCredentialSubscoping) {
       LOGGER.debug("Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");

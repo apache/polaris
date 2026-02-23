@@ -218,10 +218,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   @SuppressWarnings("immutables:incompat")
   private ViewCatalog viewCatalog = null;
 
-  // Resolved access delegation mode, initialized via resolveAccessDelegationModes()
-  @SuppressWarnings("immutables:incompat")
-  private AccessDelegationMode resolvedAccessDelegationMode = null;
-
   private static final String SNAPSHOTS_ALL = "all";
   private static final String SNAPSHOTS_REFS = "refs";
 
@@ -1360,24 +1356,21 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected AccessDelegationMode resolveAccessDelegationModes(
       EnumSet<AccessDelegationMode> requestedModes) {
     if (requestedModes.isEmpty()) {
-      resolvedAccessDelegationMode = AccessDelegationMode.UNKNOWN;
-      return resolvedAccessDelegationMode;
+      return AccessDelegationMode.UNKNOWN;
     }
 
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    resolvedAccessDelegationMode =
+    AccessDelegationMode resolvedMode =
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
-    return resolvedAccessDelegationMode;
-  }
 
-  /**
-   * Returns the resolved access delegation mode. Must be called after {@link
-   * #resolveAccessDelegationModes(EnumSet)} has been invoked.
-   *
-   * @return The resolved access delegation mode, or null if not yet resolved
-   */
-  protected AccessDelegationMode getResolvedAccessDelegationMode() {
-    return resolvedAccessDelegationMode;
+    // TODO remove when remote signing is implemented
+    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
+    Preconditions.checkArgument(
+        resolvedMode != AccessDelegationMode.REMOTE_SIGNING,
+        "Unsupported access delegation mode: %s",
+        AccessDelegationMode.REMOTE_SIGNING);
+
+    return resolvedMode;
   }
 
   @Override
