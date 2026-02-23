@@ -63,7 +63,7 @@ iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceber
 immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
 immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.21.1" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.21.0" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
 jakarta-enterprise-cdi-api = { module = "jakarta.enterprise:jakarta.enterprise.cdi-api", version = "4.1.0" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
