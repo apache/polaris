@@ -27,21 +27,23 @@ import picocli.CommandLine;
  * CLI command to bootstrap the metrics schema independently from the entity schema.
  *
  * <p>This command allows operators to add metrics persistence support to an existing Polaris
- * deployment without re-bootstrapping the entity schema. It supports both fresh installation and
- * upgrading from an older schema version to a newer one.
+ * deployment without re-bootstrapping the entity schema. It is idempotent - running it multiple
+ * times on the same realm has no effect after the first successful run.
+ *
+ * <p>The command always bootstraps to the latest available schema version. If the schema is already
+ * bootstrapped at an older version, it will be upgraded to the latest version.
  *
  * <p>Example usage:
  *
  * <pre>{@code
  * polaris-admin bootstrap-metrics -r my-realm
  * polaris-admin bootstrap-metrics -r realm1 -r realm2
- * polaris-admin bootstrap-metrics -r my-realm --version 2
  * }</pre>
  */
 @CommandLine.Command(
     name = "bootstrap-metrics",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps or upgrades the metrics schema for existing realms.")
+    description = "Bootstraps or upgrades the metrics schema to the latest version.")
 public class BootstrapMetricsCommand extends BaseCommand {
 
   @Inject MetricsSchemaBootstrap metricsSchemaBootstrap;
@@ -53,48 +55,42 @@ public class BootstrapMetricsCommand extends BaseCommand {
       description = "The name of a realm to bootstrap metrics for.")
   List<String> realms;
 
-  @CommandLine.Option(
-      names = {"-v", "--version"},
-      paramLabel = "<version>",
-      description = "The metrics schema version to bootstrap/upgrade to (default: latest).")
-  Integer version;
-
   @Override
   public Integer call() {
     boolean success = true;
-    int targetVersion = (version != null) ? version : metricsSchemaBootstrap.getLatestVersion();
+    int latestVersion = metricsSchemaBootstrap.getLatestVersion();
 
     for (String realm : realms) {
       try {
         int currentVersion = metricsSchemaBootstrap.getCurrentVersion(realm);
-        if (currentVersion >= targetVersion) {
+        if (currentVersion >= latestVersion) {
           spec.commandLine()
               .getOut()
               .printf(
-                  "Metrics schema already at version %d (target: %d) for realm '%s'. Skipping.%n",
-                  currentVersion, targetVersion, realm);
+                  "Metrics schema already at latest version %d for realm '%s'. Skipping.%n",
+                  currentVersion, realm);
         } else if (currentVersion == 0) {
           spec.commandLine()
               .getOut()
-              .printf("Bootstrapping metrics schema v%d for realm '%s'...%n", targetVersion, realm);
+              .printf("Bootstrapping metrics schema v%d for realm '%s'...%n", latestVersion, realm);
           metricsSchemaBootstrap.bootstrap(realm);
           spec.commandLine()
               .getOut()
               .printf(
                   "Metrics schema v%d successfully bootstrapped for realm '%s'.%n",
-                  targetVersion, realm);
+                  latestVersion, realm);
         } else {
           spec.commandLine()
               .getOut()
               .printf(
                   "Upgrading metrics schema from v%d to v%d for realm '%s'...%n",
-                  currentVersion, targetVersion, realm);
+                  currentVersion, latestVersion, realm);
           metricsSchemaBootstrap.bootstrap(realm);
           spec.commandLine()
               .getOut()
               .printf(
                   "Metrics schema successfully upgraded to v%d for realm '%s'.%n",
-                  targetVersion, realm);
+                  latestVersion, realm);
         }
       } catch (Exception e) {
         spec.commandLine()
