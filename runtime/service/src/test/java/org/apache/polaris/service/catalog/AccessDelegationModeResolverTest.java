@@ -22,15 +22,14 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIG
 import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -51,20 +50,20 @@ import org.mockito.quality.Strictness;
 @SuppressWarnings("unchecked")
 class AccessDelegationModeResolverTest {
 
-  @Mock private PolarisConfigurationStore configurationStore;
-  @Mock private RealmContext realmContext;
+  @Mock private RealmConfig realmConfig;
+  @Mock private CallContext callContext;
 
   private AccessDelegationModeResolver resolver;
 
   @BeforeEach
   void setUp() {
-    resolver = new DefaultAccessDelegationModeResolver(configurationStore, realmContext);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    resolver = new DefaultAccessDelegationModeResolver(callContext);
   }
 
   /** Helper to set up config mock for tests that need it */
   private void mockSkipCredentialSubscopingConfig(boolean skipCredentialSubscoping) {
-    when(configurationStore.getConfiguration(
-            any(RealmContext.class), any(FeatureConfiguration.class)))
+    when(realmConfig.getConfig(org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any()))
         .thenReturn(skipCredentialSubscoping);
   }
 
@@ -77,19 +76,13 @@ class AccessDelegationModeResolverTest {
   private void mockConfigForExternalCatalog(
       boolean skipCredentialSubscoping, boolean allowFederatedCredentialVending) {
     // Mock ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING (catalog-level)
-    // Since getConfiguration(RealmContext, CatalogEntity, PolarisConfiguration) is a default
-    // method,
-    // we need to use doAnswer to intercept the default method call
-    org.mockito.Mockito.doReturn(allowFederatedCredentialVending)
-        .when(configurationStore)
-        .getConfiguration(
-            org.mockito.ArgumentMatchers.<RealmContext>any(),
-            org.mockito.ArgumentMatchers.<CatalogEntity>any(),
-            org.mockito.ArgumentMatchers.<FeatureConfiguration<Boolean>>any());
+    when(realmConfig.getConfig(
+            org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any(),
+            org.mockito.ArgumentMatchers.<CatalogEntity>any()))
+        .thenReturn(allowFederatedCredentialVending);
 
     // Mock SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION (realm-level only)
-    when(configurationStore.getConfiguration(
-            any(RealmContext.class), any(FeatureConfiguration.class)))
+    when(realmConfig.getConfig(org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any()))
         .thenReturn(skipCredentialSubscoping);
   }
 
