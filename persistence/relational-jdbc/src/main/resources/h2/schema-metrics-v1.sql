@@ -100,7 +100,8 @@ COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class ent
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
 
 -- Index for query lookups by catalog_id and table_id
--- This index is critical for efficient queries that filter by catalog_id and table_id
+-- This index supports efficient queries that filter by catalog_id and table_id.
+-- Including timestamp_ms enables time-range filtering and sorting without additional index lookups.
 CREATE INDEX IF NOT EXISTS idx_scan_report_lookup ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
 
 -- ============================================================================
@@ -170,5 +171,6 @@ COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
 
 -- Index for query lookups by catalog_id and table_id
--- This index is critical for efficient queries that filter by catalog_id and table_id
+-- This index supports efficient queries that filter by catalog_id and table_id.
+-- Including timestamp_ms enables time-range filtering and sorting without additional index lookups.
 CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
