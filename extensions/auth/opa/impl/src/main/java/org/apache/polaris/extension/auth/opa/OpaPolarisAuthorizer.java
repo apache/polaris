@@ -106,10 +106,10 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  public AuthorizationDecision authorizeDecision(
+  public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
-        "authorizeDecision is not implemented yet for OpaPolarisAuthorizer");
+        "authorize is not implemented yet for OpaPolarisAuthorizer");
   }
 
   /**

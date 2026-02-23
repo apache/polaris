@@ -47,19 +47,19 @@ public interface PolarisAuthorizer {
    * intent captured by {@link AuthorizationRequest} (principal, operation, and target securables).
    */
   @Nonnull
-  AuthorizationDecision authorizeDecision(
+  AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
 
   /**
    * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
    *
-   * <p>Implementations should provide allow/deny decisions via {@link #authorizeDecision}.
+   * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
    */
   default void authorizeOrThrow(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    AuthorizationDecision decision = authorizeDecision(authzState, request);
+    AuthorizationDecision decision = authorize(authzState, request);
     if (!decision.isAllowed()) {
-      String message = decision.getMessageOrDefault("Authorization denied");
+      String message = decision.getMessage().orElse("Authorization denied");
       throw new ForbiddenException("%s", message);
     }
   }

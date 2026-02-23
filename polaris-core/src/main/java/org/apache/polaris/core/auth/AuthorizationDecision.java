@@ -18,40 +18,27 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Optional;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** Authorization decision returned by authorizer implementations. */
-public final class AuthorizationDecision {
-  private static final AuthorizationDecision ALLOW = new AuthorizationDecision(true, null);
+@PolarisImmutable
+public interface AuthorizationDecision {
+  AuthorizationDecision ALLOW = ImmutableAuthorizationDecision.of(true, Optional.empty());
 
-  private final boolean allowed;
-  private final String message;
-
-  private AuthorizationDecision(boolean allowed, @Nullable String message) {
-    this.allowed = allowed;
-    this.message = message;
-  }
-
-  public static AuthorizationDecision allow() {
+  static AuthorizationDecision allow() {
     return ALLOW;
   }
 
-  public static AuthorizationDecision deny(@Nullable String message) {
-    return new AuthorizationDecision(false, message);
+  static AuthorizationDecision deny(@Nullable String message) {
+    return ImmutableAuthorizationDecision.of(false, Optional.ofNullable(message));
   }
 
-  public boolean isAllowed() {
-    return allowed;
-  }
+  @Value.Parameter(order = 1)
+  boolean isAllowed();
 
-  @Nullable
-  public String getMessage() {
-    return message;
-  }
-
-  @Nonnull
-  public String getMessageOrDefault(@Nonnull String defaultMessage) {
-    return message == null ? defaultMessage : message;
-  }
+  @Value.Parameter(order = 2)
+  Optional<String> getMessage();
 }

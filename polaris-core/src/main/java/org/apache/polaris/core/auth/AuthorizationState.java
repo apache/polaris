@@ -26,9 +26,8 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 /**
  * Request-scoped authorization state shared across authorization phases.
  *
- * <p>Distinct from {@link org.apache.polaris.core.context.CallContext}. This state is intended to
- * carry authorization-specific data, such as a {@link PolarisResolutionManifest} created by the
- * caller and populated by the authorizer.
+ * <p>Used to carry authorization-specific data, such as a {@link PolarisResolutionManifest} created
+ * by the caller and populated by the authorizer.
  */
 public class AuthorizationState {
   private final AtomicReference<PolarisResolutionManifest> resolutionManifest =

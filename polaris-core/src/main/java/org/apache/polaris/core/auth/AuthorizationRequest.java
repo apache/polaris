@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * Authorization request inputs for pre-authorization and core authorization.
@@ -61,6 +62,7 @@ public interface AuthorizationRequest {
    * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
   @Nonnull
+  @Value.Derived
   default List<PolarisSecurable> getTargets() {
     return getTargetBindings().stream().map(AuthorizationTargetBinding::getTarget).toList();
   }
@@ -71,6 +73,7 @@ public interface AuthorizationRequest {
    * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
   @Nonnull
+  @Value.Derived
   default List<PolarisSecurable> getSecondaries() {
     List<PolarisSecurable> secondaries = new ArrayList<>();
     for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {

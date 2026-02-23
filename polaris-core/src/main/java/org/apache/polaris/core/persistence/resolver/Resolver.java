@@ -428,29 +428,29 @@ public class Resolver {
 
     // first resolve the principal and determine the set of activated principal roles
     ResolverStatus status =
-        plan.resolveCallerPrincipal
-            ? this.resolveCallerPrincipalAndPrincipalRoles(toValidate, plan.resolvePrincipalRoles)
+        plan.resolveCallerPrincipal()
+            ? this.resolveCallerPrincipalAndPrincipalRoles(toValidate, plan.resolvePrincipalRoles())
             : new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
 
     // if success, continue resolving
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
       // then resolve the reference catalog if one was specified
-      if (plan.resolveReferenceCatalog) {
+      if (plan.resolveReferenceCatalog()) {
         this.diagnostics.checkNotNull(this.referenceCatalogName, "reference_catalog_expected");
         status =
             this.resolveReferenceCatalog(
-                toValidate, this.referenceCatalogName, plan.resolveCatalogRoles);
+                toValidate, this.referenceCatalogName, plan.resolveCatalogRoles());
       }
 
       // if success, continue resolving
       if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
         // then resolve all the additional entities we were asked to resolve
-        if (plan.resolveTopLevelEntities) {
+        if (plan.resolveTopLevelEntities()) {
           status = this.resolveEntities(toValidate, this.entitiesToResolve);
         }
 
         // if success, continue resolving
-        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS && plan.resolvePaths) {
+        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS && plan.resolvePaths()) {
           // finally, resolve all paths we need to resolve
           status = this.resolvePaths(toValidate, this.pathsToResolve);
         }
@@ -888,28 +888,13 @@ public class Resolver {
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
   }
 
-  private static final class ResolvePlan {
-    private final boolean resolveCallerPrincipal;
-    private final boolean resolvePrincipalRoles;
-    private final boolean resolveReferenceCatalog;
-    private final boolean resolveCatalogRoles;
-    private final boolean resolveTopLevelEntities;
-    private final boolean resolvePaths;
-
-    private ResolvePlan(
-        boolean resolveCallerPrincipal,
-        boolean resolvePrincipalRoles,
-        boolean resolveReferenceCatalog,
-        boolean resolveCatalogRoles,
-        boolean resolveTopLevelEntities,
-        boolean resolvePaths) {
-      this.resolveCallerPrincipal = resolveCallerPrincipal;
-      this.resolvePrincipalRoles = resolvePrincipalRoles;
-      this.resolveReferenceCatalog = resolveReferenceCatalog;
-      this.resolveCatalogRoles = resolveCatalogRoles;
-      this.resolveTopLevelEntities = resolveTopLevelEntities;
-      this.resolvePaths = resolvePaths;
-    }
+  private static record ResolvePlan(
+      boolean resolveCallerPrincipal,
+      boolean resolvePrincipalRoles,
+      boolean resolveReferenceCatalog,
+      boolean resolveCatalogRoles,
+      boolean resolveTopLevelEntities,
+      boolean resolvePaths) {
 
     private static ResolvePlan all(@Nullable String referenceCatalogName) {
       boolean hasReferenceCatalog = referenceCatalogName != null;
