@@ -175,9 +175,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
           // Run the metrics schema script if requested
           if (JdbcBootstrapUtils.shouldIncludeMetrics(bootstrapOptions)) {
-            LOGGER.info("Including metrics schema for realm: {}", realm);
+            LOGGER.info(
+                "Including metrics schema v{} for realm: {}",
+                JdbcMetricsSchemaBootstrap.LATEST_METRICS_SCHEMA_VERSION,
+                realm);
             datasourceOperations.executeScript(
-                datasourceOperations.getDatabaseType().openMetricsSchemaResource(1));
+                datasourceOperations
+                    .getDatabaseType()
+                    .openMetricsSchemaResource(
+                        JdbcMetricsSchemaBootstrap.LATEST_METRICS_SCHEMA_VERSION));
           }
         } catch (SQLException e) {
           throw new RuntimeException(
