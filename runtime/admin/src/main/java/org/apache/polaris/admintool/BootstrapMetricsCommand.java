@@ -77,7 +77,7 @@ public class BootstrapMetricsCommand extends BaseCommand {
           spec.commandLine()
               .getOut()
               .printf("Bootstrapping metrics schema v%d for realm '%s'...%n", targetVersion, realm);
-          metricsSchemaBootstrap.bootstrap(realm, targetVersion);
+          metricsSchemaBootstrap.bootstrap(realm);
           spec.commandLine()
               .getOut()
               .printf(
@@ -89,7 +89,7 @@ public class BootstrapMetricsCommand extends BaseCommand {
               .printf(
                   "Upgrading metrics schema from v%d to v%d for realm '%s'...%n",
                   currentVersion, targetVersion, realm);
-          metricsSchemaBootstrap.bootstrap(realm, targetVersion);
+          metricsSchemaBootstrap.bootstrap(realm);
           spec.commandLine()
               .getOut()
               .printf(
