@@ -58,6 +58,8 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 
+  implementation(libs.jakarta.ws.rs.api)
+
   implementation(platform(libs.junit.bom))
   implementation("org.junit.jupiter:junit-jupiter")
   implementation("org.junit.jupiter:junit-jupiter-api")
