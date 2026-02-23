@@ -18,42 +18,19 @@
  */
 package org.apache.polaris.service.persistence;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
-import java.security.Principal;
-import org.apache.polaris.core.persistence.metrics.RequestContextProvider;
+import org.apache.polaris.persistence.relational.jdbc.RequestIdSupplier;
 import org.apache.polaris.service.tracing.RequestIdFilter;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
 import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 
 /**
- * Request-scoped implementation of {@link RequestContextProvider} that obtains context fields from
- * CDI beans and request-scoped objects.
+ * Request-scoped implementation of {@link RequestIdSupplier} that obtains the request ID from the
+ * RESTEasy Reactive request context.
  */
 @RequestScoped
-public class ServiceRequestContextProvider implements RequestContextProvider {
-
-  private final SecurityContext securityContext;
-
-  @Inject
-  public ServiceRequestContextProvider(SecurityContext securityContext) {
-    this.securityContext = securityContext;
-  }
-
-  @Override
-  public String getPrincipalName() {
-    if (securityContext != null) {
-      Principal principal = securityContext.getUserPrincipal();
-      if (principal != null) {
-        return principal.getName();
-      }
-    }
-    return null;
-  }
+public class ServiceRequestIdSupplier implements RequestIdSupplier {
 
   @Override
   public String getRequestId() {
@@ -63,24 +40,6 @@ public class ServiceRequestContextProvider implements RequestContextProvider {
       if (request != null) {
         return (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
       }
-    }
-    return null;
-  }
-
-  @Override
-  public String getOtelTraceId() {
-    SpanContext spanContext = Span.current().getSpanContext();
-    if (spanContext.isValid()) {
-      return spanContext.getTraceId();
-    }
-    return null;
-  }
-
-  @Override
-  public String getOtelSpanId() {
-    SpanContext spanContext = Span.current().getSpanContext();
-    if (spanContext.isValid()) {
-      return spanContext.getSpanId();
     }
     return null;
   }

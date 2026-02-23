@@ -60,7 +60,8 @@ class MetricsReportPersistenceTest {
     datasourceOperations.executeScript(metricsSchemaStream);
 
     metricsPersistence =
-        new JdbcMetricsPersistence(datasourceOperations, "TEST_REALM", RequestContextProvider.NOOP);
+        new JdbcMetricsPersistence(
+            datasourceOperations, "TEST_REALM", null, RequestIdSupplier.NOOP);
   }
 
   @Test

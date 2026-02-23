@@ -27,10 +27,10 @@ import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.List;
 import javax.sql.DataSource;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
-import org.apache.polaris.core.persistence.metrics.RequestContextProvider;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.slf4j.Logger;
@@ -101,28 +101,30 @@ public class JdbcMetricsPersistenceProducer {
    *
    * <p>If metrics tables are not available (determined at startup), this returns {@link
    * MetricsPersistence#NOOP}. Otherwise, it creates a {@link JdbcMetricsPersistence} configured
-   * with the current realm and request context provider.
+   * with the current realm, principal, and request ID supplier.
    *
    * @param realmContext the realm context for the current request
-   * @param requestContextProvider provider for obtaining request context fields
+   * @param polarisPrincipal the authenticated principal for the current request
+   * @param requestIdSupplier supplier for obtaining the server-generated request ID
    * @return a MetricsPersistence implementation for JDBC, or NOOP if not supported
    */
   @Produces
   @RequestScoped
   @Identifier("relational-jdbc")
   public MetricsPersistence metricsPersistence(
-      RealmContext realmContext, Instance<RequestContextProvider> requestContextProvider) {
+      RealmContext realmContext,
+      Instance<PolarisPrincipal> polarisPrincipal,
+      Instance<RequestIdSupplier> requestIdSupplier) {
     if (!metricsSupported || datasourceOperations == null) {
       return MetricsPersistence.NOOP;
     }
 
     String realmId = realmContext.getRealmIdentifier();
-    // Use Instance to safely get RequestContextProvider (may not be available in all contexts)
-    RequestContextProvider provider =
-        requestContextProvider.isResolvable()
-            ? requestContextProvider.get()
-            : RequestContextProvider.NOOP;
-    return new JdbcMetricsPersistence(datasourceOperations, realmId, provider);
+    // Use Instance to safely get dependencies (may not be available in all contexts)
+    PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
+    RequestIdSupplier idSupplier =
+        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
+    return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, idSupplier);
   }
 
   /**

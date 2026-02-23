@@ -76,20 +76,6 @@ public interface MetricsSchemaBootstrap {
   void bootstrap(String realmId);
 
   /**
-   * Bootstraps or upgrades the metrics schema for the specified realm to the target version.
-   *
-   * <p>If the current schema version is less than the target version, this will apply all necessary
-   * migrations to reach the target version.
-   *
-   * @param realmId the realm identifier to bootstrap the metrics schema for
-   * @param targetVersion the target schema version to bootstrap/upgrade to
-   * @throws RuntimeException if the bootstrap operation fails
-   * @throws IllegalArgumentException if targetVersion is less than current version (downgrades not
-   *     supported)
-   */
-  void bootstrap(String realmId, int targetVersion);
-
-  /**
    * Checks if the metrics schema has been bootstrapped for the specified realm.
    *
    * @param realmId the realm identifier to check

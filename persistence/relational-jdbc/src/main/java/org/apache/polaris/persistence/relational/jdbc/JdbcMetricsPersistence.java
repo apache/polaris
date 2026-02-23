@@ -20,6 +20,8 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.SQLException;
@@ -27,11 +29,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
 import org.apache.polaris.core.persistence.metrics.ReportIdToken;
-import org.apache.polaris.core.persistence.metrics.RequestContextProvider;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -58,31 +60,42 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
 
   private final DatasourceOperations datasourceOperations;
   private final String realmId;
-  private final RequestContextProvider requestContextProvider;
+  private final PolarisPrincipal polarisPrincipal;
+  private final RequestIdSupplier requestIdSupplier;
 
   /**
    * Creates a new JdbcMetricsPersistence instance.
    *
    * @param datasourceOperations the datasource operations for JDBC access
    * @param realmId the realm ID for multi-tenancy
-   * @param requestContextProvider provider for obtaining request context fields
+   * @param polarisPrincipal the authenticated principal for the current request
+   * @param requestIdSupplier supplier for obtaining the request ID
    */
   public JdbcMetricsPersistence(
       DatasourceOperations datasourceOperations,
       String realmId,
-      RequestContextProvider requestContextProvider) {
+      PolarisPrincipal polarisPrincipal,
+      RequestIdSupplier requestIdSupplier) {
     this.datasourceOperations = datasourceOperations;
     this.realmId = realmId;
-    this.requestContextProvider = requestContextProvider;
+    this.polarisPrincipal = polarisPrincipal;
+    this.requestIdSupplier = requestIdSupplier;
   }
 
   @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
-    // Obtain request context fields from provider
-    String principalName = requestContextProvider.getPrincipalName();
-    String requestId = requestContextProvider.getRequestId();
-    String otelTraceId = requestContextProvider.getOtelTraceId();
-    String otelSpanId = requestContextProvider.getOtelSpanId();
+    // Obtain request context fields
+    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
+    String requestId = requestIdSupplier.getRequestId();
+    String otelTraceId = null;
+    String otelSpanId = null;
+
+    // Get OpenTelemetry context if available
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      otelTraceId = spanContext.getTraceId();
+      otelSpanId = spanContext.getSpanId();
+    }
 
     ModelScanMetricsReport model =
         SpiModelConverter.toModelScanReport(
@@ -92,11 +105,18 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
 
   @Override
   public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
-    // Obtain request context fields from provider
-    String principalName = requestContextProvider.getPrincipalName();
-    String requestId = requestContextProvider.getRequestId();
-    String otelTraceId = requestContextProvider.getOtelTraceId();
-    String otelSpanId = requestContextProvider.getOtelSpanId();
+    // Obtain request context fields
+    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
+    String requestId = requestIdSupplier.getRequestId();
+    String otelTraceId = null;
+    String otelSpanId = null;
+
+    // Get OpenTelemetry context if available
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      otelTraceId = spanContext.getTraceId();
+      otelSpanId = spanContext.getSpanId();
+    }
 
     ModelCommitMetricsReport model =
         SpiModelConverter.toModelCommitReport(

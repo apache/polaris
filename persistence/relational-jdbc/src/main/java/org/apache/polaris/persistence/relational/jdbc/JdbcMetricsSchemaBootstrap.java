@@ -57,11 +57,7 @@ public class JdbcMetricsSchemaBootstrap implements MetricsSchemaBootstrap {
 
   @Override
   public void bootstrap(String realmId) {
-    bootstrap(realmId, LATEST_METRICS_SCHEMA_VERSION);
-  }
-
-  @Override
-  public void bootstrap(String realmId, int targetVersion) {
+    int targetVersion = LATEST_METRICS_SCHEMA_VERSION;
     if (targetVersion < 1 || targetVersion > LATEST_METRICS_SCHEMA_VERSION) {
       throw new IllegalArgumentException(
           String.format(

@@ -80,6 +80,9 @@ public interface ReportIdToken extends Token {
   /**
    * The timestamp in milliseconds to use as the primary cursor.
    *
+   * <p>This is the number of milliseconds since the Unix epoch (January 1, 1970, 00:00:00 UTC), as
+   * returned by {@link System#currentTimeMillis()}.
+   *
    * <p>Results should start at or after this timestamp. Combined with {@link #reportId()}, this
    * provides a composite cursor for deterministic chronological pagination.
    */
