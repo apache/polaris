@@ -24,18 +24,11 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  // id("polaris-license-report")
+  id("polaris-license-report")
 }
 
 val quarkusRunner by
   configurations.creating { description = "Used to reference the generated runner-jar" }
-
-// Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
@@ -92,6 +85,19 @@ tasks.named<QuarkusRun>("quarkusRun") {
 
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
+val licenseNoticeElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
@@ -99,4 +105,5 @@ artifacts {
     builtBy(quarkusBuild)
   }
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
+  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }
