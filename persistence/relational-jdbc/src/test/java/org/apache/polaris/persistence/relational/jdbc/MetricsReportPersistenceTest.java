@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;

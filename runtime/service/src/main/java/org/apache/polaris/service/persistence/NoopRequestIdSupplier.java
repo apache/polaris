@@ -18,29 +18,23 @@
  */
 package org.apache.polaris.service.persistence;
 
-import jakarta.enterprise.context.RequestScoped;
+import io.quarkus.arc.DefaultBean;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.context.RequestIdSupplier;
-import org.apache.polaris.service.tracing.RequestIdFilter;
-import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
-import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
-import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 
 /**
- * Request-scoped implementation of {@link RequestIdSupplier} that obtains the request ID from the
- * RESTEasy Reactive request context.
+ * Default (fallback) implementation of {@link RequestIdSupplier} that returns null.
+ *
+ * <p>This bean is used when no other RequestIdSupplier is available (e.g., in Admin CLI or other
+ * non-request contexts). It's marked with {@link DefaultBean} so it can be overridden by other
+ * implementations like {@link ServiceRequestIdSupplier}.
  */
-@RequestScoped
-public class ServiceRequestIdSupplier implements RequestIdSupplier {
+@ApplicationScoped
+@DefaultBean
+public class NoopRequestIdSupplier implements RequestIdSupplier {
 
   @Override
   public String getRequestId() {
-    ResteasyReactiveRequestContext context = CurrentRequestManager.get();
-    if (context != null) {
-      ContainerRequestContextImpl request = context.getContainerRequestContext();
-      if (request != null) {
-        return (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      }
-    }
     return null;
   }
 }

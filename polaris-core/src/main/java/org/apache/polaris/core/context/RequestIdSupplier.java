@@ -16,15 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.core.context;
 
 import jakarta.annotation.Nullable;
 
 /**
  * Supplier interface for obtaining the current request ID.
  *
- * <p>This interface allows the JDBC persistence layer to obtain the server-generated request ID
- * without directly depending on runtime/service layer classes.
+ * <p>This interface allows components to obtain the server-generated request ID without directly
+ * depending on runtime/service layer classes. Similar to {@link RealmContext}, this provides a
+ * clean abstraction for request-scoped context.
  */
 public interface RequestIdSupplier {
 

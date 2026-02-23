@@ -29,6 +29,7 @@ import java.util.List;
 import javax.sql.DataSource;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
@@ -103,8 +104,21 @@ public class JdbcMetricsPersistenceProducer {
    * MetricsPersistence#NOOP}. Otherwise, it creates a {@link JdbcMetricsPersistence} configured
    * with the current realm, principal, and request ID supplier.
    *
+   * <p>The {@link PolarisPrincipal} may be null in contexts where authentication is not available,
+   * such as:
+   *
+   * <ul>
+   *   <li>Admin CLI operations (which use a dummy RealmContext)
+   *   <li>Background tasks or scheduled jobs
+   *   <li>Internal system operations
+   * </ul>
+   *
+   * <p>When the principal is null, metrics will be recorded with a null principal name. The {@link
+   * RequestIdSupplier} will use a default no-op implementation if no request-scoped supplier is
+   * available.
+   *
    * @param realmContext the realm context for the current request
-   * @param polarisPrincipal the authenticated principal for the current request
+   * @param polarisPrincipal the authenticated principal for the current request (may be null)
    * @param requestIdSupplier supplier for obtaining the server-generated request ID
    * @return a MetricsPersistence implementation for JDBC, or NOOP if not supported
    */
@@ -114,17 +128,15 @@ public class JdbcMetricsPersistenceProducer {
   public MetricsPersistence metricsPersistence(
       RealmContext realmContext,
       Instance<PolarisPrincipal> polarisPrincipal,
-      Instance<RequestIdSupplier> requestIdSupplier) {
+      RequestIdSupplier requestIdSupplier) {
     if (!metricsSupported || datasourceOperations == null) {
       return MetricsPersistence.NOOP;
     }
 
     String realmId = realmContext.getRealmIdentifier();
-    // Use Instance to safely get dependencies (may not be available in all contexts)
+    // PolarisPrincipal may not be available in all contexts (e.g., Admin CLI)
     PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
-    RequestIdSupplier idSupplier =
-        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
-    return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, idSupplier);
+    return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, requestIdSupplier);
   }
 
   /**
