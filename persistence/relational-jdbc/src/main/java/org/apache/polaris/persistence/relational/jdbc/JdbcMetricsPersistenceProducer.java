@@ -44,8 +44,9 @@ import org.slf4j.LoggerFactory;
  * backend is in use. The schema version is loaded once at startup (application-scoped) to avoid
  * hitting the database on every request.
  *
- * <p>When metrics tables are not available (metrics schema not bootstrapped), this producer returns
- * {@link MetricsPersistence#NOOP} to avoid unnecessary database operations.
+ * <p>This producer fails fast at startup if metrics tables are not available. Users must either
+ * bootstrap the metrics schema using the 'bootstrap-metrics' command or set {@code
+ * polaris.persistence.metrics.type=noop} to disable metrics persistence.
  */
 @ApplicationScoped
 public class JdbcMetricsPersistenceProducer {
@@ -69,40 +70,41 @@ public class JdbcMetricsPersistenceProducer {
    * request. Metrics persistence is supported if the metrics_version table exists and contains a
    * version >= 1.
    *
+   * <p>If metrics tables are not found, this constructor throws {@link IllegalStateException} to
+   * fail fast. Users should either bootstrap the metrics schema using the 'bootstrap-metrics'
+   * command or set {@code polaris.persistence.metrics.type=noop} to disable metrics persistence.
+   *
    * @param dataSource the datasource instance
    * @param relationalJdbcConfiguration JDBC configuration
+   * @throws IllegalStateException if metrics tables are not found or database initialization fails
    */
   @Inject
   public JdbcMetricsPersistenceProducer(
       Instance<DataSource> dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
-    DatasourceOperations ops = null;
-    boolean supported = false;
     try {
-      ops = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+      this.datasourceOperations =
+          new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
       // Check if metrics tables exist by querying the metrics_version table
-      supported = metricsTableExists(ops);
-      if (!supported) {
-        LOGGER.warn(
-            "Metrics tables not found. Metrics persistence operations will be no-ops. "
-                + "Run 'bootstrap-metrics' command to create metrics tables or set "
-                + "polaris.persistence.metrics.type=noop to disable metrics persistence.");
+      this.metricsSupported = metricsTableExists(datasourceOperations);
+      if (!metricsSupported) {
+        throw new IllegalStateException(
+            "Metrics tables not found. The 'relational-jdbc' metrics persistence type requires "
+                + "metrics schema to be bootstrapped. Run 'bootstrap-metrics' command to create "
+                + "metrics tables, or set polaris.persistence.metrics.type=noop to disable metrics "
+                + "persistence.");
       }
     } catch (SQLException e) {
-      LOGGER.warn(
-          "Failed to initialize JdbcMetricsPersistenceProducer due to {}. "
-              + "Metrics persistence will be disabled.",
-          e.getMessage());
+      throw new IllegalStateException(
+          "Failed to initialize JDBC metrics persistence: " + e.getMessage(), e);
     }
-    this.datasourceOperations = ops;
-    this.metricsSupported = supported;
   }
 
   /**
    * Produces a {@link MetricsPersistence} instance for the current request.
    *
-   * <p>If metrics tables are not available (determined at startup), this returns {@link
-   * MetricsPersistence#NOOP}. Otherwise, it creates a {@link JdbcMetricsPersistence} configured
-   * with the current realm, principal, and request ID supplier.
+   * <p>Creates a {@link JdbcMetricsPersistence} configured with the current realm, principal, and
+   * request ID supplier. This method is only called when metrics tables are available (verified at
+   * startup).
    *
    * <p>The {@link PolarisPrincipal} may be null in contexts where authentication is not available,
    * such as:
@@ -120,7 +122,7 @@ public class JdbcMetricsPersistenceProducer {
    * @param realmContext the realm context for the current request
    * @param polarisPrincipal the authenticated principal for the current request (may be null)
    * @param requestIdSupplier supplier for obtaining the server-generated request ID
-   * @return a MetricsPersistence implementation for JDBC, or NOOP if not supported
+   * @return a MetricsPersistence implementation for JDBC
    */
   @Produces
   @RequestScoped
@@ -129,10 +131,6 @@ public class JdbcMetricsPersistenceProducer {
       RealmContext realmContext,
       Instance<PolarisPrincipal> polarisPrincipal,
       RequestIdSupplier requestIdSupplier) {
-    if (!metricsSupported || datasourceOperations == null) {
-      return MetricsPersistence.NOOP;
-    }
-
     String realmId = realmContext.getRealmIdentifier();
     // PolarisPrincipal may not be available in all contexts (e.g., Admin CLI)
     PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
