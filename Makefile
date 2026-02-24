@@ -222,14 +222,17 @@ helm-doc-generate: DEPENDENCIES := helm-docs
 .PHONY: helm-doc-generate
 helm-doc-generate: check-dependencies ## Generate Helm chart documentation
 	@echo "--- Generating Helm documentation ---"
-	@helm-docs --chart-search-root=helm --template-files helm.md.gotmpl --output-file ../../site/content/in-dev/unreleased/helm.md
+	@helm-docs --chart-search-root=helm \
+       --template-files site/content/in-dev/unreleased/helm-chart/reference.md.gotmpl \
+       --output-file ../../site/content/in-dev/unreleased/helm-chart/reference.md \
+       --sort-values-order=file
 	@echo "--- Helm documentation generated and copied ---"
 
 helm-doc-verify: DEPENDENCIES := helm-docs git
 .PHONY: helm-doc-verify
 helm-doc-verify: helm-doc-generate ## Verify Helm chart documentation is up to date
 	@echo "--- Verifying Helm documentation is up to date ---"
-	@if ! git diff --exit-code site/content/in-dev/unreleased/helm.md; then \
+	@if ! git diff --exit-code site/content/in-dev/unreleased/helm-chart/reference.md; then \
 		echo "ERROR: Helm documentation is out of date. Please run 'make helm-doc-generate' and commit the changes."; \
 		exit 1; \
 	fi
@@ -289,6 +292,34 @@ helm-unittest: helm-install-plugins ## Run Helm chart unittest
 	@echo "--- Running Helm chart unittest ---"
 	@helm unittest helm/polaris
 	@echo "--- Helm chart unittest complete ---"
+
+helm-fixtures: DEPENDENCIES := kubectl
+.PHONY: helm-fixtures
+helm-fixtures: check-dependencies ## Create namespace and deploy fixtures for Helm chart testing
+	@echo "--- Creating namespace and deploying fixtures ---"
+	@kubectl create namespace polaris --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+	@echo "--- Waiting for database pods to be ready ---"
+	@kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+	@kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=mongodb --timeout=120s
+	@echo "--- Fixtures deployed and ready ---"
+
+helm-fixtures-cleanup: DEPENDENCIES := kubectl
+.PHONY: helm-fixtures-cleanup
+helm-fixtures-cleanup: check-dependencies ## Remove fixtures and namespace for Helm chart testing
+	@echo "--- Removing fixtures and namespace ---"
+	@kubectl delete namespace polaris --wait=true --ignore-not-found
+	@echo "--- Fixtures and namespace removed ---"
+
+helm-integration-test: DEPENDENCIES := ct
+.PHONY: helm-integration-test
+helm-integration-test: build minikube-load-images helm-fixtures check-dependencies ## Run Helm chart integration tests
+	@echo "--- Running Helm chart integration tests ---"
+	@ct install --namespace polaris --charts ./helm/polaris
+	@echo "--- Helm chart integration tests complete ---"
+
+.PHONY: helm
+helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run most Helm targets (schema, docs, unittest, lint) excluding integration tests
 
 ##@ Minikube
 
