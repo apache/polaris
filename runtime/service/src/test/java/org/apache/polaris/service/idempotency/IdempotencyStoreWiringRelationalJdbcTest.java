@@ -76,7 +76,7 @@ class IdempotencyStoreWiringRelationalJdbcTest {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     var r = store.reserve("test", "K1", "op", "catalogs/1/tables/ns.tbl", exp, "A", now);
-    assertThat(r.getType()).isEqualTo(ReserveResultType.OWNED);
+    assertThat(r.type()).isEqualTo(ReserveResultType.OWNED);
   }
 
   private static void ensureIdempotencyTableExists(DataSource ds) {
