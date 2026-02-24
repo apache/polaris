@@ -35,4 +35,3 @@ public class NoSqlInMemoryPurgeCommandTest extends PurgeCommandTestBase {
     }
   }
 }
-

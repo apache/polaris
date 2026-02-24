@@ -46,4 +46,3 @@ public interface MetricsPersistenceConfiguration {
   @WithDefault("noop")
   String type();
 }
-

@@ -33,4 +33,3 @@ public class NoSqlInMemoryAdminProfile implements QuarkusTestProfile {
         "noop");
   }
 }
-

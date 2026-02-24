@@ -45,4 +45,3 @@ public class NoOpMetricsSchemaBootstrapProducer {
     return NoOpMetricsSchemaBootstrap.INSTANCE;
   }
 }
-

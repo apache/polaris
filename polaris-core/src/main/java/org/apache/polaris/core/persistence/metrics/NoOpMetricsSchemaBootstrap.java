@@ -55,4 +55,3 @@ public final class NoOpMetricsSchemaBootstrap implements MetricsSchemaBootstrap 
     return 0;
   }
 }
-

@@ -31,7 +31,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 import org.apache.polaris.persistence.relational.jdbc.models.MetricsSchemaVersion;
 import org.slf4j.Logger;
@@ -139,8 +138,6 @@ public class JdbcMetricsPersistenceProducer {
         requestIdSupplier.isResolvable() ? requestIdSupplier.get() : () -> "no-request-id";
     return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, supplier);
   }
-
-
 
   /**
    * Checks if the metrics tables have been bootstrapped by querying the metrics_version table and

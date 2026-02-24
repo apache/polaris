@@ -23,4 +23,3 @@ import org.apache.polaris.admintool.BootstrapCommandTestBase;
 
 @TestProfile(NoSqlInMemoryAdminProfile.class)
 public class NoSqlInMemoryBootstrapCommandTest extends BootstrapCommandTestBase {}
-

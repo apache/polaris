@@ -104,7 +104,8 @@ public class RelationalJdbcBootstrapMetricsCommandTest extends BootstrapMetricsC
     assertThat(metricsResult.getOutput())
         .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm3'...")
         .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm3'.")
-        .contains("Metrics schema already at version 1 (target: 1) for realm 'metrics-realm4'. Skipping.")
+        .contains(
+            "Metrics schema already at version 1 (target: 1) for realm 'metrics-realm4'. Skipping.")
         .contains("Metrics bootstrap completed successfully.");
   }
 
