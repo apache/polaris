@@ -20,7 +20,7 @@
 title: Configuring Polaris for Production
 linkTitle: Production Configuration
 type: docs
-weight: 600
+weight: 200
 ---
 
 The default server configuration is intended for development and testing. When you deploy Polaris in production,
@@ -32,7 +32,7 @@ review and apply the following checklist:
 - [ ] Disable local FILE storage
 
 {{< alert note >}}
-If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../helm-chart/production" %}}) guide as well.
+If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../../helm-chart/production" %}}) guide as well.
 {{< /alert >}}
 
 ### Configure OAuth2
@@ -236,7 +236,7 @@ profile (for example, `%prod`).
 
 ### Upgrade Considerations
 
-The [Polaris Evolution](../evolution) page discusses backward compatibility and
+The [Polaris Evolution](../../evolution) page discusses backward compatibility and
 upgrade concerns.
 
 ### Configuring Polaris for Cloud Storages

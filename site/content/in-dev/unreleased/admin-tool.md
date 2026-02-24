@@ -73,10 +73,11 @@ configuration can be done via environment variables or system properties.
 At a minimum, it is necessary to configure the Polaris Admin Tool to connect to the same database
 used by the Polaris server.
 
-See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the
-database connection.
+See the [Metastores]({{% ref "metastores" %}}) section for more information on configuring the
+database connection. See [Configuration Reference]({{% ref "configuration/configuration-reference"
+%}}) for the full list of configuration options.
 
-Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
+Note: Polaris will always create the schema `polaris_schema` during bootstrap under the configured database.
 
 ## Bootstrapping Realms and Principal Credentials
 

@@ -57,6 +57,13 @@ jobs:
             -x :polaris-admin:test \
             -x intTest \
             --continue
+      - name: Verify configuration reference is up to date
+        run: |
+          ./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
+          if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/; then
+            echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
+            exit 1
+          fi
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
