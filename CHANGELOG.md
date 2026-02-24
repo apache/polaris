@@ -58,6 +58,28 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 - Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
+- Added support for persisting Iceberg metrics to a separate database using named datasources. Metrics can now be stored in the same database (different schema) or a completely separate database from entity data. To enable metrics persistence:
+  1. Configure a named datasource `metrics` in your application properties:
+     ```properties
+     # Same database, different schema
+     quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris?currentSchema=metrics
+     quarkus.datasource.metrics.username=polaris
+     quarkus.datasource.metrics.password=secret
+
+     # Or separate database
+     quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris_metrics
+     quarkus.datasource.metrics.username=polaris
+     quarkus.datasource.metrics.password=secret
+     ```
+  2. Set the metrics persistence type:
+     ```properties
+     polaris.metrics.persistence.type=relational-jdbc
+     ```
+  3. Bootstrap the schema (metrics tables are created automatically):
+     ```bash
+     polaris-admin bootstrap -r my-realm -c my-realm,root,secret
+     ```
+  If the named datasource is not configured, metrics persistence will use a no-op implementation (metrics are discarded).
 
 ### Changes
 

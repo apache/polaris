@@ -48,7 +48,7 @@ public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase
   @Test
   public void testBootstrap(QuarkusMainLauncher launcher) {
     // Test that bootstrap command works successfully.
-    // Metrics schema is now bootstrapped separately via bootstrap-metrics command.
+    // Metrics tables are now part of the base schema (v4) and bootstrapped automatically.
     LaunchResult result = launcher.launch("bootstrap", "-r", "realm1", "-c", "realm1,root,s3cr3t");
     assertThat(result.exitCode()).isEqualTo(0);
     assertThat(result.getOutput())

@@ -51,9 +51,9 @@ import org.slf4j.LoggerFactory;
  * types ({@link ScanMetricsRecord}, {@link CommitMetricsRecord}) and JDBC model types ({@link
  * ModelScanMetricsReport}, {@link ModelCommitMetricsReport}).
  *
- * <p>This implementation assumes that metrics tables exist. The producer ({@link
- * JdbcMetricsPersistenceProducer}) checks for metrics table availability at startup and returns
- * {@link MetricsPersistence#NOOP} if tables are not present.
+ * <p>This implementation assumes that metrics tables exist. The producer ({@link ServiceProducers})
+ * checks for metrics table availability at startup and returns {@link MetricsPersistence#NOOP} if
+ * tables are not present.
  */
 public class JdbcMetricsPersistence implements MetricsPersistence {
 
@@ -203,6 +203,9 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
 
   // ========== Internal JDBC methods ==========
 
+  /** Conflict columns for metrics tables (realm_id, report_id form the composite primary key). */
+  private static final List<String> METRICS_CONFLICT_COLUMNS = List.of("realm_id", "report_id");
+
   /**
    * Writes a scan metrics report to the database.
    *
@@ -214,11 +217,12 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
     try {
       PreparedQuery pq =
-          buildIdempotentInsertQuery(
+          QueryGenerator.generateIdempotentInsertQuery(
               ModelScanMetricsReport.ALL_COLUMNS,
               ModelScanMetricsReport.TABLE_NAME,
               report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList(),
-              datasourceOperations.getDatabaseType());
+              datasourceOperations.getDatabaseType(),
+              METRICS_CONFLICT_COLUMNS);
       // Note: updated may be 0 if the report already exists (idempotent insert)
       datasourceOperations.executeUpdate(pq);
     } catch (SQLException e) {
@@ -238,61 +242,18 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
   void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
     try {
       PreparedQuery pq =
-          buildIdempotentInsertQuery(
+          QueryGenerator.generateIdempotentInsertQuery(
               ModelCommitMetricsReport.ALL_COLUMNS,
               ModelCommitMetricsReport.TABLE_NAME,
               report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList(),
-              datasourceOperations.getDatabaseType());
+              datasourceOperations.getDatabaseType(),
+              METRICS_CONFLICT_COLUMNS);
       // Note: updated may be 0 if the report already exists (idempotent insert)
       datasourceOperations.executeUpdate(pq);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
     }
-  }
-
-  /**
-   * Builds an idempotent INSERT query that ignores conflicts on the primary key.
-   *
-   * <p>This ensures that duplicate reportIds are silently ignored, fulfilling the idempotency
-   * contract of the {@link MetricsPersistence} interface.
-   *
-   * @param columns the column names
-   * @param tableName the table name
-   * @param values the values to insert
-   * @param databaseType the database type (for dialect-specific syntax)
-   * @return a PreparedQuery with the idempotent INSERT statement
-   */
-  private static PreparedQuery buildIdempotentInsertQuery(
-      List<String> columns, String tableName, List<Object> values, DatabaseType databaseType) {
-    String columnList = String.join(", ", columns);
-    String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
-
-    String sql;
-    if (databaseType == DatabaseType.H2) {
-      // H2 uses MERGE INTO for idempotent inserts, but INSERT ... ON CONFLICT also works in newer
-      // versions
-      // Using standard SQL MERGE syntax for H2 compatibility
-      sql =
-          "MERGE INTO "
-              + QueryGenerator.getFullyQualifiedTableName(tableName)
-              + " ("
-              + columnList
-              + ") KEY (realm_id, report_id) VALUES ("
-              + placeholders
-              + ")";
-    } else {
-      // PostgreSQL: Use INSERT ... ON CONFLICT DO NOTHING
-      sql =
-          "INSERT INTO "
-              + QueryGenerator.getFullyQualifiedTableName(tableName)
-              + " ("
-              + columnList
-              + ") VALUES ("
-              + placeholders
-              + ") ON CONFLICT (realm_id, report_id) DO NOTHING";
-    }
-    return new PreparedQuery(sql, values);
   }
 
   /**

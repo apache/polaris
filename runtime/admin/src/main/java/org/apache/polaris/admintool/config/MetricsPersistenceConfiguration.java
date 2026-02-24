@@ -22,24 +22,21 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
 /**
- * Configuration for selecting the {@link
- * org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap} implementation in the admin
- * tool.
+ * Configuration for selecting the metrics persistence implementation in the admin tool.
  *
  * <p>This configuration allows selecting the metrics persistence backend independently from the
  * entity metastore. Available types include:
  *
  * <ul>
- *   <li>{@code noop} (default) - No metrics schema, bootstrap is a no-op
- *   <li>{@code relational-jdbc} - JDBC metrics schema (requires metrics tables)
+ *   <li>{@code noop} (default) - No metrics persistence, bootstrap is a no-op
+ *   <li>{@code relational-jdbc} - JDBC metrics persistence (metrics tables in main schema)
  * </ul>
  */
 @ConfigMapping(prefix = "polaris.metrics.persistence")
 public interface MetricsPersistenceConfiguration {
 
   /**
-   * The type of the metrics persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap} identifier.
+   * The type of the metrics persistence to use.
    *
    * <p>Defaults to {@code noop} which provides a no-op bootstrap implementation.
    */

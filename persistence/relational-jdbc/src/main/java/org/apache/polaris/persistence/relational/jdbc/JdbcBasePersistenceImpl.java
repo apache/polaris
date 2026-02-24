@@ -21,6 +21,8 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 import com.google.common.base.Preconditions;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.Connection;
@@ -39,6 +41,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -58,9 +62,15 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
+import org.apache.polaris.core.persistence.metrics.ReportIdToken;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -69,16 +79,19 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+public class JdbcBasePersistenceImpl
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -88,6 +101,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
+
+  // Optional: Separate datasource for metrics operations (may be null if not configured)
+  @Nullable private final DatasourceOperations metricsDatasourceOperations;
+  // Request-scoped fields for metrics - set via setMetricsContext
+  @Nullable private PolarisPrincipal polarisPrincipal;
+  @Nullable private RequestIdSupplier requestIdSupplier;
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
@@ -99,12 +118,55 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
+    this(
+        diagnostics,
+        databaseOperations,
+        secretsGenerator,
+        storageIntegrationProvider,
+        realmId,
+        schemaVersion,
+        null);
+  }
+
+  public JdbcBasePersistenceImpl(
+      PolarisDiagnostics diagnostics,
+      DatasourceOperations databaseOperations,
+      PrincipalSecretsGenerator secretsGenerator,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      String realmId,
+      int schemaVersion,
+      @Nullable DatasourceOperations metricsDatasourceOperations) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
+    this.metricsDatasourceOperations = metricsDatasourceOperations;
+  }
+
+  /**
+   * Sets the request-scoped context for metrics operations. This must be called before using
+   * metrics persistence methods.
+   *
+   * @param polarisPrincipal the authenticated principal for the current request
+   * @param requestIdSupplier supplier for obtaining the request ID
+   */
+  public void setMetricsContext(
+      @Nullable PolarisPrincipal polarisPrincipal, @Nullable RequestIdSupplier requestIdSupplier) {
+    this.polarisPrincipal = polarisPrincipal;
+    this.requestIdSupplier = requestIdSupplier;
+  }
+
+  /** Returns true if this persistence instance is configured with a metrics datasource. */
+  public boolean hasMetricsDatasource() {
+    return metricsDatasourceOperations != null;
+  }
+
+  /** Returns the metrics datasource operations, or null if not configured. */
+  @Nullable
+  public DatasourceOperations getMetricsDatasourceOperations() {
+    return metricsDatasourceOperations;
   }
 
   @Override
@@ -1276,5 +1338,303 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @FunctionalInterface
   private interface QueryAction {
     Integer apply(Connection connection, QueryGenerator.PreparedQuery query) throws SQLException;
+  }
+
+  // ========== MetricsPersistence implementation ==========
+
+  /**
+   * Returns the datasource to use for metrics operations. Uses metricsDatasourceOperations if
+   * configured, otherwise falls back to datasourceOperations.
+   */
+  private DatasourceOperations getMetricsDatasource() {
+    return metricsDatasourceOperations != null ? metricsDatasourceOperations : datasourceOperations;
+  }
+
+  @Override
+  public void writeScanReport(@Nonnull ScanMetricsRecord record) {
+    if (metricsDatasourceOperations == null) {
+      // No metrics datasource configured - silently ignore
+      return;
+    }
+
+    // Obtain request context fields
+    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
+    String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;
+    String otelTraceId = null;
+    String otelSpanId = null;
+
+    // Get OpenTelemetry context if available
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      otelTraceId = spanContext.getTraceId();
+      otelSpanId = spanContext.getSpanId();
+    }
+
+    ModelScanMetricsReport model =
+        SpiModelConverter.toModelScanReport(
+            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
+    writeScanMetricsReport(model);
+  }
+
+  @Override
+  public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+    if (metricsDatasourceOperations == null) {
+      // No metrics datasource configured - silently ignore
+      return;
+    }
+
+    // Obtain request context fields
+    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
+    String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;
+    String otelTraceId = null;
+    String otelSpanId = null;
+
+    // Get OpenTelemetry context if available
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      otelTraceId = spanContext.getTraceId();
+      otelSpanId = spanContext.getSpanId();
+    }
+
+    ModelCommitMetricsReport model =
+        SpiModelConverter.toModelCommitReport(
+            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
+    writeCommitMetricsReport(model);
+  }
+
+  @Override
+  @Nonnull
+  public Page<ScanMetricsRecord> queryScanReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    if (metricsDatasourceOperations == null) {
+      return Page.fromItems(List.of());
+    }
+
+    // catalogId and tableId are required for queries
+    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
+      return Page.fromItems(List.of());
+    }
+
+    int limit = pageToken.pageSize().orElse(100);
+    Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
+    Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
+
+    // Extract composite cursor from page token if present
+    var cursorToken = pageToken.valueAs(ReportIdToken.class);
+    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
+    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
+
+    List<ModelScanMetricsReport> models =
+        queryScanMetricsReports(
+            criteria.catalogId().getAsLong(),
+            criteria.tableId().getAsLong(),
+            startTimeMs,
+            endTimeMs,
+            cursorTimestampMs,
+            cursorReportId,
+            limit);
+
+    List<ScanMetricsRecord> records =
+        models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
+
+    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
+
+    return Page.page(pageToken, records, nextToken);
+  }
+
+  @Override
+  @Nonnull
+  public Page<CommitMetricsRecord> queryCommitReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    if (metricsDatasourceOperations == null) {
+      return Page.fromItems(List.of());
+    }
+
+    // catalogId and tableId are required for queries
+    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
+      return Page.fromItems(List.of());
+    }
+
+    int limit = pageToken.pageSize().orElse(100);
+    Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
+    Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
+
+    // Extract composite cursor from page token if present
+    var cursorToken = pageToken.valueAs(ReportIdToken.class);
+    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
+    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
+
+    List<ModelCommitMetricsReport> models =
+        queryCommitMetricsReports(
+            criteria.catalogId().getAsLong(),
+            criteria.tableId().getAsLong(),
+            startTimeMs,
+            endTimeMs,
+            cursorTimestampMs,
+            cursorReportId,
+            limit);
+
+    List<CommitMetricsRecord> records =
+        models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
+
+    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
+
+    return Page.page(pageToken, records, nextToken);
+  }
+
+  // ========== Internal metrics JDBC methods ==========
+
+  private void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+    try {
+      DatasourceOperations metricsDs = getMetricsDatasource();
+      PreparedQuery pq =
+          buildIdempotentMetricsInsertQuery(
+              ModelScanMetricsReport.ALL_COLUMNS,
+              ModelScanMetricsReport.TABLE_NAME,
+              report.toMap(metricsDs.getDatabaseType()).values().stream().toList(),
+              metricsDs.getDatabaseType());
+      metricsDs.executeUpdate(pq);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  private void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+    try {
+      DatasourceOperations metricsDs = getMetricsDatasource();
+      PreparedQuery pq =
+          buildIdempotentMetricsInsertQuery(
+              ModelCommitMetricsReport.ALL_COLUMNS,
+              ModelCommitMetricsReport.TABLE_NAME,
+              report.toMap(metricsDs.getDatabaseType()).values().stream().toList(),
+              metricsDs.getDatabaseType());
+      metricsDs.executeUpdate(pq);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  private static PreparedQuery buildIdempotentMetricsInsertQuery(
+      List<String> columns, String tableName, List<Object> values, DatabaseType databaseType) {
+    String columnList = String.join(", ", columns);
+    String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
+
+    String sql;
+    if (databaseType == DatabaseType.H2) {
+      sql =
+          "MERGE INTO "
+              + QueryGenerator.getFullyQualifiedTableName(tableName)
+              + " ("
+              + columnList
+              + ") KEY (realm_id, report_id) VALUES ("
+              + placeholders
+              + ")";
+    } else {
+      sql =
+          "INSERT INTO "
+              + QueryGenerator.getFullyQualifiedTableName(tableName)
+              + " ("
+              + columnList
+              + ") VALUES ("
+              + placeholders
+              + ") ON CONFLICT (realm_id, report_id) DO NOTHING";
+    }
+    return new PreparedQuery(sql, values);
+  }
+
+  @Nonnull
+  private List<ModelScanMetricsReport> queryScanMetricsReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long startTimeMs,
+      @Nullable Long endTimeMs,
+      @Nullable Long cursorTimestampMs,
+      @Nullable String cursorReportId,
+      int limit) {
+    try {
+      DatasourceOperations metricsDs = getMetricsDatasource();
+      StringBuilder whereClause = new StringBuilder();
+      whereClause.append("realm_id = ? AND catalog_id = ? AND table_id = ?");
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, tableId));
+
+      if (startTimeMs != null) {
+        whereClause.append(" AND timestamp_ms >= ?");
+        values.add(startTimeMs);
+      }
+      if (endTimeMs != null) {
+        whereClause.append(" AND timestamp_ms < ?");
+        values.add(endTimeMs);
+      }
+      if (cursorTimestampMs != null && cursorReportId != null) {
+        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
+        values.add(cursorTimestampMs);
+        values.add(cursorTimestampMs);
+        values.add(cursorReportId);
+      }
+
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
+              + " WHERE "
+              + whereClause
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
+              + limit;
+
+      PreparedQuery query = new PreparedQuery(sql, values);
+      var results = metricsDs.executeSelect(query, ModelScanMetricsReport.CONVERTER);
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to query scan metrics reports due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nonnull
+  private List<ModelCommitMetricsReport> queryCommitMetricsReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long startTimeMs,
+      @Nullable Long endTimeMs,
+      @Nullable Long cursorTimestampMs,
+      @Nullable String cursorReportId,
+      int limit) {
+    try {
+      DatasourceOperations metricsDs = getMetricsDatasource();
+      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, tableId));
+      StringBuilder whereClause = new StringBuilder();
+      whereClause.append("realm_id = ? AND catalog_id = ? AND table_id = ?");
+
+      if (startTimeMs != null) {
+        whereClause.append(" AND timestamp_ms >= ?");
+        values.add(startTimeMs);
+      }
+      if (endTimeMs != null) {
+        whereClause.append(" AND timestamp_ms < ?");
+        values.add(endTimeMs);
+      }
+      if (cursorTimestampMs != null && cursorReportId != null) {
+        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
+        values.add(cursorTimestampMs);
+        values.add(cursorTimestampMs);
+        values.add(cursorReportId);
+      }
+
+      String sql =
+          "SELECT * FROM "
+              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
+              + " WHERE "
+              + whereClause
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
+              + limit;
+
+      PreparedQuery query = new PreparedQuery(sql, values);
+      var results = metricsDs.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
+      return results == null ? Collections.emptyList() : results;
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to query commit metrics reports due to %s", e.getMessage()), e);
+    }
   }
 }

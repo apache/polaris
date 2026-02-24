@@ -33,7 +33,6 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -46,15 +45,6 @@ public class AdminToolProducers {
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories
         .select(Identifier.Literal.of(persistenceConfiguration.type()))
-        .get();
-  }
-
-  @Produces
-  public MetricsSchemaBootstrap metricsSchemaBootstrap(
-      MetricsPersistenceConfiguration metricsPersistenceConfiguration,
-      @Any Instance<MetricsSchemaBootstrap> metricsSchemaBootstraps) {
-    return metricsSchemaBootstraps
-        .select(Identifier.Literal.of(metricsPersistenceConfiguration.type()))
         .get();
   }
 

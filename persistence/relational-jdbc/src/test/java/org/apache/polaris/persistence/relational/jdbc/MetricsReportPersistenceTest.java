@@ -51,14 +51,10 @@ class MetricsReportPersistenceTest {
 
     datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
 
-    // Execute schema v4 for entity tables
+    // Execute schema v4 which includes both entity tables and metrics tables
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
-
-    // Execute metrics schema v1 for metrics tables
-    InputStream metricsSchemaStream = classLoader.getResourceAsStream("h2/schema-metrics-v1.sql");
-    datasourceOperations.executeScript(metricsSchemaStream);
 
     metricsPersistence =
         new JdbcMetricsPersistence(

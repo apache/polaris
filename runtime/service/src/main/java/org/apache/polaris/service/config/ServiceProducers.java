@@ -38,11 +38,13 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -445,6 +447,60 @@ public class ServiceProducers {
   @RequestScoped
   public MetricsPersistence noopMetricsPersistence() {
     return MetricsPersistence.NOOP;
+  }
+
+  /**
+   * Produces a {@link MetricsPersistence} instance for JDBC-based metrics storage.
+   *
+   * <p>This producer retrieves the {@link
+   * org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl} from the metastore
+   * factory and uses it as the MetricsPersistence. The JdbcBasePersistenceImpl implements
+   * MetricsPersistence with a separate metricsDatasourceOperations field.
+   *
+   * <p>Configuration example:
+   *
+   * <pre>
+   * # Same database, different schema
+   * quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris?currentSchema=metrics
+   *
+   * # Separate database
+   * quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris_metrics
+   * </pre>
+   *
+   * @param metaStoreManagerFactory the metastore manager factory
+   * @param realmContext the realm context for the current request
+   * @param polarisPrincipal the authenticated principal for the current request (may be null)
+   * @param requestIdSupplier supplier for obtaining the server-generated request ID
+   * @return a MetricsPersistence implementation for JDBC
+   */
+  @Produces
+  @Identifier("relational-jdbc")
+  @RequestScoped
+  public MetricsPersistence jdbcMetricsPersistence(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      RealmContext realmContext,
+      Instance<PolarisPrincipal> polarisPrincipal,
+      Instance<RequestIdSupplier> requestIdSupplier) {
+
+    BasePersistence persistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    if (!(persistence
+        instanceof
+        org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl jdbcPersistence)) {
+      return MetricsPersistence.NOOP;
+    }
+
+    // If no metrics datasource is configured, return NOOP
+    if (!jdbcPersistence.hasMetricsDatasource()) {
+      return MetricsPersistence.NOOP;
+    }
+
+    // Set the request-scoped context for metrics operations
+    PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
+    RequestIdSupplier supplier =
+        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : () -> "no-request-id";
+    jdbcPersistence.setMetricsContext(principal, supplier);
+
+    return jdbcPersistence;
   }
 
   @Produces
