@@ -24,7 +24,7 @@ set -o pipefail
 cd "$(dirname "$0")/.."
 
 if [[ ! -d content/releases ]] ; then
-  echo "Directory content/releases does not exists, run bin/checkout-releases.sh first."
+  echo "Directory content/releases does not exist, run bin/checkout-releases.sh first."
   exit 1
 fi
 

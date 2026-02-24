@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.LanguageCode }}">
+  <head>
+    <title>{{ .Title }}</title>
+    <link rel="canonical" href="{{ .Params.redirect_to }}">
+    <meta name="robots" content="noindex">
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url={{ .Params.redirect_to }}">
+  </head>
+  <body>
+    <p>Redirecting to <a href="{{ .Params.redirect_to }}">{{ .Params.redirect_to }}</a>...</p>
+  </body>
+</html>
+
