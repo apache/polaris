@@ -23,11 +23,13 @@ import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSes
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -97,8 +99,13 @@ public class AwsCredentialsStorageIntegration
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    List<String> sessionTagFieldNames =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    Set<SessionTagField> enabledSessionTagFields =
+        sessionTagFieldNames.stream()
+            .map(SessionTagField::fromConfigName)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
@@ -121,12 +128,13 @@ public class AwsCredentialsStorageIntegration
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
-      // Add session tags when the feature is enabled.
-      // Note: The trace ID is controlled at the source (StorageAccessConfigProvider).
-      // If INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, the context will contain the trace ID.
-      if (includeSessionTags) {
+      // Add session tags for the configured fields.
+      // Note: trace_id is only present in context when the caller has included it
+      // (StorageAccessConfigProvider populates it when "trace_id" is in enabledSessionTagFields).
+      if (!enabledSessionTagFields.isEmpty()) {
         List<Tag> sessionTags =
-            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
+            buildSessionTags(
+                polarisPrincipal.getName(), credentialVendingContext, enabledSessionTagFields);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support

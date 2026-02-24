@@ -29,6 +29,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * <p>When session tags are enabled, this context provides:
  *
  * <ul>
+ *   <li>{@code realm} - The realm identifier for the request
  *   <li>{@code catalogName} - The name of the catalog vending credentials
  *   <li>{@code namespace} - The namespace/database being accessed (e.g., "db.schema")
  *   <li>{@code tableName} - The name of the table being accessed
@@ -44,12 +45,16 @@ public interface CredentialVendingContext {
 
   // Default session tag keys for cloud provider credentials (e.g., AWS STS session tags).
   // These appear in cloud audit logs (e.g., CloudTrail) for correlation purposes.
+  String TAG_KEY_REALM = "polaris:realm";
   String TAG_KEY_CATALOG = "polaris:catalog";
   String TAG_KEY_NAMESPACE = "polaris:namespace";
   String TAG_KEY_TABLE = "polaris:table";
   String TAG_KEY_PRINCIPAL = "polaris:principal";
   String TAG_KEY_ROLES = "polaris:roles";
   String TAG_KEY_TRACE_ID = "polaris:trace_id";
+
+  /** The realm identifier for the request. */
+  Optional<String> realm();
 
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
@@ -103,6 +108,8 @@ public interface CredentialVendingContext {
   }
 
   interface Builder {
+    Builder realm(Optional<String> realm);
+
     Builder catalogName(Optional<String> catalogName);
 
     Builder namespace(Optional<String> namespace);

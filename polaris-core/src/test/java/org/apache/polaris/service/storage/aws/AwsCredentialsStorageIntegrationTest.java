@@ -19,8 +19,7 @@
 package org.apache.polaris.service.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
-import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
-import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS;
+import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
@@ -68,8 +67,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public static final RealmConfig PRINCIPAL_INCLUDER_REALM_CONFIG =
       enabledFeatures(INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
 
+  // Session tags enabled with the default fields: catalog, namespace, table, principal, roles
   private static final RealmConfig SESSION_TAGS_ENABLED_CONFIG =
-      enabledFeatures(INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+      sessionTagFields("catalog", "namespace", "table", "principal", "roles");
+
+  // Session tags enabled with realm + default fields
+  private static final RealmConfig SESSION_TAGS_WITH_REALM_CONFIG =
+      sessionTagFields("realm", "catalog", "namespace", "table", "principal", "roles");
+
+  // Session tags enabled with all fields including trace_id
+  private static final RealmConfig SESSION_TAGS_WITH_TRACE_ID_CONFIG =
+      sessionTagFields("catalog", "namespace", "table", "principal", "roles", "trace_id");
 
   public static final AssumeRoleResponse ASSUME_ROLE_RESPONSE =
       AssumeRoleResponse.builder()
@@ -90,6 +98,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return new RealmConfigImpl(
         (rc, name) ->
             Arrays.stream(enabledOptions).anyMatch(o -> o.key().equals(name)) ? "true" : null,
+        () -> "realm");
+  }
+
+  private static RealmConfig sessionTagFields(String... fields) {
+    return new RealmConfigImpl(
+        (rc, name) -> {
+          if (name.equals(SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
+            return List.of(fields);
+          }
+          return null;
+        },
         () -> "realm");
   }
 
@@ -1217,10 +1236,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
 
-    // Create a realm config with both session tags AND trace_id enabled
-    RealmConfig sessionTagsAndTraceIdEnabledConfig =
-        enabledFeatures(
-            INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL, INCLUDE_TRACE_ID_IN_SESSION_TAGS);
+    // Create a realm config with session tags AND trace_id enabled
+    RealmConfig sessionTagsAndTraceIdEnabledConfig = SESSION_TAGS_WITH_TRACE_ID_CONFIG;
 
     ArgumentCaptor<AssumeRoleRequest> requestCaptor =
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
@@ -1476,6 +1493,83 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   /**
+   * Helper method to invoke getSubscopedCreds and capture the AssumeRoleRequest for assertions.
+   *
+   * @param realmConfig the realm configuration to use
+   * @param context the credential vending context
+   * @return the captured AssumeRoleRequest
+   */
+  private AssumeRoleRequest invokeGetSubscopedCredsAndCaptureRequest(
+      RealmConfig realmConfig, CredentialVendingContext context) {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            realmConfig,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            context);
+
+    return requestCaptor.getValue();
+  }
+
+  @Test
+  public void testRealmSessionTagIncludedWhenConfigured() {
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .realm(Optional.of("my-realm"))
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of("db.schema"))
+            .tableName(Optional.of("my_table"))
+            .activatedRoles(Optional.of("admin"))
+            .build();
+
+    AssumeRoleRequest capturedRequest =
+        invokeGetSubscopedCredsAndCaptureRequest(SESSION_TAGS_WITH_REALM_CONFIG, context);
+
+    // 6 tags: realm + catalog + namespace + table + principal + roles
+    Assertions.assertThat(capturedRequest.tags()).hasSize(6);
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:realm") && tag.value().equals("my-realm"));
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
+    Assertions.assertThat(capturedRequest.transitiveTagKeys()).contains("polaris:realm");
+  }
+
+  @Test
+  public void testRealmSessionTagNotIncludedWhenNotConfigured() {
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .realm(Optional.of("my-realm"))
+            .catalogName(Optional.of("test-catalog"))
+            .build();
+
+    // SESSION_TAGS_ENABLED_CONFIG does NOT include "realm" in the field list
+    AssumeRoleRequest capturedRequest =
+        invokeGetSubscopedCredsAndCaptureRequest(SESSION_TAGS_ENABLED_CONFIG, context);
+
+    Assertions.assertThat(capturedRequest.tags())
+        .noneMatch(tag -> tag.key().equals("polaris:realm"));
+  }
+
+  /**
    * Tests graceful error handling when STS throws an exception due to missing sts:TagSession
    * permission. When the IAM role's trust policy doesn't allow sts:TagSession, the assumeRole call
    * should fail and the exception should be propagated appropriately.
@@ -1492,7 +1586,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String warehouseKeyPrefix = "path/to/warehouse";
 
     RealmConfig sessionTagsEnabledConfig =
-        enabledFeatures(INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+        sessionTagFields("catalog", "namespace", "table", "principal", "roles");
 
     // Simulate STS throwing AccessDeniedException when sts:TagSession is not allowed
     // In AWS SDK v2, this is represented as StsException with error code "AccessDenied"
