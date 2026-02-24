@@ -24,7 +24,7 @@ weight: 550
 
 ## Overview
 
-This page provides information on how to configure Apache Polaris (Incubating). Unless stated
+This page provides information on how to configure Apache Polaris. Unless stated
 otherwise, this information is valid both for Polaris Docker images (and Kubernetes deployments) as
 well as for Polaris binary distributions.
 

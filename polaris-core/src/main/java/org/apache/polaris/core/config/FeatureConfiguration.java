@@ -532,4 +532,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description("Metadata batch size for tasks that clean up dropped tables' files.")
           .defaultValue(10)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> RESOLVE_CREDENTIALS_BY_STORAGE_NAME =
+      PolarisConfiguration.<Boolean>builder()
+          .key("RESOLVE_CREDENTIALS_BY_STORAGE_NAME")
+          .description(
+              "If set to true, resolve AWS credentials based on the storageName field "
+                  + "of the storage configuration. "
+                  + "When disabled, the default AWS credentials are used for all storages.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

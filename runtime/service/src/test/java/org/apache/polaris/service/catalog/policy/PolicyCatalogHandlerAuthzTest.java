@@ -92,7 +92,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     final PolicyIdentifier newPolicy = new PolicyIdentifier(NS2, "newPolicy");
     final CreatePolicyRequest createPolicyRequest =
         CreatePolicyRequest.builder()
-            .setName(newPolicy.getName())
+            .setName(newPolicy.name())
             .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
             .setContent("{\"enable\": false}")
             .build();
@@ -112,7 +112,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     final PolicyIdentifier newPolicy = new PolicyIdentifier(NS2, "newPolicy");
     final CreatePolicyRequest createPolicyRequest =
         CreatePolicyRequest.builder()
-            .setName(newPolicy.getName())
+            .setName(newPolicy.name())
             .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
             .setContent("{\"enable\": false}")
             .build();
@@ -200,7 +200,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     final CreatePolicyRequest createPolicyRequest =
         CreatePolicyRequest.builder()
-            .setName(POLICY_NS1_1.getName())
+            .setName(POLICY_NS1_1.name())
             .setType(PredefinedPolicyTypes.DATA_COMPACTION.getName())
             .setDescription("test_policy")
             .setContent("{\"enable\": false}")
@@ -215,8 +215,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).dropPolicy(POLICY_NS1_1, true),
         () ->
             newWrapper(Set.of(PRINCIPAL_ROLE2))
-                .createPolicy(
-                    POLICY_NS1_1.getNamespace(), createPolicyRequest) /* cleanupAction */);
+                .createPolicy(POLICY_NS1_1.namespace(), createPolicyRequest) /* cleanupAction */);
   }
 
   @TestFactory

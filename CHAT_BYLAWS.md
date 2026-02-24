@@ -19,7 +19,7 @@
 
 # Apache Polaris - Project Chat Bylaws
 
-Apache Polaris is currently undergoing Incubation at the Apache Software Foundation.
+Apache Polaris is a top level project at the Apache Software Foundation.
 
 ## Motivation
 
@@ -29,7 +29,7 @@ A few rules shall ensure that the chat conforms to the rules and best
 practices of the Apache Software Foundation and serves well as a collaboration tool for the project.
 
 Organizations and other open-source projects that contribute continuously and significantly to Polaris are welcome, but
-shall not use the Polaris chat as a vehicle for their own marketing without explicit approval of the project (P)PMC.
+shall not use the Polaris chat as a vehicle for their own marketing without explicit approval of the project PMC.
 
 ## Code of Conduct
 
@@ -38,15 +38,15 @@ the Polaris project public chat.
 
 ## Governance
 
-* The Polaris project’s chat tool is not provided by the ASF - the Polaris project (P)PMC members govern and monitor the
+* The Polaris project’s chat tool is not provided by the ASF - the Polaris project PMC members govern and monitor the
   chat service.
 * Everybody is welcome to join the Polaris project chat. Invites are not needed.
-* Polaris project (P)PMC members have “administrator” privileges on the Slack chat. Polaris project committers are granted
+* Polaris project PMC members have “administrator” privileges on the Slack chat. Polaris project committers are granted
   “moderator” or “administrator” privileges for moderation purposes.
 * This bylaws document shall be published on the project’s web site and linked from relevant public channels.
-* Only (P)PMC members are allowed to create new channels. The number of channels shall be limited to #general (user
+* Only PMC members are allowed to create new channels. The number of channels shall be limited to #general (user
   discussions), #dev (development discussions), #announcements (release announcements), and #noise (GitHub feed).
-* Only (P)PMC members are allowed to notify a large number of users (aka @here).
+* Only PMC members are allowed to notify a large number of users (aka @here).
 
 ## 3rd Parties
 
@@ -54,7 +54,7 @@ Definition: “3rd party” means any (other) open-source project or any commerc
 
 ### 3rd Party Channels
 
-* 3rd parties who contribute to or use the Polaris project may ask the (P)PMC to get a dedicated public channel, for
+* 3rd parties who contribute to or use the Polaris project may ask the PMC to get a dedicated public channel, for
   example #vendor-<vendor-name> or #project-<project-name>.
 * Promotion of 3rd party content is only permitted in these 3rd party channels, and only if the content primarily covers
   Polaris. Commercial advertisements in any form are prohibited.

@@ -23,7 +23,7 @@ type: docs
 weight: 200
 ---
 
-This section provides information about how access control works for Apache Polaris (Incubating).
+This section provides information about how access control works for Apache Polaris.
 
 Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
 and then grants access to resources to principals by assigning catalog roles to principal roles.

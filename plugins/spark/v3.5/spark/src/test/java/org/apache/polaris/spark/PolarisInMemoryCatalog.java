@@ -80,10 +80,10 @@ public class PolarisInMemoryCatalog extends InMemoryCatalog implements PolarisCa
         this.genericTables.putIfAbsent(
             identifier,
             GenericTable.builder()
-                .setName(identifier.name())
-                .setFormat(format)
-                .setBaseLocation(baseLocation)
-                .setProperties(props)
+                .name(identifier.name())
+                .format(format)
+                .baseLocation(baseLocation)
+                .properties(props)
                 .build());
 
     if (previous != null) {

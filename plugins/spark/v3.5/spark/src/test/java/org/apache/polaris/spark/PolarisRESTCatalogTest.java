@@ -221,11 +221,11 @@ public class PolarisRESTCatalogTest {
     TableIdentifier identifier = TableIdentifier.of("test_ns", "test_table");
     GenericTable table =
         GenericTable.builder()
-            .setName("test_table")
-            .setFormat("delta")
-            .setBaseLocation("s3://bucket/path")
-            .setDoc("Test table")
-            .setProperties(ImmutableMap.of("key", "value"))
+            .name("test_table")
+            .format("delta")
+            .baseLocation("s3://bucket/path")
+            .doc("Test table")
+            .properties(ImmutableMap.of("key", "value"))
             .build();
 
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
@@ -237,9 +237,9 @@ public class PolarisRESTCatalogTest {
         catalog.createGenericTable(
             identifier, "delta", "s3://bucket/path", "Test table", ImmutableMap.of("key", "value"));
 
-    assertThat(result.getName()).isEqualTo("test_table");
-    assertThat(result.getFormat()).isEqualTo("delta");
-    assertThat(result.getBaseLocation()).isEqualTo("s3://bucket/path");
+    assertThat(result.name()).isEqualTo("test_table");
+    assertThat(result.format()).isEqualTo("delta");
+    assertThat(result.baseLocation()).isEqualTo("s3://bucket/path");
   }
 
   @Test
@@ -247,7 +247,7 @@ public class PolarisRESTCatalogTest {
     initializeCatalog();
 
     TableIdentifier identifier = TableIdentifier.of("test_ns", "test_table");
-    GenericTable table = GenericTable.builder().setName("test_table").setFormat("delta").build();
+    GenericTable table = GenericTable.builder().name("test_table").format("delta").build();
 
     LoadGenericTableRESTResponse response = new LoadGenericTableRESTResponse(table);
 
@@ -256,8 +256,8 @@ public class PolarisRESTCatalogTest {
 
     GenericTable result = catalog.loadGenericTable(identifier);
 
-    assertThat(result.getName()).isEqualTo("test_table");
-    assertThat(result.getFormat()).isEqualTo("delta");
+    assertThat(result.name()).isEqualTo("test_table");
+    assertThat(result.format()).isEqualTo("delta");
   }
 
   @Test

@@ -1534,9 +1534,9 @@ public class PolarisTestMetaStoreManager {
                   List.of(new PolarisEntityId(catalogId, updatedPropEntity.getId())))
               .getChangeTrackingVersions();
       Assertions.assertThat(versions).hasSize(1);
-      Assertions.assertThat(versions.get(0).getEntityVersion())
+      Assertions.assertThat(versions.get(0).entityVersion())
           .isEqualTo(updatedEntity.getEntityVersion());
-      Assertions.assertThat(versions.get(0).getGrantRecordsVersion())
+      Assertions.assertThat(versions.get(0).grantRecordsVersion())
           .isEqualTo(updatedEntity.getGrantRecordsVersion());
     }
 

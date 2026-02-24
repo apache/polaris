@@ -32,6 +32,9 @@ import org.apache.spark.sql.connector.catalog.TableChange;
 public class NoopDeltaCatalog extends DelegatingCatalogExtension {
   // This is a mock of isUnityCatalog scala val in
   // org.apache.spark.sql.delta.catalog.DeltaCatalog.
+  // Although it appears unused, in fact it is reflectively used in DeltaHelper
+  // Final modifier can't apply here either, because it is also reflectively modified.
+  @SuppressWarnings("unused")
   private boolean isUnityCatalog = false;
 
   @Override

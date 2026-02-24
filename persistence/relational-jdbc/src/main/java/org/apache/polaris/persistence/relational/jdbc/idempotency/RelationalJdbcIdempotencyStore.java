@@ -142,10 +142,10 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     }
 
     IdempotencyRecord record = existing.get();
-    if (record.getHttpStatus() != null) {
+    if (record.httpStatus() != null) {
       return HeartbeatResult.FINALIZED;
     }
-    if (record.getExecutorId() == null || !record.getExecutorId().equals(executorId)) {
+    if (record.executorId() == null || !record.executorId().equals(executorId)) {
       return HeartbeatResult.LOST_OWNERSHIP;
     }
 
@@ -184,7 +184,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     if (after.isEmpty()) {
       return HeartbeatResult.NOT_FOUND;
     }
-    if (after.get().getHttpStatus() != null) {
+    if (after.get().httpStatus() != null) {
       return HeartbeatResult.FINALIZED;
     }
     return HeartbeatResult.LOST_OWNERSHIP;
