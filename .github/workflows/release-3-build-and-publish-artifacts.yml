@@ -482,7 +482,7 @@ jobs:
 
           exec_process cd "${dist_dev_dir}"
           # Add artifacthub-repo.yml if not already versioned
-          exec_process svn info helm-chart/artifacthub-repo.yml > /dev/null 2>&1 || exec_process svn add helm-chart/artifacthub-repo.yml
+          exec_process svn add helm-chart/artifacthub-repo.yml || true
           # Commit the updated index and artifacthub-repo.yml
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index and artifacthub-repo.yml for ${version_without_rc} RC${rc_number}"
 
