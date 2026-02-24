@@ -20,7 +20,6 @@ package org.apache.polaris.admintool.relational.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
