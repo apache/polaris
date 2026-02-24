@@ -163,7 +163,7 @@ public class IdempotencyFilter {
         .onItem()
         .transformToUni(
             r -> {
-              if (r.getType() == IdempotencyStore.ReserveResultType.OWNED) {
+              if (r.type() == IdempotencyStore.ReserveResultType.OWNED) {
                 rc.setProperty(PROP_IDEMPOTENCY_KEY, key);
                 rc.setProperty(PROP_IDEMPOTENCY_OPERATION, operationType);
                 rc.setProperty(PROP_IDEMPOTENCY_RESOURCE, resourceId);
@@ -172,7 +172,7 @@ public class IdempotencyFilter {
                 return Uni.createFrom().nullItem();
               }
 
-              Optional<IdempotencyRecord> existingOpt = r.getExisting();
+              Optional<IdempotencyRecord> existingOpt = r.existing();
               if (existingOpt.isEmpty()) {
                 // Should not happen: DUPLICATE should always return an existing record.
                 return Uni.createFrom()
@@ -180,8 +180,8 @@ public class IdempotencyFilter {
               }
 
               IdempotencyRecord existing = existingOpt.get();
-              if (!operationType.equals(existing.getOperationType())
-                  || !resourceId.equals(existing.getNormalizedResourceId())) {
+              if (!operationType.equals(existing.operationType())
+                  || !resourceId.equals(existing.normalizedResourceId())) {
                 return Uni.createFrom()
                     .item(
                         error(
@@ -193,7 +193,7 @@ public class IdempotencyFilter {
               if (!existing.isFinalized()) {
                 // If the owner appears stale (no recent heartbeat), don't wait indefinitely. Full
                 // reconciliation/takeover is out of scope for this change; return a retryable 503.
-                Instant hb = existing.getHeartbeatAt();
+                Instant hb = existing.heartbeatAt();
                 if (hb != null
                     && Duration.between(hb, clock.instant()).getSeconds()
                         > Math.max(0L, configuration.leaseTtlSeconds())) {
@@ -276,7 +276,8 @@ public class IdempotencyFilter {
       return;
     }
     final String body =
-        truncate(responseEntityAsString(response, objectMapper), configuration.maxResponseBodyChars());
+        truncate(
+            responseEntityAsString(response, objectMapper), configuration.maxResponseBodyChars());
     final String headers =
         headerSnapshotJson(response, configuration.responseHeaderAllowlist(), objectMapper);
     Instant now = clock.instant();
@@ -407,9 +408,9 @@ public class IdempotencyFilter {
 
   private Response replayResponse(IdempotencyRecord existing) {
     Response.ResponseBuilder replay =
-        Response.status(existing.getHttpStatus() == null ? 200 : existing.getHttpStatus());
+        Response.status(existing.httpStatus() == null ? 200 : existing.httpStatus());
     replay.header("X-Idempotency-Replayed", "true");
-    if (!applyReplayedHeaders(replay, existing.getResponseHeaders())) {
+    if (!applyReplayedHeaders(replay, existing.responseHeaders())) {
       // if a prior finalized result can't be reproduced, return a 5xx rather
       // than re-executing the operation.
       return error(
@@ -417,8 +418,8 @@ public class IdempotencyFilter {
           "idempotency_replay_failed",
           "Failed to replay response for this idempotency key; retry later");
     }
-    if (existing.getResponseSummary() != null) {
-      replay.entity(existing.getResponseSummary());
+    if (existing.responseSummary() != null) {
+      replay.entity(existing.responseSummary());
     }
     return replay.build();
   }
