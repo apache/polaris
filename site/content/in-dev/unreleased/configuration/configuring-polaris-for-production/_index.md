@@ -32,7 +32,7 @@ review and apply the following checklist:
 - [ ] Disable local FILE storage
 
 {{< alert note >}}
-If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../helm-chart/production" %}}) guide as well.
+If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../../helm-chart/production" %}}) guide as well.
 {{< /alert >}}
 
 ### Configure OAuth2
