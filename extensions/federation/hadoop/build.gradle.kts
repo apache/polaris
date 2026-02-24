@@ -44,6 +44,7 @@ dependencies {
     exclude("com.sun.jersey", "jersey-server")
     exclude("com.sun.jersey", "jersey-servlet")
     exclude("io.dropwizard.metrics", "metrics-core")
+    exclude(group = "org.eclipse.jetty")
   }
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
