@@ -142,10 +142,10 @@ and update the version in the Helm Chart in:
 * `helm/polaris/Chart.yaml` 
   - update `version` and `appVersion` fields
   - update the `Documentation` link in the `artifacthub.io/links` annotation to point to 
-    `https://polaris.apache.org/releases/x.y.z-incubating/`
+    `https://polaris.apache.org/releases/x.y.z/`
 * `helm/polaris/README.md`
 * `helm/polaris/values.yaml` 
-  - update the `image.tag` field from `"latest"` to `"x.y.z-incubating"`
+  - update the `image.tag` field from `"latest"` to `"x.y.z"`
 
 and update the documentation URLs in `helm/polaris/values.yaml` and `helm/polaris/values.schema.json` to point to the released documentation.
 Replace `/in-dev/unreleased/` with `/releases/x.y.z/` in all documentation URLs, for example:
