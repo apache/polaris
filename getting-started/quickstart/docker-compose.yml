@@ -71,7 +71,7 @@ services:
       start_period: 10s
 
   bucket-setup:
-    image: amazon/aws-cli:2.33.22
+    image: amazon/aws-cli:2.33.28
     depends_on:
       rustfs:
         condition: service_healthy
