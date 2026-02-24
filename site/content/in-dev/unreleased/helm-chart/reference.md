@@ -27,7 +27,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| replicaCount | int | `1` | The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager. See [Scaling]({{% ref "production/#scaling" %}}) for production recommendations. |
+| replicaCount | int | `1` | The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager. See [Scaling](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#scaling) for production recommendations. |
 | revisionHistoryLimit | int | `nil` | The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10). |
 
 ### Image
@@ -66,7 +66,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| service.type | string | `"ClusterIP"` | The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer. The default value is ClusterIP. See [Networking]({{% ref "networking" %}}) for more information. |
+| service.type | string | `"ClusterIP"` | The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer. The default value is ClusterIP. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information. |
 | service.ports[0].name | string | `"polaris-http"` | The name of the port. Required. |
 | service.ports[0].port | int | `8181` | The port the service listens on. By default, the HTTP port is 8181. |
 | service.ports[0].targetPort | int | `0` | Number of the port to access on the pods targeted by the service. If this is not specified or zero, the value of the 'port' field is used. |
@@ -118,7 +118,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| ingress.className | string | `""` | Specifies the ingressClassName; leave empty if you don't want to customize it. See [Networking]({{% ref "networking" %}}) for more information. |
+| ingress.className | string | `""` | Specifies the ingressClassName; leave empty if you don't want to customize it. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information. |
 | ingress.enabled | bool | `false` | Specifies whether an ingress should be created. |
 | ingress.annotations | object | `{}` | Annotations to add to the ingress. |
 | ingress.hosts[0].host | string | `"chart-example.local"` | The host name. Required. |
@@ -131,7 +131,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| gateway.enabled | bool | `false` | Specifies whether a Gateway should be created. See [Networking]({{% ref "networking" %}}) for more information. |
+| gateway.enabled | bool | `false` | Specifies whether a Gateway should be created. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information. |
 | gateway.annotations | object | `{}` | Annotations to add to the Gateway. |
 | gateway.className | string | `""` | The name of the GatewayClass to use. |
 | gateway.listeners[0].name | string | `"http"` | The name of the listener. Required. |
@@ -145,7 +145,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| httproute.enabled | bool | `false` | Specifies whether an HTTPRoute should be created. See [Networking]({{% ref "networking" %}}) for more information. |
+| httproute.enabled | bool | `false` | Specifies whether an HTTPRoute should be created. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information. |
 | httproute.annotations | object | `{}` | Annotations to add to the HTTPRoute. |
 | httproute.gatewayName | string | `""` | Name of the Gateway resource to attach to. Required. |
 | httproute.gatewayNamespace | string | `"default"` | Namespace where the Gateway is deployed. Required. |
@@ -156,8 +156,8 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| resources | object | `{}` | Configures the resources requests and limits for polaris pods. This chart does not specify default resources and leaves this as a conscious choice for the user. This also increases chances charts run on environments with little resources, such as Minikube. See [Resource Management]({{% ref "production/#resource-management" %}}) for production recommendations. |
-| autoscaling.enabled | bool | `false` | Specifies whether automatic horizontal scaling should be enabled. Do not enable this when using in-memory version store type. See [Scaling]({{% ref "production/#scaling" %}}) for production recommendations. |
+| resources | object | `{}` | Configures the resources requests and limits for polaris pods. This chart does not specify default resources and leaves this as a conscious choice for the user. This also increases chances charts run on environments with little resources, such as Minikube. See [Resource Management](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#resource-management) for production recommendations. |
+| autoscaling.enabled | bool | `false` | Specifies whether automatic horizontal scaling should be enabled. Do not enable this when using in-memory version store type. See [Scaling](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#scaling) for production recommendations. |
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
 | autoscaling.maxReplicas | int | `3` | The maximum number of replicas to maintain. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
@@ -193,7 +193,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| advancedConfig | object | `{"quarkus.http.access-log.enabled":true}` | Advanced configuration. You can pass here any valid Polaris or Quarkus configuration property. Any property that is defined here takes precedence over all the other configuration values generated by this chart. Properties can be passed "flattened" or as nested YAML objects (see examples below). Refer to Polaris [Configuration reference]({{% ref "../configuration" %}}) for a complete list of Polaris configuration properties, and to the [Quarkus Configuration Reference](https://quarkus.io/guides/all-config) for a complete list of Quarkus configuration properties. |
+| advancedConfig | object | `{"quarkus.http.access-log.enabled":true}` | Advanced configuration. You can pass here any valid Polaris or Quarkus configuration property. Any property that is defined here takes precedence over all the other configuration values generated by this chart. Properties can be passed "flattened" or as nested YAML objects (see examples below). Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference) for a complete list of Polaris configuration properties, and to the [Quarkus Configuration Reference](https://quarkus.io/guides/all-config) for a complete list of Quarkus configuration properties. |
 | extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: [EnvVar API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) This can be useful to get configuration values from Kubernetes secrets or config maps. |
 | extraVolumes | list | `[]` | Extra volumes to add to the polaris pod. See [Volumes](https://kubernetes.io/docs/concepts/storage/volumes/). |
 | extraVolumeMounts | list | `[]` | Extra volume mounts to add to the polaris container. See [Volumes](https://kubernetes.io/docs/concepts/storage/volumes/). |
@@ -203,11 +203,11 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| tracing.enabled | bool | `false` | Specifies whether tracing for the polaris server should be enabled. See [Traces]({{% ref "../telemetry/#traces" %}}) for details. |
+| tracing.enabled | bool | `false` | Specifies whether tracing for the polaris server should be enabled. See [Traces](https://polaris.apache.org/in-dev/unreleased/telemetry/#traces) for details. |
 | tracing.endpoint | string | `"http://otlp-collector:4317"` | The collector endpoint URL to connect to (required). The endpoint URL must have either the http:// or the https:// scheme. The collector must talk the OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default 4317). See [Quarkus OpenTelemetry](https://quarkus.io/guides/opentelemetry) for more information. |
 | tracing.sample | string | `"1.0d"` | Which requests should be sampled. Valid values are: "all", "none", or a ratio between 0.0 and "1.0d" (inclusive). E.g. "0.5d" means that 50% of the requests will be sampled. Note: avoid entering numbers here, always prefer a string representation of the ratio. |
 | tracing.attributes | object | `{}` | Resource attributes to identify the polaris service among other tracing sources. See [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/#service). If left empty, traces will be attached to a service named "Apache Polaris"; to change this, provide a service.name attribute here. |
-| metrics.enabled | bool | `true` | Specifies whether metrics for the polaris server should be enabled. See [Metrics]({{% ref "../telemetry/#metrics" %}}) for details. |
+| metrics.enabled | bool | `true` | Specifies whether metrics for the polaris server should be enabled. See [Metrics](https://polaris.apache.org/in-dev/unreleased/telemetry/#metrics) for details. |
 | metrics.tags | object | `{}` | Additional tags (dimensional labels) to add to the metrics. |
 | serviceMonitor.enabled | bool | `true` | Specifies whether a ServiceMonitor for Prometheus operator should be created. |
 | serviceMonitor.interval | string | `""` | The scrape interval; leave empty to let Prometheus decide. Must be a valid duration, e.g. 1d, 1h30m, 5m, 10s. |
@@ -223,11 +223,11 @@ weight: 900
 | logging.console.enabled | bool | `true` | Whether to enable the console appender. |
 | logging.console.threshold | string | `"ALL"` | The log level of the console appender. |
 | logging.console.json | bool | `false` | Whether to log in JSON format. |
-| logging.console.format | string | `"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"` | The log format to use. Ignored if JSON format is enabled. See [Logging]({{% ref "../telemetry/#logging" %}}) for details. |
+| logging.console.format | string | `"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"` | The log format to use. Ignored if JSON format is enabled. See [Logging](https://polaris.apache.org/in-dev/unreleased/telemetry/#logging) for details. |
 | logging.file.enabled | bool | `false` | Whether to enable the file appender. |
 | logging.file.threshold | string | `"ALL"` | The log level of the file appender. |
 | logging.file.json | bool | `false` | Whether to log in JSON format. |
-| logging.file.format | string | `"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"` | The log format to use. Ignored if JSON format is enabled. See [Logging]({{% ref "../telemetry/#logging" %}}) for details. |
+| logging.file.format | string | `"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"` | The log format to use. Ignored if JSON format is enabled. See [Logging](https://polaris.apache.org/in-dev/unreleased/telemetry/#logging) for details. |
 | logging.file.logsDir | string | `"/deployments/logs"` | The local directory where log files are stored. The persistent volume claim will be mounted here. |
 | logging.file.fileName | string | `"polaris.log"` | The log file name. |
 | logging.file.rotation.maxFileSize | string | `"100Mi"` | The maximum size of the log file before it is rotated. Should be expressed as a Kubernetes quantity. |
@@ -250,7 +250,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| features | object | `{"SUPPORTED_CATALOG_STORAGE_TYPES":["S3","GCS","AZURE"],"realmOverrides":{}}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. Refer to Polaris [Configuration reference]({{% ref "../configuration" %}}) for a complete list of available features. |
+| features | object | `{"SUPPORTED_CATALOG_STORAGE_TYPES":["S3","GCS","AZURE"],"realmOverrides":{}}` | Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/#features--behavior) for a complete list of available features. |
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the global value is used. |
 
 ### Persistence

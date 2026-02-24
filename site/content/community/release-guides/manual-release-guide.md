@@ -142,10 +142,17 @@ and update the version in the Helm Chart in:
 * `helm/polaris/Chart.yaml`
 * `helm/polaris/README.md`
 
+and update the documentation URLs in `helm/polaris/values.yaml` and `helm/polaris/values.schema.json` to point to the released documentation.
+Replace `/in-dev/unreleased/` with `/releases/x.y.z/` in all documentation URLs, for example:
+
+```bash
+sed -i~ 's|/in-dev/unreleased/|/releases/x.y.z/|g' helm/polaris/values.yaml helm/polaris/values.schema.json
+```
+
 and commit/push the version bump:
 
 ```
-git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml
+git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml helm/polaris/values.schema.json
 ```
 
 Update `CHANGELOG.md`:
