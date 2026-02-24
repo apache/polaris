@@ -120,29 +120,29 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
     synchronized (state) {
       IdempotencyRecord record = state.record;
-      if (record.getHttpStatus() != null) {
+      if (record.httpStatus() != null) {
         return HeartbeatResult.FINALIZED;
       }
-      if (record.getExecutorId() == null || !record.getExecutorId().equals(executorId)) {
+      if (record.executorId() == null || !record.executorId().equals(executorId)) {
         return HeartbeatResult.LOST_OWNERSHIP;
       }
 
       state.record =
           new IdempotencyRecord(
-              record.getRealmId(),
-              record.getIdempotencyKey(),
-              record.getOperationType(),
-              record.getNormalizedResourceId(),
-              record.getHttpStatus(),
-              record.getErrorSubtype(),
-              record.getResponseSummary(),
-              record.getResponseHeaders(),
-              record.getCreatedAt(),
+              record.realmId(),
+              record.idempotencyKey(),
+              record.operationType(),
+              record.normalizedResourceId(),
+              record.httpStatus(),
+              record.errorSubtype(),
+              record.responseSummary(),
+              record.responseHeaders(),
+              record.createdAt(),
               now,
-              record.getFinalizedAt(),
+              record.finalizedAt(),
               now,
-              record.getExecutorId(),
-              record.getExpiresAt());
+              record.executorId(),
+              record.expiresAt());
       return HeartbeatResult.UPDATED;
     }
   }
@@ -157,10 +157,10 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     }
     synchronized (state) {
       IdempotencyRecord record = state.record;
-      if (record.getHttpStatus() != null) {
+      if (record.httpStatus() != null) {
         return false;
       }
-      if (record.getExecutorId() == null || !record.getExecutorId().equals(executorId)) {
+      if (record.executorId() == null || !record.executorId().equals(executorId)) {
         return false;
       }
       return records.remove(key, state);
@@ -184,26 +184,26 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
     synchronized (state) {
       IdempotencyRecord record = state.record;
-      if (record.getHttpStatus() != null) {
+      if (record.httpStatus() != null) {
         return false;
       }
 
       state.record =
           new IdempotencyRecord(
-              record.getRealmId(),
-              record.getIdempotencyKey(),
-              record.getOperationType(),
-              record.getNormalizedResourceId(),
+              record.realmId(),
+              record.idempotencyKey(),
+              record.operationType(),
+              record.normalizedResourceId(),
               httpStatus,
               errorSubtype,
               responseSummary,
               responseHeaders,
-              record.getCreatedAt(),
+              record.createdAt(),
               finalizedAt,
               finalizedAt,
-              record.getHeartbeatAt(),
-              record.getExecutorId(),
-              record.getExpiresAt());
+              record.heartbeatAt(),
+              record.executorId(),
+              record.expiresAt());
       return true;
     }
   }
@@ -213,7 +213,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     int[] count = {0};
     records.forEach(
         (k, v) -> {
-          if (k.realmId.equals(realmId) && v.record.getExpiresAt().isBefore(before)) {
+          if (k.realmId.equals(realmId) && v.record.expiresAt().isBefore(before)) {
             if (records.remove(k, v)) {
               count[0]++;
             }
