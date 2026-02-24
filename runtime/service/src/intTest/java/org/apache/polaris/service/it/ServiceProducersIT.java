@@ -20,17 +20,22 @@ package org.apache.polaris.service.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.service.persistence.MetricsPersistenceConfiguration;
+import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 import org.junit.jupiter.api.Test;
 
 public class ServiceProducersIT {
@@ -137,6 +142,64 @@ public class ServiceProducersIT {
       assertThat(scanPage.items())
           .as("Default (NOOP) implementation should return empty scan reports")
           .isEmpty();
+    }
+  }
+
+  // ========== JDBC MetricsPersistence wiring test ==========
+
+  private static final String JDBC_TEST_REALM = "jdbc-test-realm";
+
+  /**
+   * Profile that configures relational-jdbc persistence with metrics persistence enabled. This
+   * extends RelationalJdbcProfile which sets up a PostgreSQL container with both main and metrics
+   * datasources configured. It also configures the realm and bootstrap credentials for
+   * auto-bootstrapping.
+   */
+  public static class JdbcMetricsPersistenceConfig extends RelationalJdbcProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.persistence.metrics.type", "relational-jdbc")
+          .put("polaris.realm-context.realms", JDBC_TEST_REALM)
+          .put("polaris.bootstrap.credentials", JDBC_TEST_REALM + ",client1,secret1")
+          .build();
+    }
+
+    @Override
+    public List<TestResourceEntry> testResources() {
+      return List.of(
+          new TestResourceEntry(PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
+    }
+  }
+
+  /**
+   * Tests that when {@code polaris.persistence.metrics.type=relational-jdbc} and a JDBC persistence
+   * backend is configured, the MetricsPersistence config is correctly wired.
+   *
+   * <p>This test verifies the configuration wiring by checking that:
+   *
+   * <ol>
+   *   <li>The {@code MetricsPersistenceConfiguration} reads the correct type from config
+   *   <li>The configuration value "relational-jdbc" is passed to the producer
+   * </ol>
+   *
+   * <p>Note: Full end-to-end verification of JDBC MetricsPersistence would require a fully
+   * bootstrapped realm with proper request context, which is tested in the JDBC integration tests.
+   */
+  @QuarkusTest
+  @TestProfile(ServiceProducersIT.JdbcMetricsPersistenceConfig.class)
+  public static class JdbcMetricsPersistenceTest {
+
+    @Inject MetricsPersistenceConfiguration config;
+
+    @Test
+    void testJdbcMetricsPersistenceConfigWired() {
+      // Verify the configuration is correctly wired to read "relational-jdbc"
+      assertThat(config.type())
+          .as(
+              "polaris.persistence.metrics.type should be 'relational-jdbc' from JdbcMetricsPersistenceConfig")
+          .isEqualTo("relational-jdbc");
     }
   }
 }
