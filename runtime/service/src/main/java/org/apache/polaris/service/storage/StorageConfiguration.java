@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.apache.polaris.docs.ConfigDocs;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -80,13 +81,16 @@ public interface StorageConfiguration extends S3AccessConfig {
     Optional<String> secretKey();
 
     @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
     Map<String, StorageConfig> storages();
   }
 
   interface StorageConfig {
+    /** The AWS access key to use for authentication when using named storages. */
     @WithName("access-key")
     String accessKey();
 
+    /** The AWS secret key to use for authentication when using named storages. */
     @WithName("secret-key")
     String secretKey();
   }

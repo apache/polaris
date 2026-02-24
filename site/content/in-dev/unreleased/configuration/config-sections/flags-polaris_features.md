@@ -420,6 +420,15 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ---
 
+##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
+
+If set to true, resolve AWS credentials based on the storageName field of the storage configuration. When disabled, the default AWS credentials are used for all storages.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION"`
 
 If set to true, skip credential-subscoping indirection entirely whenever trying to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made to use StorageConfigs to generate table-specific storage credentials, but instead the default fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT credential-loading will be used for the FileIO. Typically this setting is used in single-tenant server deployments that don't rely on "credential-vending" and can use server-default environment variables or credential config files for all storage access, or in test/dev scenarios.

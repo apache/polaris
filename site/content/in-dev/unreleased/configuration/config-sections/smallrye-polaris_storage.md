@@ -29,8 +29,10 @@ Currently, this configuration does not apply to all of Polaris code, but only to
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.storage.aws.access-key` |  | `string` | The AWS access key to use for authentication. If not present, the default credentials provider  chain will be used.  |
-| `polaris.storage.aws.secret-key` |  | `string` | The AWS secret key to use for authentication. If not present, the default credentials provider  chain will be used.  |
+| `polaris.storage.aws.access-key` |  | `string` | The AWS access key to use for authentication. If not present, the default credentials  provider chain will be used.  |
+| `polaris.storage.aws.secret-key` |  | `string` | The AWS secret key to use for authentication. If not present, the default credentials  provider chain will be used.  |
+| `polaris.storage.aws.`_`<storage>`_`.access-key` |  | `string` | The AWS access key to use for authentication when using named storages.  |
+| `polaris.storage.aws.`_`<storage>`_`.secret-key` |  | `string` | The AWS secret key to use for authentication when using named storages.  |
 | `polaris.storage.gcp.token` |  | `string` | The GCP access token to use for authentication. If not present, the default credentials  provider chain will be used.  |
 | `polaris.storage.gcp.lifespan` |  | `duration` | The lifespan of the GCP access token. If not present, the default token lifespan (null) will be used.  |
 | `polaris.storage.clients-cache-max-size` |  | `int` | Maximum number of entries to keep in the STS clients cache.  |
