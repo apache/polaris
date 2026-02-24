@@ -65,7 +65,6 @@ dependencies {
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:testcontainers-postgresql")
-  testFixturesApi("org.testcontainers:testcontainers-mongodb")
   testFixturesImplementation(testFixtures(project(":polaris-persistence-nosql-mongodb")))
 
   testRuntimeOnly("org.postgresql:postgresql")
