@@ -125,4 +125,4 @@ The frequency of this maintenance depends on the size of the database and the fr
 The recommended maintenance frequency is once per day.
 It is recommended to schedule maintenance during off-peak hours or to set reasonable scan rates to minimize
 the impact on operational availability.
-Maintenance can be triggered using the [Admin Tool]({{% ref "../admin-tool" %}}#nosql-specific-operations)
+Maintenance can be triggered using the [Admin Tool]({{% ref "../admin-tool" %}}#nosql-specific-operations).
