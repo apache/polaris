@@ -176,7 +176,7 @@ class IdempotencyFilterTest {
         .statusCode(200);
 
     var rec = store.load("test", key).orElseThrow();
-    assertThat(rec.getHeartbeatAt()).isNotNull();
+    assertThat(rec.heartbeatAt()).isNotNull();
 
     // Create an already-expired record and wait for the purge timer to remove it.
     String expiredKey = uuidV7();

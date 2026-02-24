@@ -63,11 +63,11 @@ class IdempotencyStoreWiringInMemoryTest {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     ReserveResult r1 = store.reserve("test", "K1", "op", "catalogs/1/tables/ns.tbl", exp, "A", now);
-    assertThat(r1.getType()).isEqualTo(ReserveResultType.OWNED);
+    assertThat(r1.type()).isEqualTo(ReserveResultType.OWNED);
 
     ReserveResult r2 = store.reserve("test", "K1", "op", "catalogs/1/tables/ns.tbl", exp, "B", now);
-    assertThat(r2.getType()).isEqualTo(ReserveResultType.DUPLICATE);
-    assertThat(r2.getExisting()).isPresent();
+    assertThat(r2.type()).isEqualTo(ReserveResultType.DUPLICATE);
+    assertThat(r2.existing()).isPresent();
   }
 
   private static Object unwrapArcProxy(Object bean) {
