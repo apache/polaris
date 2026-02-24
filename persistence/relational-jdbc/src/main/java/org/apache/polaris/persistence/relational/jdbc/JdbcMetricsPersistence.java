@@ -158,7 +158,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
-    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
+    Token nextToken =
+        records.size() >= limit ? ReportIdToken.fromRecord(records.get(records.size() - 1)) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -196,7 +197,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
         models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
-    Token nextToken = records.size() >= limit ? ReportIdToken.fromRecord(records.getLast()) : null;
+    Token nextToken =
+        records.size() >= limit ? ReportIdToken.fromRecord(records.get(records.size() - 1)) : null;
 
     return Page.page(pageToken, records, nextToken);
   }
@@ -309,8 +311,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
-              + limit;
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT ?";
+      values.add(limit);
 
       PreparedQuery query = new PreparedQuery(sql, values);
       var results = datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
@@ -375,8 +377,8 @@ public class JdbcMetricsPersistence implements MetricsPersistence {
               + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
               + " WHERE "
               + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT "
-              + limit;
+              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT ?";
+      values.add(limit);
 
       PreparedQuery query = new PreparedQuery(sql, values);
       var results = datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);

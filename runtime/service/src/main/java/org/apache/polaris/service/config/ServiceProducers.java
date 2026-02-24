@@ -61,6 +61,8 @@ import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
+import org.apache.polaris.persistence.relational.jdbc.JdbcMetricsPersistence;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -452,10 +454,10 @@ public class ServiceProducers {
   /**
    * Produces a {@link MetricsPersistence} instance for JDBC-based metrics storage.
    *
-   * <p>This producer retrieves the {@link
-   * org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl} from the metastore
-   * factory and uses it as the MetricsPersistence. The JdbcBasePersistenceImpl implements
-   * MetricsPersistence with a separate metricsDatasourceOperations field.
+   * <p>This producer creates a new request-scoped {@link
+   * org.apache.polaris.persistence.relational.jdbc.JdbcMetricsPersistence} instance using the
+   * metrics datasource from the underlying JdbcBasePersistenceImpl. This approach avoids storing
+   * request-scoped state in the shared JdbcBasePersistenceImpl instance.
    *
    * <p>Configuration example:
    *
@@ -483,9 +485,7 @@ public class ServiceProducers {
       Instance<RequestIdSupplier> requestIdSupplier) {
 
     BasePersistence persistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    if (!(persistence
-        instanceof
-        org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl jdbcPersistence)) {
+    if (!(persistence instanceof JdbcBasePersistenceImpl jdbcPersistence)) {
       return MetricsPersistence.NOOP;
     }
 
@@ -494,13 +494,17 @@ public class ServiceProducers {
       return MetricsPersistence.NOOP;
     }
 
-    // Set the request-scoped context for metrics operations
+    // Create a new request-scoped JdbcMetricsPersistence instance
+    // This avoids storing request-scoped state in the shared JdbcBasePersistenceImpl
     PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
     RequestIdSupplier supplier =
-        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : () -> "no-request-id";
-    jdbcPersistence.setMetricsContext(principal, supplier);
+        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
 
-    return jdbcPersistence;
+    return new JdbcMetricsPersistence(
+        jdbcPersistence.getMetricsDatasourceOperations(),
+        realmContext.getRealmIdentifier(),
+        principal,
+        supplier);
   }
 
   @Produces

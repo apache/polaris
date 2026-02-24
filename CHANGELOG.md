@@ -73,7 +73,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
      ```
   2. Set the metrics persistence type:
      ```properties
-     polaris.metrics.persistence.type=relational-jdbc
+     polaris.persistence.metrics.type=relational-jdbc
      ```
   3. Bootstrap the schema (metrics tables are created automatically):
      ```bash
