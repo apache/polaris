@@ -20,10 +20,12 @@ package org.apache.polaris.admintool.relational.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
+import java.util.Map;
 import org.apache.polaris.admintool.BootstrapMetricsCommandTestBase;
 import org.junit.jupiter.api.Test;
 
@@ -33,8 +35,24 @@ import org.junit.jupiter.api.Test;
  * <p>These tests verify the bootstrap-metrics command works correctly with the JDBC persistence
  * backend.
  */
-@TestProfile(RelationalJdbcAdminProfile.class)
+@TestProfile(RelationalJdbcBootstrapMetricsCommandTest.Profile.class)
 public class RelationalJdbcBootstrapMetricsCommandTest extends BootstrapMetricsCommandTestBase {
+
+  public static class Profile extends RelationalJdbcAdminProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.persistence.type",
+          "relational-jdbc",
+          "quarkus.datasource.active",
+          "true",
+          "quarkus.datasource.db-kind",
+          "postgresql",
+          // Enable JDBC metrics persistence for bootstrap-metrics tests
+          "polaris.metrics.persistence.type",
+          "relational-jdbc");
+    }
+  }
 
   /**
    * Override the help test from the base class to handle JDBC-specific behavior.
