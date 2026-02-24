@@ -236,7 +236,7 @@ profile (for example, `%prod`).
 
 ### Upgrade Considerations
 
-The [Polaris Evolution](../evolution) page discusses backward compatibility and
+The [Polaris Evolution](../../evolution) page discusses backward compatibility and
 upgrade concerns.
 
 ### Configuring Polaris for Cloud Storages
