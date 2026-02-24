@@ -403,6 +403,17 @@ jobs:
       - regtest
       - markdown-link-check
       - site
+    # Always run this job, even if a "needed" job fails. Without this one, GitHub will not run
+    # this job and that yields "Success" to the branch protection rule, which is wrong.
+    # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
+    # We consider `success` and `skipped` as "ok", `failure` and `cancelled` as "not ok".
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
-      - run: echo "All checks passed"
+      - run: |
+          if [[ "${{ join(needs.*.result, ',') }}" =~ .*(failure|cancelled).* ]]; then
+            echo "At least one check failed"
+            exit 1
+          else
+            echo "All checks passed"
+          fi
