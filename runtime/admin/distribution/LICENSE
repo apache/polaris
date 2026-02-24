@@ -669,20 +669,10 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles ErrorProne annotations.
-
-* Maven group:artifact IDs: com.google.errorprone:error_prone_annotations
-
-Project URL: https://errorprone.info
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles Guava.
 
 * Maven group:artifact IDs: com.google.guava:failureaccess
 * Maven group:artifact IDs: com.google.guava:guava
-* Maven group:artifact IDs: com.google.guava:listenablefuture
 
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt

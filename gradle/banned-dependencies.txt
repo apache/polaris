@@ -37,3 +37,11 @@ javax.ws.rs:jsr311-api
 # See https://github.com/RoaringBitmap/RoaringBitmap/issues/749, should only use org.roaringbitmap:RoaringBitmap
 com.github.RoaringBitmap.RoaringBitmap
 org.roaringbitmap:roaringbitmap
+
+
+# `listenablefuture` is banned via a very high version anyways, banning it is safe
+com.google.guava:listenablefuture
+
+
+# Unmaintained since 2018, provides ssh functionality, risk of security issues
+com.jcraft:jsch
