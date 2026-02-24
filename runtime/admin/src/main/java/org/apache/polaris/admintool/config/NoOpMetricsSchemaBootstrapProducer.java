@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.admintool.config;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -25,23 +25,23 @@ import org.apache.polaris.core.persistence.metrics.MetricsSchemaBootstrap;
 import org.apache.polaris.core.persistence.metrics.NoOpMetricsSchemaBootstrap;
 
 /**
- * CDI producer for {@link MetricsSchemaBootstrap} in the NoSQL persistence backend.
+ * CDI producer for the no-op {@link MetricsSchemaBootstrap} implementation.
  *
- * <p>NoSQL backends don't have a separate metrics schema to bootstrap, so this producer provides a
- * no-op implementation that always reports the schema as bootstrapped.
+ * <p>This producer provides a no-op implementation for backends that don't support metrics schema
+ * bootstrapping or when metrics persistence is disabled.
  */
 @ApplicationScoped
-public class NoSqlMetricsSchemaBootstrapProducer {
+public class NoOpMetricsSchemaBootstrapProducer {
 
   /**
-   * Produces a no-op {@link MetricsSchemaBootstrap} instance for NoSQL backends.
+   * Produces a no-op {@link MetricsSchemaBootstrap} instance.
    *
    * @return a no-op MetricsSchemaBootstrap implementation
    */
   @Produces
   @ApplicationScoped
-  @Identifier("nosql")
-  public MetricsSchemaBootstrap metricsSchemaBootstrap() {
+  @Identifier("noop")
+  public MetricsSchemaBootstrap noopMetricsSchemaBootstrap() {
     return NoOpMetricsSchemaBootstrap.INSTANCE;
   }
 }

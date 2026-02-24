@@ -21,16 +21,23 @@ package org.apache.polaris.admintool.nosql.mongodb;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.admintool.MongoTestResourceLifecycleManager;
 
 public class NoSqlMongoAdminProfile implements QuarkusTestProfile {
   @Override
   public Map<String, String> getConfigOverrides() {
-    return Map.of("polaris.metrics.persistence.type", "noop");
+    return Map.of(
+        "polaris.persistence.type",
+        "nosql",
+        "polaris.persistence.nosql.backend",
+        "MongoDb",
+        "polaris.metrics.persistence.type",
+        "noop");
   }
 
   @Override
   public List<TestResourceEntry> testResources() {
-    return List.of(new TestResourceEntry(MongoDbLifeCycleManagement.class, Map.of()));
+    return List.of(new TestResourceEntry(MongoTestResourceLifecycleManager.class, Map.of()));
   }
 }
 

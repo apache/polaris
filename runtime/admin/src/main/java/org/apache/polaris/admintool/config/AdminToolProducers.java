@@ -51,10 +51,10 @@ public class AdminToolProducers {
 
   @Produces
   public MetricsSchemaBootstrap metricsSchemaBootstrap(
-      QuarkusPersistenceConfiguration persistenceConfiguration,
+      MetricsPersistenceConfiguration metricsPersistenceConfiguration,
       @Any Instance<MetricsSchemaBootstrap> metricsSchemaBootstraps) {
     return metricsSchemaBootstraps
-        .select(Identifier.Literal.of(persistenceConfiguration.type()))
+        .select(Identifier.Literal.of(metricsPersistenceConfiguration.type()))
         .get();
   }
 
