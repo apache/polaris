@@ -43,3 +43,40 @@ The [manual release guide](manual-release-guide/) walks through each step of cre
 
 ### Release Verification Guide
 The [release verification guide](release-verification-guide/) provides instructions for verifying an Apache Polaris release, like verifying checksums and signatures, ensuring release artifacts integrity, ...
+
+## Release manager
+
+An Apache Release Manager is a designated project committer responsible for shepherding a software release from community consensus to final distribution.
+They proactively drive the technical, legal, and procedural steps, including code freezing, signing artifacts, and coordinating voting.
+All releases must comply with the [Release Policy](https://www.apache.org/legal/release-policy.html)
+
+### Key Responsibilities
+
+Release managers do the mechanical work.
+
+* **Release Coordination**:
+  Planning timelines, managing the release lifecycle, and acting as the liaison between the development community and the Project Management Committee (PMC).
+* **Compliance and Safety**:
+  The goal is that all code complies with the ASF's legal, licensing, and security standards.
+* **Technical Execution**:
+  Creating release candidates, tagging source code, signing artifacts, and publishing to ASF distribution channels.
+* **Documentation**:
+  Preparing release notes, changelogs, and deployment documentation. 
+
+### PMC and PMC Chair Responsibilities
+
+The PMC in general, and the PMC chair in particular (as an officer of the Foundation), remain responsible for compliance with ASF requirements.
+
+### Role Requirements & Process:
+
+* **Committer Status**:
+  Committers on the project can typically act as release managers, ensuring they have necessary access to the release infrastructure.
+* **Voluntary & Rotational**:
+  The role is voluntary, and we encourage rotating release managers to ensure multiple community members are comfortable with the process.
+* **Voting Process**:
+  Release managers initiate the voting process and ensure the release is officially approved before release.
+
+## Further information
+
+* [Release Creation Process](https://infra.apache.org/release-publishing.html)
+* [Assembling LICENSE and NOTICE files](https://infra.apache.org/licensing-howto.html)
