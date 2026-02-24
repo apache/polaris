@@ -17,13 +17,13 @@
  * under the License.
  */
 
+import asf.AsfProject.Companion.unsafeCast
 import java.util.Properties
 import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
-import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.named
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
@@ -238,25 +238,61 @@ tasks.register("printRuntimeClasspath").configure {
   }
 }
 
-configurations.all {
-  rootProject
-    .file("gradle/banned-dependencies.txt")
-    .readText(Charsets.UTF_8)
-    .trim()
-    .lines()
-    .map { it.trim() }
-    .filterNot { it.isBlank() || it.startsWith("#") }
-    .forEach { line ->
-      val idx = line.indexOf(':')
-      if (idx == -1) {
-        exclude(group = line)
-      } else {
-        val group = line.substring(0, idx)
-        val module = line.substring(idx + 1)
-        exclude(group = group, module = module)
-      }
-    }
+class BannedDependency(val group: String, val module: String?) {
+  fun exclude(configuration: Configuration) = configuration.exclude(group = group, module = module)
+
+  companion object {
+    fun parseList(file: File): List<BannedDependency> =
+      file
+        .readText(Charsets.UTF_8)
+        .trim()
+        .lines()
+        .map { it.trim() }
+        .filterNot { it.isBlank() || it.startsWith("#") }
+        .map { line ->
+          val idx = line.indexOf(':')
+          if (idx == -1) {
+            BannedDependency(line, null)
+          } else {
+            val group = line.substring(0, idx)
+            val module = line.substring(idx + 1)
+            BannedDependency(group, module)
+          }
+        }
+  }
 }
+
+class BannedDependencies(
+  val globallyBanned: List<BannedDependency>,
+  val quarkusProdBanned: List<BannedDependency>,
+) {
+  fun applyTo(configuration: Configuration) {
+    globallyBanned.forEach { it.exclude(configuration) }
+    if (configuration.name.startsWith("quarkusProd")) {
+      quarkusProdBanned.forEach { it.exclude(configuration) }
+    }
+  }
+
+  fun applyTo(configurations: ConfigurationContainer) {
+    configurations.all { applyTo(this) }
+  }
+}
+
+fun bannedDependencies(): BannedDependencies {
+  return if (rootProject.extra.has("bannedDependencies")) {
+    unsafeCast(rootProject.extra["bannedDependencies"]) as BannedDependencies
+  } else {
+    val bannedDependencies =
+      BannedDependencies(
+        BannedDependency.parseList(rootProject.file("gradle/banned-dependencies.txt")),
+        BannedDependency.parseList(rootProject.file("gradle/banned-quarkus-prod-dependencies.txt")),
+      )
+    rootProject.extra["bannedDependencies"] = bannedDependencies
+    bannedDependencies
+  }
+}
+
+bannedDependencies().applyTo(configurations)
 
 gradle.sharedServices.registerIfAbsent(
   "intTestParallelismConstraint",
