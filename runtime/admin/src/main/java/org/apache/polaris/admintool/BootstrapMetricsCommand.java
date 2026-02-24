@@ -53,7 +53,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "bootstrap-metrics",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps or upgrades the metrics schema.")
+    description = "Bootstraps or upgrades the metrics schema for existing realms")
 public class BootstrapMetricsCommand extends BaseCommand {
 
   @Inject MetricsSchemaBootstrap metricsSchemaBootstrap;

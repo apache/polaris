@@ -96,14 +96,15 @@ public class RelationalJdbcBootstrapMetricsCommandTest extends BootstrapMetricsC
         .contains("Bootstrap completed successfully.");
 
     // Bootstrap metrics schema for multiple realms in one command
+    // Note: Metrics schema is global (not per-realm), so only the first realm will actually
+    // bootstrap the schema. Subsequent realms will see it's already bootstrapped.
     LaunchResult metricsResult =
         launcher.launch("bootstrap-metrics", "-r", "metrics-realm3", "-r", "metrics-realm4");
     assertThat(metricsResult.exitCode()).isEqualTo(0);
     assertThat(metricsResult.getOutput())
         .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm3'...")
         .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm3'.")
-        .contains("Bootstrapping metrics schema v1 for realm 'metrics-realm4'...")
-        .contains("Metrics schema v1 successfully bootstrapped for realm 'metrics-realm4'.")
+        .contains("Metrics schema already at version 1 (target: 1) for realm 'metrics-realm4'. Skipping.")
         .contains("Metrics bootstrap completed successfully.");
   }
 

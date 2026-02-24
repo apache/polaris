@@ -72,7 +72,7 @@ public class JdbcMetricsPersistenceProducer {
    *
    * <p>If metrics tables are not found, this constructor throws {@link IllegalStateException} to
    * fail fast. Users should either bootstrap the metrics schema using the 'bootstrap-metrics'
-   * command or set {@code polaris.persistence.metrics.type=noop} to disable metrics persistence.
+   * command or set {@code polaris.metrics.persistence.type=noop} to disable metrics persistence.
    *
    * @param dataSource the datasource instance
    * @param relationalJdbcConfiguration JDBC configuration
@@ -90,7 +90,7 @@ public class JdbcMetricsPersistenceProducer {
         throw new IllegalStateException(
             "Metrics tables not found. The 'relational-jdbc' metrics persistence type requires "
                 + "metrics schema to be bootstrapped. Run 'bootstrap-metrics' command to create "
-                + "metrics tables, or set polaris.persistence.metrics.type=noop to disable metrics "
+                + "metrics tables, or set polaris.metrics.persistence.type=noop to disable metrics "
                 + "persistence.");
       }
     } catch (SQLException e) {
@@ -140,26 +140,7 @@ public class JdbcMetricsPersistenceProducer {
     return new JdbcMetricsPersistence(datasourceOperations, realmId, principal, supplier);
   }
 
-  /**
-   * Produces a {@link MetricsSchemaBootstrap} instance for the JDBC backend.
-   *
-   * <p>This producer creates a {@link JdbcMetricsSchemaBootstrap} that can bootstrap the metrics
-   * schema tables independently from the entity schema.
-   *
-   * @return a MetricsSchemaBootstrap implementation for JDBC
-   * @throws IllegalStateException if DatasourceOperations is not available
-   */
-  @Produces
-  @ApplicationScoped
-  @Identifier("relational-jdbc")
-  public MetricsSchemaBootstrap metricsSchemaBootstrap() {
-    if (datasourceOperations == null) {
-      throw new IllegalStateException(
-          "DatasourceOperations not available. Cannot create MetricsSchemaBootstrap. "
-              + "Ensure the database is properly configured.");
-    }
-    return new JdbcMetricsSchemaBootstrap(datasourceOperations);
-  }
+
 
   /**
    * Checks if the metrics tables have been bootstrapped by querying the metrics_version table and

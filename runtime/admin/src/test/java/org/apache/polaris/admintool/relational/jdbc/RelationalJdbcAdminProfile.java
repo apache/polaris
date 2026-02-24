@@ -34,7 +34,10 @@ public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
         "quarkus.datasource.active",
         "true",
         "quarkus.datasource.db-kind",
-        "postgresql");
+        "postgresql",
+        // Disable metrics persistence to avoid requiring metrics tables for bootstrap-metrics tests
+        "polaris.metrics.persistence.type",
+        "noop");
   }
 
   @Override
