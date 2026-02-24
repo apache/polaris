@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
