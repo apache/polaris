@@ -177,17 +177,24 @@ public abstract class PolarisConfiguration<T> {
       return defaultValue();
     }
 
-    if (defaultValue() instanceof Boolean) {
+    Object defaultValue = defaultValue();
+
+    // If value is already the same type as the default, no conversion needed
+    if (defaultValue.getClass().isInstance(value)) {
+      return cast(value);
+    }
+
+    if (defaultValue instanceof Boolean) {
       return cast(Boolean.valueOf(String.valueOf(value)));
-    } else if (defaultValue() instanceof Integer) {
+    } else if (defaultValue instanceof Integer) {
       return cast(Integer.valueOf(String.valueOf(value)));
-    } else if (defaultValue() instanceof Long) {
+    } else if (defaultValue instanceof Long) {
       return cast(Long.valueOf(String.valueOf(value)));
-    } else if (defaultValue() instanceof Double) {
+    } else if (defaultValue instanceof Double) {
       return cast(Double.valueOf(String.valueOf(value)));
-    } else if (defaultValue() instanceof Float) {
+    } else if (defaultValue instanceof Float) {
       return cast(Float.valueOf(String.valueOf(value)));
-    } else if (defaultValue() instanceof List<?>) {
+    } else if (defaultValue instanceof List<?>) {
       return cast(new ArrayList<>((List<?>) value));
     } else {
       return cast(value);
