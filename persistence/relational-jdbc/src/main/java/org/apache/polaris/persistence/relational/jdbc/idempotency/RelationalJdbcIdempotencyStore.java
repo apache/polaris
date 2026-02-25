@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,7 +74,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
       insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
 
-      List<Object> values = insertMap.values().stream().toList();
+      // Stream#toList returns an unmodifiable list and rejects nulls; these columns are nullable.
+      List<Object> values = new ArrayList<>(insertMap.values());
       QueryGenerator.PreparedQuery insert =
           QueryGenerator.generateInsertQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
