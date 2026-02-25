@@ -21,8 +21,12 @@ linkTitle: Release Guides
 title: Apache Polaris Release Guides
 type: docs
 weight: 500
+params:
+  show_page_toc: true
 cascade:
   type: docs
+  params:
+    show_page_toc: true
 ---
 
 This section contains documentation related to Apache Polaris releases.
@@ -49,6 +53,10 @@ The [release verification guide](release-verification-guide/) provides instructi
 An Apache Release Manager is a designated project committer responsible for shepherding a software release from community consensus to final distribution.
 They proactively drive the technical, legal, and procedural steps, including code freezing, signing artifacts, and coordinating voting.
 All releases must comply with the [Release Policy](https://www.apache.org/legal/release-policy.html)
+
+{{< alert note >}}
+You can find more information in the longer [_Release Manager Guide_](release-manager-guide/). 
+{{< /alert >}}
 
 ### Key Responsibilities
 
