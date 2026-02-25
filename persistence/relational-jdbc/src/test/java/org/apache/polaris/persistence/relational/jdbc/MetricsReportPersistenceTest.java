@@ -57,14 +57,10 @@ class MetricsReportPersistenceTest {
 
     datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
 
-    // Execute main schema v4 (entity tables, grants, etc.)
+    // Execute main schema v4 (includes metrics tables)
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
-
-    // Execute metrics schema (scan_metrics_report, commit_metrics_report tables)
-    InputStream metricsSchemaStream = classLoader.getResourceAsStream("h2/schema-metrics-v1.sql");
-    datasourceOperations.executeScript(metricsSchemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     PolarisStorageIntegrationProvider storageProvider =
@@ -77,7 +73,7 @@ class MetricsReportPersistenceTest {
           }
         };
 
-    // Create JdbcBasePersistenceImpl with metrics datasource set to the same datasource
+    // Create JdbcBasePersistenceImpl (metrics use the same datasource as entities)
     metricsPersistence =
         new JdbcBasePersistenceImpl(
             diagnostics,
@@ -85,8 +81,7 @@ class MetricsReportPersistenceTest {
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             storageProvider,
             "TEST_REALM",
-            4,
-            datasourceOperations);
+            4);
     metricsPersistence.setMetricsRequestContext(null, RequestIdSupplier.NOOP);
   }
 

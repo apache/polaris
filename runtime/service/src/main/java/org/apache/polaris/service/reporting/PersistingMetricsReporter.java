@@ -127,11 +127,6 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
     BasePersistence persistence = callContext.getPolarisCallContext().getMetaStore();
 
     if (persistence instanceof JdbcBasePersistenceImpl jdbcPersistence) {
-      // Check if metrics datasource is configured
-      if (!jdbcPersistence.hasMetricsDatasource()) {
-        return MetricsPersistence.NOOP;
-      }
-
       // Set request-scoped context on the persistence instance
       PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
       RequestIdSupplier supplier =

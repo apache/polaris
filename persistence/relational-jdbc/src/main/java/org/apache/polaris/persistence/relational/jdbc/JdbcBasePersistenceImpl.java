@@ -102,9 +102,6 @@ public class JdbcBasePersistenceImpl
   private final String realmId;
   private final int schemaVersion;
 
-  // Optional: Separate datasource for metrics operations (may be null if not configured)
-  @Nullable private final DatasourceOperations metricsDatasourceOperations;
-
   // Request-scoped fields for metrics persistence (set per-request via setters)
   @Nullable private PolarisPrincipal polarisPrincipal;
   @Nullable private RequestIdSupplier requestIdSupplier;
@@ -122,36 +119,12 @@ public class JdbcBasePersistenceImpl
       PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
-    this(
-        diagnostics,
-        databaseOperations,
-        secretsGenerator,
-        storageIntegrationProvider,
-        realmId,
-        schemaVersion,
-        null);
-  }
-
-  public JdbcBasePersistenceImpl(
-      PolarisDiagnostics diagnostics,
-      DatasourceOperations databaseOperations,
-      PrincipalSecretsGenerator secretsGenerator,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId,
-      int schemaVersion,
-      @Nullable DatasourceOperations metricsDatasourceOperations) {
     this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
-    this.metricsDatasourceOperations = metricsDatasourceOperations;
-  }
-
-  /** Returns true if this persistence instance is configured with a metrics datasource. */
-  public boolean hasMetricsDatasource() {
-    return metricsDatasourceOperations != null;
   }
 
   /**
@@ -1344,21 +1317,13 @@ public class JdbcBasePersistenceImpl
   // MetricsPersistence Implementation
   // ============================================================================
 
-  /**
-   * Returns the datasource operations to use for metrics persistence. Uses the dedicated metrics
-   * datasource if configured, otherwise falls back to the primary datasource.
-   */
+  /** Returns the datasource operations to use for metrics persistence. */
   private DatasourceOperations getMetricsDatasource() {
-    return metricsDatasourceOperations != null ? metricsDatasourceOperations : datasourceOperations;
+    return datasourceOperations;
   }
 
   @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
-    if (metricsDatasourceOperations == null) {
-      // No metrics persistence configured
-      return;
-    }
-
     // Obtain request context fields
     String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
     String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;
@@ -1380,11 +1345,6 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
-    if (metricsDatasourceOperations == null) {
-      // No metrics persistence configured
-      return;
-    }
-
     // Obtain request context fields
     String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
     String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;

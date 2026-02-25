@@ -58,7 +58,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 - Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
-- Added support for persisting Iceberg metrics (ScanReport, CommitReport) to a database using named datasources. Configure a named datasource `metrics` to enable persistence; see `application.properties` for examples. If no metrics datasource is configured, metrics are discarded.
+- Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Metrics tables are included in the main schema and metrics are automatically persisted when using JDBC persistence.
 
 ### Changes
 

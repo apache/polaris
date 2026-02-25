@@ -76,10 +76,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
 
-  @Inject
-  @jakarta.inject.Named("metrics")
-  Instance<DataSource> metricsDataSource;
-
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
   @Inject RealmConfig realmConfig;
 
@@ -111,9 +107,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             datasourceOperations,
             realmConfig.getConfig(BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
 
-    // Create metrics datasource operations if configured
-    final DatasourceOperations metricsDatasourceOps = createMetricsDatasourceOperations();
-
     sessionSupplierMap.put(
         realmId,
         () ->
@@ -123,29 +116,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                 secretsGenerator(realmId, rootCredentialsSet),
                 storageIntegrationProvider,
                 realmId,
-                schemaVersion,
-                metricsDatasourceOps));
+                schemaVersion));
 
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmId, metaStoreManager);
-  }
-
-  /**
-   * Creates a DatasourceOperations for the metrics datasource if configured.
-   *
-   * @return DatasourceOperations for metrics, or null if metrics datasource is not configured
-   */
-  @Nullable
-  private DatasourceOperations createMetricsDatasourceOperations() {
-    if (!metricsDataSource.isResolvable()) {
-      return null;
-    }
-    try {
-      return new DatasourceOperations(metricsDataSource.get(), relationalJdbcConfiguration);
-    } catch (SQLException e) {
-      LOGGER.warn("Failed to create metrics datasource operations: {}", e.getMessage());
-      return null;
-    }
   }
 
   public DatasourceOperations getDatasourceOperations() {
@@ -195,30 +169,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             effectiveSchemaVersion,
             realm);
         try {
-          // Run the set-up script to create the tables.
+          // Run the set-up script to create the tables (includes metrics tables).
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()
                   .openInitScriptResource(effectiveSchemaVersion));
-
-          // Auto-bootstrap metrics schema if named datasource is configured
-          if (metricsDataSource.isResolvable()) {
-            LOGGER.info(
-                "Metrics datasource configured, auto-bootstrapping metrics schema for realm: {}",
-                realm);
-            try {
-              DatasourceOperations metricsOps =
-                  new DatasourceOperations(metricsDataSource.get(), relationalJdbcConfiguration);
-              MetricsSchemaBootstrapUtil.bootstrap(metricsOps, realm);
-              LOGGER.info("Successfully auto-bootstrapped metrics schema for realm: {}", realm);
-            } catch (Exception metricsException) {
-              LOGGER.warn(
-                  "Failed to auto-bootstrap metrics schema for realm '{}': {}. "
-                      + "Metrics persistence may not be available until the schema is created.",
-                  realm,
-                  metricsException.getMessage());
-            }
-          }
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);

@@ -75,7 +75,6 @@ public class PersistingMetricsReporterTest {
   void setUp() {
     // Mock the JdbcBasePersistenceImpl which implements MetricsPersistence
     metricsPersistence = mock(JdbcBasePersistenceImpl.class);
-    when(metricsPersistence.hasMetricsDatasource()).thenReturn(true);
 
     // Mock CallContext to return the mocked persistence
     CallContext callContext = mock(CallContext.class);
