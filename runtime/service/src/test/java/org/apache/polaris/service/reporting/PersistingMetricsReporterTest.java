@@ -23,7 +23,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import jakarta.enterprise.inject.Instance;
 import java.time.Instant;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -38,9 +40,13 @@ import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanMetrics;
 import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.metrics.ScanReport;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -61,14 +67,30 @@ public class PersistingMetricsReporterTest {
   private static final TableIdentifier TABLE_IDENTIFIER =
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
-  private MetricsPersistence metricsPersistence;
+  private JdbcBasePersistenceImpl metricsPersistence;
   private PersistingMetricsReporter reporter;
 
+  @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
-    metricsPersistence = mock(MetricsPersistence.class);
+    // Mock the JdbcBasePersistenceImpl which implements MetricsPersistence
+    metricsPersistence = mock(JdbcBasePersistenceImpl.class);
+    when(metricsPersistence.hasMetricsDatasource()).thenReturn(true);
 
-    reporter = new PersistingMetricsReporter(metricsPersistence);
+    // Mock CallContext to return the mocked persistence
+    CallContext callContext = mock(CallContext.class);
+    PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
+    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
+    when(polarisCallContext.getMetaStore()).thenReturn(metricsPersistence);
+
+    // Mock Instance beans (not resolvable in test context)
+    Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
+    when(principalInstance.isResolvable()).thenReturn(false);
+
+    Instance<RequestIdSupplier> requestIdInstance = mock(Instance.class);
+    when(requestIdInstance.isResolvable()).thenReturn(false);
+
+    reporter = new PersistingMetricsReporter(callContext, principalInstance, requestIdInstance);
   }
 
   @Test
