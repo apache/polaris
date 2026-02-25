@@ -17,6 +17,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
@@ -165,7 +166,7 @@ public interface IdempotencyStore {
    * @param httpStatus HTTP status code returned to the client, or {@code null} if not applicable
    * @param errorSubtype optional error subtype or code, if the operation failed
    * @param responseSummary short, serialized representation of the response body
-   * @param responseHeaders serialized representation of response headers
+   * @param responseHeaders allowlisted response headers captured for replay
    * @param finalizedAt timestamp when the operation completed
    * @return {@code true} if the record was transitioned to a finalized state, {@code false}
    *     otherwise
@@ -177,7 +178,7 @@ public interface IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt);
 
   /**

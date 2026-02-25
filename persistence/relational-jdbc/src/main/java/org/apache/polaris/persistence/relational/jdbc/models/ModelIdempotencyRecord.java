@@ -18,6 +18,8 @@
 
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,6 +43,9 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String TABLE_NAME = "idempotency_records";
+
+  ObjectMapper RESPONSE_HEADERS_MAPPER = new ObjectMapper();
+  TypeReference<Map<String, String>> RESPONSE_HEADERS_TYPE = new TypeReference<>() {};
 
   // Logical tenant / realm identifier.
   String REALM_ID = "realm_id";
@@ -147,7 +152,17 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     Integer httpStatus = (Integer) rs.getObject(HTTP_STATUS);
     String errorSubtype = rs.getString(ERROR_SUBTYPE);
     String responseSummary = rs.getString(RESPONSE_SUMMARY);
-    String responseHeaders = rs.getString(RESPONSE_HEADERS);
+    Map<String, String> responseHeaders = null;
+    String responseHeadersRaw = rs.getString(RESPONSE_HEADERS);
+    if (responseHeadersRaw != null && !responseHeadersRaw.isBlank()) {
+      try {
+        responseHeaders =
+            RESPONSE_HEADERS_MAPPER.readValue(responseHeadersRaw, RESPONSE_HEADERS_TYPE);
+      } catch (Exception ignored) {
+        // Best-effort: if persisted data is malformed, replay can proceed without headers.
+        responseHeaders = null;
+      }
+    }
 
     Instant createdAt = rs.getTimestamp(CREATED_AT).toInstant();
     Instant updatedAt = rs.getTimestamp(UPDATED_AT).toInstant();
