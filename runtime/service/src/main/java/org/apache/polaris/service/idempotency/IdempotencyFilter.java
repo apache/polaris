@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -85,6 +86,8 @@ public class IdempotencyFilter {
   @Inject ResolverFactory resolverFactory;
   @Inject CatalogPrefixParser prefixParser;
 
+  private volatile String resolvedExecutorId;
+
   @ServerRequestFilter(priority = Priorities.AUTHORIZATION + 10)
   public Uni<Response> reserveOrReplay(ContainerRequestContext rc) {
     if (!configuration.enabled()) {
@@ -133,11 +136,15 @@ public class IdempotencyFilter {
         securityContext != null && securityContext.getUserPrincipal() instanceof PolarisPrincipal p
             ? p
             : null;
-    if (principal != null && !isPolarisManagedInternalIcebergCatalogRequest(rc, principal)) {
-      // for federated/external catalogs, Polaris may not enforce idempotency end-to-end,
-      // so treat Idempotency-Key as a no-op (do not reserve/finalize/replay).
-      return Uni.createFrom().nullItem();
-    }
+    final String requestPath = rc.getUriInfo().getPath();
+    Uni<Boolean> internalCatalogCheck =
+        principal == null
+            ? Uni.createFrom().item(true)
+            : Uni.createFrom()
+                .item(() -> isPolarisManagedInternalIcebergCatalogRequest(requestPath, principal))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .onFailure()
+                .recoverWithItem(false);
 
     String realmId = realmContext.getRealmIdentifier();
     String operationType = scope == null ? normalizeOperationType(rc) : scope.operationType();
@@ -148,91 +155,109 @@ public class IdempotencyFilter {
         now.plusSeconds(Math.max(0L, configuration.ttlSeconds()))
             .plusSeconds(Math.max(0L, configuration.ttlGraceSeconds()));
 
-    return Uni.createFrom()
-        .item(
-            () ->
-                store.reserve(
-                    realmId,
-                    key,
-                    operationType,
-                    resourceId,
-                    expiresAt,
-                    configuration.executorId(),
-                    now))
-        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+    return internalCatalogCheck
         .onItem()
         .transformToUni(
-            r -> {
-              if (r.type() == IdempotencyStore.ReserveResultType.OWNED) {
-                rc.setProperty(PROP_IDEMPOTENCY_KEY, key);
-                rc.setProperty(PROP_IDEMPOTENCY_OPERATION, operationType);
-                rc.setProperty(PROP_IDEMPOTENCY_RESOURCE, resourceId);
-                rc.setProperty(PROP_IDEMPOTENCY_OWNED, Boolean.TRUE);
-                maybeStartHeartbeat(rc, realmId, key);
+            internal -> {
+              if (!internal) {
+                // For federated/external catalogs, Polaris may not enforce idempotency end-to-end,
+                // so treat Idempotency-Key as a no-op (do not reserve/finalize/replay).
                 return Uni.createFrom().nullItem();
               }
+              return Uni.createFrom()
+                  .item(
+                      () ->
+                          store.reserve(
+                              realmId,
+                              key,
+                              operationType,
+                              resourceId,
+                              expiresAt,
+                              executorId(),
+                              now))
+                  .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                  .onItem()
+                  .transformToUni(
+                      r -> {
+                        if (r.type() == IdempotencyStore.ReserveResultType.OWNED) {
+                          rc.setProperty(PROP_IDEMPOTENCY_KEY, key);
+                          rc.setProperty(PROP_IDEMPOTENCY_OPERATION, operationType);
+                          rc.setProperty(PROP_IDEMPOTENCY_RESOURCE, resourceId);
+                          rc.setProperty(PROP_IDEMPOTENCY_OWNED, Boolean.TRUE);
+                          maybeStartHeartbeat(rc, realmId, key);
+                          return Uni.createFrom().nullItem();
+                        }
 
-              Optional<IdempotencyRecord> existingOpt = r.existing();
-              if (existingOpt.isEmpty()) {
-                // Should not happen: DUPLICATE should always return an existing record.
-                return Uni.createFrom()
-                    .item(error(500, "IdempotencyInvariantViolation", "Missing existing record"));
-              }
+                        Optional<IdempotencyRecord> existingOpt = r.existing();
+                        if (existingOpt.isEmpty()) {
+                          // Should not happen: DUPLICATE should always return an existing record.
+                          return Uni.createFrom()
+                              .item(
+                                  error(
+                                      500,
+                                      "IdempotencyInvariantViolation",
+                                      "Missing existing record"));
+                        }
 
-              IdempotencyRecord existing = existingOpt.get();
-              if (!operationType.equals(existing.operationType())
-                  || !resourceId.equals(existing.normalizedResourceId())) {
-                return Uni.createFrom()
-                    .item(
-                        error(
-                            422,
-                            "idempotency_key_conflict",
-                            "Idempotency key was already used for a different operation/resource"));
-              }
+                        IdempotencyRecord existing = existingOpt.get();
+                        if (!operationType.equals(existing.operationType())
+                            || !resourceId.equals(existing.normalizedResourceId())) {
+                          return Uni.createFrom()
+                              .item(
+                                  error(
+                                      422,
+                                      "idempotency_key_conflict",
+                                      "Idempotency key was already used for a different operation/resource"));
+                        }
 
-              if (!existing.isFinalized()) {
-                // If the owner appears stale (no recent heartbeat), don't wait indefinitely. Full
-                // reconciliation/takeover is out of scope for this change; return a retryable 503.
-                Instant hb = existing.heartbeatAt();
-                if (hb != null
-                    && Duration.between(hb, clock.instant()).getSeconds()
-                        > Math.max(0L, configuration.leaseTtlSeconds())) {
-                  return Uni.createFrom()
-                      .item(
-                          error(
-                              503,
-                              "idempotency_in_progress",
-                              "Operation with this idempotency key may be stale; retry later"));
-                }
-                Instant deadline =
-                    clock
-                        .instant()
-                        .plusSeconds(Math.max(0L, configuration.inProgressWaitSeconds()));
-                return waitForFinalized(realmId, key, deadline)
-                    .onItem()
-                    .transform(this::replayResponse)
-                    .onFailure(TimeoutException.class)
-                    .recoverWithItem(
-                        error(
-                            503,
-                            "idempotency_in_progress",
-                            "Operation with this idempotency key is still in progress; retry later"))
-                    .onFailure()
-                    .recoverWithItem(
-                        error(
-                            503,
-                            "idempotency_store_unavailable",
-                            "Idempotency store unavailable; retry later"));
-              }
+                        if (!existing.isFinalized()) {
+                          if (configuration.heartbeatEnabled()) {
+                            // If the owner appears stale (no recent heartbeat), don't wait
+                            // indefinitely. Full reconciliation/takeover is out of scope for this
+                            // change; return a retryable 503.
+                            Instant hb = existing.heartbeatAt();
+                            Instant checkNow = clock.instant();
+                            long leaseTtlSeconds = Math.max(0L, configuration.leaseTtlSeconds());
+                            if (hb == null
+                                || Duration.between(hb, checkNow).getSeconds() > leaseTtlSeconds) {
+                              return Uni.createFrom()
+                                  .item(
+                                      error(
+                                          503,
+                                          "idempotency_in_progress",
+                                          "Operation with this idempotency key may be stale; retry later"));
+                            }
+                          }
+                          Instant deadline =
+                              clock
+                                  .instant()
+                                  .plusSeconds(Math.max(0L, configuration.inProgressWaitSeconds()));
+                          return waitForFinalized(realmId, key, deadline)
+                              .onItem()
+                              .transform(this::replayResponse)
+                              .onFailure(TimeoutException.class)
+                              .recoverWithItem(
+                                  error(
+                                      503,
+                                      "idempotency_in_progress",
+                                      "Operation with this idempotency key is still in progress; retry later"))
+                              .onFailure()
+                              .recoverWithItem(
+                                  error(
+                                      503,
+                                      "idempotency_store_unavailable",
+                                      "Idempotency store unavailable; retry later"));
+                        }
 
-              return Uni.createFrom().item(replayResponse(existing));
-            })
-        .onFailure()
-        .recoverWithItem(
-            error(
-                503,
-                "idempotency_store_unavailable",
-                "Idempotency store unavailable; retry later"));
+                        return Uni.createFrom().item(replayResponse(existing));
+                      })
+                  .onFailure()
+                  .recoverWithItem(
+                      error(
+                          503,
+                          "idempotency_store_unavailable",
+                          "Idempotency store unavailable; retry later"));
+            });
   }
 
   @ServerResponseFilter
@@ -267,7 +292,7 @@ public class IdempotencyFilter {
             .execute(
                 () -> {
                   try {
-                    store.cancelInProgressReservation(realmId, key, configuration.executorId());
+                    store.cancelInProgressReservation(realmId, key, executorId());
                   } catch (RuntimeException ignored) {
                     // Best-effort.
                   }
@@ -305,14 +330,55 @@ public class IdempotencyFilter {
                   .execute(
                       () -> {
                         try {
-                          store.updateHeartbeat(
-                              realmId, key, configuration.executorId(), clock.instant());
+                          store.updateHeartbeat(realmId, key, executorId(), clock.instant());
                         } catch (RuntimeException ignored2) {
                           // Best-effort.
                         }
                       });
             });
     rc.setProperty(PROP_IDEMPOTENCY_HEARTBEAT_TIMER_ID, timerId);
+  }
+
+  private String executorId() {
+    String cached = resolvedExecutorId;
+    if (cached != null) {
+      return cached;
+    }
+    String fromConfig = configuration.executorId().orElse(null);
+    if (fromConfig != null && !fromConfig.isBlank()) {
+      resolvedExecutorId = fromConfig;
+      return fromConfig;
+    }
+    String computed = defaultExecutorId();
+    resolvedExecutorId = computed;
+    return computed;
+  }
+
+  private static String defaultExecutorId() {
+    String pid = String.valueOf(ProcessHandle.current().pid());
+    String node =
+        firstNonBlank(
+            System.getenv("POD_NAME"), System.getenv("HOSTNAME"), System.getenv("NODE_NAME"));
+    if (node != null) {
+      return node + "-" + pid;
+    }
+    try {
+      return InetAddress.getLocalHost().getHostName() + "-" + pid;
+    } catch (Exception e) {
+      return "pid-" + pid;
+    }
+  }
+
+  private static String firstNonBlank(String... values) {
+    if (values == null) {
+      return null;
+    }
+    for (String v : values) {
+      if (v != null && !v.isBlank()) {
+        return v;
+      }
+    }
+    return null;
   }
 
   private void stopHeartbeat(ContainerRequestContext request) {
@@ -516,8 +582,7 @@ public class IdempotencyFilter {
    * internal" and treat idempotency as a no-op.
    */
   private boolean isPolarisManagedInternalIcebergCatalogRequest(
-      ContainerRequestContext rc, PolarisPrincipal principal) {
-    String path = rc.getUriInfo().getPath();
+      String path, PolarisPrincipal principal) {
     if (path == null || !path.startsWith("v1/")) {
       // Non-Iceberg REST paths: leave existing behavior unchanged (scopes/mutating method gating).
       return true;
