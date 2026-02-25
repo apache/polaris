@@ -20,25 +20,34 @@ package org.apache.polaris.service.reporting;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.CommitReport;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.ScanReport;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.metrics.iceberg.MetricsRecordConverter;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
+import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Implementation of {@link PolarisMetricsReporter} that persists metrics to the configured {@link
- * MetricsPersistence} backend.
+ * Implementation of {@link PolarisMetricsReporter} that persists metrics using the {@link
+ * BasePersistence} from the current {@link CallContext}.
  *
  * <p>This reporter is selected when {@code polaris.iceberg-metrics.reporting.type} is set to {@code
  * "persisting"}.
+ *
+ * <p>The reporter obtains the persistence layer from the call context and checks if it implements
+ * {@link MetricsPersistence}. If not, metrics are silently discarded.
  *
  * <p>The reporter receives catalog and table IDs from the caller (already resolved during
  * authorization), avoiding redundant entity lookups. It uses {@link MetricsRecordConverter} to
@@ -53,11 +62,18 @@ import org.slf4j.LoggerFactory;
 public class PersistingMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PersistingMetricsReporter.class);
 
-  private final MetricsPersistence metricsPersistence;
+  private final CallContext callContext;
+  private final Instance<PolarisPrincipal> polarisPrincipal;
+  private final Instance<RequestIdSupplier> requestIdSupplier;
 
   @Inject
-  public PersistingMetricsReporter(MetricsPersistence metricsPersistence) {
-    this.metricsPersistence = metricsPersistence;
+  public PersistingMetricsReporter(
+      CallContext callContext,
+      Instance<PolarisPrincipal> polarisPrincipal,
+      Instance<RequestIdSupplier> requestIdSupplier) {
+    this.callContext = callContext;
+    this.polarisPrincipal = polarisPrincipal;
+    this.requestIdSupplier = requestIdSupplier;
   }
 
   @Override
@@ -68,6 +84,8 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       long tableId,
       MetricsReport metricsReport,
       Instant receivedTimestamp) {
+
+    MetricsPersistence metricsPersistence = getMetricsPersistence();
 
     if (metricsReport instanceof ScanReport scanReport) {
       ScanMetricsRecord record =
@@ -97,5 +115,33 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
           "Unknown metrics report type: {}. Metrics will not be stored.",
           metricsReport.getClass().getName());
     }
+  }
+
+  /**
+   * Gets the MetricsPersistence from the current call context's BasePersistence.
+   *
+   * <p>If the BasePersistence implements MetricsPersistence (e.g., JdbcBasePersistenceImpl), it is
+   * returned after setting up the request context. Otherwise, returns a NOOP implementation.
+   */
+  private MetricsPersistence getMetricsPersistence() {
+    BasePersistence persistence = callContext.getPolarisCallContext().getMetaStore();
+
+    if (persistence instanceof JdbcBasePersistenceImpl jdbcPersistence) {
+      // Check if metrics datasource is configured
+      if (!jdbcPersistence.hasMetricsDatasource()) {
+        return MetricsPersistence.NOOP;
+      }
+
+      // Set request-scoped context on the persistence instance
+      PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
+      RequestIdSupplier supplier =
+          requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
+      jdbcPersistence.setMetricsRequestContext(principal, supplier);
+
+      return jdbcPersistence;
+    }
+
+    // BasePersistence doesn't implement MetricsPersistence
+    return MetricsPersistence.NOOP;
   }
 }

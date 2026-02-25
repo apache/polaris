@@ -38,20 +38,17 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -61,7 +58,6 @@ import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
-import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -440,62 +436,5 @@ public class ServiceProducers {
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     return reporters.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  /**
-   * Produces a {@link MetricsPersistence} instance with auto-detection.
-   *
-   * <p>Metrics persistence is automatically enabled when:
-   *
-   * <ol>
-   *   <li>The persistence backend is {@link JdbcBasePersistenceImpl}
-   *   <li>A named "metrics" datasource is configured
-   * </ol>
-   *
-   * <p>If either condition is not met, returns {@link MetricsPersistence#NOOP} which discards all
-   * metrics.
-   *
-   * <p>Configuration example:
-   *
-   * <pre>
-   * # Same database, different schema
-   * quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris?currentSchema=metrics
-   *
-   * # Separate database
-   * quarkus.datasource.metrics.jdbc.url=jdbc:postgresql://localhost:5432/polaris_metrics
-   * </pre>
-   *
-   * @param metaStoreManagerFactory the metastore manager factory
-   * @param realmContext the realm context for the current request
-   * @param polarisPrincipal the authenticated principal for the current request (may be null)
-   * @param requestIdSupplier supplier for obtaining the server-generated request ID
-   * @return a MetricsPersistence implementation (JDBC or NOOP)
-   */
-  @Produces
-  @RequestScoped
-  public MetricsPersistence metricsPersistence(
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      RealmContext realmContext,
-      Instance<PolarisPrincipal> polarisPrincipal,
-      Instance<RequestIdSupplier> requestIdSupplier) {
-
-    BasePersistence persistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    if (!(persistence instanceof JdbcBasePersistenceImpl jdbcPersistence)) {
-      return MetricsPersistence.NOOP;
-    }
-
-    // If no metrics datasource is configured, return NOOP
-    if (!jdbcPersistence.hasMetricsDatasource()) {
-      return MetricsPersistence.NOOP;
-    }
-
-    // Set request-scoped context on the persistence instance
-    PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
-    RequestIdSupplier supplier =
-        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
-    jdbcPersistence.setMetricsRequestContext(principal, supplier);
-
-    // Return the JdbcBasePersistenceImpl directly as it implements MetricsPersistence
-    return jdbcPersistence;
   }
 }
