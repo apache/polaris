@@ -34,27 +34,9 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * remain backend-agnostic.
  *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
- * Implementations that don't support metrics persistence can use {@link #NOOP} which silently
- * ignores write operations and returns empty pages for queries.
- *
- * <h3>Dependency Injection</h3>
- *
- * <p>This interface is designed to be injected via CDI (Contexts and Dependency Injection). The
- * deployment module (e.g., {@code polaris-quarkus-service}) should provide a {@code @Produces}
- * method that creates the appropriate implementation based on the configured persistence backend.
- *
- * <p>Example producer:
- *
- * <pre>{@code
- * @Produces
- * @RequestScoped
- * MetricsPersistence metricsPersistence(RealmContext realmContext, PersistenceBackend backend) {
- *   if (backend.supportsMetrics()) {
- *     return backend.createMetricsPersistence(realmContext);
- *   }
- *   return MetricsPersistence.NOOP;
- * }
- * }</pre>
+ * Persistence backends that don't support metrics should not implement this interface; the service
+ * layer uses {@link PolarisMetricsManager} which silently ignores metrics when the underlying
+ * persistence does not support them.
  *
  * <h3>Multi-Tenancy</h3>
  *
@@ -82,12 +64,10 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * @see PageToken
  * @see Page
  * @see ReportIdToken
+ * @see PolarisMetricsManager
  */
 @Beta
 public interface MetricsPersistence {
-
-  /** A no-op implementation for backends that don't support metrics persistence. */
-  MetricsPersistence NOOP = new NoOpMetricsPersistence();
 
   // ============================================================================
   // Request Context
