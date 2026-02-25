@@ -17,15 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: "Guides"
-title: "Apache Polaris Guides"
-weight: 200
+linkTitle: "Apache Polaris"
+title: "Getting Started"
+weight: 10
 cascade:
-    type: docs
-# TODO remove when adding the first proposal
-top_hidden: true
-toc_hide: true
-hide_summary: true
+    type: guides
+menus:
+    main:
+        parent: Guides
+        weight: 2
 ---
 
-= Guides
+Please see the [quickstart guide](../../in-dev/unreleased/getting-started) for more information.

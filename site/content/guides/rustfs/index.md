@@ -1,30 +1,46 @@
-<!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
- 
-   http://www.apache.org/licenses/LICENSE-2.0
- 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+linkTitle: "Storage: RustFS"
+title: "Getting Started with Apache Polaris and RustFS"
+weight: 200
+tags:
+   - rustfs
+   - object storage
+cascade:
+    type: guides
+menus:
+    main:
+        parent: Guides
+        weight: 200
+---
 
-# Getting Started with Apache Polaris and RustFS
+{{< alert warning >}}
+**Disclaimer:** This guide uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, [rc](https://github.com/rustfs/cli) should be used.
+{{< /alert >}}
 
 ## Overview
 
 This example uses [RustFS](https://rustfs.com/) as a storage provider with Polaris.
 
 Spark is used as a query engine. This example assumes a local Spark installation.
-See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark setup.
+See the [Spark Notebooks Example](../spark) for a more advanced Spark setup.
 
 ## Starting the Example
 
@@ -40,7 +56,7 @@ See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark 
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    docker compose -f getting-started/rustfs/docker-compose.yml up
+    docker compose -f site/content/guides/rustfs/docker-compose.yml up
     ```
 
 ## Connecting From Spark
