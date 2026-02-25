@@ -75,7 +75,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisDiagnostics diagnostics;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
-
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
   @Inject RealmConfig realmConfig;
 
@@ -169,7 +168,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             effectiveSchemaVersion,
             realm);
         try {
-          // Run the set-up script to create the tables (includes metrics tables).
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()

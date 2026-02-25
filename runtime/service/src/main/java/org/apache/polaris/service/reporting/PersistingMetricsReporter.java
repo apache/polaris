@@ -35,7 +35,6 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,20 +119,20 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
   /**
    * Gets the MetricsPersistence from the current call context's BasePersistence.
    *
-   * <p>If the BasePersistence implements MetricsPersistence (e.g., JdbcBasePersistenceImpl), it is
-   * returned after setting up the request context. Otherwise, returns a NOOP implementation.
+   * <p>If the BasePersistence implements MetricsPersistence, it is returned after setting up the
+   * request context. Otherwise, returns a NOOP implementation.
    */
   private MetricsPersistence getMetricsPersistence() {
     BasePersistence persistence = callContext.getPolarisCallContext().getMetaStore();
 
-    if (persistence instanceof JdbcBasePersistenceImpl jdbcPersistence) {
+    if (persistence instanceof MetricsPersistence metricsPersistence) {
       // Set request-scoped context on the persistence instance
       PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
       RequestIdSupplier supplier =
           requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
-      jdbcPersistence.setMetricsRequestContext(principal, supplier);
+      metricsPersistence.setMetricsRequestContext(principal, supplier);
 
-      return jdbcPersistence;
+      return metricsPersistence;
     }
 
     // BasePersistence doesn't implement MetricsPersistence

@@ -127,15 +127,7 @@ public class JdbcBasePersistenceImpl
     this.schemaVersion = schemaVersion;
   }
 
-  /**
-   * Sets the request-scoped context for metrics persistence.
-   *
-   * <p>This method should be called per-request to provide the principal and request ID supplier
-   * needed for metrics persistence operations.
-   *
-   * @param principal the authenticated principal for the current request (may be null)
-   * @param requestIdSupplier supplier for obtaining the server-generated request ID
-   */
+  @Override
   public void setMetricsRequestContext(
       @Nullable PolarisPrincipal principal, @Nullable RequestIdSupplier requestIdSupplier) {
     this.polarisPrincipal = principal;

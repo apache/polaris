@@ -20,6 +20,9 @@ package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 
@@ -85,6 +88,28 @@ public interface MetricsPersistence {
 
   /** A no-op implementation for backends that don't support metrics persistence. */
   MetricsPersistence NOOP = new NoOpMetricsPersistence();
+
+  // ============================================================================
+  // Request Context
+  // ============================================================================
+
+  /**
+   * Sets the request-scoped context for metrics persistence.
+   *
+   * <p>This method should be called per-request to provide the principal and request ID supplier
+   * needed for metrics persistence operations. Implementations may use this information to enrich
+   * stored metrics with request context (e.g., who made the request, trace correlation).
+   *
+   * <p>The default implementation does nothing, allowing implementations that don't need request
+   * context to ignore this method.
+   *
+   * @param principal the authenticated principal for the current request (may be null)
+   * @param requestIdSupplier supplier for obtaining the server-generated request ID
+   */
+  default void setMetricsRequestContext(
+      @Nullable PolarisPrincipal principal, @Nullable RequestIdSupplier requestIdSupplier) {
+    // Default: no-op - implementations can override if they need request context
+  }
 
   // ============================================================================
   // Write Operations

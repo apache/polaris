@@ -44,9 +44,10 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -67,14 +68,20 @@ public class PersistingMetricsReporterTest {
   private static final TableIdentifier TABLE_IDENTIFIER =
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
-  private JdbcBasePersistenceImpl metricsPersistence;
+  /**
+   * Interface combining BasePersistence and MetricsPersistence for testing. This represents a
+   * persistence implementation that supports metrics (like JdbcBasePersistenceImpl).
+   */
+  interface TestMetricsPersistence extends BasePersistence, MetricsPersistence {}
+
+  private TestMetricsPersistence metricsPersistence;
   private PersistingMetricsReporter reporter;
 
   @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
-    // Mock the JdbcBasePersistenceImpl which implements MetricsPersistence
-    metricsPersistence = mock(JdbcBasePersistenceImpl.class);
+    // Mock a persistence that implements both BasePersistence and MetricsPersistence
+    metricsPersistence = mock(TestMetricsPersistence.class);
 
     // Mock CallContext to return the mocked persistence
     CallContext callContext = mock(CallContext.class);
