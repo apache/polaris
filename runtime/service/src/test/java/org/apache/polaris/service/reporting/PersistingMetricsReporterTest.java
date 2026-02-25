@@ -44,9 +44,8 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
-import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +56,7 @@ import org.mockito.ArgumentCaptor;
  *
  * <p>Note: The reporter now receives catalogId and tableId directly from the caller (already
  * resolved during authorization in IcebergCatalogHandler), so there's no need to mock entity
- * lookups.
+ * lookups. The reporter uses {@link PolarisMetaStoreManager} to persist metrics.
  */
 public class PersistingMetricsReporterTest {
 
@@ -68,26 +67,20 @@ public class PersistingMetricsReporterTest {
   private static final TableIdentifier TABLE_IDENTIFIER =
       TableIdentifier.of(Namespace.of("db", "schema"), TABLE_NAME);
 
-  /**
-   * Interface combining BasePersistence and MetricsPersistence for testing. This represents a
-   * persistence implementation that supports metrics (like JdbcBasePersistenceImpl).
-   */
-  interface TestMetricsPersistence extends BasePersistence, MetricsPersistence {}
-
-  private TestMetricsPersistence metricsPersistence;
+  private PolarisMetaStoreManager metaStoreManager;
+  private PolarisCallContext polarisCallContext;
   private PersistingMetricsReporter reporter;
 
   @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
-    // Mock a persistence that implements both BasePersistence and MetricsPersistence
-    metricsPersistence = mock(TestMetricsPersistence.class);
+    // Mock PolarisMetaStoreManager
+    metaStoreManager = mock(PolarisMetaStoreManager.class);
 
-    // Mock CallContext to return the mocked persistence
+    // Mock CallContext
     CallContext callContext = mock(CallContext.class);
-    PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
+    polarisCallContext = mock(PolarisCallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getMetaStore()).thenReturn(metricsPersistence);
 
     // Mock Instance beans (not resolvable in test context)
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
@@ -96,7 +89,9 @@ public class PersistingMetricsReporterTest {
     Instance<RequestIdSupplier> requestIdInstance = mock(Instance.class);
     when(requestIdInstance.isResolvable()).thenReturn(false);
 
-    reporter = new PersistingMetricsReporter(callContext, principalInstance, requestIdInstance);
+    reporter =
+        new PersistingMetricsReporter(
+            callContext, metaStoreManager, principalInstance, requestIdInstance);
   }
 
   @Test
@@ -108,9 +103,10 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, scanReport, Instant.now());
 
-    // Verify persistence was called with correct record
+    // Verify metaStoreManager was called with correct record
     ArgumentCaptor<ScanMetricsRecord> captor = ArgumentCaptor.forClass(ScanMetricsRecord.class);
-    verify(metricsPersistence).writeScanReport(captor.capture());
+    verify(metaStoreManager)
+        .writeScanMetrics(any(PolarisCallContext.class), captor.capture(), any(), any());
 
     ScanMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -127,9 +123,10 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, commitReport, Instant.now());
 
-    // Verify persistence was called with correct record
+    // Verify metaStoreManager was called with correct record
     ArgumentCaptor<CommitMetricsRecord> captor = ArgumentCaptor.forClass(CommitMetricsRecord.class);
-    verify(metricsPersistence).writeCommitReport(captor.capture());
+    verify(metaStoreManager)
+        .writeCommitMetrics(any(PolarisCallContext.class), captor.capture(), any(), any());
 
     CommitMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -146,9 +143,9 @@ public class PersistingMetricsReporterTest {
     reporter.reportMetric(
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, unknownReport, Instant.now());
 
-    // Verify persistence was NOT called since report type is unknown
-    verify(metricsPersistence, never()).writeScanReport(any());
-    verify(metricsPersistence, never()).writeCommitReport(any());
+    // Verify metaStoreManager was NOT called since report type is unknown
+    verify(metaStoreManager, never()).writeScanMetrics(any(), any(), any(), any());
+    verify(metaStoreManager, never()).writeCommitMetrics(any(), any(), any(), any());
   }
 
   private ScanReport createScanReport() {
