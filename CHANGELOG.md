@@ -71,15 +71,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
      quarkus.datasource.metrics.username=polaris
      quarkus.datasource.metrics.password=secret
      ```
-  2. Set the metrics persistence type:
-     ```properties
-     polaris.persistence.metrics.type=relational-jdbc
-     ```
-  3. Bootstrap the schema (metrics tables are created automatically):
+  2. Bootstrap the schema (metrics tables are created automatically):
      ```bash
      polaris-admin bootstrap -r my-realm -c my-realm,root,secret
      ```
-  If the named datasource is not configured, metrics persistence will use a no-op implementation (metrics are discarded).
+  Metrics persistence is automatically enabled when using `polaris.persistence.type=relational-jdbc` with a named `metrics` datasource configured. If no metrics datasource is configured, metrics are discarded.
 
 ### Changes
 

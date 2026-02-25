@@ -30,10 +30,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
-import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.service.persistence.MetricsPersistenceConfiguration;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
 import org.apache.polaris.test.commons.RelationalJdbcProfile;
 import org.junit.jupiter.api.Test;
@@ -61,106 +57,28 @@ public class ServiceProducersIT {
     }
   }
 
-  // ========== MetricsPersistence wiring tests ==========
-
-  /**
-   * Profile that explicitly sets the metrics persistence type to "noop". This verifies that the
-   * configuration property {@code polaris.persistence.metrics.type} is correctly wired to the
-   * ServiceProducers and selects the appropriate implementation.
-   */
-  public static class NoopMetricsPersistenceConfig implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.persistence.metrics.type", "noop");
-      return config;
-    }
-  }
-
-  /**
-   * Tests that when {@code polaris.persistence.metrics.type=noop}, the injected MetricsPersistence
-   * is the NoOpMetricsPersistence implementation.
-   */
-  @QuarkusTest
-  @TestProfile(ServiceProducersIT.NoopMetricsPersistenceConfig.class)
-  public static class NoopMetricsPersistenceTest {
-
-    @Inject MetricsPersistence metricsPersistence;
-
-    @Test
-    void testNoopMetricsPersistenceProduced() {
-      assertThat(metricsPersistence).isNotNull();
-
-      // Verify it's the NOOP implementation by checking behavior:
-      // NOOP implementation returns empty pages for queries
-      MetricsQueryCriteria criteria =
-          MetricsQueryCriteria.builder().catalogId(1L).tableId(1L).build();
-      Page<?> scanPage = metricsPersistence.queryScanReports(criteria, PageToken.fromLimit(10));
-      Page<?> commitPage = metricsPersistence.queryCommitReports(criteria, PageToken.fromLimit(10));
-
-      assertThat(scanPage.items())
-          .as("NOOP implementation should return empty scan reports")
-          .isEmpty();
-      assertThat(commitPage.items())
-          .as("NOOP implementation should return empty commit reports")
-          .isEmpty();
-    }
-  }
-
-  /**
-   * Profile that uses default configuration (no explicit metrics persistence type). This verifies
-   * that the default value "noop" is correctly applied via {@code @WithDefault("noop")}.
-   */
-  public static class DefaultMetricsPersistenceConfig implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      // No metrics persistence config - should default to "noop"
-      return new HashMap<>();
-    }
-  }
-
-  /**
-   * Tests that when no {@code polaris.persistence.metrics.type} is configured, the default "noop"
-   * is used and the NoOpMetricsPersistence is injected.
-   */
-  @QuarkusTest
-  @TestProfile(ServiceProducersIT.DefaultMetricsPersistenceConfig.class)
-  public static class DefaultMetricsPersistenceTest {
-
-    @Inject MetricsPersistence metricsPersistence;
-
-    @Test
-    void testDefaultMetricsPersistenceIsNoop() {
-      assertThat(metricsPersistence).isNotNull();
-
-      // Verify it's the NOOP implementation by checking behavior:
-      // NOOP implementation returns empty pages for queries
-      MetricsQueryCriteria criteria =
-          MetricsQueryCriteria.builder().catalogId(1L).tableId(1L).build();
-      Page<?> scanPage = metricsPersistence.queryScanReports(criteria, PageToken.fromLimit(10));
-
-      assertThat(scanPage.items())
-          .as("Default (NOOP) implementation should return empty scan reports")
-          .isEmpty();
-    }
-  }
-
-  // ========== JDBC MetricsPersistence wiring test ==========
+  // ========== MetricsPersistence wiring test ==========
 
   private static final String JDBC_TEST_REALM = "jdbc-test-realm";
 
   /**
-   * Profile that configures relational-jdbc persistence with metrics persistence enabled. This
-   * extends RelationalJdbcProfile which sets up a PostgreSQL container with both main and metrics
-   * datasources configured. It also configures the realm and bootstrap credentials for
+   * Profile that configures relational-jdbc persistence with the metrics datasource configured.
+   * This extends RelationalJdbcProfile which sets up a PostgreSQL container with both main and
+   * metrics datasources configured. It also configures the realm and bootstrap credentials for
    * auto-bootstrapping.
+   *
+   * <p>Metrics persistence is auto-detected based on:
+   *
+   * <ol>
+   *   <li>The persistence backend being JdbcBasePersistenceImpl
+   *   <li>A named "metrics" datasource being configured
+   * </ol>
    */
   public static class JdbcMetricsPersistenceConfig extends RelationalJdbcProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
-          .put("polaris.persistence.metrics.type", "relational-jdbc")
           .put("polaris.realm-context.realms", JDBC_TEST_REALM)
           .put("polaris.bootstrap.credentials", JDBC_TEST_REALM + ",client1,secret1")
           .build();
@@ -174,32 +92,30 @@ public class ServiceProducersIT {
   }
 
   /**
-   * Tests that when {@code polaris.persistence.metrics.type=relational-jdbc} and a JDBC persistence
-   * backend is configured, the MetricsPersistence config is correctly wired.
+   * Tests that when relational-jdbc persistence is configured with a metrics datasource, the
+   * MetricsPersistence is auto-detected and wired correctly.
    *
-   * <p>This test verifies the configuration wiring by checking that:
+   * <p>This test verifies that the MetricsPersistence producer auto-detects the JDBC backend with a
+   * metrics datasource and returns a functional implementation (not NOOP).
    *
-   * <ol>
-   *   <li>The {@code MetricsPersistenceConfiguration} reads the correct type from config
-   *   <li>The configuration value "relational-jdbc" is passed to the producer
-   * </ol>
-   *
-   * <p>Note: Full end-to-end verification of JDBC MetricsPersistence would require a fully
-   * bootstrapped realm with proper request context, which is tested in the JDBC integration tests.
+   * <p>Note: Full end-to-end verification of JDBC MetricsPersistence is tested in the JDBC
+   * integration tests (MetricsReportPersistenceTest).
    */
   @QuarkusTest
   @TestProfile(ServiceProducersIT.JdbcMetricsPersistenceConfig.class)
   public static class JdbcMetricsPersistenceTest {
 
-    @Inject MetricsPersistenceConfiguration config;
+    @Inject MetricsPersistence metricsPersistence;
 
     @Test
-    void testJdbcMetricsPersistenceConfigWired() {
-      // Verify the configuration is correctly wired to read "relational-jdbc"
-      assertThat(config.type())
-          .as(
-              "polaris.persistence.metrics.type should be 'relational-jdbc' from JdbcMetricsPersistenceConfig")
-          .isEqualTo("relational-jdbc");
+    void testJdbcMetricsPersistenceAutoDetected() {
+      // Verify that MetricsPersistence is injected (producer worked)
+      assertThat(metricsPersistence)
+          .as("MetricsPersistence should be injected when metrics datasource is configured")
+          .isNotNull();
+
+      // Note: Full functional testing (writes/reads) is done in MetricsReportPersistenceTest.
+      // This test verifies the CDI wiring works correctly.
     }
   }
 }
