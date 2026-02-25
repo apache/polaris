@@ -25,8 +25,10 @@ import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import java.net.InetAddress;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.service.context.RealmContextConfiguration;
@@ -47,10 +49,22 @@ public class IdempotencyMaintenance {
 
   private volatile Long purgeTimerId;
   private final AtomicBoolean purgeRunning = new AtomicBoolean(false);
+  private volatile String resolvedExecutorId;
 
   void onStart(@Observes StartupEvent event) {
     if (!configuration.enabled() || !configuration.purgeEnabled()) {
       return;
+    }
+    Optional<String> purgeExecutorId = configuration.purgeExecutorId();
+    if (purgeExecutorId.isPresent()) {
+      String localExecutorId = executorId();
+      if (!purgeExecutorId.get().equals(localExecutorId)) {
+        LOGGER.debug(
+            "Skipping idempotency purge on executor {} (purge-executor-id={})",
+            localExecutorId,
+            purgeExecutorId.get());
+        return;
+      }
     }
     long intervalMs = configuration.purgeIntervalSeconds().toMillis();
     purgeTimerId =
@@ -92,5 +106,47 @@ public class IdempotencyMaintenance {
         LOGGER.warn("Failed to purge expired idempotency records for realm {}", realm, e);
       }
     }
+  }
+
+  private String executorId() {
+    String cached = resolvedExecutorId;
+    if (cached != null) {
+      return cached;
+    }
+    String fromConfig = configuration.executorId().orElse(null);
+    if (fromConfig != null && !fromConfig.isBlank()) {
+      resolvedExecutorId = fromConfig;
+      return fromConfig;
+    }
+    String computed = defaultExecutorId();
+    resolvedExecutorId = computed;
+    return computed;
+  }
+
+  private static String defaultExecutorId() {
+    String pid = String.valueOf(ProcessHandle.current().pid());
+    String node =
+        firstNonBlank(
+            System.getenv("POD_NAME"), System.getenv("HOSTNAME"), System.getenv("NODE_NAME"));
+    if (node != null) {
+      return node + "-" + pid;
+    }
+    try {
+      return InetAddress.getLocalHost().getHostName() + "-" + pid;
+    } catch (Exception e) {
+      return "pid-" + pid;
+    }
+  }
+
+  private static String firstNonBlank(String... values) {
+    if (values == null) {
+      return null;
+    }
+    for (String v : values) {
+      if (v != null && !v.isBlank()) {
+        return v;
+      }
+    }
+    return null;
   }
 }

@@ -215,10 +215,18 @@ public class IdempotencyFilter {
                             // If the owner appears stale (no recent heartbeat), don't wait
                             // indefinitely. Full reconciliation/takeover is out of scope for this
                             // change; return a retryable 503.
-                            Instant hb = existing.heartbeatAt();
                             Instant checkNow = clock.instant();
-                            if (hb == null
-                                || Duration.between(hb, checkNow)
+                            Instant lastSignal = existing.heartbeatAt();
+                            if (lastSignal == null) {
+                              // A duplicate can arrive before the first heartbeat; fall back to
+                              // updatedAt/createdAt so we don't treat fresh owners as stale.
+                              lastSignal = existing.updatedAt();
+                              if (lastSignal == null) {
+                                lastSignal = existing.createdAt();
+                              }
+                            }
+                            if (lastSignal == null
+                                || Duration.between(lastSignal, checkNow)
                                         .compareTo(configuration.leaseTtlSeconds())
                                     > 0) {
                               return Uni.createFrom()
@@ -308,7 +316,7 @@ public class IdempotencyFilter {
         .execute(
             () -> {
               try {
-                store.finalizeRecord(realmId, key, status, null, body, headers, now);
+                store.finalizeRecord(realmId, key, executorId(), status, null, body, headers, now);
               } catch (RuntimeException ignored) {
                 // Best-effort: the main request already completed. If this fails, replay may be
                 // unavailable until a later retry or reconciliation.
