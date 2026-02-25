@@ -89,9 +89,19 @@ class MetricsPersistenceBootstrapValidationTest {
     }
 
     @Test
-    void whenV4SchemaLoaded_shouldReturnTrue() throws SQLException {
-      // Load the unified v4 schema which includes metrics tables
+    void whenOnlyMainSchemaLoaded_shouldReturnFalse() throws SQLException {
+      // Load only the main v4 schema (does not include metrics tables)
       loadSchema("h2/schema-v4.sql");
+
+      boolean result = MetricsSchemaBootstrapUtil.metricsTableExists(datasourceOperations);
+      assertThat(result).isFalse();
+    }
+
+    @Test
+    void whenMetricsSchemaLoaded_shouldReturnTrue() throws SQLException {
+      // Load both main schema and metrics schema
+      loadSchema("h2/schema-v4.sql");
+      loadSchema("h2/schema-metrics-v1.sql");
 
       boolean result = MetricsSchemaBootstrapUtil.metricsTableExists(datasourceOperations);
       assertThat(result).isTrue();
@@ -119,9 +129,10 @@ class MetricsPersistenceBootstrapValidationTest {
     }
 
     @Test
-    void whenV4SchemaLoaded_shouldNotThrow() throws SQLException {
-      // Load the v4 schema which includes metrics tables
+    void whenMetricsSchemaLoaded_shouldNotThrow() throws SQLException {
+      // Load both main schema and metrics schema
       loadSchema("h2/schema-v4.sql");
+      loadSchema("h2/schema-metrics-v1.sql");
 
       // Should not throw
       boolean exists = MetricsSchemaBootstrapUtil.metricsTableExists(datasourceOperations);
