@@ -21,6 +21,7 @@ package org.apache.polaris.service.idempotency;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.util.List;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.idempotency")
 public interface IdempotencyConfiguration {
@@ -57,9 +58,13 @@ public interface IdempotencyConfiguration {
   @WithDefault("0")
   long ttlGraceSeconds();
 
-  /** Executor identifier to store alongside reservations (e.g. pod/instance id). */
-  @WithDefault("http")
-  String executorId();
+  /**
+   * Executor identifier to store alongside reservations (e.g. pod/instance id).
+   *
+   * <p>If unset or blank, the service derives a best-effort identifier from environment/host info
+   * (for example {@code $POD_NAME} / {@code $HOSTNAME} plus the process id).
+   */
+  Optional<String> executorId();
 
   /**
    * Maximum time to wait for an in-progress idempotency key to finalize before returning a
