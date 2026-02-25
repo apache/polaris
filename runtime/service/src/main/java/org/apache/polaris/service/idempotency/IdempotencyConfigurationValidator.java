@@ -21,6 +21,7 @@ package org.apache.polaris.service.idempotency;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Duration;
 
 @ApplicationScoped
 public class IdempotencyConfigurationValidator {
@@ -53,14 +54,14 @@ public class IdempotencyConfigurationValidator {
     }
   }
 
-  private static void requirePositive(String key, long value) {
-    if (value <= 0L) {
+  private static void requirePositive(String key, Duration value) {
+    if (value.isZero() || value.isNegative()) {
       throw new IllegalArgumentException(key + " must be > 0 (was " + value + ")");
     }
   }
 
-  private static void requireNonNegative(String key, long value) {
-    if (value < 0L) {
+  private static void requireNonNegative(String key, Duration value) {
+    if (value.isNegative()) {
       throw new IllegalArgumentException(key + " must be >= 0 (was " + value + ")");
     }
   }
