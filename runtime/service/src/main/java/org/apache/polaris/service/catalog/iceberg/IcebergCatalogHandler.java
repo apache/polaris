@@ -466,7 +466,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableDirect(
@@ -480,6 +479,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
+
+    // Check if external catalog credential vending is allowed for the resolved mode
+    checkAllowExternalCatalogCredentialVending(resolvedMode);
 
     request.validate();
 
@@ -596,7 +598,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableStaged(
@@ -610,6 +611,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
+
+    // Check if external catalog credential vending is allowed for the resolved mode
+    checkAllowExternalCatalogCredentialVending(resolvedMode);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -787,8 +791,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
-    checkAllowExternalCatalogCredentialVending(delegationModes);
-
     return actionsRequested;
   }
 
@@ -805,6 +807,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
+
+    // Check if external catalog credential vending is allowed for the resolved mode
+    checkAllowExternalCatalogCredentialVending(resolvedMode);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1315,10 +1320,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  private void checkAllowExternalCatalogCredentialVending(
-      EnumSet<AccessDelegationMode> delegationModes) {
+  private void checkAllowExternalCatalogCredentialVending(AccessDelegationMode resolvedMode) {
 
-    if (delegationModes.isEmpty()) {
+    if (resolvedMode == AccessDelegationMode.UNKNOWN) {
       return;
     }
     CatalogEntity catalogEntity = getResolvedCatalogEntity();

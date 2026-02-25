@@ -129,18 +129,18 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       return VENDED_CREDENTIALS;
     }
 
-    // Check if credential subscoping is authorized for this catalog.
-    // For internal catalogs, credential subscoping is always authorized.
+    // Check if credential vending is enabled for this catalog.
+    // For internal catalogs, credential vending is always enabled.
     // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is
     // enabled.
-    boolean credentialSubscopingAuthorized =
+    boolean credentialVendingEnabled =
         !catalogEntity.isExternal()
             || realmConfig.getConfig(
                 FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity);
 
-    if (!credentialSubscopingAuthorized) {
+    if (!credentialVendingEnabled) {
       LOGGER.debug(
-          "Credential subscoping is not authorized for external catalog {}, selecting REMOTE_SIGNING",
+          "Credential vending is not enabled for external catalog {}, selecting REMOTE_SIGNING",
           catalogEntity.getName());
       return REMOTE_SIGNING;
     }
