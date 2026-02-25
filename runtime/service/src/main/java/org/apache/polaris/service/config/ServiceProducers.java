@@ -62,7 +62,6 @@ import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.persistence.relational.jdbc.JdbcBasePersistenceImpl;
-import org.apache.polaris.persistence.relational.jdbc.JdbcMetricsPersistence;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -454,10 +453,9 @@ public class ServiceProducers {
   /**
    * Produces a {@link MetricsPersistence} instance for JDBC-based metrics storage.
    *
-   * <p>This producer creates a new request-scoped {@link
-   * org.apache.polaris.persistence.relational.jdbc.JdbcMetricsPersistence} instance using the
-   * metrics datasource from the underlying JdbcBasePersistenceImpl. This approach avoids storing
-   * request-scoped state in the shared JdbcBasePersistenceImpl instance.
+   * <p>This producer returns the {@link JdbcBasePersistenceImpl} instance directly, as it
+   * implements {@link MetricsPersistence}. The request-scoped context (principal and request ID
+   * supplier) is set on the persistence instance for each request.
    *
    * <p>Configuration example:
    *
@@ -494,17 +492,14 @@ public class ServiceProducers {
       return MetricsPersistence.NOOP;
     }
 
-    // Create a new request-scoped JdbcMetricsPersistence instance
-    // This avoids storing request-scoped state in the shared JdbcBasePersistenceImpl
+    // Set request-scoped context on the persistence instance
     PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
     RequestIdSupplier supplier =
         requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
+    jdbcPersistence.setMetricsRequestContext(principal, supplier);
 
-    return new JdbcMetricsPersistence(
-        jdbcPersistence.getMetricsDatasourceOperations(),
-        realmContext.getRealmIdentifier(),
-        principal,
-        supplier);
+    // Return the JdbcBasePersistenceImpl directly as it implements MetricsPersistence
+    return jdbcPersistence;
   }
 
   @Produces

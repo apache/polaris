@@ -25,7 +25,13 @@ import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RequestIdSupplier;
+import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
@@ -35,12 +41,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Integration tests for metrics report persistence using JdbcMetricsPersistence. Tests the full
+ * Integration tests for metrics report persistence using JdbcBasePersistenceImpl. Tests the full
  * flow of writing scan and commit metrics reports to the database.
  */
 class MetricsReportPersistenceTest {
 
-  private JdbcMetricsPersistence metricsPersistence;
+  private JdbcBasePersistenceImpl metricsPersistence;
   private DatasourceOperations datasourceOperations;
 
   @BeforeEach
@@ -56,9 +62,28 @@ class MetricsReportPersistenceTest {
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
 
+    PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
+    PolarisStorageIntegrationProvider storageProvider =
+        new PolarisStorageIntegrationProvider() {
+          @Override
+          public <T extends PolarisStorageConfigurationInfo>
+              PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+                  PolarisStorageConfigurationInfo config) {
+            return null;
+          }
+        };
+
+    // Create JdbcBasePersistenceImpl with metrics datasource set to the same datasource
     metricsPersistence =
-        new JdbcMetricsPersistence(
-            datasourceOperations, "TEST_REALM", null, RequestIdSupplier.NOOP);
+        new JdbcBasePersistenceImpl(
+            diagnostics,
+            datasourceOperations,
+            PrincipalSecretsGenerator.RANDOM_SECRETS,
+            storageProvider,
+            "TEST_REALM",
+            4,
+            datasourceOperations);
+    metricsPersistence.setMetricsRequestContext(null, RequestIdSupplier.NOOP);
   }
 
   @Test
