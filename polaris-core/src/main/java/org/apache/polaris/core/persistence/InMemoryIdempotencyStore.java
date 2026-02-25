@@ -171,6 +171,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
@@ -185,6 +186,9 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     synchronized (state) {
       IdempotencyRecord record = state.record;
       if (record.httpStatus() != null) {
+        return false;
+      }
+      if (record.executorId() == null || !record.executorId().equals(executorId)) {
         return false;
       }
 

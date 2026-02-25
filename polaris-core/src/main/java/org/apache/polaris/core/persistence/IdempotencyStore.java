@@ -155,8 +155,13 @@ public interface IdempotencyStore {
    * <p>Implementations should be tolerant of idempotent re-finalization attempts and typically
    * return {@code false} when a record was already finalized.
    *
+   * <p>Implementations should only finalize the record if it is still in-progress and owned by the
+   * given {@code executorId}. This avoids cross-executor races where a late response from a former
+   * owner attempts to finalize a record that has since been re-reserved.
+   *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
+   * @param executorId identifier of the executor that owns the reservation
    * @param httpStatus HTTP status code returned to the client, or {@code null} if not applicable
    * @param errorSubtype optional error subtype or code, if the operation failed
    * @param responseSummary short, serialized representation of the response body
@@ -168,6 +173,7 @@ public interface IdempotencyStore {
   boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,

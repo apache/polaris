@@ -222,6 +222,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
@@ -239,6 +240,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     Map<String, Object> whereEquals = new HashMap<>();
     whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+    whereEquals.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(

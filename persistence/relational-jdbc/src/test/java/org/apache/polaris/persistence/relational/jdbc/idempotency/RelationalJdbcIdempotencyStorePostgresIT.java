@@ -137,6 +137,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
         store.finalizeRecord(
             realm,
             key,
+            "A",
             201,
             null,
             "{\"ok\":true}",
@@ -149,6 +150,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
         store.finalizeRecord(
             realm,
             key,
+            "A",
             201,
             null,
             "{\"ok\":true}",

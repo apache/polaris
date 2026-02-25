@@ -147,6 +147,14 @@ public interface IdempotencyConfiguration {
   boolean purgeEnabled();
 
   /**
+   * Optional executor id that is allowed to run purge.
+   *
+   * <p>When set, only the node whose resolved {@link #executorId()} matches this value will run the
+   * purge timer. This can be used to avoid "thundering herd" behavior in multi-node deployments.
+   */
+  Optional<String> purgeExecutorId();
+
+  /**
    * Purge interval.
    *
    * <p>Examples: {@code PT1M}, {@code 60S}.
