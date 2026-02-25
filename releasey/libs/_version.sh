@@ -116,6 +116,8 @@ function update_helm_version {
   current_version_with_dash="${old_version//-/--}"
   version_with_dash="${version//-/--}"
   exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(--incubating)?--SNAPSHOT/${version_with_dash}/g" "$HELM_README_FILE"
+  exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_FILE"
+  exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_SCHEMA_FILE"
 }
 
 function find_next_rc_number {
