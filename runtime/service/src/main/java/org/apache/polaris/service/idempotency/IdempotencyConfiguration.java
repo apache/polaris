@@ -85,10 +85,6 @@ public interface IdempotencyConfiguration {
   @WithDefault("Content-Type")
   List<String> responseHeaderAllowlist();
 
-  /** Max number of response body characters to store for replay. */
-  @WithDefault("8192")
-  int maxResponseBodyChars();
-
   /** Enable periodic heartbeats while a request is in progress. */
   @WithDefault("false")
   boolean heartbeatEnabled();
