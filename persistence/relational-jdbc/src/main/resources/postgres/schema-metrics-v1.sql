@@ -27,6 +27,21 @@
 -- ============================================================================
 
 -- ============================================================================
+-- VERSION TABLE
+-- ============================================================================
+-- Tracks the metrics schema version for migrations and compatibility checks.
+
+CREATE TABLE IF NOT EXISTS version (
+    version_key TEXT PRIMARY KEY,
+    version_value INTEGER NOT NULL
+);
+INSERT INTO version (version_key, version_value)
+VALUES ('version', 1)
+ON CONFLICT (version_key) DO UPDATE
+SET version_value = EXCLUDED.version_value;
+COMMENT ON TABLE version IS 'the version of the metrics schema in use';
+
+-- ============================================================================
 -- SCAN METRICS REPORT TABLE
 -- ============================================================================
 
