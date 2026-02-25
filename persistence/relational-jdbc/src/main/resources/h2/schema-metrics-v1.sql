@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS version (
 );
 MERGE INTO version (version_key, version_value)
 KEY (version_key)
-VALUES ('version', 1);
-COMMENT ON TABLE version IS 'the version of the metrics schema in use';
+VALUES ('version', 4);
+COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE
