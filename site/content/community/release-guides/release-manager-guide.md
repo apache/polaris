@@ -46,7 +46,7 @@ This page adds more details to the _Release manager_ paragraph on the [_Release 
 
 The RM is a committer who takes **responsibility** for the **mechanics** of a release.
 You aren't "in charge" of what goes into the release (that's a community decision), but you are the **facilitator**
-ensuring that the release process follows the [ASF Release Policy](https://www.apache.org/legal/release-policy.html).
+ensuring that the release process follows the [_ASF Release Policy_](https://www.apache.org/legal/release-policy.html).
 
 As the whole release process is a very formal act, it is strictly required to follow the _ASF Release Policy_.
 Not following the policy can lead to “failed” releases or even more serious consequences.
@@ -64,8 +64,8 @@ _Semi-Automated Guide_ to minimize human error.
 
 ## Background
 
-The release process at the ASF is not formal and complex just for the sake of having something that is
-"brutally formal," but for legal and compliance reasons.
+The release process at the ASF is not formal and complex for the sake of having something that is "brutally formal,"
+but for legal and compliance reasons.
 
 Every email related to an official release and quite some pieces of the official release artifact(s) are subject to
 this formal process carrying quite a legal weight. The following sections provide an overview of the critical pieces.
@@ -86,11 +86,12 @@ This includes all artifacts published by the project, the source tarball as well
    It must always include the standard ASF attribution: _"This product includes software developed at The Apache Software Foundation (http://www.apache.org/)."_
    If any bundled third-party libraries require their own attribution notices, those must be added here.
 3. **DISCLAIMER** (only for Apache Incubator podlings)
-   This file must contain the content as mentioned on the [Apache Incubation Policy](https://incubator.apache.org/policy/incubation.html).
+   This file must contain the content as mentioned on the [_Apache Incubation Policy_](https://incubator.apache.org/policy/incubation.html).
    This file must **not** be present for Apache top level projects like Apache Polaris.
 
-The RM must also ensure that every source file contains the standard ASF license header.
-Apache Polaris uses [Apache RAT](https://creadur.apache.org/rat/) (Release Audit Tool) to automate the checking of headers in CI and identify unauthorized binary files in the source distribution.
+The RM must also ensure that every source file contains the standard ASF license header
+and identify unauthorized binary files in the source distribution.
+Apache Polaris uses [Apache RAT](https://creadur.apache.org/rat/) (Release Audit Tool) to automate the checking of headers in CI.
 
 ### Audit of Dependencies
 
@@ -135,11 +136,11 @@ A successful vote requires at least **three binding +1** votes from PMC members 
 If a vote receives a -1, it is not a veto (unlike code modification votes), but it usually signals a blocking issue that must be addressed.
 In most cases, the community chooses to cancel the vote, fix the issue, and roll a new RC.
 
-| Vote Type           | Definition           | Significance                                    |
-|---------------------|----------------------|-------------------------------------------------|
-| **+1** (Approve)    | Positive endorsement | Binding if from a PMC member 30                 |
-| **0** (Neutral)     | No objection         | Does not count toward the quorum of three 30    |
-| **-1** (Disapprove) | Identified blocker   | RM should investigate and potentially cancel 30 |
+| Vote Type           | Definition           | Significance                                 |
+|---------------------|----------------------|----------------------------------------------|
+| **+1** (Approve)    | Positive endorsement | Binding if from a PMC member                 |
+| **0** (Neutral)     | No objection         | Does not count toward the quorum of three    |
+| **-1** (Disapprove) | Identified blocker   | RM should investigate and potentially cancel |
 
 The RM then sends a \[VOTE\]\[RESULT\] email summarizing the binding and non-binding votes and confirming whether the release has passed.
 
@@ -150,7 +151,8 @@ Generically, a release is any publication of software artifacts beyond the group
 If a project instructs the general public to download a package, that package has been released, regardless of whether it is labeled as "alpha," "beta," or "stable."
 
 Official Apache releases are characterized by a focus on source code.
-While the foundation permits the distribution of convenience binaries—such as JAR files, Python wheels, or Docker images—the source package is the only artifact that constitutes the formal release.
+While the foundation permits the distribution of convenience binaries, such as JAR files, Python wheels,
+or Docker images, the source package is the only artifact that constitutes the formal release.
 This distinction is vital for long-term project sustainability and legal protection, as it ensures that users always have access to the underlying logic and can build the software independently of the project's specific build infrastructure.
 
 {{< alert warning >}}
@@ -180,7 +182,7 @@ Announcements are sent to the project's user@ and dev@ lists.
 For major releases, an announcement should also be sent to `announce@apache.org`.
 
 The Release Manager operates as a representative of the project and the foundation.
-As such, all interactions on public mailing lists must adhere to the [ASF Code of Conduct](https://www.apache.org/foundation/policies/conduct),
+As such, all interactions on public mailing lists must adhere to the [_ASF Code of Conduct_](https://www.apache.org/foundation/policies/conduct),
 which applies to all communication by everyone at the ASF.
 
 ### Netiquette
@@ -194,7 +196,7 @@ Generally applicable to all communication on the mailing lists:
 * **No Attachments**
   Email attachments are often rejected because they are not easily reproducible and can lead to confusion.
 * **Concise Subject Lines**
-  Use a clear format like [ANNOUNCE] Apache ProjectName X.Y.Z released.
+  Use a clear format like "_\[ANNOUNCE\] Apache ProjectName X.Y.Z released_".
 
 Release-related emails:
 
@@ -305,7 +307,7 @@ If the vote passes:
 2. **Announce**:
    Send the [ANNOUNCE] email to announce@apache.org and the Polaris dev/user lists.
 3. **Perform the "post-release steps"**
-   Not all tasks haven’t been automated in Releasey yet.
+   Not all tasks have been automated in Releasey yet.
     1. **Update the website**
        Consult the _Semi Automated Release-Guide_ for [details](../semi-automated-release-guide/#publish-docs).
     2. **Close the GitHub milestone**
