@@ -323,7 +323,7 @@
             }
         },
         "features": {
-            "description": "Features to enable or disable globally. If a feature is not present in the map, the default for a complete list of available features.",
+            "description": "Features to enable or disable globally. If a feature is not present in the map, the default built-in value is used. Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference) for a complete list of available features.",
             "type": "object",
             "properties": {
                 "realmOverrides": {

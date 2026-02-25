@@ -849,7 +849,7 @@ realmContext:
     - POLARIS
 
 # -- Features to enable or disable globally. If a feature is not present in the map, the default
-# built-in value is used. Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/#features--behavior)
+# built-in value is used. Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference)
 # for a complete list of available features.
 # @section -- Features
 features:
