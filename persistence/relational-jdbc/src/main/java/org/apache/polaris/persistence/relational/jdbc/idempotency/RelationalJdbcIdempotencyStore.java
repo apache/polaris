@@ -16,6 +16,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,6 +42,8 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRec
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
+
+  private static final ObjectMapper RESPONSE_HEADERS_MAPPER = new ObjectMapper();
 
   public RelationalJdbcIdempotencyStore(
       @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg)
@@ -226,14 +229,26 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt) {
+    final String responseHeadersJson;
+    if (responseHeaders == null || responseHeaders.isEmpty()) {
+      responseHeadersJson = null;
+    } else {
+      try {
+        responseHeadersJson = RESPONSE_HEADERS_MAPPER.writeValueAsString(responseHeaders);
+      } catch (Exception e) {
+        throw new IdempotencyPersistenceException(
+            "Failed to serialize idempotency response headers", e);
+      }
+    }
+
     // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
+    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeadersJson);
     setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
     setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
 

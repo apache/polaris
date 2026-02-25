@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.idempotency;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -308,8 +307,8 @@ public class IdempotencyFilter {
       return;
     }
     final String body = responseEntityAsString(response, objectMapper);
-    final String headers =
-        headerSnapshotJson(response, configuration.responseHeaderAllowlist(), objectMapper);
+    final Map<String, String> headers =
+        headerSnapshot(response, configuration.responseHeaderAllowlist());
     Instant now = clock.instant();
 
     Infrastructure.getDefaultWorkerPool()
@@ -481,14 +480,7 @@ public class IdempotencyFilter {
     Response.ResponseBuilder replay =
         Response.status(existing.httpStatus() == null ? 200 : existing.httpStatus());
     replay.header("X-Idempotency-Replayed", "true");
-    if (!applyReplayedHeaders(replay, existing.responseHeaders())) {
-      // if a prior finalized result can't be reproduced, return a 5xx rather
-      // than re-executing the operation.
-      return error(
-          500,
-          "idempotency_replay_failed",
-          "Failed to replay response for this idempotency key; retry later");
-    }
+    applyReplayedHeaders(replay, existing.responseHeaders());
     if (existing.responseSummary() != null) {
       replay.entity(existing.responseSummary());
     }
@@ -658,28 +650,23 @@ public class IdempotencyFilter {
     }
   }
 
-  private boolean applyReplayedHeaders(Response.ResponseBuilder rb, String responseHeadersJson) {
-    if (responseHeadersJson == null || responseHeadersJson.isBlank()) {
-      return true;
+  private static void applyReplayedHeaders(
+      Response.ResponseBuilder rb, Map<String, String> responseHeaders) {
+    if (responseHeaders == null || responseHeaders.isEmpty()) {
+      return;
     }
-    try {
-      Map<String, String> m = objectMapper.readValue(responseHeadersJson, new TypeReference<>() {});
-      m.forEach(
-          (k, v) -> {
-            rb.header(k, v);
-            if (k != null && v != null && "content-type".equalsIgnoreCase(k)) {
-              // Ensure the JAX-RS response media type matches the replayed Content-Type.
-              rb.type(v);
-            }
-          });
-      return true;
-    } catch (Exception ignored) {
-      return false;
-    }
+    responseHeaders.forEach(
+        (k, v) -> {
+          rb.header(k, v);
+          if (k != null && v != null && "content-type".equalsIgnoreCase(k)) {
+            // Ensure the JAX-RS response media type matches the replayed Content-Type.
+            rb.type(v);
+          }
+        });
   }
 
-  private static String headerSnapshotJson(
-      ContainerResponseContext response, List<String> allowlist, ObjectMapper objectMapper) {
+  private static Map<String, String> headerSnapshot(
+      ContainerResponseContext response, List<String> allowlist) {
     if (allowlist == null || allowlist.isEmpty()) {
       return null;
     }
@@ -696,11 +683,7 @@ public class IdempotencyFilter {
     if (out.isEmpty()) {
       return null;
     }
-    try {
-      return objectMapper.writeValueAsString(out);
-    } catch (Exception e) {
-      return null;
-    }
+    return out;
   }
 
   private static Response error(int status, String type, String message) {

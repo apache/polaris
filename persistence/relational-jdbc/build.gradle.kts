@@ -27,10 +27,17 @@ dependencies {
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 
+<<<<<<< HEAD
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly("com.fasterxml.jackson.core:jackson-core")
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
+=======
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+>>>>>>> a4bffbca3 (address more comments)
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)

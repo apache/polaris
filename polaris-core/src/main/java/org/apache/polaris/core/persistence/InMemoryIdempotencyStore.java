@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -175,7 +176,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt) {
     Key key = new Key(realmId, idempotencyKey);
     RecordState state = records.get(key);
