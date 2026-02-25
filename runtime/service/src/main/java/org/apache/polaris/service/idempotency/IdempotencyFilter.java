@@ -275,9 +275,7 @@ public class IdempotencyFilter {
       }
       return;
     }
-    final String body =
-        truncate(
-            responseEntityAsString(response, objectMapper), configuration.maxResponseBodyChars());
+    final String body = responseEntityAsString(response, objectMapper);
     final String headers =
         headerSnapshotJson(response, configuration.responseHeaderAllowlist(), objectMapper);
     Instant now = clock.instant();
@@ -631,19 +629,6 @@ public class IdempotencyFilter {
     } catch (Exception e) {
       return null;
     }
-  }
-
-  private static String truncate(String s, int maxChars) {
-    if (s == null) {
-      return null;
-    }
-    if (maxChars <= 0) {
-      return "";
-    }
-    if (s.length() <= maxChars) {
-      return s;
-    }
-    return s.substring(0, maxChars);
   }
 
   private static Response error(int status, String type, String message) {
