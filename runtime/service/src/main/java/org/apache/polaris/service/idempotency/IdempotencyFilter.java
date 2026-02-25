@@ -152,8 +152,7 @@ public class IdempotencyFilter {
 
     Instant now = clock.instant();
     Instant expiresAt =
-        now.plusSeconds(Math.max(0L, configuration.ttlSeconds()))
-            .plusSeconds(Math.max(0L, configuration.ttlGraceSeconds()));
+        now.plusSeconds(configuration.ttlSeconds()).plusSeconds(configuration.ttlGraceSeconds());
 
     return internalCatalogCheck
         .onItem()
@@ -217,7 +216,7 @@ public class IdempotencyFilter {
                             // change; return a retryable 503.
                             Instant hb = existing.heartbeatAt();
                             Instant checkNow = clock.instant();
-                            long leaseTtlSeconds = Math.max(0L, configuration.leaseTtlSeconds());
+                            long leaseTtlSeconds = configuration.leaseTtlSeconds();
                             if (hb == null
                                 || Duration.between(hb, checkNow).getSeconds() > leaseTtlSeconds) {
                               return Uni.createFrom()
@@ -229,9 +228,7 @@ public class IdempotencyFilter {
                             }
                           }
                           Instant deadline =
-                              clock
-                                  .instant()
-                                  .plusSeconds(Math.max(0L, configuration.inProgressWaitSeconds()));
+                              clock.instant().plusSeconds(configuration.inProgressWaitSeconds());
                           return waitForFinalized(realmId, key, deadline)
                               .onItem()
                               .transform(this::replayResponse)
@@ -321,7 +318,7 @@ public class IdempotencyFilter {
     if (!configuration.heartbeatEnabled()) {
       return;
     }
-    long intervalMs = Math.max(1000L, configuration.heartbeatIntervalSeconds() * 1000L);
+    long intervalMs = configuration.heartbeatIntervalSeconds() * 1000L;
     long timerId =
         vertx.setPeriodic(
             intervalMs,

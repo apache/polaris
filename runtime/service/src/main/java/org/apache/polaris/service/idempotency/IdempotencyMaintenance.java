@@ -52,7 +52,7 @@ public class IdempotencyMaintenance {
     if (!configuration.enabled() || !configuration.purgeEnabled()) {
       return;
     }
-    long intervalMs = Math.max(1000L, configuration.purgeIntervalSeconds() * 1000L);
+    long intervalMs = configuration.purgeIntervalSeconds() * 1000L;
     purgeTimerId =
         vertx.setPeriodic(
             intervalMs,
@@ -81,7 +81,7 @@ public class IdempotencyMaintenance {
   }
 
   private void purgeOnce() {
-    Instant cutoff = clock.instant().minusSeconds(Math.max(0L, configuration.purgeGraceSeconds()));
+    Instant cutoff = clock.instant().minusSeconds(configuration.purgeGraceSeconds());
     for (String realm : realmContextConfiguration.realms()) {
       try {
         int purged = store.purgeExpired(realm, cutoff);
