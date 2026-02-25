@@ -65,11 +65,11 @@ class IdempotencyFilterTest {
       cfg.put("polaris.idempotency.scopes[0].path-prefix", "test/idempotency");
       cfg.put("polaris.idempotency.scopes[0].operation-type", "test-write");
       cfg.put("polaris.idempotency.response-header-allowlist", "Content-Type,X-Test");
-      cfg.put("polaris.idempotency.in-progress-wait-seconds", "5");
+      cfg.put("polaris.idempotency.in-progress-wait-seconds", "PT5S");
       cfg.put("polaris.idempotency.heartbeat-enabled", "true");
-      cfg.put("polaris.idempotency.heartbeat-interval-seconds", "1");
+      cfg.put("polaris.idempotency.heartbeat-interval-seconds", "PT1S");
       cfg.put("polaris.idempotency.purge-enabled", "true");
-      cfg.put("polaris.idempotency.purge-interval-seconds", "1");
+      cfg.put("polaris.idempotency.purge-interval-seconds", "PT1S");
       cfg.put("polaris.readiness.ignore-severe-issues", "true");
       return cfg;
     }

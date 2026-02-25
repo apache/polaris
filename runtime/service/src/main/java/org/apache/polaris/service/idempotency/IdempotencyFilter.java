@@ -69,6 +69,8 @@ import org.jboss.resteasy.reactive.server.spi.ResteasyReactiveResourceInfo;
  * idempotency key before executing the request, and replays the previously finalized response when
  * a duplicate key is received. For owned requests, it finalizes the response summary/headers for
  * future replay.
+ *
+ * <p>Replayed responses use the full persisted response entity; responses are not truncated.
  */
 public class IdempotencyFilter {
 
@@ -151,8 +153,7 @@ public class IdempotencyFilter {
     String resourceId = normalizeResourceId(rc, scope != null);
 
     Instant now = clock.instant();
-    Instant expiresAt =
-        now.plusSeconds(configuration.ttlSeconds()).plusSeconds(configuration.ttlGraceSeconds());
+    Instant expiresAt = now.plus(configuration.ttlSeconds()).plus(configuration.ttlGraceSeconds());
 
     return internalCatalogCheck
         .onItem()
@@ -216,9 +217,10 @@ public class IdempotencyFilter {
                             // change; return a retryable 503.
                             Instant hb = existing.heartbeatAt();
                             Instant checkNow = clock.instant();
-                            long leaseTtlSeconds = configuration.leaseTtlSeconds();
                             if (hb == null
-                                || Duration.between(hb, checkNow).getSeconds() > leaseTtlSeconds) {
+                                || Duration.between(hb, checkNow)
+                                        .compareTo(configuration.leaseTtlSeconds())
+                                    > 0) {
                               return Uni.createFrom()
                                   .item(
                                       error(
@@ -228,7 +230,7 @@ public class IdempotencyFilter {
                             }
                           }
                           Instant deadline =
-                              clock.instant().plusSeconds(configuration.inProgressWaitSeconds());
+                              clock.instant().plus(configuration.inProgressWaitSeconds());
                           return waitForFinalized(realmId, key, deadline)
                               .onItem()
                               .transform(this::replayResponse)
@@ -318,7 +320,7 @@ public class IdempotencyFilter {
     if (!configuration.heartbeatEnabled()) {
       return;
     }
-    long intervalMs = configuration.heartbeatIntervalSeconds() * 1000L;
+    long intervalMs = configuration.heartbeatIntervalSeconds().toMillis();
     long timerId =
         vertx.setPeriodic(
             intervalMs,

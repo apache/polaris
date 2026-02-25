@@ -30,6 +30,7 @@ review and apply the following checklist:
 - [ ] Use a durable metastore (JDBC + PostgreSQL)
 - [ ] Bootstrap valid realms in the metastore
 - [ ] Disable local FILE storage
+- [ ] If enabling HTTP idempotency in multi-node deployments, enable heartbeats and ensure unique executor IDs ([Idempotency]({{% ref "idempotency.md" %}}))
 
 {{< alert note >}}
 If you are deploying Polaris using the Helm chart, make sure to review the [Helm Chart Production Configuration]({{% relref "../../helm-chart/production" %}}) guide as well.

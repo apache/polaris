@@ -35,7 +35,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import java.io.Closeable;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -1356,9 +1355,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             catalogEntity.getCatalogType())
         && idCfg != null
         && idCfg.enabled()) {
-      overrides.put(
-          IDEMPOTENCY_KEY_LIFETIME_PROPERTY,
-          Duration.ofSeconds(Math.max(0L, idCfg.ttlSeconds())).toString());
+      overrides.put(IDEMPOTENCY_KEY_LIFETIME_PROPERTY, idCfg.ttlSeconds().toString());
     }
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
