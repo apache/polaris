@@ -57,10 +57,14 @@ class MetricsReportPersistenceTest {
 
     datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
 
-    // Execute schema v4 which includes both entity tables and metrics tables
+    // Execute main schema v4 (entity tables, grants, etc.)
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream schemaStream = classLoader.getResourceAsStream("h2/schema-v4.sql");
     datasourceOperations.executeScript(schemaStream);
+
+    // Execute metrics schema (scan_metrics_report, commit_metrics_report tables)
+    InputStream metricsSchemaStream = classLoader.getResourceAsStream("h2/schema-metrics-v1.sql");
+    datasourceOperations.executeScript(metricsSchemaStream);
 
     PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     PolarisStorageIntegrationProvider storageProvider =
