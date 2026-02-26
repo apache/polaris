@@ -958,7 +958,7 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles Nimbu Jose JWT.
+This product bundles Nimbus Jose JWT.
 
 * Maven group:artifact IDs: com.nimbusds:nimbus-jose-jwt
 
@@ -1226,10 +1226,10 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Prometheus SimpleClient.
 
 * Maven group:artifact IDs: io.prometheus:simpleclient
-Group: io.prometheus Name: simpleclient_common Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_common Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_otel Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_otel_agent Version: 0.16.0
+* Maven group:artifact IDs: io.prometheus:simpleclient_common
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_common
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel_agent
 
 Project URL: http://github.com/prometheus/client_java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -2062,18 +2062,6 @@ This product bundles Agrona.
 * Maven group:artifact IDs: org.agrona:agrona
 
 Project URL: https://github.com/aeron-io/agrona
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Prometheus Java Metrics Library.
-
-* Maven group:artifact IDs: io.prometheus:simpleclient_common
-* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_common
-* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel
-* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel_agent
-
-Project URL: https://github.com/prometheus/client_java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------

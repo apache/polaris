@@ -9,7 +9,7 @@ to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
 
 --------------------------------------------------------------------------------
 
-This product bundles Picocli with the following in its NOTICE:
+This product bundles Picocli with the following in its NOTICE file:
 |
 | This project includes one or more documentation files from OpenJDK, licensed under GPL v2 with Classpath Exception.
 |
@@ -18,7 +18,7 @@ This product bundles Picocli with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles gRPC with the following in its NOTICE:
+This product bundles gRPC with the following in its NOTICE file:
 |
 | Copyright 2014 The gRPC Authors
 | 
@@ -85,7 +85,7 @@ This product bundles gRPC with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles Micrometer with the following in its NOTICE:
+This product bundles Micrometer with the following in its NOTICE file:
 |
 | Micrometer
 | 
@@ -135,7 +135,7 @@ This product bundles Micrometer with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles and includes code from Netty with the following in its NOTICE:
+This product bundles and includes code from Netty with the following in its NOTICE file:
 | 
 |                             The Netty Project
 |                             =================
@@ -403,7 +403,7 @@ This product bundles and includes code from Netty with the following in its NOTI
 
 --------------------------------------------------------------------------------
 
-This product bundles Perfmark with the following in its NOTICE:
+This product bundles Perfmark with the following in its NOTICE file:
 | 
 | Copyright 2019 Google LLC
 | 
@@ -448,7 +448,7 @@ This product bundles Perfmark with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles SmallRye with the following in its NOTICE:
+This product bundles SmallRye with the following in its NOTICE file:
 |
 | Copyright 2009-2017 Mark Struberg
 | Copyright 2018 Red Hat, inc.
@@ -458,7 +458,7 @@ This product bundles SmallRye with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles Swagger with the following in its NOTICE:
+This product bundles Swagger with the following in its NOTICE file:
 |
 | Swagger Core - ${pom.name}
 | Copyright (c) 2015. SmartBear Software Inc.
@@ -467,7 +467,7 @@ This product bundles Swagger with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles Jackson JSON Processor with the following in its NOTICE:
+This product bundles Jackson JSON Processor with the following in its NOTICE file:
 |
 | # Jackson JSON processor
 | 
@@ -504,7 +504,7 @@ This product bundles Jackson JSON Processor with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles CDI with the following in its NOTICE:
+This product bundles CDI with the following in its NOTICE file:
 |
 | # Notices for Jakarta Contexts and Dependency Injection
 | 
@@ -559,7 +559,7 @@ This product bundles CDI with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles jakarta.validation-api with the following in its NOTICE:
+This product bundles jakarta.validation-api with the following in its NOTICE file:
 |
 | # Notices for Eclipse Jakarta Validation
 | 
@@ -606,7 +606,7 @@ This product bundles jakarta.validation-api with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles Conscrypt (openjdk uber) with the following in its NOTICE:
+This product bundles Conscrypt (openjdk uber) with the following in its NOTICE file:
 |
 | Copyright 2016 The Android Open Source Project
 | 
@@ -641,7 +641,7 @@ This product bundles Conscrypt (openjdk uber) with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles Microprofile with the following in its NOTICE:
+This product bundles Microprofile with the following in its NOTICE file:
 |
 | =========================================================================
 | ==  NOTICE file corresponding to section 4(d) of the Apache License,   ==
@@ -673,7 +673,7 @@ This product bundles Microprofile with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles AWS Java SDK with the following in its NOTICE:
+This product bundles AWS Java SDK with the following in its NOTICE file:
 |
 | AWS SDK for Java
 | Copyright 2010-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
@@ -692,7 +692,7 @@ This product bundles AWS Java SDK with the following in its NOTICE:
 
 --------------------------------------------------------------------------------
 
-This product bundles AWS EventStream for Java with the following in its NOTICE:
+This product bundles AWS EventStream for Java with the following in its NOTICE file:
 |
 | AWS EventStream for Java
 | Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved. 
