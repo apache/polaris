@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.admintool.relational.jdbc;
 
-import java.util.Optional;
+import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
+import org.apache.polaris.admintool.PurgeCommandTestBase;
 
-public interface RelationalJdbcConfiguration {
-  // max retries before giving up
-  Optional<Integer> maxRetries();
-
-  // max retry duration
-  Optional<Long> maxDurationInMs();
-
-  // initial delay
-  Optional<Long> initialDelayInMs();
-
-  /**
-   * Explicitly configured database type. If not specified, the database type will be inferred from
-   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
-   */
-  Optional<String> databaseType();
+@TestProfile(CockroachJdbcPurgeCommandTest.Profile.class)
+public class CockroachJdbcPurgeCommandTest extends PurgeCommandTestBase {
+  public static class Profile extends CockroachJdbcAdminProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("pre-bootstrap", "true")
+          .build();
+    }
+  }
 }

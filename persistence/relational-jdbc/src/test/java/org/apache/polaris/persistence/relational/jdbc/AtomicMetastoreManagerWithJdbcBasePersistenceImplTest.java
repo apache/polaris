@@ -95,5 +95,10 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     public Optional<Long> initialDelayInMs() {
       return Optional.of(100L);
     }
+
+    @Override
+    public Optional<String> databaseType() {
+      return Optional.of("h2");
+    }
   }
 }
