@@ -31,7 +31,7 @@ Welcome to the Apache Polaris documentation. Select a version below to get start
 
 The latest unreleased documentation from the main branch:
 
-- [**Unreleased**](/in-dev/unreleased/) - Latest development version
+- [**Unreleased**]({{< ref "/in-dev/unreleased" >}}) - Latest development version
 
 ## Released Versions
 
@@ -39,15 +39,15 @@ The latest unreleased documentation from the main branch:
 
 These versions are currently supported:
 
-- [**1.3.0**](/releases/1.3.0/) - Latest stable release
-- [**1.2.0**](/releases/1.2.0/)
-- [**1.1.0**](/releases/1.1.0/)
-- [**1.0.1**](/releases/1.0.1/)
+- [**1.3.0**]({{< ref "/releases/1.3.0" >}}) - Latest stable release
+- [**1.2.0**]({{< ref "/releases/1.2.0" >}})
+- [**1.1.0**]({{< ref "/releases/1.1.0" >}})
+- [**1.0.1**]({{< ref "/releases/1.0.1" >}})
 
 ### End of Life Releases
 
 These versions are no longer supported:
 
-- [**1.0.0**](/releases/1.0.0/)
-- [**0.9.0**](/releases/0.9.0/)
+- [**1.0.0**]({{< ref "/releases/1.0.0" >}})
+- [**0.9.0**]({{< ref "/releases/0.9.0" >}})
 
