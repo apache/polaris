@@ -1112,8 +1112,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   throw new BadRequestException(
                       "Unsupported operation: commitTransaction containing SetLocation"
                           + " for table '%s' and new location '%s'",
-                      change.identifier(),
-                      ((MetadataUpdate.SetLocation) singleUpdate).location());
+                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
                 }
               }
 

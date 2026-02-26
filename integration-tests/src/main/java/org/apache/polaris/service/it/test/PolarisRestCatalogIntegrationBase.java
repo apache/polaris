@@ -1190,6 +1190,101 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testCoalescedConflictOnOneTableRollsBackEntireTransaction() {
+    Namespace namespace = Namespace.of("coalescingAtomicNs");
+    TableIdentifier goodId = TableIdentifier.of(namespace, "goodTable");
+    TableIdentifier conflictId = TableIdentifier.of(namespace, "conflictTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().createTable(goodId, SCHEMA);
+    catalog().createTable(conflictId, SCHEMA);
+
+    Schema originalGoodSchema = catalog().loadTable(goodId).schema();
+    Schema originalConflictSchema = catalog().loadTable(conflictId).schema();
+
+    // goodTable: a single non-conflicting schema change
+    Transaction goodTx = catalog().loadTable(goodId).newTransaction();
+    goodTx.updateSchema().addColumn("new_col", Types.LongType.get()).commit();
+
+    // conflictTable: two independent transactions that both rename the same column,
+    // producing two TableCommits for the same table. The first rename succeeds,
+    // but the second conflicts because the schema has already changed.
+    Table conflictTable = catalog().loadTable(conflictId);
+    Transaction conflictTx1 = conflictTable.newTransaction();
+    Transaction conflictTx2 = conflictTable.newTransaction();
+    conflictTx1.updateSchema().renameColumn("data", "renamed-col1").commit();
+    conflictTx2.updateSchema().renameColumn("data", "renamed-col2").commit();
+
+    TableCommit goodCommit =
+        TableCommit.create(
+            goodId,
+            ((BaseTransaction) goodTx).startMetadata(),
+            ((BaseTransaction) goodTx).currentMetadata());
+    TableCommit conflictCommit1 =
+        TableCommit.create(
+            conflictId,
+            ((BaseTransaction) conflictTx1).startMetadata(),
+            ((BaseTransaction) conflictTx1).currentMetadata());
+    TableCommit conflictCommit2 =
+        TableCommit.create(
+            conflictId,
+            ((BaseTransaction) conflictTx2).startMetadata(),
+            ((BaseTransaction) conflictTx2).currentMetadata());
+
+    // The coalescing logic groups conflictCommit1 and conflictCommit2 together.
+    // The first rename succeeds, but the second fails requirement validation
+    // (schema ID changed). This should fail the entire transaction atomically.
+    assertThatThrownBy(
+            () -> restCatalog.commitTransaction(goodCommit, conflictCommit1, conflictCommit2))
+        .isInstanceOf(CommitFailedException.class);
+
+    // Verify atomicity: neither table should have changed.
+    assertThat(catalog().loadTable(goodId).schema().asStruct())
+        .isEqualTo(originalGoodSchema.asStruct());
+    assertThat(catalog().loadTable(conflictId).schema().asStruct())
+        .isEqualTo(originalConflictSchema.asStruct());
+  }
+
+  @Test
+  public void testMultipleNonConflictingUpdatesToSameTableWithSchemaAndProperties() {
+    Namespace namespace = Namespace.of("coalescingMixedNs");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "coalescingMixedTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    // Use a single Iceberg transaction that performs both a schema change and a property update.
+    // This produces a single TableCommit containing multiple metadata updates, verifying
+    // that the server correctly handles multiple update types within a single commit request.
+    Table table = catalog().buildTable(identifier, SCHEMA).create();
+    Transaction transaction = table.newTransaction();
+
+    UpdateSchema updateSchema =
+        transaction.updateSchema().addColumn("new_col", Types.LongType.get());
+    Schema expectedSchema = updateSchema.apply();
+    updateSchema.commit();
+
+    transaction.updateProperties().set("prop-key", "prop-val").commit();
+
+    TableCommit tableCommit =
+        TableCommit.create(
+            identifier,
+            ((BaseTransaction) transaction).startMetadata(),
+            ((BaseTransaction) transaction).currentMetadata());
+
+    restCatalog.commitTransaction(tableCommit);
+
+    // Verify both schema and property updates were applied.
+    Table loaded = catalog().loadTable(identifier);
+    assertThat(loaded.schema().asStruct()).isEqualTo(expectedSchema.asStruct());
+    assertThat(loaded.properties()).containsEntry("prop-key", "prop-val");
+  }
+
+  @Test
   public void testTableExistsStatus() {
     String tableName = "tbl1";
     Namespace namespace = Namespace.of("ns1");
