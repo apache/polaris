@@ -44,7 +44,7 @@ This page adds more details to the _Release manager_ paragraph on the [_Release 
 
 ## What is a Release Manager?
 
-The RM is a committer who takes **responsibility** for the **mechanics** of a release.
+The RM is typically a committer who takes **responsibility** for the **mechanics** of a release.
 You aren't "in charge" of what goes into the release (that's a community decision), but you are the **facilitator**
 ensuring that the release process follows the [_ASF Release Policy_](https://www.apache.org/legal/release-policy.html).
 
