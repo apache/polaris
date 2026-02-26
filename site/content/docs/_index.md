@@ -42,12 +42,12 @@ These versions are currently supported:
 - {{< docs-link version="1.3.0" >}}
 - {{< docs-link version="1.2.0" >}}
 - {{< docs-link version="1.1.0" >}}
-- {{< docs-link version="1.0.1" >}}
 
-### End of Life Releases
+### End-of-Life Releases
 
 These versions are no longer supported:
 
+- {{< docs-link version="1.0.1" >}}
 - {{< docs-link version="1.0.0" >}}
 - {{< docs-link version="0.9.0" >}}
 

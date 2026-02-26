@@ -65,11 +65,11 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
-    # EOL releases (0.9.0, 1.0.0) should NOT be listed here
+    # EOL releases (0.9.0, 1.0.0, 1.0.1) should NOT be listed here!
+    # When changing this list, also modify /docs/_index.md.
     - "1.3.0"
     - "1.2.0"
     - "1.1.0"
-    - "1.0.1"
 
   ui:
     ul_show: 1
