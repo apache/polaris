@@ -1039,7 +1039,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // LinkedHashMap preserves insertion order for deterministic processing.
     Map<TableIdentifier, List<UpdateTableRequest>> changesByTable = new LinkedHashMap<>();
     for (UpdateTableRequest change : commitTransactionRequest.tableChanges()) {
-      if (isCreate(change)) {
+      if (CatalogHandlerUtils.isCreate(change)) {
         throw new BadRequestException(
             "Unsupported operation: commitTranaction with updateForStagedCreate: %s", change);
       }
