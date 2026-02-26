@@ -83,14 +83,4 @@ public interface PolarisMetricsManager {
     }
     // If persistence doesn't support metrics, silently ignore
   }
-
-  /**
-   * Checks if metrics persistence is supported by the underlying persistence layer.
-   *
-   * @param callCtx the call context containing the persistence layer
-   * @return true if metrics can be persisted, false otherwise
-   */
-  default boolean supportsMetricsPersistence(@Nonnull PolarisCallContext callCtx) {
-    return callCtx.getMetaStore() instanceof MetricsPersistence;
-  }
 }

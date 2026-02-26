@@ -32,7 +32,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsR
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for {@link SpiModelConverter}. */
+/** Unit tests for metrics model conversion methods. */
 public class SpiModelConverterTest {
 
   private static final String TEST_REPORT_ID = "report-123";
@@ -49,7 +49,7 @@ public class SpiModelConverterTest {
     ScanMetricsRecord record = createTestScanRecord();
 
     ModelScanMetricsReport model =
-        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
+        ModelScanMetricsReport.fromRecord(record, TEST_REALM_ID, null, null, null, null);
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
@@ -71,7 +71,7 @@ public class SpiModelConverterTest {
   void testToScanMetricsRecord() {
     ModelScanMetricsReport model = createTestModelScanReport();
 
-    ScanMetricsRecord record = SpiModelConverter.toScanMetricsRecord(model);
+    ScanMetricsRecord record = model.toRecord();
 
     assertThat(record.reportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(record.catalogId()).isEqualTo(TEST_CATALOG_ID);
@@ -91,8 +91,8 @@ public class SpiModelConverterTest {
     ScanMetricsRecord original = createTestScanRecord();
 
     ModelScanMetricsReport model =
-        SpiModelConverter.toModelScanReport(original, TEST_REALM_ID, null, null, null, null);
-    ScanMetricsRecord roundTripped = SpiModelConverter.toScanMetricsRecord(model);
+        ModelScanMetricsReport.fromRecord(original, TEST_REALM_ID, null, null, null, null);
+    ScanMetricsRecord roundTripped = model.toRecord();
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
     assertThat(roundTripped.catalogId()).isEqualTo(original.catalogId());
@@ -108,7 +108,7 @@ public class SpiModelConverterTest {
     CommitMetricsRecord record = createTestCommitRecord();
 
     ModelCommitMetricsReport model =
-        SpiModelConverter.toModelCommitReport(record, TEST_REALM_ID, null, null, null, null);
+        ModelCommitMetricsReport.fromRecord(record, TEST_REALM_ID, null, null, null, null);
 
     assertThat(model.getReportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(model.getRealmId()).isEqualTo(TEST_REALM_ID);
@@ -128,7 +128,7 @@ public class SpiModelConverterTest {
   void testToCommitMetricsRecord() {
     ModelCommitMetricsReport model = createTestModelCommitReport();
 
-    CommitMetricsRecord record = SpiModelConverter.toCommitMetricsRecord(model);
+    CommitMetricsRecord record = model.toRecord();
 
     assertThat(record.reportId()).isEqualTo(TEST_REPORT_ID);
     assertThat(record.catalogId()).isEqualTo(TEST_CATALOG_ID);
@@ -146,8 +146,8 @@ public class SpiModelConverterTest {
     CommitMetricsRecord original = createTestCommitRecord();
 
     ModelCommitMetricsReport model =
-        SpiModelConverter.toModelCommitReport(original, TEST_REALM_ID, null, null, null, null);
-    CommitMetricsRecord roundTripped = SpiModelConverter.toCommitMetricsRecord(model);
+        ModelCommitMetricsReport.fromRecord(original, TEST_REALM_ID, null, null, null, null);
+    CommitMetricsRecord roundTripped = model.toRecord();
 
     assertThat(roundTripped.reportId()).isEqualTo(original.reportId());
     assertThat(roundTripped.catalogId()).isEqualTo(original.catalogId());
@@ -186,7 +186,7 @@ public class SpiModelConverterTest {
             .build();
 
     ModelScanMetricsReport model =
-        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
+        ModelScanMetricsReport.fromRecord(record, TEST_REALM_ID, null, null, null, null);
     assertThat(model.getSnapshotId()).isNull();
     assertThat(model.getSchemaId()).isNull();
     assertThat(model.getFilterExpression()).isNull();
@@ -221,7 +221,7 @@ public class SpiModelConverterTest {
             .build();
 
     ModelScanMetricsReport model =
-        SpiModelConverter.toModelScanReport(record, TEST_REALM_ID, null, null, null, null);
+        ModelScanMetricsReport.fromRecord(record, TEST_REALM_ID, null, null, null, null);
     assertThat(model.getMetadata()).isEqualTo("{}");
   }
 

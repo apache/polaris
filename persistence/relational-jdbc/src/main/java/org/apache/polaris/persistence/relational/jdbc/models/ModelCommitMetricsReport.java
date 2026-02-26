@@ -18,12 +18,19 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
@@ -252,6 +259,128 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
       map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
     }
     return map;
+  }
+
+  // === Static conversion methods (following ModelEntity pattern) ===
+
+  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  /**
+   * Converts a CommitMetricsRecord (SPI) to ModelCommitMetricsReport (JDBC).
+   *
+   * @param record the SPI record
+   * @param realmId the realm ID for multi-tenancy
+   * @param principalName the principal name from request context
+   * @param requestId the request ID from request context
+   * @param otelTraceId the OpenTelemetry trace ID from request context
+   * @param otelSpanId the OpenTelemetry span ID from request context
+   * @return the JDBC model
+   */
+  static ModelCommitMetricsReport fromRecord(
+      CommitMetricsRecord record,
+      String realmId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId) {
+    // Extract client-provided report trace ID from metadata
+    String reportTraceId = record.metadata().get("report-trace-id");
+
+    return ImmutableModelCommitMetricsReport.builder()
+        .reportId(record.reportId())
+        .realmId(realmId)
+        .catalogId(record.catalogId())
+        .tableId(record.tableId())
+        .timestampMs(record.timestamp().toEpochMilli())
+        .principalName(principalName)
+        .requestId(requestId)
+        .otelTraceId(otelTraceId)
+        .otelSpanId(otelSpanId)
+        .reportTraceId(reportTraceId)
+        .snapshotId(record.snapshotId())
+        .sequenceNumber(record.sequenceNumber().orElse(null))
+        .operation(record.operation())
+        .addedDataFiles(record.addedDataFiles())
+        .removedDataFiles(record.removedDataFiles())
+        .totalDataFiles(record.totalDataFiles())
+        .addedDeleteFiles(record.addedDeleteFiles())
+        .removedDeleteFiles(record.removedDeleteFiles())
+        .totalDeleteFiles(record.totalDeleteFiles())
+        .addedEqualityDeleteFiles(record.addedEqualityDeleteFiles())
+        .removedEqualityDeleteFiles(record.removedEqualityDeleteFiles())
+        .addedPositionalDeleteFiles(record.addedPositionalDeleteFiles())
+        .removedPositionalDeleteFiles(record.removedPositionalDeleteFiles())
+        .addedRecords(record.addedRecords())
+        .removedRecords(record.removedRecords())
+        .totalRecords(record.totalRecords())
+        .addedFileSizeBytes(record.addedFileSizeBytes())
+        .removedFileSizeBytes(record.removedFileSizeBytes())
+        .totalFileSizeBytes(record.totalFileSizeBytes())
+        .totalDurationMs(record.totalDurationMs().orElse(0L))
+        .attempts(record.attempts())
+        .metadata(toJsonString(record.metadata()))
+        .build();
+  }
+
+  /**
+   * Converts this ModelCommitMetricsReport (JDBC) to CommitMetricsRecord (SPI).
+   *
+   * @return the SPI record
+   */
+  default CommitMetricsRecord toRecord() {
+    return CommitMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .snapshotId(getSnapshotId())
+        .sequenceNumber(Optional.ofNullable(getSequenceNumber()))
+        .operation(getOperation())
+        .addedDataFiles(getAddedDataFiles())
+        .removedDataFiles(getRemovedDataFiles())
+        .totalDataFiles(getTotalDataFiles())
+        .addedDeleteFiles(getAddedDeleteFiles())
+        .removedDeleteFiles(getRemovedDeleteFiles())
+        .totalDeleteFiles(getTotalDeleteFiles())
+        .addedEqualityDeleteFiles(getAddedEqualityDeleteFiles())
+        .removedEqualityDeleteFiles(getRemovedEqualityDeleteFiles())
+        .addedPositionalDeleteFiles(getAddedPositionalDeleteFiles())
+        .removedPositionalDeleteFiles(getRemovedPositionalDeleteFiles())
+        .addedRecords(getAddedRecords())
+        .removedRecords(getRemovedRecords())
+        .totalRecords(getTotalRecords())
+        .addedFileSizeBytes(getAddedFileSizeBytes())
+        .removedFileSizeBytes(getRemovedFileSizeBytes())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        .totalDurationMs(
+            getTotalDurationMs() > 0 ? Optional.of(getTotalDurationMs()) : Optional.empty())
+        .attempts(getAttempts())
+        .metadata(parseMetadataJson(getMetadata()))
+        .build();
+  }
+
+  // === Helper Methods ===
+
+  private static String toJsonString(Map<String, String> map) {
+    if (map == null || map.isEmpty()) {
+      return "{}";
+    }
+    try {
+      return OBJECT_MAPPER.writeValueAsString(map);
+    } catch (JsonProcessingException e) {
+      return "{}";
+    }
+  }
+
+  private static Map<String, String> parseMetadataJson(String json) {
+    if (json == null || json.isEmpty() || "{}".equals(json)) {
+      return Collections.emptyMap();
+    }
+    try {
+      return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, String>>() {});
+    } catch (JsonProcessingException e) {
+      return Collections.emptyMap();
+    }
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

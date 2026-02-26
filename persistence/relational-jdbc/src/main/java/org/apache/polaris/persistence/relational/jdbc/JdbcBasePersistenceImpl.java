@@ -1330,7 +1330,7 @@ public class JdbcBasePersistenceImpl
     }
 
     ModelScanMetricsReport model =
-        SpiModelConverter.toModelScanReport(
+        ModelScanMetricsReport.fromRecord(
             record, realmId, principalName, requestId, otelTraceId, otelSpanId);
     writeScanMetricsReport(model);
   }
@@ -1351,7 +1351,7 @@ public class JdbcBasePersistenceImpl
     }
 
     ModelCommitMetricsReport model =
-        SpiModelConverter.toModelCommitReport(
+        ModelCommitMetricsReport.fromRecord(
             record, realmId, principalName, requestId, otelTraceId, otelSpanId);
     writeCommitMetricsReport(model);
   }
@@ -1385,7 +1385,7 @@ public class JdbcBasePersistenceImpl
             limit);
 
     List<ScanMetricsRecord> records =
-        models.stream().map(SpiModelConverter::toScanMetricsRecord).collect(Collectors.toList());
+        models.stream().map(ModelScanMetricsReport::toRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
     Token nextToken =
@@ -1423,7 +1423,7 @@ public class JdbcBasePersistenceImpl
             limit);
 
     List<CommitMetricsRecord> records =
-        models.stream().map(SpiModelConverter::toCommitMetricsRecord).collect(Collectors.toList());
+        models.stream().map(ModelCommitMetricsReport::toRecord).collect(Collectors.toList());
 
     // Build continuation token only when we might have more pages
     Token nextToken =

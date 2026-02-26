@@ -18,12 +18,20 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
@@ -256,6 +264,155 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
       map.put(METADATA, getMetadata() != null ? getMetadata() : "{}");
     }
     return map;
+  }
+
+  // === Static conversion methods (following ModelEntity pattern) ===
+
+  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  /**
+   * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
+   *
+   * @param record the SPI record
+   * @param realmId the realm ID for multi-tenancy
+   * @param principalName the principal name from request context
+   * @param requestId the request ID from request context
+   * @param otelTraceId the OpenTelemetry trace ID from request context
+   * @param otelSpanId the OpenTelemetry span ID from request context
+   * @return the JDBC model
+   */
+  static ModelScanMetricsReport fromRecord(
+      ScanMetricsRecord record,
+      String realmId,
+      String principalName,
+      String requestId,
+      String otelTraceId,
+      String otelSpanId) {
+    // Extract client-provided report trace ID from metadata
+    String reportTraceId = record.metadata().get("report-trace-id");
+
+    return ImmutableModelScanMetricsReport.builder()
+        .reportId(record.reportId())
+        .realmId(realmId)
+        .catalogId(record.catalogId())
+        .tableId(record.tableId())
+        .timestampMs(record.timestamp().toEpochMilli())
+        .principalName(principalName)
+        .requestId(requestId)
+        .otelTraceId(otelTraceId)
+        .otelSpanId(otelSpanId)
+        .reportTraceId(reportTraceId)
+        .snapshotId(record.snapshotId().orElse(null))
+        .schemaId(record.schemaId().orElse(null))
+        .filterExpression(record.filterExpression().orElse(null))
+        .projectedFieldIds(toCommaSeparated(record.projectedFieldIds()))
+        .projectedFieldNames(toCommaSeparated(record.projectedFieldNames()))
+        .resultDataFiles(record.resultDataFiles())
+        .resultDeleteFiles(record.resultDeleteFiles())
+        .totalFileSizeBytes(record.totalFileSizeBytes())
+        .totalDataManifests(record.totalDataManifests())
+        .totalDeleteManifests(record.totalDeleteManifests())
+        .scannedDataManifests(record.scannedDataManifests())
+        .scannedDeleteManifests(record.scannedDeleteManifests())
+        .skippedDataManifests(record.skippedDataManifests())
+        .skippedDeleteManifests(record.skippedDeleteManifests())
+        .skippedDataFiles(record.skippedDataFiles())
+        .skippedDeleteFiles(record.skippedDeleteFiles())
+        .totalPlanningDurationMs(record.totalPlanningDurationMs())
+        .equalityDeleteFiles(record.equalityDeleteFiles())
+        .positionalDeleteFiles(record.positionalDeleteFiles())
+        .indexedDeleteFiles(record.indexedDeleteFiles())
+        .totalDeleteFileSizeBytes(record.totalDeleteFileSizeBytes())
+        .metadata(toJsonString(record.metadata()))
+        .build();
+  }
+
+  /**
+   * Converts this ModelScanMetricsReport (JDBC) to ScanMetricsRecord (SPI).
+   *
+   * @return the SPI record
+   */
+  default ScanMetricsRecord toRecord() {
+    return ScanMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .snapshotId(Optional.ofNullable(getSnapshotId()))
+        .schemaId(Optional.ofNullable(getSchemaId()))
+        .filterExpression(Optional.ofNullable(getFilterExpression()))
+        .projectedFieldIds(parseIntList(getProjectedFieldIds()))
+        .projectedFieldNames(parseStringList(getProjectedFieldNames()))
+        .resultDataFiles(getResultDataFiles())
+        .resultDeleteFiles(getResultDeleteFiles())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        .totalDataManifests(getTotalDataManifests())
+        .totalDeleteManifests(getTotalDeleteManifests())
+        .scannedDataManifests(getScannedDataManifests())
+        .scannedDeleteManifests(getScannedDeleteManifests())
+        .skippedDataManifests(getSkippedDataManifests())
+        .skippedDeleteManifests(getSkippedDeleteManifests())
+        .skippedDataFiles(getSkippedDataFiles())
+        .skippedDeleteFiles(getSkippedDeleteFiles())
+        .totalPlanningDurationMs(getTotalPlanningDurationMs())
+        .equalityDeleteFiles(getEqualityDeleteFiles())
+        .positionalDeleteFiles(getPositionalDeleteFiles())
+        .indexedDeleteFiles(getIndexedDeleteFiles())
+        .totalDeleteFileSizeBytes(getTotalDeleteFileSizeBytes())
+        .metadata(parseMetadataJson(getMetadata()))
+        .build();
+  }
+
+  // === Helper Methods ===
+
+  private static String toCommaSeparated(List<?> list) {
+    if (list == null || list.isEmpty()) {
+      return null;
+    }
+    return list.stream().map(Object::toString).collect(Collectors.joining(","));
+  }
+
+  private static List<Integer> parseIntList(String commaSeparated) {
+    if (commaSeparated == null || commaSeparated.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return java.util.Arrays.stream(commaSeparated.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .map(Integer::parseInt)
+        .collect(Collectors.toList());
+  }
+
+  private static List<String> parseStringList(String commaSeparated) {
+    if (commaSeparated == null || commaSeparated.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return java.util.Arrays.stream(commaSeparated.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toList());
+  }
+
+  private static String toJsonString(Map<String, String> map) {
+    if (map == null || map.isEmpty()) {
+      return "{}";
+    }
+    try {
+      return OBJECT_MAPPER.writeValueAsString(map);
+    } catch (JsonProcessingException e) {
+      return "{}";
+    }
+  }
+
+  private static Map<String, String> parseMetadataJson(String json) {
+    if (json == null || json.isEmpty() || "{}".equals(json)) {
+      return Collections.emptyMap();
+    }
+    try {
+      return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, String>>() {});
+    } catch (JsonProcessingException e) {
+      return Collections.emptyMap();
+    }
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

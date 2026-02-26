@@ -168,6 +168,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             effectiveSchemaVersion,
             realm);
         try {
+          // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()
