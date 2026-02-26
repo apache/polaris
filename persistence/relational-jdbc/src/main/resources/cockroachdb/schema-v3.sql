@@ -16,8 +16,8 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- CockroachDB schema v1 (based on PostgreSQL schema v3)
--- This is the initial schema version for CockroachDB support
+-- CockroachDB schema v3 (matching PostgreSQL schema v3)
+-- Schema version is kept in sync with PostgreSQL to ensure correct column selection in ModelEntity.
 -- Features:
 --  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
 --  * Includes all tables: version, entities, grant_records, principal_authentication_data,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 1)
+VALUES ('version', 3)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';

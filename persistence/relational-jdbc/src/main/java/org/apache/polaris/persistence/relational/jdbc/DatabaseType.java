@@ -52,7 +52,7 @@ public enum DatabaseType {
   public int getLatestSchemaVersion() {
     return switch (this) {
       case POSTGRES -> 3; // PostgreSQL has schemas v1, v2, v3
-      case COCKROACHDB -> 1; // CockroachDB currently has only schema v1
+      case COCKROACHDB -> 3; // CockroachDB schema version kept in sync with PostgreSQL
       case H2 -> 3; // H2 uses same schemas as PostgreSQL
     };
   }
