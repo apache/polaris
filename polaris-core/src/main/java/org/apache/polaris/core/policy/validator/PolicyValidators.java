@@ -66,6 +66,8 @@ public class PolicyValidators {
       case ORPHAN_FILE_REMOVAL:
         OrphanFileRemovalPolicyContent.fromString(policy.getContent());
         break;
+      case TEST_NON_INHERITABLE:
+        break;
       default:
         throw new IllegalArgumentException("Unsupported policy type: " + type.getName());
     }
@@ -97,6 +99,9 @@ public class PolicyValidators {
       case SNAPSHOT_EXPIRY:
       case ORPHAN_FILE_REMOVAL:
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
+
+      case TEST_NON_INHERITABLE:
+        return true;
 
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
