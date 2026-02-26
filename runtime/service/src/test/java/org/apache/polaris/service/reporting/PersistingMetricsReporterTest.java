@@ -105,8 +105,7 @@ public class PersistingMetricsReporterTest {
 
     // Verify metaStoreManager was called with correct record
     ArgumentCaptor<ScanMetricsRecord> captor = ArgumentCaptor.forClass(ScanMetricsRecord.class);
-    verify(metaStoreManager)
-        .writeScanMetrics(any(PolarisCallContext.class), captor.capture(), any(), any());
+    verify(metaStoreManager).writeScanMetrics(any(PolarisCallContext.class), captor.capture());
 
     ScanMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -125,8 +124,7 @@ public class PersistingMetricsReporterTest {
 
     // Verify metaStoreManager was called with correct record
     ArgumentCaptor<CommitMetricsRecord> captor = ArgumentCaptor.forClass(CommitMetricsRecord.class);
-    verify(metaStoreManager)
-        .writeCommitMetrics(any(PolarisCallContext.class), captor.capture(), any(), any());
+    verify(metaStoreManager).writeCommitMetrics(any(PolarisCallContext.class), captor.capture());
 
     CommitMetricsRecord record = captor.getValue();
     assertThat(record.catalogId()).isEqualTo(CATALOG_ID);
@@ -144,8 +142,8 @@ public class PersistingMetricsReporterTest {
         CATALOG_NAME, CATALOG_ID, TABLE_IDENTIFIER, TABLE_ID, unknownReport, Instant.now());
 
     // Verify metaStoreManager was NOT called since report type is unknown
-    verify(metaStoreManager, never()).writeScanMetrics(any(), any(), any(), any());
-    verify(metaStoreManager, never()).writeCommitMetrics(any(), any(), any(), any());
+    verify(metaStoreManager, never()).writeScanMetrics(any(), any());
+    verify(metaStoreManager, never()).writeCommitMetrics(any(), any());
   }
 
   private ScanReport createScanReport() {

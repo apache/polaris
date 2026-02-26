@@ -273,21 +273,14 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
   /**
    * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
    *
-   * @param record the SPI record
+   * <p>Request context fields (principalName, requestId, otelTraceId, otelSpanId) are read directly
+   * from the record, which should have been populated by the service layer.
+   *
+   * @param record the SPI record containing all metrics and request context
    * @param realmId the realm ID for multi-tenancy
-   * @param principalName the principal name from request context
-   * @param requestId the request ID from request context
-   * @param otelTraceId the OpenTelemetry trace ID from request context
-   * @param otelSpanId the OpenTelemetry span ID from request context
    * @return the JDBC model
    */
-  static ModelScanMetricsReport fromRecord(
-      ScanMetricsRecord record,
-      String realmId,
-      String principalName,
-      String requestId,
-      String otelTraceId,
-      String otelSpanId) {
+  static ModelScanMetricsReport fromRecord(ScanMetricsRecord record, String realmId) {
     // Extract client-provided report trace ID from metadata
     String reportTraceId = record.metadata().get("report-trace-id");
 
@@ -297,10 +290,10 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .catalogId(record.catalogId())
         .tableId(record.tableId())
         .timestampMs(record.timestamp().toEpochMilli())
-        .principalName(principalName)
-        .requestId(requestId)
-        .otelTraceId(otelTraceId)
-        .otelSpanId(otelSpanId)
+        .principalName(record.principalName())
+        .requestId(record.requestId())
+        .otelTraceId(record.otelTraceId())
+        .otelSpanId(record.otelSpanId())
         .reportTraceId(reportTraceId)
         .snapshotId(record.snapshotId().orElse(null))
         .schemaId(record.schemaId().orElse(null))
@@ -338,6 +331,10 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
         .catalogId(getCatalogId())
         .tableId(getTableId())
         .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
         .snapshotId(Optional.ofNullable(getSnapshotId()))
         .schemaId(Optional.ofNullable(getSchemaId()))
         .filterExpression(Optional.ofNullable(getFilterExpression()))

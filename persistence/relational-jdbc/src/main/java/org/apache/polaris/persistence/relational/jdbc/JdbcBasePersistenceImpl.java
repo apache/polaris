@@ -21,8 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 import com.google.common.base.Preconditions;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.Connection;
@@ -41,8 +39,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -102,10 +98,6 @@ public class JdbcBasePersistenceImpl
   private final String realmId;
   private final int schemaVersion;
 
-  // Request-scoped fields for metrics persistence (set per-request via setters)
-  @Nullable private PolarisPrincipal polarisPrincipal;
-  @Nullable private RequestIdSupplier requestIdSupplier;
-
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
@@ -125,13 +117,6 @@ public class JdbcBasePersistenceImpl
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
-  }
-
-  @Override
-  public void setMetricsRequestContext(
-      @Nullable PolarisPrincipal principal, @Nullable RequestIdSupplier requestIdSupplier) {
-    this.polarisPrincipal = principal;
-    this.requestIdSupplier = requestIdSupplier;
   }
 
   @Override
@@ -1316,43 +1301,15 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
-    // Obtain request context fields
-    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
-    String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;
-    String otelTraceId = null;
-    String otelSpanId = null;
-
-    // Get OpenTelemetry context if available
-    SpanContext spanContext = Span.current().getSpanContext();
-    if (spanContext.isValid()) {
-      otelTraceId = spanContext.getTraceId();
-      otelSpanId = spanContext.getSpanId();
-    }
-
-    ModelScanMetricsReport model =
-        ModelScanMetricsReport.fromRecord(
-            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
+    // Request context (principal, requestId, otelTraceId, otelSpanId) is already in the record
+    ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
     writeScanMetricsReport(model);
   }
 
   @Override
   public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
-    // Obtain request context fields
-    String principalName = polarisPrincipal != null ? polarisPrincipal.getName() : null;
-    String requestId = requestIdSupplier != null ? requestIdSupplier.getRequestId() : null;
-    String otelTraceId = null;
-    String otelSpanId = null;
-
-    // Get OpenTelemetry context if available
-    SpanContext spanContext = Span.current().getSpanContext();
-    if (spanContext.isValid()) {
-      otelTraceId = spanContext.getTraceId();
-      otelSpanId = spanContext.getSpanId();
-    }
-
-    ModelCommitMetricsReport model =
-        ModelCommitMetricsReport.fromRecord(
-            record, realmId, principalName, requestId, otelTraceId, otelSpanId);
+    // Request context (principal, requestId, otelTraceId, otelSpanId) is already in the record
+    ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
     writeCommitMetricsReport(model);
   }
 

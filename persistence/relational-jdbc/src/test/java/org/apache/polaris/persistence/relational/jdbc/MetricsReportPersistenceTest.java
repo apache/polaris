@@ -27,7 +27,6 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -82,7 +81,7 @@ class MetricsReportPersistenceTest {
             storageProvider,
             "TEST_REALM",
             4);
-    metricsPersistence.setMetricsRequestContext(null, RequestIdSupplier.NOOP);
+    // Request context (principal, requestId, etc.) is now part of the record itself
   }
 
   @Test

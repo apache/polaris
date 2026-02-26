@@ -82,6 +82,10 @@ public final class MetricsRecordConverter {
     private long catalogId;
     private long tableId;
     private Instant timestamp;
+    private String principalName;
+    private String requestId;
+    private String otelTraceId;
+    private String otelSpanId;
 
     private ScanReportBuilder(ScanReport scanReport) {
       this.scanReport = scanReport;
@@ -119,6 +123,30 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /** Sets the principal name for request context. */
+    public ScanReportBuilder principalName(String principalName) {
+      this.principalName = principalName;
+      return this;
+    }
+
+    /** Sets the server-generated request ID. */
+    public ScanReportBuilder requestId(String requestId) {
+      this.requestId = requestId;
+      return this;
+    }
+
+    /** Sets the OpenTelemetry trace ID. */
+    public ScanReportBuilder otelTraceId(String otelTraceId) {
+      this.otelTraceId = otelTraceId;
+      return this;
+    }
+
+    /** Sets the OpenTelemetry span ID. */
+    public ScanReportBuilder otelSpanId(String otelSpanId) {
+      this.otelSpanId = otelSpanId;
+      return this;
+    }
+
     public ScanMetricsRecord build() {
       ScanMetricsResult metrics = scanReport.scanMetrics();
       Map<String, String> reportMetadata =
@@ -129,6 +157,10 @@ public final class MetricsRecordConverter {
           .catalogId(catalogId)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
+          .principalName(principalName)
+          .requestId(requestId)
+          .otelTraceId(otelTraceId)
+          .otelSpanId(otelSpanId)
           .snapshotId(Optional.of(scanReport.snapshotId()))
           .schemaId(Optional.of(scanReport.schemaId()))
           .filterExpression(
@@ -170,6 +202,10 @@ public final class MetricsRecordConverter {
     private long catalogId;
     private long tableId;
     private Instant timestamp;
+    private String principalName;
+    private String requestId;
+    private String otelTraceId;
+    private String otelSpanId;
 
     private CommitReportBuilder(CommitReport commitReport) {
       this.commitReport = commitReport;
@@ -207,6 +243,30 @@ public final class MetricsRecordConverter {
       return this;
     }
 
+    /** Sets the principal name for request context. */
+    public CommitReportBuilder principalName(String principalName) {
+      this.principalName = principalName;
+      return this;
+    }
+
+    /** Sets the server-generated request ID. */
+    public CommitReportBuilder requestId(String requestId) {
+      this.requestId = requestId;
+      return this;
+    }
+
+    /** Sets the OpenTelemetry trace ID. */
+    public CommitReportBuilder otelTraceId(String otelTraceId) {
+      this.otelTraceId = otelTraceId;
+      return this;
+    }
+
+    /** Sets the OpenTelemetry span ID. */
+    public CommitReportBuilder otelSpanId(String otelSpanId) {
+      this.otelSpanId = otelSpanId;
+      return this;
+    }
+
     public CommitMetricsRecord build() {
       CommitMetricsResult metrics = commitReport.commitMetrics();
       Map<String, String> reportMetadata =
@@ -217,6 +277,10 @@ public final class MetricsRecordConverter {
           .catalogId(catalogId)
           .tableId(tableId)
           .timestamp(timestamp != null ? timestamp : Instant.now())
+          .principalName(principalName)
+          .requestId(requestId)
+          .otelTraceId(otelTraceId)
+          .otelSpanId(otelSpanId)
           .snapshotId(commitReport.snapshotId())
           .sequenceNumber(Optional.of(commitReport.sequenceNumber()))
           .operation(commitReport.operation())

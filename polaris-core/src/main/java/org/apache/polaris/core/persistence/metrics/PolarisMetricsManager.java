@@ -19,10 +19,7 @@
 package org.apache.polaris.core.persistence.metrics;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
@@ -35,6 +32,10 @@ import org.apache.polaris.core.persistence.BasePersistence;
  * <p>The service layer should interact with this interface (via {@link
  * org.apache.polaris.core.persistence.PolarisMetaStoreManager}) rather than directly accessing
  * persistence implementations.
+ *
+ * <p>Request context (principal name, request ID, OTEL trace/span IDs) should be populated in the
+ * record by the caller before invoking these methods. This keeps the SPI simple with a single
+ * method parameter containing all the data needed for persistence.
  */
 public interface PolarisMetricsManager {
 
@@ -43,19 +44,16 @@ public interface PolarisMetricsManager {
    *
    * <p>If the underlying persistence does not support metrics, this method is a no-op.
    *
+   * <p>The record should contain all request context fields (principalName, requestId, otelTraceId,
+   * otelSpanId) populated by the caller.
+   *
    * @param callCtx the call context containing the persistence layer
-   * @param record the scan metrics record to persist
-   * @param principal the authenticated principal (may be null)
-   * @param requestIdSupplier supplier for the request ID (may be null)
+   * @param record the scan metrics record to persist (including request context)
    */
   default void writeScanMetrics(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull ScanMetricsRecord record,
-      @Nullable PolarisPrincipal principal,
-      @Nullable RequestIdSupplier requestIdSupplier) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull ScanMetricsRecord record) {
     BasePersistence ms = callCtx.getMetaStore();
     if (ms instanceof MetricsPersistence metricsPersistence) {
-      metricsPersistence.setMetricsRequestContext(principal, requestIdSupplier);
       metricsPersistence.writeScanReport(record);
     }
     // If persistence doesn't support metrics, silently ignore
@@ -66,19 +64,16 @@ public interface PolarisMetricsManager {
    *
    * <p>If the underlying persistence does not support metrics, this method is a no-op.
    *
+   * <p>The record should contain all request context fields (principalName, requestId, otelTraceId,
+   * otelSpanId) populated by the caller.
+   *
    * @param callCtx the call context containing the persistence layer
-   * @param record the commit metrics record to persist
-   * @param principal the authenticated principal (may be null)
-   * @param requestIdSupplier supplier for the request ID (may be null)
+   * @param record the commit metrics record to persist (including request context)
    */
   default void writeCommitMetrics(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull CommitMetricsRecord record,
-      @Nullable PolarisPrincipal principal,
-      @Nullable RequestIdSupplier requestIdSupplier) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull CommitMetricsRecord record) {
     BasePersistence ms = callCtx.getMetaStore();
     if (ms instanceof MetricsPersistence metricsPersistence) {
-      metricsPersistence.setMetricsRequestContext(principal, requestIdSupplier);
       metricsPersistence.writeCommitReport(record);
     }
     // If persistence doesn't support metrics, silently ignore

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.reporting;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Instance;
@@ -87,9 +89,18 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
       MetricsReport metricsReport,
       Instant receivedTimestamp) {
 
-    PolarisPrincipal principal = polarisPrincipal.isResolvable() ? polarisPrincipal.get() : null;
-    RequestIdSupplier supplier =
-        requestIdSupplier.isResolvable() ? requestIdSupplier.get() : RequestIdSupplier.NOOP;
+    // Resolve request context
+    String principalName = resolvePrincipalName();
+    String requestId = resolveRequestId();
+    String otelTraceId = null;
+    String otelSpanId = null;
+
+    // Get OpenTelemetry context if available
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      otelTraceId = spanContext.getTraceId();
+      otelSpanId = spanContext.getSpanId();
+    }
 
     if (metricsReport instanceof ScanReport scanReport) {
       ScanMetricsRecord record =
@@ -97,9 +108,12 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .catalogId(catalogId)
               .tableId(tableId)
               .timestamp(receivedTimestamp)
+              .principalName(principalName)
+              .requestId(requestId)
+              .otelTraceId(otelTraceId)
+              .otelSpanId(otelSpanId)
               .build();
-      metaStoreManager.writeScanMetrics(
-          callContext.getPolarisCallContext(), record, principal, supplier);
+      metaStoreManager.writeScanMetrics(callContext.getPolarisCallContext(), record);
       LOGGER.debug(
           "Persisted scan metrics for {}.{} (reportId={})", catalogName, table, record.reportId());
     } else if (metricsReport instanceof CommitReport commitReport) {
@@ -108,9 +122,12 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
               .catalogId(catalogId)
               .tableId(tableId)
               .timestamp(receivedTimestamp)
+              .principalName(principalName)
+              .requestId(requestId)
+              .otelTraceId(otelTraceId)
+              .otelSpanId(otelSpanId)
               .build();
-      metaStoreManager.writeCommitMetrics(
-          callContext.getPolarisCallContext(), record, principal, supplier);
+      metaStoreManager.writeCommitMetrics(callContext.getPolarisCallContext(), record);
       LOGGER.debug(
           "Persisted commit metrics for {}.{} (reportId={})",
           catalogName,
@@ -121,5 +138,21 @@ public class PersistingMetricsReporter implements PolarisMetricsReporter {
           "Unknown metrics report type: {}. Metrics will not be stored.",
           metricsReport.getClass().getName());
     }
+  }
+
+  private String resolvePrincipalName() {
+    if (polarisPrincipal.isResolvable()) {
+      PolarisPrincipal principal = polarisPrincipal.get();
+      return principal != null ? principal.getName() : null;
+    }
+    return null;
+  }
+
+  private String resolveRequestId() {
+    if (requestIdSupplier.isResolvable()) {
+      RequestIdSupplier supplier = requestIdSupplier.get();
+      return supplier != null ? supplier.getRequestId() : null;
+    }
+    return null;
   }
 }
