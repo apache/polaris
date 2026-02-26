@@ -1,11 +1,48 @@
+{{/* cSpell:ignore docsearch opengraph outputformat */ -}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+{{ $darkMode := partialCached "dark-mode-config.html" "dark-mode-global" -}}
+{{ if $darkMode.enable -}}
+{{/* Browser hints before CSS loads */ -}}
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#000000">
+
+{{/* Styles to set canvas colors and avoid transitions */ -}}
+<style>
+  {{/* Set system colors as default */ -}}
+  html { background: Canvas; color: CanvasText; }
+  {{/* Define reasonable dark defaults */ -}}
+  @media (prefers-color-scheme: dark) {
+    html { background: #0b0d12; color: #e6e6e6; }
+  }
+  {{/* Avoid transitions until theme CSS is loaded */ -}}
+  html[data-theme-init] * { transition: none !important; }
+</style>
+
+{{/* Set theme attribute before CSS loads to prevent flash */ -}}
+<script>
+  (function() {
+    const themeKey = 'td-color-theme';
+    const storedTheme = localStorage.getItem(themeKey);
+    let theme = storedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    if (theme === 'auto') {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  })();
+</script>
+{{ end -}}
+
 {{ range .AlternativeOutputFormats -}}
 <link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink | safeURL }}">
 {{ end -}}
 
 {{ $outputFormat := partial "outputformat.html" . -}}
-{{ if and hugo.IsProduction (ne $outputFormat "print") -}}
+{{ if and hugo.IsProduction (ne $outputFormat "print") (ne .Site.Language.Lang "xx") -}}
 <meta name="robots" content="index, follow">
 {{ else -}}
 <meta name="robots" content="noindex, nofollow">
@@ -20,11 +57,11 @@
     {{ .Site.Title -}}
   {{ end -}}
 </title>
-<meta name="description" content="{{ template "partials/page-description.html" . }}">
-{{ template "_internal/opengraph.html" . -}}
-{{ template "_internal/schema.html" . -}}
-{{ template "_internal/twitter_cards.html" . -}}
-{{ partialCached "head-css.html" . "asdf" -}}
+<meta name="description" content="{{ partial "page-description.html" . }}">
+{{ partial "opengraph.html" . -}}
+{{ partial "schema.html" . -}}
+{{ partial "twitter_cards.html" . -}}
+{{ partialCached "head-css.html" . "head-css-cache-key" -}}
 
 <!--
 Customization to host jQuery + Lunr JS files on ASF site
@@ -54,27 +91,21 @@ Customization to host jQuery + Lunr JS files on ASF site
 
 {{ partial "hooks/head-end.html" . -}}
 
-{{/* To comply with GDPR, cookie consent scripts places in head-end must execute before Google Analytics is enabled */ -}}
-{{ if hugo.IsProduction -}}
-  {{ $enableGtagForUniversalAnalytics := not .Site.Params.disableGtagForUniversalAnalytics -}}
-  {{ if (or $enableGtagForUniversalAnalytics (hasPrefix .Site.Config.Services.GoogleAnalytics.ID "G-")) -}}
-    {{ template "_internal/google_analytics_gtag.html" . -}}
-  {{ else -}}
-    {{ template "_internal/google_analytics.html" . -}}
-  {{ end -}}
-{{ end -}}
+<!--
+Google Analytics part removed.
+-->
 
 {{ define "algolia/head" -}}
 
 {{ if and .Site.Params.search (isset .Site.Params.search "algolia") -}}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3.6.0"
-  integrity="sha512-AyDFDkYyALC5qoao077IqAOV7UC4oKCBTp+mJfjIt306AIRoBxoEZYDo0kAx/R7RbT+3EYEky1po/F1w1eQt7g=="
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3.8.2"
+  integrity="sha512-l7pkV1dOURFyHCeH8I4fK9lCkQKuqhlsTCqRl3zktifDlB8oTUJ+mJPgYkK9kHpUut8j1iPquTv32t6hvTPv3g=="
   crossorigin="anonymous" />
 {{ end -}}
 
 {{ if ne .Site.Params.algolia_docsearch nil -}}
 {{ warnf `Config 'params.algolia_docsearch' is deprecated: use 'params.search.algolia'
-      For details, see https://www.docsy.dev/docs/adding-content/search/#algolia-docsearch.` -}}
+      For details, see https://www.docsy.dev/docs/content/search/#algolia-docsearch.` -}}
 {{ end -}}
 
 {{ end -}}
