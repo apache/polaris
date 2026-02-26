@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.runtime.configuration.MemorySize;
-import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
@@ -84,8 +82,7 @@ class AwsCloudWatchEventListenerTest {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   static {
-    new PolarisIcebergObjectMapperCustomizer(new MemorySize(BigInteger.valueOf(1024 * 1024)))
-        .customize(OBJECT_MAPPER);
+    new PolarisIcebergObjectMapperCustomizer(String.valueOf(1024 * 1024)).customize(OBJECT_MAPPER);
   }
 
   @Mock private AwsCloudWatchConfiguration config;
