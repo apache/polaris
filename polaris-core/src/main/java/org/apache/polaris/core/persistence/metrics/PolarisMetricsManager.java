@@ -20,14 +20,12 @@ package org.apache.polaris.core.persistence.metrics;
 
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
  * Interface for managing Iceberg metrics persistence through the metastore manager layer.
  *
  * <p>This follows the same pattern as {@link org.apache.polaris.core.entity.PolarisEventManager},
- * providing a high-level interface that delegates to the underlying persistence layer when metrics
- * persistence is supported.
+ * providing a high-level interface that delegates to the underlying persistence layer.
  *
  * <p>The service layer should interact with this interface (via {@link
  * org.apache.polaris.core.persistence.PolarisMetaStoreManager}) rather than directly accessing
@@ -36,13 +34,19 @@ import org.apache.polaris.core.persistence.BasePersistence;
  * <p>Request context (principal name, request ID, OTEL trace/span IDs) should be populated in the
  * record by the caller before invoking these methods. This keeps the SPI simple with a single
  * method parameter containing all the data needed for persistence.
+ *
+ * <p>Since {@link org.apache.polaris.core.persistence.BasePersistence} now extends {@link
+ * MetricsPersistence} with default no-op implementations, all persistence backends automatically
+ * support this interface. Backends that want actual metrics persistence (e.g., JDBC) override the
+ * methods; others use the default no-op behavior.
  */
 public interface PolarisMetricsManager {
 
   /**
    * Writes a scan metrics record to the persistence layer.
    *
-   * <p>If the underlying persistence does not support metrics, this method is a no-op.
+   * <p>Delegates to the underlying {@link MetricsPersistence#writeScanReport} method. If the
+   * persistence backend doesn't override the default implementation, this is a no-op.
    *
    * <p>The record should contain all request context fields (principalName, requestId, otelTraceId,
    * otelSpanId) populated by the caller.
@@ -52,17 +56,14 @@ public interface PolarisMetricsManager {
    */
   default void writeScanMetrics(
       @Nonnull PolarisCallContext callCtx, @Nonnull ScanMetricsRecord record) {
-    BasePersistence ms = callCtx.getMetaStore();
-    if (ms instanceof MetricsPersistence metricsPersistence) {
-      metricsPersistence.writeScanReport(record);
-    }
-    // If persistence doesn't support metrics, silently ignore
+    callCtx.getMetaStore().writeScanReport(record);
   }
 
   /**
    * Writes a commit metrics record to the persistence layer.
    *
-   * <p>If the underlying persistence does not support metrics, this method is a no-op.
+   * <p>Delegates to the underlying {@link MetricsPersistence#writeCommitReport} method. If the
+   * persistence backend doesn't override the default implementation, this is a no-op.
    *
    * <p>The record should contain all request context fields (principalName, requestId, otelTraceId,
    * otelSpanId) populated by the caller.
@@ -72,10 +73,6 @@ public interface PolarisMetricsManager {
    */
   default void writeCommitMetrics(
       @Nonnull PolarisCallContext callCtx, @Nonnull CommitMetricsRecord record) {
-    BasePersistence ms = callCtx.getMetaStore();
-    if (ms instanceof MetricsPersistence metricsPersistence) {
-      metricsPersistence.writeCommitReport(record);
-    }
-    // If persistence doesn't support metrics, silently ignore
+    callCtx.getMetaStore().writeCommitReport(record);
   }
 }

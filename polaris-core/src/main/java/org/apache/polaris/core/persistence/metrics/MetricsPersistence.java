@@ -30,10 +30,12 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * metrics storage in a way appropriate for their storage model, while allowing service code to
  * remain backend-agnostic.
  *
+ * <p>All methods have default no-op implementations. Persistence backends that support metrics
+ * (e.g., JDBC) should override these methods to provide actual storage. Backends that don't support
+ * metrics can use the default implementations which silently ignore writes and return empty results
+ * for queries.
+ *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
- * Persistence backends that don't support metrics should not implement this interface; the service
- * layer uses {@link PolarisMetricsManager} which silently ignores metrics when the underlying
- * persistence does not support them.
  *
  * <h3>Multi-Tenancy</h3>
  *
@@ -75,18 +77,26 @@ public interface MetricsPersistence {
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
+   * <p>Default implementation is a no-op. Override in implementations that support metrics.
+   *
    * @param record the scan metrics record to persist
    */
-  void writeScanReport(@Nonnull ScanMetricsRecord record);
+  default void writeScanReport(@Nonnull ScanMetricsRecord record) {
+    // No-op by default - backends that don't support metrics silently ignore
+  }
 
   /**
    * Persists a commit metrics record.
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
+   * <p>Default implementation is a no-op. Override in implementations that support metrics.
+   *
    * @param record the commit metrics record to persist
    */
-  void writeCommitReport(@Nonnull CommitMetricsRecord record);
+  default void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+    // No-op by default - backends that don't support metrics silently ignore
+  }
 
   // ============================================================================
   // Query Operations
@@ -110,16 +120,24 @@ public interface MetricsPersistence {
    * }
    * }</pre>
    *
+   * <p>Default implementation returns an empty page. Override in implementations that support
+   * metrics.
+   *
    * @param criteria the query criteria (filters)
    * @param pageToken pagination parameters (page size and optional cursor)
    * @return page of matching scan metrics records with continuation token if more results exist
    */
   @Nonnull
-  Page<ScanMetricsRecord> queryScanReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
+  default Page<ScanMetricsRecord> queryScanReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    return Page.fromItems(java.util.List.of());
+  }
 
   /**
    * Queries commit metrics reports based on the specified criteria.
+   *
+   * <p>Default implementation returns an empty page. Override in implementations that support
+   * metrics.
    *
    * @param criteria the query criteria (filters)
    * @param pageToken pagination parameters (page size and optional cursor)
@@ -127,6 +145,8 @@ public interface MetricsPersistence {
    * @see #queryScanReports(MetricsQueryCriteria, PageToken) for pagination example
    */
   @Nonnull
-  Page<CommitMetricsRecord> queryCommitReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
+  default Page<CommitMetricsRecord> queryCommitReports(
+      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
+    return Page.fromItems(java.util.List.of());
+  }
 }
