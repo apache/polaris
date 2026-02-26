@@ -367,7 +367,7 @@ public class CatalogHandlerUtils {
     catalog.renameTable(request.source(), request.destination());
   }
 
-  private boolean isCreate(UpdateTableRequest request) {
+  static boolean isCreate(UpdateTableRequest request) {
     boolean isCreate =
         request.requirements().stream()
             .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
