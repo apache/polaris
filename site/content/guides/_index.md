@@ -80,7 +80,8 @@ More information about guides-testing can be found in the `site/it/README.md` fi
 ### Constraints
 
 1. `docker compose` invocations must be on a single line in a `shell` code block.
-2. Spark SQL shell invocations must be the only statement `shell` code block in a guide.
+2. When invoking Spark SQL shell in a `shell` code block, the `bin/spark-sql ...` invocation
+   must be the only statement in that code block.
 
 ### Tips for Docker usage
 

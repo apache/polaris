@@ -116,8 +116,6 @@ tasks.named<RatTask>("rat").configure {
 
   // Guides testing
   excludes.add("site/content/guides/ceph/**/*.keyring")
-  excludes.add("site/it/.idea")
-  excludes.add("/venv")
   excludes.add("/getting-started") // it's a symlink
 
   // Python
@@ -143,6 +141,7 @@ tasks.named<RatTask>("rat").configure {
 
   // IntelliJ
   excludes.add(".idea")
+  excludes.add("site/it/.idea")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
 
