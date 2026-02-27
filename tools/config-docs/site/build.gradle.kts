@@ -192,3 +192,7 @@ build:
     }
   }
 }
+
+tasks.named("assemble") {
+  dependsOn(copyConfigSectionsToSite)
+}
