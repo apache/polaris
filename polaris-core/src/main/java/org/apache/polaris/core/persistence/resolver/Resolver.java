@@ -54,6 +54,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
  * incoming rest request, Once resolved, the request can be authorized.
  */
 public class Resolver {
+  private static final int MAX_RESOLVE_PASSES = 1000;
 
   // we stash the Polaris call context here
   private final @Nonnull PolarisCallContext polarisCallContext;
@@ -249,7 +250,43 @@ public class Resolver {
     do {
       status = runResolvePass();
       count++;
-    } while (status == null && ++count < 1000);
+    } while (status == null && ++count < MAX_RESOLVE_PASSES);
+
+    // assert if status is null
+    this.diagnostics.checkNotNull(status, "cannot_resolve_all_entities");
+
+    // remember the resolver status
+    this.resolverStatus = status;
+
+    // all has been resolved
+    return status;
+  }
+
+  /**
+   * Run the resolution process without resolving the caller principal or any roles.
+   *
+   * <p>This resolves the reference catalog (if specified), any requested top-level entities, and
+   * the requested paths, while preserving the same validation and retry behavior as {@link
+   * #resolveAll()}.
+   *
+   * @return the status of the resolver. If success, all requested paths have been resolved and the
+   *     getResolvedXYZ() method can be called. This method returns SUCCESS,
+   *     PATH_COULD_NOT_BE_FULLY_RESOLVED, or ENTITY_COULD_NOT_BE_RESOLVED and never returns
+   *     CALLER_PRINCIPAL_DOES_NOT_EXIST.
+   */
+  public ResolverStatus resolvePathsOnly() {
+    // can only be called if the resolver has not yet been called
+    this.diagnostics.check(resolverStatus == null, "resolver_called");
+
+    // retry until a pass terminates, or we reached the maximum iteration count. Note that we
+    // should finish normally in no more than few passes so the 1000 limit is really to avoid
+    // spinning forever if there is a bug.
+    int count = 0;
+    ResolverStatus status;
+    do {
+      status = runResolvePassPathsOnly();
+      count++;
+    } while (status == null && ++count < MAX_RESOLVE_PASSES);
 
     // assert if status is null
     this.diagnostics.checkNotNull(status, "cannot_resolve_all_entities");
@@ -437,6 +474,57 @@ public class Resolver {
     // were resolved incrementally and may have changed in ways that impact the behavior of
     // resolved child entities. So validate now all these entities in one single go, which ensures
     // happens-before semantics.
+    boolean validationSuccess = this.bulkValidate(toValidate);
+
+    if (validationSuccess) {
+      this.updateResolved();
+    }
+
+    // if success, we are done, simply return the status.
+    return validationSuccess ? status : null;
+  }
+
+  /**
+   * Execute one resolve pass on all entities without resolving caller principal or roles.
+   *
+   * @return status of the resolve pass
+   */
+  private ResolverStatus runResolvePassPathsOnly() {
+
+    // we will resolve those again
+    this.resolvedCallerPrincipal = null;
+    this.resolvedReferenceCatalog = null;
+    if (this.resolvedCatalogRoles != null) {
+      this.resolvedCatalogRoles.clear();
+    }
+    this.resolvedCallerPrincipalRoles.clear();
+    this.resolvedPaths.clear();
+
+    // all entries we found in the cache or resolved hierarchically but that we need to validate
+    // since they might be stale
+    List<ResolvedPolarisEntity> toValidate = new ArrayList<>();
+
+    ResolverStatus status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+
+    // resolve the reference catalog if one was specified
+    if (this.referenceCatalogName != null) {
+      status = this.resolveReferenceCatalogWithoutRoles(toValidate, this.referenceCatalogName);
+    }
+
+    // if success, continue resolving
+    if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+      // then resolve all the additional entities we were asked to resolve
+      status = this.resolveEntities(toValidate, this.entitiesToResolve);
+
+      // if success, continue resolving
+      if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS
+          && this.referenceCatalogName != null) {
+        // finally, resolve all paths we need to resolve
+        status = this.resolvePaths(toValidate, this.pathsToResolve);
+      }
+    }
+
+    // validate now all these entities in one single go, which ensures happens-before semantics.
     boolean validationSuccess = this.bulkValidate(toValidate);
 
     if (validationSuccess) {
@@ -812,14 +900,10 @@ public class Resolver {
    */
   private ResolverStatus resolveReferenceCatalog(
       @Nonnull List<ResolvedPolarisEntity> toValidate, @Nonnull String referenceCatalogName) {
-    // resolve the catalog
-    this.resolvedReferenceCatalog =
-        this.resolveByName(toValidate, PolarisEntityType.CATALOG, referenceCatalogName);
-
-    // error out if we couldn't find it
-    if (this.resolvedReferenceCatalog == null
-        || this.resolvedReferenceCatalog.getEntity().isDropped()) {
-      return new ResolverStatus(PolarisEntityType.CATALOG, this.referenceCatalogName);
+    ResolverStatus status =
+        this.resolveReferenceCatalogWithoutRoles(toValidate, referenceCatalogName);
+    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      return status;
     }
 
     // determine the set of catalog roles which have been activated
@@ -846,6 +930,31 @@ public class Resolver {
           }
         }
       }
+    }
+
+    // all good
+    return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  /**
+   * Resolve the reference catalog without resolving or activating any roles.
+   *
+   * @param toValidate all entities we have resolved incrementally, possibly with some entries
+   *     coming from cache, hence we will have to verify that these entities have not changed in the
+   *     backend
+   * @param referenceCatalogName name of the reference catalog to resolve
+   * @return the status of resolution
+   */
+  private ResolverStatus resolveReferenceCatalogWithoutRoles(
+      @Nonnull List<ResolvedPolarisEntity> toValidate, @Nonnull String referenceCatalogName) {
+    // resolve the catalog
+    this.resolvedReferenceCatalog =
+        this.resolveByName(toValidate, PolarisEntityType.CATALOG, referenceCatalogName);
+
+    // error out if we couldn't find it
+    if (this.resolvedReferenceCatalog == null
+        || this.resolvedReferenceCatalog.getEntity().isDropped()) {
+      return new ResolverStatus(PolarisEntityType.CATALOG, this.referenceCatalogName);
     }
 
     if (CatalogEntity.of(this.resolvedReferenceCatalog.getEntity()).isPassthroughFacade()) {
