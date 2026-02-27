@@ -175,7 +175,7 @@ def markdown_testing(args: List[str]) -> bool:
         if opt in ("-h", "--help"):
             usage()
             return True
-        elif opt in ("-s", "--spark-spark_tarball"):
+        elif opt in ("-s", "--spark-tarball"):
             spark_tarball_url = val
         elif opt in ("-S", "--download-spark-tarball"):
             spark_download_requested = True
