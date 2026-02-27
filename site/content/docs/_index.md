@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Polaris Documentation'
+title: 'Apache Polaris Documentation'
 linkTitle: 'Documentation'
 type: docs
 # Mark this as the documentation root - used by breadcrumb.html partial

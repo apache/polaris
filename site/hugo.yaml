@@ -101,6 +101,10 @@ menu:
       weight: 100
       params:
         orderby: weight.desc
+    - name: "Overview"
+      url: "/docs/"
+      parent: "doc"
+      weight: -100
     - name: "In Development"
       url: "/in-dev/unreleased/"
       parent: "doc"
