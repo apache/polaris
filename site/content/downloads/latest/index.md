@@ -24,7 +24,7 @@ linkTitle: 'Latest'
 type: 'redirect'
 layout: 'redirect'
 params:
-  redirect_to: '/downloads/1.3.0/'
+  redirect_to: '/downloads/1.3.0/'   # Replace after a Polaris release
 weight: 2
 hide_summary: true
 exclude_search: true
