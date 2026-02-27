@@ -53,7 +53,7 @@ Each guide has detailed instructions.
 
 ## Authoring Guides
 
-Writing new or updating Guides, especially those that use Docker Compose, should follow these
+Writing new Guides or updating existing ones, especially those that use Docker Compose, should follow these
 guidelines. This ensures that the examples work as expected and that the guides pass the tests
 run in CI and locally.
 
