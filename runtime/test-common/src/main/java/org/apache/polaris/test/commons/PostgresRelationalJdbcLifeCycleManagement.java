@@ -56,21 +56,21 @@ public class PostgresRelationalJdbcLifeCycleManagement
 
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
-    return Map.of(
-        "polaris.persistence.type",
-        "relational-jdbc",
-        "polaris.persistence.relational.jdbc.max-retries",
-        "2",
-        "quarkus.datasource.db-kind",
-        "postgresql",
-        "quarkus.datasource.jdbc.url",
-        postgres.getJdbcUrl(),
-        "quarkus.datasource.username",
-        postgres.getUsername(),
-        "quarkus.datasource.password",
-        postgres.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
-        "10");
+    // Configure both the main datasource and the metrics named datasource
+    // pointing to the same PostgreSQL instance for tests
+    return Map.ofEntries(
+        Map.entry("polaris.persistence.type", "relational-jdbc"),
+        Map.entry("polaris.persistence.relational.jdbc.max-retries", "2"),
+        Map.entry("quarkus.datasource.db-kind", "postgresql"),
+        Map.entry("quarkus.datasource.jdbc.url", postgres.getJdbcUrl()),
+        Map.entry("quarkus.datasource.username", postgres.getUsername()),
+        Map.entry("quarkus.datasource.password", postgres.getPassword()),
+        Map.entry("quarkus.datasource.jdbc.initial-size", "10"),
+        // Configure metrics named datasource to use the same PostgreSQL instance
+        Map.entry("quarkus.datasource.metrics.db-kind", "postgresql"),
+        Map.entry("quarkus.datasource.metrics.jdbc.url", postgres.getJdbcUrl()),
+        Map.entry("quarkus.datasource.metrics.username", postgres.getUsername()),
+        Map.entry("quarkus.datasource.metrics.password", postgres.getPassword()));
   }
 
   @Override

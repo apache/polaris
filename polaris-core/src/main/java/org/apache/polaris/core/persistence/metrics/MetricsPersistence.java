@@ -20,8 +20,6 @@ package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * Service Provider Interface (SPI) for persisting Iceberg metrics reports.
@@ -30,123 +28,49 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  * metrics storage in a way appropriate for their storage model, while allowing service code to
  * remain backend-agnostic.
  *
+ * <p>All methods have default no-op implementations. Persistence backends that support metrics
+ * (e.g., JDBC) should override these methods to provide actual storage. Backends that don't support
+ * metrics can use the default implementations which silently ignore writes.
+ *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
- * Implementations that don't support metrics persistence can use {@link #NOOP} which silently
- * ignores write operations and returns empty pages for queries.
- *
- * <h3>Dependency Injection</h3>
- *
- * <p>This interface is designed to be injected via CDI (Contexts and Dependency Injection). The
- * deployment module (e.g., {@code polaris-quarkus-service}) should provide a {@code @Produces}
- * method that creates the appropriate implementation based on the configured persistence backend.
- *
- * <p>Example producer:
- *
- * <pre>{@code
- * @Produces
- * @RequestScoped
- * MetricsPersistence metricsPersistence(RealmContext realmContext, PersistenceBackend backend) {
- *   if (backend.supportsMetrics()) {
- *     return backend.createMetricsPersistence(realmContext);
- *   }
- *   return MetricsPersistence.NOOP;
- * }
- * }</pre>
  *
  * <h3>Multi-Tenancy</h3>
  *
  * <p>Realm context is not passed in the record objects. Implementations should obtain the realm
- * from the CDI-injected {@code RealmContext} at write/query time. This keeps catalog-specific code
- * from needing to manage realm concerns directly.
- *
- * <h3>Pagination</h3>
- *
- * <p>Query methods use the standard Polaris pagination pattern with {@link PageToken} for requests
- * and {@link Page} for responses. This enables:
- *
- * <ul>
- *   <li>Backend-specific cursor implementations (RDBMS offset, NoSQL continuation tokens, etc.)
- *   <li>Consistent pagination interface across all Polaris persistence APIs
- *   <li>Efficient cursor-based pagination that works with large result sets
- * </ul>
- *
- * <p>The {@link ReportIdToken} provides a reference cursor implementation based on report ID
- * (UUID), but backends may use other cursor strategies internally.
+ * from the CDI-injected {@code RealmContext} at write time. This keeps catalog-specific code from
+ * needing to manage realm concerns directly.
  *
  * <p><b>Note:</b> This SPI is currently experimental and not yet implemented in all persistence
  * backends. The API may change in future releases.
  *
- * @see PageToken
- * @see Page
- * @see ReportIdToken
+ * @see PolarisMetricsManager
  */
 @Beta
 public interface MetricsPersistence {
-
-  /** A no-op implementation for backends that don't support metrics persistence. */
-  MetricsPersistence NOOP = new NoOpMetricsPersistence();
-
-  // ============================================================================
-  // Write Operations
-  // ============================================================================
 
   /**
    * Persists a scan metrics record.
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
+   * <p>Default implementation is a no-op. Override in implementations that support metrics.
+   *
    * @param record the scan metrics record to persist
    */
-  void writeScanReport(@Nonnull ScanMetricsRecord record);
+  default void writeScanReport(@Nonnull ScanMetricsRecord record) {
+    // No-op by default - backends that don't support metrics silently ignore
+  }
 
   /**
    * Persists a commit metrics record.
    *
    * <p>This operation is idempotent - writing the same reportId twice has no effect.
    *
+   * <p>Default implementation is a no-op. Override in implementations that support metrics.
+   *
    * @param record the commit metrics record to persist
    */
-  void writeCommitReport(@Nonnull CommitMetricsRecord record);
-
-  // ============================================================================
-  // Query Operations
-  // ============================================================================
-
-  /**
-   * Queries scan metrics reports based on the specified criteria.
-   *
-   * <p>Example usage:
-   *
-   * <pre>{@code
-   * // First page
-   * PageToken pageToken = PageToken.fromLimit(100);
-   * Page<ScanMetricsRecord> page = persistence.queryScanReports(criteria, pageToken);
-   *
-   * // Next page (if available)
-   * String nextPageToken = page.encodedResponseToken();
-   * if (nextPageToken != null) {
-   *   pageToken = PageToken.build(nextPageToken, null, () -> true);
-   *   Page<ScanMetricsRecord> nextPage = persistence.queryScanReports(criteria, pageToken);
-   * }
-   * }</pre>
-   *
-   * @param criteria the query criteria (filters)
-   * @param pageToken pagination parameters (page size and optional cursor)
-   * @return page of matching scan metrics records with continuation token if more results exist
-   */
-  @Nonnull
-  Page<ScanMetricsRecord> queryScanReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
-
-  /**
-   * Queries commit metrics reports based on the specified criteria.
-   *
-   * @param criteria the query criteria (filters)
-   * @param pageToken pagination parameters (page size and optional cursor)
-   * @return page of matching commit metrics records with continuation token if more results exist
-   * @see #queryScanReports(MetricsQueryCriteria, PageToken) for pagination example
-   */
-  @Nonnull
-  Page<CommitMetricsRecord> queryCommitReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken);
+  default void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+    // No-op by default - backends that don't support metrics silently ignore
+  }
 }

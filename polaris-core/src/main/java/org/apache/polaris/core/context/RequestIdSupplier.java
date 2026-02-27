@@ -16,13 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.context;
 
-package org.apache.polaris.core.persistence.bootstrap;
+import jakarta.annotation.Nullable;
 
-import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
+/**
+ * Supplier interface for obtaining the current request ID.
+ *
+ * <p>This interface allows components to obtain the server-generated request ID without directly
+ * depending on runtime/service layer classes. Similar to {@link RealmContext}, this provides a
+ * clean abstraction for request-scoped context.
+ */
+public interface RequestIdSupplier {
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
+  /**
+   * Gets the server-generated request ID for the current request.
+   *
+   * @return the request ID, or null if not available
+   */
+  @Nullable
+  String getRequestId();
 }

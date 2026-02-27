@@ -369,13 +369,6 @@ public class QueryGenerator {
         List.of());
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateMetricsVersionQuery() {
-    return new PreparedQuery(
-        "SELECT version_value FROM POLARIS_SCHEMA.metrics_version WHERE version_key = 'metrics_version'",
-        List.of());
-  }
-
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so
@@ -429,7 +422,7 @@ public class QueryGenerator {
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
-  private static String getFullyQualifiedTableName(String tableName) {
+  static String getFullyQualifiedTableName(String tableName) {
     // TODO: make schema name configurable.
     return "POLARIS_SCHEMA." + tableName;
   }

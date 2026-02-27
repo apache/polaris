@@ -43,6 +43,7 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -86,8 +87,11 @@ import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.storage.aws.StsClientsPool;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
+import org.apache.polaris.service.tracing.RequestIdFilter;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
+import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
+import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpClient;
@@ -429,6 +433,26 @@ public class ServiceProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  /**
+   * Produces a RequestIdSupplier that retrieves the request ID from the current request context.
+   *
+   * <p>The request ID is set by {@link RequestIdFilter} on each incoming request. This producer
+   * provides access to that ID via the {@link RequestIdSupplier} interface for components that need
+   * request correlation without direct dependency on JAX-RS types.
+   */
+  @Produces
+  @RequestScoped
+  public RequestIdSupplier requestIdSupplier() {
+    return () -> {
+      ResteasyReactiveRequestContext context = CurrentRequestManager.get();
+      if (context != null) {
+        return (String)
+            context.getContainerRequestContext().getProperty(RequestIdFilter.REQUEST_ID_KEY);
+      }
+      return null;
+    };
   }
 
   @Produces
