@@ -24,6 +24,7 @@ on:
     branches: [ "main" ]
     paths:
       - 'site/content/guides/**'
+      - 'site/it/**'
   pull_request:
     branches: [ "main" ]
     paths:
