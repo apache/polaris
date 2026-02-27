@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
@@ -137,10 +138,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
         store.finalizeRecord(
             realm,
             key,
+            "A",
             201,
             null,
             "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
+            Map.of("Content-Type", "application/json"),
             now.plusSeconds(2));
     assertThat(fin).isTrue();
 
@@ -149,10 +151,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
         store.finalizeRecord(
             realm,
             key,
+            "A",
             201,
             null,
             "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
+            Map.of("Content-Type", "application/json"),
             now.plusSeconds(3));
     assertThat(fin2).isFalse();
 

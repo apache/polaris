@@ -125,6 +125,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -149,6 +150,8 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("immutables:incompat")
 public abstract class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
+
+  private static final String IDEMPOTENCY_KEY_LIFETIME_PROPERTY = "idempotency-key-lifetime";
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
@@ -204,6 +207,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
+
+  protected abstract @Nullable IdempotencyConfiguration idempotencyConfiguration();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -1327,9 +1332,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
     String prefix = prefixParser().catalogNameToPrefix(catalogName());
+    ImmutableMap.Builder<String, String> overrides = ImmutableMap.builder();
+    overrides.put("prefix", prefix);
+
+    // Advertise idempotency support only for Polaris-managed (internal) catalogs. For
+    // federated/external catalogs, Polaris may not enforce idempotency end-to-end.
+    CatalogEntity catalogEntity = CatalogEntity.of(resolvedReferenceCatalog.getEntity());
+    IdempotencyConfiguration idCfg = idempotencyConfiguration();
+    if (catalogEntity != null
+        && org.apache.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL.equals(
+            catalogEntity.getCatalogType())
+        && idCfg != null
+        && idCfg.enabled()) {
+      overrides.put(IDEMPOTENCY_KEY_LIFETIME_PROPERTY, idCfg.ttlSeconds().toString());
+    }
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
-        .withOverrides(ImmutableMap.of("prefix", prefix))
+        .withOverrides(overrides.build())
         .withEndpoints(
             ImmutableList.<Endpoint>builder()
                 .addAll(DEFAULT_ENDPOINTS)

@@ -17,6 +17,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
@@ -132,17 +133,40 @@ public interface IdempotencyStore {
       String realmId, String idempotencyKey, String executorId, Instant now);
 
   /**
+   * Cancels (deletes) an in-progress idempotency reservation owned by {@code executorId}.
+   *
+   * <p>This is used for cases where an idempotency key was reserved but the request should not be
+   * tracked for replay (for example, 401/403/408/429 responses per the proposal). Implementations
+   * should only cancel the record if it is still in-progress (i.e., not finalized) and owned by the
+   * given executor.
+   *
+   * @param realmId logical tenant or realm identifier
+   * @param idempotencyKey application-provided idempotency key
+   * @param executorId identifier of the executor that owns the reservation
+   * @return {@code true} if a record was cancelled, {@code false} otherwise
+   */
+  default boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    return false;
+  }
+
+  /**
    * Marks an idempotency record as finalized, recording HTTP status and response metadata.
    *
    * <p>Implementations should be tolerant of idempotent re-finalization attempts and typically
    * return {@code false} when a record was already finalized.
    *
+   * <p>Implementations should only finalize the record if it is still in-progress and owned by the
+   * given {@code executorId}. This avoids cross-executor races where a late response from a former
+   * owner attempts to finalize a record that has since been re-reserved.
+   *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
+   * @param executorId identifier of the executor that owns the reservation
    * @param httpStatus HTTP status code returned to the client, or {@code null} if not applicable
    * @param errorSubtype optional error subtype or code, if the operation failed
    * @param responseSummary short, serialized representation of the response body
-   * @param responseHeaders serialized representation of response headers
+   * @param responseHeaders allowlisted response headers captured for replay
    * @param finalizedAt timestamp when the operation completed
    * @return {@code true} if the record was transitioned to a finalized state, {@code false}
    *     otherwise
@@ -150,10 +174,11 @@ public interface IdempotencyStore {
   boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt);
 
   /**
