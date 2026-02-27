@@ -563,9 +563,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
   @TestFactory
   Stream<DynamicNode> testRevokeCatalogRoleFromPrincipalRolePrivileges() {
-    // Revoke requires privileges both on the "securable" (CatalogRole) as well as the "grantee"
-    // (PrincipalRole); neither CATALOG_MANAGE_ACCESS nor SERVICE_MANAGE_ACCESS alone are
-    // sufficient.
+    // Revoke only requires privileges on the securable (CatalogRole).
     return authzTestsBuilder("revokeCatalogRoleFromPrincipalRole")
         .action(
             () ->
@@ -580,14 +578,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             privilege ->
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
-        .shouldPassWith(
-            PolarisPrivilege.CATALOG_MANAGE_ACCESS, PolarisPrivilege.SERVICE_MANAGE_ACCESS)
-        .shouldPassWith(
-            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
-            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
-        .shouldPassWith(
-            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
-            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .createTests();
   }
 
