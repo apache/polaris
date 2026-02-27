@@ -20,7 +20,7 @@
 linkTitle: '0.9.0'
 title: '0.9.0'
 type: docs
-weight: 1
+weight: 900
 params:
   top_hidden: true
   show_page_toc: false

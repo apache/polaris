@@ -20,7 +20,7 @@
 linkTitle: '1.0.1'
 title: 'Overview'
 type: docs
-weight: 3
+weight: 10001
 params:
   top_hidden: true
   show_page_toc: false
