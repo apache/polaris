@@ -58,8 +58,8 @@ def ensure_spark(
             curl_proc.stdout.close()
             tar_rc = tar_proc.wait()
         curl_rc = curl_proc.wait()
-   if curl_rc != 0:
-       raise subprocess.CalledProcessError(curl_rc, curl_cmd)
-   if tar_rc != 0:
-       raise subprocess.CalledProcessError(tar_rc, tar_cmd)
+        if curl_rc != 0:
+            raise subprocess.CalledProcessError(curl_rc, curl_cmd)
+        if tar_rc != 0:
+            raise subprocess.CalledProcessError(tar_rc, tar_cmd)
     print("::endgroup::")
