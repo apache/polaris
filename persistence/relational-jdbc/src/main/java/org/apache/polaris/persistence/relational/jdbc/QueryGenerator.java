@@ -170,63 +170,6 @@ public class QueryGenerator {
   }
 
   /**
-   * Generates an idempotent INSERT query that ignores conflicts on the primary key.
-   *
-   * <p>This is useful for metrics and other write-once data where duplicate inserts should be
-   * silently ignored. The conflict handling is database-specific:
-   *
-   * <ul>
-   *   <li>PostgreSQL: Uses INSERT ... ON CONFLICT (columns) DO NOTHING
-   *   <li>H2: Uses MERGE INTO ... KEY (columns) VALUES
-   * </ul>
-   *
-   * @param columns Columns to insert values into (should already include realm_id if needed).
-   * @param tableName Target table name.
-   * @param values Values for each column (must match order of columns).
-   * @param databaseType The database type for dialect-specific syntax.
-   * @param conflictColumns The columns that form the conflict/key constraint.
-   * @return INSERT query with value bindings that ignores conflicts.
-   */
-  public static PreparedQuery generateIdempotentInsertQuery(
-      @Nonnull List<String> columns,
-      @Nonnull String tableName,
-      @Nonnull List<Object> values,
-      @Nonnull DatabaseType databaseType,
-      @Nonnull List<String> conflictColumns) {
-    String columnList = String.join(", ", columns);
-    String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
-    String conflictColumnList = String.join(", ", conflictColumns);
-
-    String sql;
-    if (databaseType == DatabaseType.H2) {
-      // H2 uses MERGE INTO with KEY clause for idempotent inserts
-      sql =
-          "MERGE INTO "
-              + getFullyQualifiedTableName(tableName)
-              + " ("
-              + columnList
-              + ") KEY ("
-              + conflictColumnList
-              + ") VALUES ("
-              + placeholders
-              + ")";
-    } else {
-      // PostgreSQL: Use INSERT ... ON CONFLICT DO NOTHING
-      sql =
-          "INSERT INTO "
-              + getFullyQualifiedTableName(tableName)
-              + " ("
-              + columnList
-              + ") VALUES ("
-              + placeholders
-              + ") ON CONFLICT ("
-              + conflictColumnList
-              + ") DO NOTHING";
-    }
-    return new PreparedQuery(sql, new ArrayList<>(values));
-  }
-
-  /**
    * Builds an UPDATE query.
    *
    * @param allColumns Columns to update.

@@ -20,8 +20,6 @@ package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
 import jakarta.annotation.Nonnull;
-import org.apache.polaris.core.persistence.pagination.Page;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * Service Provider Interface (SPI) for persisting Iceberg metrics reports.
@@ -32,45 +30,23 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
  *
  * <p>All methods have default no-op implementations. Persistence backends that support metrics
  * (e.g., JDBC) should override these methods to provide actual storage. Backends that don't support
- * metrics can use the default implementations which silently ignore writes and return empty results
- * for queries.
+ * metrics can use the default implementations which silently ignore writes.
  *
  * <p>Implementations should be idempotent - writing the same reportId twice should have no effect.
  *
  * <h3>Multi-Tenancy</h3>
  *
  * <p>Realm context is not passed in the record objects. Implementations should obtain the realm
- * from the CDI-injected {@code RealmContext} at write/query time. This keeps catalog-specific code
- * from needing to manage realm concerns directly.
- *
- * <h3>Pagination</h3>
- *
- * <p>Query methods use the standard Polaris pagination pattern with {@link PageToken} for requests
- * and {@link Page} for responses. This enables:
- *
- * <ul>
- *   <li>Backend-specific cursor implementations (RDBMS offset, NoSQL continuation tokens, etc.)
- *   <li>Consistent pagination interface across all Polaris persistence APIs
- *   <li>Efficient cursor-based pagination that works with large result sets
- * </ul>
- *
- * <p>The {@link ReportIdToken} provides a reference cursor implementation based on report ID
- * (UUID), but backends may use other cursor strategies internally.
+ * from the CDI-injected {@code RealmContext} at write time. This keeps catalog-specific code from
+ * needing to manage realm concerns directly.
  *
  * <p><b>Note:</b> This SPI is currently experimental and not yet implemented in all persistence
  * backends. The API may change in future releases.
  *
- * @see PageToken
- * @see Page
- * @see ReportIdToken
  * @see PolarisMetricsManager
  */
 @Beta
 public interface MetricsPersistence {
-
-  // ============================================================================
-  // Write Operations
-  // ============================================================================
 
   /**
    * Persists a scan metrics record.
@@ -96,57 +72,5 @@ public interface MetricsPersistence {
    */
   default void writeCommitReport(@Nonnull CommitMetricsRecord record) {
     // No-op by default - backends that don't support metrics silently ignore
-  }
-
-  // ============================================================================
-  // Query Operations
-  // ============================================================================
-
-  /**
-   * Queries scan metrics reports based on the specified criteria.
-   *
-   * <p>Example usage:
-   *
-   * <pre>{@code
-   * // First page
-   * PageToken pageToken = PageToken.fromLimit(100);
-   * Page<ScanMetricsRecord> page = persistence.queryScanReports(criteria, pageToken);
-   *
-   * // Next page (if available)
-   * String nextPageToken = page.encodedResponseToken();
-   * if (nextPageToken != null) {
-   *   pageToken = PageToken.build(nextPageToken, null, () -> true);
-   *   Page<ScanMetricsRecord> nextPage = persistence.queryScanReports(criteria, pageToken);
-   * }
-   * }</pre>
-   *
-   * <p>Default implementation returns an empty page. Override in implementations that support
-   * metrics.
-   *
-   * @param criteria the query criteria (filters)
-   * @param pageToken pagination parameters (page size and optional cursor)
-   * @return page of matching scan metrics records with continuation token if more results exist
-   */
-  @Nonnull
-  default Page<ScanMetricsRecord> queryScanReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
-    return Page.fromItems(java.util.List.of());
-  }
-
-  /**
-   * Queries commit metrics reports based on the specified criteria.
-   *
-   * <p>Default implementation returns an empty page. Override in implementations that support
-   * metrics.
-   *
-   * @param criteria the query criteria (filters)
-   * @param pageToken pagination parameters (page size and optional cursor)
-   * @return page of matching commit metrics records with continuation token if more results exist
-   * @see #queryScanReports(MetricsQueryCriteria, PageToken) for pagination example
-   */
-  @Nonnull
-  default Page<CommitMetricsRecord> queryCommitReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
-    return Page.fromItems(java.util.List.of());
   }
 }

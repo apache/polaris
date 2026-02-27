@@ -19,17 +19,13 @@
 package org.apache.polaris.persistence.relational.jdbc.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -76,7 +72,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   List<String> ALL_COLUMNS =
       List.of(
           REPORT_ID,
-          REALM_ID,
           CATALOG_ID,
           TABLE_ID_COL,
           TIMESTAMP_MS,
@@ -222,7 +217,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
   default Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put(REPORT_ID, getReportId());
-    map.put(REALM_ID, getRealmId());
     map.put(CATALOG_ID, getCatalogId());
     map.put(TABLE_ID_COL, getTableId());
     map.put(TIMESTAMP_MS, getTimestampMs());
@@ -315,47 +309,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .build();
   }
 
-  /**
-   * Converts this ModelCommitMetricsReport (JDBC) to CommitMetricsRecord (SPI).
-   *
-   * @return the SPI record
-   */
-  default CommitMetricsRecord toRecord() {
-    return CommitMetricsRecord.builder()
-        .reportId(getReportId())
-        .catalogId(getCatalogId())
-        .tableId(getTableId())
-        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
-        .principalName(getPrincipalName())
-        .requestId(getRequestId())
-        .otelTraceId(getOtelTraceId())
-        .otelSpanId(getOtelSpanId())
-        .snapshotId(getSnapshotId())
-        .sequenceNumber(Optional.ofNullable(getSequenceNumber()))
-        .operation(getOperation())
-        .addedDataFiles(getAddedDataFiles())
-        .removedDataFiles(getRemovedDataFiles())
-        .totalDataFiles(getTotalDataFiles())
-        .addedDeleteFiles(getAddedDeleteFiles())
-        .removedDeleteFiles(getRemovedDeleteFiles())
-        .totalDeleteFiles(getTotalDeleteFiles())
-        .addedEqualityDeleteFiles(getAddedEqualityDeleteFiles())
-        .removedEqualityDeleteFiles(getRemovedEqualityDeleteFiles())
-        .addedPositionalDeleteFiles(getAddedPositionalDeleteFiles())
-        .removedPositionalDeleteFiles(getRemovedPositionalDeleteFiles())
-        .addedRecords(getAddedRecords())
-        .removedRecords(getRemovedRecords())
-        .totalRecords(getTotalRecords())
-        .addedFileSizeBytes(getAddedFileSizeBytes())
-        .removedFileSizeBytes(getRemovedFileSizeBytes())
-        .totalFileSizeBytes(getTotalFileSizeBytes())
-        .totalDurationMs(
-            getTotalDurationMs() > 0 ? Optional.of(getTotalDurationMs()) : Optional.empty())
-        .attempts(getAttempts())
-        .metadata(parseMetadataJson(getMetadata()))
-        .build();
-  }
-
   // === Helper Methods ===
 
   private static String toJsonString(Map<String, String> map) {
@@ -366,17 +319,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
       return OBJECT_MAPPER.writeValueAsString(map);
     } catch (JsonProcessingException e) {
       return "{}";
-    }
-  }
-
-  private static Map<String, String> parseMetadataJson(String json) {
-    if (json == null || json.isEmpty() || "{}".equals(json)) {
-      return Collections.emptyMap();
-    }
-    try {
-      return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, String>>() {});
-    } catch (JsonProcessingException e) {
-      return Collections.emptyMap();
     }
   }
 

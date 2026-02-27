@@ -36,7 +36,4 @@ public interface RequestIdSupplier {
    */
   @Nullable
   String getRequestId();
-
-  /** No-op implementation that returns null. */
-  RequestIdSupplier NOOP = () -> null;
 }

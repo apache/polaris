@@ -59,14 +59,10 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.MetricsQueryCriteria;
-import org.apache.polaris.core.persistence.metrics.ReportIdToken;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -86,8 +82,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl
-    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
+public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
@@ -100,9 +95,6 @@ public class JdbcBasePersistenceImpl
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
-
-  /** Conflict columns for metrics tables (realm_id, report_id form the composite primary key). */
-  private static final List<String> METRICS_CONFLICT_COLUMNS = List.of("realm_id", "report_id");
 
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
@@ -1301,106 +1293,27 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void writeScanReport(@Nonnull ScanMetricsRecord record) {
-    // Request context (principal, requestId, otelTraceId, otelSpanId) is already in the record
     ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
     writeScanMetricsReport(model);
   }
 
   @Override
   public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
-    // Request context (principal, requestId, otelTraceId, otelSpanId) is already in the record
     ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
     writeCommitMetricsReport(model);
   }
 
-  @Override
-  @Nonnull
-  public Page<ScanMetricsRecord> queryScanReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
-    // catalogId and tableId are required for queries
-    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
-      return Page.fromItems(List.of());
-    }
-
-    int limit = pageToken.pageSize().orElse(100);
-    Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
-    Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
-
-    // Extract composite cursor from page token if present
-    var cursorToken = pageToken.valueAs(ReportIdToken.class);
-    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
-    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
-
-    List<ModelScanMetricsReport> models =
-        queryScanMetricsReports(
-            criteria.catalogId().getAsLong(),
-            criteria.tableId().getAsLong(),
-            startTimeMs,
-            endTimeMs,
-            cursorTimestampMs,
-            cursorReportId,
-            limit);
-
-    List<ScanMetricsRecord> records =
-        models.stream().map(ModelScanMetricsReport::toRecord).collect(Collectors.toList());
-
-    // Build continuation token only when we might have more pages
-    Token nextToken =
-        records.size() >= limit ? ReportIdToken.fromRecord(records.get(records.size() - 1)) : null;
-
-    return Page.page(pageToken, records, nextToken);
-  }
-
-  @Override
-  @Nonnull
-  public Page<CommitMetricsRecord> queryCommitReports(
-      @Nonnull MetricsQueryCriteria criteria, @Nonnull PageToken pageToken) {
-    // catalogId and tableId are required for queries
-    if (criteria.catalogId().isEmpty() || criteria.tableId().isEmpty()) {
-      return Page.fromItems(List.of());
-    }
-
-    int limit = pageToken.pageSize().orElse(100);
-    Long startTimeMs = criteria.startTime().map(t -> t.toEpochMilli()).orElse(null);
-    Long endTimeMs = criteria.endTime().map(t -> t.toEpochMilli()).orElse(null);
-
-    // Extract composite cursor from page token if present
-    var cursorToken = pageToken.valueAs(ReportIdToken.class);
-    Long cursorTimestampMs = cursorToken.map(ReportIdToken::timestampMs).orElse(null);
-    String cursorReportId = cursorToken.map(ReportIdToken::reportId).orElse(null);
-
-    List<ModelCommitMetricsReport> models =
-        queryCommitMetricsReports(
-            criteria.catalogId().getAsLong(),
-            criteria.tableId().getAsLong(),
-            startTimeMs,
-            endTimeMs,
-            cursorTimestampMs,
-            cursorReportId,
-            limit);
-
-    List<CommitMetricsRecord> records =
-        models.stream().map(ModelCommitMetricsReport::toRecord).collect(Collectors.toList());
-
-    // Build continuation token only when we might have more pages
-    Token nextToken =
-        records.size() >= limit ? ReportIdToken.fromRecord(records.get(records.size() - 1)) : null;
-
-    return Page.page(pageToken, records, nextToken);
-  }
-
   // ========== Internal Metrics JDBC methods ==========
 
-  void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+  private void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =
-          QueryGenerator.generateIdempotentInsertQuery(
+          QueryGenerator.generateInsertQuery(
               ModelScanMetricsReport.ALL_COLUMNS,
               ModelScanMetricsReport.TABLE_NAME,
               report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              metricsOps.getDatabaseType(),
-              METRICS_CONFLICT_COLUMNS);
+              realmId);
       metricsOps.executeUpdate(pq);
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -1408,188 +1321,19 @@ public class JdbcBasePersistenceImpl
     }
   }
 
-  void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+  private void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =
-          QueryGenerator.generateIdempotentInsertQuery(
+          QueryGenerator.generateInsertQuery(
               ModelCommitMetricsReport.ALL_COLUMNS,
               ModelCommitMetricsReport.TABLE_NAME,
               report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
-              metricsOps.getDatabaseType(),
-              METRICS_CONFLICT_COLUMNS);
+              realmId);
       metricsOps.executeUpdate(pq);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
-    }
-  }
-
-  @Nonnull
-  List<ModelScanMetricsReport> queryScanMetricsReports(
-      long catalogId,
-      long tableId,
-      @Nullable Long startTimeMs,
-      @Nullable Long endTimeMs,
-      @Nullable Long cursorTimestampMs,
-      @Nullable String cursorReportId,
-      int limit) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      StringBuilder whereClause = new StringBuilder();
-      whereClause.append("realm_id = ? AND catalog_id = ? AND table_id = ?");
-      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, tableId));
-
-      if (startTimeMs != null) {
-        whereClause.append(" AND timestamp_ms >= ?");
-        values.add(startTimeMs);
-      }
-      if (endTimeMs != null) {
-        whereClause.append(" AND timestamp_ms < ?");
-        values.add(endTimeMs);
-      }
-      if (cursorTimestampMs != null && cursorReportId != null) {
-        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
-        values.add(cursorTimestampMs);
-        values.add(cursorTimestampMs);
-        values.add(cursorReportId);
-      }
-
-      String sql =
-          "SELECT * FROM "
-              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
-              + " WHERE "
-              + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT ?";
-      values.add(limit);
-
-      PreparedQuery query = new PreparedQuery(sql, values);
-      var results = metricsOps.executeSelect(query, ModelScanMetricsReport.CONVERTER);
-      return results == null ? Collections.emptyList() : results;
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to query scan metrics reports due to %s", e.getMessage()), e);
-    }
-  }
-
-  @Nonnull
-  List<ModelCommitMetricsReport> queryCommitMetricsReports(
-      long catalogId,
-      long tableId,
-      @Nullable Long startTimeMs,
-      @Nullable Long endTimeMs,
-      @Nullable Long cursorTimestampMs,
-      @Nullable String cursorReportId,
-      int limit) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      List<Object> values = new ArrayList<>(List.of(realmId, catalogId, tableId));
-
-      StringBuilder whereClause = new StringBuilder();
-      whereClause.append("realm_id = ? AND catalog_id = ? AND table_id = ?");
-
-      if (startTimeMs != null) {
-        whereClause.append(" AND timestamp_ms >= ?");
-        values.add(startTimeMs);
-      }
-      if (endTimeMs != null) {
-        whereClause.append(" AND timestamp_ms < ?");
-        values.add(endTimeMs);
-      }
-      if (cursorTimestampMs != null && cursorReportId != null) {
-        whereClause.append(" AND (timestamp_ms > ? OR (timestamp_ms = ? AND report_id > ?))");
-        values.add(cursorTimestampMs);
-        values.add(cursorTimestampMs);
-        values.add(cursorReportId);
-      }
-
-      String sql =
-          "SELECT * FROM "
-              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
-              + " WHERE "
-              + whereClause
-              + " ORDER BY timestamp_ms ASC, report_id ASC LIMIT ?";
-      values.add(limit);
-
-      PreparedQuery query = new PreparedQuery(sql, values);
-      var results = metricsOps.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
-      return results == null ? Collections.emptyList() : results;
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to query commit metrics reports due to %s", e.getMessage()), e);
-    }
-  }
-
-  /**
-   * Retrieves scan metrics reports by OpenTelemetry trace ID.
-   *
-   * @param traceId the OpenTelemetry trace ID
-   * @return list of scan metrics reports with the given trace ID
-   */
-  @Nonnull
-  public List<ModelScanMetricsReport> queryScanMetricsReportsByTraceId(@Nonnull String traceId) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      String sql =
-          "SELECT * FROM "
-              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
-              + " WHERE realm_id = ? AND otel_trace_id = ? ORDER BY timestamp_ms DESC";
-
-      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
-      var results = metricsOps.executeSelect(query, ModelScanMetricsReport.CONVERTER);
-      return results == null ? Collections.emptyList() : results;
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format(
-              "Failed to query scan metrics reports by trace ID due to %s", e.getMessage()),
-          e);
-    }
-  }
-
-  /**
-   * Deletes scan metrics reports older than the specified timestamp.
-   *
-   * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
-   *     deleted
-   * @return the number of reports deleted
-   */
-  public int deleteScanMetricsReportsOlderThan(long olderThanMs) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      String sql =
-          "DELETE FROM "
-              + QueryGenerator.getFullyQualifiedTableName(ModelScanMetricsReport.TABLE_NAME)
-              + " WHERE realm_id = ? AND timestamp_ms < ?";
-
-      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, olderThanMs));
-      return metricsOps.executeUpdate(query);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to delete old scan metrics reports due to %s", e.getMessage()), e);
-    }
-  }
-
-  /**
-   * Deletes commit metrics reports older than the specified timestamp.
-   *
-   * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
-   *     deleted
-   * @return the number of reports deleted
-   */
-  public int deleteCommitMetricsReportsOlderThan(long olderThanMs) {
-    DatasourceOperations metricsOps = getMetricsDatasource();
-    try {
-      String sql =
-          "DELETE FROM "
-              + QueryGenerator.getFullyQualifiedTableName(ModelCommitMetricsReport.TABLE_NAME)
-              + " WHERE realm_id = ? AND timestamp_ms < ?";
-
-      PreparedQuery query = new PreparedQuery(sql, List.of(realmId, olderThanMs));
-      return metricsOps.executeUpdate(query);
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to delete old commit metrics reports due to %s", e.getMessage()),
-          e);
     }
   }
 }

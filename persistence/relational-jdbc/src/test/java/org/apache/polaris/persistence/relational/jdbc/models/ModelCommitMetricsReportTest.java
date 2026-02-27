@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.relational.jdbc.models;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -147,11 +148,12 @@ public class ModelCommitMetricsReportTest {
     Map<String, Object> resultMap = report.toMap(DatabaseType.H2);
 
     assertEquals(TEST_REPORT_ID, resultMap.get(ModelCommitMetricsReport.REPORT_ID));
-    assertEquals(TEST_REALM_ID, resultMap.get(ModelCommitMetricsReport.REALM_ID));
     assertEquals(TEST_SNAPSHOT_ID, resultMap.get(ModelCommitMetricsReport.SNAPSHOT_ID));
     assertEquals(TEST_OPERATION, resultMap.get(ModelCommitMetricsReport.OPERATION));
     assertEquals(TEST_ADDED_DATA_FILES, resultMap.get(ModelCommitMetricsReport.ADDED_DATA_FILES));
     assertEquals(TEST_METADATA, resultMap.get(ModelCommitMetricsReport.METADATA));
+    // realm_id is not included in toMap() - it's added by the persistence layer
+    assertNull(resultMap.get(ModelCommitMetricsReport.REALM_ID));
   }
 
   @Test
