@@ -49,7 +49,7 @@ cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.0" }
 checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" } # required by the polaris-java plugin
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.47.0" } # required by the polaris-java plugin
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.48.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.86.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.64.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
