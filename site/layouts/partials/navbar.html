@@ -30,17 +30,15 @@
 				</button>
 				<ul class="dropdown-menu">
 					{{ $children := .Children.ByWeight -}}
-					{{ if eq .Identifier "releases" -}}
-						{{ with (partial "releasePages.html" (dict "site" $s)).active -}}
-							{{ range . -}}
-								<a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
-							{{- end -}}
-						{{ else -}}
-							{{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
-						{{ end -}}
+					{{ $bannedItems := slice -}}
+					{{ $releasePages := partial "releasePages.html" (dict "site" $s) -}}
+					{{ range $releasePages.eol -}}
+					{{ $bannedItems = $bannedItems | append .Params.release_version -}}
 					{{ end -}}
 					{{ range $children -}}
+					{{ if not (in $bannedItems .Name) -}}
 					<li><a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a></li>
+					{{- end -}}
 					{{- end -}}
 				</ul>
 				{{ else -}}
