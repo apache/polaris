@@ -109,6 +109,17 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
+  private static final String STORAGE_CONFIG_SOURCE_HEADER = "X-Polaris-Storage-Config-Source";
+
+  private enum StorageConfigSource {
+    TABLE,
+    NAMESPACE,
+    CATALOG
+  }
+
+  private record ResolvedStorageConfig(
+      PolarisStorageConfigurationInfo config, StorageConfigSource source) {}
+
   private final RealmConfig realmConfig;
   private final ReservedProperties reservedProperties;
   private final PolarisAdminService adminService;
@@ -925,7 +936,35 @@ public class PolarisServiceImpl
     return adminService.resolveTableEntity(catalogName, namespaceStr, tableName);
   }
 
-  private PolarisStorageConfigurationInfo resolveEffectiveTableStorageConfig(
+  /**
+   * Resolves effective namespace-level storage config and returns the entity source.
+   *
+   * <p>Resolution order: namespace → catalog.
+   */
+  private ResolvedStorageConfig resolveEffectiveNamespaceStorageConfig(
+      String catalogName, String namespace) {
+    PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
+    NamespaceEntity nsEntity = NamespaceEntity.of(namespaceEntity);
+    PolarisStorageConfigurationInfo namespaceConfig = nsEntity.getStorageConfigurationInfo();
+    if (namespaceConfig != null) {
+      return new ResolvedStorageConfig(namespaceConfig, StorageConfigSource.NAMESPACE);
+    }
+
+    CatalogEntity catalogEntity = getCatalogEntity(catalogName);
+    PolarisStorageConfigurationInfo catalogConfig = catalogEntity.getStorageConfigurationInfo();
+    if (catalogConfig != null) {
+      return new ResolvedStorageConfig(catalogConfig, StorageConfigSource.CATALOG);
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolves effective table-level storage config and returns both config and resolution source.
+   *
+   * <p>Resolution order: table → namespace ancestry → catalog.
+   */
+  private ResolvedStorageConfig resolveEffectiveTableStorageConfigWithSource(
       String catalogName, String namespace, String table) {
     resolveNamespaceEntity(catalogName, namespace);
     resolveTableEntity(catalogName, namespace, table);
@@ -933,9 +972,32 @@ public class PolarisServiceImpl
     PolarisResolvedPathWrapper resolvedPath =
         adminService.resolveTablePath(catalogName, namespace, table);
 
-    return FileIOUtil.findStorageInfoFromHierarchy(resolvedPath)
-        .map(this::storageConfigFromEntity)
-        .orElse(null);
+    PolarisEntity resolvedEntity =
+        FileIOUtil.findStorageInfoFromHierarchy(resolvedPath).orElse(null);
+    if (resolvedEntity == null) {
+      return null;
+    }
+
+    PolarisStorageConfigurationInfo storageConfig = storageConfigFromEntity(resolvedEntity);
+    if (storageConfig == null) {
+      return null;
+    }
+
+    return new ResolvedStorageConfig(storageConfig, sourceForEntityType(resolvedEntity.getType()));
+  }
+
+  private StorageConfigSource sourceForEntityType(PolarisEntityType entityType) {
+    if (entityType == PolarisEntityType.TABLE_LIKE) {
+      return StorageConfigSource.TABLE;
+    }
+    if (entityType == PolarisEntityType.NAMESPACE) {
+      return StorageConfigSource.NAMESPACE;
+    }
+    if (entityType == PolarisEntityType.CATALOG) {
+      return StorageConfigSource.CATALOG;
+    }
+    throw new IllegalArgumentException(
+        "Unsupported entity type for storage config source: " + entityType);
   }
 
   private PolarisStorageConfigurationInfo storageConfigFromEntity(PolarisEntity entity) {
@@ -958,20 +1020,9 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     try {
-      // Resolve the namespace entity
-      PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
-
-      // Get storage configuration from the entity
-      NamespaceEntity nsEntity = NamespaceEntity.of(namespaceEntity);
-      PolarisStorageConfigurationInfo storageConfig = nsEntity.getStorageConfigurationInfo();
-
-      if (storageConfig == null) {
-        // If namespace has no config, check catalog
-        CatalogEntity catalogEntity = getCatalogEntity(catalogName);
-        storageConfig = catalogEntity.getStorageConfigurationInfo();
-      }
-
-      if (storageConfig == null) {
+      ResolvedStorageConfig resolved =
+          resolveEffectiveNamespaceStorageConfig(catalogName, namespace);
+      if (resolved == null) {
         return Response.status(Response.Status.NOT_FOUND)
             .entity(
                 ErrorResponse.builder()
@@ -982,9 +1033,10 @@ public class PolarisServiceImpl
             .build();
       }
 
-      // Convert to API model and return
-      StorageConfigInfo apiModel = toApiModel(storageConfig);
-      return Response.ok(apiModel).build();
+      StorageConfigInfo apiModel = toApiModel(resolved.config());
+      return Response.ok(apiModel)
+          .header(STORAGE_CONFIG_SOURCE_HEADER, resolved.source().name())
+          .build();
 
     } catch (ForbiddenException e) {
       return Response.status(Response.Status.FORBIDDEN)
@@ -1178,10 +1230,10 @@ public class PolarisServiceImpl
     try {
       getCatalogEntity(catalogName);
 
-      PolarisStorageConfigurationInfo storageConfig =
-          resolveEffectiveTableStorageConfig(catalogName, namespace, table);
+      ResolvedStorageConfig resolved =
+          resolveEffectiveTableStorageConfigWithSource(catalogName, namespace, table);
 
-      if (storageConfig == null) {
+      if (resolved == null) {
         return Response.status(Response.Status.NOT_FOUND)
             .entity(
                 ErrorResponse.builder()
@@ -1192,9 +1244,10 @@ public class PolarisServiceImpl
             .build();
       }
 
-      // Convert to API model and return
-      StorageConfigInfo apiModel = toApiModel(storageConfig);
-      return Response.ok(apiModel).build();
+      StorageConfigInfo apiModel = toApiModel(resolved.config());
+      return Response.ok(apiModel)
+          .header(STORAGE_CONFIG_SOURCE_HEADER, resolved.source().name())
+          .build();
 
     } catch (ForbiddenException e) {
       return Response.status(Response.Status.FORBIDDEN)

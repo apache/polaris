@@ -59,6 +59,7 @@ public class PolarisStorageConfigIntegrationTest {
   private static final String TEST_CATALOG = "test_storage_config_catalog";
   private static final String TEST_NAMESPACE = "test_namespace";
   private static final String TEST_TABLE = "test_table";
+  private static final String STORAGE_CONFIG_SOURCE_HEADER = "X-Polaris-Storage-Config-Source";
   private static final Schema SCHEMA =
       new Schema(
           Types.NestedField.required(1, "id", Types.IntegerType.get()),
@@ -161,6 +162,7 @@ public class PolarisStorageConfigIntegrationTest {
     assertThat(config).isNotNull();
     assertThat(config.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
     assertThat(config.getStorageName()).isEqualTo("catalog-storage");
+    assertThat(response.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("CATALOG");
 
     response.close();
   }
@@ -217,6 +219,7 @@ public class PolarisStorageConfigIntegrationTest {
       AzureStorageConfigInfo azureRetrieved = (AzureStorageConfigInfo) retrieved;
       assertThat(azureRetrieved.getTenantId()).isEqualTo("tenant-123");
       assertThat(azureRetrieved.getStorageName()).isEqualTo("namespace-storage");
+      assertThat(getResponse.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("NAMESPACE");
     }
   }
 
@@ -269,6 +272,7 @@ public class PolarisStorageConfigIntegrationTest {
       assertThat(getResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       StorageConfigInfo retrieved = getResponse.readEntity(StorageConfigInfo.class);
       assertThat(retrieved.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
+      assertThat(getResponse.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("CATALOG");
     }
   }
 
@@ -294,6 +298,7 @@ public class PolarisStorageConfigIntegrationTest {
     StorageConfigInfo config = response.readEntity(StorageConfigInfo.class);
     assertThat(config).isNotNull();
     assertThat(config.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
+    assertThat(response.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("CATALOG");
 
     response.close();
   }
@@ -352,6 +357,7 @@ public class PolarisStorageConfigIntegrationTest {
       AwsStorageConfigInfo awsRetrieved = (AwsStorageConfigInfo) retrieved;
       assertThat(awsRetrieved.getRoleArn()).isEqualTo("arn:aws:iam::123456789012:role/table-role");
       assertThat(awsRetrieved.getStorageName()).isEqualTo("table-storage");
+      assertThat(getResponse.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("TABLE");
     }
   }
 
@@ -410,6 +416,7 @@ public class PolarisStorageConfigIntegrationTest {
       assertThat(getTableResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       AwsStorageConfigInfo tableConfig = getTableResponse.readEntity(AwsStorageConfigInfo.class);
       assertThat(tableConfig.getStorageName()).isEqualTo("table-effective");
+      assertThat(getTableResponse.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("TABLE");
     }
 
     try (Response deleteTableResponse =
@@ -438,6 +445,8 @@ public class PolarisStorageConfigIntegrationTest {
       AzureStorageConfigInfo namespaceConfig =
           getNamespaceFallback.readEntity(AzureStorageConfigInfo.class);
       assertThat(namespaceConfig.getStorageName()).isEqualTo("namespace-effective");
+      assertThat(getNamespaceFallback.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER))
+          .isEqualTo("NAMESPACE");
     }
 
     try (Response deleteNamespaceResponse =
@@ -465,6 +474,8 @@ public class PolarisStorageConfigIntegrationTest {
       FileStorageConfigInfo catalogConfig =
           getCatalogFallback.readEntity(FileStorageConfigInfo.class);
       assertThat(catalogConfig.getStorageName()).isEqualTo("catalog-storage");
+      assertThat(getCatalogFallback.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER))
+          .isEqualTo("CATALOG");
     }
   }
 
@@ -556,6 +567,8 @@ public class PolarisStorageConfigIntegrationTest {
           getNestedTableConfig.readEntity(AzureStorageConfigInfo.class);
       assertThat(resolved.getStorageName()).isEqualTo("ancestor-storage");
       assertThat(resolved.getTenantId()).isEqualTo("ancestor-tenant");
+      assertThat(getNestedTableConfig.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER))
+          .isEqualTo("NAMESPACE");
     }
   }
 
@@ -614,6 +627,7 @@ public class PolarisStorageConfigIntegrationTest {
       assertThat(getResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       StorageConfigInfo retrieved = getResponse.readEntity(StorageConfigInfo.class);
       assertThat(retrieved.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
+      assertThat(getResponse.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER)).isEqualTo("CATALOG");
     }
   }
 
