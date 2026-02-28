@@ -37,6 +37,16 @@ according to the terms of the license included in Polaris distributions.
 * Provide your own `application.properties` file for your Quarkus build.
 * Define your own Quarkus Application Name and Version (do not use "Apache Polaris" as the application name).
 
+## Handling Java Code Changes
+
+As noted in the [Evolution](../evolution) page, Polaris classes are subject to change even in their
+`public` methods at any moment.
+
+The Polaris Community strives to evolve the project in a way that preserve existing features and
+capabilities (unless noted otherwise), but technical compilation errors are to be expected in
+downstream projects. In most cases, it should be possible to adjust the code with minimal efforts
+to bind to the new Polaris java classes and keep supporting the same features as before the change.
+
 ## Background
 
 The `polaris-server` module is intended to be a particular way to build a Polaris server. It includes
