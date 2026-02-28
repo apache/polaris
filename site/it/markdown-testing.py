@@ -1,4 +1,4 @@
----
+#!/usr/bin/env python3
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,22 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: "Apache Polaris"
-title: "Getting Started"
-weight: 10
-cascade:
-    type: guides
-menus:
-    main:
-        parent: Guides
-        weight: 2
----
 
-Please see the [quickstart guide](../../in-dev/unreleased/getting-started) for more information.
+import sys
 
-<!--
-```shell
-cd "$SITE_TEST_GUIDE_DIR"
-docker compose up
-```
--->
+from site_checks.markdown_testing import markdown_testing
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    raise SystemExit(0 if markdown_testing(args) else 1)

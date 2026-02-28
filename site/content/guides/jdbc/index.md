@@ -58,6 +58,12 @@ This example requires `jq` to be installed on your machine.
     docker compose -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/assets/postgres/docker-compose-postgres.yml -f site/content/guides/jdbc/docker-compose.yml up
     ```
 
+<!-- Guide testing: do not exercise the expensive Docker compose setup.
+```shell
+exit 0
+```
+-->
+
 3. Using spark-sql: attach to the running spark-sql container:
 
     ```shell
