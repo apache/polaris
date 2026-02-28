@@ -237,9 +237,14 @@ Create a new directory and file for the release under `site/content/downloads/[m
 * The release date.
 * A paragraph with the release notes.
 
-Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the downloads page structure and requirements when adding a new release.
+Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
+downloads page structure and requirements when adding a new release.
 
-Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new release.  Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the following format:
+Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
+release; remove the oldest release from this list.
+
+Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the
+following format:
 
 ```
     - name: "[major].[minor].[patch]"
