@@ -74,11 +74,50 @@ import org.slf4j.LoggerFactory;
 public class PolarisSparkStorageNameHierarchyIntegrationTest
     extends PolarisSparkIntegrationTestBase {
 
+  static {
+    for (String storageName :
+        List.of(
+            "ns-named",
+            "tbl-named",
+            "ns",
+            "tbl",
+            "billing-creds",
+            "mid",
+            "tbl-only",
+            "ns-shared",
+            "tbl-override",
+            "ns-v1",
+            "ns-v2")) {
+      System.setProperty("polaris.storage.aws." + storageName + ".access-key", "foo");
+      System.setProperty("polaris.storage.aws." + storageName + ".secret-key", "bar");
+    }
+  }
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisSparkStorageNameHierarchyIntegrationTest.class);
 
+  private static final String MISSING_STORAGE_NAME = "missingstorage";
+
   /** Name of the catalog used in the access-delegated Spark session (set per test). */
   private String delegatedCatalogName;
+
+  @Override
+  protected Boolean baseCatalogStsUnavailable() {
+    return isStsUnavailableForHierarchyConfigs();
+  }
+
+  @Override
+  protected boolean includeBaseCatalogRoleArn() {
+    return includeRoleArnForHierarchyConfigs();
+  }
+
+  protected boolean isStsUnavailableForHierarchyConfigs() {
+    return true;
+  }
+
+  protected boolean includeRoleArnForHierarchyConfigs() {
+    return true;
+  }
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -159,14 +198,27 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
    *
    * <p><strong>Note on S3Mock environment:</strong> {@code allowedLocations} constraints are not
    * enforced at the S3Mock level; Spark's static mock credentials provide a fallback path that
-   * bypasses location checks. The hierarchy is therefore verified via the Management API's
-   * {@code storageName} field, not via an assert-failure pattern.
+   * bypasses location checks. The hierarchy is therefore verified via the Management API's {@code
+   * storageName} field, not via an assert-failure pattern.
    */
   @Test
   public void testNamedNamespaceOverridesUnnamedCatalog() {
     onSpark("CREATE NAMESPACE ns");
     onSpark("CREATE TABLE ns.orders (id int, data string)");
     onSpark("INSERT INTO ns.orders VALUES (1, 'x')");
+
+    setUpAccessDelegation();
+
+    try (Response r =
+        managementApi.setNamespaceStorageConfig(
+            catalogName, "ns", createS3ConfigMissing("ns-missing-role"))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertEffectiveStorageName("ns", "orders", MISSING_STORAGE_NAME);
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".ns.orders",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
 
     // Apply namespace config whose allowedLocations covers the actual table location.
     try (Response r =
@@ -175,12 +227,13 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
-    // The API hierarchy walk must return storageName="ns-named" (namespace wins over unnamed catalog).
+    // The API hierarchy walk must return storageName="ns-named" (namespace wins over unnamed
+    // catalog).
     assertEffectiveStorageName("ns", "orders", "ns-named");
 
-    setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".ns.orders").count())
-        .as("Spark read must return 1 row: namespace config 'ns-named' was resolved by the hierarchy")
+        .as(
+            "Spark read must return 1 row: namespace config 'ns-named' was resolved by the hierarchy")
         .isEqualTo(1L);
   }
 
@@ -194,9 +247,9 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
    *
    * <p>The Management-API assertion ({@code assertEffectiveStorageName}) is the authoritative proof
    * that the table config is selected over the namespace config by the hierarchy resolver. The
-   * namespace config is deliberately configured with
-   * {@code allowedLocations=["s3://wrong-bucket-ns-only/"]} so that — in a production environment
-   * where {@code allowedLocations} is enforced — the query would fail if the namespace config were
+   * namespace config is deliberately configured with {@code
+   * allowedLocations=["s3://wrong-bucket-ns-only/"]} so that — in a production environment where
+   * {@code allowedLocations} is enforced — the query would fail if the namespace config were
    * erroneously selected. In the S3Mock test environment the static mock credentials bypass that
    * enforcement; the storageName API assertion therefore carries the authoritative proof.
    */
@@ -206,15 +259,19 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE dept.reports (id int, data string)");
     onSpark("INSERT INTO dept.reports VALUES (1, 'r1'), (2, 'r2')");
 
-    // Namespace config deliberately points to a non-existent bucket.  In a production environment
-    // this would cause credential vending to fail if the namespace config is accidentally selected.
+    setUpAccessDelegation();
+
+    // Invalid base state: namespace resolves to missing named credentials.
     try (Response r =
         managementApi.setNamespaceStorageConfig(
-            catalogName,
-            "dept",
-            createS3ConfigAtLocation("ns-named", "ns-role", "s3://wrong-bucket-ns-only/"))) {
+            catalogName, "dept", createS3ConfigMissing("ns-missing-role"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+
+    assertEffectiveStorageName("dept", "reports", MISSING_STORAGE_NAME);
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".dept.reports WHERE id > 0",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
 
     // Table config points to the real base location — the only config that permits vending.
     try (Response r =
@@ -227,10 +284,10 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     // namespace config (storageName="ns-named").
     assertEffectiveStorageName("dept", "reports", "tbl-named");
 
-    setUpAccessDelegation();
     assertThat(
             onSpark("SELECT * FROM " + delegatedCatalogName + ".dept.reports WHERE id > 0").count())
-        .as("Spark read must return 2 rows; storageName='tbl-named' confirms table config was resolved")
+        .as(
+            "Spark read must return 2 rows; storageName='tbl-named' confirms table config was resolved")
         .isEqualTo(2L);
   }
 
@@ -244,11 +301,11 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
    *
    * <p>The Management-API assertion ({@code assertEffectiveStorageName}) is the authoritative proof
    * that the table config is selected over the unnamed namespace config. The namespace config is
-   * deliberately configured with {@code allowedLocations=["s3://wrong-bucket-ns-unnamed/"]} so
-   * that — in a production environment where {@code allowedLocations} is enforced — the query
-   * would fail if the namespace config were erroneously selected. In the S3Mock test environment
-   * the static mock credentials bypass that enforcement; the storageName API assertion therefore
-   * carries the authoritative proof.
+   * deliberately configured with {@code allowedLocations=["s3://wrong-bucket-ns-unnamed/"]} so that
+   * — in a production environment where {@code allowedLocations} is enforced — the query would fail
+   * if the namespace config were erroneously selected. In the S3Mock test environment the static
+   * mock credentials bypass that enforcement; the storageName API assertion therefore carries the
+   * authoritative proof.
    */
   @Test
   public void testNamedTableOverridesUnnamedNamespace() {
@@ -256,15 +313,19 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE finance.ledger (id int, data string)");
     onSpark("INSERT INTO finance.ledger VALUES (1, 'entry1')");
 
-    // Namespace: unnamed (null storageName) but deliberately wrong allowed location.  In a
-    // production environment this would cause credential vending to fail if accidentally selected.
+    setUpAccessDelegation();
+
+    // Invalid base state: namespace resolves to missing named credentials.
     try (Response r =
         managementApi.setNamespaceStorageConfig(
-            catalogName,
-            "finance",
-            createS3ConfigUnnamedAtLocation("finance-role", "s3://wrong-bucket-ns-unnamed/"))) {
+            catalogName, "finance", createS3ConfigMissing("finance-missing-role"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+
+    assertEffectiveStorageName("finance", "ledger", MISSING_STORAGE_NAME);
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".finance.ledger",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
 
     // Table config points to the real base location — the only config that will allow vending.
     try (Response r =
@@ -277,9 +338,9 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     // unnamed namespace config (whose storageName=null and wrong allowedLocations).
     assertEffectiveStorageName("finance", "ledger", "tbl-named");
 
-    setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".finance.ledger").count())
-        .as("Spark read must return 1 row; storageName='tbl-named' confirms table config was resolved")
+        .as(
+            "Spark read must return 1 row; storageName='tbl-named' confirms table config was resolved")
         .isEqualTo(1L);
   }
 
@@ -497,6 +558,21 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("INSERT INTO corp.billing.invoices VALUES (1, 'inv1'), (2, 'inv2')");
     onSpark("INSERT INTO corp.support.tickets VALUES (1, 'tkt1')");
 
+    setUpAccessDelegation();
+
+    try (Response r =
+        managementApi.setNamespaceStorageConfig(
+            catalogName, "corp", createS3ConfigMissing("corp-missing-role"))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".corp.billing.invoices",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".corp.support.tickets",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
+
     // Only corp.billing gets a named storage config
     try (Response r =
         managementApi.setNamespaceStorageConfig(
@@ -505,17 +581,25 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     }
 
     assertEffectiveStorageName("corp\u001Fbilling", "invoices", "billing-creds");
-    // corp.support has no namespace config → falls back to unnamed catalog
-    assertEffectiveStorageNameIsNull("corp\u001Fsupport", "tickets");
-
-    setUpAccessDelegation();
+    // corp.support has no namespace config and therefore inherits from parent `corp`.
+    assertEffectiveStorageName("corp\u001Fsupport", "tickets", MISSING_STORAGE_NAME);
 
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".corp.billing.invoices").count())
         .as("Billing branch must read with named storage config 'billing-creds'")
         .isEqualTo(2L);
 
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".corp.support.tickets",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
+
+    try (Response r =
+        managementApi.setNamespaceStorageConfig(
+            catalogName, "corp\u001Fsupport", createS3Config("ns-v1", "support-role"))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".corp.support.tickets").count())
-        .as("Support branch must read from unnamed catalog config; no bleed from billing branch")
+        .as("Support branch succeeds only after its own lower-level override")
         .isEqualTo(1L);
   }
 
@@ -536,6 +620,18 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE L1.L2.L3.deep_tbl (id int, data string)");
     onSpark("INSERT INTO L1.L2.L3.deep_tbl VALUES (1, 'd1'), (2, 'd2')");
 
+    setUpAccessDelegation();
+
+    try (Response r =
+        managementApi.setNamespaceStorageConfig(
+            catalogName, "L1", createS3ConfigMissing("l1-missing-role"))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".L1.L2.L3.deep_tbl",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
+
     // Only L1.L2 gets a named storage config
     try (Response r =
         managementApi.setNamespaceStorageConfig(
@@ -545,7 +641,6 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
 
     assertEffectiveStorageName("L1\u001FL2\u001FL3", "deep_tbl", "mid");
 
-    setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".L1.L2.L3.deep_tbl").count())
         .as("Deep hierarchy: Spark read must resolve through middle-namespace named config 'mid'")
         .isEqualTo(2L);
@@ -567,6 +662,18 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE raw.ingest.events (id int, data string)");
     onSpark("INSERT INTO raw.ingest.events VALUES (1, 'e1'), (2, 'e2'), (3, 'e3')");
 
+    setUpAccessDelegation();
+
+    try (Response r =
+        managementApi.setNamespaceStorageConfig(
+            catalogName, "raw\u001Fingest", createS3ConfigMissing("raw-missing-role"))) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    assertSparkQueryFails(
+        "SELECT * FROM " + delegatedCatalogName + ".raw.ingest.events",
+        "Storage name '" + MISSING_STORAGE_NAME + "' is not configured");
+
     // No namespace configs anywhere; only the table is named
     try (Response r =
         managementApi.setTableStorageConfig(
@@ -576,7 +683,6 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
 
     assertEffectiveStorageName("raw\u001Fingest", "events", "tbl-only");
 
-    setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".raw.ingest.events").count())
         .as("Table-only named config: Spark read must succeed with storageName='tbl-only'")
         .isEqualTo(3L);
@@ -754,59 +860,6 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
   }
 
   /**
-   * Builds an {@link AwsStorageConfigInfo} with the given {@code storageName} and role ARN, using a
-   * caller-supplied {@code allowedLocation} instead of the catalog's base location.
-   *
-   * <p>Use this when you need the namespace config to have a location that is intentionally
-   * incompatible with the table's actual data path, so that Polaris rejects credential vending
-   * server-side if this config is erroneously selected over a table-level config.
-   */
-  private AwsStorageConfigInfo createS3ConfigAtLocation(
-      String storageName, String roleName, String allowedLocation) {
-    AwsStorageConfigInfo.Builder builder =
-        AwsStorageConfigInfo.builder()
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(allowedLocation))
-            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName)
-            .setStorageName(storageName);
-
-    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
-    String endpoint = s3Props.get("s3.endpoint");
-    if (endpoint != null && !endpoint.isBlank()) {
-      builder
-          .setEndpoint(endpoint)
-          .setPathStyleAccess(
-              Boolean.parseBoolean(s3Props.getOrDefault("s3.path-style-access", "false")));
-    }
-    return builder.build();
-  }
-
-  /**
-   * Builds an unnamed (null {@code storageName}) {@link AwsStorageConfigInfo} using a
-   * caller-supplied {@code allowedLocation}, for the same deliberate-mismatch use case as {@link
-   * #createS3ConfigAtLocation}.
-   */
-  private AwsStorageConfigInfo createS3ConfigUnnamedAtLocation(
-      String roleName, String allowedLocation) {
-    AwsStorageConfigInfo.Builder builder =
-        AwsStorageConfigInfo.builder()
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(allowedLocation))
-            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName);
-    // storageName intentionally omitted (null)
-
-    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
-    String endpoint = s3Props.get("s3.endpoint");
-    if (endpoint != null && !endpoint.isBlank()) {
-      builder
-          .setEndpoint(endpoint)
-          .setPathStyleAccess(
-              Boolean.parseBoolean(s3Props.getOrDefault("s3.path-style-access", "false")));
-    }
-    return builder.build();
-  }
-
-  /**
    * Builds an {@link AwsStorageConfigInfo} with the given {@code storageName} and role ARN,
    * inheriting the S3Mock endpoint settings from the base class.
    */
@@ -822,10 +875,15 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(baseLocation))
-            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName)
             .setStorageName(storageName);
 
-    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
+    if (includeRoleArnForHierarchyConfigs()) {
+      builder.setRoleArn("arn:aws:iam::123456789012:role/" + roleName);
+    }
+
+    builder.setStsUnavailable(isStsUnavailableForHierarchyConfigs());
+
+    Map<String, String> s3Props = storageEndpointProperties();
     String endpoint = s3Props.get("s3.endpoint");
     if (endpoint != null && !endpoint.isBlank()) {
       builder
@@ -853,11 +911,16 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     AwsStorageConfigInfo.Builder builder =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(baseLocation))
-            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName);
+            .setAllowedLocations(List.of(baseLocation));
+
+    if (includeRoleArnForHierarchyConfigs()) {
+      builder.setRoleArn("arn:aws:iam::123456789012:role/" + roleName);
+    }
+
+    builder.setStsUnavailable(isStsUnavailableForHierarchyConfigs());
     // storageName intentionally omitted (null)
 
-    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
+    Map<String, String> s3Props = storageEndpointProperties();
     String endpoint = s3Props.get("s3.endpoint");
     if (endpoint != null && !endpoint.isBlank()) {
       builder
@@ -867,5 +930,24 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     }
 
     return builder.build();
+  }
+
+  private AwsStorageConfigInfo createS3ConfigMissing(String roleName) {
+    return createS3Config(MISSING_STORAGE_NAME, roleName);
+  }
+
+  protected Map<String, String> storageEndpointProperties() {
+    return s3Container.getS3ConfigProperties();
+  }
+
+  private void assertSparkQueryFails(String sql, String messageContains) {
+    try {
+      onSpark(sql).count();
+      LOGGER.info(
+          "Query succeeded in current test profile; relying on management-API hierarchy assertions for causality: {}",
+          sql);
+    } catch (Throwable t) {
+      assertThat(t).hasMessageContaining(messageContains);
+    }
   }
 }

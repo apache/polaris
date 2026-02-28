@@ -87,14 +87,7 @@ public abstract class PolarisSparkIntegrationTestBase {
     catalogName = client.newEntityName("spark_catalog");
     externalCatalogName = client.newEntityName("spark_ext_catalog");
 
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-            .build();
+    AwsStorageConfigInfo awsConfigModel = buildBaseCatalogStorageConfig();
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
     props.putAll(s3Container.getS3ConfigProperties());
     props.put("polaris.config.drop-with-purge.enabled", "true");
@@ -133,6 +126,34 @@ public abstract class PolarisSparkIntegrationTestBase {
         .addCatalog(
             externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .getOrCreate();
+  }
+
+  protected AwsStorageConfigInfo buildBaseCatalogStorageConfig() {
+    AwsStorageConfigInfo.Builder builder =
+        AwsStorageConfigInfo.builder()
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"));
+
+    if (includeBaseCatalogRoleArn()) {
+      builder.setRoleArn("arn:aws:iam::123456789012:role/my-role");
+    }
+
+    Boolean stsUnavailable = baseCatalogStsUnavailable();
+    if (stsUnavailable != null) {
+      builder.setStsUnavailable(stsUnavailable);
+    }
+
+    return builder.build();
+  }
+
+  protected boolean includeBaseCatalogRoleArn() {
+    return true;
+  }
+
+  protected Boolean baseCatalogStsUnavailable() {
+    return null;
   }
 
   @AfterEach
