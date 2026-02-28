@@ -34,7 +34,7 @@ image:
   pullPolicy: IfNotPresent
   # -- The image tag.
   # @section -- Image
-  tag: "latest"
+  tag: "latest"  # This tag will be replaced with the chart version at release time.
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
   # @section -- Image

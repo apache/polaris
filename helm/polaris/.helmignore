@@ -40,5 +40,7 @@
 .idea/
 *.tmproj
 .vscode/
+# Helm chart testing, CI and release management
 ci/
 tests/
+artifacthub-repo.yml

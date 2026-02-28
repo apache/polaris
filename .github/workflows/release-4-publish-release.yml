@@ -260,7 +260,7 @@ jobs:
             echo "No old Helm chart versions found to remove" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Transfer Helm index from dev to release
+      - name: Transfer Helm index and artifacthub-repo.yml from dev to release
         env:
           SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
           SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
@@ -270,20 +270,22 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          # Define source and destination URLs for the Helm index
-          dev_helm_index_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/index.yaml"
-          release_helm_index_url="${APACHE_DIST_URL}/release/polaris/helm-chart/index.yaml"
+          # Define source and destination URLs
+          dev_helm_chart_url="${APACHE_DIST_URL}/dev/polaris/helm-chart"
+          release_helm_chart_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
 
-          # Move the index.yaml from dev to release
+          # Move index.yaml and artifacthub-repo.yml from dev to release
           # The index was already properly generated in workflow 3 with relative URLs for the current
           # release and absolute URLs to archive.apache.org for previous releases, so we just transfer it as-is
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
-            "${dev_helm_index_url}" "${release_helm_index_url}" \
-            -m "Transfer Helm index for ${version_without_rc} release"
+            "${dev_helm_chart_url}/index.yaml" \
+            "${dev_helm_chart_url}/artifacthub-repo.yml" \
+            "${release_helm_chart_url}/" \
+            -m "Transfer Helm index and artifacthub-repo.yml for ${version_without_rc} release"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
-          ## Helm Index
-          Helm index transferred from dist dev to dist release
+          ## Helm Repository Metadata
+          Helm index and artifacthub-repo.yml transferred from dist dev to dist release
           EOT
 
       - name: Create final release tag and push to Git repository
