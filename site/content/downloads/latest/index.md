@@ -24,14 +24,13 @@ linkTitle: 'Latest'
 type: 'redirect'
 layout: 'redirect'
 params:
-  redirect_to: '/downloads/1.3.0/'   # Replace after a Polaris release
-weight: 2
+  redirect_to: '/downloads/1.3.0/' # Replace after a Polaris release
 hide_summary: true
 exclude_search: true
 toc_hide: true
 menus:
   main:
     parent: downloads
-    weight: 2
+    weight: -999998 # 2nd item in the menu
     identifier: downloads-latest
 ---

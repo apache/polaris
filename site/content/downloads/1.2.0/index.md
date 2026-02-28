@@ -20,14 +20,14 @@
 title: "Apache Polaris 1.2.0-incubating"
 linkTitle: "1.2.0"
 release_version: "1.2.0"
-weight: 960
+weight: -10200
 hide_summary: true
 exclude_search: true
 type: downloads
 menus:
   main:
     parent: downloads
-    weight: 960
+    weight: -10200
     identifier: downloads-1.2.0
 ---
 

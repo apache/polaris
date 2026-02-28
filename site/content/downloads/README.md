@@ -39,17 +39,21 @@ When adding downloads for a new release, follow these steps:
 
 1. Create a new version directory: Create `[major].[minor].[patch]/index.md`
    - Use an existing version page as a template (e.g., `1.3.0/index.md`)
-   - Update the title, release_version, weight, and release date
+   - Update the `title`, `linkTitle`, `release_version`, and release date
+   - Update `weight`: use a negative weight derived from the version, e.g. 1.2.3 -> -10203
    - Add the downloads table with links to artifacts
    - Include release notes
 
 2. Update the landing page (`_index.md`):
    - Add the new version to "Active Releases"
 
-3. Update `site/hugo.yaml`:
+3. Update the "latest" page (`latest/index.md`):
+   - Update the `redirect_to` parameter to point to the new version
+
+4. Update `site/hugo.yaml`:
    - Add the new version to the `active_releases` list
 
-4. Update the previous release's page:
+5. Update the previous release's page:
    - Change all artifact URLs from `https://dlcdn.apache.org/` and `https://downloads.apache.org/`
      to `https://archive.apache.org/dist/`
 
