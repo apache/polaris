@@ -60,3 +60,26 @@ h5:hover .heading-anchor,
 h6:hover .heading-anchor {
   opacity: 1;
 }
+
+
+// Keep the layout on the Polaris site as it was with Docsy 0.10.0
+:root {
+  --bs-body-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+.nav-link {
+  --bs-nav-link-color: rgba(255, 255, 255, 0.55);
+  --bs-nav-link-hover-color: rgba(255, 255, 255, 0.75);
+  --bs-navbar-active-color: rgba(255, 255, 255, 0.75);
+}
+.td-navbar .td-search {
+  color: rgba(255, 255, 255, 0.55);
+}
+.td-navbar .td-search__input:focus {
+  color: rgb(0,0,0);
+}
+.td-navbar.td-navbar-cover.td-navbar-transparent {
+  background-color: transparent;
+}
+.-bg-primary {
+  background-color: #30638e;
+}
