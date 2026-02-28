@@ -92,13 +92,33 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  // recursively remove all LICENSE and NOTICE file under META-INF, includes
-  // directories contains 'license' in the name
-  exclude("META-INF/**/*LICENSE*")
-  exclude("META-INF/**/*NOTICE*")
-  // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
-  exclude("LICENSE*")
-  exclude("NOTICE*")
+  // Includes _all_ duplicates (this is applied files processed by `ShadowJar`).
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
+  // This setting applies to the _result_ of the `ShadowJar`.
+  failOnDuplicateEntries = true
+
+  // Generally, preserve META-INF/maven/*/*/pom.* files for downstream tools that
+  // can analyze dependency jars.
+  //
+  // There are quite a few _duplicated_ occurrences of failureaccess, guava,
+  // listenablefuture, error_prone_annotations, j2objc-annotations, gson.
+  // Leave those here so that dependency analyzing tools can pick those up.
+
+  exclude(
+    // Recursively remove all LICENSE and NOTICE file under META-INF, includes
+    // directories contains 'license' in the name.
+    "META-INF/**/*LICENSE*",
+    "META-INF/**/*NOTICE*",
+    // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+    "LICENSE*",
+    "NOTICE*",
+
+    // Exclude Jandex indexes
+    "META-INF/jandex.idx",
+
+    // From Hive/Hadoop - exclude those to not confuse people.
+    "META-INF/DEPENDENCIES",
+  )
 
   // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
   // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
