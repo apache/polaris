@@ -1774,8 +1774,8 @@ public class PolarisManagementServiceIntegrationTest {
         .grantCatalogRoleToPrincipalRole(
             principalRoleName2, catalogName, new CatalogRole(catalogRoleName));
 
-    // But the catalog admin cannot revoke the role because it requires
-    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE
+    // The catalog admin can now revoke the role since it has
+    // CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE
     try (Response response =
         client
             .managementApi(catalogAdminToken)
@@ -1787,11 +1787,17 @@ public class PolarisManagementServiceIntegrationTest {
                     + "/"
                     + catalogRoleName)
             .delete()) {
-      assertThat(response).returns(FORBIDDEN.getStatusCode(), Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
-    // The service admin can revoke the role because it has the
-    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE privilege
+    // Re-grant the role to test that service admin can also revoke
+    client
+        .managementApi(catalogAdminToken)
+        .grantCatalogRoleToPrincipalRole(
+            principalRoleName2, catalogName, new CatalogRole(catalogRoleName));
+
+    // The service admin can also revoke the role (has CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE
+    // via catalog-scoped privileges)
     try (Response response =
         managementApi
             .request(
