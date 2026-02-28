@@ -33,7 +33,11 @@ menus:
 This section lists source and binary downloads for Apache Polaris. For each release, it provides a link to the release notes and the download links for the release artifacts.
 
 {{< alert tip >}}
-The Apache Polaris Helm Chart can be found in the [Helm Chart Repository](https://downloads.apache.org/polaris/helm-chart).
+The Apache Polaris Docker images are available on [Docker Hub](https://hub.docker.com/r/apache/polaris).
+{{< /alert >}}
+
+{{< alert tip >}}
+The Apache Polaris Helm Chart can be found in the [Helm Chart Repository](https://downloads.apache.org/polaris/helm-chart) or in [Artifact Hub](https://artifacthub.io/packages/helm/apache-polaris/polaris).
 {{< /alert >}}
 
 ### Active Releases
