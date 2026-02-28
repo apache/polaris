@@ -21,6 +21,7 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
+  id("polaris-sbom-app")
   // id("polaris-license-report")
 }
 

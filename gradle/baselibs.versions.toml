@@ -18,6 +18,7 @@
 #
 
 [libraries]
+cyclonedx = { module = "org.cyclonedx:cyclonedx-gradle-plugin", version = "3.1.1" }
 errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "5.1.0" }
 idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.4.1" }
 jandex = { module = "org.kordamp.gradle:jandex-gradle-plugin", version = "2.3.0" }

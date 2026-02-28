@@ -17,26 +17,39 @@
  * under the License.
  */
 
+import org.gradle.kotlin.dsl.invoke
+import org.gradle.kotlin.dsl.named
 import publishing.PublishingHelperPlugin
 import publishing.digestTaskOutputs
 import publishing.signTaskOutputs
+import sbom.CyclonedxBundleTask
 
 plugins {
   id("distribution")
   id("signing")
   id("polaris-spotless")
   id("polaris-reproducible")
+  id("polaris-sbom-bundle")
 }
 
 description = "Apache Polaris Binary Distribution"
 
 apply<PublishingHelperPlugin>()
 
-val adminProject = project(":polaris-admin")
-val serverProject = project(":polaris-server")
-
 // Configurations to resolve artifacts from other projects
 val adminDistribution by
+  configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
+
+val adminSbom by
+  configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
+
+val serverSbom by
   configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -50,7 +63,13 @@ val serverDistribution by
 
 dependencies {
   adminDistribution(project(":polaris-admin", "distributionElements"))
+  adminSbom(project(":polaris-admin", "cyclonedxDirectBomAll"))
+
   serverDistribution(project(":polaris-server", "distributionElements"))
+  serverSbom(project(":polaris-server", "cyclonedxDirectBomAll"))
+
+  bundleSboms(project(":polaris-admin", "cyclonedxDirectBomJson"))
+  bundleSboms(project(":polaris-server", "cyclonedxDirectBomJson"))
 }
 
 distributions {
@@ -58,16 +77,40 @@ distributions {
     distributionBaseName.set("polaris-bin")
     contents {
       // Copy admin distribution contents
-      into("admin") { from(adminDistribution) { exclude("quarkus-app-dependencies.txt") } }
+      into("admin") {
+        from(adminDistribution) { exclude("quarkus-app-dependencies.txt") }
+        from(configurations["adminSbom"]) {
+          eachFile {
+            name =
+              name.replace(
+                Regex("^bom[.](xml|json)$"),
+                "polaris-admin-${project.version}.cyclonedx.$1",
+              )
+          }
+        }
+      }
 
       // Copy server distribution contents
-      into("server") { from(serverDistribution) { exclude("quarkus-app-dependencies.txt") } }
+      into("server") {
+        from(serverDistribution) { exclude("quarkus-app-dependencies.txt") }
+        from(configurations["serverSbom"]) {
+          eachFile {
+            name =
+              name.replace(
+                Regex("^bom[.](xml|json)$"),
+                "polaris-server-${project.version}.cyclonedx.$1",
+              )
+          }
+        }
+      }
 
       // Copy scripts to bin directory
       into("bin") {
         from("bin/server")
         from("bin/admin")
       }
+
+      from(tasks.named("cyclonedxBundleBom"))
 
       from("README.md")
       from("LICENSE")
@@ -87,3 +130,14 @@ digestTaskOutputs(distZip)
 signTaskOutputs(distTar)
 
 signTaskOutputs(distZip)
+
+tasks.named<CyclonedxBundleTask>("cyclonedxBundleBom") {
+  val baseName = distributions.main.get().distributionBaseName.get()
+  jsonOutput.set(
+    project.layout.buildDirectory.file("distributions/$baseName-$version.cyclonedx.json")
+  )
+  xmlOutput.set(
+    project.layout.buildDirectory.file("distributions/$baseName-$version.cyclonedx.xml")
+  )
+  // Note: the polaris-sbom-bundle build plugin sets up signing.
+}
