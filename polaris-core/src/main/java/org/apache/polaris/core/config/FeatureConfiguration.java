@@ -373,6 +373,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   List.of(
                       AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
                       AuthenticationParameters.AuthenticationTypeEnum.BEARER.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.GCP.name(),
                       AuthenticationParameters.AuthenticationTypeEnum.SIGV4.name()))
               .buildFeatureConfiguration();
 

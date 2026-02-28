@@ -26,6 +26,7 @@ import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
@@ -44,6 +45,7 @@ import org.apache.polaris.core.secrets.SecretReference;
   @JsonSubTypes.Type(value = BearerAuthenticationParametersDpo.class, name = "2"),
   @JsonSubTypes.Type(value = ImplicitAuthenticationParametersDpo.class, name = "3"),
   @JsonSubTypes.Type(value = SigV4AuthenticationParametersDpo.class, name = "4"),
+  @JsonSubTypes.Type(value = GcpAuthenticationParametersDpo.class, name = "5"),
 })
 public abstract class AuthenticationParametersDpo implements IcebergCatalogPropertiesProvider {
 
@@ -74,6 +76,14 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
       Map<String, SecretReference> secretReferences) {
     final AuthenticationParametersDpo config;
     switch (authenticationParameters.getAuthenticationType()) {
+      case GCP:
+        GcpAuthenticationParameters gcpAuthenticationParameters =
+            (GcpAuthenticationParameters) authenticationParameters;
+        config =
+            new GcpAuthenticationParametersDpo(
+                gcpAuthenticationParameters.getQuotaProject(),
+                gcpAuthenticationParameters.getRemoteWarehouseName());
+        break;
       case OAUTH:
         OAuthClientCredentialsParameters oauthClientCredentialsModel =
             (OAuthClientCredentialsParameters) authenticationParameters;

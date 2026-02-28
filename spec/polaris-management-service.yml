@@ -977,6 +977,7 @@ components:
             - BEARER
             - SIGV4
             - IMPLICIT
+            - GCP
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -987,6 +988,23 @@ components:
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
           IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
+          GCP: "#/components/schemas/GcpAuthenticationParameters"
+
+    GcpAuthenticationParameters:
+      type: object
+      description: Uses GCP authentication from the Iceberg codebase
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
+      properties:
+        quotaProject:
+          type: string
+          description: The project to which this call is billed.
+        remoteWarehouseName:
+          type: string
+          description: The GCS warehouse.
+      required:
+        - quotaProject
+        - remoteWarehouseName
 
     OAuthClientCredentialsParameters:
       type: object
