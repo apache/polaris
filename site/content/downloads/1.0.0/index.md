@@ -25,7 +25,7 @@ exclude_search: true
 type: docs
 menus:
   main:
-    parent: releases
+    parent: downloads
     weight: 990
     identifier: downloads-1.0.0
 ---

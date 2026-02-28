@@ -19,7 +19,7 @@
 #
 # This file creates the /downloads/latest/ redirect to the current latest stable download.
 # Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
+title: 'Latest Download'
 linkTitle: 'Latest'
 type: 'redirect'
 layout: 'redirect'
@@ -31,7 +31,7 @@ exclude_search: true
 toc_hide: true
 menus:
   main:
-    parent: releases
+    parent: downloads
     weight: 2
     identifier: downloads-latest
 ---

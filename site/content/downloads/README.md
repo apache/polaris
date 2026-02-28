@@ -21,7 +21,7 @@
 
 This directory contains the downloads page for Apache Polaris releases.
 
-## Structurek
+## Structure
 
 ```
 downloads/
@@ -33,9 +33,9 @@ downloads/
 └── ...
 ```
 
-## Adding a New Release
+## Adding a New Download
 
-When adding a new release, follow these steps:
+When adding downloads for a new release, follow these steps:
 
 1. Create a new version directory: Create `[major].[minor].[patch]/index.md`
    - Use an existing version page as a template (e.g., `1.3.0/index.md`)
@@ -70,7 +70,7 @@ exclude_search: true
 type: docs
 menus:
   main:
-    parent: releases
+    parent: downloads
     weight: [number]  # Same as page weight for consistency
     identifier: downloads-[version]  # Unique identifier to avoid conflicts
                                      # Example: downloads-1.3.0, downloads-1.2.0, etc.
@@ -84,7 +84,7 @@ No manual configuration in `site/hugo.yaml` is needed for individual version pag
 - Use the same weight for both the page weight and menu weight for simplicity
 - Decrement by 10 for each older version (e.g., 1000, 990, 980, 970, etc.)
 - This ensures both the sidebar and dropdown display versions in descending order (newest first)
-- The "Overview" landing page uses weight 1 to appear first in the dropdown
+- The "Overview" landing page uses weight 1 to appear first in the dropdown menu
 - The "Latest" shortcut uses weight 2 to appear second in the dropdown menu (it doesn't appear in the sidebar)
 
 ## See Also
