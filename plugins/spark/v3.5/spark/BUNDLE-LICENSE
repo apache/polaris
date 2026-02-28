@@ -271,6 +271,14 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
+This binary artifact contains Apache Hive.
+
+Copyright: 2008-2020 The Apache Software Foundation
+Home page: https://hive.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
 This binary artifact contains Apache ORC.
 
 Copyright: 2013 and onwards The Apache Software Foundation.
@@ -344,6 +352,14 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 --------------------------------------------------------------------------------
 
 This binary artifact contains Apache HttpComponents Client.
+
+Copyright: 1999-2022 The Apache Software Foundation.
+Project URL: https://hc.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains Apache HttpComponents Core.
 
 Copyright: 1999-2022 The Apache Software Foundation.
 Project URL: https://hc.apache.org/
@@ -579,5 +595,47 @@ This binary artifact contains OpenHFT.
 Copyright: 2014 Higher Frequency Trading http://www.higherfrequencytrading.com
 Project URL: https://github.com/OpenHFT
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains JCTools.
+
+Project URL: https://github.com/JCTools/JCTools
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains JTS Topology Suite.
+
+Project URL: https://github.com/locationtech/jts
+License: EPL 2.0 - https://github.com/locationtech/jts/blob/master/LICENSES.md
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains FastDoubleParser.
+
+Project URL: https://github.com/wrandelshofer/FastDoubleParser
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains bigint.
+
+Project URL: https://github.com/tbuktu/bigint
+License: BSD-2 - https://github.com/tbuktu/bigint/blob/617c8cd8a7c5e4fb4d919c6a4d11e2586107f029/LICENSE
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains fast_float.
+
+Project URL: https://github.com/fastfloat/fast_float
+License: MIT - https://github.com/fastfloat/fast_float/blob/35d523195bf7d57aba0e735ad6eba1e6f71ba8d6/LICENSE-MIT
+
+--------------------------------------------------------------------------------
+
+This binary artifact contains fast_float.
+
+Project URL: https://github.com/fastfloat/fast_float
+License: MIT - https://github.com/fastfloat/fast_float/blob/35d523195bf7d57aba0e735ad6eba1e6f71ba8d6/LICENSE-MIT
 
 --------------------------------------------------------------------------------
