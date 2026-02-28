@@ -31,6 +31,7 @@ val genericTableModels =
     "LoadGenericTableResponse",
     "ListGenericTablesResponse",
     "GenericTable",
+    "StorageAccessCredential",
   )
 
 val policyManagementModels =
