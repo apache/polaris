@@ -17,20 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Apache Polaris Releases
-linkTitle: Releases
+title: Apache Polaris Downloads
+linkTitle: Downloads
 weight: 200
 cascade:
   type: docs
 menus:
   main:
-    parent: releases
+    parent: downloads
     weight: 1
     identifier: downloads-overview
     name: Overview
 ---
 
-This section lists source and binary releases for Apache Polaris. For each release, it provides a link to the release notes and the download links for the release artifacts.
+This section lists source and binary downloads for Apache Polaris. For each release, it provides a link to the release notes and the download links for the release artifacts.
 
 {{< alert tip >}}
 The Apache Polaris Helm Chart can be found in the [Helm Chart Repository](https://downloads.apache.org/polaris/helm-chart).

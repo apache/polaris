@@ -148,8 +148,8 @@ menu:
       url: "/tools"
       weight: 150
 
-    - name: "Releases"
-      identifier: "releases"
+    - name: "Downloads"
+      identifier: "downloads"
       url: "/downloads"
       weight: 200
 
