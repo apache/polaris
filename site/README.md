@@ -139,9 +139,13 @@ in the main source tree:
        `exclude_search: false` changed to `exclude_search: true`.
 6. When publishing a new release for an older major/minor version:
     1. The new release's `_index.md` would be generated with `exclude_search: true`
-7. Changes to the site added and committed to Git
-8. Changes pushed to GitHub - both the `main` and the `versioned-docs` folder
-9. The last step triggers the job to publish the web site
+7. Update the "latest" redirect to point to the new release:
+    1. Edit `/releases/latest/index.md` in the `versioned-docs` branch (i.e., `site/content/releases/latest/index.md` if using the Git worktree)
+    2. Update the `redirect_to` parameter in the front matter to point to the new release (e.g., change `redirect_to: '/releases/1.3.0/'` to `redirect_to: '/releases/1.4.0/'`)
+8. Update `/docs/_index.md` to link to the new release's documentation.
+9. Changes to the site added and committed to Git
+10. Changes pushed to GitHub - both the `main` and the `versioned-docs` folder
+11. The last step triggers the job to publish the web site
 
 ## Website Publishing (Production)
 

@@ -65,12 +65,11 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    # EOL releases (0.9.0, 1.0.0, 1.0.1) should NOT be listed here!
+    # When changing this list, also modify /docs/_index.md.
     - "1.3.0"
     - "1.2.0"
     - "1.1.0"
-    - "1.0.1"
-    - "1.0.0"
-    - "0.9.0"
 
   ui:
     ul_show: 1
@@ -93,7 +92,7 @@ params:
 imaging:
   resampleFilter: "CatmullRom"
   quality: 75
-  anchor: "smart"
+  anchor: Smart
 
 menu:
   main:
@@ -102,10 +101,18 @@ menu:
       weight: 100
       params:
         orderby: weight.desc
+    - name: "Overview"
+      url: "/docs/"
+      parent: "doc"
+      weight: -100
     - name: "In Development"
       url: "/in-dev/unreleased/"
       parent: "doc"
       weight: 1
+    - name: "Latest"
+      url: "/releases/latest/"
+      parent: "doc"
+      weight: 2
     - name: "1.3.0"
       url: "/releases/1.3.0/"
       parent: "doc"

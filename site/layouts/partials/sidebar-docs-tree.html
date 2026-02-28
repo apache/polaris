@@ -46,33 +46,76 @@ under the License.
       {{ partial "navbar-lang-selector.html" . }}
     </div>
     {{ end -}}
-    {{ $navRoot := cond (and (ne .Params.toc_root true) (eq .Site.Home.Type "docs")) .Site.Home .FirstSection -}}
     {{ $ulNr := 0 -}}
     {{ $ulShow := .Site.Params.ui.ul_show | default 1 -}}
     {{ $sidebarMenuTruncate := .Site.Params.ui.sidebar_menu_truncate | default 100 -}}
+    {{ $docsPage := .Site.GetPage "/docs" -}}
+    {{ $page := . }}
+    {{/* Check if current page is under /in-dev/unreleased/ or /releases/ */}}
+    {{ $activePath := or (hasPrefix $page.RelPermalink "/in-dev/unreleased") (hasPrefix $page.RelPermalink "/releases/") -}}
     <ul class="td-sidebar-nav__section pe-md-3 ul-{{ $ulNr }}">
-      {{ $page := . }}
-      {{ with partial "releasePages.html" (dict "site" .Site) -}}
-        {{ with .active -}}
-          {{ template "releases-section-versions-nav-section" (dict "page" $page "section" $navRoot "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" $ulNr "ulShow" (add $ulShow 1) "sectionLinkTitle" "Active Releases" "pages" . ) }}
-        {{ end -}}
-        {{ with .eol -}}
-          {{ template "releases-section-versions-nav-section" (dict "page" $page "section" $navRoot "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" $ulNr "ulShow" (add $ulShow 1) "sectionLinkTitle" "EOL Releases" "pages" . ) }}
-        {{ end -}}
-      {{ end -}}
+      {{/* Documentation root item - clickable title linking to /docs/ */}}
+      <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child{{ if $activePath }} active-path{{ end }}" id="m-docs-li">
+        <a href="{{ $docsPage.RelPermalink }}" class="align-left ps-0 td-sidebar-link td-sidebar-link__section tree-root" id="m-docs"><span class="">{{ $docsPage.LinkTitle }}</span></a>
+        <ul class="ul-1">
+          {{ with partial "releasePages.html" (dict "site" .Site) -}}
+            {{/* Render "Unreleased" as a direct expandable item */}}
+            {{ with .unreleased -}}
+              {{ $versionPage := . -}}
+              {{ $pages := where $versionPage.Pages.ByWeight ".Params.toc_hide" "!=" true -}}
+              {{ template "releases-section-x-nav-section" (dict "page" $page "section" $versionPage "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" 1 "ulShow" $ulShow "pages_input" $pages "sectionLinkTitle" "Unreleased") }}
+            {{ end -}}
+            {{/* Render Active Releases - as an expandable category */}}
+            {{ with .active -}}
+              {{ template "releases-section-category-nav" (dict "page" $page "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" 1 "ulShow" $ulShow "categoryTitle" "Active Releases" "versionPages" . ) }}
+            {{ end -}}
+            {{/* Render EOL Releases - as an expandable category */}}
+            {{ with .eol -}}
+              {{ template "releases-section-category-nav" (dict "page" $page "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" 1 "ulShow" $ulShow "categoryTitle" "EOL Releases" "versionPages" . ) }}
+            {{ end -}}
+          {{ end -}}
+        </ul>
+      </li>
     </ul>
   </nav>
 </div>
-{{/* "outer" tree, starting with the releases pages */}}
-{{ define "releases-section-versions-nav-section" -}}
-{{ $s := .section -}}
+{{/* Template for rendering a category like "Active Releases" or "EOL Releases" */}}
+{{/* This renders a category header (no link) with version pages as children */}}
+{{/* Optional: childLinkTitle - if provided and there's only one versionPage, use this as the link title */}}
+{{ define "releases-section-category-nav" -}}
 {{ $p := .page -}}
 {{ $shouldDelayActive := .shouldDelayActive -}}
 {{ $sidebarMenuTruncate := .sidebarMenuTruncate -}}
 {{ $ulNr := .ulNr -}}
 {{ $ulShow := .ulShow -}}
-{{ $pages := .pages -}}
-{{ template "releases-section-x-nav-section" (dict "page" $p "section" $s "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" $ulNr "ulShow" $ulShow "sectionLinkTitle" .sectionLinkTitle "pages_input" $pages) }}
+{{ $categoryTitle := .categoryTitle -}}
+{{ $versionPages := .versionPages -}}
+{{ $childLinkTitle := .childLinkTitle -}}
+{{ $mid := printf "m-category-%s" ($categoryTitle | anchorize) -}}
+{{/* Check if current page is a descendant of any version in this category */}}
+{{ $activePath := false -}}
+{{ range $versionPages -}}
+  {{ if or (eq $p .) ($p.IsDescendant .) -}}
+    {{ $activePath = true -}}
+  {{ end -}}
+{{ end -}}
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child{{ if $activePath }} active-path{{ end }}" id="{{ $mid }}-li">
+  {{ if $p.Site.Params.ui.sidebar_menu_foldable -}}
+  <input type="checkbox" id="{{ $mid }}-check"{{ if $activePath}} checked{{ end }}/>
+  <label for="{{ $mid }}-check"><span class="align-left ps-0 td-sidebar-link td-sidebar-link__section">{{ $categoryTitle }}</span></label>
+  {{ else -}}
+  <span class="align-left ps-0 td-sidebar-link td-sidebar-link__section">{{ $categoryTitle }}</span>
+  {{ end -}}
+  <ul class="ul-{{ add $ulNr 1 }} foldable">
+    {{ range $versionPages -}}
+      {{ $versionPage := . -}}
+      {{ $pages := where $versionPage.Pages.ByWeight ".Params.toc_hide" "!=" true -}}
+      {{/* Use childLinkTitle if provided, otherwise use the version's release_version or LinkTitle */}}
+      {{ $versionLinkTitle := $childLinkTitle | default ($versionPage.Params.release_version | default $versionPage.LinkTitle) -}}
+      {{ template "releases-section-x-nav-section" (dict "page" $p "section" $versionPage "shouldDelayActive" $shouldDelayActive "sidebarMenuTruncate" $sidebarMenuTruncate "ulNr" (add $ulNr 1) "ulShow" $ulShow "pages_input" $pages "sectionLinkTitle" $versionLinkTitle) }}
+    {{ end -}}
+  </ul>
+</li>
 {{- end -}}
 
 {{ define "releases-section-x-nav-section" -}}
