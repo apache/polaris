@@ -314,7 +314,8 @@ public class DatasourceOperations {
 
     // Additionally, one might check for specific error messages or other conditions
     return e.getMessage().toLowerCase(Locale.ROOT).contains("connection refused")
-        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
+        || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset")
+        || e.getMessage().toLowerCase(Locale.ROOT).contains("acquisition timeout");
   }
 
   // TODO: consider refactoring to use a retry library, inorder to have fair retries
