@@ -21,7 +21,7 @@ title: Apache Polaris Downloads
 linkTitle: Downloads
 weight: 200
 cascade:
-  type: docs
+  type: downloads
 menus:
   main:
     parent: downloads

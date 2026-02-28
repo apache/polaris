@@ -31,10 +31,21 @@
 				<ul class="dropdown-menu">
 					{{ $children := .Children.ByWeight -}}
 					{{ $bannedItems := slice -}}
+
+					{{ if eq .Identifier "doc" -}}
 					{{ $releasePages := partial "releasePages.html" (dict "site" $s) -}}
 					{{ range $releasePages.eol -}}
-					{{ $bannedItems = $bannedItems | append .Params.release_version -}}
+					{{ $bannedItems = $bannedItems | append .LinkTitle -}}
 					{{ end -}}
+					{{ end -}}
+
+					{{ if eq .Identifier "downloads" -}}
+					{{ $downloadPages := partial "downloadPages.html" (dict "site" $s) -}}
+					{{ range $downloadPages.eol -}}
+					{{ $bannedItems = $bannedItems | append .LinkTitle -}}
+					{{ end -}}
+					{{ end -}}
+
 					{{ range $children -}}
 					{{ if not (in $bannedItems .Name) -}}
 					<li><a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a></li>

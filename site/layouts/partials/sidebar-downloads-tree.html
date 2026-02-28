@@ -1,0 +1,109 @@
+{{/*
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+*/}}
+{{/* We cache this partial for bigger sites and set the active class client side. */ -}}
+{{ $sidebarCacheLimit := .Site.Params.ui.sidebar_cache_limit | default 2000 -}}
+{{ $shouldDelayActive := ge (len .Site.Pages) $sidebarCacheLimit -}}
+
+<div id="td-sidebar-menu" class="td-sidebar__inner{{ if $shouldDelayActive }} d-none{{ end }}">
+  {{ if not .Site.Params.ui.sidebar_search_disable -}}
+  <form class="td-sidebar__search d-flex align-items-center">
+    {{ partial "search-input.html" . }}
+    <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ms-3 fas fa-bars" type="button" data-bs-toggle="collapse" data-bs-target="#td-section-nav" aria-controls="td-section-nav" aria-expanded="false" aria-label="Toggle section navigation">
+    </button>
+  </form>
+  {{ else -}}
+  <div id="content-mobile">
+  <form class="td-sidebar__search d-flex align-items-center">
+    {{ partial "search-input.html" . }}
+    <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ms-3 fas fa-bars" type="button" data-bs-toggle="collapse" data-bs-target="#td-section-nav" aria-controls="td-section-nav" aria-expanded="false" aria-label="Toggle section navigation">
+    </button>
+  </form>
+  </div>
+  <div id="content-desktop"></div>
+  {{ end -}}
+  <nav class="td-sidebar-nav collapse
+      {{- if .Site.Params.ui.sidebar_search_disable }} td-sidebar-nav--search-disabled{{ end -}}
+      {{- if .Site.Params.ui.sidebar_menu_foldable }} foldable-nav{{ end -}}
+      " id="td-section-nav">
+    {{ if  (gt (len .Site.Home.Translations) 0) -}}
+    <div class="td-sidebar-nav__section nav-item dropdown d-block d-lg-none">
+      {{ partial "navbar-lang-selector.html" . }}
+    </div>
+    {{ end -}}
+    {{ $ulNr := 0 -}}
+    {{ $ulShow := .Site.Params.ui.ul_show | default 1 -}}
+    {{ $downloadsPage := .Site.GetPage "/downloads" -}}
+    {{ $page := . }}
+    {{ $activePath := hasPrefix $page.RelPermalink "/downloads/" -}}
+    <ul class="td-sidebar-nav__section pe-md-3 ul-{{ $ulNr }}">
+      {{/* Downloads root item - clickable title linking to /downloads/ */}}
+      <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child{{ if $activePath }} active-path{{ end }}" id="m-downloads-li">
+        <a href="{{ $downloadsPage.RelPermalink }}" class="align-left ps-0 td-sidebar-link td-sidebar-link__section tree-root" id="m-downloads"><span class="">{{ $downloadsPage.LinkTitle }}</span></a>
+        <ul class="ul-1">
+          {{ with partial "downloadPages.html" (dict "site" .Site) -}}
+            {{/* Render Active Releases - as an expandable category */}}
+            {{ with .active -}}
+              {{ template "downloads-category-nav" (dict "page" $page "shouldDelayActive" $shouldDelayActive "ulNr" 1 "ulShow" $ulShow "categoryTitle" "Active Releases" "downloadPages" . ) }}
+            {{ end -}}
+            {{/* Render EOL Releases - as an expandable category */}}
+            {{ with .eol -}}
+              {{ template "downloads-category-nav" (dict "page" $page "shouldDelayActive" $shouldDelayActive "ulNr" 1 "ulShow" $ulShow "categoryTitle" "EOL Releases" "downloadPages" . ) }}
+            {{ end -}}
+          {{ end -}}
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+{{/* Template for rendering a downloads category like "Active Releases" or "EOL Releases" */}}
+{{ define "downloads-category-nav" -}}
+{{ $p := .page -}}
+{{ $shouldDelayActive := .shouldDelayActive -}}
+{{ $ulNr := .ulNr -}}
+{{ $ulShow := .ulShow -}}
+{{ $categoryTitle := .categoryTitle -}}
+{{ $downloadPages := .downloadPages -}}
+{{ $mid := printf "m-downloads-category-%s" ($categoryTitle | anchorize) -}}
+{{/* Check if current page is one of the downloads in this category */}}
+{{ $activePath := false -}}
+{{ range $downloadPages -}}
+  {{ if eq $p . -}}
+    {{ $activePath = true -}}
+  {{ end -}}
+{{ end -}}
+<li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child{{ if $activePath }} active-path{{ end }}" id="{{ $mid }}-li">
+  {{ if $p.Site.Params.ui.sidebar_menu_foldable -}}
+  <input type="checkbox" id="{{ $mid }}-check"{{ if $activePath}} checked{{ end }}/>
+  <label for="{{ $mid }}-check"><span class="align-left ps-0 td-sidebar-link td-sidebar-link__section">{{ $categoryTitle }}</span></label>
+  {{ else -}}
+  <span class="align-left ps-0 td-sidebar-link td-sidebar-link__section">{{ $categoryTitle }}</span>
+  {{ end -}}
+  <ul class="ul-{{ add $ulNr 1 }} foldable">
+    {{ range $downloadPages -}}
+      {{ $downloadPage := . -}}
+      {{ $active := and (not $shouldDelayActive) (eq $downloadPage $p) -}}
+      {{ $dmid := printf "m-%s" ($downloadPage.RelPermalink | anchorize) -}}
+      <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child{{ if $active }} active-path{{ end }}" id="{{ $dmid }}-li">
+        <a href="{{ $downloadPage.RelPermalink }}" class="align-left ps-0{{ if $active}} active{{ end }} td-sidebar-link td-sidebar-link__page" id="{{ $dmid }}"><span class="{{ if $active }}td-sidebar-nav-active-item{{ end }}">{{ $downloadPage.LinkTitle }}</span></a>
+      </li>
+    {{ end -}}
+  </ul>
+</li>
+{{- end -}}

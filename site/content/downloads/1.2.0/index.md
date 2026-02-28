@@ -17,20 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: "1.2.0"
+title: "Apache Polaris 1.2.0-incubating"
 linkTitle: "1.2.0"
+release_version: "1.2.0"
 weight: 960
 hide_summary: true
 exclude_search: true
-type: docs
+type: downloads
 menus:
   main:
     parent: downloads
     weight: 960
     identifier: downloads-1.2.0
 ---
-
-## Apache Polaris 1.2.0-incubating
 
 Released on October 23rd, 2025.
 
