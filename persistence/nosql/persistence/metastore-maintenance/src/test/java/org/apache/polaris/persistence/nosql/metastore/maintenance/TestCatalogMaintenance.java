@@ -245,15 +245,15 @@ public class TestCatalogMaintenance {
             true,
             OptionalInt.of(0),
             Optional.of(0L),
-            // 8 stale objects:
+            // 11 stale objects:
             // - 1 namespace (catalog state)
             // - 1 table (catalog state)
-            // - 2 grants (realm setup) - including 2 ACLs
+            // - 3 grants - including 3 ACLs
             // - 1 principal
-            // - 1 principal role
+            // - 2 principal roles
             // - 1 catalog role
             // - 1 catalog
-            Optional.of(10L));
+            Optional.of(13L));
 
     checkEntities("real state after grace", entities);
   }
