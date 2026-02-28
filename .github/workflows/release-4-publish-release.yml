@@ -397,16 +397,16 @@ jobs:
           - \`apache/polaris-admin:${final_release_tag}\` - Polaris Admin Tool"
           # ********************************************************************************
 
-          # Create GitHub release
-          exec_process gh release create "${final_release_tag}" \
+          # Collect all artifacts to attach from the artifacts directory
+          readarray -t artifacts_to_attach < <(find "${artifacts_dir}" -type f -name "*.tar.gz" -o -name "*.tgz" -o -name "*.asc" -o -name "*.sha512" -o -name "*.prov")
+
+          # Create GitHub release and immediately publish it
+          exec_process gh release create \
             --title "${release_title}" \
             --notes "${release_notes}" \
-            --target "${rc_commit}"
-
-          # Attach all artifacts from the artifacts directory
-          find "${artifacts_dir}" -type f -name "*.tar.gz" -o -name "*.tgz" -o -name "*.asc" -o -name "*.sha512" -o -name "*.prov" | while read -r file; do
-            exec_process gh release upload "${final_release_tag}" "${file}"
-          done
+            --target "${rc_commit}" \
+            "${final_release_tag}" \
+            "${artifacts_to_attach[@]}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## GitHub Release
