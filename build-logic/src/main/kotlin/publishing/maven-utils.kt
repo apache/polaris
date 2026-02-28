@@ -78,20 +78,6 @@ fun addAdditionalJarContent(project: Project): Unit =
         tasks.register("generatePomProperties", GeneratePomProperties::class.java) {}
 
       tasks.withType(Jar::class).configureEach {
-        if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
-          from(rootProject.rootDir) {
-            include("gradle/jar-licenses/LICENSE").eachFile { path = "META-INF/$sourceName" }
-          }
-        } else if (name == "javadocJar") {
-          from("src/main/resources") { include("META-INF/LICENSE") }
-        }
-        if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
-          from(rootProject.rootDir) {
-            include("gradle/jar-licenses/NOTICE").eachFile { path = "META-INF/$sourceName" }
-          }
-        } else if (name == "javadocJar") {
-          from("src/main/resources") { include("META-INF/NOTICE") }
-        }
         // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
         // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
         // `@UntrackedTask`)
