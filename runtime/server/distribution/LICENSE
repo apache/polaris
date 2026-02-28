@@ -202,11 +202,57 @@
 
 --------------------------------------------------------------------------------
 
-This binary artifact bundles the following projects:
+This product bundles and includes code from Apache Iceberg.
+
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-api
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-aws
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-azure
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-bundled-guava
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-common
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-core
+* Maven group:artifact IDs: org.apache.iceberg:iceberg-gcp
+
+Copyright: Copyright 2017-2025 The Apache Software Foundation
+Home page: https://iceberg.apache.org
+License: https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
-Group: org.crac Name: crac Version: 1.5.0
+This product bundles and includes code from Netty.
+
+* Maven group:artifact IDs: io.netty:netty-buffer
+* Maven group:artifact IDs: io.netty:netty-codec
+* Maven group:artifact IDs: io.netty:netty-codec-dns
+* Maven group:artifact IDs: io.netty:netty-codec-haproxy
+* Maven group:artifact IDs: io.netty:netty-codec-http
+* Maven group:artifact IDs: io.netty:netty-codec-http2
+* Maven group:artifact IDs: io.netty:netty-codec-socks
+* Maven group:artifact IDs: io.netty:netty-common
+* Maven group:artifact IDs: io.netty:netty-handler
+* Maven group:artifact IDs: io.netty:netty-handler-proxy
+* Maven group:artifact IDs: io.netty:netty-resolver
+* Maven group:artifact IDs: io.netty:netty-resolver-dns
+* Maven group:artifact IDs: io.netty:netty-resolver-dns-classes-macos
+* Maven group:artifact IDs: io.netty:netty-resolver-dns-native-macos
+* Maven group:artifact IDs: io.netty:netty-tcnative-boringssl-static
+* Maven group:artifact IDs: io.netty:netty-tcnative-classes
+* Maven group:artifact IDs: io.netty:netty-transport
+* Maven group:artifact IDs: io.netty:netty-transport-classes-epoll
+* Maven group:artifact IDs: io.netty:netty-transport-classes-kqueue
+* Maven group:artifact IDs: io.netty:netty-transport-native-epoll
+* Maven group:artifact IDs: io.netty:netty-transport-native-kqueue
+* Maven group:artifact IDs: io.netty:netty-transport-native-unix-common
+
+Copyright: Copyright © 2025 The Netty project
+Home page: https://netty.io/
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles org.crac.
+
+* Maven group:artifact IDs: org.crac:crac
+
 Project URL: https://github.com/crac/org.crac
 License: BSD 2-Clause
 | Copyright 2017-2022 Azul Systems, Inc.
@@ -235,157 +281,178 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-apache-httpclient Version: 3.29.4
-Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.29.4
-Group: io.quarkus Name: quarkus-classloader-commons Version: 3.29.4
-Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.29.4
-Group: io.quarkus.arc Name: arc Version: 3.29.4
-Group: io.quarkus Name: quarkus-agroal Version: 3.29.4
-Group: io.quarkus Name: quarkus-arc Version: 3.29.4
-Group: io.quarkus Name: quarkus-container-image Version: 3.29.4
-Group: io.quarkus Name: quarkus-container-image-docker Version: 3.29.4
-Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-core Version: 3.29.4
-Group: io.quarkus Name: quarkus-credentials Version: 3.29.4
-Group: io.quarkus Name: quarkus-datasource Version: 3.29.4
-Group: io.quarkus Name: quarkus-datasource-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-fs-util Version: 1.2.0
-Group: io.quarkus Name: quarkus-grpc-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-hibernate-validator Version: 3.29.4
-Group: io.quarkus Name: quarkus-jackson Version: 3.29.4
-Group: io.quarkus Name: quarkus-jdbc-postgresql Version: 3.29.4
-Group: io.quarkus Name: quarkus-jsonp Version: 3.29.4
-Group: io.quarkus Name: quarkus-logging-json Version: 3.29.4
-Group: io.quarkus Name: quarkus-micrometer Version: 3.29.4
-Group: io.quarkus Name: quarkus-micrometer-registry-prometheus Version: 3.29.4
-Group: io.quarkus Name: quarkus-mutiny Version: 3.29.4
-Group: io.quarkus Name: quarkus-narayana-jta Version: 3.29.4
-Group: io.quarkus Name: quarkus-netty Version: 3.29.4
-Group: io.quarkus Name: quarkus-oidc Version: 3.29.4
-Group: io.quarkus Name: quarkus-oidc-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-opentelemetry Version: 3.29.4
-Group: io.quarkus Name: quarkus-reactive-routes Version: 3.29.4
-Group: io.quarkus Name: quarkus-rest Version: 3.29.4
-Group: io.quarkus Name: quarkus-rest-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-rest-jackson Version: 3.29.4
-Group: io.quarkus Name: quarkus-rest-jackson-common Version: 3.29.4
-Group: io.quarkus Name: quarkus-security Version: 3.29.4
-Group: io.quarkus Name: quarkus-security-runtime-spi Version: 3.29.4
-Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.29.4
-Group: io.quarkus Name: quarkus-smallrye-fault-tolerance Version: 3.29.4
-Group: io.quarkus Name: quarkus-smallrye-health Version: 3.29.4
-Group: io.quarkus Name: quarkus-smallrye-jwt-build Version: 3.29.4
-Group: io.quarkus Name: quarkus-tls-registry Version: 3.29.4
-Group: io.quarkus Name: quarkus-tls-registry-spi Version: 3.29.4
-Group: io.quarkus Name: quarkus-transaction-annotations Version: 3.29.4
-Group: io.quarkus Name: quarkus-vertx Version: 3.29.4
-Group: io.quarkus Name: quarkus-vertx-http Version: 3.29.4
-Group: io.quarkus Name: quarkus-vertx-latebound-mdc-provider Version: 3.29.4
-Group: io.quarkus Name: quarkus-virtual-threads Version: 3.29.4
-Group: io.quarkus Name: quarkus-websockets-next-spi Version: 3.29.4
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive Version: 3.29.4
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common Version: 3.29.4
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-common-types Version: 3.29.4
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-jackson Version: 3.29.4
-Group: io.quarkus.resteasy.reactive Name: resteasy-reactive-vertx Version: 3.29.4
-Group: io.quarkus.security Name: quarkus-security Version: 2.2.1
-Group: io.quarkus.vertx.utils Name: quarkus-vertx-utils Version: 3.29.4
+This product bundles Quarkus.
+
+* Maven group:artifact IDs: io.quarkus.arc:arc
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-common
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-common-types
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-jackson
+* Maven group:artifact IDs: io.quarkus.resteasy.reactive:resteasy-reactive-vertx
+* Maven group:artifact IDs: io.quarkus.security:quarkus-security
+* Maven group:artifact IDs: io.quarkus.vertx.utils:quarkus-vertx-utils
+* Maven group:artifact IDs: io.quarkus:quarkus-agroal
+* Maven group:artifact IDs: io.quarkus:quarkus-apache-httpclient
+* Maven group:artifact IDs: io.quarkus:quarkus-arc
+* Maven group:artifact IDs: io.quarkus:quarkus-bootstrap-runner
+* Maven group:artifact IDs: io.quarkus:quarkus-classloader-commons
+* Maven group:artifact IDs: io.quarkus:quarkus-container-image
+* Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker
+* Maven group:artifact IDs: io.quarkus:quarkus-container-image-docker-common
+* Maven group:artifact IDs: io.quarkus:quarkus-core
+* Maven group:artifact IDs: io.quarkus:quarkus-credentials
+* Maven group:artifact IDs: io.quarkus:quarkus-datasource
+* Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
+* Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
+* Maven group:artifact IDs: io.quarkus:quarkus-fs-util
+* Maven group:artifact IDs: io.quarkus:quarkus-grpc-common
+* Maven group:artifact IDs: io.quarkus:quarkus-hibernate-validator
+* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
+* Maven group:artifact IDs: io.quarkus:quarkus-jackson
+* Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
+* Maven group:artifact IDs: io.quarkus:quarkus-jsonp
+* Maven group:artifact IDs: io.quarkus:quarkus-logging-json
+* Maven group:artifact IDs: io.quarkus:quarkus-micrometer
+* Maven group:artifact IDs: io.quarkus:quarkus-micrometer-registry-prometheus
+* Maven group:artifact IDs: io.quarkus:quarkus-mongodb-client
+* Maven group:artifact IDs: io.quarkus:quarkus-mutiny
+* Maven group:artifact IDs: io.quarkus:quarkus-mutiny-reactive-streams-operators
+* Maven group:artifact IDs: io.quarkus:quarkus-narayana-jta
+* Maven group:artifact IDs: io.quarkus:quarkus-netty
+* Maven group:artifact IDs: io.quarkus:quarkus-oidc
+* Maven group:artifact IDs: io.quarkus:quarkus-oidc-common
+* Maven group:artifact IDs: io.quarkus:quarkus-opentelemetry
+* Maven group:artifact IDs: io.quarkus:quarkus-proxy-registry
+* Maven group:artifact IDs: io.quarkus:quarkus-reactive-routes
+* Maven group:artifact IDs: io.quarkus:quarkus-registry
+* Maven group:artifact IDs: io.quarkus:quarkus-rest
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-common
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-jackson
+* Maven group:artifact IDs: io.quarkus:quarkus-rest-jackson-common
+* Maven group:artifact IDs: io.quarkus:quarkus-security
+* Maven group:artifact IDs: io.quarkus:quarkus-security-runtime-spi
+* Maven group:artifact IDs: io.quarkus:quarkus-smallrye-context-propagation
+* Maven group:artifact IDs: io.quarkus:quarkus-smallrye-fault-tolerance
+* Maven group:artifact IDs: io.quarkus:quarkus-smallrye-health
+* Maven group:artifact IDs: io.quarkus:quarkus-smallrye-jwt-build
+* Maven group:artifact IDs: io.quarkus:quarkus-tls-registry
+* Maven group:artifact IDs: io.quarkus:quarkus-tls-registry-spi
+* Maven group:artifact IDs: io.quarkus:quarkus-transaction-annotations
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx-http
+* Maven group:artifact IDs: io.quarkus:quarkus-vertx-latebound-mdc-provider
+* Maven group:artifact IDs: io.quarkus:quarkus-virtual-threads
+* Maven group:artifact IDs: io.quarkus:quarkus-websockets-next-spi
+
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.common Name: smallrye-common-constraint Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-cpu Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-expression Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-function Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-io Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-net Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-os Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-ref Version: 2.14.0
-Group: io.smallrye.certs Name: smallrye-private-key-pem-parser Version: 0.9.2
-Group: io.smallrye.common Name: smallrye-common-annotation Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-classloader Version: 2.14.0
-Group: io.smallrye.common Name: smallrye-common-vertx-context Version: 2.14.0
-Group: io.smallrye.config Name: smallrye-config Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-validator Version: 3.14.1
-Group: io.smallrye.reactive Name: mutiny Version: 3.0.1
-Group: io.smallrye.reactive Name: mutiny-smallrye-context-propagation Version: 3.0.1
-Group: io.smallrye.reactive Name: mutiny-zero-flow-adapters Version: 1.1.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-auth-common Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-bridge-common Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-core Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-runtime Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-uri-template Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-web Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-web-client Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-mutiny-vertx-web-common Version: 3.20.1
-Group: io.smallrye.reactive Name: smallrye-reactive-converter-api Version: 3.0.3
-Group: io.smallrye.reactive Name: smallrye-reactive-converter-mutiny Version: 3.0.3
-Group: io.smallrye.reactive Name: vertx-mutiny-generator Version: 3.20.1
-Group: io.smallrye Name: smallrye-context-propagation Version: 2.2.1
-Group: io.smallrye Name: smallrye-context-propagation-api Version: 2.2.1
-Group: io.smallrye Name: smallrye-context-propagation-jta Version: 2.2.1
-Group: io.smallrye Name: smallrye-context-propagation-storage Version: 2.2.1
-Group: io.smallrye Name: smallrye-fault-tolerance Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-api Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-apiimpl Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-autoconfig-core Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-context-propagation Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-core Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-vertx Version: 6.9.3
-Group: io.smallrye Name: smallrye-fault-tolerance-mutiny Version: 6.9.3
-Group: io.smallrye Name: smallrye-health Version: 4.2.0
-Group: io.smallrye Name: smallrye-health-api Version: 4.2.0
-Group: io.smallrye Name: smallrye-health-provided-checks Version: 4.2.0
-Group: io.smallrye Name: smallrye-jwt Version: 4.6.2
-Group: io.smallrye Name: smallrye-jwt-build Version: 4.6.2
-Group: io.smallrye Name: smallrye-jwt-common Version: 4.6.2
+This product bundles several SmallRye project artifacts.
+
+* Maven group:artifact IDs: io.smallrye.certs:smallrye-private-key-pem-parser
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-annotation
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-classloader
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-constraint
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-cpu
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-expression
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-function
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-io
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-net
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-os
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-ref
+* Maven group:artifact IDs: io.smallrye.common:smallrye-common-vertx-context
+* Maven group:artifact IDs: io.smallrye.config:smallrye-config
+* Maven group:artifact IDs: io.smallrye.config:smallrye-config-common
+* Maven group:artifact IDs: io.smallrye.config:smallrye-config-core
+* Maven group:artifact IDs: io.smallrye.config:smallrye-config-validator
+* Maven group:artifact IDs: io.smallrye.reactive:mutiny
+* Maven group:artifact IDs: io.smallrye.reactive:mutiny-reactive-streams-operators
+* Maven group:artifact IDs: io.smallrye.reactive:mutiny-smallrye-context-propagation
+* Maven group:artifact IDs: io.smallrye.reactive:mutiny-zero-flow-adapters
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-auth-common
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-bridge-common
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-core
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-runtime
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-uri-template
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-client
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
+* Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
+* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
+* Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
+* Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
+* Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
+* Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-storage
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-api
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-apiimpl
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-autoconfig-core
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-context-propagation
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-core
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-mutiny
+* Maven group:artifact IDs: io.smallrye:smallrye-fault-tolerance-vertx
+* Maven group:artifact IDs: io.smallrye:smallrye-health
+* Maven group:artifact IDs: io.smallrye:smallrye-health-api
+* Maven group:artifact IDs: io.smallrye:smallrye-health-provided-checks
+* Maven group:artifact IDs: io.smallrye:smallrye-jwt
+* Maven group:artifact IDs: io.smallrye:smallrye-jwt-build
+* Maven group:artifact IDs: io.smallrye:smallrye-jwt-common
+
 Project URL: https://smallrye.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-apache-client-internal Version: 3.12.0
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-common Version: 3.12.0
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-common-spi Version: 3.12.0
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-netty-client-internal Version: 3.12.0
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-opentelemetry-internal Version: 3.12.0
-Group: io.quarkiverse.amazonservices Name: quarkus-amazon-rds Version: 3.12.0
+This product bundles Quarkus Amazon Services.
+
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-apache-client-internal
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-common-spi
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-netty-client-internal
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-opentelemetry-internal
+* Maven group:artifact IDs: io.quarkiverse.amazonservices:quarkus-amazon-rds
+
 Project URL: https://github.com/quarkiverse/quarkus-amazon-services
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.json Name: jakarta.json-api Version: 2.1.3
-Project URL: https://github.com/eclipse-ee4j/jsonp
-License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+This product bundles Parsson.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: org.eclipse.parsson:parsson
 
-Group: org.eclipse.parsson Name: parsson Version: 1.1.7
 Project URL: https://github.com/eclipse-ee4j/parsson
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: org.jboss.logging Name: jboss-logging Version: 3.6.1.Final
-Group: org.jboss.logmanager Name: jboss-logmanager Version: 3.1.2.Final
+This product bundles JBoss Logging.
+
+* Maven group:artifact IDs: org.jboss.logging:jboss-logging
+* Maven group:artifact IDs: org.jboss.logmanager:jboss-logmanager
+
 Project URL: http://www.jboss.org
 License: Apache License 2.0 - https://repository.jboss.org/licenses/apache-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.aayushatharva.brotli4j Name: brotli4j Version: 1.16.0
-Group: com.aayushatharva.brotli4j Name: service Version: 1.16.0
+This product bundles Brotli4j.
+
+* Maven group:artifact IDs: com.aayushatharva.brotli4j:brotli4j
+* Maven group:artifact IDs: com.aayushatharva.brotli4j:service
+
 Project URL: https://github.com/hyperxpro/Brotli4j
 License: Apache License 2.0 - https://github.com/hyperxpro/Brotli4j/blob/v1.16.0/LICENSE
 
 --------------------------------------------------------------------------------
 
-Group: com.auth0 Name: java-jwt Version: 4.5.0
+This product bundles Auth0 Java JWT.
+
+* Maven group:artifact IDs: com.auth0:java-jwt
+
 Project URL: https://github.com/auth0/java-jwt
 License: MIT License
 | The MIT License (MIT)
@@ -412,15 +479,18 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: com.azure Name: azure-core Version: 1.57.0
-Group: com.azure Name: azure-core-http-netty Version: 1.16.2
-Group: com.azure Name: azure-identity Version: 1.18.1
-Group: com.azure Name: azure-json Version: 1.5.0
-Group: com.azure Name: azure-storage-blob Version: 12.32.0
-Group: com.azure Name: azure-storage-common Version: 12.31.0
-Group: com.azure Name: azure-storage-file-datalake Version: 12.25.0
-Group: com.azure Name: azure-storage-internal-avro Version: 12.17.0
-Group: com.azure Name: azure-xml Version: 1.2.0
+This product bundles Azure SDK for Java.
+
+* Maven group:artifact IDs: com.azure:azure-core
+* Maven group:artifact IDs: com.azure:azure-core-http-netty
+* Maven group:artifact IDs: com.azure:azure-identity
+* Maven group:artifact IDs: com.azure:azure-json
+* Maven group:artifact IDs: com.azure:azure-storage-blob
+* Maven group:artifact IDs: com.azure:azure-storage-common
+* Maven group:artifact IDs: com.azure:azure-storage-file-datalake
+* Maven group:artifact IDs: com.azure:azure-storage-internal-avro
+* Maven group:artifact IDs: com.azure:azure-xml
+
 Project URL: https://github.com/Azure/azure-sdk-for-java
 License: MIT License
 | The MIT License (MIT)
@@ -447,52 +517,73 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml Name: classmate Version: 1.7.1
+This product bundles FasterXML Java Classmate.
+
+* Maven group:artifact IDs: com.fasterxml:classmate
+
 Project URL: https://github.com/FasterXML/java-classmate
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.20
-Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.20.1
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.20.1
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-smile Version: 2.20.1
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.20.1
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-xml Version: 2.20.1
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-guava Version: 2.20.1
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jdk8 Version: 2.20.1
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.20.1
-Group: com.fasterxml.jackson.module Name: jackson-module-parameter-names Version: 2.20.1
+This product bundles Jackson.
+
+* Maven group:artifact IDs: com.fasterxml.jackson.core:jackson-annotations
+* Maven group:artifact IDs: com.fasterxml.jackson.core:jackson-core
+* Maven group:artifact IDs: com.fasterxml.jackson.core:jackson-databind
+* Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-smile
+* Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml
+* Maven group:artifact IDs: com.fasterxml.jackson.dataformat:jackson-dataformat-xml
+* Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-guava
+* Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jdk8
+* Maven group:artifact IDs: com.fasterxml.jackson.datatype:jackson-datatype-jsr310
+* Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-parameter-names
+
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.woodstox Name: woodstox-core Version: 7.0.0
+This product bundles Woodstox.
+
+* Maven group:artifact IDs: com.fasterxml.woodstox:woodstox-core
+
 Project URL: https://github.com/FasterXML/woodstox
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.3
+This product bundles Caffeine.
+
+* Maven group:artifact IDs: com.github.ben-manes.caffeine:caffeine
+
 Project URL: https://github.com/ben-manes/caffeine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.android Name: annotations Version: 4.1.1.4
+This product bundles Android Annotations.
+
+* Maven group:artifact IDs: com.google.android:annotations
+
 Project URL: http://source.android.com/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api-client Name: google-api-client Version: 2.7.2
+This product bundles Google API Client.
+
+* Maven group:artifact IDs: com.google.api-client:google-api-client
+
 Project URL: https://github.com/googleapis/google-api-java-client
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: api-common Version: 2.55.1
+This product bundles Google API Common.
+
+* Maven group:artifact IDs: com.google.api:api-common
+
 Project URL: https://github.com/googleapis/api-common-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc.
@@ -524,9 +615,12 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: gax Version: 2.72.1
-Group: com.google.api Name: gax-grpc Version: 2.72.1
-Group: com.google.api Name: gax-httpjson Version: 2.72.1
+This product bundles Google GAX.
+
+* Maven group:artifact IDs: com.google.api:gax
+* Maven group:artifact IDs: com.google.api:gax-grpc
+* Maven group:artifact IDs: com.google.api:gax-httpjson
+
 Project URL: https://github.com/googleapis/gax-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc. All rights reserved.
@@ -559,30 +653,35 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.60.0
-Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.60.0
-Group: com.google.api.grpc Name: proto-google-cloud-monitoring-v3 Version: 3.52.0
-Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.60.0
+This product bundles Google Storage APIs.
+
+* Maven group:artifact IDs: com.google.api.grpc:gapic-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-iamcredentials-v1
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-monitoring-v3
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.apis:google-api-services-storage
+
 Project URL: https://github.com/googleapis/java-storage
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.61.2
-Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.58.1
+This product bundles Google SDK Platform for Java.
+
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-common-protos
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-iam-v1
+
 Project URL: https://github.com/googleapis/sdk-platform-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250925-2.0.0
-Project URL: http://www.google.com
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+This product bundles Google Auth Library.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: com.google.auth:google-auth-library-credentials
+* Maven group:artifact IDs: com.google.auth:google-auth-library-oauth2-http
 
-Group: com.google.auth Name: google-auth-library-credentials Version: 1.40.0
-Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.40.0
 Project URL: https://github.com/googleapis/google-auth-library-java
 License: BSD 3-Clause
 | Copyright 2014, Google Inc. All rights reserved.
@@ -616,74 +715,95 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.auto.value Name: auto-value-annotations Version: 1.11.0
+This product bundles Google Auto Value annotations.
+
+* Maven group:artifact IDs: com.google.auto.value:auto-value-annotations
+
 Project URL: https://github.com/google/auto
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.cloud Name: google-cloud-core Version: 2.62.1
-Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.62.1
-Group: com.google.cloud Name: google-cloud-core-http Version: 2.62.1
-Group: com.google.cloud Name: google-cloud-monitoring Version: 3.52.0
-Group: com.google.cloud Name: google-cloud-storage Version: 2.60.0
+This product bundles Google Cloud APIs for Java.
+
+* Maven group:artifact IDs: com.google.cloud:google-cloud-core
+* Maven group:artifact IDs: com.google.cloud:google-cloud-core-grpc
+* Maven group:artifact IDs: com.google.cloud:google-cloud-core-http
+* Maven group:artifact IDs: com.google.cloud:google-cloud-iamcredentials
+* Maven group:artifact IDs: com.google.cloud:google-cloud-monitoring
+* Maven group:artifact IDs: com.google.cloud:google-cloud-storage
+
 Project URL: https://github.com/googleapis/google-cloud-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.cloud.opentelemetry Name: detector-resources-support Version: 0.33.0
-Group: com.google.cloud.opentelemetry Name: exporter-metrics Version: 0.33.0
-Group: com.google.cloud.opentelemetry Name: shared-resourcemapping Version: 0.33.0
+This product bundles GCP OpenTelemetry.
+
+* Maven group:artifact IDs: com.google.cloud.opentelemetry:detector-resources-support
+* Maven group:artifact IDs: com.google.cloud.opentelemetry:exporter-metrics
+* Maven group:artifact IDs: com.google.cloud.opentelemetry:shared-resourcemapping
+
 Project URL: https://github.com/GoogleCloudPlatform/opentelemetry-operations-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.code.gson Name: gson Version: 2.13.2
+This product bundles GSon.
+
+* Maven group:artifact IDs: com.google.code.gson:gson
+
 Project URL: https://github.com/google/gson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.errorprone Name: error_prone_annotations Version: 2.42.0
-Project URL: https://errorprone.info
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+This product bundles Guava.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: com.google.guava:failureaccess
+* Maven group:artifact IDs: com.google.guava:guava
 
-Group: com.google.guava Name: failureaccess Version: 1.0.1
-Group: com.google.guava Name: guava Version: 33.5.0-jre
-Group: com.google.guava Name: listenablefuture Version: 9999.0-empty-to-avoid-conflict-with-guava
 Project URL: https://github.com/google/guava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client Version: 1.47.1
-Group: com.google.http-client Name: google-http-client-apache-v2 Version: 1.47.1
-Group: com.google.http-client Name: google-http-client-appengine Version: 1.47.1
-Group: com.google.http-client Name: google-http-client-gson Version: 1.47.1
-Group: com.google.http-client Name: google-http-client-jackson2 Version: 1.47.1
+This product bundles Google Http Client.
+
+* Maven group:artifact IDs: com.google.http-client:google-http-client
+* Maven group:artifact IDs: com.google.http-client:google-http-client-apache-v2
+* Maven group:artifact IDs: com.google.http-client:google-http-client-appengine
+* Maven group:artifact IDs: com.google.http-client:google-http-client-gson
+* Maven group:artifact IDs: com.google.http-client:google-http-client-jackson2
+
 Project URL: https://github.com/googleapis/google-http-java-client
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.j2objc Name: j2objc-annotations Version: 2.8
+This product bundles Google j2objc.
+
+* Maven group:artifact IDs: com.google.j2objc:j2objc-annotations
+
 Project URL: https://github.com/google/j2objc/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.oauth-client Name: google-oauth-client Version: 1.39.0
+This product bundles Google OAuth Client.
+
+* Maven group:artifact IDs: com.google.oauth-client:google-oauth-client
+
 Project URL: https://github.com/googleapis/google-oauth-java-client
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.protobuf Name: protobuf-java Version: 4.32.1
-Group: com.google.protobuf Name: protobuf-java-util Version: 4.32.1
+This product bundles Protobuf.
+
+* Maven group:artifact IDs: com.google.protobuf:protobuf-java
+* Maven group:artifact IDs: com.google.protobuf:protobuf-java-util
+
 Project URL: https://developers.google.com/protocol-buffers/
 License: BSD 3-Clause
 | Copyright 2008 Google Inc.  All rights reserved.
@@ -721,7 +841,10 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.re2j Name: re2j Version: 1.8
+This product bundles Google re2j.
+
+* Maven group:artifact IDs: com.google.re2j:re2j
+
 Project URL: http://github.com/google/re2j
 License: Go License
 | This is a work derived from Russ Cox's RE2 in Go, whose license
@@ -759,40 +882,11 @@ License: Go License
 
 --------------------------------------------------------------------------------
 
-Group: com.jcraft Name: jsch Version: 0.1.55
-Project URL: http://www.jcraft.com/jsch/
-License: BSD License
-| Copyright (c) 2002-2015 Atsuhiko Yamanaka, JCraft,Inc. 
-| All rights reserved.
-| 
-| Redistribution and use in source and binary forms, with or without
-| modification, are permitted provided that the following conditions are met:
-| 
-|   1. Redistributions of source code must retain the above copyright notice,
-|      this list of conditions and the following disclaimer.
-| 
-|   2. Redistributions in binary form must reproduce the above copyright 
-|      notice, this list of conditions and the following disclaimer in 
-|      the documentation and/or other materials provided with the distribution.
-| 
-|   3. The names of the authors may not be used to endorse or promote products
-|      derived from this software without specific prior written permission.
-| 
-| THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES,
-| INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-| FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JCRAFT,
-| INC. OR ANY CONTRIBUTORS TO THIS SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT,
-| INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-| LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-| OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-| LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-| NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-| EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+This product bundles Azure Microsoft Authentication Library for Java (msal4j).
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: com.microsoft.azure:msal4j
+* Maven group:artifact IDs: com.microsoft.azure:msal4j-persistence-extension
 
-Group: com.microsoft.azure Name: msal4j Version: 1.23.1
-Group: com.microsoft.azure Name: msal4j-persistence-extension Version: 1.3.0
 Project URL: https://github.com/AzureAD/microsoft-authentication-library-for-java
 License: MIT License
 |     MIT License
@@ -819,55 +913,82 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.5
+This product bundles Nimbu Jose JWT.
+
+* Maven group:artifact IDs: com.nimbusds:nimbus-jose-jwt
+
 Project URL: https://bitbucket.org/connect2id/nimbus-jose-jwt
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-cli Name: commons-cli Version: 1.9.0
+This product bundles Apache Commons CLI.
+
+* Maven group:artifact IDs: commons-cli:commons-cli
+
 Project URL: https://commons.apache.org/proper/commons-cli/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-codec Name: commons-codec Version: 1.19.0
+This product bundles Apache Commons Codec.
+
+* Maven group:artifact IDs: commons-codec:commons-codec
+
 Project URL: https://commons.apache.org/proper/commons-codec/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-collections4 Version: 4.4
+This product bundles Apache Commons Collections.
+
+* Maven group:artifact IDs: org.apache.commons:commons-collections4
+
 Project URL: http://commons.apache.org/collections/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-io Name: commons-io Version: 2.20.0
+This product bundles Apache Commons IO.
+
+* Maven group:artifact IDs: commons-io:commons-io
+
 Project URL: https://commons.apache.org/proper/commons-io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-logging Name: commons-logging Version: 1.3.0
+This product bundles Apache Commons Logging.
+
+* Maven group:artifact IDs: commons-logging:commons-logging
+
 Project URL: https://commons.apache.org/proper/commons-logging/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-net Name: commons-net Version: 3.9.0
+This product bundles Apache Commons Net.
+
+* Maven group:artifact IDs: commons-net:commons-net
+
 Project URL: https://commons.apache.org/proper/commons-net/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: dev.failsafe Name: failsafe Version: 3.3.2
+This product bundles Failsafe.
+
+* Maven group:artifact IDs: dev.failsafe:failsafe
+
 Project URL: https://failsafe.dev
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: dnsjava Name: dnsjava Version: 3.6.1
+This product bundles DNS Java.
+
+* Maven group:artifact IDs: dnsjava:dnsjava
+
 Project URL: https://github.com/dnsjava/dnsjava
 License: BSD 3-Clause
 | Copyright (c) 1998-2019, Brian Wellington
@@ -901,404 +1022,463 @@ License: BSD 3-Clause
 | OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 | OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
---------------------------------------------------------------------------------`
+--------------------------------------------------------------------------------
 
-Group: io.agroal Name: agroal-api Version: 2.8
-Group: io.agroal Name: agroal-narayana Version: 2.8
-Group: io.agroal Name: agroal-pool Version: 2.8
+This product bundles Agroal.
+
+* Maven group:artifact IDs: io.agroal:agroal-api
+* Maven group:artifact IDs: io.agroal:agroal-narayana
+* Maven group:artifact IDs: io.agroal:agroal-pool
+
 Project URL: https://agroal.github.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.airlift Name: aircompressor Version: 0.27
+This product bundles Airlift AirCompressor.
+
+* Maven group:artifact IDs: io.airlift:aircompressor
+
 Project URL: https://github.com/airlift/aircompressor
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.grpc Name: grpc-alts Version: 1.75.0
-Group: io.grpc Name: grpc-api Version: 1.75.0
-Group: io.grpc Name: grpc-auth Version: 1.75.0
-Group: io.grpc Name: grpc-context Version: 1.75.0
-Group: io.grpc Name: grpc-core Version: 1.75.0
-Group: io.grpc Name: grpc-googleapis Version: 1.75.0
-Group: io.grpc Name: grpc-grpclb Version: 1.75.0
-Group: io.grpc Name: grpc-inprocess Version: 1.75.0
-Group: io.grpc Name: grpc-netty Version: 1.75.0
-Group: io.grpc Name: grpc-netty-shaded Version: 1.75.0
-Group: io.grpc Name: grpc-opentelemetry Version: 1.75.0
-Group: io.grpc Name: grpc-protobuf Version: 1.75.0
-Group: io.grpc Name: grpc-protobuf-lite Version: 1.75.0
-Group: io.grpc Name: grpc-rls Version: 1.75.0
-Group: io.grpc Name: grpc-services Version: 1.75.0
-Group: io.grpc Name: grpc-stub Version: 1.75.0
-Group: io.grpc Name: grpc-util Version: 1.75.0
-Group: io.grpc Name: grpc-xds Version: 1.75.0
+This product bundles gRPC.
+
+* Maven group:artifact IDs: io.grpc:grpc-alts
+* Maven group:artifact IDs: io.grpc:grpc-api
+* Maven group:artifact IDs: io.grpc:grpc-auth
+* Maven group:artifact IDs: io.grpc:grpc-context
+* Maven group:artifact IDs: io.grpc:grpc-core
+* Maven group:artifact IDs: io.grpc:grpc-googleapis
+* Maven group:artifact IDs: io.grpc:grpc-grpclb
+* Maven group:artifact IDs: io.grpc:grpc-inprocess
+* Maven group:artifact IDs: io.grpc:grpc-netty
+* Maven group:artifact IDs: io.grpc:grpc-netty-shaded
+* Maven group:artifact IDs: io.grpc:grpc-opentelemetry
+* Maven group:artifact IDs: io.grpc:grpc-protobuf
+* Maven group:artifact IDs: io.grpc:grpc-protobuf-lite
+* Maven group:artifact IDs: io.grpc:grpc-rls
+* Maven group:artifact IDs: io.grpc:grpc-services
+* Maven group:artifact IDs: io.grpc:grpc-stub
+* Maven group:artifact IDs: io.grpc:grpc-util
+* Maven group:artifact IDs: io.grpc:grpc-xds
+
 Project URL: https://github.com/grpc/grpc-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.7
-Group: io.micrometer Name: micrometer-core Version: 1.14.7
-Group: io.micrometer Name: micrometer-observation Version: 1.14.7
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.7
+This product bundles Micrometer.
+
+* Maven group:artifact IDs: io.micrometer:micrometer-commons
+* Maven group:artifact IDs: io.micrometer:micrometer-core
+* Maven group:artifact IDs: io.micrometer:micrometer-observation
+* Maven group:artifact IDs: io.micrometer:micrometer-registry-prometheus-simpleclient
+
 Project URL: https://github.com/micrometer-metrics/micrometer
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.128.Final
-Group: io.netty Name: netty-codec Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-haproxy Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.128.Final
-Group: io.netty Name: netty-common Version: 4.1.128.Final
-Group: io.netty Name: netty-handler Version: 4.1.128.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.128.Final
-Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.74.Final
-Group: io.netty Name: netty-tcnative-classes Version: 2.0.74.Final
-Group: io.netty Name: netty-transport Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.128.Final
-Project URL: https://netty.io/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+This product bundles OpenCensus.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: io.opencensus:opencensus-api
+* Maven group:artifact IDs: io.opencensus:opencensus-contrib-http-util
 
-Group: io.opencensus Name: opencensus-api Version: 0.31.1
-Group: io.opencensus Name: opencensus-contrib-http-util Version: 0.31.1
 Project URL: https://github.com/census-instrumentation/opencensus-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.opentelemetry.contrib Name: opentelemetry-gcp-resources Version: 1.37.0-alpha
-Group: io.opentelemetry.contrib Name: opentelemetry-aws-xray-propagator Version: 1.42.0-alpha
+This product bundles OpenTelemetry Java Contrib.
+
+* Maven group:artifact IDs: io.opentelemetry.contrib:opentelemetry-gcp-resources
+* Maven group:artifact IDs: io.opentelemetry.contrib:opentelemetry-aws-xray-propagator
+
 Project URL: https://github.com/open-telemetry/opentelemetry-java-contrib
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.opentelemetry.instrumentation Name: opentelemetry-aws-sdk-2.2 Version: 2.12.0-alpha
-Group: io.opentelemetry.instrumentation Name: opentelemetry-instrumentation-annotations Version: 2.12.0
-Group: io.opentelemetry.instrumentation Name: opentelemetry-instrumentation-annotations-support Version: 2.12.0-alpha
-Group: io.opentelemetry.instrumentation Name: opentelemetry-instrumentation-api Version: 2.12.0
-Group: io.opentelemetry.instrumentation Name: opentelemetry-instrumentation-api-incubator Version: 2.12.0-alpha
-Group: io.opentelemetry.instrumentation Name: opentelemetry-jdbc Version: 2.12.0-alpha
-Group: io.opentelemetry.instrumentation Name: opentelemetry-runtime-telemetry-java17 Version: 2.12.0-alpha
-Group: io.opentelemetry.instrumentation Name: opentelemetry-runtime-telemetry-java8 Version: 2.12.0-alpha
+This product bundles OpenTelemetry Java Instrumentation.
+
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-aws-sdk-2.2
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations-support
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-incubator
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-jdbc
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java17
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java8
+
 Project URL: https://github.com/open-telemetry/opentelemetry-java-instrumentation
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.opentelemetry Name: opentelemetry-api Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-api-incubator Version: 1.46.0-alpha
-Group: io.opentelemetry Name: opentelemetry-common Version: 1.56.0
-Group: io.opentelemetry Name: opentelemetry-context Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-exporter-common Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-exporter-otlp Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-exporter-otlp-common Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-common Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-extension-autoconfigure Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-extension-autoconfigure-spi Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-logs Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-metrics Version: 1.46.0
-Group: io.opentelemetry Name: opentelemetry-sdk-trace Version: 1.46.0
+This product bundles OpenTelemetry.
+
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-api
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-api-incubator
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-common
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-context
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-exporter-common
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-exporter-otlp
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-exporter-otlp-common
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-common
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-extension-autoconfigure
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-logs
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-metrics
+* Maven group:artifact IDs: io.opentelemetry:opentelemetry-sdk-trace
+
 Project URL: https://github.com/open-telemetry/opentelemetry-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.opentelemetry.semconv Name: opentelemetry-semconv Version: 1.29.0-alpha
-Group: io.opentelemetry.semconv Name: opentelemetry-semconv-incubating Version: 1.29.0-alpha
+This product bundles OpenTelemetry Semconv.
+
+* Maven group:artifact IDs: io.opentelemetry.semconv:opentelemetry-semconv
+* Maven group:artifact IDs: io.opentelemetry.semconv:opentelemetry-semconv-incubating
+
 Project URL: https://github.com/open-telemetry/semantic-conventions-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.perfmark Name: perfmark-api Version: 0.27.0
+This product bundles Perfmark.
+
+* Maven group:artifact IDs: io.perfmark:perfmark-api
+
 Project URL: https://github.com/perfmark/perfmark
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.10
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.10
+This product bundles Reactor Netty.
+
+* Maven group:artifact IDs: io.projectreactor.netty:reactor-netty-core
+* Maven group:artifact IDs: io.projectreactor.netty:reactor-netty-http
+
 Project URL: https://github.com/reactor/reactor-netty
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.11
+This product bundles Reactor Core.
+
+* Maven group:artifact IDs: io.projectreactor:reactor-core
+
 Project URL: https://github.com/reactor/reactor-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.prometheus Name: simpleclient Version: 0.16.0
+This product bundles Prometheus SimpleClient.
+
+* Maven group:artifact IDs: io.prometheus:simpleclient
 Group: io.prometheus Name: simpleclient_common Version: 0.16.0
 Group: io.prometheus Name: simpleclient_tracer_common Version: 0.16.0
 Group: io.prometheus Name: simpleclient_tracer_otel Version: 0.16.0
 Group: io.prometheus Name: simpleclient_tracer_otel_agent Version: 0.16.0
+
 Project URL: http://github.com/prometheus/client_java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.swagger Name: swagger-annotations Version: 1.6.16
-Group: io.swagger Name: swagger-core Version: 1.6.16
-Group: io.swagger Name: swagger-jaxrs Version: 1.6.16
-Group: io.swagger Name: swagger-models Version: 1.6.16
+This product bundles Swagger.
+
+* Maven group:artifact IDs: io.swagger:swagger-annotations
+* Maven group:artifact IDs: io.swagger:swagger-core
+* Maven group:artifact IDs: io.swagger:swagger-jaxrs
+* Maven group:artifact IDs: io.swagger:swagger-models
+
 Project URL: https://github.com/swagger-api/swagger-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.vertx Name: vertx-auth-common Version: 4.5.22
-Group: io.vertx Name: vertx-bridge-common Version: 4.5.22
-Group: io.vertx Name: vertx-codegen Version: 4.5.22
-Group: io.vertx Name: vertx-core Version: 4.5.22
-Group: io.vertx Name: vertx-grpc Version: 4.5.22
-Group: io.vertx Name: vertx-grpc-client Version: 4.5.22
-Group: io.vertx Name: vertx-grpc-common Version: 4.5.22
-Group: io.vertx Name: vertx-grpc-server Version: 4.5.22
-Group: io.vertx Name: vertx-uri-template Version: 4.5.22
-Group: io.vertx Name: vertx-web Version: 4.5.22
-Group: io.vertx Name: vertx-web-client Version: 4.5.22
-Group: io.vertx Name: vertx-web-common Version: 4.5.22
+This product bundles VertX.
+
+* Maven group:artifact IDs: io.vertx:vertx-auth-common
+* Maven group:artifact IDs: io.vertx:vertx-bridge-common
+* Maven group:artifact IDs: io.vertx:vertx-codegen
+* Maven group:artifact IDs: io.vertx:vertx-core
+* Maven group:artifact IDs: io.vertx:vertx-grpc
+* Maven group:artifact IDs: io.vertx:vertx-grpc-client
+* Maven group:artifact IDs: io.vertx:vertx-grpc-common
+* Maven group:artifact IDs: io.vertx:vertx-grpc-server
+* Maven group:artifact IDs: io.vertx:vertx-uri-template
+* Maven group:artifact IDs: io.vertx:vertx-web
+* Maven group:artifact IDs: io.vertx:vertx-web-client
+* Maven group:artifact IDs: io.vertx:vertx-web-common
+
 Project URL: https://vertx.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.activation Name: jakarta.activation-api Version: 2.1.4
+This product bundles Jakarta Activation APi.
+
+* Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
+
 Project URL: https://github.com/jakartaee/jaf-api
 License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.annotation Name: jakarta.annotation-api Version: 3.0.0
+This product bundles Jakarta Annotation API.
+
+* Maven group:artifact IDs: jakarta.annotation:jakarta.annotation-api
+
 Project URL: https://projects.eclipse.org/projects/ee4j.ca
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.el Name: jakarta.el-api Version: 6.0.1
+This product bundles Jakarta EL API.
+
+* Maven group:artifact IDs: jakarta.el:jakarta.el-api
+
 Project URL: https://projects.eclipse.org/projects/ee4j.el
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.enterprise Name: jakarta.enterprise.cdi-api Version: 4.1.0
+This product bundles Jakarta CDI API.
+
+* Maven group:artifact IDs: jakarta.enterprise:jakarta.enterprise.cdi-api
+
 Project URL: http://cdi-spec.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.enterprise Name: jakarta.enterprise.lang-model Version: 4.1.0
+This product bundles Jakarta Enterprise lang-model.
+
+* Maven group:artifact IDs: jakarta.enterprise:jakarta.enterprise.lang-model
+
 Project URL: https://projects.eclipse.org/projects/ee4j
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.inject Name: jakarta.inject-api Version: 2.0.1
+This product bundles Jakarta Inject API.
+
+* Maven group:artifact IDs: jakarta.inject:jakarta.inject-api
+
 Project URL: https://github.com/eclipse-ee4j/injection-api
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.interceptor Name: jakarta.interceptor-api Version: 2.2.0
+This product bundles Jakarta Interceptor API.
+
+* Maven group:artifact IDs: jakarta.interceptor:jakarta.interceptor-api
+
 Project URL: https://github.com/jakartaee/interceptors
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.resource Name: jakarta.resource-api Version: 2.1.0
+This product bundles Jakarta JSON API.
+
+* Maven group:artifact IDs: jakarta.json:jakarta.json-api
+
+Project URL: https://github.com/eclipse-ee4j/jsonp
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles Jakarta Resource API.
+
+* Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
+
 Project URL: https://jakarta.ee/specifications/connectors/
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.servlet Name: jakarta.servlet-api Version: 6.0.0
+This product bundles Jakarta Servlet API.
+
+* Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
+
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.transaction Name: jakarta.transaction-api Version: 2.0.1
+This product bundles Jakarta Transaction API.
+
+* Maven group:artifact IDs: jakarta.transaction:jakarta.transaction-api
+
 Project URL: https://projects.eclipse.org/projects/ee4j.jta
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.validation Name: jakarta.validation-api Version: 3.1.1
+This product bundles Jakarta Validation API.
+
+* Maven group:artifact IDs: jakarta.validation:jakarta.validation-api
+
 Project URL: https://beanvalidation.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.ws.rs Name: jakarta.ws.rs-api Version: 3.1.0
+This product bundles Jakarta RESTful Web Services.
+
+* Maven group:artifact IDs: jakarta.ws.rs:jakarta.ws.rs-api
+
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.xml.bind Name: jakarta.xml.bind-api Version: 4.0.4
+This product bundles Jakarta JAXB API.
+
+* Maven group:artifact IDs: jakarta.xml.bind:jakarta.xml.bind-api
+
 Project URL: https://github.com/jakartaee/jaxb-api
 License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
-Group: javax.servlet Name: javax.servlet-api Version: 3.1.0
-Group: javax.servlet.jsp Name: jsp-api Version: 2.1
-Project URL: http://servlet-spec.java.net
-License: CDDL License - http://www.opensource.org/licenses/cddl1.php
+This product bundles JNA.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: net.java.dev.jna:jna
+* Maven group:artifact IDs: net.java.dev.jna:jna-platform
 
-Group: javax.validation Name: validation-api Version: 1.1.0.Final
-Project URL: https://beanvalidation.org
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: javax.ws.rs Name: jsr311-api Version: 1.1.1
-Project URL: https://jsr311.dev.java.net
-License: CDDL License - http://www.opensource.org/licenses/cddl1.php
-
---------------------------------------------------------------------------------
-
-Group: net.java.dev.jna Name: jna Version: 5.8.0
-Group: net.java.dev.jna Name: jna-platform Version: 5.8.0
 Project URL: https://github.com/java-native-access/jna
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.avro Name: avro Version: 1.12.0
+This product bundles Apache Avro.
+
+* Maven group:artifact IDs: org.apache.avro:avro
+
 Project URL: https://avro.apache.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-compress Version: 1.28.0
+This product bundles Apache Commons Compress.
+
+* Maven group:artifact IDs: org.apache.commons:commons-compress
+
 Project URL: https://commons.apache.org/proper/commons-compress/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-configuration2 Version: 2.10.1
+This product bundles Apache Commons Configuration.
+
+* Maven group:artifact IDs: org.apache.commons:commons-configuration2
+
 Project URL: https://commons.apache.org/proper/commons-configuration/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-lang3 Version: 3.19.0
+This product bundles Apache Commons Lang.
+
+* Maven group:artifact IDs: org.apache.commons:commons-lang3
+
 Project URL: https://commons.apache.org/proper/commons-lang/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-math3 Version: 3.6.1
+This product bundles Apache Commons Math.
+
+* Maven group:artifact IDs: org.apache.commons:commons-math3
+
 Project URL: http://commons.apache.org/proper/commons-math/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-text Version: 1.14.0
+This product bundles Apache Commons Text.
+
+* Maven group:artifact IDs: org.apache.commons:commons-text
+
 Project URL: https://commons.apache.org/proper/commons-text
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.curator Name: curator-client Version: 5.2.0
-Group: org.apache.curator Name: curator-framework Version: 5.2.0
-Group: org.apache.curator Name: curator-recipes Version: 5.2.0
+This product bundles Apache Curator.
+
+* Maven group:artifact IDs: org.apache.curator:curator-client
+* Maven group:artifact IDs: org.apache.curator:curator-framework
+* Maven group:artifact IDs: org.apache.curator:curator-recipes
+
 Project URL: http://curator.apache.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.hadoop Name: hadoop-annotations Version: 3.4.2
-Group: org.apache.hadoop Name: hadoop-auth Version: 3.4.2
-Group: org.apache.hadoop Name: hadoop-client-api Version: 3.4.2
-Group: org.apache.hadoop Name: hadoop-client-runtime Version: 3.4.2
-Group: org.apache.hadoop Name: hadoop-common Version: 3.4.2
-Group: org.apache.hadoop.thirdparty Name: hadoop-shaded-guava Version: 1.4.0
+This product bundles Apache Hadoop.
+
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-annotations
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-auth
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-client-api
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-client-runtime
+* Maven group:artifact IDs: org.apache.hadoop:hadoop-common
+* Maven group:artifact IDs: org.apache.hadoop.thirdparty:hadoop-shaded-guava
+
 Project URL: https://hadoop.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.client5 Name: httpclient5 Version: 5.5.1
-Project URL: https://hc.apache.org/httpcomponents-client-5.4.x/
+This product bundles Apache HttpComponents (core and client).
+
+* Maven group:artifact IDs: org.apache.httpcomponents.client5:httpclient5
+* Maven group:artifact IDs: org.apache.httpcomponents.core5:httpcore5
+* Maven group:artifact IDs: org.apache.httpcomponents.core5:httpcore5-h2
+* Maven group:artifact IDs: org.apache.httpcomponents:httpclient
+* Maven group:artifact IDs: org.apache.httpcomponents:httpcore
+
+Project URL: https://hc.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.core5 Name: httpcore5 Version: 5.3.6
-Group: org.apache.httpcomponents.core5 Name: httpcore5-h2 Version: 5.3.6
-Project URL: https://hc.apache.org/httpcomponents-core-5.3.x/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+This product bundles Apache Kerby.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: org.apache.kerby:kerb-core
+* Maven group:artifact IDs: org.apache.kerby:kerb-crypto
+* Maven group:artifact IDs: org.apache.kerby:kerb-util
+* Maven group:artifact IDs: org.apache.kerby:kerby-asn1
+* Maven group:artifact IDs: org.apache.kerby:kerby-config
+* Maven group:artifact IDs: org.apache.kerby:kerby-pkix
+* Maven group:artifact IDs: org.apache.kerby:kerby-util
 
-Group: org.apache.httpcomponents Name: httpclient Version: 4.5.14
-Project URL: https://hc.apache.org/httpcomponents-client-4.5.x/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: org.apache.httpcomponents Name: httpcore Version: 4.4.16
-Project URL: https://hc.apache.org/httpcomponents-core-4.4.x/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: org.apache.iceberg Name: iceberg-api Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-aws Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-azure Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-common Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-core Version: 1.10.0
-Group: org.apache.iceberg Name: iceberg-gcp Version: 1.10.0
-Project URL: https://iceberg.apache.org/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-Group: org.apache.kerby Name: kerb-core Version: 2.0.3
-Group: org.apache.kerby Name: kerb-crypto Version: 2.0.3
-Group: org.apache.kerby Name: kerb-util Version: 2.0.3
-Group: org.apache.kerby Name: kerby-asn1 Version: 2.0.3
-Group: org.apache.kerby Name: kerby-config Version: 2.0.3
-Group: org.apache.kerby Name: kerby-pkix Version: 2.0.3
-Group: org.apache.kerby Name: kerby-util Version: 2.0.3
 Project URL: https://directory.apache.org/kerby/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.bitbucket.b_c Name: jose4j Version: 0.9.6
+This product bundles jose4j.
+
+* Maven group:artifact IDs: org.bitbucket.b_c:jose4j
+
 Project URL: https://bitbucket.org/b_c/jose4j/src/master/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.bouncycastle Name: bcprov-jdk18on Version: 1.82
+This product bundles bouncycastle.
+
+* Maven group:artifact IDs: org.bouncycastle:bcprov-jdk18on
+
 Project URL: https://www.bouncycastle.org/download/bouncy-castle-java/
 License: MIT License
 | Copyright (c) 2000 - 2024 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org)
@@ -1311,7 +1491,10 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: org.checkerframework Name: checker-qual Version: 3.51.1
+This product bundles checker-qual.
+
+* Maven group:artifact IDs: org.checkerframework:checker-qual
+
 Project URL: https://checkerframework.org/
 License: MIT License
 | The annotations are licensed under the MIT License.  (The text of this
@@ -1344,13 +1527,19 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: org.codehaus.jettison Name: jettison Version: 1.5.4
+This product bundles jettison.
+
+* Maven group:artifact IDs: org.codehaus.jettison:jettison
+
 Project URL: https://github.com/jettison-json/jettison
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.codehaus.mojo Name: animal-sniffer-annotations Version: 1.24
+This product bundles animal-sniffer-annotations.
+
+* Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
+
 Project URL: https://www.mojohaus.org/animal-sniffer
 License: MIT license
 | The MIT License
@@ -1378,7 +1567,10 @@ License: MIT license
 
 --------------------------------------------------------------------------------
 
-Group: org.codehaus.woodstox Name: stax2-api Version: 4.2.2
+This product bundles stax2-api.
+
+* Maven group:artifact IDs: org.codehaus.woodstox:stax2-api
+
 Project URL: http://github.com/FasterXML/stax2-api
 License: BSD 2-Clause
 | BSD 2-Clause License
@@ -1409,44 +1601,53 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.conscrypt Name: conscrypt-openjdk-uber Version: 2.5.2
+This product bundles Conscrypt (openjdk-uber).
+
+* Maven group:artifact IDs: org.conscrypt:conscrypt-openjdk-uber
+
 Project URL: https://conscrypt.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.jetty Name: jetty-http Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-io Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-security Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-server Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-servlet Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-util Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-util-ajax Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-webapp Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-xml Version: 9.4.57.v20241219
-Project URL: https://eclipse.org/jetty
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+This product bundles Microprofile.
 
---------------------------------------------------------------------------------
+* Maven group:artifact IDs: org.eclipse.microprofile.config:microprofile-config-api
+* Maven group:artifact IDs: org.eclipse.microprofile.context-propagation:microprofile-context-propagation-api
+* Maven group:artifact IDs: org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api
+* Maven group:artifact IDs: org.eclipse.microprofile.health:microprofile-health-api
+* Maven group:artifact IDs: org.eclipse.microprofile.jwt:microprofile-jwt-auth-api
+* Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-api
+* Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-core
 
-Group: org.eclipse.microprofile.config Name: microprofile-config-api Version: 3.1
-Group: org.eclipse.microprofile.context-propagation Name: microprofile-context-propagation-api Version: 1.3
-Group: org.eclipse.microprofile.fault-tolerance Name: microprofile-fault-tolerance-api Version: 4.1.2
-Group: org.eclipse.microprofile.health Name: microprofile-health-api Version: 4.0.1
-Group: org.eclipse.microprofile.jwt Name: microprofile-jwt-auth-api Version: 2.1
-Group: org.eclipse.microprofile.reactive-streams-operators Name: microprofile-reactive-streams-operators-api Version: 3.0.1
 Project URL: http://microprofile.io
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.glassfish.expressly Name: expressly Version: 6.0.0
+This product bundles Parsson.
+
+* Maven group:artifact IDs: org.eclipse.parsson:parsson
+* Maven group:artifact IDs: org.eclipse.parsson:jakarta.json
+
+Project URL: https://github.com/eclipse-ee4j/parsson
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles expressly.
+
+* Maven group:artifact IDs: org.glassfish.expressly:expressly
+
 Project URL: https://projects.eclipse.org/projects/ee4j
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: org.hdrhistogram Name: HdrHistogram Version: 2.2.2
+This product bundles HdrHistogram.
+
+* Maven group:artifact IDs: org.hdrhistogram:HdrHistogram
+
 Project URL: http://hdrhistogram.github.io/HdrHistogram/
 License: BSD 2-Clause
 | The code in this repository code was Written by Gil Tene, Michael Barker,
@@ -1493,44 +1694,62 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.hibernate.validator Name: hibernate-validator Version: 9.0.1.Final
+This product bundles Hibernate Validator.
+
+* Maven group:artifact IDs: org.hibernate.validator:hibernate-validator
+
 Project URL: http://hibernate.org/validator
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.javassist Name: javassist Version: 3.28.0-GA
+This product bundles Javassist.
+
+* Maven group:artifact IDs: org.javassist:javassist
+
 Project URL: http://www.javassist.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.jboss.invocation Name: jboss-invocation Version: 2.0.0.Final
-Group: org.jboss Name: jboss-transaction-spi Version: 8.0.0.Final
-Group: org.jboss.logging Name: commons-logging-jboss-logging Version: 1.0.0.Final
-Group: org.jboss.narayana.jta Name: narayana-jta Version: 7.3.3.Final
-Group: org.jboss.narayana.jts Name: narayana-jts-integration Version: 7.3.3.Final
-Group: org.jboss.slf4j Name: slf4j-jboss-logmanager Version: 2.0.2.Final
-Group: org.jboss.threads Name: jboss-threads Version: 3.9.1
-Group: org.wildfly.common Name: wildfly-common Version: 2.0.1
+This product bundles JBoss (logmanager, transaction, narayana).
+
+* Maven group:artifact IDs: org.jboss.invocation:jboss-invocation
+* Maven group:artifact IDs: org.jboss:jboss-transaction-spi
+* Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
+* Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
+* Maven group:artifact IDs: org.jboss.narayana.jts:narayana-jts-integration
+* Maven group:artifact IDs: org.jboss.slf4j:slf4j-jboss-logmanager
+* Maven group:artifact IDs: org.jboss.threads:jboss-threads
+* Maven group:artifact IDs: org.wildfly.common:wildfly-common
+
 Project URL: http://www.jboss.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.jctools Name: jctools-core Version: 4.0.5
+This product bundles JCTools Core.
+
+* Maven group:artifact IDs: org.jctools:jctools-core
+
 Project URL: https://github.com/JCTools/JCTools
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.jspecify Name: jspecify Version: 1.0.0
+This product bundles JSpecify.
+
+* Maven group:artifact IDs: org.jspecify:jspecify
+
 Project URL: http://jspecify.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.latencyutils Name: LatencyUtils Version: 2.0.3
+This product bundles LatencyUtils.
+
+* Maven group:artifact IDs: org.latencyutils:LatencyUtils
+
 Project URL: http://latencyutils.github.io/LatencyUtils/
 License: BSD 2-Clause
 |   * This code was Written by Gil Tene of Azul Systems, and released to the
@@ -1574,7 +1793,10 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.postgresql Name: postgresql Version: 42.7.8
+This product bundles PostgreSQL JDBC Driver.
+
+* Maven group:artifact IDs: org.postgresql:postgresql
+
 Project URL: https://jdbc.postgresql.org/
 License: BSD 2-Clause
 | Copyright (c) 1997, PostgreSQL Global Development Group All rights reserved.
@@ -1594,7 +1816,10 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.reactivestreams Name: reactive-streams Version: 1.0.4
+This product bundles Reactive Streams.
+
+* Maven group:artifact IDs: org.reactivestreams:reactive-streams
+
 Project URL: http://www.reactive-streams.org/
 License: MIT License
 | MIT No Attribution
@@ -1607,19 +1832,28 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: org.reflections Name: reflections Version: 0.10.2
+This product bundles Reflections.
+
+* Maven group:artifact IDs: org.reflections:reflections
+
 Project URL: http://github.com/ronmamo/reflections
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.roaringbitmap Name: RoaringBitmap Version: 1.3.0
+This product bundles RoaringBitmap.
+
+* Maven group:artifact IDs: org.roaringbitmap:RoaringBitmap
+
 Project URL: https://github.com/RoaringBitmap/RoaringBitmap
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.slf4j Name: slf4j-api Version: 2.0.17
+This product bundles SLF4J.
+
+* Maven group:artifact IDs: org.slf4j:slf4j-api
+
 Project URL: http://www.slf4j.org
 License: MIT License
 | Copyright (c) 2004-2022 QOS.ch Sarl (Switzerland)
@@ -1646,7 +1880,10 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: org.threeten Name: threetenbp Version: 1.7.0
+This product bundles ThreetenBP.
+
+* Maven group:artifact IDs: org.threeten:threetenbp
+
 Project URL: https://www.threeten.org/threetenbp
 License: BSD 3-Clause
 | Copyright (c) 2007-present, Stephen Colebourne & Michael Nascimento Santos.
@@ -1681,61 +1918,117 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.xerial.snappy Name: snappy-java Version: 1.1.10.5
+This product bundles Snappy Java.
+
+* Maven group:artifact IDs: org.xerial.snappy:snappy-java
+
 Project URL: https://github.com/xerial/snappy-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.yaml Name: snakeyaml Version: 2.5
+This product bundles SnakeYAML.
+
+* Maven group:artifact IDs: org.yaml:snakeyaml
+
 Project URL: https://bitbucket.org/snakeyaml/snakeyaml
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.39.2
-Group: software.amazon.awssdk Name: apache-client Version: 2.39.2
-Group: software.amazon.awssdk Name: arns Version: 2.39.2
-Group: software.amazon.awssdk Name: auth Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-core Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-json-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: checksums Version: 2.39.2
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: cloudwatchlogs Version: 2.39.2
-Group: software.amazon.awssdk Name: crt-core Version: 2.39.2
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.39.2
-Group: software.amazon.awssdk Name: identity-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: json-utils Version: 2.39.2
-Group: software.amazon.awssdk Name: kms Version: 2.39.2
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.39.2
-Group: software.amazon.awssdk Name: profiles Version: 2.39.2
-Group: software.amazon.awssdk Name: protocol-core Version: 2.39.2
-Group: software.amazon.awssdk Name: rds Version: 2.39.2
-Group: software.amazon.awssdk Name: regions Version: 2.39.2
-Group: software.amazon.awssdk Name: retries Version: 2.39.2
-Group: software.amazon.awssdk Name: retries-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: s3 Version: 2.39.2
-Group: software.amazon.awssdk Name: sdk-core Version: 2.39.2
-Group: software.amazon.awssdk Name: sts Version: 2.39.2
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.39.2
-Group: software.amazon.awssdk Name: utils Version: 2.39.2
-Group: software.amazon.awssdk Name: utils-lite Version: 2.39.2
+This product bundles AWS SDK for Java.
+
+* Maven group:artifact IDs: software.amazon.awssdk:annotations
+* Maven group:artifact IDs: software.amazon.awssdk:apache-client
+* Maven group:artifact IDs: software.amazon.awssdk:arns
+* Maven group:artifact IDs: software.amazon.awssdk:auth
+* Maven group:artifact IDs: software.amazon.awssdk:aws-core
+* Maven group:artifact IDs: software.amazon.awssdk:aws-json-protocol
+* Maven group:artifact IDs: software.amazon.awssdk:aws-query-protocol
+* Maven group:artifact IDs: software.amazon.awssdk:aws-xml-protocol
+* Maven group:artifact IDs: software.amazon.awssdk:checksums
+* Maven group:artifact IDs: software.amazon.awssdk:checksums-spi
+* Maven group:artifact IDs: software.amazon.awssdk:cloudwatchlogs
+* Maven group:artifact IDs: software.amazon.awssdk:crt-core
+* Maven group:artifact IDs: software.amazon.awssdk:endpoints-spi
+* Maven group:artifact IDs: software.amazon.awssdk:http-auth
+* Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws
+* Maven group:artifact IDs: software.amazon.awssdk:http-auth-aws-eventstream
+* Maven group:artifact IDs: software.amazon.awssdk:http-auth-spi
+* Maven group:artifact IDs: software.amazon.awssdk:http-client-spi
+* Maven group:artifact IDs: software.amazon.awssdk:iam-policy-builder
+* Maven group:artifact IDs: software.amazon.awssdk:identity-spi
+* Maven group:artifact IDs: software.amazon.awssdk:json-utils
+* Maven group:artifact IDs: software.amazon.awssdk:kms
+* Maven group:artifact IDs: software.amazon.awssdk:metrics-spi
+* Maven group:artifact IDs: software.amazon.awssdk:netty-nio-client
+* Maven group:artifact IDs: software.amazon.awssdk:profiles
+* Maven group:artifact IDs: software.amazon.awssdk:protocol-core
+* Maven group:artifact IDs: software.amazon.awssdk:rds
+* Maven group:artifact IDs: software.amazon.awssdk:regions
+* Maven group:artifact IDs: software.amazon.awssdk:retries
+* Maven group:artifact IDs: software.amazon.awssdk:retries-spi
+* Maven group:artifact IDs: software.amazon.awssdk:s3
+* Maven group:artifact IDs: software.amazon.awssdk:sdk-core
+* Maven group:artifact IDs: software.amazon.awssdk:sts
+* Maven group:artifact IDs: software.amazon.awssdk:third-party-jackson-core
+* Maven group:artifact IDs: software.amazon.awssdk:utils
+* Maven group:artifact IDs: software.amazon.awssdk:utils-lite
+
 Project URL: https://aws.amazon.com/sdkforjava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
+This product bundles AWS EventStream Java.
+
+* Maven group:artifact IDs: software.amazon.eventstream:eventstream
+
 Project URL: https://github.com/awslabs/aws-eventstream-java
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles MongoDB Java Driver.
+
+* Maven group:artifact IDs: org.mongodb:bson
+* Maven group:artifact IDs: org.mongodb:bson-record-codec
+* Maven group:artifact IDs: org.mongodb:mongodb-crypt
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-core
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-reactivestreams
+* Maven group:artifact IDs: org.mongodb:mongodb-driver-sync
+
+Project URL: https://github.com/mongodb/mongo-java-driver
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Projectnessie CEL.
+
+* Maven group:artifact IDs: org.projectnessie.cel:cel-standalone
+
+Project URL: https://github.com/projectnessie/cel-java
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Agrona.
+
+* Maven group:artifact IDs: org.agrona:agrona
+
+Project URL: https://github.com/aeron-io/agrona
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Prometheus Java Metrics Library.
+
+* Maven group:artifact IDs: io.prometheus:simpleclient_common
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_common
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel
+* Maven group:artifact IDs: io.prometheus:simpleclient_tracer_otel_agent
+
+Project URL: https://github.com/prometheus/client_java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
