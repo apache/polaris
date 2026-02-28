@@ -25,7 +25,7 @@ cascade:
 menus:
   main:
     parent: downloads
-    weight: 1
+    weight: -999999 # 1st item in the menu
     identifier: downloads-overview
     name: Overview
 ---
