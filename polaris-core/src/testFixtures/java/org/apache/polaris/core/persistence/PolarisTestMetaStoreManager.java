@@ -2801,6 +2801,66 @@ public class PolarisTestMetaStoreManager {
         .containsExactly(getEntityCore(N1_N2));
   }
 
+  /**
+   * Verify that loadResolvedEntities returns distinct grantee and securable grant records for
+   * entities that are both grantees and securables (e.g. catalog roles).
+   */
+  public void testLoadResolvedEntitiesGranteeVsSecurableRecords() {
+    // create a catalog
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "grantee_test");
+    CreateCatalogResult catalogCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
+    Assertions.assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    // create a namespace (securable target for the grant TO the role)
+    PolarisBaseEntity N1 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+
+    // create a catalog role — both a grantee and a securable
+    PolarisBaseEntity R1 =
+        this.createEntity(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
+
+    // grant a privilege TO R1 on N1 (R1 is the grantee)
+    grantPrivilege(R1, List.of(catalog, N1), N1, PolarisPrivilege.TABLE_READ_DATA);
+
+    // create a principal role and grant R1 usage to it (R1 is the securable)
+    PolarisBaseEntity PR1 = this.createEntity(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    grantToGrantee(catalog, R1, PR1, PolarisPrivilege.CATALOG_ROLE_USAGE);
+
+    // load R1 via loadResolvedEntities
+    ResolvedEntitiesResult result =
+        polarisMetaStoreManager.loadResolvedEntities(
+            polarisCallContext,
+            PolarisEntityType.CATALOG_ROLE,
+            List.of(new PolarisEntityId(R1.getCatalogId(), R1.getId())));
+    Assertions.assertThat(result)
+        .isNotNull()
+        .returns(BaseResult.ReturnStatus.SUCCESS, ResolvedEntitiesResult::getReturnStatus);
+
+    ResolvedPolarisEntity resolved = result.getResolvedEntities().get(0);
+    Assertions.assertThat(resolved).isNotNull();
+
+    // grantee records: R1 was granted TABLE_READ_DATA on N1, so granteeId must be R1
+    Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
+        .isNotEmpty()
+        .allSatisfy(g -> Assertions.assertThat(g.getGranteeId()).isEqualTo(R1.getId()));
+
+    // securable records: PR1 was granted CATALOG_ROLE_USAGE on R1, so securableId must be R1
+    Assertions.assertThat(resolved.getGrantRecordsAsSecurable())
+        .isNotEmpty()
+        .allSatisfy(g -> Assertions.assertThat(g.getSecurableId()).isEqualTo(R1.getId()));
+
+    Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
+        .doesNotContainAnyElementsOf(resolved.getGrantRecordsAsSecurable());
+  }
+
   private static PolarisEntityCore getEntityCore(PolarisBaseEntity entity) {
     return new PolarisEntityCore.Builder<>(entity).build();
   }
