@@ -93,6 +93,25 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
   }
 
+  // Paimon dependency for Paimon table support
+  // Note: Paimon only publishes paimon-spark-3.5 for Scala 2.12, not 2.13
+  if (scalaVersion == "2.12") {
+    testImplementation("org.apache.paimon:paimon-spark-3.5:1.3.1") {
+      // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
+      exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+      exclude("org.apache.logging.log4j", "log4j-1.2-api")
+      exclude("org.apache.logging.log4j", "log4j-core")
+      exclude("org.apache.logging.log4j", "log4j-api")
+      exclude("org.slf4j", "jul-to-slf4j")
+      exclude("org.slf4j", "slf4j-log4j12")
+      exclude("org.slf4j", "slf4j-reload4j")
+      exclude("ch.qos.reload4j", "reload4j")
+      exclude("log4j", "log4j")
+      // exclude old slf4j 1.x to log4j 2.x bridge that conflicts with slf4j 2.x bridge
+      exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
+    }
+  }
+
   // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
   // manageable
   // This matches what Spark 3.5 distribution provides (hive-exec-2.3.9-core.jar)
@@ -132,6 +151,11 @@ dependencies {
   testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
   testImplementation(libs.antlr4.runtime)
+}
+
+// Exclude Paimon tests from Scala 2.13 builds since paimon-spark-3.5 only supports Scala 2.12
+if (scalaVersion == "2.13") {
+  sourceSets.named("intTest") { java { exclude("**/SparkPaimonIT.java") } }
 }
 
 tasks.named<Test>("intTest").configure {
