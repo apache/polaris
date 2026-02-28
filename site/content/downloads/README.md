@@ -39,15 +39,18 @@ When adding downloads for a new release, follow these steps:
 
 1. Create a new version directory: Create `[major].[minor].[patch]/index.md`
    - Use an existing version page as a template (e.g., `1.3.0/index.md`)
-   - Update the title, weight, and release date
+   - Update the title, release_version, weight, and release date
    - Add the downloads table with links to artifacts
    - Include release notes
 
 2. Update the landing page (`_index.md`):
    - Add the new version to "Active Releases"
 
-3. Update the previous release's page:
-   - Change all artifact URLs from `https://dlcdn.apache.org/` and `https://downloads.apache.org/` 
+3. Update `site/hugo.yaml`:
+   - Add the new version to the `active_releases` list
+
+4. Update the previous release's page:
+   - Change all artifact URLs from `https://dlcdn.apache.org/` and `https://downloads.apache.org/`
      to `https://archive.apache.org/dist/`
 
 ### URL Guidelines
@@ -62,12 +65,13 @@ Each version page should have the following front matter:
 
 ```yaml
 ---
-title: "[version]"
-linkTitle: "[version]"  # This appears in the sidebar
+title: "Apache Polaris [version]-incubating"  # Full title shown on the page
+linkTitle: "[version]"  # Short version shown in the sidebar
+release_version: "[version]"  # Used for active/EOL categorization
 weight: [number]  # Decrement by 10 from previous version
 hide_summary: true
 exclude_search: true
-type: docs
+type: downloads
 menus:
   main:
     parent: downloads
@@ -86,6 +90,10 @@ No manual configuration in `site/hugo.yaml` is needed for individual version pag
 - This ensures both the sidebar and dropdown display versions in descending order (newest first)
 - The "Overview" landing page uses weight 1 to appear first in the dropdown menu
 - The "Latest" shortcut uses weight 2 to appear second in the dropdown menu (it doesn't appear in the sidebar)
+
+## Sidebar Categorization
+
+The downloads sidebar automatically categorizes releases into "Active Releases" and "EOL Releases" based on the `active_releases` list in `site/hugo.yaml`. The `release_version` front matter param is used to match against this list.
 
 ## See Also
 
