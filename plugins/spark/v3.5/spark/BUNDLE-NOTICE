@@ -9,64 +9,35 @@ to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
 
 --------------------------------------------------------------------------------
 
-This binary artifact includes Project Nessie with the following in its NOTICE
-file:
-| Nessie
-| Copyright 2015-2025 Dremio Corporation
-|
-| ---------------------------------------
-| This project includes code from Apache Polaris, with the following in its NOTICE file:
-|
-| | Apache Polaris
-| | Copyright 2024 The Apache Software Foundation
-| |
-| | This product includes software developed at
-| | The Apache Software Foundation (http://www.apache.org/).
-| |
-| | The initial code for the Polaris project was donated
-| | to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
+********************************************************************************
+
+FOLLOWING TAKEN FROM THE `NOTICE` FILE OF `iceberg-spark-runtime-3.5*.jar`:
+
+********************************************************************************
 
 --------------------------------------------------------------------------------
 
-This binary artifact contains the Jackson JSON processor with the following in its NOTICE
-file:
-| # Jackson JSON processor
+This binary artifact contains code from Kite, developed at Cloudera, Inc. with
+the following copyright notice:
+
+| Copyright 2013 Cloudera Inc.
 |
-| Jackson is a high-performance, Free/Open Source JSON processing library.
-| It was originally written by Tatu Saloranta (tatu.saloranta@iki.fi), and has
-| been in development since 2007.
-| It is currently developed by a community of developers.
+| Licensed under the Apache License, Version 2.0 (the "License");
+| you may not use this file except in compliance with the License.
+| You may obtain a copy of the License at
 |
-| ## Copyright
+|   http://www.apache.org/licenses/LICENSE-2.0
 |
-| Copyright 2007-, Tatu Saloranta (tatu.saloranta@iki.fi)
-|
-| ## Licensing
-|
-| Jackson 2.x core and extension components are licensed under Apache License 2.0
-| To find the details that apply to this artifact see the accompanying LICENSE file.
-|
-| ## Credits
-|
-| A list of contributors may be found from CREDITS(-2.x) file, which is included
-| in some artifacts (usually source distributions); but is always available
-| from the source code management (SCM) system project uses.
-|
-| ## FastDoubleParser
-|
-| jackson-core bundles a shaded copy of FastDoubleParser <https://github.com/wrandelshofer/FastDoubleParser>.
-| That code is available under an MIT license <https://github.com/wrandelshofer/FastDoubleParser/blob/main/LICENSE>
-| under the following copyright.
-|
-| Copyright © 2023 Werner Randelshofer, Switzerland. MIT License.
-|
-| See FastDoubleParser-NOTICE for details of other source code included in FastDoubleParser
-| and the licenses and copyrights that apply to that code.
+| Unless required by applicable law or agreed to in writing, software
+| distributed under the License is distributed on an "AS IS" BASIS,
+| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+| See the License for the specific language governing permissions and
+| limitations under the License.
 
 --------------------------------------------------------------------------------
 
-This binary artifact contains Airlift Aircompressor with the following in its NOTICE
-file:
+This binary artifact includes Airlift Aircompressor with the following in its
+NOTICE file:
 
 | Snappy Copyright Notices
 | =========================
@@ -108,8 +79,47 @@ file:
 
 --------------------------------------------------------------------------------
 
-This binary artifact contains Netty's buffer library with the following in its NOTICE
+This binary artifact includes Google Protobuf with the following copyright
+notice:
+
+| Copyright 2008 Google Inc.  All rights reserved.
+|
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are
+| met:
+|
+|     * Redistributions of source code must retain the above copyright
+| notice, this list of conditions and the following disclaimer.
+|     * Redistributions in binary form must reproduce the above
+| copyright notice, this list of conditions and the following disclaimer
+| in the documentation and/or other materials provided with the
+| distribution.
+|     * Neither the name of Google Inc. nor the names of its
+| contributors may be used to endorse or promote products derived from
+| this software without specific prior written permission.
+|
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+| "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+| LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+| A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+| OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+| SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+| LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+| DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+| THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+| (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+|
+| Code generated by the Protocol Buffer compiler is owned by the owner
+| of the input file used when generating it.  This code is not
+| standalone and requires a support library to be linked with it.  This
+| support library is itself covered by the above license.
+
+--------------------------------------------------------------------------------
+
+This binary artifact includes Netty buffers with the following in its NOTICE
 file:
+
 |                             The Netty Project
 |                             =================
 |
@@ -360,143 +370,44 @@ file:
 
 --------------------------------------------------------------------------------
 
-This binary artifact contains Eclipse MicroProfile OpenAPI with the following in its NOTICE
+This binary artifact includes Project Nessie with the following in its NOTICE
 file:
+
+| Nessie
+| Copyright 2015-2025 Dremio Corporation
+|
+| ---------------------------------------
+| This project includes code from Apache Polaris (incubating), with the following in its NOTICE file:
+|
+| | Apache Polaris (incubating)
+| | Copyright 2024 The Apache Software Foundation
+| |
+| | This product includes software developed at
+| | The Apache Software Foundation (http://www.apache.org/).
+| |
+| | The initial code for the Polaris project was donated
+| | to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
+
+--------------------------------------------------------------------------------
+
+This binary artifact includes Eclipse MicroProfile OpenAPI with the following in its NOTICE file:
+
 | =========================================================================
 | ==  NOTICE file corresponding to section 4(d) of the Apache License,   ==
 | ==  Version 2.0, in this case for MicroProfile OpenAPI                 ==
 | =========================================================================
-| 
+|
 | The majority of this software were originally based on the following:
 | * Swagger Core
 |   https://github.com/swagger-api/swagger-core
 |   under Apache License, v2.0
-| 
-| 
+|
+|
 | SPDXVersion: SPDX-2.1
 | PackageName: Eclipse MicroProfile
 | PackageHomePage: http://www.eclipse.org/microprofile
 | PackageLicenseDeclared: Apache-2.0
-| 
+|
 | PackageCopyrightText: <text>
 | Arthur De Magalhaes arthurdm@ca.ibm.com
 | </text>
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Jakarta Validation with the following in its NOTICE
-file:
-| # Notices for Eclipse Jakarta Validation
-| 
-| This content is produced and maintained by the Eclipse Jakarta Validation
-| project.
-| 
-| * Project home: https://projects.eclipse.org/projects/ee4j.validation
-| 
-| ## Trademarks
-| 
-|  Jakarta Validation is a trademark of the Eclipse Foundation.
-| 
-| ## Copyright
-| 
-| All content is the property of the respective authors or their employers. For
-| more information regarding authorship of content, please consult the listed
-| source code repository logs.
-| 
-| ## Declared Project Licenses
-| 
-| This program and the accompanying materials are made available under the terms
-| of the Apache License, Version 2.0 which is available at
-| https://www.apache.org/licenses/LICENSE-2.0.
-| 
-| SPDX-License-Identifier: Apache-2.0
-| 
-| ## Source Code
-| 
-| The project maintains the following source code repositories:
-| 
-| * [The specification repository](https://github.com/jakartaee/validation-spec)
-| * [The API repository](https://github.com/jakartaee/validation)
-| * [The TCK repository](https://github.com/jakartaee/validation-tck)
-| 
-| ## Third-party Content
-| 
-| This project leverages the following third party content.
-| 
-| Test dependencies:
-| 
-|  * [TestNG](https://github.com/cbeust/testng) - Apache License 2.0
-|  * [JCommander](https://github.com/cbeust/jcommander) - Apache License 2.0
-|  * [SnakeYAML](https://bitbucket.org/asomov/snakeyaml/src) - Apache License 2.0
-|
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Micrometer with the following in its NOTICE
-file:
-| Micrometer
-| 
-| Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
-| 
-| Licensed under the Apache License, Version 2.0 (the "License");
-| you may not use this file except in compliance with the License.
-| You may obtain a copy of the License at
-| 
-|    https://www.apache.org/licenses/LICENSE-2.0
-| 
-| Unless required by applicable law or agreed to in writing, software
-| distributed under the License is distributed on an "AS IS" BASIS,
-| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-| See the License for the specific language governing permissions and
-| limitations under the License.
-| 
-| -------------------------------------------------------------------------------
-| 
-| This product contains a modified portion of 'io.netty.util.internal.logging',
-| in the Netty/Common library distributed by The Netty Project:
-| 
-|   * Copyright 2013 The Netty Project
-|   * License: Apache License v2.0
-|   * Homepage: https://netty.io
-| 
-| This product contains a modified portion of 'StringUtils.isBlank()',
-| in the Commons Lang library distributed by The Apache Software Foundation:
-| 
-|   * Copyright 2001-2019 The Apache Software Foundation
-|   * License: Apache License v2.0
-|   * Homepage: https://commons.apache.org/proper/commons-lang/
-| 
-| This product contains a modified portion of 'JsonUtf8Writer',
-| in the Moshi library distributed by Square, Inc:
-| 
-|   * Copyright 2010 Google Inc.
-|   * License: Apache License v2.0
-|   * Homepage: https://github.com/square/moshi
-| 
-| This product contains a modified portion of the 'org.springframework.lang'
-| package in the Spring Framework library, distributed by VMware, Inc:
-| 
-|   * Copyright 2002-2019 the original author or authors.
-|   * License: Apache License v2.0
-|   * Homepage: https://spring.io/projects/spring-framework
-
---------------------------------------------------------------------------------
-
-This binary artifact contains code from Kite, developed at Cloudera, Inc. with
-the following copyright notice:
-
-| Copyright 2013 Cloudera Inc.
-|
-| Licensed under the Apache License, Version 2.0 (the "License");
-| you may not use this file except in compliance with the License.
-| You may obtain a copy of the License at
-|
-|   http://www.apache.org/licenses/LICENSE-2.0
-|
-| Unless required by applicable law or agreed to in writing, software
-| distributed under the License is distributed on an "AS IS" BASIS,
-| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-| See the License for the specific language governing permissions and
-| limitations under the License.
-
---------------------------------------------------------------------------------
