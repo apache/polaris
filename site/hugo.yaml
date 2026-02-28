@@ -295,6 +295,21 @@ security:
   exec:
     # Add `asciidoctor` as an allowed executable
     allow: [ '^(dart-)?sass(-embedded)?$', '^go$', '^npx$', '^postcss$', '^asciidoctor$' ]
+    osEnv: [ '(?i)^((HTTPS?|NO)_PROXY|PATH(EXT)?|APPDATA|TE?MP|TERM|GO\w+|(XDG_CONFIG_)?HOME|USERPROFILE|SSH_AUTH_SOCK|DISPLAY|LANG|SYSTEMDRIVE|GITHUB_TOKEN)$' ]
+
+  funcs:
+    getenv:
+      - '^HUGO_'
+      - '^CI$'
+      - '^GITHUB_TOKEN$'
+
+  http:
+    methods: [ '(?i)GET' ]
+    urls:
+      - 'https://api[.]github[.]com/repos/apache/polaris/pulls/.*(/files)?'
+      - 'https://api[.]github[.]com/search/.*'
+      - 'https://code[.]jquery[.]com/.*'
+      - 'https://unpkg[.]com/.*'
 
 privacy:
   googleAnalytics:

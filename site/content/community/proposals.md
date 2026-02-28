@@ -21,14 +21,21 @@ linkTitle: Proposals & Roadmap
 title: 'Apache Polaris Proposals & Roadmap'
 weight: 200
 type: docs
+show_page_toc: true
 ---
 
-== Proposals
+## Active Proposals
 
-* https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aopen%20label%3Aproposal[Active]
-* https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aclosed%20label%3Aproposal[Past]
+{{< github-proposals state="open" >}}
 
+## Merged Proposals
 
-== Polaris Roadmap
+{{< github-proposals state="merged" >}}
 
-* https://github.com/apache/polaris/discussions/1028[Discussed Roadmap]
+## Closed Proposals
+
+{{< github-proposals state="closed" >}}
+
+## Polaris Roadmap
+
+You can find the roadmap discussion https://github.com/apache/polaris/discussions/1028[here].
