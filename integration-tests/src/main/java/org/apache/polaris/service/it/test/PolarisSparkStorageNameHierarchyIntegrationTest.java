@@ -152,6 +152,15 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
    * Namespace gets a storage config with {@code storageName="ns-named"}. The catalog has no
    * storageName. The effective storageName for a table without its own config must be {@code
    * "ns-named"}.
+   *
+   * <p>The Management-API assertion ({@code assertEffectiveStorageName}) is the authoritative proof
+   * that the namespace config is selected by the hierarchy resolver. The Spark query then confirms
+   * that the full credential-vending stack is not broken by the namespace override.
+   *
+   * <p><strong>Note on S3Mock environment:</strong> {@code allowedLocations} constraints are not
+   * enforced at the S3Mock level; Spark's static mock credentials provide a fallback path that
+   * bypasses location checks. The hierarchy is therefore verified via the Management API's
+   * {@code storageName} field, not via an assert-failure pattern.
    */
   @Test
   public void testNamedNamespaceOverridesUnnamedCatalog() {
@@ -159,17 +168,19 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE ns.orders (id int, data string)");
     onSpark("INSERT INTO ns.orders VALUES (1, 'x')");
 
+    // Apply namespace config whose allowedLocations covers the actual table location.
     try (Response r =
         managementApi.setNamespaceStorageConfig(
             catalogName, "ns", createS3Config("ns-named", "ns-role"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // The API hierarchy walk must return storageName="ns-named" (namespace wins over unnamed catalog).
     assertEffectiveStorageName("ns", "orders", "ns-named");
 
     setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".ns.orders").count())
-        .as("Spark read must succeed using named namespace storage config")
+        .as("Spark read must return 1 row: namespace config 'ns-named' was resolved by the hierarchy")
         .isEqualTo(1L);
   }
 
@@ -180,6 +191,14 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
   /**
    * Both the namespace ({@code storageName="ns-named"}) and the table ({@code
    * storageName="tbl-named"}) carry named storage configs. The table-level name must win.
+   *
+   * <p>The Management-API assertion ({@code assertEffectiveStorageName}) is the authoritative proof
+   * that the table config is selected over the namespace config by the hierarchy resolver. The
+   * namespace config is deliberately configured with
+   * {@code allowedLocations=["s3://wrong-bucket-ns-only/"]} so that — in a production environment
+   * where {@code allowedLocations} is enforced — the query would fail if the namespace config were
+   * erroneously selected. In the S3Mock test environment the static mock credentials bypass that
+   * enforcement; the storageName API assertion therefore carries the authoritative proof.
    */
   @Test
   public void testNamedTableOverridesNamedNamespace() {
@@ -187,24 +206,31 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE dept.reports (id int, data string)");
     onSpark("INSERT INTO dept.reports VALUES (1, 'r1'), (2, 'r2')");
 
+    // Namespace config deliberately points to a non-existent bucket.  In a production environment
+    // this would cause credential vending to fail if the namespace config is accidentally selected.
     try (Response r =
         managementApi.setNamespaceStorageConfig(
-            catalogName, "dept", createS3Config("ns-named", "ns-role"))) {
+            catalogName,
+            "dept",
+            createS3ConfigAtLocation("ns-named", "ns-role", "s3://wrong-bucket-ns-only/"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // Table config points to the real base location — the only config that permits vending.
     try (Response r =
         managementApi.setTableStorageConfig(
             catalogName, "dept", "reports", createS3Config("tbl-named", "tbl-role"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // API proof: hierarchy resolver must select the table config (storageName="tbl-named"), not the
+    // namespace config (storageName="ns-named").
     assertEffectiveStorageName("dept", "reports", "tbl-named");
 
     setUpAccessDelegation();
     assertThat(
             onSpark("SELECT * FROM " + delegatedCatalogName + ".dept.reports WHERE id > 0").count())
-        .as("Spark read must return 2 rows; table-level named config wins over namespace-level")
+        .as("Spark read must return 2 rows; storageName='tbl-named' confirms table config was resolved")
         .isEqualTo(2L);
   }
 
@@ -214,8 +240,15 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
 
   /**
    * The namespace has an inline storage config but with {@code storageName=null} (unnamed). The
-   * table has {@code storageName="tbl-named"}. The table-level name must win. Spark query must
-   * succeed.
+   * table has {@code storageName="tbl-named"}. The table-level config must win.
+   *
+   * <p>The Management-API assertion ({@code assertEffectiveStorageName}) is the authoritative proof
+   * that the table config is selected over the unnamed namespace config. The namespace config is
+   * deliberately configured with {@code allowedLocations=["s3://wrong-bucket-ns-unnamed/"]} so
+   * that — in a production environment where {@code allowedLocations} is enforced — the query
+   * would fail if the namespace config were erroneously selected. In the S3Mock test environment
+   * the static mock credentials bypass that enforcement; the storageName API assertion therefore
+   * carries the authoritative proof.
    */
   @Test
   public void testNamedTableOverridesUnnamedNamespace() {
@@ -223,25 +256,30 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
     onSpark("CREATE TABLE finance.ledger (id int, data string)");
     onSpark("INSERT INTO finance.ledger VALUES (1, 'entry1')");
 
-    // Namespace has config but NO storageName (unnamed)
+    // Namespace: unnamed (null storageName) but deliberately wrong allowed location.  In a
+    // production environment this would cause credential vending to fail if accidentally selected.
     try (Response r =
         managementApi.setNamespaceStorageConfig(
-            catalogName, "finance", createS3ConfigUnnamed("finance-role"))) {
+            catalogName,
+            "finance",
+            createS3ConfigUnnamedAtLocation("finance-role", "s3://wrong-bucket-ns-unnamed/"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
-    // Table has a named storage config
+    // Table config points to the real base location — the only config that will allow vending.
     try (Response r =
         managementApi.setTableStorageConfig(
             catalogName, "finance", "ledger", createS3Config("tbl-named", "ledger-role"))) {
       assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // API proof: hierarchy resolver must select the table config (storageName="tbl-named"), not the
+    // unnamed namespace config (whose storageName=null and wrong allowedLocations).
     assertEffectiveStorageName("finance", "ledger", "tbl-named");
 
     setUpAccessDelegation();
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".finance.ledger").count())
-        .as("Spark read must succeed; named table config wins over unnamed namespace config")
+        .as("Spark read must return 1 row; storageName='tbl-named' confirms table config was resolved")
         .isEqualTo(1L);
   }
 
@@ -713,6 +751,59 @@ public class PolarisSparkStorageNameHierarchyIntegrationTest
               namespace, table)
           .isNull();
     }
+  }
+
+  /**
+   * Builds an {@link AwsStorageConfigInfo} with the given {@code storageName} and role ARN, using a
+   * caller-supplied {@code allowedLocation} instead of the catalog's base location.
+   *
+   * <p>Use this when you need the namespace config to have a location that is intentionally
+   * incompatible with the table's actual data path, so that Polaris rejects credential vending
+   * server-side if this config is erroneously selected over a table-level config.
+   */
+  private AwsStorageConfigInfo createS3ConfigAtLocation(
+      String storageName, String roleName, String allowedLocation) {
+    AwsStorageConfigInfo.Builder builder =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(allowedLocation))
+            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName)
+            .setStorageName(storageName);
+
+    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
+    String endpoint = s3Props.get("s3.endpoint");
+    if (endpoint != null && !endpoint.isBlank()) {
+      builder
+          .setEndpoint(endpoint)
+          .setPathStyleAccess(
+              Boolean.parseBoolean(s3Props.getOrDefault("s3.path-style-access", "false")));
+    }
+    return builder.build();
+  }
+
+  /**
+   * Builds an unnamed (null {@code storageName}) {@link AwsStorageConfigInfo} using a
+   * caller-supplied {@code allowedLocation}, for the same deliberate-mismatch use case as {@link
+   * #createS3ConfigAtLocation}.
+   */
+  private AwsStorageConfigInfo createS3ConfigUnnamedAtLocation(
+      String roleName, String allowedLocation) {
+    AwsStorageConfigInfo.Builder builder =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(allowedLocation))
+            .setRoleArn("arn:aws:iam::123456789012:role/" + roleName);
+    // storageName intentionally omitted (null)
+
+    Map<String, String> s3Props = s3Container.getS3ConfigProperties();
+    String endpoint = s3Props.get("s3.endpoint");
+    if (endpoint != null && !endpoint.isBlank()) {
+      builder
+          .setEndpoint(endpoint)
+          .setPathStyleAccess(
+              Boolean.parseBoolean(s3Props.getOrDefault("s3.path-style-access", "false")));
+    }
+    return builder.build();
   }
 
   /**

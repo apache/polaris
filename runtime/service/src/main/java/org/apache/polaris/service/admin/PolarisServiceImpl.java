@@ -109,14 +109,28 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
+
+  /**
+   * Response header that identifies which level of the hierarchy ({@code TABLE}, {@code NAMESPACE},
+   * or {@code CATALOG}) provided the effective storage configuration returned by the GET
+   * storage-config endpoints.
+   */
   private static final String STORAGE_CONFIG_SOURCE_HEADER = "X-Polaris-Storage-Config-Source";
 
+  /**
+   * Identifies the hierarchy level at which an effective storage configuration was found during a
+   * leaf-to-root walk (table &rarr; namespace(s) &rarr; catalog).
+   */
   private enum StorageConfigSource {
     TABLE,
     NAMESPACE,
     CATALOG
   }
 
+  /**
+   * Pairs a deserialized {@link PolarisStorageConfigurationInfo} with the hierarchy level from
+   * which it was resolved, enabling callers to populate the {@link #STORAGE_CONFIG_SOURCE_HEADER}.
+   */
   private record ResolvedStorageConfig(
       PolarisStorageConfigurationInfo config, StorageConfigSource source) {}
 
@@ -809,7 +823,19 @@ public class PolarisServiceImpl
 
   /** Storage Configuration Management Endpoints */
 
-  /** Convert API model to internal storage configuration model. */
+  /**
+   * Converts an API-layer {@link StorageConfigInfo} into the internal {@link
+   * PolarisStorageConfigurationInfo} representation for persistence.
+   *
+   * <p><b>storageName invariant (PR #3409):</b> {@code storageName} must be copied from the API
+   * model into the internal model for every provider branch. Dropping it silently disables
+   * named-credential lookup ({@code RESOLVE_CREDENTIALS_BY_STORAGE_NAME}) at the namespace/table
+   * level.
+   *
+   * @param apiModel the API model received from the caller; {@code null} returns {@code null}
+   * @return the equivalent internal model, ready to be serialized into entity internal properties
+   * @throws IllegalArgumentException if {@code apiModel} is of an unrecognized subtype
+   */
   private PolarisStorageConfigurationInfo toInternalModel(StorageConfigInfo apiModel) {
     if (apiModel == null) {
       return null;
@@ -863,7 +889,17 @@ public class PolarisServiceImpl
     throw new IllegalArgumentException("Unsupported storage config type: " + apiModel.getClass());
   }
 
-  /** Convert internal storage configuration model to API model. */
+  /**
+   * Converts an internal {@link PolarisStorageConfigurationInfo} back into the API-layer {@link
+   * StorageConfigInfo} for serialization into HTTP responses.
+   *
+   * <p><b>storageName invariant (PR #3409):</b> {@code storageName} must be copied into every
+   * provider branch so that GET responses round-trip the value that was PUT.
+   *
+   * @param internal the deserialized internal model; {@code null} returns {@code null}
+   * @return the equivalent API model
+   * @throws IllegalArgumentException if {@code internal} is of an unrecognized subtype
+   */
   private StorageConfigInfo toApiModel(PolarisStorageConfigurationInfo internal) {
     if (internal == null) {
       return null;
@@ -920,55 +956,77 @@ public class PolarisServiceImpl
     throw new IllegalArgumentException("Unsupported storage config type: " + internal.getClass());
   }
 
-  /** Helper to get catalog entity and its metastore manager. */
+  // ---- private helpers -----------------------------------------------------------------------
+
   private CatalogEntity getCatalogEntity(String catalogName) {
     return adminService.getCatalog(catalogName);
   }
 
-  /** Helper to resolve a namespace entity within a catalog. */
   private PolarisEntity resolveNamespaceEntity(String catalogName, String namespaceStr) {
     return adminService.resolveNamespaceEntity(catalogName, namespaceStr);
   }
 
-  /** Helper to resolve a table entity within a catalog. */
   private PolarisEntity resolveTableEntity(
       String catalogName, String namespaceStr, String tableName) {
     return adminService.resolveTableEntity(catalogName, namespaceStr, tableName);
   }
 
   /**
-   * Resolves effective namespace-level storage config and returns the entity source.
+   * Resolves the effective storage configuration for a namespace GET request.
    *
-   * <p>Resolution order: namespace → catalog.
+   * <p>Walks the full entity path from the target namespace up through every ancestor namespace to
+   * the catalog root, returning the configuration found at the most-specific level. This mirrors
+   * the leaf-to-root walk performed for table-level resolution and ensures that a deeply nested
+   * namespace (e.g. {@code ns1\u001Fns2\u001Fns3}) correctly inherits a config set on an ancestor
+   * namespace rather than falling through directly to the catalog.
+   *
+   * <p>Resolution order: namespace → parent namespace(s) → catalog.
+   *
+   * @param catalogName the catalog that owns the namespace
+   * @param namespace the unit-separator-delimited namespace string (e.g. {@code "ns1\u001Fns2"})
+   * @return the resolved config together with its source level, or {@code null} if no storage
+   *     config is present anywhere in the hierarchy
    */
   private ResolvedStorageConfig resolveEffectiveNamespaceStorageConfig(
       String catalogName, String namespace) {
-    PolarisEntity namespaceEntity = resolveNamespaceEntity(catalogName, namespace);
-    NamespaceEntity nsEntity = NamespaceEntity.of(namespaceEntity);
-    PolarisStorageConfigurationInfo namespaceConfig = nsEntity.getStorageConfigurationInfo();
-    if (namespaceConfig != null) {
-      return new ResolvedStorageConfig(namespaceConfig, StorageConfigSource.NAMESPACE);
+    PolarisResolvedPathWrapper resolvedPath =
+        adminService.resolveNamespacePath(catalogName, namespace);
+
+    PolarisEntity resolvedEntity =
+        FileIOUtil.findStorageInfoFromHierarchy(resolvedPath).orElse(null);
+    if (resolvedEntity == null) {
+      return null;
     }
 
-    CatalogEntity catalogEntity = getCatalogEntity(catalogName);
-    PolarisStorageConfigurationInfo catalogConfig = catalogEntity.getStorageConfigurationInfo();
-    if (catalogConfig != null) {
-      return new ResolvedStorageConfig(catalogConfig, StorageConfigSource.CATALOG);
+    PolarisStorageConfigurationInfo storageConfig = storageConfigFromEntity(resolvedEntity);
+    if (storageConfig == null) {
+      return null;
     }
 
-    return null;
+    return new ResolvedStorageConfig(storageConfig, sourceForEntityType(resolvedEntity.getType()));
   }
 
   /**
-   * Resolves effective table-level storage config and returns both config and resolution source.
+   * Resolves the effective storage configuration for a table GET request.
+   *
+   * <p>Delegates to {@link org.apache.polaris.service.admin.PolarisAdminService#resolveTablePath}
+   * to build the complete entity path (catalog → namespace ancestry → table) and then calls {@link
+   * org.apache.polaris.service.catalog.io.FileIOUtil#findStorageInfoFromHierarchy} to walk that
+   * path from the table leaf back to the catalog root, stopping at the first entity with an inline
+   * storage configuration.
    *
    * <p>Resolution order: table → namespace ancestry → catalog.
+   *
+   * @param catalogName the catalog that owns the table
+   * @param namespace the unit-separator-delimited namespace string
+   * @param table the table name
+   * @return the resolved config together with its source level, or {@code null} if no storage
+   *     config is present anywhere in the hierarchy
    */
   private ResolvedStorageConfig resolveEffectiveTableStorageConfigWithSource(
       String catalogName, String namespace, String table) {
-    resolveNamespaceEntity(catalogName, namespace);
-    resolveTableEntity(catalogName, namespace, table);
-
+    // resolveTablePath validates that both the namespace and table exist, throwing
+    // NotFoundException if either is absent — no need for separate pre-checks.
     PolarisResolvedPathWrapper resolvedPath =
         adminService.resolveTablePath(catalogName, namespace, table);
 
@@ -986,6 +1044,10 @@ public class PolarisServiceImpl
     return new ResolvedStorageConfig(storageConfig, sourceForEntityType(resolvedEntity.getType()));
   }
 
+  /**
+   * Maps a {@link PolarisEntityType} to the corresponding {@link StorageConfigSource} enum constant
+   * used in the {@link #STORAGE_CONFIG_SOURCE_HEADER} response header.
+   */
   private StorageConfigSource sourceForEntityType(PolarisEntityType entityType) {
     if (entityType == PolarisEntityType.TABLE_LIKE) {
       return StorageConfigSource.TABLE;
@@ -1000,6 +1062,13 @@ public class PolarisServiceImpl
         "Unsupported entity type for storage config source: " + entityType);
   }
 
+  /**
+   * Deserializes the storage configuration stored in an entity's internal properties, dispatching
+   * to the appropriate typed accessor based on the entity type.
+   *
+   * @param entity a TABLE_LIKE, NAMESPACE, or CATALOG entity that may carry inline storage config
+   * @return the deserialized config, or {@code null} if the entity type is unrecognized
+   */
   private PolarisStorageConfigurationInfo storageConfigFromEntity(PolarisEntity entity) {
     if (entity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(entity).getStorageConfigurationInfo();

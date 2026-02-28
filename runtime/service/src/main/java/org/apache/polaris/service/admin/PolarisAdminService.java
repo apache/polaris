@@ -190,7 +190,24 @@ public class PolarisAdminService {
 
   /** Public helper to resolve a namespace entity. Used by storage config management endpoints. */
   public PolarisEntity resolveNamespaceEntity(String catalogName, String namespaceParam) {
-    // Parse namespace parameter - it's a single string with unit separator (0x1F) between parts
+    return resolveNamespacePath(catalogName, namespaceParam).getRawLeafEntity();
+  }
+
+  /**
+   * Resolves the full hierarchical path for a namespace, including all ancestor namespaces and the
+   * catalog root. The returned wrapper can be passed directly to {@link
+   * org.apache.polaris.service.catalog.io.FileIOUtil#findStorageInfoFromHierarchy} to perform a
+   * leaf-to-root storage config walk.
+   *
+   * @param catalogName the name of the catalog that owns the namespace
+   * @param namespaceParam the namespace, encoded as a unit-separator-delimited ({@code \u001F})
+   *     string, e.g. {@code "ns1\u001Fns2\u001Fns3"}
+   * @return the resolved path wrapper containing every entity from catalog root to leaf namespace
+   * @throws org.apache.iceberg.exceptions.NotFoundException if the namespace does not exist
+   */
+  public PolarisResolvedPathWrapper resolveNamespacePath(
+      String catalogName, String namespaceParam) {
+    // Parse namespace parameter — it is a single string with unit separator (0x1F) between parts
     List<String> namespaceParts = List.of(namespaceParam.split("\u001F"));
     PolarisResolutionManifest manifest = newResolutionManifest(catalogName);
     String key = "namespace";
@@ -208,7 +225,7 @@ public class PolarisAdminService {
           "Namespace %s not found in catalog %s", namespaceParam, catalogName);
     }
 
-    return resolved.getRawLeafEntity();
+    return resolved;
   }
 
   /** Public helper to resolve a table entity. Used by storage config management endpoints. */

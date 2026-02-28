@@ -725,4 +725,76 @@ public class PolarisStorageConfigIntegrationTest {
           .isEqualTo("test@test.iam.gserviceaccount.com");
     }
   }
+
+  /**
+   * Regression test for nested-namespace parent fallback in the namespace GET endpoint.
+   *
+   * <p>Verifies that when a deeply nested namespace (e.g. {@code ns1\u001Fns2\u001Fns3}) has no
+   * inline storage config, the effective GET response walks up to the nearest ancestor that does
+   * have one — rather than jumping directly to the catalog. This exercises the fixed path through
+   * {@code resolveEffectiveNamespaceStorageConfig} which now uses {@code
+   * PolarisAdminService.resolveNamespacePath} + {@code FileIOUtil.findStorageInfoFromHierarchy}.
+   */
+  @Test
+  public void testGetNamespaceStorageConfigFallsBackToAncestorNamespace() {
+    // Arrange: create ns1 → ns1.ns2 → ns1.ns2.ns3 hierarchy
+    for (Namespace ns :
+        List.of(
+            Namespace.of("ns1"), Namespace.of("ns1", "ns2"), Namespace.of("ns1", "ns2", "ns3"))) {
+      try (Response r =
+          services
+              .restApi()
+              .createNamespace(
+                  TEST_CATALOG,
+                  CreateNamespaceRequest.builder().withNamespace(ns).build(),
+                  services.realmContext(),
+                  services.securityContext())) {
+        assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+    }
+
+    // Place a storage config only on ns1 (the root ancestor)
+    AwsStorageConfigInfo ns1Config =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://ns1-bucket/"))
+            .setRoleArn("arn:aws:iam::111111111111:role/ns1-role")
+            .setStorageName("ns1-storage")
+            .build();
+    try (Response r =
+        services
+            .catalogsApi()
+            .setNamespaceStorageConfig(
+                TEST_CATALOG,
+                "ns1",
+                ns1Config,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(r.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    }
+
+    // Act: GET effective config for the leaf namespace ns1.ns2.ns3 (has no direct config)
+    try (Response response =
+        services
+            .catalogsApi()
+            .getNamespaceStorageConfig(
+                TEST_CATALOG,
+                "ns1\u001Fns2\u001Fns3",
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus())
+          .as("Leaf namespace with no config should find ancestor's config")
+          .isEqualTo(Response.Status.OK.getStatusCode());
+
+      AwsStorageConfigInfo resolved = response.readEntity(AwsStorageConfigInfo.class);
+      assertThat(resolved.getStorageName())
+          .as("Config must come from ns1, not the catalog")
+          .isEqualTo("ns1-storage");
+      assertThat(resolved.getRoleArn()).isEqualTo("arn:aws:iam::111111111111:role/ns1-role");
+      // The source header must say NAMESPACE, not CATALOG, confirming the walk stopped at ns1
+      assertThat(response.getHeaderString(STORAGE_CONFIG_SOURCE_HEADER))
+          .as("Config source must be NAMESPACE (ns1), not CATALOG")
+          .isEqualTo("NAMESPACE");
+    }
+  }
 }

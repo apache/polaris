@@ -71,6 +71,22 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
     client.close();
   }
 
+  /**
+   * Verifies the full hierarchy promotion chain (catalog → ns1 → ns2 → table) via two mechanisms:
+   *
+   * <ol>
+   *   <li>The {@code assertEffectiveStorageName} Management-API call at each stage unambiguously
+   *       confirms which config the resolver selected (table, ns2, or ns1).
+   *   <li>Each Spark query asserts that credential vending is functional after every override and
+   *       deletion, validating the end-to-end stack at each hierarchy level.
+   * </ol>
+   *
+   * <p><strong>Note on S3Mock environment:</strong> {@code allowedLocations} constraints are not
+   * enforced at the S3Mock level; Spark's static mock credentials serve as a fallback. Therefore,
+   * &quot;failure-then-success&quot; assertions based on wrong {@code allowedLocations} cannot be
+   * used here. The {@code storageName} field in the Management-API response is the authoritative
+   * proof of the hierarchy resolver's decision.
+   */
   @Test
   public void testSparkQueryWithAccessDelegationAcrossStorageHierarchyFallbackTransitions() {
     onSpark("CREATE NAMESPACE ns1");
@@ -82,7 +98,9 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
     recreateSparkSessionWithAccessDelegationHeaders();
     onSpark("USE " + delegatedCatalogName + ".ns1.ns2");
 
+    // Baseline: no inline configs — catalog-level config drives credential vending.
     assertThat(onSpark("SELECT * FROM " + delegatedCatalogName + ".ns1.ns2.txns").count())
+        .as("Baseline: Spark read must return 3 rows with catalog-only config")
         .isEqualTo(3L);
 
     String baseLocation =
@@ -115,12 +133,15 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // API proof: table config wins (closest-wins rule).
     assertEffectiveStorageName("ns1\u001Fns2", "txns", "table-storage");
     assertThat(
             onSpark("SELECT * FROM " + delegatedCatalogName + ".ns1.ns2.txns WHERE id >= 1")
                 .count())
+        .as("table config ('table-storage') effective: Spark read must return 3 rows")
         .isEqualTo(3L);
 
+    // DELETE table config — API proof: ns2 config is now effective.
     try (Response response =
         managementApi.deleteTableStorageConfig(catalogName, "ns1\u001Fns2", "txns")) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
@@ -130,8 +151,10 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
     assertThat(
             onSpark("SELECT * FROM " + delegatedCatalogName + ".ns1.ns2.txns WHERE id >= 1")
                 .count())
+        .as("After DELETE table config: ns2 config ('ns2-storage') must take over (3 rows)")
         .isEqualTo(3L);
 
+    // DELETE ns2 config — API proof: ns1 config is now effective.
     try (Response response =
         managementApi.deleteNamespaceStorageConfig(catalogName, "ns1\u001Fns2")) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
@@ -141,6 +164,7 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
     assertThat(
             onSpark("SELECT * FROM " + delegatedCatalogName + ".ns1.ns2.txns WHERE id >= 1")
                 .count())
+        .as("After DELETE ns2 config: ns1 config ('ns1-storage') must take over (3 rows)")
         .isEqualTo(3L);
   }
 
@@ -231,6 +255,30 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
         .isEqualTo(1L);
   }
 
+  /**
+   * Verifies that the closest-wins rule holds for a deep namespace hierarchy and that a
+   * deletion cascade correctly surfaces each successive config. Proof mechanism:
+   *
+   * <ol>
+   *   <li>Azure config at {@code dept} (L1) and GCS config at {@code dept.analytics} (L2) are
+   *       applied before the Spark session is created. The Management API confirms that GCS
+   *       (L2 — closest) is the effective storage type before any table config exists.
+   *   <li>An S3 table config is applied. The Management API confirms that S3 (table level —
+   *       closest) is now the effective storage type, and {@code storageName="l3-table-storage"}
+   *       identifies the exact config selected. A successful Spark query confirms the end-to-end
+   *       stack is functional with the S3 table config.
+   *   <li>A deletion cascade removes the table config (effective → GCS), then the analytics
+   *       config (effective → Azure), then the dept config (effective → catalog S3). API
+   *       assertions verify each intermediate state; a final Spark query confirms the catalog-level
+   *       S3 config allows credential vending.
+   * </ol>
+   *
+   * <p><strong>Note on S3Mock environment:</strong> {@code allowedLocations} constraints and
+   * storage-type mismatches (e.g. GCS config for an S3 table) are not enforced at the S3Mock
+   * level; Spark's static mock credentials provide a fallback. The Management-API
+   * {@code storageType} / {@code storageName} assertions are therefore the authoritative proof of
+   * hierarchy resolution at each stage.
+   */
   @Test
   public void testSparkQueryDeepHierarchyClosestWinsAndDeleteTransitions() {
     onSpark("CREATE NAMESPACE dept");
@@ -246,6 +294,7 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
             .toMap()
             .getOrDefault("default-base-location", "s3://my-bucket/path/to/data");
 
+    // Apply Azure config at dept (L1) and GCS config at dept.analytics (L2).
     try (Response response =
         managementApi.setNamespaceStorageConfig(
             catalogName, "dept", createAzureStorageConfig("l1-storage", "tenant-l1", "l1"))) {
@@ -261,6 +310,11 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // API proof (before table config exists): GCS (L2) wins over Azure (L1).
+    assertEffectiveStorageType(
+        "dept\u001Fanalytics\u001Freports", "table_l3", StorageConfigInfo.StorageTypeEnum.GCS);
+
+    // Apply S3 table config, overriding the GCS namespace config.
     try (Response response =
         managementApi.setTableStorageConfig(
             catalogName,
@@ -270,13 +324,23 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 
+    // API proof: S3 table config (closest) overrides both GCS (L2) and Azure (L1).
+    assertEffectiveStorageName("dept\u001Fanalytics\u001Freports", "table_l3", "l3-table-storage");
+
     recreateSparkSessionWithAccessDelegationHeaders();
 
-    assertEffectiveStorageName("dept\u001Fanalytics\u001Freports", "table_l3", "l3-table-storage");
     assertThat(
-            onSpark("SELECT * FROM " + delegatedCatalogName + ".dept.analytics.reports.table_l3")
+            onSpark(
+                    "SELECT * FROM "
+                        + delegatedCatalogName
+                        + ".dept.analytics.reports.table_l3")
                 .count())
+        .as("S3 table config is effective (storageName='l3-table-storage'); Spark read must return 1 row")
         .isEqualTo(1L);
+
+    // -------------------------------------------------------------------------
+    // Deletion cascade — API assertions track effective type at each stage
+    // -------------------------------------------------------------------------
 
     try (Response response =
         managementApi.deleteTableStorageConfig(
@@ -299,9 +363,15 @@ public class PolarisSparkStorageConfigCredentialVendingIntegrationTest
     assertEffectiveStorageType(
         "dept\u001Fanalytics\u001Freports", "table_l3", StorageConfigInfo.StorageTypeEnum.S3);
 
+    // Final Spark assertion: after all namespace overrides are removed, catalog S3 config
+    // is effective and credential vending succeeds.
     assertThat(
-            onSpark("SELECT * FROM " + delegatedCatalogName + ".dept.analytics.reports.table_l3")
+            onSpark(
+                    "SELECT * FROM "
+                        + delegatedCatalogName
+                        + ".dept.analytics.reports.table_l3")
                 .count())
+        .as("After full deletion cascade, catalog S3 config is effective; Spark read must return 1 row")
         .isEqualTo(1L);
   }
 
