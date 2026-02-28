@@ -116,6 +116,10 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
+  @Override
+  @Disabled("loadResolvedEntities is unsupported in the NoSQL metastore implementation")
+  protected void testLoadResolvedEntitiesGranteeVsSecurableRecords() {}
+
   @BeforeEach
   void setup() {
     this.metaStore = polarisTestMetaStoreManager.polarisMetaStoreManager();
