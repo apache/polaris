@@ -59,6 +59,14 @@ public class DefaultFileIOFactory implements FileIOFactory {
     properties.putAll(storageAccessConfig.credentials());
     properties.putAll(storageAccessConfig.extraProperties());
     properties.putAll(storageAccessConfig.internalProperties());
+    String disableChecksum =
+        storageAccessConfig.extraProperties().get("disable.s3.trailing.checksum");
+
+    if (Boolean.parseBoolean(disableChecksum)) {
+      // Iceberg’s S3FileIO consumes "s3.checksum.enabled" to configure
+      // the AWS SDK S3 client and disable trailing checksum validation.
+      properties.put("s3.checksum.enabled", "false");
+    }
 
     return loadFileIOInternal(ioImplClassName, properties);
   }
