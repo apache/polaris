@@ -17,26 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: '0.9.0'
-title: '0.9.0'
-type: docs
-weight: 900
+# This file creates the /releases/latest/ redirect to the current latest stable release.
+# Update the 'redirect_to' parameter below when publishing a new release.
+title: 'Latest Release'
+layout: 'redirect'
 params:
-  top_hidden: true
-  show_page_toc: false
-  release_version: '0.9.0'
-cascade:
-  type: docs
-  params:
-    show_page_toc: true
-    release_version: '0.9.0'
-# This file will NOT be copied into a new release's versioned docs folder.
-robots: noindex
-exclude_search: true
+  redirect_to: '/releases/1.3.0/'
 ---
-
-Check out the [Quick Start]({{% ref "quickstart" %}}) page to get started.
-
-<!--
-Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
--->

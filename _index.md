@@ -17,26 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: '0.9.0'
-title: '0.9.0'
-type: docs
-weight: 900
-params:
-  top_hidden: true
-  show_page_toc: false
-  release_version: '0.9.0'
-cascade:
-  type: docs
-  params:
-    show_page_toc: true
-    release_version: '0.9.0'
-# This file will NOT be copied into a new release's versioned docs folder.
-robots: noindex
+# This is the root page for all versioned documentation.
+# It is used by the sidebar-docs-tree.html partial to find all release versions.
+title: 'Releases'
+# Mark this as the root for all releases - used by releasePages.html partial
+all_releases_root: true
+# Hide this page from navigation
+toc_hide: true
+hide_summary: true
 exclude_search: true
 ---
 
-Check out the [Quick Start]({{% ref "quickstart" %}}) page to get started.
-
-<!--
-Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
--->

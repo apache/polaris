@@ -20,14 +20,16 @@
 linkTitle: '1.0.0'
 title: 'Overview'
 type: docs
-weight: 200
+weight: 10000
 params:
   top_hidden: true
   show_page_toc: false
+  release_version: '1.0.0'
 cascade:
   type: docs
   params:
     show_page_toc: true
+    release_version: '1.0.0'
 # This file will NOT be copied into a new release's versioned docs folder.
 robots: noindex
 exclude_search: true
