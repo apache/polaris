@@ -1,0 +1,92 @@
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+ 
+   http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+
+# Downloads Page Structure
+
+This directory contains the downloads page for Apache Polaris releases.
+
+## Structure
+
+```
+downloads/
+├── _index.md           # Landing page with links to all versions
+├── 1.3.0/
+│   └── index.md       # Version 1.3.0 details
+├── 1.2.0/
+│   └── index.md       # Version 1.2.0 details
+└── ...
+```
+
+## Adding a New Download
+
+When adding downloads for a new release, follow these steps:
+
+1. Create a new version directory: Create `[major].[minor].[patch]/index.md`
+   - Use an existing version page as a template (e.g., `1.3.0/index.md`)
+   - Update the `title`, `linkTitle`, `release_version`, and release date
+   - Update `weight`: use a negative weight derived from the version, e.g. 1.2.3 -> -10203
+   - Add the downloads table with links to artifacts
+   - Include release notes
+
+2. Update the landing page (`_index.md`):
+   - Add the new version to "Active Releases"
+
+3. Update the "latest" page (`latest/index.md`):
+   - Update the `redirect_to` parameter to point to the new version
+
+4. Update `site/hugo.yaml`:
+   - Add the new version to the `active_releases` list
+
+5. Update the previous release's page:
+   - Current release: use `https://dlcdn.apache.org/` for source/binary artifacts and `https://downloads.apache.org/` for signatures/checksums
+   - Previous releases: use `https://archive.apache.org/dist/` for all artifacts
+   - Maven artifacts: always use `https://repo1.maven.org/maven2/`
+
+The resulting version page should have a front matter matching the one below:
+
+```yaml
+---
+title: "Apache Polaris [version]"  # Full title shown on the page
+linkTitle: "[version]"  # Short version shown in the sidebar
+release_version: "[version]"  # Used for active/EOL categorization
+weight: [number]  # Negative weight derived from the version, e.g. 1.2.3 -> -10203
+hide_summary: true
+exclude_search: true
+type: downloads
+menus:
+  main:
+    parent: downloads
+    weight: [number]  # Same as page weight for consistency
+    identifier: downloads-[version]  # Unique identifier, e.g.: downloads-1.3.0, downloads-1.2.0, etc.
+---
+```
+
+No manual configuration in `site/hugo.yaml` is needed.
+
+## Sidebar Categorization
+
+The downloads sidebar automatically categorizes releases into "Active Releases" and "EOL Releases"
+based on the `active_releases` list in `site/hugo.yaml`. The `release_version` front matter param is
+used to match against this list.
+
+## See Also
+
+- [Manual Release Guide](../community/release-guides/manual-release-guide.md)
+- [Semi-Automated Release Guide](../community/release-guides/semi-automated-release-guide.md)
+
