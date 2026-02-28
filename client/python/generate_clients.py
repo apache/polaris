@@ -85,6 +85,8 @@ EXCLUDE_PATHS = [
     Path("templates"),
     Path("spec"),
     Path("PKG-INFO"),
+    Path("LICENSE"),
+    Path("NOTICE"),
 ]
 EXCLUDE_EXTENSIONS = [
     "json",
