@@ -57,12 +57,12 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.context.RealmContextFilter;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
 import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.jboss.resteasy.reactive.server.spi.ResteasyReactiveResourceInfo;
-import org.jboss.logging.Logger;
 
 /**
  * HTTP idempotency integration at the request/response layer.
@@ -249,8 +249,7 @@ public class IdempotencyFilter {
                                           "Operation with this idempotency key may be stale; retry later"));
                             }
                           }
-                          Instant deadline =
-                              clock.instant().plus(configuration.inProgressWait());
+                          Instant deadline = clock.instant().plus(configuration.inProgressWait());
                           return waitForFinalized(realmId, key, deadline)
                               .onItem()
                               .transform(this::replayResponse)

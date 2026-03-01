@@ -36,21 +36,17 @@ public class IdempotencyConfigurationValidator {
 
     requirePositive("polaris.idempotency.ttl-seconds", configuration.ttl());
     requireNonNegative("polaris.idempotency.ttl-grace-seconds", configuration.ttlGrace());
-    requirePositive(
-        "polaris.idempotency.in-progress-wait-seconds", configuration.inProgressWait());
+    requirePositive("polaris.idempotency.in-progress-wait-seconds", configuration.inProgressWait());
     requirePositive("polaris.idempotency.lease-ttl-seconds", configuration.leaseTtl());
 
     if (configuration.heartbeatEnabled()) {
       requirePositive(
-          "polaris.idempotency.heartbeat-interval-seconds",
-          configuration.heartbeatInterval());
+          "polaris.idempotency.heartbeat-interval-seconds", configuration.heartbeatInterval());
     }
 
     if (configuration.purgeEnabled()) {
-      requirePositive(
-          "polaris.idempotency.purge-interval-seconds", configuration.purgeInterval());
-      requireNonNegative(
-          "polaris.idempotency.purge-grace-seconds", configuration.purgeGrace());
+      requirePositive("polaris.idempotency.purge-interval-seconds", configuration.purgeInterval());
+      requireNonNegative("polaris.idempotency.purge-grace-seconds", configuration.purgeGrace());
     }
   }
 
