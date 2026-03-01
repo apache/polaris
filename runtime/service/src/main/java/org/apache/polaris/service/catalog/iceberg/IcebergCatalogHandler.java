@@ -1355,7 +1355,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             catalogEntity.getCatalogType())
         && idCfg != null
         && idCfg.enabled()) {
-      overrides.put(IDEMPOTENCY_KEY_LIFETIME_PROPERTY, idCfg.ttlSeconds().toString());
+      overrides.put(IDEMPOTENCY_KEY_LIFETIME_PROPERTY, idCfg.ttl().toString());
     }
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults

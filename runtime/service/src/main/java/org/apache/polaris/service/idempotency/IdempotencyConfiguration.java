@@ -20,6 +20,7 @@ package org.apache.polaris.service.idempotency;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -72,19 +73,21 @@ public interface IdempotencyConfiguration {
    *
    * <p>Examples: {@code PT5M}, {@code 300S}.
    */
+  @WithName("ttl-seconds")
   @WithDefault("PT5M")
-  Duration ttlSeconds();
+  Duration ttl();
 
   /**
-   * Additional grace added to {@link #ttlSeconds()} when reserving keys.
+   * Additional grace added to {@link #ttl()} when reserving keys.
    *
    * <p>This extends retention slightly to tolerate clock skew and queued retries while keeping the
    * advertised lifetime unchanged.
    *
    * <p>Examples: {@code PT0S}, {@code 10S}.
    */
+  @WithName("ttl-grace-seconds")
   @WithDefault("PT0S")
-  Duration ttlGraceSeconds();
+  Duration ttlGrace();
 
   /**
    * Executor identifier to store alongside reservations (e.g. pod/instance id).
@@ -100,17 +103,19 @@ public interface IdempotencyConfiguration {
    * Maximum time to wait for an in-progress idempotency key to finalize before returning a
    * retryable response.
    */
+  @WithName("in-progress-wait-seconds")
   @WithDefault("PT30S")
-  Duration inProgressWaitSeconds();
+  Duration inProgressWait();
 
   /**
    * Lease TTL for considering an in-progress owner "active" based on {@code heartbeatAt}.
    *
-   * <p>If a duplicate observes {@code now - heartbeatAt > leaseTtlSeconds}, the owner is treated as
+   * <p>If a duplicate observes {@code now - heartbeatAt > leaseTtl()}, the owner is treated as
    * stale and the server should not wait indefinitely.
    */
+  @WithName("lease-ttl-seconds")
   @WithDefault("PT25S")
-  Duration leaseTtlSeconds();
+  Duration leaseTtl();
 
   /**
    * Response headers that are persisted and replayed (exact names).
@@ -133,10 +138,11 @@ public interface IdempotencyConfiguration {
    *
    * <p>Examples: {@code PT5S}, {@code 1S}.
    *
-   * <p>In multi-node deployments, this should be shorter than {@link #leaseTtlSeconds()}.
+   * <p>In multi-node deployments, this should be shorter than {@link #leaseTtl()}.
    */
+  @WithName("heartbeat-interval-seconds")
   @WithDefault("PT5S")
-  Duration heartbeatIntervalSeconds();
+  Duration heartbeatInterval();
 
   /**
    * Enable periodic purge of expired idempotency records.
@@ -159,16 +165,18 @@ public interface IdempotencyConfiguration {
    *
    * <p>Examples: {@code PT1M}, {@code 60S}.
    */
+  @WithName("purge-interval-seconds")
   @WithDefault("PT1M")
-  Duration purgeIntervalSeconds();
+  Duration purgeInterval();
 
   /**
    * Purge records expired strictly before (now - grace).
    *
    * <p>Allows keeping just-expired keys around a bit longer to tolerate clock skew.
    */
+  @WithName("purge-grace-seconds")
   @WithDefault("PT0S")
-  Duration purgeGraceSeconds();
+  Duration purgeGrace();
 
   interface Scope {
     /** HTTP method (e.g. POST). */

@@ -39,8 +39,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -60,6 +62,7 @@ import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
 import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.jboss.resteasy.reactive.server.spi.ResteasyReactiveResourceInfo;
+import org.jboss.logging.Logger;
 
 /**
  * HTTP idempotency integration at the request/response layer.
@@ -72,6 +75,12 @@ import org.jboss.resteasy.reactive.server.spi.ResteasyReactiveResourceInfo;
  * <p>Replayed responses use the full persisted response entity; responses are not truncated.
  */
 public class IdempotencyFilter {
+  private static final Logger LOG = Logger.getLogger(IdempotencyFilter.class);
+
+  private static final Set<Integer> NEVER_FINALIZE_STATUSES = Set.of(401, 403, 408, 429);
+
+  private static final long WARN_THROTTLE_MS = 60_000L;
+  private static final AtomicLong LAST_WARN_AT_MS = new AtomicLong(0L);
 
   private static final String PROP_IDEMPOTENCY_KEY = "idempotency.key";
   private static final String PROP_IDEMPOTENCY_OPERATION = "idempotency.operation";
@@ -115,6 +124,10 @@ public class IdempotencyFilter {
     if (!scopedMode) {
       // Without an explicit scope allowlist, only apply idempotency to Iceberg REST catalog
       // mutating endpoints under /v1/{prefix}/...
+      //
+      // This check is best-effort because request-to-resource matching metadata may be unavailable
+      // in some cases; if we can't confidently identify an Iceberg mutation endpoint we fail closed
+      // (treat idempotency as a no-op) to avoid false positives.
       if (!isMutatingMethod(rc.getMethod()) || !isIcebergMutationEndpoint(rc)) {
         return Uni.createFrom().nullItem();
       }
@@ -149,10 +162,10 @@ public class IdempotencyFilter {
 
     String realmId = realmContext.getRealmIdentifier();
     String operationType = scope == null ? normalizeOperationType(rc) : scope.operationType();
-    String resourceId = normalizeResourceId(rc, scope != null);
+    String resourceId = normalizeResourceId(rc);
 
     Instant now = clock.instant();
-    Instant expiresAt = now.plus(configuration.ttlSeconds()).plus(configuration.ttlGraceSeconds());
+    Instant expiresAt = now.plus(configuration.ttl()).plus(configuration.ttlGrace());
 
     return internalCatalogCheck
         .onItem()
@@ -226,7 +239,7 @@ public class IdempotencyFilter {
                             }
                             if (lastSignal == null
                                 || Duration.between(lastSignal, checkNow)
-                                        .compareTo(configuration.leaseTtlSeconds())
+                                        .compareTo(configuration.leaseTtl())
                                     > 0) {
                               return Uni.createFrom()
                                   .item(
@@ -237,7 +250,7 @@ public class IdempotencyFilter {
                             }
                           }
                           Instant deadline =
-                              clock.instant().plus(configuration.inProgressWaitSeconds());
+                              clock.instant().plus(configuration.inProgressWait());
                           return waitForFinalized(realmId, key, deadline)
                               .onItem()
                               .transform(this::replayResponse)
@@ -293,14 +306,16 @@ public class IdempotencyFilter {
     if (!shouldFinalize(status)) {
       // Do not finalize/replay for 401/403/408/429 or any 5xx. If we reserved this key for such a
       // request, release the in-progress record so the key does not linger and block retries.
-      if (status == 401 || status == 403 || status == 408 || status == 429 || status >= 500) {
+      if (shouldCancelInProgressReservation(status)) {
         Infrastructure.getDefaultWorkerPool()
             .execute(
                 () -> {
                   try {
                     store.cancelInProgressReservation(realmId, key, executorId());
-                  } catch (RuntimeException ignored) {
-                    // Best-effort.
+                  } catch (RuntimeException e) {
+                    warnThrottled(
+                        e,
+                        "Failed to cancel in-progress idempotency reservation; replay may be unavailable");
                   }
                 });
       }
@@ -316,9 +331,10 @@ public class IdempotencyFilter {
             () -> {
               try {
                 store.finalizeRecord(realmId, key, executorId(), status, null, body, headers, now);
-              } catch (RuntimeException ignored) {
-                // Best-effort: the main request already completed. If this fails, replay may be
-                // unavailable until a later retry or reconciliation.
+              } catch (RuntimeException e) {
+                warnThrottled(
+                    e,
+                    "Failed to finalize idempotency record; replay may be unavailable until a later retry or reconciliation");
               }
             });
   }
@@ -327,7 +343,7 @@ public class IdempotencyFilter {
     if (!configuration.heartbeatEnabled()) {
       return;
     }
-    long intervalMs = configuration.heartbeatIntervalSeconds().toMillis();
+    long intervalMs = configuration.heartbeatInterval().toMillis();
     long timerId =
         vertx.setPeriodic(
             intervalMs,
@@ -448,9 +464,23 @@ public class IdempotencyFilter {
       return true;
     }
     if (httpStatus >= 400 && httpStatus < 500) {
-      return httpStatus != 401 && httpStatus != 403 && httpStatus != 408 && httpStatus != 429;
+      return !NEVER_FINALIZE_STATUSES.contains(httpStatus);
     }
     return false;
+  }
+
+  private static boolean shouldCancelInProgressReservation(int httpStatus) {
+    return httpStatus >= 500 || NEVER_FINALIZE_STATUSES.contains(httpStatus);
+  }
+
+  private static void warnThrottled(Throwable t, String message) {
+    long now = System.currentTimeMillis();
+    long last = LAST_WARN_AT_MS.get();
+    if (now - last >= WARN_THROTTLE_MS && LAST_WARN_AT_MS.compareAndSet(last, now)) {
+      LOG.warn(message, t);
+    } else {
+      LOG.debug(message, t);
+    }
   }
 
   /**
@@ -537,7 +567,8 @@ public class IdempotencyFilter {
 
   private static boolean isIcebergMutationEndpoint(ContainerRequestContext rc) {
     // Best-effort: rely on the matched JAX-RS resource method rather than path heuristics so we
-    // only apply idempotency to endpoints implemented by the Iceberg REST catalog adapter.
+    // only apply idempotency to endpoints implemented by the Iceberg REST catalog adapter. If the
+    // matched resource/method isn't available, we return false (no idempotency).
     try {
       ResteasyReactiveRequestContext ctx = CurrentRequestManager.get();
       if (ctx == null) {
@@ -601,6 +632,7 @@ public class IdempotencyFilter {
     try {
       catalogName = prefixParser.prefixToCatalogName(prefix);
     } catch (RuntimeException e) {
+      LOG.debugf(e, "Failed to parse Iceberg REST catalog prefix for idempotency gating");
       return false;
     }
 
@@ -608,6 +640,7 @@ public class IdempotencyFilter {
     try {
       resolver = resolverFactory.createResolver(principal, catalogName);
     } catch (RuntimeException e) {
+      LOG.debugf(e, "Failed to create resolver for idempotency internal-catalog gating");
       return false;
     }
 
@@ -615,9 +648,13 @@ public class IdempotencyFilter {
     try {
       status = resolver.resolveAll();
     } catch (RuntimeException e) {
+      LOG.debugf(e, "Failed to resolve catalog for idempotency internal-catalog gating");
       return false;
     }
     if (!ResolverStatus.StatusEnum.SUCCESS.equals(status.getStatus())) {
+      LOG.debugf(
+          "Resolver status %s for idempotency internal-catalog gating; treating as non-internal",
+          status.getStatus());
       return false;
     }
 
@@ -627,7 +664,7 @@ public class IdempotencyFilter {
         && Catalog.TypeEnum.INTERNAL.equals(catalogEntity.getCatalogType());
   }
 
-  private static String normalizeResourceId(ContainerRequestContext rc, boolean scopedMode) {
+  private static String normalizeResourceId(ContainerRequestContext rc) {
     // Use path only to avoid accidental mismatches from query ordering/irrelevant parameters.
     String path = rc.getUriInfo().getPath();
     return path;
