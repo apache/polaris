@@ -29,8 +29,8 @@ public enum Resolvable {
   CALLER_PRINCIPAL,
   /** Resolve the caller's activated principal-role entities. */
   CALLER_PRINCIPAL_ROLES,
-  /** Resolve catalog-role entities (e.g., roles attached in the reference catalog). */
-  CATALOG_ROLES,
+  /** Resolve caller-activated catalog-role entities in the reference catalog. */
+  CALLER_CATALOG_ROLES,
   /** Resolve the reference catalog entity. */
   REFERENCE_CATALOG,
   /** Resolve explicitly registered paths (via addPath/addPassthroughPath). */
@@ -39,6 +39,11 @@ public enum Resolvable {
    * Resolve any additional top-level entities explicitly registered via addTopLevelName, such as
    * catalog/principal/principal-role names used for authorization beyond the caller and reference
    * catalog.
+   *
+   * <p>Note: this currently also covers requested {@code CATALOG_ROLE} names because they share the
+   * same {@link PolarisResolutionManifest} registration surface ({@code addTopLevelName}). Although
+   * grouped here for compatibility, catalog-role name resolution still requires the reference
+   * catalog context.
    */
   REQUESTED_TOP_LEVEL_ENTITIES
 }

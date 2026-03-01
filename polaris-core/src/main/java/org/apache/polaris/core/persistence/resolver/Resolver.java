@@ -251,7 +251,8 @@ public class Resolver {
   public ResolverStatus resolveSelections(@Nonnull Set<Resolvable> selections) {
     diagnostics.checkNotNull(selections, "resolver_selections_is_null");
     diagnostics.check(!selections.isEmpty(), "resolver_selections_is_empty");
-    return resolveWithPlan(ResolvePlan.fromSelections(selections, referenceCatalogName));
+    return resolveWithPlan(
+        ResolvePlan.fromSelections(selections, referenceCatalogName, hasRequestedCatalogRoles()));
   }
 
   private ResolverStatus resolveWithPlan(ResolvePlan plan) {
@@ -429,7 +430,8 @@ public class Resolver {
     // first resolve the principal and determine the set of activated principal roles
     ResolverStatus status =
         plan.resolveCallerPrincipal()
-            ? this.resolveCallerPrincipalAndPrincipalRoles(toValidate, plan.resolvePrincipalRoles())
+            ? this.resolveCallerPrincipalAndPrincipalRoles(
+                toValidate, plan.resolveCallerPrincipalRoles())
             : new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
 
     // if success, continue resolving
@@ -439,18 +441,19 @@ public class Resolver {
         this.diagnostics.checkNotNull(this.referenceCatalogName, "reference_catalog_expected");
         status =
             this.resolveReferenceCatalog(
-                toValidate, this.referenceCatalogName, plan.resolveCatalogRoles());
+                toValidate, this.referenceCatalogName, plan.resolveCallerCatalogRoles());
       }
 
       // if success, continue resolving
       if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
         // then resolve all the additional entities we were asked to resolve
-        if (plan.resolveTopLevelEntities()) {
+        if (plan.resolveRequestedTopLevelEntities()) {
           status = this.resolveEntities(toValidate, this.entitiesToResolve);
         }
 
         // if success, continue resolving
-        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS && plan.resolvePaths()) {
+        if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS
+            && plan.resolveRequestedPaths()) {
           // finally, resolve all paths we need to resolve
           status = this.resolvePaths(toValidate, this.pathsToResolve);
         }
@@ -470,6 +473,15 @@ public class Resolver {
 
     // if success, we are done, simply return the status.
     return validationSuccess ? status : null;
+  }
+
+  private boolean hasRequestedCatalogRoles() {
+    for (ResolverEntityName entityName : this.entitiesToResolve) {
+      if (entityName.entityType() == PolarisEntityType.CATALOG_ROLE) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -890,11 +902,11 @@ public class Resolver {
 
   private static record ResolvePlan(
       boolean resolveCallerPrincipal,
-      boolean resolvePrincipalRoles,
+      boolean resolveCallerPrincipalRoles,
       boolean resolveReferenceCatalog,
-      boolean resolveCatalogRoles,
-      boolean resolveTopLevelEntities,
-      boolean resolvePaths) {
+      boolean resolveCallerCatalogRoles,
+      boolean resolveRequestedTopLevelEntities,
+      boolean resolveRequestedPaths) {
 
     private static ResolvePlan all(@Nullable String referenceCatalogName) {
       boolean hasReferenceCatalog = referenceCatalogName != null;
@@ -903,20 +915,25 @@ public class Resolver {
     }
 
     private static ResolvePlan fromSelections(
-        Set<Resolvable> selections, @Nullable String referenceCatalogName) {
-      boolean resolvePaths = selections.contains(Resolvable.REQUESTED_PATHS);
-      boolean resolveTopLevelEntities =
+        Set<Resolvable> selections,
+        @Nullable String referenceCatalogName,
+        boolean hasRequestedCatalogRoles) {
+      boolean resolveRequestedPaths = selections.contains(Resolvable.REQUESTED_PATHS);
+      boolean resolveRequestedTopLevelEntities =
           selections.contains(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
-      boolean resolveCatalogRoles = selections.contains(Resolvable.CATALOG_ROLES);
+      boolean resolveCallerCatalogRoles = selections.contains(Resolvable.CALLER_CATALOG_ROLES);
       // Principal roles depend on resolving the caller principal, and catalog roles depend on
       // principal roles. Only those selections require caller principal resolution.
-      boolean resolvePrincipalRoles =
-          selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES) || resolveCatalogRoles;
+      boolean resolveCallerPrincipalRoles =
+          selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES) || resolveCallerCatalogRoles;
       // Reference catalog is required for path resolution and catalog role expansion.
       boolean resolveReferenceCatalog =
-          selections.contains(Resolvable.REFERENCE_CATALOG) || resolvePaths || resolveCatalogRoles;
+          selections.contains(Resolvable.REFERENCE_CATALOG)
+              || resolveRequestedPaths
+              || resolveCallerCatalogRoles
+              || (resolveRequestedTopLevelEntities && hasRequestedCatalogRoles);
       boolean resolveCallerPrincipal =
-          selections.contains(Resolvable.CALLER_PRINCIPAL) || resolvePrincipalRoles;
+          selections.contains(Resolvable.CALLER_PRINCIPAL) || resolveCallerPrincipalRoles;
 
       boolean hasReferenceCatalog = referenceCatalogName != null;
       if (!hasReferenceCatalog && resolveReferenceCatalog) {
@@ -927,11 +944,11 @@ public class Resolver {
 
       return new ResolvePlan(
           resolveCallerPrincipal,
-          resolvePrincipalRoles,
+          resolveCallerPrincipalRoles,
           resolveReferenceCatalog,
-          resolveCatalogRoles,
-          resolveTopLevelEntities,
-          resolvePaths);
+          resolveCallerCatalogRoles,
+          resolveRequestedTopLevelEntities,
+          resolveRequestedPaths);
     }
   }
 
