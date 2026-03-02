@@ -1,13 +1,84 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Community on Apache Polaris</title><link>https://polaris.apache.org/community/</link><description>Recent content in Apache Polaris Community on Apache Polaris</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation&lt;/a>.&lt;br>Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0&lt;/a>.</copyright><atom:link href="https://polaris.apache.org/community/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris Proposals &amp; Roadmap</title><link>https://polaris.apache.org/community/proposals/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/proposals/</guid><description>Proposals Active
-Past
-Polaris Roadmap Discussed Roadmap</description></item><item><title/><link>https://polaris.apache.org/community/chat-bylaws/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/chat-bylaws/</guid><description>Apache Polaris - Project Chat Bylaws🔗 Apache Polaris is a top level project at the Apache Software Foundation.
-Motivation🔗 Apache Polaris uses public Slack workspace (join here).
-A few rules shall ensure that the chat conforms to the rules and best practices of the Apache Software Foundation and serves well as a collaboration tool for the project.
-Organizations and other open-source projects that contribute continuously and significantly to Polaris are welcome, but shall not use the Polaris chat as a vehicle for their own marketing without explicit approval of the project PMC.</description></item><item><title/><link>https://polaris.apache.org/community/community-guidelines/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/community-guidelines/</guid><description>Community Guidelines🔗 We value and appreciate the diverse contributions and ideas from the community. To maintain a welcoming and inclusive environment, we kindly ask you to adhere to the following guidelines:
-Be respectful and considerate of other community members. Treat everyone with respect and professionalism. Refrain from engaging in offensive, discriminatory, or harassing behavior. Be patient and understanding towards others, especially newcomers who may be learning. Stay constructive and provide helpful feedback.</description></item><item><title/><link>https://polaris.apache.org/community/contributing-guidelines/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/contributing-guidelines/</guid><description>Contributing to Apache Polaris🔗 Thank you for considering contributing to Apache Polaris. Any contribution (code, test cases, documentation, use cases, &amp;hellip;) is valuable!
-This documentation will help you get started.
-Contribute bug reports and feature requests🔗 You can report an issue in the Polaris Catalog issue tracker.
-How to report a bug🔗 Note: If you find a security vulnerability, do NOT open an issue. Please email security@apache.org instead.
-When filing an issue, make sure to answer these five questions:</description></item><item><title/><link>https://polaris.apache.org/community/security-report/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/security-report/</guid><description>Security Report🔗 Adhering to the specifications of The ASF, the Apache Polaris community maintains a highly proactive and open attitude towards addressing security issues.
-We strongly recommend that users first report such issues on the security@apache.org and private@polaris.apache.org, using the procedure details on The ASF Security page.
-Please note that the security@apache.org and private@polaris.apache.org mailing lists are reserved for reporting undisclosed security vulnerabilities and following the vulnerability resolution process. Regular issue reports should be directed to GitHub Issue or the dev@polaris.</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Community on Apache Polaris</title><link>https://polaris.apache.org/community/</link><description>Recent content in Apache Polaris Community on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/community/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris Proposals &amp; Roadmap</title><link>https://polaris.apache.org/community/proposals/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/proposals/</guid><description>&lt;div class="sect1"&gt;
+&lt;h2 id="_proposals"&gt;Proposals&lt;/h2&gt;
+&lt;div class="sectionbody"&gt;
+&lt;div class="ulist"&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aopen%20label%3Aproposal"&gt;Active&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aclosed%20label%3Aproposal"&gt;Past&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="sect1"&gt;
+&lt;h2 id="_polaris_roadmap"&gt;Polaris Roadmap&lt;/h2&gt;
+&lt;div class="sectionbody"&gt;
+&lt;div class="ulist"&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;a href="https://github.com/apache/polaris/discussions/1028"&gt;Discussed Roadmap&lt;/a&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;</description></item><item><title/><link>https://polaris.apache.org/community/chat-bylaws/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/chat-bylaws/</guid><description>&lt;!--
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements. See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership. The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License. You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied. See the License for the
+ specific language governing permissions and limitations
+ under the License.
+--&gt;
+&lt;h1 id="apache-polaris---project-chat-bylaws" id="apache-polaris---project-chat-bylaws"&gt;Apache Polaris - Project Chat Bylaws&lt;a class="heading-anchor" href="#apache-polaris---project-chat-bylaws" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h1&gt;
+&lt;p&gt;Apache Polaris is a top level project at the Apache Software Foundation.&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/community-guidelines/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/community-guidelines/</guid><description>&lt;h1 id="community-guidelines" id="community-guidelines"&gt;Community Guidelines&lt;a class="heading-anchor" href="#community-guidelines" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h1&gt;
+&lt;p&gt;We value and appreciate the diverse contributions and ideas from the community. To maintain a welcoming and inclusive environment, we kindly ask you to adhere to the following guidelines:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Be respectful and considerate of other community members. Treat everyone with respect and professionalism.&lt;/li&gt;
+&lt;li&gt;Refrain from engaging in offensive, discriminatory, or harassing behavior.&lt;/li&gt;
+&lt;li&gt;Be patient and understanding towards others, especially newcomers who may be learning.&lt;/li&gt;
+&lt;li&gt;Stay constructive and provide helpful feedback.&lt;/li&gt;
+&lt;li&gt;Engage in meaningful and relevant discussions related to the project.&lt;/li&gt;
+&lt;li&gt;Avoid spamming, excessive self-promotion, or advertising unrelated content.&lt;/li&gt;
+&lt;li&gt;Use clear and consise language to facilitate effective communication.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;You can also take a look on the &lt;a href="https://github.com/apache/polaris/blob/main/CODE_OF_CONDUCT.md"&gt;Code of Conduct&lt;/a&gt;, and the ASF &lt;a href="https://www.apache.org/foundation/policies/conduct.html"&gt;Code of Conduct&lt;/a&gt;.&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/contributing-guidelines/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/contributing-guidelines/</guid><description>&lt;!--
+ Licensed to the Apache Software Foundation (ASF) under one
+ or more contributor license agreements. See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership. The ASF licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License. You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied. See the License for the
+ specific language governing permissions and limitations
+ under the License.
+--&gt;
+&lt;h1 id="contributing-to-apache-polaris" id="contributing-to-apache-polaris"&gt;Contributing to Apache Polaris&lt;a class="heading-anchor" href="#contributing-to-apache-polaris" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h1&gt;
+&lt;p&gt;Thank you for considering contributing to Apache Polaris. Any contribution (code, test cases, documentation, use cases, &amp;hellip;) is valuable!&lt;/p&gt;</description></item><item><title/><link>https://polaris.apache.org/community/security-report/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/community/security-report/</guid><description>&lt;h1 id="security-report" id="security-report"&gt;Security Report&lt;a class="heading-anchor" href="#security-report" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h1&gt;
+&lt;p&gt;Adhering to the specifications of The ASF, the Apache Polaris community maintains a highly proactive and open attitude towards addressing security issues.&lt;/p&gt;
+&lt;p&gt;We strongly recommend that users first report such issues on the &lt;a href="mailto:security@apache.org"&gt;security@apache.org&lt;/a&gt; and &lt;a href="mailto:private@polaris.apache.org"&gt;private@polaris.apache.org&lt;/a&gt;, using the procedure details on &lt;a href="https://www.apache.org/security/committers.html"&gt;The ASF Security page&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Please note that the &lt;a href="mailto:security@apache.org"&gt;security@apache.org&lt;/a&gt; and &lt;a href="mailto:private@polaris.apache.org"&gt;private@polaris.apache.org&lt;/a&gt; mailing lists are reserved for reporting undisclosed security vulnerabilities and following the vulnerability resolution process.
+Regular issue reports should be directed to GitHub Issue or the &lt;a href="mailto:dev@polaris.apache.org"&gt;dev@polaris.apache.org&lt;/a&gt; mailing list.&lt;/p&gt;</description></item></channel></rss>

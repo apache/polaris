@@ -1,1 +1,137 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Polaris API Reference on Apache Polaris</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/</link><description>Recent content in Polaris API Reference on Apache Polaris</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation&lt;/a>.&lt;br>Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0&lt;/a>.</copyright><atom:link href="https://polaris.apache.org/releases/1.3.0/polaris-api-specs/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris Management Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</guid><description> Top</description></item><item><title>Apache Polaris Catalog Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</guid><description> Top</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Polaris API Reference on Apache Polaris</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/</link><description>Recent content in Polaris API Reference on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/releases/1.3.0/polaris-api-specs/index.xml" rel="self" type="application/rss+xml"/><item><title>Apache Polaris Management Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</guid><description>&lt;style&gt;
+ #redoc input { height: 64px; }
+ #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
+ border-radius: 4px;
+ }
+ #redoc h2 { margin-top: 0px;}
+&lt;/style&gt;
+
+
+&lt;style&gt;
+ #myBtn {
+ display: none;
+ position: fixed;
+ bottom: 20px;
+ right: 30px;
+ z-index: 99;
+ font-size: 18px;
+ border: none;
+ outline: none;
+ background-color: #30638E;
+ color: white;
+ cursor: pointer;
+ padding: 15px;
+ border-radius: 4px;
+ }
+
+ #myBtn:hover {
+ background-color: #555;
+ }
+&lt;/style&gt;
+&lt;button onclick="topFunction()" id="myBtn" title="Go to top"&gt;Top&lt;/button&gt;
+&lt;script&gt;
+ 
+ var mybutton = document.getElementById("myBtn");
+
+ 
+ window.onscroll = function() {scrollFunction()};
+
+ function scrollFunction() {
+ if (document.body.scrollTop &gt; 20 || document.documentElement.scrollTop &gt; 20) {
+ mybutton.style.display = "block";
+ } else {
+ mybutton.style.display = "none";
+ }
+ }
+
+ 
+ function topFunction() {
+ document.body.scrollTop = 0;
+ document.documentElement.scrollTop = 0;
+ }
+&lt;/script&gt;
+
+
+
+&lt;style&gt;
+ body {
+ margin: 0;
+ padding: 0;
+ }
+&lt;/style&gt;
+
+
+&lt;div id="redoc-container"&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;/div&gt;
+
+
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Catalog Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</guid><description>&lt;style&gt;
+ #redoc input { height: 64px; }
+ #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
+ border-radius: 4px;
+ }
+ #redoc h2 { margin-top: 0px;}
+&lt;/style&gt;
+
+
+&lt;style&gt;
+ #myBtn {
+ display: none;
+ position: fixed;
+ bottom: 20px;
+ right: 30px;
+ z-index: 99;
+ font-size: 18px;
+ border: none;
+ outline: none;
+ background-color: #30638E;
+ color: white;
+ cursor: pointer;
+ padding: 15px;
+ border-radius: 4px;
+ }
+
+ #myBtn:hover {
+ background-color: #555;
+ }
+&lt;/style&gt;
+&lt;button onclick="topFunction()" id="myBtn" title="Go to top"&gt;Top&lt;/button&gt;
+&lt;script&gt;
+ 
+ var mybutton = document.getElementById("myBtn");
+
+ 
+ window.onscroll = function() {scrollFunction()};
+
+ function scrollFunction() {
+ if (document.body.scrollTop &gt; 20 || document.documentElement.scrollTop &gt; 20) {
+ mybutton.style.display = "block";
+ } else {
+ mybutton.style.display = "none";
+ }
+ }
+
+ 
+ function topFunction() {
+ document.body.scrollTop = 0;
+ document.documentElement.scrollTop = 0;
+ }
+&lt;/script&gt;
+
+
+
+&lt;style&gt;
+ body {
+ margin: 0;
+ padding: 0;
+ }
+&lt;/style&gt;
+
+
+&lt;div id="redoc-container"&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;/div&gt;
+
+
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item></channel></rss>

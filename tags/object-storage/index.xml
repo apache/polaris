@@ -1,11 +1,38 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Object Storage on Apache Polaris</title><link>https://polaris.apache.org/tags/object-storage/</link><description>Recent content in Object Storage on Apache Polaris</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation&lt;/a>.&lt;br>Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0&lt;/a>.</copyright><atom:link href="https://polaris.apache.org/tags/object-storage/index.xml" rel="self" type="application/rss+xml"/><item><title>Getting Started with Apache Polaris and Apache Ozone</title><link>https://polaris.apache.org/guides/ozone/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/ozone/</guid><description>Overview🔗 This example uses Apache Ozone as a storage provider with Polaris.
-Spark is used as a query engine. This example assumes a local Spark installation. See the Spark Notebooks Example for a more advanced Spark setup.
-Starting the Example🔗 Start the docker compose group by running the following command from the root of the repository:
-docker compose -f site/content/guides/ozone/docker-compose.yml up Note: this example pulls the apache/polaris:latest image, but assumes the image is 1.</description></item><item><title>Getting Started with Apache Polaris and Ceph</title><link>https://polaris.apache.org/guides/ceph/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/ceph/</guid><description>Overview🔗 This guide describes how to spin up a single-node Ceph cluster with RADOS Gateway (RGW) for S3-compatible storage and configure it for use by Polaris.
-This example cluster is configured for basic access key authentication only. It does not include STS (Security Token Service) or temporary credentials. All access to the Ceph RGW (RADOS Gateway) and Polaris integration uses static S3-style credentials (as configured via radosgw-admin user create).
-Spark is used as a query engine.</description></item><item><title>Getting Started with Apache Polaris and MinIO</title><link>https://polaris.apache.org/guides/minio/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/minio/</guid><description>⚠️ Warning
-Disclaimer: This guide uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. Overview🔗 This example uses MinIO as a storage provider with Polaris.
-Spark is used as a query engine. This example assumes a local Spark installation. See the Spark Notebooks Example for a more advanced Spark setup.
-Starting the Example🔗 Build the Polaris server image if it&amp;rsquo;s not already present locally:</description></item><item><title>Getting Started with Apache Polaris and RustFS</title><link>https://polaris.apache.org/guides/rustfs/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rustfs/</guid><description>⚠️ Warning
-Disclaimer: This guide uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, rc should be used. Overview🔗 This example uses RustFS as a storage provider with Polaris.
-Spark is used as a query engine. This example assumes a local Spark installation. See the Spark Notebooks Example for a more advanced Spark setup.</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Object Storage on Apache Polaris</title><link>https://polaris.apache.org/tags/object-storage/</link><description>Recent content in Object Storage on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/tags/object-storage/index.xml" rel="self" type="application/rss+xml"/><item><title>Getting Started with Apache Polaris and Apache Ozone</title><link>https://polaris.apache.org/guides/ozone/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/ozone/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This example uses &lt;a href="https://ozone.apache.org/"&gt;Apache Ozone&lt;/a&gt; as a storage provider with Polaris.&lt;/p&gt;
+&lt;p&gt;Spark is used as a query engine. This example assumes a local Spark installation.
+See the &lt;a href="../spark"&gt;Spark Notebooks Example&lt;/a&gt; for a more advanced Spark setup.&lt;/p&gt;
+&lt;h2 id="starting-the-example" id="starting-the-example"&gt;Starting the Example&lt;a class="heading-anchor" href="#starting-the-example" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Start the docker compose group by running the following command from the root of the repository:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-shell" data-lang="shell"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;docker compose -f site/content/guides/ozone/docker-compose.yml up
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Note: this example pulls the &lt;code&gt;apache/polaris:latest&lt;/code&gt; image, but assumes the image is &lt;code&gt;1.2.0-incubating&lt;/code&gt; or later.&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and Ceph</title><link>https://polaris.apache.org/guides/ceph/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/ceph/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This guide describes how to spin up a &lt;strong&gt;single-node Ceph cluster&lt;/strong&gt; with &lt;strong&gt;RADOS Gateway (RGW)&lt;/strong&gt; for S3-compatible storage and configure it for use by &lt;strong&gt;Polaris&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;This example cluster is configured for basic access key authentication only.
+It does not include STS (Security Token Service) or temporary credentials.
+All access to the Ceph RGW (RADOS Gateway) and Polaris integration uses static S3-style credentials (as configured via radosgw-admin user create).&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and MinIO</title><link>https://polaris.apache.org/guides/minio/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/minio/</guid><description>&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
+ ⚠️ Warning&lt;/p&gt;
+ &lt;strong&gt;Disclaimer:&lt;/strong&gt; This guide uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes.
+&lt;/div&gt;
+
+&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This example uses MinIO as a storage provider with Polaris.&lt;/p&gt;
+&lt;p&gt;Spark is used as a query engine. This example assumes a local Spark installation.
+See the &lt;a href="../spark"&gt;Spark Notebooks Example&lt;/a&gt; for a more advanced Spark setup.&lt;/p&gt;
+&lt;h2 id="starting-the-example" id="starting-the-example"&gt;Starting the Example&lt;a class="heading-anchor" href="#starting-the-example" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Build the Polaris server image if it&amp;rsquo;s not already present locally:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris and RustFS</title><link>https://polaris.apache.org/guides/rustfs/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/rustfs/</guid><description>&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
+ ⚠️ Warning&lt;/p&gt;
+ &lt;strong&gt;Disclaimer:&lt;/strong&gt; This guide uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, &lt;a href="https://github.com/rustfs/cli"&gt;rc&lt;/a&gt; should be used.
+&lt;/div&gt;
+
+&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This example uses &lt;a href="https://rustfs.com/"&gt;RustFS&lt;/a&gt; as a storage provider with Polaris.&lt;/p&gt;
+&lt;p&gt;Spark is used as a query engine. This example assumes a local Spark installation.
+See the &lt;a href="../spark"&gt;Spark Notebooks Example&lt;/a&gt; for a more advanced Spark setup.&lt;/p&gt;</description></item></channel></rss>

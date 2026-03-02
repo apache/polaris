@@ -1,22 +1,87 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>0.9.0 on Apache Polaris</title><link>https://polaris.apache.org/releases/0.9.0/</link><description>Recent content in 0.9.0 on Apache Polaris</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/">Copyright © 2026 The Apache Software Foundation&lt;/a>.&lt;br>Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0&lt;/a>.</copyright><atom:link href="https://polaris.apache.org/releases/0.9.0/index.xml" rel="self" type="application/rss+xml"/><item><title>Quick Start</title><link>https://polaris.apache.org/releases/0.9.0/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/quickstart/</guid><description>This guide serves as a introduction to several key entities that can be managed with Apache Polaris (Incubating), describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark™.
-Prerequisites🔗 This guide covers building Polaris, deploying it locally or via Docker, and interacting with it using the command-line interface and Apache Spark. Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.</description></item><item><title>Overview</title><link>https://polaris.apache.org/releases/0.9.0/overview/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/overview/</guid><description>Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg™ tables and is built on the open source Apache Iceberg™ REST protocol.
-With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
-Key concepts🔗 This section introduces key concepts associated with using Apache Polaris (Incubating).
-In the following diagram, a sample Apache Polaris (Incubating) structure with nested namespaces is shown for Catalog1.</description></item><item><title>Apache Polaris (Incubating) CLI</title><link>https://polaris.apache.org/releases/0.9.0/command-line-interface/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/command-line-interface/</guid><description>In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.
-The basic syntax of the Polaris CLI is outlined below:
-polaris [options] COMMAND ... options: --host --port --client-id --client-secret COMMAND must be one of the following:
-catalogs principals principal-roles catalog-roles namespaces privileges Each command supports several subcommands, and some subcommands have actions that come after the subcommand in turn.</description></item><item><title>Entities</title><link>https://polaris.apache.org/releases/0.9.0/entities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/entities/</guid><description>This page documents various entities that can be managed in Apache Polaris (Incubating).
-Catalog🔗 A catalog is a top-level entity in Polaris that may contain other entities like namespaces and tables. These map directly to Apache Iceberg catalogs.
-For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see the API docs.
-Storage Type🔗 All catalogs in Polaris are associated with a storage type.</description></item><item><title>Access Control</title><link>https://polaris.apache.org/releases/0.9.0/access-control/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/access-control/</guid><description>This section provides information about how access control works for Apache Polaris (Incubating).
-Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles and then grants access to resources to service principals by assigning catalog roles to principal roles.
-These are the key concepts to understanding access control in Polaris:
-Securable object Principal role Catalog role Privilege Securable object🔗 A securable object is an object to which access can be granted.</description></item><item><title>Configuring Apache Polaris (Incubating) for Production</title><link>https://polaris.apache.org/releases/0.9.0/configuring-polaris-for-production/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/configuring-polaris-for-production/</guid><description>The default polaris-server.yml configuration is intended for development and testing. When deploying Polaris in production, there are several best practices to keep in mind.
-Security🔗 Configurations🔗 Notable configuration used to secure a Polaris deployment are outlined below.
-oauth2🔗 [!WARNING]
-Ensure that the tokenBroker setting reflects the token broker specified in authenticator below.
-Configure OAuth with this setting. Remove the TestInlineBearerTokenPolarisAuthenticator option and uncomment the DefaultPolarisAuthenticator authenticator option beneath it. Then, configure the token broker.</description></item><item><title>Metastores</title><link>https://polaris.apache.org/releases/0.9.0/metastores/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/metastores/</guid><description>This page documents important configurations for connecting to production database through EclipseLink.
-Polaris Server Configuration🔗 Configure the metaStoreManager section in the Polaris configuration (polaris-server.yml by default) as follows:
-metaStoreManager: type: eclipse-link conf-file: META-INF/persistence.xml persistence-unit: polaris conf-file must point to an EclipseLink configuration file
-By default, conf-file points to the embedded resource file META-INF/persistence.xml in the polaris-eclipselink module.
-In order to specify a configuration file outside the classpath, follow these steps.</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/polaris-management-service/</guid><description/></item><item><title>Apache Iceberg OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</guid><description/></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>0.9.0 on Apache Polaris</title><link>https://polaris.apache.org/releases/0.9.0/</link><description>Recent content in 0.9.0 on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/releases/0.9.0/index.xml" rel="self" type="application/rss+xml"/><item><title>Quick Start</title><link>https://polaris.apache.org/releases/0.9.0/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/quickstart/</guid><description>&lt;p&gt;This guide serves as a introduction to several key entities that can be managed with Apache Polaris (Incubating), describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark™.&lt;/p&gt;
+&lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This guide covers building Polaris, deploying it locally or via &lt;a href="https://www.docker.com/"&gt;Docker&lt;/a&gt;, and interacting with it using the command-line interface and &lt;a href="https://spark.apache.org/"&gt;Apache Spark&lt;/a&gt;. Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.&lt;/p&gt;</description></item><item><title>Overview</title><link>https://polaris.apache.org/releases/0.9.0/overview/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/overview/</guid><description>&lt;p&gt;Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg™ tables and is built on the open source Apache Iceberg™ REST protocol.&lt;/p&gt;
+&lt;p&gt;With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.&lt;/p&gt;
+&lt;p&gt;&lt;img src="https://polaris.apache.org/img/overview.svg" alt="Conceptual diagram of Apache Polaris (Incubating)." title="Apache Polaris (Incubating) overview"&gt;&lt;/p&gt;
+&lt;h2 id="key-concepts" id="key-concepts"&gt;Key concepts&lt;a class="heading-anchor" href="#key-concepts" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;This section introduces key concepts associated with using Apache Polaris (Incubating).&lt;/p&gt;
+&lt;p&gt;In the following diagram, a sample &lt;a href="#catalog"&gt;Apache Polaris (Incubating) structure&lt;/a&gt; with nested &lt;a href="#namespace"&gt;namespaces&lt;/a&gt; is shown for Catalog1. No tables
+or namespaces have been created yet for Catalog2 or Catalog3.&lt;/p&gt;</description></item><item><title>Apache Polaris (Incubating) CLI</title><link>https://polaris.apache.org/releases/0.9.0/command-line-interface/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/command-line-interface/</guid><description>&lt;p&gt;In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.&lt;/p&gt;
+&lt;p&gt;The basic syntax of the Polaris CLI is outlined below:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;polaris [options] COMMAND ...
+
+options:
+--host
+--port
+--client-id
+--client-secret
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;code&gt;COMMAND&lt;/code&gt; must be one of the following:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;catalogs&lt;/li&gt;
+&lt;li&gt;principals&lt;/li&gt;
+&lt;li&gt;principal-roles&lt;/li&gt;
+&lt;li&gt;catalog-roles&lt;/li&gt;
+&lt;li&gt;namespaces&lt;/li&gt;
+&lt;li&gt;privileges&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Each &lt;em&gt;command&lt;/em&gt; supports several &lt;em&gt;subcommands&lt;/em&gt;, and some &lt;em&gt;subcommands&lt;/em&gt; have &lt;em&gt;actions&lt;/em&gt; that come after the subcommand in turn. Finally, &lt;em&gt;arguments&lt;/em&gt; follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the &lt;em&gt;command&lt;/em&gt; refers to. Again, the ordering of this positional argument relative to named arguments is not important.&lt;/p&gt;</description></item><item><title>Entities</title><link>https://polaris.apache.org/releases/0.9.0/entities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/entities/</guid><description>&lt;p&gt;This page documents various entities that can be managed in Apache Polaris (Incubating).&lt;/p&gt;
+&lt;h2 id="catalog" id="catalog"&gt;Catalog&lt;a class="heading-anchor" href="#catalog" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;A catalog is a top-level entity in Polaris that may contain other entities like &lt;a href="#namespace"&gt;namespaces&lt;/a&gt; and &lt;a href="#table"&gt;tables&lt;/a&gt;. These map directly to &lt;a href="https://iceberg.apache.org/concepts/catalog/"&gt;Apache Iceberg catalogs&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see &lt;a href="https://github.com/apache/polaris/blob/polaris-regtests/client/python/docs/CreateCatalogRequest.md/%25!s(MISSING)"&gt;the API docs&lt;/a&gt;.&lt;/p&gt;
+&lt;h3 id="storage-type" id="storage-type"&gt;Storage Type&lt;a class="heading-anchor" href="#storage-type" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;All catalogs in Polaris are associated with a &lt;em&gt;storage type&lt;/em&gt;. Valid Storage Types are &lt;code&gt;S3&lt;/code&gt;, &lt;code&gt;Azure&lt;/code&gt;, and &lt;code&gt;GCS&lt;/code&gt;. The &lt;code&gt;FILE&lt;/code&gt; type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.&lt;/p&gt;</description></item><item><title>Access Control</title><link>https://polaris.apache.org/releases/0.9.0/access-control/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/access-control/</guid><description>&lt;p&gt;This section provides information about how access control works for Apache Polaris (Incubating).&lt;/p&gt;
+&lt;p&gt;Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
+and then grants access to resources to service principals by assigning catalog roles to principal roles.&lt;/p&gt;
+&lt;p&gt;These are the key concepts to understanding access control in Polaris:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Securable object&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Principal role&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Catalog role&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Privilege&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="securable-object" id="securable-object"&gt;Securable object&lt;a class="heading-anchor" href="#securable-object" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;A securable object is an object to which access can be granted. Polaris
+has the following securable objects:&lt;/p&gt;</description></item><item><title>Configuring Apache Polaris (Incubating) for Production</title><link>https://polaris.apache.org/releases/0.9.0/configuring-polaris-for-production/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/configuring-polaris-for-production/</guid><description>&lt;p&gt;The default &lt;code&gt;polaris-server.yml&lt;/code&gt; configuration is intended for development and testing. When deploying Polaris in production, there are several best practices to keep in mind.&lt;/p&gt;
+&lt;h2 id="security" id="security"&gt;Security&lt;a class="heading-anchor" href="#security" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="configurations" id="configurations"&gt;Configurations&lt;a class="heading-anchor" href="#configurations" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;Notable configuration used to secure a Polaris deployment are outlined below.&lt;/p&gt;
+&lt;h4 id="oauth2" id="oauth2"&gt;oauth2&lt;a class="heading-anchor" href="#oauth2" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="td-alert td-alert--md alert alert-warning" role="alert"&gt;&lt;div class="td-alert-heading alert-heading" role="heading"&gt;&lt;br&gt;&lt;/div&gt;
+ &lt;div class="td-alert-body"&gt;
+ &lt;p&gt;Ensure that the &lt;code&gt;tokenBroker&lt;/code&gt; setting reflects the token broker specified in &lt;code&gt;authenticator&lt;/code&gt; below.&lt;/p&gt;
+ &lt;/div&gt;
+&lt;/div&gt;
+&lt;ul&gt;
+&lt;li&gt;Configure &lt;a href="https://oauth.net/2/"&gt;OAuth&lt;/a&gt; with this setting. Remove the &lt;code&gt;TestInlineBearerTokenPolarisAuthenticator&lt;/code&gt; option and uncomment the &lt;code&gt;DefaultPolarisAuthenticator&lt;/code&gt; authenticator option beneath it.&lt;/li&gt;
+&lt;li&gt;Then, configure the token broker. You can configure the token broker to use either &lt;a href="https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24"&gt;asymmetric&lt;/a&gt; or &lt;a href="https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23"&gt;symmetric&lt;/a&gt; keys.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id="authenticatortokenbroker" id="authenticatortokenbroker"&gt;authenticator.tokenBroker&lt;a class="heading-anchor" href="#authenticatortokenbroker" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="td-alert td-alert--md alert alert-warning" role="alert"&gt;&lt;div class="td-alert-heading alert-heading" role="heading"&gt;&lt;br&gt;&lt;/div&gt;
+ &lt;div class="td-alert-body"&gt;
+ &lt;p&gt;Ensure that the &lt;code&gt;tokenBroker&lt;/code&gt; setting reflects the token broker specified in &lt;code&gt;oauth2&lt;/code&gt; above.&lt;/p&gt;</description></item><item><title>Metastores</title><link>https://polaris.apache.org/releases/0.9.0/metastores/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/metastores/</guid><description>&lt;p&gt;This page documents important configurations for connecting to production database through &lt;a href="https://eclipse.dev/eclipselink/"&gt;EclipseLink&lt;/a&gt;.&lt;/p&gt;
+&lt;h2 id="polaris-server-configuration" id="polaris-server-configuration"&gt;Polaris Server Configuration&lt;a class="heading-anchor" href="#polaris-server-configuration" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Configure the &lt;code&gt;metaStoreManager&lt;/code&gt; section in the Polaris configuration (&lt;code&gt;polaris-server.yml&lt;/code&gt; by default) as follows:&lt;/p&gt;
+&lt;pre tabindex="0"&gt;&lt;code&gt;metaStoreManager:
+ type: eclipse-link
+ conf-file: META-INF/persistence.xml
+ persistence-unit: polaris
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;code&gt;conf-file&lt;/code&gt; must point to an &lt;a href="https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm"&gt;EclipseLink configuration file&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;By default, &lt;code&gt;conf-file&lt;/code&gt; points to the embedded resource file &lt;code&gt;META-INF/persistence.xml&lt;/code&gt; in the &lt;code&gt;polaris-eclipselink&lt;/code&gt; module.&lt;/p&gt;
+&lt;p&gt;In order to specify a configuration file outside the classpath, follow these steps.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Place &lt;code&gt;persistence.xml&lt;/code&gt; into a jar file: &lt;code&gt;jar cvf /tmp/conf.jar persistence.xml&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Use &lt;code&gt;conf-file: /tmp/conf.jar!/persistence.xml&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id="eclipselink-configuration---persistencexml" id="eclipselink-configuration---persistencexml"&gt;EclipseLink Configuration - persistence.xml&lt;a class="heading-anchor" href="#eclipselink-configuration---persistencexml" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;The configuration file &lt;code&gt;persistence.xml&lt;/code&gt; is used to set up the database connection properties, which can differ depending on the type of database and its configuration.&lt;/p&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/polaris-management-service/</guid><description>&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Iceberg OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</guid><description>&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/rest-catalog-open-api.yaml" /&gt;</description></item></channel></rss>
