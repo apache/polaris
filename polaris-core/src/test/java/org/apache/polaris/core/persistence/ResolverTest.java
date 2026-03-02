@@ -120,7 +120,7 @@ public class ResolverTest extends BaseResolverTest {
   }
 
   @Test
-  public void testResolveSelectionsRequiresCallerPrincipalForCatalogRoles() {
+  public void testResolveSelectionsRequiresCallerPrincipalForCallerCatalogRoles() {
     Resolver resolver =
         new Resolver(
             diagServices,
@@ -129,9 +129,29 @@ public class ResolverTest extends BaseResolverTest {
             PolarisPrincipal.of("missing", Map.of(), Set.of()),
             null,
             "test");
-    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CATALOG_ROLES));
+    ResolverStatus status = resolver.resolveSelections(Set.of(Resolvable.CALLER_CATALOG_ROLES));
     Assertions.assertThat(status.getStatus())
         .isEqualTo(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
+  }
+
+  @Test
+  public void
+      testResolveSelectionsRequestedTopLevelEntitiesWithCatalogRoleResolvesReferenceCatalog() {
+    Resolver resolver =
+        new Resolver(
+            diagServices,
+            callCtx(),
+            metaStoreManager(),
+            PolarisPrincipal.of("missing", Map.of(), Set.of()),
+            null,
+            "test");
+    resolver.addOptionalEntityByName(PolarisEntityType.CATALOG_ROLE, "role1");
+    ResolverStatus status =
+        resolver.resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+    ResolvedPolarisEntity resolvedCatalog = resolver.getResolvedReferenceCatalog();
+    Assertions.assertThat(resolvedCatalog).isNotNull();
+    Assertions.assertThat(resolvedCatalog.getEntity().getName()).isEqualTo("test");
   }
 
   @Test
