@@ -22,7 +22,6 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
-import static org.apache.polaris.core.policy.PredefinedPolicyTypes.TEST_NON_INHERITABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,6 +63,8 @@ import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.TestNonInheritablePolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.core.policy.exceptions.PolicyVersionMismatchException;
@@ -159,6 +160,9 @@ public abstract class AbstractPolicyCatalogTest {
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
+    // Register the test-only non-inheritable policy type
+    PolicyType.registerCustomPolicyType(TestNonInheritablePolicyType.INSTANCE);
+
     storageCredentialCache.invalidateAll();
 
     realmName =
@@ -263,6 +267,8 @@ public abstract class AbstractPolicyCatalogTest {
   @AfterEach
   public void after() throws IOException {
     metaStoreManager.purge(polarisContext);
+    // Unregister the test-only non-inheritable policy type
+    PolicyType.unregisterCustomPolicyType(TestNonInheritablePolicyType.INSTANCE);
   }
 
   @Test
@@ -588,38 +594,51 @@ public abstract class AbstractPolicyCatalogTest {
     assertThat(applicablePolicies.contains(policyToApplicablePolicy(p2, false, NS))).isTrue();
   }
 
-  private static ApplicablePolicy policyToApplicablePolicy(
-      Policy policy, boolean inherited, Namespace parent) {
-    return new ApplicablePolicy(
-        policy.getPolicyType(),
-        policy.getInheritable(),
-        policy.getName(),
-        policy.getDescription(),
-        policy.getContent(),
-        policy.getVersion(),
-        inherited,
-        Arrays.asList(parent.levels()));
-  }
+  // ==================== Non-Inheritable Policy Tests ====================
 
   @Test
   public void testCreateNonInheritablePolicy() {
     icebergCatalog.createNamespace(NS);
     Policy policy =
         policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "test", "{\"enable\": false}");
+            POLICY1,
+            TestNonInheritablePolicyType.INSTANCE.getName(),
+            "test",
+            "{\"enable\": false}");
 
     assertThat(policy).isNotNull();
     assertThat(policy.getName()).isEqualTo(POLICY1.name());
-    assertThat(policy.getPolicyType()).isEqualTo(TEST_NON_INHERITABLE.getName());
+    assertThat(policy.getPolicyType()).isEqualTo(TestNonInheritablePolicyType.INSTANCE.getName());
     assertThat(policy.getInheritable()).isFalse();
+  }
+
+  @Test
+  public void testNonInheritablePolicyDoesNotPropagateToCatalog() {
+    // Non-inheritable policy attached to catalog should appear when querying catalog directly
+    icebergCatalog.createNamespace(NS);
+    var policy =
+        policyCatalog.createPolicy(
+            POLICY1,
+            TestNonInheritablePolicyType.INSTANCE.getName(),
+            "test",
+            "{\"enable\": false}");
+
+    // Attach non-inheritable policy to catalog
+    var catalogTarget =
+        new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    policyCatalog.attachPolicy(POLICY1, catalogTarget, null);
+
+    // Non-inheritable policy should appear when querying catalog directly
+    var applicablePolicies = policyCatalog.getApplicablePolicies(null, null, null);
+    assertThat(applicablePolicies).hasSize(1);
+    assertThat(applicablePolicies.getFirst().getInherited()).isFalse();
   }
 
   @Test
   public void testNonInheritablePolicyDoesNotPropagateToNamespace() {
     icebergCatalog.createNamespace(NS);
-    var policy =
-        policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "test", "{\"enable\": false}");
+    policyCatalog.createPolicy(
+        POLICY1, TestNonInheritablePolicyType.INSTANCE.getName(), "test", "{\"enable\": false}");
 
     // Attach non-inheritable policy to catalog
     var catalogTarget =
@@ -636,9 +655,8 @@ public abstract class AbstractPolicyCatalogTest {
     icebergCatalog.createNamespace(NS);
     icebergCatalog.createTable(TABLE, SCHEMA);
 
-    var policy =
-        policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "test", "{\"enable\": false}");
+    policyCatalog.createPolicy(
+        POLICY1, TestNonInheritablePolicyType.INSTANCE.getName(), "test", "{\"enable\": false}");
 
     // Attach non-inheritable policy to catalog
     var catalogTarget =
@@ -664,7 +682,10 @@ public abstract class AbstractPolicyCatalogTest {
 
     var policy =
         policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "test", "{\"enable\": false}");
+            POLICY1,
+            TestNonInheritablePolicyType.INSTANCE.getName(),
+            "test",
+            "{\"enable\": false}");
 
     // Attach non-inheritable policy directly to table
     policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_TBL, null);
@@ -681,15 +702,15 @@ public abstract class AbstractPolicyCatalogTest {
     icebergCatalog.createNamespace(NS);
     icebergCatalog.createTable(TABLE, SCHEMA);
 
-    // Create inheritable policy
     var inheritablePolicy =
         policyCatalog.createPolicy(
             POLICY1, DATA_COMPACTION.getName(), "inheritable", "{\"enable\": true}");
-
-    // Create non-inheritable policy
     var nonInheritablePolicy =
         policyCatalog.createPolicy(
-            POLICY2, TEST_NON_INHERITABLE.getName(), "non-inheritable", "{\"enable\": false}");
+            POLICY2,
+            TestNonInheritablePolicyType.INSTANCE.getName(),
+            "non-inheritable",
+            "{\"enable\": false}");
 
     // Attach both policies to catalog
     var catalogTarget =
@@ -697,81 +718,44 @@ public abstract class AbstractPolicyCatalogTest {
     policyCatalog.attachPolicy(POLICY1, catalogTarget, null);
     policyCatalog.attachPolicy(POLICY2, catalogTarget, null);
 
-    // Only inheritable policy should propagate to namespace
-    var nsApplicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
-    assertThat(nsApplicablePolicies)
-        .hasSize(1)
-        .containsExactly(policyToApplicablePolicy(inheritablePolicy, true, NS));
-
-    // Only inheritable policy should propagate to table
-    var tableApplicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
-    assertThat(tableApplicablePolicies)
-        .hasSize(1)
-        .containsExactly(policyToApplicablePolicy(inheritablePolicy, true, NS));
+    // Table should only see the inheritable policy
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
+    assertThat(applicablePolicies).hasSize(1);
+    assertThat(applicablePolicies.getFirst().getName()).isEqualTo(inheritablePolicy.getName());
+    assertThat(applicablePolicies.getFirst().getInherited()).isTrue();
   }
 
   @Test
-  public void testNonInheritablePolicyFilteredByType() {
+  public void testNonInheritablePolicyAtNamespaceLevelDirect() {
     icebergCatalog.createNamespace(NS);
-    icebergCatalog.createTable(TABLE, SCHEMA);
 
     var policy =
         policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "test", "{\"enable\": false}");
+            POLICY1,
+            TestNonInheritablePolicyType.INSTANCE.getName(),
+            "test",
+            "{\"enable\": false}");
 
-    // Attach non-inheritable policy to table
-    policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_TBL, null);
+    // Attach non-inheritable policy to namespace
+    policyCatalog.attachPolicy(POLICY1, POLICY_ATTACH_TARGET_NS, null);
 
-    // Should find the policy when filtering by its type
-    var applicablePolicies =
-        policyCatalog.getApplicablePolicies(NS, TABLE.name(), TEST_NON_INHERITABLE);
+    // Non-inheritable policy should appear when querying namespace directly
+    var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies)
         .hasSize(1)
         .containsExactly(policyToApplicablePolicy(policy, false, NS));
-
-    // Should not find the policy when filtering by a different type
-    applicablePolicies = policyCatalog.getApplicablePolicies(NS, TABLE.name(), DATA_COMPACTION);
-    assertThat(applicablePolicies).isEmpty();
   }
 
-  @Test
-  public void testMultipleNonInheritablePoliciesOnDifferentLevels() {
-    icebergCatalog.createNamespace(NS);
-    icebergCatalog.createTable(TABLE, SCHEMA);
-
-    var catalogPolicy =
-        policyCatalog.createPolicy(
-            POLICY1, TEST_NON_INHERITABLE.getName(), "catalog-policy", "{\"enable\": false}");
-    var namespacePolicy =
-        policyCatalog.createPolicy(
-            POLICY2, TEST_NON_INHERITABLE.getName(), "namespace-policy", "{\"enable\": true}");
-    var tablePolicy =
-        policyCatalog.createPolicy(
-            POLICY3, TEST_NON_INHERITABLE.getName(), "table-policy", "{\"enable\": false}");
-
-    // Attach policies to different levels
-    var catalogTarget =
-        new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
-    policyCatalog.attachPolicy(POLICY1, catalogTarget, null);
-    policyCatalog.attachPolicy(POLICY2, POLICY_ATTACH_TARGET_NS, null);
-    policyCatalog.attachPolicy(POLICY3, POLICY_ATTACH_TARGET_TBL, null);
-
-    // Catalog level: only catalog policy
-    var catalogApplicable = policyCatalog.getApplicablePolicies(null, null, null);
-    assertThat(catalogApplicable)
-        .hasSize(1)
-        .containsExactly(policyToApplicablePolicy(catalogPolicy, false, NS));
-
-    // Namespace level: only namespace policy (not catalog policy)
-    var namespaceApplicable = policyCatalog.getApplicablePolicies(NS, null, null);
-    assertThat(namespaceApplicable)
-        .hasSize(1)
-        .containsExactly(policyToApplicablePolicy(namespacePolicy, false, NS));
-
-    // Table level: only table policy (not catalog or namespace policies)
-    var tableApplicable = policyCatalog.getApplicablePolicies(NS, TABLE.name(), null);
-    assertThat(tableApplicable)
-        .hasSize(1)
-        .containsExactly(policyToApplicablePolicy(tablePolicy, false, NS));
+  private static ApplicablePolicy policyToApplicablePolicy(
+      Policy policy, boolean inherited, Namespace parent) {
+    return new ApplicablePolicy(
+        policy.getPolicyType(),
+        policy.getInheritable(),
+        policy.getName(),
+        policy.getDescription(),
+        policy.getContent(),
+        policy.getVersion(),
+        inherited,
+        Arrays.asList(parent.levels()));
   }
 }

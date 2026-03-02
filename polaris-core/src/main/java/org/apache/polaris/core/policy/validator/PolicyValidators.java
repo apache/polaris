@@ -21,6 +21,7 @@ package org.apache.polaris.core.policy.validator;
 import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
@@ -50,10 +51,20 @@ public class PolicyValidators {
   public static void validate(PolicyEntity policy) {
     Preconditions.checkNotNull(policy, "Policy must not be null");
 
-    var type = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
-    Preconditions.checkArgument(type != null, "Unknown policy type: " + policy.getPolicyTypeCode());
+    // First check if this is a known policy type (predefined or registered custom type)
+    var policyType = PolicyType.fromCode(policy.getPolicyTypeCode());
+    Preconditions.checkArgument(
+        policyType != null, "Unknown policy type: " + policy.getPolicyTypeCode());
 
-    switch (type) {
+    // Only validate content for predefined policy types
+    var predefinedType = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
+    if (predefinedType == null) {
+      // Custom/test policy type - skip content validation
+      LOGGER.info("Skipping content validation for custom policy type: {}", policyType.getName());
+      return;
+    }
+
+    switch (predefinedType) {
       case DATA_COMPACTION:
         DataCompactionPolicyContent.fromString(policy.getContent());
         break;
@@ -66,13 +77,11 @@ public class PolicyValidators {
       case ORPHAN_FILE_REMOVAL:
         OrphanFileRemovalPolicyContent.fromString(policy.getContent());
         break;
-      case TEST_NON_INHERITABLE:
-        break;
       default:
-        throw new IllegalArgumentException("Unsupported policy type: " + type.getName());
+        throw new IllegalArgumentException("Unsupported policy type: " + predefinedType.getName());
     }
 
-    LOGGER.info("Policy validated successfully: {}", type.getName());
+    LOGGER.info("Policy validated successfully: {}", predefinedType.getName());
   }
 
   /**
@@ -86,25 +95,34 @@ public class PolicyValidators {
     Preconditions.checkNotNull(policy, "Policy must not be null");
     Preconditions.checkNotNull(targetEntity, "Target entity must not be null");
 
-    var policyType = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
+    // First check if this is a known policy type (predefined or registered custom type)
+    var policyType = PolicyType.fromCode(policy.getPolicyTypeCode());
     Preconditions.checkArgument(
         policyType != null, "Unknown policy type: " + policy.getPolicyTypeCode());
+
+    // Only apply attachment rules for predefined policy types
+    var predefinedType = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
+    if (predefinedType == null) {
+      // Custom/test policy type - allow attachment to any entity
+      LOGGER.info(
+          "Allowing attachment for custom policy type: {} to entity: {}",
+          policyType.getName(),
+          targetEntity.getName());
+      return true;
+    }
 
     var entityType = targetEntity.getType();
     var entitySubType = targetEntity.getSubType();
 
-    switch (policyType) {
+    switch (predefinedType) {
       case DATA_COMPACTION:
       case METADATA_COMPACTION:
       case SNAPSHOT_EXPIRY:
       case ORPHAN_FILE_REMOVAL:
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
 
-      case TEST_NON_INHERITABLE:
-        return true;
-
       default:
-        LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
+        LOGGER.warn("Attachment not supported for policy type: {}", predefinedType.getName());
         return false;
     }
   }
