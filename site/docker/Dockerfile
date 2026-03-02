@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM ubuntu:25.10 AS hugo
+FROM ubuntu:questing-20251217 AS hugo
 
 ENV LANGUAGE='en_US:en' \
     HUGO_VERSION='0.157.0'
