@@ -49,8 +49,6 @@ import java.util.stream.Collectors;
 public class RangerUtils {
     private static final Logger LOG = LoggerFactory.getLogger(RangerUtils.class);
 
-    private static final String RESOURCE_NONE = "none";
-
     public static Properties loadProperties(String resourcePath) {
         Properties prop = new Properties();
 
@@ -79,46 +77,29 @@ public class RangerUtils {
 
     public static String toResourceType(PolarisEntityType entityType) {
         return switch (entityType) {
-            case NULL_TYPE -> RESOURCE_NONE;
             case ROOT -> "root";
             case PRINCIPAL -> "principal";
-            case PRINCIPAL_ROLE -> "principal-role";
             case CATALOG -> "catalog";
-            case CATALOG_ROLE -> "catalog-role";
             case NAMESPACE -> "namespace";
             case TABLE_LIKE ->  "table";
-            case TASK -> RESOURCE_NONE;
-            case FILE -> RESOURCE_NONE;
             case POLICY -> "policy";
+            default -> entityType.name(); // NULL_TYPE, PRINCIPAL_ROLE, CATALOG_ROLE, TASK, FILE
         } ;
     }
 
     public static String toAccessType(PolarisPrivilege privilege) {
         return switch (privilege) {
             case SERVICE_MANAGE_ACCESS -> "service-access-manage";
-            case CATALOG_MANAGE_ACCESS -> "catalog-access-manage";
-            case CATALOG_ROLE_USAGE -> "catalog-role-usage";
-            case PRINCIPAL_ROLE_USAGE -> "principal-role-usage";
-            case NAMESPACE_CREATE -> "namespace-create";
-            case TABLE_CREATE -> "table-create";
-            case VIEW_CREATE -> "view-create";
-            case NAMESPACE_DROP -> "namespace-drop";
-            case TABLE_DROP -> "table-drop";
-            case VIEW_DROP -> "view-drop";
-            case NAMESPACE_LIST -> "namespace-list";
-            case TABLE_LIST -> "table-list";
-            case VIEW_LIST -> "view-list";
-            case NAMESPACE_READ_PROPERTIES -> "namespace-properties-read";
-            case TABLE_READ_PROPERTIES -> "table-properties-read";
-            case VIEW_READ_PROPERTIES -> "view-properties-read";
-            case NAMESPACE_WRITE_PROPERTIES -> "namespace-properties-write";
-            case TABLE_WRITE_PROPERTIES -> "table-properties-write";
-            case VIEW_WRITE_PROPERTIES -> "view-properties-write";
-            case TABLE_READ_DATA -> "table-data-read";
-            case TABLE_WRITE_DATA -> "table-data-write";
-            case NAMESPACE_FULL_METADATA -> "namespace-metadata-full";
-            case TABLE_FULL_METADATA -> "table-metadata-full";
-            case VIEW_FULL_METADATA -> "view-metadata-full";
+
+            case PRINCIPAL_CREATE -> "principal-create";
+            case PRINCIPAL_DROP -> "principal-drop";
+            case PRINCIPAL_LIST -> "principal-list";
+            case PRINCIPAL_READ_PROPERTIES -> "principal-properties-read";
+            case PRINCIPAL_WRITE_PROPERTIES -> "principal-properties-write";
+            case PRINCIPAL_FULL_METADATA -> "principal-metadata-full";
+            case PRINCIPAL_ROTATE_CREDENTIALS -> "principal-credentials-rotate";
+            case PRINCIPAL_RESET_CREDENTIALS -> "principal-credentials-reset";
+
             case CATALOG_CREATE -> "catalog-create";
             case CATALOG_DROP -> "catalog-drop";
             case CATALOG_LIST -> "catalog-list";
@@ -127,58 +108,28 @@ public class RangerUtils {
             case CATALOG_FULL_METADATA -> "catalog-metadata-full";
             case CATALOG_MANAGE_METADATA -> "catalog-metadata-manage";
             case CATALOG_MANAGE_CONTENT -> "catalog-content-manage";
-            case PRINCIPAL_LIST_GRANTS -> "principal-grants-list";
-            case PRINCIPAL_ROLE_LIST_GRANTS -> "principal-role-grants-list";
-            case CATALOG_ROLE_LIST_GRANTS -> "catalog-role-grants-list";
-            case CATALOG_LIST_GRANTS -> "catalog-grants-list";
-            case NAMESPACE_LIST_GRANTS -> "namespace-grants-list";
-            case TABLE_LIST_GRANTS -> "table-grants-list";
-            case VIEW_LIST_GRANTS -> "view-grants-list";
-            case CATALOG_MANAGE_GRANTS_ON_SECURABLE -> "catalog-grants-manage";
-            case NAMESPACE_MANAGE_GRANTS_ON_SECURABLE -> "namespace-grants-manage";
-            case TABLE_MANAGE_GRANTS_ON_SECURABLE -> "table-grants-manage";
-            case VIEW_MANAGE_GRANTS_ON_SECURABLE -> "view-grants-manage";
-            case PRINCIPAL_CREATE -> "principal-create";
-            case PRINCIPAL_DROP -> "principal-drop";
-            case PRINCIPAL_LIST -> "principal-list";
-            case PRINCIPAL_READ_PROPERTIES -> "principal-properties-read";
-            case PRINCIPAL_WRITE_PROPERTIES -> "principal-properties-write";
-            case PRINCIPAL_FULL_METADATA -> "principal-metadata-full";
-            case PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE -> "principal-grants-manage";
-            case PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE -> "principal-grants-for-grantee-manage";
-            case PRINCIPAL_ROTATE_CREDENTIALS -> "principal-credentials-rotate";
-            case PRINCIPAL_RESET_CREDENTIALS -> "principal-credentials-reset";
-            case PRINCIPAL_ROLE_CREATE -> "principal-role-create";
-            case PRINCIPAL_ROLE_DROP -> "principal-role-drop";
-            case PRINCIPAL_ROLE_LIST -> "principal-role-list";
-            case PRINCIPAL_ROLE_READ_PROPERTIES -> "principal-role-properties-read";
-            case PRINCIPAL_ROLE_WRITE_PROPERTIES -> "principal-role-properties-write";
-            case PRINCIPAL_ROLE_FULL_METADATA -> "principal-role-metadata-full";
-            case PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE -> "principal-role-grants-manage";
-            case PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE -> "principal-role-grants-for-grantee-manage";
-            case CATALOG_ROLE_CREATE -> "catalog-role-create";
-            case CATALOG_ROLE_DROP -> "catalog-role-drop";
-            case CATALOG_ROLE_LIST -> "catalog-role-list";
-            case CATALOG_ROLE_READ_PROPERTIES -> "catalog-role-properties-read";
-            case CATALOG_ROLE_WRITE_PROPERTIES -> "catalog-role-properties-write";
-            case CATALOG_ROLE_FULL_METADATA -> "catalog-role-metadata-full";
-            case CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE -> "catalog-role-grants-manage";
-            case CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE -> "catalog-role-grants-for-grantee-manage";
-            case POLICY_CREATE -> "policy-create";
-            case POLICY_READ -> "policy-read";
-            case POLICY_DROP -> "policy-drop";
-            case POLICY_WRITE -> "policy-write";
-            case POLICY_LIST -> "policy-list";
-            case POLICY_FULL_METADATA -> "policy-metadata-full";
-            case POLICY_ATTACH -> "policy-attach";
-            case POLICY_DETACH -> "policy-detach";
             case CATALOG_ATTACH_POLICY -> "catalog-policy-attach";
-            case NAMESPACE_ATTACH_POLICY -> "namespace-policy-attach";
-            case TABLE_ATTACH_POLICY -> "table-policy-attach";
             case CATALOG_DETACH_POLICY -> "catalog-policy-detach";
+
+            case NAMESPACE_CREATE -> "namespace-create";
+            case NAMESPACE_DROP -> "namespace-drop";
+            case NAMESPACE_LIST -> "namespace-list";
+            case NAMESPACE_READ_PROPERTIES -> "namespace-properties-read";
+            case NAMESPACE_WRITE_PROPERTIES -> "namespace-properties-write";
+            case NAMESPACE_FULL_METADATA -> "namespace-metadata-full";
+            case NAMESPACE_ATTACH_POLICY -> "namespace-policy-attach";
             case NAMESPACE_DETACH_POLICY -> "namespace-policy-detach";
+
+            case TABLE_CREATE -> "table-create";
+            case TABLE_DROP -> "table-drop";
+            case TABLE_LIST -> "table-list";
+            case TABLE_READ_PROPERTIES -> "table-properties-read";
+            case TABLE_WRITE_PROPERTIES -> "table-properties-write";
+            case TABLE_READ_DATA -> "table-data-read";
+            case TABLE_WRITE_DATA -> "table-data-write";
+            case TABLE_FULL_METADATA -> "table-metadata-full";
+            case TABLE_ATTACH_POLICY -> "table-policy-attach";
             case TABLE_DETACH_POLICY -> "table-policy-detach";
-            case POLICY_MANAGE_GRANTS_ON_SECURABLE -> "policy-grants-manage";
             case TABLE_ASSIGN_UUID -> "table-uuid-assign";
             case TABLE_UPGRADE_FORMAT_VERSION -> "table-format-version-upgrade";
             case TABLE_ADD_SCHEMA -> "table-schema-add";
@@ -197,6 +148,24 @@ public class RangerUtils {
             case TABLE_REMOVE_STATISTICS -> "table-statistics-remove";
             case TABLE_REMOVE_PARTITION_SPECS -> "table-partition-specs-remove";
             case TABLE_MANAGE_STRUCTURE -> "table-structure-manage";
+
+            case VIEW_CREATE -> "view-create";
+            case VIEW_DROP -> "view-drop";
+            case VIEW_LIST -> "view-list";
+            case VIEW_READ_PROPERTIES -> "view-properties-read";
+            case VIEW_WRITE_PROPERTIES -> "view-properties-write";
+            case VIEW_FULL_METADATA -> "view-metadata-full";
+
+            case POLICY_CREATE -> "policy-create";
+            case POLICY_READ -> "policy-read";
+            case POLICY_DROP -> "policy-drop";
+            case POLICY_WRITE -> "policy-write";
+            case POLICY_LIST -> "policy-list";
+            case POLICY_FULL_METADATA -> "policy-metadata-full";
+            case POLICY_ATTACH -> "policy-attach";
+            case POLICY_DETACH -> "policy-detach";
+
+            default -> privilege.name();
         };
     }
 

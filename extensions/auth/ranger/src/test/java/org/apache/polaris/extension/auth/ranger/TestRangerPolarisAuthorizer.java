@@ -39,7 +39,9 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
@@ -48,8 +50,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class TestRangerPolarisAuthorizer {
-    final Gson              gsonBuilder;
-    final PolarisAuthorizer authorizer;
+    private static final String RESOURCE_TYPE_NAME_SEP = ":";
+    private static final String RESOURCE_ELEMENTS_SEP  = "/";
+
+    private final Gson              gsonBuilder;
+    private final PolarisAuthorizer authorizer;
 
     public TestRangerPolarisAuthorizer() throws Exception {
         gsonBuilder = new GsonBuilder().setDateFormat("yyyyMMdd-HH:mm:ss.SSSZ")
@@ -82,18 +87,8 @@ public class TestRangerPolarisAuthorizer {
     }
 
     @Test
-    public void testAuthzPrincipalRole() {
-        runTests(authorizer, "/authz_tests/tests_authz_principal_role.json");
-    }
-
-    @Test
     public void testAuthzNamespace() {
         runTests(authorizer, "/authz_tests/tests_authz_namespace.json");
-    }
-
-    @Test
-    public void testAuthzCatalogRole() {
-        runTests(authorizer, "/authz_tests/tests_authz_catalog_role.json");
     }
 
     @Test
@@ -104,6 +99,11 @@ public class TestRangerPolarisAuthorizer {
     @Test
     public void testAuthzPolicy() {
         runTests(authorizer, "/authz_tests/tests_authz_policy.json");
+    }
+
+    @Test
+    public void testAuthzUnsupported() {
+        runTests(authorizer, "/authz_tests/tests_authz_unsupported.json");
     }
 
     private void runTests(PolarisAuthorizer authorizer, String testFilename) {
@@ -128,7 +128,6 @@ public class TestRangerPolarisAuthorizer {
     }
 
     private static class TestData {
-        String      name;
         TestRequest request;
         TestResult  result;
 
@@ -155,19 +154,46 @@ public class TestRangerPolarisAuthorizer {
     }
 
     static class PolarisResolvedPathWrapperDeserializer implements JsonDeserializer<PolarisResolvedPathWrapper> {
+        private static final Map<String, PolarisEntityType[]> RESOURCE_PATHS = new HashMap<>();
+
+        static {
+            RESOURCE_PATHS.put("ROOT", new PolarisEntityType[] { PolarisEntityType.ROOT } );
+            RESOURCE_PATHS.put("PRINCIPAL", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.PRINCIPAL } );
+            RESOURCE_PATHS.put("PRINCIPAL_ROLE", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.PRINCIPAL_ROLE } );
+            RESOURCE_PATHS.put("CATALOG", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG } );
+            RESOURCE_PATHS.put("CATALOG_ROLE", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG_ROLE } );
+            RESOURCE_PATHS.put("NAMESPACE", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG, PolarisEntityType.NAMESPACE } );
+            RESOURCE_PATHS.put("TABLE_LIKE", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG, PolarisEntityType.NAMESPACE, PolarisEntityType.TABLE_LIKE } );
+            RESOURCE_PATHS.put("TASK", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.TASK } );
+            RESOURCE_PATHS.put("FILE", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG, PolarisEntityType.NAMESPACE, PolarisEntityType.TABLE_LIKE, PolarisEntityType.FILE } );
+            RESOURCE_PATHS.put("POLICY", new PolarisEntityType[] { PolarisEntityType.ROOT, PolarisEntityType.CATALOG, PolarisEntityType.NAMESPACE, PolarisEntityType.POLICY } );
+        }
+
         @Override
         public PolarisResolvedPathWrapper deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-            String   target = jsonElement.getAsString();
-            String[] path   = target.split(";");
+            String   target      = jsonElement.getAsString();
+            String[] typeAndName = target.split(RESOURCE_TYPE_NAME_SEP, 2);
+
+            if (typeAndName.length != 2) {
+                throw new JsonParseException(target + ": invalid resource");
+            }
+
+            PolarisEntityType[] path = RESOURCE_PATHS.get(typeAndName[0]);
+
+            if (path == null) {
+                throw new JsonParseException(target + ": unsupported resource type");
+            }
+
+            String[] pathElements = typeAndName[1].split(RESOURCE_ELEMENTS_SEP, path.length);
+
+            if (path.length != pathElements.length) {
+                throw new JsonParseException(target + ": incorrect number of path elements. Expected " + path.length + ", found " + pathElements.length);
+            }
 
             List<ResolvedPolarisEntity> entities = new ArrayList<>(path.length);
 
-            for (String element : path) {
-                String[] typeValue = element.split(":", 2);
-                String   entityType = typeValue[0];
-                String   name       = typeValue[1];
-
-                PolarisEntity entity = new PolarisEntity.Builder().setName(name).setType(PolarisEntityType.valueOf(entityType)).build();
+            for (int i = 0; i < path.length; i++) {
+                PolarisEntity entity = new PolarisEntity.Builder().setName(pathElements[i]).setType(path[i]).build();
 
                 entities.add(new ResolvedPolarisEntity(entity, Collections.emptyList(), Collections.emptyList()));
             }
