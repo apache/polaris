@@ -149,6 +149,9 @@ public class ResolverTest extends BaseResolverTest {
     ResolverStatus status =
         resolver.resolveSelections(Set.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
     Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+    ResolvedPolarisEntity resolvedCatalog = resolver.getResolvedReferenceCatalog();
+    Assertions.assertThat(resolvedCatalog).isNotNull();
+    Assertions.assertThat(resolvedCatalog.getEntity().getName()).isEqualTo("test");
   }
 
   @Test

@@ -840,20 +840,21 @@ public class Resolver {
   }
 
   /**
-   * Resolve the reference catalog and determine all activated role. The principal and principal
-   * roles should have already been resolved
+   * Resolve the reference catalog and optionally determine all caller-activated catalog roles. The
+   * principal and principal roles should have already been resolved.
    *
    * @param toValidate all entities we have resolved incrementally, possibly with some entries
    *     coming from cache, hence we will have to verify that these entities have not changed in the
    *     backend
-   * @param referenceCatalogName name of the reference catalog to resolve, along with all catalog
-   *     roles which are activated
+   * @param referenceCatalogName name of the reference catalog to resolve
+   * @param resolveCallerCatalogRoles whether to resolve caller-activated catalog roles for the
+   *     reference catalog
    * @return the status of resolution
    */
   private ResolverStatus resolveReferenceCatalog(
       @Nonnull List<ResolvedPolarisEntity> toValidate,
       @Nonnull String referenceCatalogName,
-      boolean resolveCatalogRoles) {
+      boolean resolveCallerCatalogRoles) {
     // resolve the catalog
     this.resolvedReferenceCatalog =
         this.resolveByName(toValidate, PolarisEntityType.CATALOG, referenceCatalogName);
@@ -864,7 +865,7 @@ public class Resolver {
       return new ResolverStatus(PolarisEntityType.CATALOG, this.referenceCatalogName);
     }
 
-    if (resolveCatalogRoles) {
+    if (resolveCallerCatalogRoles) {
       // determine the set of catalog roles which have been activated
       long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
       for (ResolvedPolarisEntity principalRole : resolvedCallerPrincipalRoles) {

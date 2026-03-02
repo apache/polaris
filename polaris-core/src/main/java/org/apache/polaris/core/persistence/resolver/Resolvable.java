@@ -36,14 +36,12 @@ public enum Resolvable {
   /** Resolve explicitly registered paths (via addPath/addPassthroughPath). */
   REQUESTED_PATHS,
   /**
-   * Resolve any additional top-level entities explicitly registered via addTopLevelName, such as
-   * catalog/principal/principal-role names used for authorization beyond the caller and reference
-   * catalog.
+   * Resolve any additional top-level entities explicitly registered via {@link
+   * PolarisResolutionManifest#addTopLevelName}, such as catalog/principal/principal-role names used
+   * for authorization beyond the caller and reference catalog.
    *
-   * <p>Note: this currently also covers requested {@code CATALOG_ROLE} names because they share the
-   * same {@link PolarisResolutionManifest} registration surface ({@code addTopLevelName}). Although
-   * grouped here for compatibility, catalog-role name resolution still requires the reference
-   * catalog context.
+   * <p>All entity types resolved here share the same {@link
+   * PolarisResolutionManifest#addTopLevelName} registration surface.
    */
   REQUESTED_TOP_LEVEL_ENTITIES
 }
