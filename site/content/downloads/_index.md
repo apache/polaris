@@ -40,17 +40,7 @@ The Apache Polaris Docker images are available on [Docker Hub](https://hub.docke
 The Apache Polaris Helm Chart can be found in the [Helm Chart Repository](https://downloads.apache.org/polaris/helm-chart) or in [Artifact Hub](https://artifacthub.io/packages/helm/apache-polaris/polaris).
 {{< /alert >}}
 
-### Active Releases
-
-- [1.3.0](1.3.0/) - Released January 16th, 2026
-- [1.2.0](1.2.0/) - Released October 23rd, 2025
-- [1.1.0](1.1.0/) - Released September 19th, 2025
-
-### End of Life Releases
-
-- [1.0.1](1.0.1/) - Released August 16th, 2025
-- [1.0.0](1.0.0/) - Released July 9th, 2025
-- [0.9.0](0.9.0/) - Released March 11, 2025
+{{< downloads-list >}}
 
 ## Verifying Downloads
 

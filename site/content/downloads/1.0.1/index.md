@@ -20,6 +20,7 @@
 title: "Apache Polaris 1.0.1-incubating"
 linkTitle: "1.0.1"
 release_version: "1.0.1"
+release_date: 2025-08-16
 weight: -10001
 hide_summary: true
 exclude_search: true
