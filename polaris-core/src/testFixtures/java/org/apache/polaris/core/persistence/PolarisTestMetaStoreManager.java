@@ -2850,12 +2850,24 @@ public class PolarisTestMetaStoreManager {
     // grantee records: R1 was granted TABLE_READ_DATA on N1, so granteeId must be R1
     Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
         .isNotEmpty()
-        .allSatisfy(g -> Assertions.assertThat(g.getGranteeId()).isEqualTo(R1.getId()));
+        .allSatisfy(
+            g -> {
+              Assertions.assertThat(g.getGranteeId()).isEqualTo(R1.getId());
+              Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
+              Assertions.assertThat(g.getPrivilegeCode())
+                  .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
+            });
 
     // securable records: PR1 was granted CATALOG_ROLE_USAGE on R1, so securableId must be R1
     Assertions.assertThat(resolved.getGrantRecordsAsSecurable())
         .isNotEmpty()
-        .allSatisfy(g -> Assertions.assertThat(g.getSecurableId()).isEqualTo(R1.getId()));
+        .allSatisfy(
+            g -> {
+              Assertions.assertThat(g.getSecurableId()).isEqualTo(R1.getId());
+              Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
+              Assertions.assertThat(g.getPrivilegeCode())
+                  .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
+            });
 
     Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
         .doesNotContainAnyElementsOf(resolved.getGrantRecordsAsSecurable());
