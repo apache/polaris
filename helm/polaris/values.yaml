@@ -80,6 +80,11 @@ podLabels: {}
 # @section -- Pod Configuration
 configMapLabels: {}
 
+# @schema additionalProperties: {type: string}
+# -- Additional Annotations to apply to polaris deployment.
+# @section -- Deployment
+deploymentAnnotations: {}
+
 # Pod disruption budget settings.
 podDisruptionBudget:
   # -- Specifies whether a pod disruption budget should be created.
