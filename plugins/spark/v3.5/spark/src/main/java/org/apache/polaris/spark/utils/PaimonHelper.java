@@ -56,7 +56,7 @@ public class PaimonHelper {
   public static final String PAIMON_WAREHOUSE_KEY = "paimon-warehouse";
   private static final String DEFAULT_PAIMON_CATALOG_CLASS = "org.apache.paimon.spark.SparkCatalog";
 
-  private CatalogPlugin paimonCatalog = null;
+  private TableCatalog paimonCatalog = null;
   private final String paimonCatalogImpl;
   private final String paimonWarehouse;
 
@@ -82,7 +82,7 @@ public class PaimonHelper {
    */
   public TableCatalog loadPaimonCatalog(String catalogName) {
     if (this.paimonCatalog != null) {
-      return (TableCatalog) this.paimonCatalog;
+      return this.paimonCatalog;
     }
 
     if (this.paimonWarehouse == null) {
@@ -91,9 +91,9 @@ public class PaimonHelper {
               + "for the catalog. Example: spark.sql.catalog.<catalog-name>.paimon-warehouse=/path/to/warehouse");
     }
 
-    DynConstructors.Ctor<CatalogPlugin> ctor;
+    DynConstructors.Ctor<TableCatalog> ctor;
     try {
-      ctor = DynConstructors.builder(CatalogPlugin.class).impl(paimonCatalogImpl).buildChecked();
+      ctor = DynConstructors.builder(TableCatalog.class).impl(paimonCatalogImpl).buildChecked();
     } catch (NoSuchMethodException e) {
       throw new IllegalArgumentException(
           String.format(
@@ -101,13 +101,13 @@ public class PaimonHelper {
           e);
     }
 
-    CatalogPlugin plugin;
+    TableCatalog catalog;
     try {
-      plugin = ctor.newInstance();
+      catalog = ctor.newInstance();
     } catch (ClassCastException e) {
       throw new IllegalArgumentException(
           String.format(
-              "Cannot initialize Paimon Catalog, %s does not implement CatalogPlugin.",
+              "Cannot initialize Paimon Catalog, %s does not implement TableCatalog.",
               paimonCatalogImpl),
           e);
     }
@@ -117,10 +117,10 @@ public class PaimonHelper {
     paimonOptions.put("warehouse", this.paimonWarehouse);
 
     // Initialize Paimon catalog with the catalog name and options
-    plugin.initialize(catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
-    this.paimonCatalog = plugin;
+    ((CatalogPlugin) catalog).initialize(catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
+    this.paimonCatalog = catalog;
 
-    return (TableCatalog) this.paimonCatalog;
+    return this.paimonCatalog;
   }
 
   /**

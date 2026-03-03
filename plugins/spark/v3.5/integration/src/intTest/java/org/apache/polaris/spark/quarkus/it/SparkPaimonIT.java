@@ -50,10 +50,7 @@ public class SparkPaimonIT extends SparkIntegrationBase {
     return SparkSessionBuilder.buildWithTestDefaults()
         .withExtensions(
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,"
-                + "io.delta.sql.DeltaSparkSessionExtension,"
                 + "org.apache.paimon.spark.extensions.PaimonSparkSessionExtensions")
-        .withConfig(
-            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.polaris.spark.SparkCatalog", endpoints, sparkToken)
         // Configure Paimon warehouse for the catalog
@@ -190,9 +187,9 @@ public class SparkPaimonIT extends SparkIntegrationBase {
 
   @Test
   public void testShowTables() {
-    // Note: Paimon tables managed by Paimon SparkCatalog are not visible via SHOW TABLES
-    // since they are not registered in Polaris catalog. This test verifies that
-    // Paimon tables can be created and queried correctly even without appearing in SHOW TABLES.
+    // Paimon tables created through SparkCatalog (via CREATE TABLE ... USING PAIMON)
+    // are registered in Polaris and visible via SHOW TABLES through the unified catalog view.
+    // This test verifies Paimon tables appear in the table listing and can be queried correctly.
     String tableName1 = getTableNameWithRandomSuffix();
     String tableName2 = getTableNameWithRandomSuffix();
 
