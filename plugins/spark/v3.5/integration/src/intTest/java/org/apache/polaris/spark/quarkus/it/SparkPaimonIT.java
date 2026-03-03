@@ -196,6 +196,12 @@ public class SparkPaimonIT extends SparkIntegrationBase {
     sql("CREATE TABLE %s (id INT) USING PAIMON", tableName1);
     sql("CREATE TABLE %s (id INT) USING PAIMON", tableName2);
 
+    // Verify Paimon tables are visible via SHOW TABLES (registered in Polaris)
+    List<Object[]> tables = sql("SHOW TABLES IN %s", defaultNs);
+    List<Object> tableNames =
+        tables.stream().map(r -> r[1]).collect(java.util.stream.Collectors.toList());
+    assertThat(tableNames).contains(tableName1, tableName2);
+
     // Verify tables are accessible by inserting and querying
     sql("INSERT INTO %s VALUES (1)", tableName1);
     sql("INSERT INTO %s VALUES (2)", tableName2);

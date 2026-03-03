@@ -29,6 +29,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PaimonHelper;
@@ -151,9 +152,10 @@ public class SparkCatalog
       // Not an Iceberg table, fall through to handle as generic table
     }
 
-    // For generic tables, load from Polaris to check the table format/provider
-    Table table = this.polarisSparkCatalog.loadTable(ident);
-    String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+    // For generic tables, load metadata from Polaris to check the table format/provider
+    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
+    GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
+    String provider = genericTable.getFormat();
 
     // Delegate to the appropriate catalog based on the provider
     if (PolarisCatalogUtils.usePaimon(provider)) {
@@ -173,8 +175,8 @@ public class SparkCatalog
     }
     // Add other catalog delegations here as needed (e.g., Delta, Hudi for loadTable)
 
-    // Default: return the table loaded from Polaris
-    return table;
+    // Default: return the table loaded from Polaris (full Spark Table with DataSource resolution)
+    return this.polarisSparkCatalog.loadTable(ident);
   }
 
   @Override
@@ -186,13 +188,31 @@ public class SparkCatalog
     if (PolarisCatalogUtils.useIceberg(provider)) {
       return this.icebergsSparkCatalog.createTable(ident, schema, transforms, properties);
     } else if (PolarisCatalogUtils.usePaimon(provider)) {
-      // For Paimon tables, use Paimon's SparkCatalog directly.
+      // For Paimon tables, use Paimon's SparkCatalog to create the table first,
+      // then register it in Polaris so it appears in the unified catalog view (SHOW TABLES).
       // Paimon manages its own table paths at warehouse/database.db/table_name
       // so we don't require a location to be specified.
       TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
       // Ensure namespace exists in Paimon before creating table
       paimonHelper.ensureNamespaceExists(ident.namespace());
-      return paimonCatalog.createTable(ident, schema, transforms, properties);
+      Table paimonTable = paimonCatalog.createTable(ident, schema, transforms, properties);
+
+      // Register the table in Polaris as a generic table so it's visible via SHOW TABLES.
+      // Paimon table location follows the convention: warehouse/database.db/table_name
+      String tableLocation = paimonTable.properties().get(TableCatalog.PROP_LOCATION);
+      if (tableLocation == null) {
+        // Fallback: construct location from Paimon warehouse convention
+        tableLocation = paimonHelper.resolveTableLocation(ident.namespace(), ident.name());
+      }
+      Map<String, String> registrationProps = new java.util.HashMap<>(properties);
+      registrationProps.put(TableCatalog.PROP_LOCATION, tableLocation);
+      try {
+        this.polarisSparkCatalog.createTable(ident, schema, transforms, registrationProps);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to register Paimon table {} in Polaris catalog: {}", ident, e.getMessage());
+      }
+      return paimonTable;
     } else {
       if (PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)) {
         throw new UnsupportedOperationException(
@@ -223,9 +243,10 @@ public class SparkCatalog
       // Not an Iceberg table, fall through to handle as generic table
     }
 
-    // For generic tables, load from Polaris to check the table format/provider
-    Table table = this.polarisSparkCatalog.loadTable(ident);
-    String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+    // For generic tables, load metadata from Polaris to check the table format/provider
+    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
+    GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
+    String provider = genericTable.getFormat();
 
     // Delegate to the appropriate catalog based on the provider
     if (PolarisCatalogUtils.useDelta(provider)) {
@@ -264,9 +285,10 @@ public class SparkCatalog
     }
 
     // For generic tables, check the provider to delegate to the appropriate catalog
+    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
     try {
-      Table table = this.polarisSparkCatalog.loadTable(ident);
-      String provider = table.properties().get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+      GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
+      String provider = genericTable.getFormat();
 
       if (PolarisCatalogUtils.usePaimon(provider)) {
         // For Paimon tables, drop from both Polaris and Paimon catalog

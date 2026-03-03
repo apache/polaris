@@ -82,6 +82,20 @@ public class PolarisSparkCatalog implements TableCatalog {
     }
   }
 
+  /**
+   * Load only the raw GenericTable metadata from Polaris without performing Spark DataSource
+   * resolution. This is useful when only table metadata (e.g., format/provider) is needed for
+   * routing decisions, without requiring a full Spark Table object.
+   */
+  public GenericTable loadGenericTable(Identifier identifier) throws NoSuchTableException {
+    try {
+      return this.polarisCatalog.loadGenericTable(
+          Spark3Util.identifierToTableIdentifier(identifier));
+    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
+      throw new NoSuchTableException(identifier);
+    }
+  }
+
   @Override
   @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
