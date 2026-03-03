@@ -63,7 +63,7 @@ public class TestRangerPolarisAuthorizer {
                 .registerTypeAdapter(PolarisResolvedPathWrapper.class, new PolarisResolvedPathWrapperDeserializer())
                 .create();
 
-        RangerPolarisAuthorizerFactory factory    = new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-authorizer.properties"));
+        RangerPolarisAuthorizerFactory factory    = new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
 
         authorizer = factory.create(createRealmConfig());
 

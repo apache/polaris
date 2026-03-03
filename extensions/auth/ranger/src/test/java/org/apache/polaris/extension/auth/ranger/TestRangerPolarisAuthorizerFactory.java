@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class TestRangerPolarisAuthorizerFactory {
     @Test
     public void testAuthorizerInstantiation() {
-        RangerPolarisAuthorizerFactory factory    = new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-authorizer.properties"));
+        RangerPolarisAuthorizerFactory factory    = new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
         RangerPolarisAuthorizer        authorizer = factory.create(createRealmConfig());
 
         assertNotNull(authorizer);
