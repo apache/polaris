@@ -162,10 +162,13 @@ public class SparkCatalog
         // This ensures proper handling of Paimon's metadata and schema files
         TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
         return paimonCatalog.loadTable(ident);
+      } catch (NoSuchTableException paimonException) {
+        throw paimonException;
       } catch (Exception paimonException) {
-        throw new NoSuchTableException(
+        throw new RuntimeException(
             String.format(
-                "Failed to load Paimon table %s: %s", ident, paimonException.getMessage()));
+                "Failed to load Paimon table %s: %s", ident, paimonException.getMessage()),
+            paimonException);
       }
     }
     // Add other catalog delegations here as needed (e.g., Delta, Hudi for loadTable)
@@ -239,10 +242,13 @@ public class SparkCatalog
       try {
         TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
         return paimonCatalog.alterTable(ident, changes);
+      } catch (NoSuchTableException paimonException) {
+        throw paimonException;
       } catch (Exception paimonException) {
-        throw new NoSuchTableException(
+        throw new RuntimeException(
             String.format(
-                "Failed to alter Paimon table %s: %s", ident, paimonException.getMessage()));
+                "Failed to alter Paimon table %s: %s", ident, paimonException.getMessage()),
+            paimonException);
       }
     }
 
