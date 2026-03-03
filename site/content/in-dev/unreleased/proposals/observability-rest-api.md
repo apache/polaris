@@ -485,6 +485,10 @@ New privileges require:
 
 ## 6. OpenAPI Schema
 
+> **Note:** The OpenAPI specifications below are embedded in this proposal for review context. Upon approval, these should be extracted into separate files for ease of processing and proper integration:
+> - **Events API** → `spec/rest-catalog-open-api.yaml` (extending Iceberg REST Catalog spec)
+> - **Metrics API** → `spec/polaris-management-service.yml` (Polaris Management Service spec)
+
 ### 6.1 Events API (Iceberg REST Catalog Extension)
 
 Add the following to `spec/rest-catalog-open-api.yaml` (aligned with Iceberg Events API spec):
