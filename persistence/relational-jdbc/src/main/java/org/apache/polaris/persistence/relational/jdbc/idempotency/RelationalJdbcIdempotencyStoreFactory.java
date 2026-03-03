@@ -25,17 +25,18 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.literal.NamedLiteral;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
+import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
-import org.jboss.logging.Logger;
 
 @ApplicationScoped
 @Identifier("relational-jdbc")
 public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFactory {
 
-  private static final Logger LOG = Logger.getLogger(RelationalJdbcIdempotencyStoreFactory.class);
+  private static final Logger LOG =
+      Logger.getLogger(RelationalJdbcIdempotencyStoreFactory.class.getName());
 
   @Inject Instance<DataSource> dataSource;
   @Inject @Any Instance<DataSource> anyDataSources;
