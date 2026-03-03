@@ -427,26 +427,59 @@ Authorization: Bearer <token>
 
 ### 5.1 Required Privileges
 
-| Endpoint | Required Privilege | Scope |
-|----------|-------------------|-------|
-| List/Get Events | `CATALOG_MANAGE_METADATA` | Catalog |
-| List Scan Metrics | `TABLE_READ_DATA` | Table |
-| List Commit Metrics | `TABLE_READ_DATA` | Table |
+This proposal introduces **new dedicated privileges** for reading observability data, following the principle of **separation of duties**. This ensures that:
 
-### 5.2 Rationale
+- Read-only audit/monitoring access does not require management permissions
+- Monitoring tools can access metrics without requiring data read access
+- Fine-grained access control is possible for different operational roles
 
-- **Events** contain catalog-wide audit information and should require catalog-level administrative access
-- **Metrics** are table-specific and align with read access since they describe query patterns and commit history
-- This follows the principle of least privilege while enabling common use cases
+| Endpoint | Required Privilege | Scope | New Privilege? |
+|----------|-------------------|-------|----------------|
+| Query Events | `CATALOG_READ_EVENTS` | Catalog | **Yes** |
+| List Scan Metrics | `TABLE_READ_METRICS` | Table | **Yes** |
+| List Commit Metrics | `TABLE_READ_METRICS` | Table | **Yes** |
 
-### 5.3 Alternative: New Privileges
+### 5.2 New Privilege Definitions
 
-If finer-grained control is desired, new privileges could be introduced:
+| Privilege | Scope | Description |
+|-----------|-------|-------------|
+| `CATALOG_READ_EVENTS` | Catalog | Read-only access to catalog events (audit log). Does not grant any management capabilities. |
+| `TABLE_READ_METRICS` | Table | Read-only access to table scan and commit metrics. Does not grant access to table data. |
 
-| New Privilege | Description |
-|---------------|-------------|
-| `CATALOG_READ_EVENTS` | Read-only access to catalog events |
-| `TABLE_READ_METRICS` | Read-only access to table metrics |
+### 5.3 Rationale: Separation of Duties
+
+Introducing dedicated read-only privileges enables proper **separation of duties**:
+
+| Use Case | Required Privilege | Why Not Reuse Existing? |
+|----------|-------------------|------------------------|
+| Security auditor reviewing catalog changes | `CATALOG_READ_EVENTS` | Should not require `CATALOG_MANAGE_METADATA` (management access) |
+| Monitoring tool collecting table metrics | `TABLE_READ_METRICS` | Should not require `TABLE_READ_DATA` (data access) |
+| Data analyst with table access | `TABLE_READ_DATA` implies `TABLE_READ_METRICS` | Users who can read data can also see metrics about their queries |
+| Catalog admin | `CATALOG_MANAGE_METADATA` implies `CATALOG_READ_EVENTS` | Admins can see all events |
+
+### 5.4 Privilege Hierarchy
+
+The new privileges fit into the existing hierarchy as follows:
+
+```
+CATALOG_MANAGE_METADATA
+  └── CATALOG_READ_EVENTS (implied)
+
+TABLE_FULL_METADATA / TABLE_READ_DATA
+  └── TABLE_READ_METRICS (implied)
+```
+
+This means:
+- Users with `CATALOG_MANAGE_METADATA` automatically have `CATALOG_READ_EVENTS`
+- Users with `TABLE_READ_DATA` automatically have `TABLE_READ_METRICS`
+- But the reverse is **not** true: `CATALOG_READ_EVENTS` does not grant management access, and `TABLE_READ_METRICS` does not grant data access
+
+### 5.5 Implementation Notes
+
+New privileges require:
+1. Adding entries to `PolarisPrivilege` enum
+2. Updating the privilege hierarchy in the authorizer
+3. Adding privilege checks in the new API endpoints
 
 ---
 
@@ -1210,9 +1243,13 @@ Polaris extends the Iceberg Events API using the `custom` operation type with `x
 ## Open Questions
 
 1. **Aggregations**: Are aggregated metrics views needed (e.g., daily summaries)?
-2. **Privileges**: Use existing privileges or introduce new `READ_EVENTS`/`READ_METRICS`?
-3. **Event Retention**: What is the default retention period for events? Should it be configurable?
-4. **Consistency Guarantees**: What ordering and delivery guarantees should Polaris provide for the Events API?
+2. **Event Retention**: What is the default retention period for events? Should it be configurable?
+3. **Consistency Guarantees**: What ordering and delivery guarantees should Polaris provide for the Events API?
+
+## Resolved Questions
+
+1. ~~**Privileges**: Use existing privileges or introduce new `READ_EVENTS`/`READ_METRICS`?~~
+   - **Resolution**: Introduce new dedicated privileges (`CATALOG_READ_EVENTS`, `TABLE_READ_METRICS`) to support separation of duties. See [Section 5](#5-authorization) for details.
 
 ---
 
