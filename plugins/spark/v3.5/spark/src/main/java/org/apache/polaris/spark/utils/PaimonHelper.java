@@ -117,7 +117,8 @@ public class PaimonHelper {
     paimonOptions.put("warehouse", this.paimonWarehouse);
 
     // Initialize Paimon catalog with the catalog name and options
-    ((CatalogPlugin) catalog).initialize(catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
+    ((CatalogPlugin) catalog)
+        .initialize(catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
     this.paimonCatalog = catalog;
 
     return this.paimonCatalog;
