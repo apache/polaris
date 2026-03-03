@@ -203,6 +203,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             NAMESPACE_CREATE,
             NAMESPACE_FULL_METADATA,
             NAMESPACE_LIST,
@@ -213,6 +214,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             TABLE_CREATE,
             TABLE_FULL_METADATA,
             TABLE_LIST,
@@ -225,6 +227,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             VIEW_CREATE,
             VIEW_FULL_METADATA,
             VIEW_LIST,
@@ -235,6 +238,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             NAMESPACE_FULL_METADATA,
             NAMESPACE_READ_PROPERTIES,
             NAMESPACE_WRITE_PROPERTIES));
@@ -243,6 +247,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             TABLE_FULL_METADATA,
             TABLE_READ_DATA,
             TABLE_READ_PROPERTIES,
@@ -253,6 +258,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         List.of(
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
+            CATALOG_READ_DATA,
             VIEW_FULL_METADATA,
             VIEW_READ_PROPERTIES,
             VIEW_WRITE_PROPERTIES));
@@ -456,8 +462,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             VIEW_FULL_METADATA,
             VIEW_WRITE_PROPERTIES));
     SUPER_PRIVILEGES.putAll(
-        TABLE_READ_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_READ_DATA, TABLE_WRITE_DATA));
+        TABLE_READ_DATA,
+        List.of(CATALOG_MANAGE_CONTENT, CATALOG_READ_DATA, TABLE_READ_DATA, TABLE_WRITE_DATA));
     SUPER_PRIVILEGES.putAll(TABLE_WRITE_DATA, List.of(CATALOG_MANAGE_CONTENT, TABLE_WRITE_DATA));
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_READ_DATA, List.of(CATALOG_MANAGE_CONTENT, CATALOG_READ_DATA));
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_FULL_METADATA,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, NAMESPACE_FULL_METADATA));
