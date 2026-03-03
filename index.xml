@@ -3062,6 +3062,12 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;td&gt;The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don&amp;rsquo;t set this number &amp;gt; 1 when using in-memory meta store manager. See &lt;a href="https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#scaling"&gt;Scaling&lt;/a&gt; for production recommendations.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;tr&gt;
+ &lt;td&gt;deploymentAnnotations&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Additional Annotations to apply to polaris deployment.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
  &lt;td&gt;revisionHistoryLimit&lt;/td&gt;
  &lt;td&gt;int&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;nil&lt;/code&gt;&lt;/td&gt;
