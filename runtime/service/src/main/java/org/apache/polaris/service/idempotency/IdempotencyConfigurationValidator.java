@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.service.idempotency;
 
-import jakarta.annotation.PostConstruct;
+import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import java.time.Duration;
 
@@ -28,8 +29,7 @@ public class IdempotencyConfigurationValidator {
 
   @Inject IdempotencyConfiguration configuration;
 
-  @PostConstruct
-  void validate() {
+  void validateOnStart(@Observes StartupEvent ignored) {
     if (!configuration.enabled()) {
       return;
     }

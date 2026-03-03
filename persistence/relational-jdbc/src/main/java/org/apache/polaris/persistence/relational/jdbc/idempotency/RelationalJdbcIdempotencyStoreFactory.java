@@ -29,10 +29,13 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 @Identifier("relational-jdbc")
 public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFactory {
+
+  private static final Logger LOG = Logger.getLogger(RelationalJdbcIdempotencyStoreFactory.class);
 
   @Inject Instance<DataSource> dataSource;
   @Inject @Any Instance<DataSource> anyDataSources;
@@ -42,7 +45,17 @@ public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFa
   public IdempotencyStore create() {
     try {
       Instance<DataSource> idempotencyDs = anyDataSources.select(NamedLiteral.of("idempotency"));
-      DataSource ds = idempotencyDs.isResolvable() ? idempotencyDs.get() : dataSource.get();
+      final DataSource ds;
+      if (idempotencyDs.isAmbiguous()) {
+        throw new IllegalStateException(
+            "Multiple DataSource beans matched 'idempotency'; please ensure exactly one is defined");
+      } else if (idempotencyDs.isUnsatisfied()) {
+        LOG.info(
+            "Idempotency DataSource not configured; using default DataSource for idempotency store");
+        ds = dataSource.get();
+      } else {
+        ds = idempotencyDs.get();
+      }
       return new RelationalJdbcIdempotencyStore(ds, relationalJdbcConfiguration);
     } catch (SQLException e) {
       throw new RuntimeException("Failed to create RelationalJdbcIdempotencyStore", e);

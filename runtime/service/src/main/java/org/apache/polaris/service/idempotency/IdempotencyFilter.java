@@ -162,7 +162,8 @@ public class IdempotencyFilter {
 
     String realmId = realmContext.getRealmIdentifier();
     String operationType = scope == null ? normalizeOperationType(rc) : scope.operationType();
-    String resourceId = normalizeResourceId(rc);
+    // Use path only to avoid accidental mismatches from query ordering/irrelevant parameters.
+    String resourceId = rc.getUriInfo().getPath();
 
     Instant now = clock.instant();
     Instant expiresAt = now.plus(configuration.ttl()).plus(configuration.ttlGrace());
@@ -661,12 +662,6 @@ public class IdempotencyFilter {
     CatalogEntity catalogEntity = resolved == null ? null : CatalogEntity.of(resolved.getEntity());
     return catalogEntity != null
         && Catalog.TypeEnum.INTERNAL.equals(catalogEntity.getCatalogType());
-  }
-
-  private static String normalizeResourceId(ContainerRequestContext rc) {
-    // Use path only to avoid accidental mismatches from query ordering/irrelevant parameters.
-    String path = rc.getUriInfo().getPath();
-    return path;
   }
 
   private static String responseEntityAsString(

@@ -16,7 +16,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.idempotency;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,13 +36,12 @@ import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.IdempotencyRecordSerde;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
-
-  private static final ObjectMapper RESPONSE_HEADERS_MAPPER = new ObjectMapper();
 
   public RelationalJdbcIdempotencyStore(
       @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg)
@@ -236,7 +234,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       responseHeadersJson = null;
     } else {
       try {
-        responseHeadersJson = RESPONSE_HEADERS_MAPPER.writeValueAsString(responseHeaders);
+        responseHeadersJson = IdempotencyRecordSerde.serializeResponseHeaders(responseHeaders);
       } catch (Exception e) {
         throw new IdempotencyPersistenceException(
             "Failed to serialize idempotency response headers", e);

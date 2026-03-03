@@ -71,7 +71,7 @@ public interface IdempotencyConfiguration {
   /**
    * Default TTL for newly reserved keys.
    *
-   * <p>Examples: {@code PT5M}, {@code 300S}.
+   * <p>Examples: {@code PT5M}, {@code PT300S}.
    */
   @WithName("ttl-seconds")
   @WithDefault("PT5M")
@@ -80,10 +80,11 @@ public interface IdempotencyConfiguration {
   /**
    * Additional grace added to {@link #ttl()} when reserving keys.
    *
-   * <p>This extends retention slightly to tolerate clock skew and queued retries while keeping the
-   * advertised lifetime unchanged.
+   * <p>This optionally extends retention slightly (for example to tolerate clock skew and queued
+   * retries) while keeping the advertised lifetime unchanged. The default is {@code PT0S} (no extra
+   * grace).
    *
-   * <p>Examples: {@code PT0S}, {@code 10S}.
+   * <p>Examples: {@code PT0S}, {@code PT10S}.
    */
   @WithName("ttl-grace-seconds")
   @WithDefault("PT0S")
@@ -136,7 +137,7 @@ public interface IdempotencyConfiguration {
   /**
    * Heartbeat interval while a request is in progress.
    *
-   * <p>Examples: {@code PT5S}, {@code 1S}.
+   * <p>Examples: {@code PT5S}, {@code PT1S}.
    *
    * <p>In multi-node deployments, this should be shorter than {@link #leaseTtl()}.
    */
@@ -163,7 +164,7 @@ public interface IdempotencyConfiguration {
   /**
    * Purge interval.
    *
-   * <p>Examples: {@code PT1M}, {@code 60S}.
+   * <p>Examples: {@code PT1M}, {@code PT60S}.
    */
   @WithName("purge-interval-seconds")
   @WithDefault("PT1M")
@@ -172,7 +173,8 @@ public interface IdempotencyConfiguration {
   /**
    * Purge records expired strictly before (now - grace).
    *
-   * <p>Allows keeping just-expired keys around a bit longer to tolerate clock skew.
+   * <p>Optionally keeps just-expired keys around a bit longer (for example to tolerate clock skew).
+   * The default is {@code PT0S} (no extra grace).
    */
   @WithName("purge-grace-seconds")
   @WithDefault("PT0S")

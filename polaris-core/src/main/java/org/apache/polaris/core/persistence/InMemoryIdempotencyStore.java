@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
@@ -31,6 +32,8 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * <p>Intended for dev/test and in-memory Polaris deployments; not durable across restarts.
  */
 public final class InMemoryIdempotencyStore implements IdempotencyStore {
+
+  private static final int PURGE_EVERY_N_RESERVES = 256;
 
   private static final class Key {
     private final String realmId;
@@ -61,6 +64,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   }
 
   private final ConcurrentMap<Key, RecordState> records = new ConcurrentHashMap<>();
+  private final AtomicInteger reserveCount = new AtomicInteger();
 
   private static final class RecordState {
     volatile IdempotencyRecord record;
@@ -79,7 +83,18 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
       Instant expiresAt,
       String executorId,
       Instant now) {
+    maybePurgeExpired(realmId, now);
+
     Key key = new Key(realmId, idempotencyKey);
+    // Treat expired keys as unknown; allow re-reserve after expiry.
+    RecordState prior = records.get(key);
+    if (prior != null) {
+      Instant priorExpiresAt = prior.record.expiresAt();
+      if (priorExpiresAt != null && priorExpiresAt.isBefore(now)) {
+        records.remove(key, prior);
+      }
+    }
+
     IdempotencyRecord initial =
         new IdempotencyRecord(
             realmId,
@@ -106,8 +121,17 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
   @Override
   public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
-    RecordState s = records.get(new Key(realmId, idempotencyKey));
-    return s == null ? Optional.empty() : Optional.of(s.record);
+    Key key = new Key(realmId, idempotencyKey);
+    RecordState s = records.get(key);
+    if (s == null) {
+      return Optional.empty();
+    }
+    Instant expiresAt = s.record.expiresAt();
+    if (expiresAt != null && expiresAt.isBefore(Instant.now())) {
+      records.remove(key, s);
+      return Optional.empty();
+    }
+    return Optional.of(s.record);
   }
 
   @Override
@@ -121,6 +145,11 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
     synchronized (state) {
       IdempotencyRecord record = state.record;
+      Instant expiresAt = record.expiresAt();
+      if (expiresAt != null && expiresAt.isBefore(now)) {
+        records.remove(key, state);
+        return HeartbeatResult.NOT_FOUND;
+      }
       if (record.httpStatus() != null) {
         return HeartbeatResult.FINALIZED;
       }
@@ -158,6 +187,11 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     }
     synchronized (state) {
       IdempotencyRecord record = state.record;
+      Instant expiresAt = record.expiresAt();
+      if (expiresAt != null && expiresAt.isBefore(Instant.now())) {
+        records.remove(key, state);
+        return false;
+      }
       if (record.httpStatus() != null) {
         return false;
       }
@@ -186,6 +220,11 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
     synchronized (state) {
       IdempotencyRecord record = state.record;
+      Instant expiresAt = record.expiresAt();
+      if (expiresAt != null && expiresAt.isBefore(finalizedAt)) {
+        records.remove(key, state);
+        return false;
+      }
       if (record.httpStatus() != null) {
         return false;
       }
@@ -218,12 +257,21 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     int[] count = {0};
     records.forEach(
         (k, v) -> {
-          if (k.realmId.equals(realmId) && v.record.expiresAt().isBefore(before)) {
+          Instant expiresAt = v.record.expiresAt();
+          if (k.realmId.equals(realmId) && expiresAt != null && expiresAt.isBefore(before)) {
             if (records.remove(k, v)) {
               count[0]++;
             }
           }
         });
     return count[0];
+  }
+
+  private void maybePurgeExpired(String realmId, Instant now) {
+    // PURGE_EVERY_N_RESERVES is a power of two; use bitmask instead of modulo.
+    if ((reserveCount.incrementAndGet() & (PURGE_EVERY_N_RESERVES - 1)) != 0) {
+      return;
+    }
+    purgeExpired(realmId, now);
   }
 }
