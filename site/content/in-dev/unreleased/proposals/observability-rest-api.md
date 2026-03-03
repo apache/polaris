@@ -98,10 +98,10 @@ Adding read-only REST endpoints enables:
 | Principle | Rationale |
 |-----------|-----------|
 | **Iceberg Events API alignment** | Events API follows the [Iceberg Events API spec](https://github.com/apache/iceberg/pull/12584) for ecosystem compatibility |
-| **Management API namespace** | Metrics APIs use `/api/management/v1/...` to separate from Iceberg REST Catalog paths |
+| **Dedicated metrics-reports namespace** | Metrics APIs use `/api/metrics-reports/v1/...` to separate from management and catalog APIs |
 | **POST for complex filtering** | Events API uses POST with request body (per Iceberg spec) to support complex filters (arrays, nested objects) |
 | **Read-only semantics** | All endpoints are read-only; metrics/events are written via existing flows |
-| **Consistent pagination** | Follow `continuation-token` pattern (Iceberg) and `pageToken` pattern (Polaris management APIs) |
+| **Consistent pagination** | Follow `continuation-token` pattern (Iceberg) and `pageToken` pattern (Polaris APIs) |
 | **Flexible filtering** | Time ranges, operation types, catalog objects - common query patterns |
 | **RBAC integration** | Leverage existing Polaris authorization model |
 
@@ -114,17 +114,17 @@ Adding read-only REST endpoints enables:
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/catalog/v1/{prefix}/events` | Query events for a catalog (Iceberg-compatible) |
-| GET | `/api/management/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics` | List scan metrics for a table |
-| GET | `/api/management/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/commit-metrics` | List commit metrics for a table |
+| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics` | List scan metrics for a table |
+| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/commit-metrics` | List commit metrics for a table |
 
-> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics APIs remain under the Polaris Management API namespace since they are Polaris-specific extensions.
+> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics APIs use a dedicated `/api/metrics-reports/v1/` namespace since they expose pre-populated records rather than managing catalog state - a server that doesn't support catalog management may still expose metrics reports.
 
 ### 4.2 Path Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `prefix` | string | Catalog prefix (typically the catalog name) |
-| `catalogName` | string | Name of the catalog (for management APIs) |
+| `catalogName` | string | Name of the catalog |
 | `namespace` | string | Namespace (URL-encoded, multi-level separated by `%1F`) |
 | `table` | string | Table name |
 
@@ -329,7 +329,7 @@ Content-Type: application/json
 
 **Request:**
 ```http
-GET /api/management/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/scan-metrics?pageSize=2&timestampFrom=1709251200000
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/scan-metrics?pageSize=2&timestampFrom=1709251200000
 Authorization: Bearer <token>
 ```
 
@@ -377,7 +377,7 @@ Authorization: Bearer <token>
 
 **Request:**
 ```http
-GET /api/management/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/commit-metrics?operation=append&pageSize=2
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/commit-metrics?operation=append&pageSize=2
 Authorization: Bearer <token>
 ```
 
@@ -487,7 +487,7 @@ New privileges require:
 
 > **Note:** The OpenAPI specifications below are embedded in this proposal for review context. Upon approval, these should be extracted into separate files for ease of processing and proper integration:
 > - **Events API** → `spec/rest-catalog-open-api.yaml` (extending Iceberg REST Catalog spec)
-> - **Metrics API** → `spec/polaris-management-service.yml` (Polaris Management Service spec)
+> - **Metrics Reports API** → `spec/metrics-reports-service.yml` (new dedicated service spec with base path `/api/metrics-reports/v1/`)
 
 ### 6.1 Events API (Iceberg REST Catalog Extension)
 
@@ -546,9 +546,11 @@ paths:
           $ref: '#/components/responses/ServerErrorResponse'
 ```
 
-### 6.2 Metrics APIs (Polaris Management Service)
+### 6.2 Metrics APIs (New Metrics Reports Service)
 
-Add the following to `spec/polaris-management-service.yml`:
+Add the following to a new `spec/metrics-reports-service.yml` (or extend existing management service):
+
+> **Note:** The metrics APIs use `/api/metrics-reports/v1/` as the base path, separate from the management API. This reflects that metrics reports are read-only access to pre-populated data, not catalog management operations.
 
 ```yaml
 paths:
@@ -1126,11 +1128,11 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
 | File | Changes |
 |------|---------|
 | `spec/rest-catalog-open-api.yaml` | Add Events API paths and schemas (Iceberg-compatible) |
-| `spec/polaris-management-service.yml` | Add Metrics API paths and schemas |
+| `spec/metrics-reports-service.yml` | **New file** - Metrics Reports API paths and schemas |
 | `api/iceberg-service/` | Generated Events API interfaces |
-| `api/management-service/` | Generated Metrics API interfaces |
+| `api/metrics-reports-service/` | **New** - Generated Metrics Reports API interfaces |
 | `runtime/service/.../catalog/` | Events service implementation |
-| `runtime/service/.../admin/` | Metrics service implementation |
+| `runtime/service/.../metrics/` | **New** - Metrics reports service implementation |
 | `polaris-core/.../persistence/BasePersistence.java` | Add read methods |
 | `persistence/relational-jdbc/.../JdbcBasePersistenceImpl.java` | Query implementations |
 
