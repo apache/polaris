@@ -29,7 +29,6 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
-import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PaimonHelper;
@@ -152,10 +151,9 @@ public class SparkCatalog
       // Not an Iceberg table, fall through to handle as generic table
     }
 
-    // For generic tables, load metadata from Polaris to check the table format/provider
-    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
-    GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
-    String provider = genericTable.getFormat();
+    // For generic tables, check the format/provider to decide delegation
+    // Use getTableFormat to avoid triggering Spark DataSource resolution for routing decisions
+    String provider = this.polarisSparkCatalog.getTableFormat(ident);
 
     // Delegate to the appropriate catalog based on the provider
     if (PolarisCatalogUtils.usePaimon(provider)) {
@@ -243,10 +241,9 @@ public class SparkCatalog
       // Not an Iceberg table, fall through to handle as generic table
     }
 
-    // For generic tables, load metadata from Polaris to check the table format/provider
-    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
-    GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
-    String provider = genericTable.getFormat();
+    // For generic tables, check the format/provider to decide delegation
+    // Use getTableFormat to avoid triggering Spark DataSource resolution for routing decisions
+    String provider = this.polarisSparkCatalog.getTableFormat(ident);
 
     // Delegate to the appropriate catalog based on the provider
     if (PolarisCatalogUtils.useDelta(provider)) {
@@ -285,10 +282,9 @@ public class SparkCatalog
     }
 
     // For generic tables, check the provider to delegate to the appropriate catalog
-    // Use loadGenericTable to avoid triggering Spark DataSource resolution for routing decisions
+    // Use getTableFormat to avoid triggering Spark DataSource resolution for routing decisions
     try {
-      GenericTable genericTable = this.polarisSparkCatalog.loadGenericTable(ident);
-      String provider = genericTable.getFormat();
+      String provider = this.polarisSparkCatalog.getTableFormat(ident);
 
       if (PolarisCatalogUtils.usePaimon(provider)) {
         // For Paimon tables, drop from both Polaris and Paimon catalog
