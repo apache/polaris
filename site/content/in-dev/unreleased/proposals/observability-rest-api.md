@@ -35,6 +35,8 @@ weight: 100
 
 This proposal defines REST API endpoints for querying table metrics and catalog events from Apache Polaris. The endpoints expose data already being persisted via the existing JDBC persistence model (`events`, `scan_metrics_report`, `commit_metrics_report` tables) and follow established Polaris API patterns.
 
+**Note:** The Events API in this proposal is designed to align with the emerging [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584), which is nearing consensus in the Apache Iceberg community. This ensures forward compatibility and consistency with the broader Iceberg ecosystem.
+
 ---
 
 ## Table of Contents
@@ -46,6 +48,7 @@ This proposal defines REST API endpoints for querying table metrics and catalog 
 5. [Authorization](#5-authorization)
 6. [OpenAPI Schema](#6-openapi-schema)
 7. [Implementation Notes](#7-implementation-notes)
+8. [Iceberg Events API Alignment](#8-iceberg-events-api-alignment)
 
 ---
 
@@ -94,10 +97,12 @@ Adding read-only REST endpoints enables:
 
 | Principle | Rationale |
 |-----------|-----------|
-| **Management API namespace** | Use `/api/management/v1/...` to separate from Iceberg REST Catalog paths |
-| **Read-only endpoints** | Only GET methods; metrics/events are written via existing flows |
-| **Consistent pagination** | Follow existing `pageToken`/`nextPageToken` patterns |
-| **Flexible filtering** | Time ranges, principal, snapshot - common query patterns |
+| **Iceberg Events API alignment** | Events API follows the [Iceberg Events API spec](https://github.com/apache/iceberg/pull/12584) for ecosystem compatibility |
+| **Management API namespace** | Metrics APIs use `/api/management/v1/...` to separate from Iceberg REST Catalog paths |
+| **POST for complex filtering** | Events API uses POST with request body (per Iceberg spec) to support complex filters (arrays, nested objects) |
+| **Read-only semantics** | All endpoints are read-only; metrics/events are written via existing flows |
+| **Consistent pagination** | Follow `continuation-token` pattern (Iceberg) and `pageToken` pattern (Polaris management APIs) |
+| **Flexible filtering** | Time ranges, operation types, catalog objects - common query patterns |
 | **RBAC integration** | Leverage existing Polaris authorization model |
 
 ---
@@ -108,34 +113,73 @@ Adding read-only REST endpoints enables:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/management/v1/catalogs/{catalogName}/events` | List events for a catalog |
-| GET | `/api/management/v1/catalogs/{catalogName}/events/{eventId}` | Get a specific event |
+| POST | `/api/catalog/v1/{prefix}/events` | Query events for a catalog (Iceberg-compatible) |
 | GET | `/api/management/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics` | List scan metrics for a table |
 | GET | `/api/management/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/commit-metrics` | List commit metrics for a table |
+
+> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics APIs remain under the Polaris Management API namespace since they are Polaris-specific extensions.
 
 ### 4.2 Path Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `catalogName` | string | Name of the catalog |
+| `prefix` | string | Catalog prefix (typically the catalog name) |
+| `catalogName` | string | Name of the catalog (for management APIs) |
 | `namespace` | string | Namespace (URL-encoded, multi-level separated by `%1F`) |
 | `table` | string | Table name |
-| `eventId` | string | Unique event identifier |
 
-### 4.3 Query Parameters
+### 4.3 Events API (Iceberg-Compatible)
 
-#### List Events (`/catalogs/{catalogName}/events`)
+The Events API follows the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584) for ecosystem compatibility. Key design decisions from the Iceberg spec:
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `pageToken` | string | No | - | Cursor for pagination (from previous response) |
-| `pageSize` | integer | No | 100 | Results per page (max: 1000) |
-| `eventType` | string | No | - | Filter by event type (e.g., `AFTER_CREATE_TABLE`) |
-| `resourceType` | string | No | - | Filter by resource: `CATALOG`, `NAMESPACE`, `TABLE`, `VIEW` |
-| `resourceIdentifier` | string | No | - | Filter by resource identifier (exact match) |
-| `principalName` | string | No | - | Filter by principal who triggered the event |
-| `timestampFrom` | long | No | - | Start of time range (epoch milliseconds, inclusive) |
-| `timestampTo` | long | No | - | End of time range (epoch milliseconds, exclusive) |
+- **POST method**: Allows complex filtering with arrays and nested objects in the request body
+- **Continuation token**: Opaque cursor for resumable pagination
+- **Operation-centric model**: Events are structured around operations (create-table, update-table, etc.)
+- **Custom extensions**: Support for `x-` prefixed custom operation types for Polaris-specific events
+
+#### Request Body (`QueryEventsRequest`)
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `continuation-token` | string | No | Opaque cursor to resume fetching from previous request |
+| `page-size` | integer | No | Maximum events per page (server may return fewer) |
+| `after-timestamp-ms` | long | No | Filter: events after this timestamp (inclusive) |
+| `operation-types` | array[string] | No | Filter by operation types (see below) |
+| `catalog-objects-by-name` | array[array[string]] | No | Filter by namespace/table/view names |
+| `catalog-objects-by-id` | array[object] | No | Filter by table/view UUIDs |
+| `object-types` | array[string] | No | Filter by object type: `namespace`, `table`, `view` |
+| `custom-filters` | object | No | Implementation-specific filter extensions |
+
+#### Standard Operation Types
+
+| Operation Type | Description |
+|----------------|-------------|
+| `create-table` | Table created and committed |
+| `register-table` | Existing table registered in catalog |
+| `drop-table` | Table dropped |
+| `update-table` | Table metadata updated |
+| `rename-table` | Table renamed |
+| `create-view` | View created |
+| `drop-view` | View dropped |
+| `update-view` | View updated |
+| `rename-view` | View renamed |
+| `create-namespace` | Namespace created |
+| `update-namespace-properties` | Namespace properties updated |
+| `drop-namespace` | Namespace dropped |
+
+#### Polaris Custom Operation Types
+
+For Polaris-specific events not covered by the Iceberg spec, use the `x-` prefix convention:
+
+| Custom Operation Type | Description |
+|----------------------|-------------|
+| `x-polaris-create-catalog-role` | Catalog role created |
+| `x-polaris-grant-privilege` | Privilege granted |
+| `x-polaris-rotate-credentials` | Principal credentials rotated |
+| `x-polaris-create-policy` | Policy created |
+| `x-polaris-attach-policy` | Policy attached to resource |
+
+### 4.4 Query Parameters (Metrics APIs)
 
 #### List Scan Metrics (`/.../tables/{table}/scan-metrics`)
 
@@ -160,74 +204,124 @@ Adding read-only REST endpoints enables:
 | `timestampFrom` | long | No | - | Start of time range (epoch ms) |
 | `timestampTo` | long | No | - | End of time range (epoch ms) |
 
-### 4.4 Example Requests and Responses
+### 4.5 Example Requests and Responses
 
-#### List Events
+#### Query Events (Iceberg-Compatible)
 
 **Request:**
 ```http
-GET /api/management/v1/catalogs/my-catalog/events?pageSize=2&eventType=AFTER_CREATE_TABLE&timestampFrom=1709251200000
+POST /api/catalog/v1/my-catalog/events
 Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "page-size": 2,
+  "operation-types": ["create-table", "update-table"],
+  "after-timestamp-ms": 1709251200000,
+  "catalog-objects-by-name": [
+    ["analytics", "events"]
+  ],
+  "object-types": ["table"]
+}
 ```
 
 **Response:**
 ```json
 {
-  "nextPageToken": "eyJ0cyI6MTcwOTMzNzYxMjM0NSwiaWQiOiI1NTBlODQwMCJ9",
+  "next-page-token": "eyJ0cyI6MTcwOTMzNzYxMjM0NSwiaWQiOiI1NTBlODQwMCJ9",
+  "highest-processed-timestamp-ms": 1709337612345,
   "events": [
     {
-      "eventId": "550e8400-e29b-41d4-a716-446655440000",
-      "catalogId": "my-catalog",
-      "requestId": "req-12345",
-      "eventType": "AFTER_CREATE_TABLE",
-      "timestampMs": 1709337612345,
-      "principalName": "admin@example.com",
-      "resourceType": "TABLE",
-      "resourceIdentifier": "analytics.events.page_views",
-      "additionalProperties": {
-        "table-uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      "event-id": "550e8400-e29b-41d4-a716-446655440000",
+      "request-id": "req-12345",
+      "request-event-count": 1,
+      "timestamp-ms": 1709337612345,
+      "actor": {
+        "principal": "admin@example.com",
+        "client-ip": "192.168.1.100"
+      },
+      "operation": {
+        "operation-type": "create-table",
+        "identifier": {
+          "namespace": ["analytics", "events"],
+          "name": "page_views"
+        },
+        "table-uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "updates": [
+          {"action": "assign-uuid", "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"},
+          {"action": "set-current-schema", "schema-id": 0},
+          {"action": "set-default-spec", "spec-id": 0}
+        ]
       }
     },
     {
-      "eventId": "661f9511-f30c-52e5-b827-557766551111",
-      "catalogId": "my-catalog",
-      "requestId": "req-12346",
-      "eventType": "AFTER_CREATE_TABLE",
-      "timestampMs": 1709337500000,
-      "principalName": "etl-service@example.com",
-      "resourceType": "TABLE",
-      "resourceIdentifier": "analytics.events.user_actions",
-      "additionalProperties": {
-        "table-uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012"
+      "event-id": "661f9511-f30c-52e5-b827-557766551111",
+      "request-id": "req-12346",
+      "request-event-count": 1,
+      "timestamp-ms": 1709337500000,
+      "actor": {
+        "principal": "etl-service@example.com"
+      },
+      "operation": {
+        "operation-type": "update-table",
+        "identifier": {
+          "namespace": ["analytics", "events"],
+          "name": "user_actions"
+        },
+        "table-uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+        "updates": [
+          {"action": "add-snapshot", "snapshot-id": 123456789}
+        ],
+        "requirements": [
+          {"type": "assert-table-uuid", "uuid": "b2c3d4e5-f6a7-8901-bcde-f23456789012"}
+        ]
       }
     }
   ]
 }
 ```
 
-#### Get Single Event
+#### Query Events with Custom Polaris Operations
 
 **Request:**
 ```http
-GET /api/management/v1/catalogs/my-catalog/events/550e8400-e29b-41d4-a716-446655440000
+POST /api/catalog/v1/my-catalog/events
 Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "page-size": 10,
+  "operation-types": ["x-polaris-grant-privilege", "x-polaris-rotate-credentials"]
+}
 ```
 
 **Response:**
 ```json
 {
-  "eventId": "550e8400-e29b-41d4-a716-446655440000",
-  "catalogId": "my-catalog",
-  "requestId": "req-12345",
-  "eventType": "AFTER_CREATE_TABLE",
-  "timestampMs": 1709337612345,
-  "principalName": "admin@example.com",
-  "resourceType": "TABLE",
-  "resourceIdentifier": "analytics.events.page_views",
-  "additionalProperties": {
-    "table-uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "traceparent": "00-abc123def456789012345678901234-def456789012-01"
-  }
+  "next-page-token": "eyJ0cyI6MTcwOTMzODAwMDAwMH0=",
+  "highest-processed-timestamp-ms": 1709338000000,
+  "events": [
+    {
+      "event-id": "772f0622-g41d-63f6-c938-668877662222",
+      "request-id": "req-admin-001",
+      "request-event-count": 1,
+      "timestamp-ms": 1709338000000,
+      "actor": {
+        "principal": "security-admin@example.com"
+      },
+      "operation": {
+        "operation-type": "custom",
+        "custom-type": "x-polaris-grant-privilege",
+        "identifier": {
+          "namespace": ["analytics", "events"],
+          "name": "page_views"
+        },
+        "table-uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "privilege": "TABLE_READ_DATA",
+        "grantee": "data-analyst-role"
+      }
+    }
+  ]
 }
 ```
 
@@ -358,97 +452,69 @@ If finer-grained control is desired, new privileges could be introduced:
 
 ## 6. OpenAPI Schema
 
-Add the following to `spec/polaris-management-service.yml`:
+### 6.1 Events API (Iceberg REST Catalog Extension)
 
-### 6.1 Paths
+Add the following to `spec/rest-catalog-open-api.yaml` (aligned with Iceberg Events API spec):
 
 ```yaml
 paths:
-  /catalogs/{catalogName}/events:
+  /v1/{prefix}/events:
     parameters:
-      - $ref: '#/components/parameters/catalogName'
-    get:
-      operationId: listCatalogEvents
-      summary: List events for a catalog
-      description: Returns a paginated list of events with optional filtering
+      - $ref: '#/components/parameters/prefix'
+    post:
       tags:
-        - Observability
-      parameters:
-        - name: pageToken
-          in: query
-          schema:
-            type: string
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-        - name: eventType
-          in: query
-          schema:
-            type: string
-        - name: resourceType
-          in: query
-          schema:
-            type: string
-            enum: [CATALOG, NAMESPACE, TABLE, VIEW]
-        - name: resourceIdentifier
-          in: query
-          schema:
-            type: string
-        - name: principalName
-          in: query
-          schema:
-            type: string
-        - name: timestampFrom
-          in: query
-          schema:
-            type: integer
-            format: int64
-        - name: timestampTo
-          in: query
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Paginated list of events
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListEventsResponse'
-        '403':
-          description: Insufficient privileges
-        '404':
-          description: Catalog not found
+        - Catalog API
+      summary: Get events for changes to catalog objects
+      description: >
+        Returns a sequence of changes to catalog objects (tables, namespaces, views)
+        that allows clients to efficiently track metadata modifications without polling
+        individual resources. Consumers track their progress through a continuation-token,
+        enabling resumable synchronization after downtime or errors.
 
-  /catalogs/{catalogName}/events/{eventId}:
-    parameters:
-      - $ref: '#/components/parameters/catalogName'
-      - name: eventId
-        in: path
+        This endpoint primarily supports use cases like catalog federation, workflow
+        triggering, and basic audit capabilities.
+
+        Consumers should be prepared to handle 410 Gone responses when requested sequences
+        are outside the server's retention window. Consumers should also de-duplicate
+        received events based on the event's `event-id`.
+      operationId: getEvents
+      requestBody:
         required: true
-        schema:
-          type: string
-    get:
-      operationId: getEvent
-      summary: Get a specific event
-      tags:
-        - Observability
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryEventsRequest'
       responses:
         '200':
-          description: The requested event
+          description: A sequence of change events to catalog objects
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CatalogEvent'
+                $ref: '#/components/schemas/QueryEventsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
         '403':
-          description: Insufficient privileges
-        '404':
-          description: Event or catalog not found
+          $ref: '#/components/responses/ForbiddenResponse'
+        '410':
+          description: Gone - The requested offset is no longer available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        '5XX':
+          $ref: '#/components/responses/ServerErrorResponse'
+```
 
+### 6.2 Metrics APIs (Polaris Management Service)
+
+Add the following to `spec/polaris-management-service.yml`:
+
+```yaml
+paths:
   /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics:
     parameters:
       - $ref: '#/components/parameters/catalogName'
@@ -560,63 +626,215 @@ paths:
           description: Table not found
 ```
 
-### 6.2 Schemas
+### 6.3 Events API Schemas (Iceberg-Compatible)
+
+Add these schemas to `spec/rest-catalog-open-api.yaml`:
 
 ```yaml
 components:
   schemas:
-    CatalogEvent:
+    QueryEventsRequest:
       type: object
-      required:
-        - eventId
-        - catalogId
-        - eventType
-        - timestampMs
-        - resourceType
-        - resourceIdentifier
       properties:
-        eventId:
+        continuation-token:
           type: string
-          description: Unique event identifier
-        catalogId:
-          type: string
-          description: Catalog where the event occurred
-        requestId:
-          type: string
-          description: Request ID that triggered this event
-        eventType:
-          type: string
-          description: Event type (e.g., AFTER_CREATE_TABLE)
-        timestampMs:
+          description: >
+            A continuation token to resume fetching events from a previous request.
+            If not provided, events are fetched from the beginning of the event log
+            subject to other filters.
+        page-size:
+          type: integer
+          format: int32
+          description: >
+            The maximum number of events to return in a single response.
+            Servers may return less results than requested.
+        after-timestamp-ms:
           type: integer
           format: int64
-          description: Event timestamp (epoch milliseconds)
-        principalName:
-          type: string
-          description: Principal who triggered the event
-        resourceType:
-          type: string
-          enum: [CATALOG, NAMESPACE, TABLE, VIEW]
-        resourceIdentifier:
-          type: string
-          description: Fully qualified resource identifier
-        additionalProperties:
-          type: object
-          additionalProperties:
+          description: >
+            The timestamp in milliseconds to start consuming events from (inclusive).
+        operation-types:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationType"
+          description: Filter events by operation type.
+        catalog-objects-by-name:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogObjectIdentifier"
+          description: >
+            Filter events by catalog objects referenced by name (namespaces, tables, views).
+            For namespaces, events for all containing objects are returned recursively.
+        catalog-objects-by-id:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogObjectUuid"
+          description: Filter events by table/view UUIDs.
+        object-types:
+          type: array
+          items:
             type: string
-          description: Event-specific metadata
+            enum: [namespace, table, view]
+          description: Filter events by catalog object type.
+        custom-filters:
+          type: object
+          additionalProperties: true
+          description: Implementation-specific filter extensions.
 
-    ListEventsResponse:
+    QueryEventsResponse:
       type: object
+      required:
+        - next-page-token
+        - highest-processed-timestamp-ms
+        - events
       properties:
-        nextPageToken:
+        next-page-token:
           type: string
-          description: Token for next page (null if no more results)
+          description: >
+            An opaque continuation token to fetch the next page of events.
+        highest-processed-timestamp-ms:
+          type: integer
+          format: int64
+          description: >
+            The highest event timestamp processed when generating this response.
         events:
           type: array
           items:
-            $ref: '#/components/schemas/CatalogEvent'
+            $ref: "#/components/schemas/Event"
 
+    Event:
+      type: object
+      required:
+        - event-id
+        - request-id
+        - request-event-count
+        - timestamp-ms
+        - operation
+      properties:
+        event-id:
+          type: string
+          description: Unique ID of this event. Clients should deduplicate based on this ID.
+        request-id:
+          type: string
+          description: >
+            Opaque ID of the request this event belongs to. Events from the same
+            request share this ID.
+        request-event-count:
+          type: integer
+          description: >
+            Total number of events generated by this request.
+        timestamp-ms:
+          type: integer
+          format: int64
+          description: Timestamp when this event occurred (epoch milliseconds).
+        actor:
+          type: object
+          additionalProperties: true
+          description: >
+            The actor who performed the operation (e.g., user, service account).
+            Content is implementation-specific.
+        operation:
+          type: object
+          description: The operation that was performed.
+          discriminator:
+            propertyName: operation-type
+            mapping:
+              create-table: "#/components/schemas/CreateTableOperation"
+              register-table: "#/components/schemas/RegisterTableOperation"
+              drop-table: "#/components/schemas/DropTableOperation"
+              update-table: "#/components/schemas/UpdateTableOperation"
+              rename-table: "#/components/schemas/RenameTableOperation"
+              create-view: "#/components/schemas/CreateViewOperation"
+              drop-view: "#/components/schemas/DropViewOperation"
+              update-view: "#/components/schemas/UpdateViewOperation"
+              rename-view: "#/components/schemas/RenameViewOperation"
+              create-namespace: "#/components/schemas/CreateNamespaceOperation"
+              update-namespace-properties: "#/components/schemas/UpdateNamespacePropertiesOperation"
+              drop-namespace: "#/components/schemas/DropNamespaceOperation"
+              custom: "#/components/schemas/CustomOperation"
+
+    OperationType:
+      type: string
+      description: >
+        Defines the type of operation. Clients should ignore unknown operation types.
+      anyOf:
+        - type: string
+          enum:
+            - create-table
+            - register-table
+            - drop-table
+            - update-table
+            - rename-table
+            - create-view
+            - drop-view
+            - update-view
+            - rename-view
+            - create-namespace
+            - update-namespace-properties
+            - drop-namespace
+        - $ref: '#/components/schemas/CustomOperationType'
+
+    CustomOperationType:
+      type: string
+      description: >
+        Custom operation type for catalog-specific extensions.
+        Must start with 'x-' followed by an implementation-specific identifier.
+      pattern: '^x-[a-zA-Z0-9-_.]+$'
+
+    CustomOperation:
+      type: object
+      description: Extension point for catalog-specific operations (e.g., Polaris privileges).
+      required:
+        - operation-type
+        - custom-type
+      properties:
+        operation-type:
+          type: string
+          const: "custom"
+        custom-type:
+          $ref: '#/components/schemas/CustomOperationType'
+        identifier:
+          $ref: "#/components/schemas/TableIdentifier"
+          description: Table or view identifier this operation applies to, if applicable.
+        namespace:
+          $ref: "#/components/schemas/Namespace"
+          description: Namespace this operation applies to, if applicable.
+        table-uuid:
+          type: string
+          format: uuid
+        view-uuid:
+          type: string
+          format: uuid
+      additionalProperties: true
+
+    CatalogObjectIdentifier:
+      type: array
+      items:
+        type: string
+      description: Reference to a named object in the catalog (namespace, table, or view).
+      example: ["accounting", "tax"]
+
+    CatalogObjectUuid:
+      type: object
+      required:
+        - uuid
+        - type
+      properties:
+        uuid:
+          type: string
+          description: The UUID of the catalog object.
+        type:
+          type: string
+          enum: [table, view]
+```
+
+### 6.4 Metrics API Schemas (Polaris Management Service)
+
+Add these schemas to `spec/polaris-management-service.yml`:
+
+```yaml
+components:
+  schemas:
     ScanMetricsReport:
       type: object
       required:
@@ -870,9 +1088,12 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
 
 | File | Changes |
 |------|---------|
-| `spec/polaris-management-service.yml` | Add paths and schemas |
-| `api/management-service/` | Generated API interfaces |
-| `runtime/service/.../admin/` | Service implementation |
+| `spec/rest-catalog-open-api.yaml` | Add Events API paths and schemas (Iceberg-compatible) |
+| `spec/polaris-management-service.yml` | Add Metrics API paths and schemas |
+| `api/iceberg-service/` | Generated Events API interfaces |
+| `api/management-service/` | Generated Metrics API interfaces |
+| `runtime/service/.../catalog/` | Events service implementation |
+| `runtime/service/.../admin/` | Metrics service implementation |
 | `polaris-core/.../persistence/BasePersistence.java` | Add read methods |
 | `persistence/relational-jdbc/.../JdbcBasePersistenceImpl.java` | Query implementations |
 
@@ -889,21 +1110,100 @@ Internal format (base64-encoded JSON, opaque to clients):
 
 ---
 
-## Appendix: Event Types Reference
+## Appendix A: Polaris Internal Event Types Reference
 
-Events are categorized by code ranges:
+Polaris internal event types are categorized by code ranges. These are mapped to Iceberg-compatible operation types when exposed via the Events API:
 
-| Range | Category | Examples |
-|-------|----------|----------|
-| 100-109 | Catalog | `AFTER_CREATE_CATALOG`, `AFTER_DELETE_CATALOG` |
-| 200-217 | Catalog Role | `AFTER_CREATE_CATALOG_ROLE`, `AFTER_ADD_GRANT_TO_CATALOG_ROLE` |
-| 300-319 | Principal | `AFTER_CREATE_PRINCIPAL`, `AFTER_ROTATE_CREDENTIALS` |
-| 400-417 | Principal Role | `AFTER_CREATE_PRINCIPAL_ROLE`, `AFTER_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE` |
-| 500-511 | Namespace | `AFTER_CREATE_NAMESPACE`, `AFTER_DROP_NAMESPACE` |
-| 600-617 | Table | `AFTER_CREATE_TABLE`, `AFTER_UPDATE_TABLE`, `AFTER_DROP_TABLE` |
-| 700-715 | View | `AFTER_CREATE_VIEW`, `AFTER_REPLACE_VIEW` |
-| 1200-1215 | Policy | `AFTER_CREATE_POLICY`, `AFTER_ATTACH_POLICY` |
-| 1300-1307 | Generic Table | `AFTER_CREATE_GENERIC_TABLE` |
+| Range | Category | Internal Event Type | Iceberg Operation Type |
+|-------|----------|---------------------|------------------------|
+| 100-109 | Catalog | `AFTER_CREATE_CATALOG` | `custom` (`x-polaris-create-catalog`) |
+| | | `AFTER_DELETE_CATALOG` | `custom` (`x-polaris-delete-catalog`) |
+| 200-217 | Catalog Role | `AFTER_CREATE_CATALOG_ROLE` | `custom` (`x-polaris-create-catalog-role`) |
+| | | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`x-polaris-grant-privilege`) |
+| 300-319 | Principal | `AFTER_CREATE_PRINCIPAL` | `custom` (`x-polaris-create-principal`) |
+| | | `AFTER_ROTATE_CREDENTIALS` | `custom` (`x-polaris-rotate-credentials`) |
+| 400-417 | Principal Role | `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`x-polaris-create-principal-role`) |
+| 500-511 | Namespace | `AFTER_CREATE_NAMESPACE` | `create-namespace` |
+| | | `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` |
+| | | `AFTER_DROP_NAMESPACE` | `drop-namespace` |
+| 600-617 | Table | `AFTER_CREATE_TABLE` | `create-table` |
+| | | `AFTER_UPDATE_TABLE` | `update-table` |
+| | | `AFTER_DROP_TABLE` | `drop-table` |
+| | | `AFTER_RENAME_TABLE` | `rename-table` |
+| | | `AFTER_REGISTER_TABLE` | `register-table` |
+| 700-715 | View | `AFTER_CREATE_VIEW` | `create-view` |
+| | | `AFTER_UPDATE_VIEW` | `update-view` |
+| | | `AFTER_DROP_VIEW` | `drop-view` |
+| | | `AFTER_RENAME_VIEW` | `rename-view` |
+| 1200-1215 | Policy | `AFTER_CREATE_POLICY` | `custom` (`x-polaris-create-policy`) |
+| | | `AFTER_ATTACH_POLICY` | `custom` (`x-polaris-attach-policy`) |
+| 1300-1307 | Generic Table | `AFTER_CREATE_GENERIC_TABLE` | `custom` (`x-polaris-create-generic-table`) |
+
+---
+
+## 8. Iceberg Events API Alignment
+
+This section documents the alignment with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584) and explains the rationale for design decisions.
+
+### 8.1 Why Align with Iceberg Events API?
+
+The Iceberg Events API is an emerging specification that is nearing consensus in the Apache Iceberg community. Aligning Polaris with this specification provides:
+
+1. **Ecosystem Compatibility**: Clients built for the Iceberg Events API will work with Polaris without modification
+2. **Future-Proofing**: Avoids breaking changes when the Iceberg spec is finalized
+3. **Tooling Interoperability**: Monitoring tools, federation services, and workflow triggers can work across Iceberg-compatible catalogs
+4. **Reduced Cognitive Load**: Developers familiar with Iceberg don't need to learn a new API
+
+### 8.2 Key Design Decisions from Iceberg Spec
+
+| Decision | Iceberg Spec Approach | Rationale |
+|----------|----------------------|-----------|
+| **HTTP Method** | `POST` (not `GET`) | Allows complex filtering with arrays and nested objects in request body |
+| **API Path** | `/v1/{prefix}/events` | Part of Iceberg REST Catalog, not a separate management API |
+| **Pagination** | `continuation-token` | Opaque cursor that encodes server state; resumable after downtime |
+| **Event Structure** | Operation-centric with discriminator | Each event contains a typed `operation` with operation-specific fields |
+| **Operation Types** | Standardized enum + `x-` prefix extensions | Standard types for Iceberg operations; custom prefix for catalog-specific extensions |
+| **Actor Field** | Generic object (implementation-specific) | Flexibility for different auth models (users, service accounts, etc.) |
+| **Error Handling** | `410 Gone` for expired offsets | Explicit signal when continuation token is outside retention window |
+
+### 8.3 Polaris-Specific Extensions
+
+Polaris extends the Iceberg Events API using the `custom` operation type with `x-polaris-*` prefixed custom types:
+
+| Custom Type | Polaris Event | Description |
+|-------------|---------------|-------------|
+| `x-polaris-create-catalog` | `AFTER_CREATE_CATALOG` | Catalog created |
+| `x-polaris-create-catalog-role` | `AFTER_CREATE_CATALOG_ROLE` | Catalog role created |
+| `x-polaris-grant-privilege` | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | Privilege granted to role |
+| `x-polaris-revoke-privilege` | `AFTER_REMOVE_GRANT_FROM_CATALOG_ROLE` | Privilege revoked |
+| `x-polaris-create-principal` | `AFTER_CREATE_PRINCIPAL` | Principal created |
+| `x-polaris-rotate-credentials` | `AFTER_ROTATE_CREDENTIALS` | Credentials rotated |
+| `x-polaris-create-policy` | `AFTER_CREATE_POLICY` | Policy created |
+| `x-polaris-attach-policy` | `AFTER_ATTACH_POLICY` | Policy attached to resource |
+
+### 8.4 Mapping Polaris Internal Events to Iceberg Operations
+
+| Polaris Event Type | Iceberg Operation Type |
+|-------------------|------------------------|
+| `AFTER_CREATE_TABLE` | `create-table` |
+| `AFTER_UPDATE_TABLE` | `update-table` |
+| `AFTER_DROP_TABLE` | `drop-table` |
+| `AFTER_RENAME_TABLE` | `rename-table` |
+| `AFTER_REGISTER_TABLE` | `register-table` |
+| `AFTER_CREATE_VIEW` | `create-view` |
+| `AFTER_UPDATE_VIEW` / `AFTER_REPLACE_VIEW` | `update-view` |
+| `AFTER_DROP_VIEW` | `drop-view` |
+| `AFTER_RENAME_VIEW` | `rename-view` |
+| `AFTER_CREATE_NAMESPACE` | `create-namespace` |
+| `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` |
+| `AFTER_DROP_NAMESPACE` | `drop-namespace` |
+| Other Polaris events | `custom` with `x-polaris-*` type |
+
+### 8.5 References
+
+- **Iceberg Events API Proposal**: [Google Doc](https://docs.google.com/document/d/1WtIsNGVX75-_MsQIOJhXLAWg6IbplV4-DkLllQEiFT8/edit)
+- **Iceberg Events API PR**: [apache/iceberg#12584](https://github.com/apache/iceberg/pull/12584)
+- **Iceberg REST Catalog Spec**: [rest-catalog-open-api.yaml](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml)
 
 ---
 
@@ -911,6 +1211,8 @@ Events are categorized by code ranges:
 
 1. **Aggregations**: Are aggregated metrics views needed (e.g., daily summaries)?
 2. **Privileges**: Use existing privileges or introduce new `READ_EVENTS`/`READ_METRICS`?
+3. **Event Retention**: What is the default retention period for events? Should it be configurable?
+4. **Consistency Guarantees**: What ordering and delivery guarantees should Polaris provide for the Events API?
 
 ---
 
@@ -919,4 +1221,6 @@ Events are categorized by code ranges:
 - Database schema: `persistence/relational-jdbc/src/main/resources/postgres/schema-v4.sql`
 - Event types: `runtime/service/src/main/java/org/apache/polaris/service/events/PolarisEventType.java`
 - Metrics persistence: `runtime/service/src/main/java/org/apache/polaris/service/reporting/PersistingMetricsReporter.java`
+- Iceberg Events API PR: https://github.com/apache/iceberg/pull/12584
+- Iceberg Events API Design Doc: https://docs.google.com/document/d/1WtIsNGVX75-_MsQIOJhXLAWg6IbplV4-DkLllQEiFT8/edit
 
