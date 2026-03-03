@@ -21,8 +21,9 @@ package org.apache.polaris.core.policy;
 /**
  * A test-only non-inheritable policy type for use in integration tests.
  *
- * <p>This policy type is used to test the non-inheritable policy behavior in PolicyCatalog. It must be registered via {@link
- * PolicyType#registerCustomPolicyType(PolicyType)} before use and unregistered in test cleanup.
+ * <p>This policy type is used to test the non-inheritable policy behavior in PolicyCatalog. It must
+ * be registered via {@link PolicyType#registerCustomPolicyType(PolicyType)} before use and
+ * unregistered in test cleanup.
  *
  * <p>Usage example:
  *

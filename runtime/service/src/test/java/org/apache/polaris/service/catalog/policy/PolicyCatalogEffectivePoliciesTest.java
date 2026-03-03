@@ -32,25 +32,18 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.TestNonInheritablePolicyType;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for the effective policies calculation logic in PolicyCatalog.
- */
+/** Unit tests for the effective policies calculation logic in PolicyCatalog. */
 class PolicyCatalogEffectivePoliciesTest {
 
-  /**
-   * Simplified policy record for testing the algorithm.
-   */
+  /** Simplified policy record for testing the algorithm. */
   private record TestPolicy(String name, PolicyType policyType, long id) {}
 
-  /**
-   * Result record for applicable policy.
-   */
+  /** Result record for applicable policy. */
   private record ApplicablePolicyResult(String name, PolicyType policyType, boolean inherited) {}
 
-  /**
-   * Extracted algorithm from PolicyCatalog.getEffectivePolicies() for unit testing.
-   */
-  private List<ApplicablePolicyResult> getEffectivePolicies(List<List<TestPolicy>> policiesPerEntity) {
+  /** Extracted algorithm from PolicyCatalog.getEffectivePolicies() for unit testing. */
+  private List<ApplicablePolicyResult> getEffectivePolicies(
+      List<List<TestPolicy>> policiesPerEntity) {
     if (policiesPerEntity == null || policiesPerEntity.isEmpty()) {
       return List.of();
     }
@@ -87,8 +80,12 @@ class PolicyCatalogEffectivePoliciesTest {
             nonInheritablePolicies.stream()
                 .map(p -> new ApplicablePolicyResult(p.name(), p.policyType(), false)),
             inheritablePolicies.values().stream()
-                .map(p -> new ApplicablePolicyResult(
-                    p.name(), p.policyType(), !directAttachedInheritablePolicies.contains(p.id()))))
+                .map(
+                    p ->
+                        new ApplicablePolicyResult(
+                            p.name(),
+                            p.policyType(),
+                            !directAttachedInheritablePolicies.contains(p.id()))))
         .toList();
   }
 
@@ -99,13 +96,15 @@ class PolicyCatalogEffectivePoliciesTest {
     // Scenario: Non-inheritable policy attached to catalog should NOT appear
     // when querying namespace-level applicable policies
 
-    var catalogNonInheritable = new TestPolicy("catalog-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
+    var catalogNonInheritable =
+        new TestPolicy("catalog-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog, namespace] - policies at catalog level only
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogNonInheritable),  // catalog
-        List.of()                        // namespace (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogNonInheritable), // catalog
+            List.of() // namespace (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -118,14 +117,16 @@ class PolicyCatalogEffectivePoliciesTest {
     // Scenario: Non-inheritable policy attached to catalog should NOT appear
     // when querying table-level applicable policies
 
-    var catalogNonInheritable = new TestPolicy("catalog-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
+    var catalogNonInheritable =
+        new TestPolicy("catalog-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog, namespace, table] - policies at catalog level only
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogNonInheritable),  // catalog
-        List.of(),                       // namespace
-        List.of()                        // table (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogNonInheritable), // catalog
+            List.of(), // namespace
+            List.of() // table (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -140,11 +141,12 @@ class PolicyCatalogEffectivePoliciesTest {
     var nsNonInheritable = new TestPolicy("ns-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog, namespace, table]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(),                    // catalog
-        List.of(nsNonInheritable),    // namespace
-        List.of()                     // table (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(), // catalog
+            List.of(nsNonInheritable), // namespace
+            List.of() // table (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -156,14 +158,16 @@ class PolicyCatalogEffectivePoliciesTest {
     // Scenario: Non-inheritable policy attached directly to table SHOULD appear
     // when querying table-level applicable policies
 
-    var tableNonInheritable = new TestPolicy("table-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
+    var tableNonInheritable =
+        new TestPolicy("table-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog, namespace, table] - policy directly on table
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(),                       // catalog
-        List.of(),                       // namespace
-        List.of(tableNonInheritable)     // table (target) - direct attachment
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(), // catalog
+            List.of(), // namespace
+            List.of(tableNonInheritable) // table (target) - direct attachment
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -178,14 +182,17 @@ class PolicyCatalogEffectivePoliciesTest {
     // Scenario: Both inheritable and non-inheritable policies at catalog level
     // Only inheritable should propagate to namespace
 
-    var inheritablePolicy = new TestPolicy("inheritable", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
-    var nonInheritablePolicy = new TestPolicy("non-inheritable", TestNonInheritablePolicyType.INSTANCE, 2L);
+    var inheritablePolicy =
+        new TestPolicy("inheritable", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
+    var nonInheritablePolicy =
+        new TestPolicy("non-inheritable", TestNonInheritablePolicyType.INSTANCE, 2L);
 
     // Path: [catalog, namespace]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(inheritablePolicy, nonInheritablePolicy),  // catalog
-        List.of()                                          // namespace (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(inheritablePolicy, nonInheritablePolicy), // catalog
+            List.of() // namespace (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -206,11 +213,12 @@ class PolicyCatalogEffectivePoliciesTest {
     var tablePolicy = new TestPolicy("table-policy", TestNonInheritablePolicyType.INSTANCE, 3L);
 
     // Path: [catalog, namespace, table]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogPolicy),  // catalog
-        List.of(nsPolicy),       // namespace
-        List.of(tablePolicy)     // table (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogPolicy), // catalog
+            List.of(nsPolicy), // namespace
+            List.of(tablePolicy) // table (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -227,10 +235,11 @@ class PolicyCatalogEffectivePoliciesTest {
     var nsPolicy = new TestPolicy("ns-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog, namespace] - querying namespace
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(),            // catalog
-        List.of(nsPolicy)     // namespace (target) - direct attachment
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(), // catalog
+            List.of(nsPolicy) // namespace (target) - direct attachment
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -247,9 +256,10 @@ class PolicyCatalogEffectivePoliciesTest {
     var catalogPolicy = new TestPolicy("catalog-policy", TestNonInheritablePolicyType.INSTANCE, 1L);
 
     // Path: [catalog] - querying catalog itself
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogPolicy) // catalog (target) - direct attachment
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogPolicy) // catalog (target) - direct attachment
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -262,46 +272,55 @@ class PolicyCatalogEffectivePoliciesTest {
   void testComplexMixedScenario() {
     // Scenario: Complex mix of inheritable and non-inheritable at multiple levels
 
-    var catalogInheritable = new TestPolicy("catalog-inheritable", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
-    var catalogNonInheritable = new TestPolicy("catalog-non-inheritable", TestNonInheritablePolicyType.INSTANCE, 2L);
-    var nsInheritable = new TestPolicy("ns-inheritable", PredefinedPolicyTypes.METADATA_COMPACTION, 3L);
-    var tableNonInheritable = new TestPolicy("table-non-inheritable", TestNonInheritablePolicyType.INSTANCE, 4L);
+    var catalogInheritable =
+        new TestPolicy("catalog-inheritable", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
+    var catalogNonInheritable =
+        new TestPolicy("catalog-non-inheritable", TestNonInheritablePolicyType.INSTANCE, 2L);
+    var nsInheritable =
+        new TestPolicy("ns-inheritable", PredefinedPolicyTypes.METADATA_COMPACTION, 3L);
+    var tableNonInheritable =
+        new TestPolicy("table-non-inheritable", TestNonInheritablePolicyType.INSTANCE, 4L);
 
     // Path: [catalog, namespace, table]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogInheritable, catalogNonInheritable),  // catalog
-        List.of(nsInheritable),                              // namespace
-        List.of(tableNonInheritable)                         // table (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogInheritable, catalogNonInheritable), // catalog
+            List.of(nsInheritable), // namespace
+            List.of(tableNonInheritable) // table (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
-    // Expected: 
+    // Expected:
     // - table-non-inheritable (direct, non-inheritable)
     // - catalog-inheritable (inherited)
     // - ns-inheritable (inherited)
     assertThat(result).hasSize(3);
-    
+
     var names = result.stream().map(ApplicablePolicyResult::name).toList();
-    assertThat(names).containsExactlyInAnyOrder(
-        "table-non-inheritable", "catalog-inheritable", "ns-inheritable");
+    assertThat(names)
+        .containsExactlyInAnyOrder(
+            "table-non-inheritable", "catalog-inheritable", "ns-inheritable");
 
     // Verify inheritance flags
-    var tablePolicy = result.stream()
-        .filter(p -> p.name().equals("table-non-inheritable"))
-        .findFirst().orElseThrow();
+    var tablePolicy =
+        result.stream()
+            .filter(p -> p.name().equals("table-non-inheritable"))
+            .findFirst()
+            .orElseThrow();
     assertThat(tablePolicy.policyType().isInheritable()).isFalse();
     assertThat(tablePolicy.inherited()).isFalse();
 
-    var catalogPolicy = result.stream()
-        .filter(p -> p.name().equals("catalog-inheritable"))
-        .findFirst().orElseThrow();
+    var catalogPolicy =
+        result.stream()
+            .filter(p -> p.name().equals("catalog-inheritable"))
+            .findFirst()
+            .orElseThrow();
     assertThat(catalogPolicy.policyType().isInheritable()).isTrue();
     assertThat(catalogPolicy.inherited()).isTrue();
 
-    var nsPolicy = result.stream()
-        .filter(p -> p.name().equals("ns-inheritable"))
-        .findFirst().orElseThrow();
+    var nsPolicy =
+        result.stream().filter(p -> p.name().equals("ns-inheritable")).findFirst().orElseThrow();
     assertThat(nsPolicy.policyType().isInheritable()).isTrue();
     assertThat(nsPolicy.inherited()).isTrue();
   }
@@ -311,15 +330,17 @@ class PolicyCatalogEffectivePoliciesTest {
     // Scenario: Same policy type at catalog and namespace levels
     // Namespace should overwrite catalog
 
-    var catalogPolicy = new TestPolicy("catalog-compaction", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
+    var catalogPolicy =
+        new TestPolicy("catalog-compaction", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
     var nsPolicy = new TestPolicy("ns-compaction", PredefinedPolicyTypes.DATA_COMPACTION, 2L);
 
     // Path: [catalog, namespace, table]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(catalogPolicy), // catalog
-        List.of(nsPolicy),      // namespace
-        List.of()               // table (target)
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(catalogPolicy), // catalog
+            List.of(nsPolicy), // namespace
+            List.of() // table (target)
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
@@ -337,11 +358,12 @@ class PolicyCatalogEffectivePoliciesTest {
     var tablePolicy = new TestPolicy("table-compaction", PredefinedPolicyTypes.DATA_COMPACTION, 1L);
 
     // Path: [catalog, namespace, table]
-    List<List<TestPolicy>> policiesPerEntity = List.of(
-        List.of(),             // catalog
-        List.of(),             // namespace
-        List.of(tablePolicy)   // table (target) - direct attachment
-    );
+    List<List<TestPolicy>> policiesPerEntity =
+        List.of(
+            List.of(), // catalog
+            List.of(), // namespace
+            List.of(tablePolicy) // table (target) - direct attachment
+            );
 
     List<ApplicablePolicyResult> result = getEffectivePolicies(policiesPerEntity);
 
