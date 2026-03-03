@@ -1147,6 +1147,106 @@ Internal format (base64-encoded JSON, opaque to clients):
 }
 ```
 
+### 7.5 Mapping PolarisEventType to Iceberg Events API
+
+Polaris internally uses a `PolarisEventType` enum that distinguishes between `BEFORE_*` and `AFTER_*` events for each operation (e.g., `BEFORE_CREATE_TABLE` and `AFTER_CREATE_TABLE`). This section explains how these internal events map to the Iceberg Events API.
+
+#### 7.5.1 Design Decision: Only AFTER Events are Exposed
+
+The Iceberg Events API represents **completed operations** that have been committed to the catalog. Therefore:
+
+| Internal Event Pattern | Exposed via API? | Rationale |
+|------------------------|------------------|-----------|
+| `AFTER_*` events | **Yes** | Represent successful, committed operations |
+| `BEFORE_*` events | **No** | Represent intent, not outcome; may fail after firing |
+
+**Why not expose BEFORE events?**
+
+1. **Semantic mismatch**: The Iceberg Events API is designed for change data capture (CDC) and audit logs of *completed* changes. `BEFORE_*` events fire before validation and persistence, so they may represent operations that ultimately fail.
+
+2. **Consistency**: Exposing `BEFORE_*` events could lead to consumers seeing "phantom" operations that never actually occurred.
+
+3. **Use case alignment**: The primary use cases (audit, federation, workflow triggers) all require knowing what *actually happened*, not what was *attempted*.
+
+4. **Internal vs external**: `BEFORE_*` events serve internal purposes (request filtering, rate limiting, pre-validation hooks) and are not meaningful to external consumers.
+
+#### 7.5.2 Mapping AFTER Events to Operation Types
+
+The mapping follows a straightforward pattern - the `AFTER_` prefix is stripped and the remaining name maps to the Iceberg operation type:
+
+| Polaris `PolarisEventType` | Iceberg `operation-type` | Notes |
+|----------------------------|--------------------------|-------|
+| **Standard Iceberg Operations** | | |
+| `AFTER_CREATE_TABLE` | `create-table` | Direct mapping |
+| `AFTER_REGISTER_TABLE` | `register-table` | Direct mapping |
+| `AFTER_DROP_TABLE` | `drop-table` | Direct mapping |
+| `AFTER_UPDATE_TABLE` | `update-table` | Includes schema evolution, property changes |
+| `AFTER_RENAME_TABLE` | `rename-table` | Direct mapping |
+| `AFTER_CREATE_VIEW` | `create-view` | Direct mapping |
+| `AFTER_DROP_VIEW` | `drop-view` | Direct mapping |
+| `AFTER_REPLACE_VIEW` | `update-view` | View replacement maps to update |
+| `AFTER_RENAME_VIEW` | `rename-view` | Direct mapping |
+| `AFTER_CREATE_NAMESPACE` | `create-namespace` | Direct mapping |
+| `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` | Direct mapping |
+| `AFTER_DROP_NAMESPACE` | `drop-namespace` | Direct mapping |
+| **Polaris Custom Operations** | | Use `custom` type with `x-polaris-*` |
+| `AFTER_CREATE_CATALOG` | `custom` (`x-polaris-create-catalog`) | Catalog-level, not in Iceberg spec |
+| `AFTER_DELETE_CATALOG` | `custom` (`x-polaris-delete-catalog`) | Catalog-level |
+| `AFTER_CREATE_PRINCIPAL` | `custom` (`x-polaris-create-principal`) | Access management |
+| `AFTER_DELETE_PRINCIPAL` | `custom` (`x-polaris-delete-principal`) | Access management |
+| `AFTER_ROTATE_CREDENTIALS` | `custom` (`x-polaris-rotate-credentials`) | Security operation |
+| `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`x-polaris-create-principal-role`) | RBAC |
+| `AFTER_CREATE_CATALOG_ROLE` | `custom` (`x-polaris-create-catalog-role`) | RBAC |
+| `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`x-polaris-grant-privilege`) | RBAC |
+| `AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE` | `custom` (`x-polaris-revoke-privilege`) | RBAC |
+| `AFTER_CREATE_POLICY` | `custom` (`x-polaris-create-policy`) | Policy management |
+| `AFTER_ATTACH_POLICY` | `custom` (`x-polaris-attach-policy`) | Policy management |
+| `AFTER_CREATE_GENERIC_TABLE` | `custom` (`x-polaris-create-generic-table`) | Generic table support |
+
+#### 7.5.3 Read-Only Operations: Not Exposed
+
+Events for read-only operations are **not exposed** via the Events API because they do not represent catalog mutations:
+
+| Excluded Event Types | Reason |
+|----------------------|--------|
+| `AFTER_GET_CATALOG`, `AFTER_LIST_CATALOGS` | Read-only, no state change |
+| `AFTER_LOAD_TABLE`, `AFTER_LIST_TABLES`, `AFTER_CHECK_EXISTS_TABLE` | Read-only |
+| `AFTER_LOAD_NAMESPACE_METADATA`, `AFTER_LIST_NAMESPACES` | Read-only |
+| `AFTER_LOAD_VIEW`, `AFTER_LIST_VIEWS` | Read-only |
+| `AFTER_GET_CONFIG`, `AFTER_LOAD_CREDENTIALS` | Configuration/credential reads |
+| `AFTER_LIST_*` (all list operations) | Read-only enumeration |
+
+#### 7.5.4 Implementation: Event Filtering
+
+The event persistence layer should filter events before storing them for the Events API:
+
+```java
+// Events eligible for the REST API (completed mutations only)
+private static final Set<PolarisEventType> EXPOSED_EVENT_TYPES = Set.of(
+    // Standard Iceberg operations
+    AFTER_CREATE_TABLE, AFTER_UPDATE_TABLE, AFTER_DROP_TABLE,
+    AFTER_RENAME_TABLE, AFTER_REGISTER_TABLE,
+    AFTER_CREATE_VIEW, AFTER_DROP_VIEW, AFTER_REPLACE_VIEW, AFTER_RENAME_VIEW,
+    AFTER_CREATE_NAMESPACE, AFTER_UPDATE_NAMESPACE_PROPERTIES, AFTER_DROP_NAMESPACE,
+    // Polaris custom operations
+    AFTER_CREATE_CATALOG, AFTER_DELETE_CATALOG, AFTER_UPDATE_CATALOG,
+    AFTER_CREATE_PRINCIPAL, AFTER_DELETE_PRINCIPAL, AFTER_UPDATE_PRINCIPAL,
+    AFTER_ROTATE_CREDENTIALS, AFTER_RESET_CREDENTIALS,
+    AFTER_CREATE_PRINCIPAL_ROLE, AFTER_DELETE_PRINCIPAL_ROLE,
+    AFTER_CREATE_CATALOG_ROLE, AFTER_DELETE_CATALOG_ROLE,
+    AFTER_ADD_GRANT_TO_CATALOG_ROLE, AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE,
+    AFTER_ASSIGN_PRINCIPAL_ROLE, AFTER_REVOKE_PRINCIPAL_ROLE,
+    AFTER_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE, AFTER_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE,
+    AFTER_CREATE_POLICY, AFTER_UPDATE_POLICY, AFTER_DROP_POLICY,
+    AFTER_ATTACH_POLICY, AFTER_DETACH_POLICY,
+    AFTER_CREATE_GENERIC_TABLE, AFTER_DROP_GENERIC_TABLE
+);
+
+public boolean shouldPersistForEventsApi(PolarisEventType eventType) {
+    return EXPOSED_EVENT_TYPES.contains(eventType);
+}
+```
+
 ---
 
 ## Appendix A: Polaris Internal Event Types Reference
