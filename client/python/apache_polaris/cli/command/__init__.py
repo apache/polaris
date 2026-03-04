@@ -210,6 +210,15 @@ class Command(ABC):
                 attachment_type=options_get(Arguments.ATTACHMENT_TYPE),
                 attachment_path=options_get(Arguments.ATTACHMENT_PATH),
             )
+        elif options.command == Commands.SETUP:
+            from apache_polaris.cli.command.setup import SetupCommand
+
+            subcommand = options_get(f"{Commands.SETUP}_subcommand")
+            command = SetupCommand(
+                subcommand,
+                setup_config=options_get(Arguments.SETUP_CONFIG),
+                dry_run=options_get(Arguments.DRY_RUN),
+            )
 
         if command is not None:
             command.validate()

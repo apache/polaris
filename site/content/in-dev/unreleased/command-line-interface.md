@@ -53,6 +53,7 @@ options:
 7. profiles
 8. policies
 9. repair
+10. setup
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -67,6 +68,7 @@ polaris privileges namespace grant --namespace some.schema --catalog fourth_cata
 polaris profiles list
 polaris policies list --catalog some_catalog --namespace some.schema
 polaris repair
+polaris setup apply setup-config.yaml
 ```
 
 ### Authentication
@@ -118,6 +120,7 @@ To find details on the options that can be provided to a particular command or s
 polaris catalogs --help
 polaris principals create --help
 polaris profiles --help
+polaris setup --help
 ```
 
 ### catalogs
@@ -1424,6 +1427,51 @@ polaris policies update --catalog some_catalog --namespace some.schema --policy-
 ### repair
 
 The `repair` command is a bash script wrapper used to regenerate Python client code and update necessary dependencies, ensuring the Polaris client remains up-to-date and functional. **Please note that this command does not support any options and its usage information is not available via a `--help` flag.**
+
+### setup
+
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment.
+
+`setup` supports the following subcommands:
+
+1. apply
+2. export
+
+#### apply
+
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+
+```
+input: polaris setup apply --help
+options:
+  apply
+    Named arguments:
+      --dry-run  If specified, the command will only print the actions to be taken without executing them.
+    Positional arguments:
+      setup_config
+```
+
+##### Examples
+
+```
+polaris setup apply setup-config.yaml
+```
+
+#### export
+
+The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
+
+```
+input: polaris setup export --help
+options:
+  export
+```
+
+##### Examples
+
+```
+polaris setup export
+```
 
 ## Examples
 
