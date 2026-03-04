@@ -63,6 +63,7 @@ class SetupCommand(Command):
     _existing_principal_roles: Optional[Set[str]] = None
     _existing_catalog_roles: Optional[Dict[str, Set[str]]] = None
     _existing_catalogs: Optional[Set[str]] = None
+    _existing_principals: Optional[Set[str]] = None
     _catalog_api: Optional[Any] = None
 
     def _get_catalog_api(self, api: PolarisDefaultApi) -> Any:
@@ -70,6 +71,18 @@ class SetupCommand(Command):
         if self._catalog_api is None:
             self._catalog_api = get_catalog_api_client(api)
         return self._catalog_api
+
+    def _get_existing_principals(self, api: PolarisDefaultApi) -> Set[str]:
+        """Fetch and cache the set of existing principal names."""
+        if self._existing_principals is None:
+            try:
+                self._existing_principals = {
+                    p.name for p in api.list_principals().principals
+                }
+            except Exception:
+                logger.exception("Failed to fetch existing principals")
+                self._existing_principals = set()
+        return self._existing_principals
 
     def _get_existing_principal_roles(self, api: PolarisDefaultApi) -> Set[str]:
         """Fetch and cache the set of existing principal role names."""
@@ -98,9 +111,12 @@ class SetupCommand(Command):
                         role.name for role in roles
                     }
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to fetch catalog roles for catalog '{catalog_name}': {e}"
-                    )
+                    # In dry-run, a 404 is expected if the catalog doesn't exist yet
+                    is_404 = getattr(e, "status", None) == 404 or "(404)" in str(e)
+                    if not (self.dry_run and is_404):
+                        logger.warning(
+                            f"Failed to fetch catalog roles for catalog '{catalog_name}': {e}"
+                        )
                     self._existing_catalog_roles[catalog_name] = set()
             return self._existing_catalog_roles[catalog_name]
         return set()
@@ -582,11 +598,7 @@ class SetupCommand(Command):
     ) -> None:
         """Create principals and assign them to principal roles."""
         logger.info("--- Processing principals ---")
-        try:
-            existing_principals = {p.name for p in api.list_principals().principals}
-        except Exception:
-            logger.exception("Failed to fetch existing principals")
-            return
+        existing_principals = self._get_existing_principals(api)
         for principal_name, principal_data in principals_config.items():
             if principal_name in existing_principals:
                 logger.info(
@@ -598,6 +610,7 @@ class SetupCommand(Command):
                     self._log_dry_run(
                         "create", "principal", principal_name, principal_data
                     )
+                    existing_principals.add(principal_name)
                 else:
                     try:
                         logger.info(f"Creating principal: {principal_name}")
@@ -618,6 +631,7 @@ class SetupCommand(Command):
                         logger.info(
                             f"Principal '{principal_name}' created successfully."
                         )
+                        existing_principals.add(principal_name)
                     except Exception:
                         logger.exception(
                             f"Failed to create principal '{principal_name}'"
@@ -838,11 +852,7 @@ class SetupCommand(Command):
         """
         logger.info("--- Processing catalogs ---")
         overall_success = True
-        try:
-            existing_catalogs = {c.name for c in api.list_catalogs().catalogs}
-        except Exception:
-            logger.exception("Failed to fetch existing catalogs")
-            return False
+        existing_catalogs = self._get_existing_catalogs(api)
         for catalog_data in catalogs_config:
             catalog_name = catalog_data.get("name")
             if not catalog_name:
@@ -858,6 +868,7 @@ class SetupCommand(Command):
                 if "name" in details:
                     del details["name"]
                 self._log_dry_run("create", "catalog", catalog_name, details)
+                existing_catalogs.add(catalog_name)
             else:
                 try:
                     logger.info(f"Creating catalog: {catalog_name}")
@@ -956,6 +967,7 @@ class SetupCommand(Command):
                     cmd.validate()
                     cmd.execute(api)
                     logger.info(f"Catalog '{catalog_name}' created successfully.")
+                    existing_catalogs.add(catalog_name)
                 except Exception:
                     logger.exception(f"Failed to create catalog '{catalog_name}'")
                     overall_success = False
