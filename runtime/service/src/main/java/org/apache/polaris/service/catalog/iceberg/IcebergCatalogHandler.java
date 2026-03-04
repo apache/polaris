@@ -471,8 +471,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    // Check if external catalog credential vending is allowed for the resolved mode
-    checkAllowExternalCatalogCredentialVending(resolvedMode);
+    // Check if external catalog access delegation is allowed for the resolved mode
+    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     request.validate();
 
@@ -605,8 +605,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    // Check if external catalog credential vending is allowed for the resolved mode
-    checkAllowExternalCatalogCredentialVending(resolvedMode);
+    // Check if external catalog access delegation is allowed for the resolved mode
+    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -814,8 +814,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
     AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    // Check if external catalog credential vending is allowed for the resolved mode
-    checkAllowExternalCatalogCredentialVending(resolvedMode);
+    // Check if external catalog access delegation is allowed for the resolved mode
+    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1348,7 +1348,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  private void checkAllowExternalCatalogCredentialVending(AccessDelegationMode resolvedMode) {
+  private void checkAllowExternalCatalogAccessDelegation(AccessDelegationMode resolvedMode) {
 
     if (resolvedMode == AccessDelegationMode.UNKNOWN) {
       return;
@@ -1357,7 +1357,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
     LOGGER.info(
-        "allow external catalog credential vending: {}",
+        "allow external catalog access delegation: {}",
         realmConfig()
             .getConfig(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
@@ -1367,9 +1367,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         && !realmConfig()
             .getConfig(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+
+      String modeDescription =
+          switch (resolvedMode) {
+            case VENDED_CREDENTIALS -> "Credential vending";
+            case REMOTE_SIGNING -> "Request signing";
+            default -> "Access delegation";
+          };
+
       throw new ForbiddenException(
-          "Access Delegation is not enabled for this catalog. Please consult applicable "
+          "%s is not enabled for this external catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
+          modeDescription,
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
   }
