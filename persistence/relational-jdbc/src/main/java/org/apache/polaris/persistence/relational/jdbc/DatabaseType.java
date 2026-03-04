@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Locale;
 
 /**
@@ -84,7 +86,7 @@ public enum DatabaseType {
    * @throws IllegalStateException if configured type doesn't match connection metadata
    */
   public static DatabaseType inferFromConnection(
-      java.sql.Connection connection, DatabaseType configuredType) {
+      Connection connection, DatabaseType configuredType) {
     try {
       var metaData = connection.getMetaData();
       String productName = metaData.getDatabaseProductName().toLowerCase(Locale.ROOT);
@@ -132,7 +134,7 @@ public enum DatabaseType {
               + "'. "
               + "Please set polaris.persistence.relational.jdbc.database-type explicitly.");
 
-    } catch (java.sql.SQLException e) {
+    } catch (SQLException e) {
       // If we can't get metadata, must have a configured type
       if (configuredType != null) {
         return configuredType;
