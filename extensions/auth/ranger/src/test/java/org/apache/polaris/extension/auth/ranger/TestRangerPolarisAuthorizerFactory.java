@@ -19,18 +19,19 @@
 
 package org.apache.polaris.extension.auth.ranger;
 
-import org.junit.jupiter.api.Test;
-
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class TestRangerPolarisAuthorizerFactory {
-    @Test
-    public void testAuthorizerInstantiation() {
-        RangerPolarisAuthorizerFactory factory    = new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
-        RangerPolarisAuthorizer        authorizer = factory.create(createRealmConfig());
+import org.junit.jupiter.api.Test;
 
-        assertNotNull(authorizer);
-    }
+public class TestRangerPolarisAuthorizerFactory {
+  @Test
+  public void testAuthorizerInstantiation() {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
+    RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
+
+    assertNotNull(authorizer);
+  }
 }

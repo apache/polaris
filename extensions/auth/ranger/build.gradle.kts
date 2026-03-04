@@ -25,7 +25,7 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
 
-  implementation(fileTree("override-libs") {include("*.jar")})
+  implementation(fileTree("override-libs") { include("*.jar") })
 
   implementation("org.apache.ranger:ranger-plugins-common:2.8.0")
 

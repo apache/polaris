@@ -19,49 +19,51 @@
 
 package org.apache.polaris.extension.auth.ranger;
 
+import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 
-import java.util.Map;
-import java.util.Optional;
-
 public class RangerTestUtils {
-    public static RangerPolarisAuthorizerConfig createConfig(String configFilename) {
-        return new RangerPolarisAuthorizerConfig() {
-            @Override
-            public Optional<String> configFileName() {
-                return Optional.of(configFilename) ;
-            }
-        };
-    }
+  public static RangerPolarisAuthorizerConfig createConfig(String configFilename) {
+    return new RangerPolarisAuthorizerConfig() {
+      @Override
+      public Optional<String> configFileName() {
+        return Optional.of(configFilename);
+      }
+    };
+  }
 
-    public static RealmConfig createRealmConfig() {
-        return new RealmConfig() {
-            @Override
-            public <T> T getConfig(String configName) {
-                return null;
-            }
+  public static RealmConfig createRealmConfig() {
+    return new RealmConfig() {
+      @SuppressWarnings({"removal"})
+      @Override
+      public <T> T getConfig(String configName) {
+        return null;
+      }
 
-            @Override
-            public <T> T getConfig(String configName, T defaultValue) {
-                return null;
-            }
+      @SuppressWarnings({"removal"})
+      @Override
+      public <T> T getConfig(String configName, T defaultValue) {
+        return null;
+      }
 
-            @Override
-            public <T> T getConfig(PolarisConfiguration<T> config) {
-                return config.defaultValue();
-            }
+      @Override
+      public <T> T getConfig(PolarisConfiguration<T> config) {
+        return config.defaultValue();
+      }
 
-            @Override
-            public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
-                return config.defaultValue();
-            }
+      @Override
+      public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
+        return config.defaultValue();
+      }
 
-            @Override
-            public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-                return config.defaultValue();
-            }
-        };
-    }
+      @Override
+      public <T> T getConfig(
+          PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+        return config.defaultValue();
+      }
+    };
+  }
 }

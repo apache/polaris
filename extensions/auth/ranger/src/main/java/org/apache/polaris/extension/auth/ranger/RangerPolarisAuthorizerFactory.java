@@ -31,36 +31,35 @@ import org.slf4j.LoggerFactory;
 @ApplicationScoped
 @Identifier("ranger")
 public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
-    private static final Logger LOG = LoggerFactory.getLogger(RangerPolarisAuthorizerFactory.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RangerPolarisAuthorizerFactory.class);
 
-    private final RangerPolarisAuthorizerConfig config;
+  private final RangerPolarisAuthorizerConfig config;
 
-    @Inject
-    RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
-        this.config = config;
+  @Inject
+  RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
+    this.config = config;
 
-        LOG.debug("RangerPolarisAuthorizerFactory has been activated.");
+    LOG.debug("RangerPolarisAuthorizerFactory has been activated.");
+  }
+
+  @PostConstruct
+  public void initialize() {
+    config.validate();
+  }
+
+  @PreDestroy
+  public void cleanup() {}
+
+  @Override
+  public RangerPolarisAuthorizer create(RealmConfig realmConfig) {
+    LOG.debug("Creating RangerPolarisAuthorizer");
+
+    try {
+      return new RangerPolarisAuthorizer(config, realmConfig);
+    } catch (Throwable t) {
+      LOG.error("Failed to create RangerPolarisAuthorizer", t);
     }
 
-    @PostConstruct
-    public void initialize() {
-        config.validate();
-    }
-
-    @PreDestroy
-    public void cleanup() {
-    }
-
-    @Override
-    public RangerPolarisAuthorizer create(RealmConfig realmConfig) {
-        LOG.debug("Creating RangerPolarisAuthorizer");
-
-        try {
-          return new RangerPolarisAuthorizer(config, realmConfig);
-        } catch (Throwable t) {
-            LOG.error("Failed to create RangerPolarisAuthorizer", t);
-        }
-
-        return null;
-    }
+    return null;
+  }
 }
