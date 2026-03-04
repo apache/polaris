@@ -22,6 +22,7 @@ package org.apache.polaris.service.catalog.common;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.net.URLEncoder;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -52,11 +54,14 @@ public class CatalogUtils {
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
         resolvedEntityView.getResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE);
     if (resolvedTableEntities != null) {
       return resolvedTableEntities;
     }
-    return resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+    return resolvedEntityView.getResolvedPath(
+        Arrays.asList(tableIdentifier.namespace().levels()), PolarisEntityType.NAMESPACE);
   }
 
   /**

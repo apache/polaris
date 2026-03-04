@@ -315,7 +315,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     TableOperations ops = newTableOps(identifier);
 
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.namespace());
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE);
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -368,7 +369,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
     } else {
       PolarisResolvedPathWrapper resolvedNamespace =
-          resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+          resolvedEntityView.getResolvedPath(
+              Arrays.asList(tableIdentifier.namespace().levels()), PolarisEntityType.NAMESPACE);
       if (resolvedNamespace == null) {
         throw noSuchNamespaceException(tableIdentifier.namespace());
       }
@@ -496,7 +498,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     // TODO: These should really be helpers in core Iceberg Namespace.
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
 
-    PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getResolvedPath(parentNamespace);
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedParent == null) {
       throw new NoSuchNamespaceException(
           "Cannot create namespace %s. Parent namespace does not exist.", namespace);
@@ -630,9 +634,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
     Namespace parentNamespace =
         Namespace.of(Arrays.copyOf(namespace.levels(), namespace.length() - 1));
-    PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getResolvedPath(parentNamespace);
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedParent == null) {
-      return resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
+      return resolvedEntityView.getPassthroughResolvedPath(
+          Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE);
     }
     return resolvedParent;
   }
@@ -641,7 +648,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public boolean namespaceExists(Namespace namespace) {
     return Optional.ofNullable(namespace)
         .filter(ns -> !ns.isEmpty())
-        .map(resolvedEntityView::getResolvedPath)
+        .map(
+            ns ->
+                resolvedEntityView.getResolvedPath(
+                    Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE))
         .isPresent();
   }
 
@@ -650,7 +660,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (namespace.isEmpty()) {
       throw new IllegalArgumentException("Cannot drop root namespace");
     }
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       return false;
     }
@@ -692,7 +704,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -738,7 +752,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -770,7 +786,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -796,7 +814,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   public Page<Namespace> listNamespaces(Namespace namespace, PageToken pageToken)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -1018,12 +1038,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private void validateLocationForTableLike(TableIdentifier identifier, String location) {
     PolarisResolvedPathWrapper resolvedStorageEntity =
         resolvedEntityView.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedStorageEntity == null) {
-      resolvedStorageEntity = resolvedEntityView.getResolvedPath(identifier.namespace());
+      resolvedStorageEntity =
+          resolvedEntityView.getResolvedPath(
+              Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE);
     }
     if (resolvedStorageEntity == null) {
-      resolvedStorageEntity = resolvedEntityView.getPassthroughResolvedPath(identifier.namespace());
+      resolvedStorageEntity =
+          resolvedEntityView.getPassthroughResolvedPath(
+              Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE);
     }
 
     validateLocationForTableLike(identifier, location, resolvedStorageEntity);
@@ -1248,12 +1274,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         tbl ->
             resolutionManifest.addPath(
                 new ResolverPath(
-                    PolarisCatalogHelpers.tableIdentifierToList(tbl), PolarisEntityType.TABLE_LIKE),
-                tbl));
+                    PolarisCatalogHelpers.tableIdentifierToList(tbl),
+                    PolarisEntityType.TABLE_LIKE)));
     siblingNamespaces.forEach(
         ns ->
             resolutionManifest.addPath(
-                new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE), ns));
+                new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE)));
     ResolverStatus status = resolutionManifest.resolveAll();
     if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       String message =
@@ -1271,7 +1297,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .map(
                     tbl -> {
                       PolarisResolvedPathWrapper resolveTablePath =
-                          resolutionManifest.getResolvedPath(tbl);
+                          resolutionManifest.getResolvedPath(
+                              PolarisCatalogHelpers.tableIdentifierToList(tbl),
+                              PolarisEntityType.TABLE_LIKE);
                       PolarisEntity tableEntity = resolveTablePath.getRawLeafEntity();
                       if (tableEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
                         return GenericTableEntity.of(tableEntity).getBaseLocation();
@@ -1283,7 +1311,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .map(
                     ns -> {
                       PolarisResolvedPathWrapper resolveNamespacePath =
-                          resolutionManifest.getResolvedPath(ns);
+                          resolutionManifest.getResolvedPath(
+                              Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE);
                       return NamespaceEntity.of(resolveNamespacePath.getRawLeafEntity())
                           .getBaseLocation();
                     }))
@@ -1436,7 +1465,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // table entity instead of the statically-resolved authz resolution set.
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_TABLE);
       IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1506,14 +1537,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedTableEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_TABLE);
 
       // Fetch credentials for the resolved entity. The entity could be the table itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
       // table's namespace or catalog.
       PolarisResolvedPathWrapper resolvedStorageEntity =
           resolvedTableEntities == null
-              ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
+              ? resolvedEntityView.getResolvedPath(
+                  Arrays.asList(tableIdentifier.namespace().levels()), PolarisEntityType.NAMESPACE)
               : resolvedTableEntities;
 
       // refresh credentials because we need to read the metadata file to validate its location
@@ -1530,7 +1564,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       List<PolarisEntity> resolvedNamespace =
           resolvedTableEntities == null
-              ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace()).getRawFullPath()
+              ? resolvedEntityView
+                  .getResolvedPath(
+                      Arrays.asList(tableIdentifier.namespace().levels()),
+                      PolarisEntityType.NAMESPACE)
+                  .getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
 
       if (base == null
@@ -1572,7 +1610,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // persistence-layer commit).
       PolarisResolvedPathWrapper resolvedPath =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+              PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ANY_SUBTYPE);
       if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
         var subType = resolvedPath.getRawLeafEntity().getSubType();
         if (subType != PolarisEntitySubType.ICEBERG_TABLE) {
@@ -1856,7 +1896,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     public void doRefresh() {
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_VIEW);
       IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1928,7 +1970,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedTable =
           resolvedEntityView.getPassthroughResolvedPath(
-              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_TABLE);
       if (resolvedTable != null) {
         throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
             identifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -1936,19 +1980,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ICEBERG_VIEW);
 
       // Fetch credentials for the resolved entity. The entity could be the view itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
       // table's namespace or catalog.
       PolarisResolvedPathWrapper resolvedStorageEntity =
           resolvedEntities == null
-              ? resolvedEntityView.getResolvedPath(identifier.namespace())
+              ? resolvedEntityView.getResolvedPath(
+                  Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE)
               : resolvedEntities;
 
       List<PolarisEntity> resolvedNamespace =
           resolvedEntities == null
-              ? resolvedEntityView.getResolvedPath(identifier.namespace()).getRawFullPath()
+              ? resolvedEntityView
+                  .getResolvedPath(
+                      Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE)
+                  .getRawFullPath()
               : resolvedEntities.getRawParentPath();
       if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
@@ -2208,7 +2258,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisEntitySubType subType, TableIdentifier from, TableIdentifier to) {
     LOGGER.debug("Renaming tableLike from {} to {}", from, to);
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(from, PolarisEntityType.TABLE_LIKE, subType);
+        resolvedEntityView.getResolvedPath(
+            PolarisCatalogHelpers.tableIdentifierToList(from),
+            PolarisEntityType.TABLE_LIKE,
+            subType);
     if (resolvedEntities == null) {
       if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NoSuchViewException("Cannot rename %s to %s. View does not exist", from, to);
@@ -2222,7 +2275,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> newCatalogPath = null;
     if (!from.namespace().equals(to.namespace())) {
       PolarisResolvedPathWrapper resolvedNewParentEntities =
-          resolvedEntityView.getResolvedPath(to.namespace());
+          resolvedEntityView.getResolvedPath(
+              Arrays.asList(to.namespace().levels()), PolarisEntityType.NAMESPACE);
       if (resolvedNewParentEntities == null) {
         throw new NoSuchNamespaceException(
             "Cannot rename %s to %s. Namespace does not exist: %s", from, to, to.namespace());
@@ -2315,7 +2369,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.namespace());
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE);
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -2385,7 +2440,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, entity.getType(), entity.getSubType());
+        resolvedEntityView.getResolvedPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            entity.getType(),
+            entity.getSubType());
     if (resolvedEntities == null) {
       // Illegal state because the identifier should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -2443,7 +2501,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> storageProperties,
       boolean purge) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
+        resolvedEntityView.getResolvedPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            subType);
     if (resolvedEntities == null) {
       // TODO: Error?
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
@@ -2482,7 +2543,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         "Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, subType);
+            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+            PolarisEntityType.TABLE_LIKE,
+            subType);
 
     NotificationType notificationType = request.getNotificationType();
 
@@ -2507,7 +2570,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 Arrays.stream(tableIdentifier.namespace().levels())
                     .limit(i)
                     .toArray(String[]::new));
-        resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
+        resolvedStorageEntity =
+            resolvedEntityView.getResolvedPath(
+                Arrays.asList(nsLevel.levels()), PolarisEntityType.NAMESPACE);
         if (resolvedStorageEntity != null) {
           storageInfoEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
           break;
@@ -2543,7 +2608,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Namespace ns = tableIdentifier.namespace();
       createNonExistingNamespaces(ns);
 
-      PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getPassthroughResolvedPath(ns);
+      PolarisResolvedPathWrapper resolvedParent =
+          resolvedEntityView.getPassthroughResolvedPath(
+              Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE);
 
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
@@ -2625,10 +2692,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     for (int i = 1; i <= namespace.length(); i++) {
       Namespace nsLevel =
           Namespace.of(Arrays.stream(namespace.levels()).limit(i).toArray(String[]::new));
-      if (resolvedEntityView.getPassthroughResolvedPath(nsLevel) == null) {
+      if (resolvedEntityView.getPassthroughResolvedPath(
+              Arrays.asList(nsLevel.levels()), PolarisEntityType.NAMESPACE)
+          == null) {
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =
-            resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
+            resolvedEntityView.getPassthroughResolvedPath(
+                Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE);
         try {
           createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
         } catch (AlreadyExistsException aee) {
@@ -2652,7 +2722,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private Page<TableIdentifier> listTableLike(
       PolarisEntitySubType subType, Namespace namespace, PageToken pageToken) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(
+            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
     if (resolvedEntities == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(

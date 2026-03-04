@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.resolver;
 
 import jakarta.annotation.Nullable;
+import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -39,13 +40,15 @@ public interface PolarisResolutionManifestCatalogView {
         .orElse(null);
   }
 
-  PolarisResolvedPathWrapper getResolvedPath(Object key);
+  PolarisResolvedPathWrapper getResolvedPath(
+      List<String> entityNames, PolarisEntityType entityType);
 
   PolarisResolvedPathWrapper getResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
-
-  PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key);
+      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType);
 
   PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
+      List<String> entityNames, PolarisEntityType entityType);
+
+  PolarisResolvedPathWrapper getPassthroughResolvedPath(
+      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType);
 }

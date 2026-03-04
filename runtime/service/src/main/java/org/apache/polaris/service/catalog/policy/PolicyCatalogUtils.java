@@ -22,8 +22,10 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNam
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import jakarta.annotation.Nonnull;
+import java.util.Arrays;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -40,7 +42,9 @@ public class PolicyCatalogUtils {
       case CATALOG -> resolutionManifest.getResolvedReferenceCatalogEntity();
       case NAMESPACE -> {
         var namespace = Namespace.of(target.getPath().toArray(new String[0]));
-        var resolvedTargetEntity = resolutionManifest.getResolvedPath(namespace);
+        var resolvedTargetEntity =
+            resolutionManifest.getResolvedPath(
+                Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE);
         if (resolvedTargetEntity == null) {
           throw noSuchNamespaceException(namespace);
         }
@@ -51,7 +55,9 @@ public class PolicyCatalogUtils {
         // only Iceberg tables are supported
         var resolvedTableEntity =
             resolutionManifest.getResolvedPath(
-                tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+                PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
           throw notFoundExceptionForTableLikeEntity(
               tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
