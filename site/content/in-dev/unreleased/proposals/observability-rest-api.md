@@ -114,10 +114,9 @@ Adding read-only REST endpoints enables:
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/catalog/v1/{prefix}/events` | Query events for a catalog (Iceberg-compatible) |
-| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics` | List scan metrics for a table |
-| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/commit-metrics` | List commit metrics for a table |
+| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/metrics` | List metrics for a table (type specified via query parameter) |
 
-> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics APIs use a dedicated `/api/metrics-reports/v1/` namespace since they expose pre-populated records rather than managing catalog state - a server that doesn't support catalog management may still expose metrics reports.
+> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics API uses a dedicated `/api/metrics-reports/v1/` namespace since it exposes pre-populated records rather than managing catalog state - a server that doesn't support catalog management may still expose metrics reports.
 
 ### 4.2 Path Parameters
 
@@ -179,30 +178,22 @@ For Polaris-specific events not covered by the Iceberg spec, use the `x-` prefix
 | `x-polaris-create-policy` | Policy created |
 | `x-polaris-attach-policy` | Policy attached to resource |
 
-### 4.4 Query Parameters (Metrics APIs)
+### 4.4 Query Parameters (Metrics API)
 
-#### List Scan Metrics (`/.../tables/{table}/scan-metrics`)
+#### List Table Metrics (`/.../tables/{table}/metrics`)
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
+| `metricType` | string | **Yes** | - | Type of metrics to retrieve: `scan` or `commit` |
 | `pageToken` | string | No | - | Cursor for pagination |
 | `pageSize` | integer | No | 100 | Results per page (max: 1000) |
 | `snapshotId` | long | No | - | Filter by snapshot ID |
 | `principalName` | string | No | - | Filter by principal |
 | `timestampFrom` | long | No | - | Start of time range (epoch ms) |
 | `timestampTo` | long | No | - | End of time range (epoch ms) |
+| `operation` | string | No | - | Filter by commit operation (only applicable when `metricType=commit`): `append`, `overwrite`, `delete`, `replace` |
 
-#### List Commit Metrics (`/.../tables/{table}/commit-metrics`)
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `pageToken` | string | No | - | Cursor for pagination |
-| `pageSize` | integer | No | 100 | Results per page (max: 1000) |
-| `snapshotId` | long | No | - | Filter by snapshot ID |
-| `operation` | string | No | - | Filter by operation: `append`, `overwrite`, `delete`, `replace` |
-| `principalName` | string | No | - | Filter by principal |
-| `timestampFrom` | long | No | - | Start of time range (epoch ms) |
-| `timestampTo` | long | No | - | End of time range (epoch ms) |
+> **Note:** The `metricType` parameter is required. This design allows for future extensibility as new metric types are added (e.g., compaction metrics, maintenance metrics) without requiring new endpoints.
 
 ### 4.5 Example Requests and Responses
 
@@ -325,11 +316,11 @@ Content-Type: application/json
 }
 ```
 
-#### List Scan Metrics
+#### List Metrics (Scan)
 
 **Request:**
 ```http
-GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/scan-metrics?pageSize=2&timestampFrom=1709251200000
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/metrics?metricType=scan&pageSize=2&timestampFrom=1709251200000
 Authorization: Bearer <token>
 ```
 
@@ -337,6 +328,7 @@ Authorization: Bearer <token>
 ```json
 {
   "nextPageToken": null,
+  "metricType": "scan",
   "reports": [
     {
       "reportId": "scan-001-abc123",
@@ -373,11 +365,11 @@ Authorization: Bearer <token>
 }
 ```
 
-#### List Commit Metrics
+#### List Metrics (Commit)
 
 **Request:**
 ```http
-GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/commit-metrics?operation=append&pageSize=2
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/metrics?metricType=commit&operation=append&pageSize=2
 Authorization: Bearer <token>
 ```
 
@@ -385,6 +377,7 @@ Authorization: Bearer <token>
 ```json
 {
   "nextPageToken": "eyJ0cyI6MTcwOTMzNzcwMDAwMCwiaWQiOiJjb21taXQtMDAyIn0=",
+  "metricType": "commit",
   "reports": [
     {
       "reportId": "commit-001-xyz789",
@@ -546,25 +539,37 @@ paths:
           $ref: '#/components/responses/ServerErrorResponse'
 ```
 
-### 6.2 Metrics APIs (New Metrics Reports Service)
+### 6.2 Metrics API (New Metrics Reports Service)
 
 Add the following to a new `spec/metrics-reports-service.yml` (or extend existing management service):
 
-> **Note:** The metrics APIs use `/api/metrics-reports/v1/` as the base path, separate from the management API. This reflects that metrics reports are read-only access to pre-populated data, not catalog management operations.
+> **Note:** The metrics API uses `/api/metrics-reports/v1/` as the base path, separate from the management API. This reflects that metrics reports are read-only access to pre-populated data, not catalog management operations.
 
 ```yaml
 paths:
-  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/scan-metrics:
+  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/metrics:
     parameters:
       - $ref: '#/components/parameters/catalogName'
       - $ref: '#/components/parameters/namespace'
       - $ref: '#/components/parameters/table'
     get:
-      operationId: listTableScanMetrics
-      summary: List scan metrics for a table
+      operationId: listTableMetrics
+      summary: List metrics for a table
+      description: >
+        Returns metrics reports for the specified table. The type of metrics
+        (scan or commit) must be specified via the required metricType parameter.
+        This unified endpoint supports future extensibility as new metric types
+        are added.
       tags:
         - Observability
       parameters:
+        - name: metricType
+          in: query
+          required: true
+          description: Type of metrics to retrieve
+          schema:
+            type: string
+            enum: [scan, commit]
         - name: pageToken
           in: query
           schema:
@@ -591,74 +596,25 @@ paths:
             type: integer
             format: int64
         - name: timestampTo
-          in: query
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Paginated list of scan metrics
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListScanMetricsResponse'
-        '403':
-          description: Insufficient privileges
-        '404':
-          description: Table not found
-
-  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/commit-metrics:
-    parameters:
-      - $ref: '#/components/parameters/catalogName'
-      - $ref: '#/components/parameters/namespace'
-      - $ref: '#/components/parameters/table'
-    get:
-      operationId: listTableCommitMetrics
-      summary: List commit metrics for a table
-      tags:
-        - Observability
-      parameters:
-        - name: pageToken
-          in: query
-          schema:
-            type: string
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-        - name: snapshotId
           in: query
           schema:
             type: integer
             format: int64
         - name: operation
           in: query
+          description: Filter by commit operation (only applicable when metricType=commit)
           schema:
             type: string
-        - name: principalName
-          in: query
-          schema:
-            type: string
-        - name: timestampFrom
-          in: query
-          schema:
-            type: integer
-            format: int64
-        - name: timestampTo
-          in: query
-          schema:
-            type: integer
-            format: int64
+            enum: [append, overwrite, delete, replace]
       responses:
         '200':
-          description: Paginated list of commit metrics
+          description: Paginated list of metrics reports
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListCommitMetricsResponse'
+                $ref: '#/components/schemas/ListMetricsResponse'
+        '400':
+          description: Bad request (e.g., missing metricType, invalid parameter combination)
         '403':
           description: Insufficient privileges
         '404':
@@ -963,15 +919,29 @@ components:
           type: integer
           format: int64
 
-    ListScanMetricsResponse:
+    ListMetricsResponse:
       type: object
+      required:
+        - metricType
+        - reports
       properties:
         nextPageToken:
           type: string
+          description: Cursor for fetching the next page of results
+        metricType:
+          type: string
+          enum: [scan, commit]
+          description: The type of metrics in this response
         reports:
           type: array
+          description: >
+            Array of metrics reports. The schema of each report depends on metricType:
+            - For metricType=scan: ScanMetricsReport objects
+            - For metricType=commit: CommitMetricsReport objects
           items:
-            $ref: '#/components/schemas/ScanMetricsReport'
+            oneOf:
+              - $ref: '#/components/schemas/ScanMetricsReport'
+              - $ref: '#/components/schemas/CommitMetricsReport'
 
     CommitMetricsReport:
       type: object
@@ -1064,16 +1034,6 @@ components:
           format: int64
         attempts:
           type: integer
-
-    ListCommitMetricsResponse:
-      type: object
-      properties:
-        nextPageToken:
-          type: string
-        reports:
-          type: array
-          items:
-            $ref: '#/components/schemas/CommitMetricsReport'
 ```
 
 ---
