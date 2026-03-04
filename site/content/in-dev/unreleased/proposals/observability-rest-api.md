@@ -1072,7 +1072,49 @@ components:
 
 ## 7. Implementation Notes
 
-### 7.1 Database Queries
+### 7.1 Prerequisite: Extend Event Persistence Layer
+
+> **Important:** The current `PolarisPersistenceEventListener` in Apache Polaris only persists **two event types**: `AFTER_CREATE_TABLE` and `AFTER_CREATE_CATALOG`. All other events are ignored. For the Events API to be useful, the persistence layer must be extended to capture all relevant mutation events.
+
+#### Current State
+
+The existing event listener (`PolarisPersistenceEventListener.java`) has a limited switch statement:
+
+```java
+public void onEvent(PolarisEvent event) {
+  switch (event.type()) {
+    case AFTER_CREATE_TABLE -> handleAfterCreateTable(event);
+    case AFTER_CREATE_CATALOG -> handleAfterCreateCatalog(event);
+    default -> {
+      // Other events not handled by this listener
+    }
+  }
+}
+```
+
+#### Required Changes
+
+The persistence layer needs to be extended to capture all `AFTER_*` mutation events that should be exposed via the Events API:
+
+| Category | Events to Add |
+|----------|---------------|
+| **Table Operations** | `AFTER_UPDATE_TABLE`, `AFTER_DROP_TABLE`, `AFTER_RENAME_TABLE`, `AFTER_REGISTER_TABLE` |
+| **View Operations** | `AFTER_CREATE_VIEW`, `AFTER_DROP_VIEW`, `AFTER_REPLACE_VIEW`, `AFTER_RENAME_VIEW` |
+| **Namespace Operations** | `AFTER_CREATE_NAMESPACE`, `AFTER_UPDATE_NAMESPACE_PROPERTIES`, `AFTER_DROP_NAMESPACE` |
+| **Catalog Operations** | `AFTER_DELETE_CATALOG`, `AFTER_UPDATE_CATALOG` |
+| **Principal/Role Management** | `AFTER_CREATE_PRINCIPAL`, `AFTER_DELETE_PRINCIPAL`, `AFTER_ROTATE_CREDENTIALS`, `AFTER_CREATE_PRINCIPAL_ROLE`, `AFTER_DELETE_PRINCIPAL_ROLE`, `AFTER_CREATE_CATALOG_ROLE`, `AFTER_DELETE_CATALOG_ROLE` |
+| **Grant Operations** | `AFTER_ADD_GRANT_TO_CATALOG_ROLE`, `AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE`, `AFTER_ASSIGN_PRINCIPAL_ROLE`, `AFTER_REVOKE_PRINCIPAL_ROLE`, `AFTER_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE`, `AFTER_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE` |
+| **Policy Operations** | `AFTER_CREATE_POLICY`, `AFTER_UPDATE_POLICY`, `AFTER_DROP_POLICY`, `AFTER_ATTACH_POLICY`, `AFTER_DETACH_POLICY` |
+
+**Note:** Read-only operations (`AFTER_LOAD_*`, `AFTER_LIST_*`, `AFTER_GET_*`, `AFTER_CHECK_EXISTS_*`) should **not** be persisted for the Events API as they do not represent catalog mutations. However, deployments requiring read audit may choose to persist these separately.
+
+#### Implementation Approach
+
+1. **Phase 1**: Extend `PolarisPersistenceEventListener` to handle all Iceberg-standard operations (tables, views, namespaces)
+2. **Phase 2**: Add support for Polaris-specific operations (principals, roles, grants, policies)
+3. **Phase 3**: Implement the Events REST API on top of the persisted data
+
+### 7.2 Database Queries
 
 The endpoints will query existing tables with appropriate filtering and pagination:
 
@@ -1099,7 +1141,7 @@ ORDER BY timestamp_ms DESC, report_id DESC
 LIMIT ?;
 ```
 
-### 7.2 Recommended Indexes
+### 7.3 Recommended Indexes
 
 ```sql
 -- Events indexes
@@ -1115,7 +1157,7 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
     ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms DESC);
 ```
 
-### 7.3 Files to Modify
+### 7.4 Files to Modify
 
 | File | Changes |
 |------|---------|
@@ -1128,7 +1170,7 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
 | `polaris-core/.../persistence/BasePersistence.java` | Add read methods |
 | `persistence/relational-jdbc/.../JdbcBasePersistenceImpl.java` | Query implementations |
 
-### 7.4 Pagination Token Format
+### 7.5 Pagination Token Format
 
 Internal format (base64-encoded JSON, opaque to clients):
 
@@ -1139,11 +1181,11 @@ Internal format (base64-encoded JSON, opaque to clients):
 }
 ```
 
-### 7.5 Mapping PolarisEventType to Iceberg Events API
+### 7.6 Mapping PolarisEventType to Iceberg Events API
 
 Polaris internally uses a `PolarisEventType` enum that distinguishes between `BEFORE_*` and `AFTER_*` events for each operation (e.g., `BEFORE_CREATE_TABLE` and `AFTER_CREATE_TABLE`). This section explains how these internal events map to the Iceberg Events API.
 
-#### 7.5.1 Design Decision: Only AFTER Events are Exposed
+#### 7.6.1 Design Decision: Only AFTER Events are Exposed
 
 The Iceberg Events API represents **completed operations** that have been committed to the catalog. Therefore:
 
@@ -1162,7 +1204,7 @@ The Iceberg Events API represents **completed operations** that have been commit
 
 4. **Internal vs external**: `BEFORE_*` events serve internal purposes (request filtering, rate limiting, pre-validation hooks) and are not meaningful to external consumers.
 
-#### 7.5.2 Mapping AFTER Events to Operation Types
+#### 7.6.2 Mapping AFTER Events to Operation Types
 
 The mapping follows a straightforward pattern - the `AFTER_` prefix is stripped and the remaining name maps to the Iceberg operation type:
 
@@ -1195,7 +1237,7 @@ The mapping follows a straightforward pattern - the `AFTER_` prefix is stripped 
 | `AFTER_ATTACH_POLICY` | `custom` (`polaris-attach-policy`) | Policy management |
 | `AFTER_CREATE_GENERIC_TABLE` | `custom` (`polaris-create-generic-table`) | Generic table support |
 
-#### 7.5.3 Read-Only Operations: Not Exposed
+#### 7.6.3 Read-Only Operations: Not Exposed
 
 Events for read-only operations are **not exposed** via the Events API because they do not represent catalog mutations:
 
@@ -1208,7 +1250,7 @@ Events for read-only operations are **not exposed** via the Events API because t
 | `AFTER_GET_CONFIG`, `AFTER_LOAD_CREDENTIALS` | Configuration/credential reads |
 | `AFTER_LIST_*` (all list operations) | Read-only enumeration |
 
-#### 7.5.4 Implementation: Event Filtering
+#### 7.6.4 Implementation: Event Filtering
 
 The event persistence layer should filter events before storing them for the Events API:
 
