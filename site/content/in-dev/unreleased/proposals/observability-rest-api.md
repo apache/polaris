@@ -113,10 +113,10 @@ Adding read-only REST endpoints enables:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/catalog/v1/{prefix}/events` | Query events for a catalog (Iceberg-compatible) |
+| POST | `/api/events/v1/{prefix}` | Query events for a catalog |
 | GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}` | List metrics for a table (type specified via query parameter) |
 
-> **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics API uses a dedicated `/api/metrics-reports/v1/` namespace since it exposes pre-populated records rather than managing catalog state - a server that doesn't support catalog management may still expose metrics reports.
+> **Note:** The Events API uses a dedicated `/api/events/v1/` namespace to avoid URI path clashes with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584) until that spec is approved. The API design follows Iceberg Events API patterns for future compatibility. The metrics API uses a dedicated `/api/metrics-reports/v1/` namespace since it exposes pre-populated records rather than managing catalog state.
 
 ### 4.2 Path Parameters
 
@@ -134,9 +134,11 @@ The Events API follows the [Iceberg Events API specification](https://github.com
 - **POST method**: Allows complex filtering with arrays and nested objects in the request body
 - **Continuation token**: Opaque cursor for resumable pagination
 - **Operation-centric model**: Events are structured around operations (create-table, update-table, etc.)
-- **Custom extensions**: Support for `x-` prefixed custom operation types for Polaris-specific events
+- **Custom extensions**: Support for `polaris-` prefixed custom operation types for Polaris-specific events
 
 #### Request Body (`QueryEventsRequest`)
+
+> **Note:** This request schema matches the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584) for ecosystem compatibility.
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -168,15 +170,15 @@ The Events API follows the [Iceberg Events API specification](https://github.com
 
 #### Polaris Custom Operation Types
 
-For Polaris-specific events not covered by the Iceberg spec, use the `x-` prefix convention:
+For Polaris-specific events not covered by the Iceberg spec, use the `polaris-` prefix:
 
 | Custom Operation Type | Description |
 |----------------------|-------------|
-| `x-polaris-create-catalog-role` | Catalog role created |
-| `x-polaris-grant-privilege` | Privilege granted |
-| `x-polaris-rotate-credentials` | Principal credentials rotated |
-| `x-polaris-create-policy` | Policy created |
-| `x-polaris-attach-policy` | Policy attached to resource |
+| `polaris-create-catalog-role` | Catalog role created |
+| `polaris-grant-privilege` | Privilege granted |
+| `polaris-rotate-credentials` | Principal credentials rotated |
+| `polaris-create-policy` | Policy created |
+| `polaris-attach-policy` | Policy attached to resource |
 
 ### 4.4 Query Parameters (Metrics API)
 
@@ -201,7 +203,7 @@ For Polaris-specific events not covered by the Iceberg spec, use the `x-` prefix
 
 **Request:**
 ```http
-POST /api/catalog/v1/my-catalog/events
+POST /api/events/v1/my-catalog
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -276,13 +278,13 @@ Content-Type: application/json
 
 **Request:**
 ```http
-POST /api/catalog/v1/my-catalog/events
+POST /api/events/v1/my-catalog
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
   "page-size": 10,
-  "operation-types": ["x-polaris-grant-privilege", "x-polaris-rotate-credentials"]
+  "operation-types": ["polaris-grant-privilege", "polaris-rotate-credentials"]
 }
 ```
 
@@ -302,7 +304,7 @@ Content-Type: application/json
       },
       "operation": {
         "operation-type": "custom",
-        "custom-type": "x-polaris-grant-privilege",
+        "custom-type": "polaris-grant-privilege",
         "identifier": {
           "namespace": ["analytics", "events"],
           "name": "page_views"
@@ -479,16 +481,18 @@ New privileges require:
 ## 6. OpenAPI Schema
 
 > **Note:** The OpenAPI specifications below are embedded in this proposal for review context. Upon approval, these should be extracted into separate files for ease of processing and proper integration:
-> - **Events API** → `spec/rest-catalog-open-api.yaml` (extending Iceberg REST Catalog spec)
+> - **Events API** → `spec/events-service.yml` (new dedicated service spec with base path `/api/events/v1/`)
 > - **Metrics Reports API** → `spec/metrics-reports-service.yml` (new dedicated service spec with base path `/api/metrics-reports/v1/`)
 
-### 6.1 Events API (Iceberg REST Catalog Extension)
+### 6.1 Events API
 
-Add the following to `spec/rest-catalog-open-api.yaml` (aligned with Iceberg Events API spec):
+Add the following to a new `spec/events-service.yml`:
+
+> **Note:** The Events API uses a dedicated `/api/events/v1/` namespace to avoid URI path clashes with the Iceberg REST Catalog events API until that spec is approved. The request/response schemas follow Iceberg Events API patterns for future compatibility.
 
 ```yaml
 paths:
-  /v1/{prefix}/events:
+  /v1/{prefix}:
     parameters:
       - $ref: '#/components/parameters/prefix'
     post:
@@ -623,7 +627,7 @@ paths:
 
 ### 6.3 Events API Schemas (Iceberg-Compatible)
 
-Add these schemas to `spec/rest-catalog-open-api.yaml`:
+Add these schemas to `spec/events-service.yml`:
 
 ```yaml
 components:
@@ -1087,11 +1091,11 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_lookup
 
 | File | Changes |
 |------|---------|
-| `spec/rest-catalog-open-api.yaml` | Add Events API paths and schemas (Iceberg-compatible) |
+| `spec/events-service.yml` | **New file** - Events API paths and schemas |
 | `spec/metrics-reports-service.yml` | **New file** - Metrics Reports API paths and schemas |
-| `api/iceberg-service/` | Generated Events API interfaces |
+| `api/events-service/` | **New** - Generated Events API interfaces |
 | `api/metrics-reports-service/` | **New** - Generated Metrics Reports API interfaces |
-| `runtime/service/.../catalog/` | Events service implementation |
+| `runtime/service/.../events/` | **New** - Events service implementation |
 | `runtime/service/.../metrics/` | **New** - Metrics reports service implementation |
 | `polaris-core/.../persistence/BasePersistence.java` | Add read methods |
 | `persistence/relational-jdbc/.../JdbcBasePersistenceImpl.java` | Query implementations |
@@ -1149,19 +1153,19 @@ The mapping follows a straightforward pattern - the `AFTER_` prefix is stripped 
 | `AFTER_CREATE_NAMESPACE` | `create-namespace` | Direct mapping |
 | `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` | Direct mapping |
 | `AFTER_DROP_NAMESPACE` | `drop-namespace` | Direct mapping |
-| **Polaris Custom Operations** | | Use `custom` type with `x-polaris-*` |
-| `AFTER_CREATE_CATALOG` | `custom` (`x-polaris-create-catalog`) | Catalog-level, not in Iceberg spec |
-| `AFTER_DELETE_CATALOG` | `custom` (`x-polaris-delete-catalog`) | Catalog-level |
-| `AFTER_CREATE_PRINCIPAL` | `custom` (`x-polaris-create-principal`) | Access management |
-| `AFTER_DELETE_PRINCIPAL` | `custom` (`x-polaris-delete-principal`) | Access management |
-| `AFTER_ROTATE_CREDENTIALS` | `custom` (`x-polaris-rotate-credentials`) | Security operation |
-| `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`x-polaris-create-principal-role`) | RBAC |
-| `AFTER_CREATE_CATALOG_ROLE` | `custom` (`x-polaris-create-catalog-role`) | RBAC |
-| `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`x-polaris-grant-privilege`) | RBAC |
-| `AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE` | `custom` (`x-polaris-revoke-privilege`) | RBAC |
-| `AFTER_CREATE_POLICY` | `custom` (`x-polaris-create-policy`) | Policy management |
-| `AFTER_ATTACH_POLICY` | `custom` (`x-polaris-attach-policy`) | Policy management |
-| `AFTER_CREATE_GENERIC_TABLE` | `custom` (`x-polaris-create-generic-table`) | Generic table support |
+| **Polaris Custom Operations** | | Use `custom` type with `polaris-*` |
+| `AFTER_CREATE_CATALOG` | `custom` (`polaris-create-catalog`) | Catalog-level, not in Iceberg spec |
+| `AFTER_DELETE_CATALOG` | `custom` (`polaris-delete-catalog`) | Catalog-level |
+| `AFTER_CREATE_PRINCIPAL` | `custom` (`polaris-create-principal`) | Access management |
+| `AFTER_DELETE_PRINCIPAL` | `custom` (`polaris-delete-principal`) | Access management |
+| `AFTER_ROTATE_CREDENTIALS` | `custom` (`polaris-rotate-credentials`) | Security operation |
+| `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`polaris-create-principal-role`) | RBAC |
+| `AFTER_CREATE_CATALOG_ROLE` | `custom` (`polaris-create-catalog-role`) | RBAC |
+| `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`polaris-grant-privilege`) | RBAC |
+| `AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE` | `custom` (`polaris-revoke-privilege`) | RBAC |
+| `AFTER_CREATE_POLICY` | `custom` (`polaris-create-policy`) | Policy management |
+| `AFTER_ATTACH_POLICY` | `custom` (`polaris-attach-policy`) | Policy management |
+| `AFTER_CREATE_GENERIC_TABLE` | `custom` (`polaris-create-generic-table`) | Generic table support |
 
 #### 7.5.3 Read-Only Operations: Not Exposed
 
@@ -1215,13 +1219,13 @@ Polaris internal event types are categorized by code ranges. These are mapped to
 
 | Range | Category | Internal Event Type | Iceberg Operation Type |
 |-------|----------|---------------------|------------------------|
-| 100-109 | Catalog | `AFTER_CREATE_CATALOG` | `custom` (`x-polaris-create-catalog`) |
-| | | `AFTER_DELETE_CATALOG` | `custom` (`x-polaris-delete-catalog`) |
-| 200-217 | Catalog Role | `AFTER_CREATE_CATALOG_ROLE` | `custom` (`x-polaris-create-catalog-role`) |
-| | | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`x-polaris-grant-privilege`) |
-| 300-319 | Principal | `AFTER_CREATE_PRINCIPAL` | `custom` (`x-polaris-create-principal`) |
-| | | `AFTER_ROTATE_CREDENTIALS` | `custom` (`x-polaris-rotate-credentials`) |
-| 400-417 | Principal Role | `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`x-polaris-create-principal-role`) |
+| 100-109 | Catalog | `AFTER_CREATE_CATALOG` | `custom` (`polaris-create-catalog`) |
+| | | `AFTER_DELETE_CATALOG` | `custom` (`polaris-delete-catalog`) |
+| 200-217 | Catalog Role | `AFTER_CREATE_CATALOG_ROLE` | `custom` (`polaris-create-catalog-role`) |
+| | | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | `custom` (`polaris-grant-privilege`) |
+| 300-319 | Principal | `AFTER_CREATE_PRINCIPAL` | `custom` (`polaris-create-principal`) |
+| | | `AFTER_ROTATE_CREDENTIALS` | `custom` (`polaris-rotate-credentials`) |
+| 400-417 | Principal Role | `AFTER_CREATE_PRINCIPAL_ROLE` | `custom` (`polaris-create-principal-role`) |
 | 500-511 | Namespace | `AFTER_CREATE_NAMESPACE` | `create-namespace` |
 | | | `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` |
 | | | `AFTER_DROP_NAMESPACE` | `drop-namespace` |
@@ -1234,9 +1238,9 @@ Polaris internal event types are categorized by code ranges. These are mapped to
 | | | `AFTER_UPDATE_VIEW` | `update-view` |
 | | | `AFTER_DROP_VIEW` | `drop-view` |
 | | | `AFTER_RENAME_VIEW` | `rename-view` |
-| 1200-1215 | Policy | `AFTER_CREATE_POLICY` | `custom` (`x-polaris-create-policy`) |
-| | | `AFTER_ATTACH_POLICY` | `custom` (`x-polaris-attach-policy`) |
-| 1300-1307 | Generic Table | `AFTER_CREATE_GENERIC_TABLE` | `custom` (`x-polaris-create-generic-table`) |
+| 1200-1215 | Policy | `AFTER_CREATE_POLICY` | `custom` (`polaris-create-policy`) |
+| | | `AFTER_ATTACH_POLICY` | `custom` (`polaris-attach-policy`) |
+| 1300-1307 | Generic Table | `AFTER_CREATE_GENERIC_TABLE` | `custom` (`polaris-create-generic-table`) |
 
 ---
 
@@ -1261,24 +1265,24 @@ The Iceberg Events API is an emerging specification that is nearing consensus in
 | **API Path** | `/v1/{prefix}/events` | Part of Iceberg REST Catalog, not a separate management API |
 | **Pagination** | `continuation-token` | Opaque cursor that encodes server state; resumable after downtime |
 | **Event Structure** | Operation-centric with discriminator | Each event contains a typed `operation` with operation-specific fields |
-| **Operation Types** | Standardized enum + `x-` prefix extensions | Standard types for Iceberg operations; custom prefix for catalog-specific extensions |
+| **Operation Types** | Standardized enum + custom prefix extensions | Standard types for Iceberg operations; custom prefix for catalog-specific extensions |
 | **Actor Field** | Generic object (implementation-specific) | Flexibility for different auth models (users, service accounts, etc.) |
 | **Error Handling** | `410 Gone` for expired offsets | Explicit signal when continuation token is outside retention window |
 
 ### 8.3 Polaris-Specific Extensions
 
-Polaris extends the Iceberg Events API using the `custom` operation type with `x-polaris-*` prefixed custom types:
+Polaris extends the Iceberg Events API using the `custom` operation type with `polaris-*` prefixed custom types:
 
 | Custom Type | Polaris Event | Description |
 |-------------|---------------|-------------|
-| `x-polaris-create-catalog` | `AFTER_CREATE_CATALOG` | Catalog created |
-| `x-polaris-create-catalog-role` | `AFTER_CREATE_CATALOG_ROLE` | Catalog role created |
-| `x-polaris-grant-privilege` | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | Privilege granted to role |
-| `x-polaris-revoke-privilege` | `AFTER_REMOVE_GRANT_FROM_CATALOG_ROLE` | Privilege revoked |
-| `x-polaris-create-principal` | `AFTER_CREATE_PRINCIPAL` | Principal created |
-| `x-polaris-rotate-credentials` | `AFTER_ROTATE_CREDENTIALS` | Credentials rotated |
-| `x-polaris-create-policy` | `AFTER_CREATE_POLICY` | Policy created |
-| `x-polaris-attach-policy` | `AFTER_ATTACH_POLICY` | Policy attached to resource |
+| `polaris-create-catalog` | `AFTER_CREATE_CATALOG` | Catalog created |
+| `polaris-create-catalog-role` | `AFTER_CREATE_CATALOG_ROLE` | Catalog role created |
+| `polaris-grant-privilege` | `AFTER_ADD_GRANT_TO_CATALOG_ROLE` | Privilege granted to role |
+| `polaris-revoke-privilege` | `AFTER_REMOVE_GRANT_FROM_CATALOG_ROLE` | Privilege revoked |
+| `polaris-create-principal` | `AFTER_CREATE_PRINCIPAL` | Principal created |
+| `polaris-rotate-credentials` | `AFTER_ROTATE_CREDENTIALS` | Credentials rotated |
+| `polaris-create-policy` | `AFTER_CREATE_POLICY` | Policy created |
+| `polaris-attach-policy` | `AFTER_ATTACH_POLICY` | Policy attached to resource |
 
 ### 8.4 Mapping Polaris Internal Events to Iceberg Operations
 
@@ -1296,7 +1300,7 @@ Polaris extends the Iceberg Events API using the `custom` operation type with `x
 | `AFTER_CREATE_NAMESPACE` | `create-namespace` |
 | `AFTER_UPDATE_NAMESPACE_PROPERTIES` | `update-namespace-properties` |
 | `AFTER_DROP_NAMESPACE` | `drop-namespace` |
-| Other Polaris events | `custom` with `x-polaris-*` type |
+| Other Polaris events | `custom` with `polaris-*` type |
 
 ### 8.5 References
 
