@@ -104,6 +104,7 @@ Adding read-only REST endpoints enables:
 | **Consistent pagination** | Follow `continuation-token` pattern (Iceberg) and `pageToken` pattern (Polaris APIs) |
 | **Flexible filtering** | Time ranges, operation types, catalog objects - common query patterns |
 | **RBAC integration** | Leverage existing Polaris authorization model |
+| **Realm handling** | Process Polaris realms consistently with existing APIs; realm context is derived from the authenticated principal |
 
 ---
 
