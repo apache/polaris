@@ -1072,7 +1072,6 @@ oidc:
 
 # Polaris CORS configuration.
 cors:
-  # @schema type:[boolean, null]
   # -- Specifies whether the CORS filter should be enabled. See [CORS](https://quarkus.io/guides/http-reference#cors-filter) for details.
   # @section -- CORS
   enabled: false

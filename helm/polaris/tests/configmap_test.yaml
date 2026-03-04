@@ -370,11 +370,11 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
         not: true
 
-  - it: should not enable CORS filter when cors.enabled is false
+  - it: should not include any CORS properties when cors.enabled is false
     set:
-      cors: { enabled: false, allowedOrigins: [ "http://localhost:3000" ] }
+      cors: { enabled: false, allowedOrigins: [ "http://localhost:3000" ], allowedMethods: [ "GET" ], allowedHeaders: [ "X-Custom" ], exposedHeaders: [ "X-Exposed" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: true }
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
         not: true
 
   - it: should include CORS configuration if defined
