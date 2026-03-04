@@ -16,12 +16,16 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- CockroachDB schema v3 (matching PostgreSQL schema v3)
+-- CockroachDB schema v4 (matching PostgreSQL schema v4)
 -- Schema version is kept in sync with PostgreSQL to ensure correct column selection in ModelEntity.
+-- Changes from v3:
+--  * Added `idempotency_records` table for REST idempotency
+--  * Added `scan_metrics_report` table
+--  * Added `commit_metrics_report` table
 -- Features:
 --  * Uses INT4 explicitly for all integer columns (required for CockroachDB JDBC driver)
 --  * Includes all tables: version, entities, grant_records, principal_authentication_data,
---    policy_mapping_record, events
+--    policy_mapping_record, events, idempotency_records, scan_metrics_report, commit_metrics_report
 --  * Compatible with PostgreSQL wire protocol
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 3)
+VALUES ('version', 4)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
@@ -139,6 +143,164 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
+
+-- Idempotency records (key-only idempotency; durable replay)
+CREATE TABLE IF NOT EXISTS idempotency_records (
+    realm_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    operation_type TEXT NOT NULL,
+    resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
+
+    -- Finalization/replay
+    http_status INT4,                    -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
+    error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
+    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
+    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
+    finalized_at TIMESTAMP,              -- when http_status was written
+
+    -- Liveness/ops
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    heartbeat_at TIMESTAMP,              -- updated by owner while IN_PROGRESS
+    executor_id TEXT,                    -- owner pod/worker id
+    expires_at TIMESTAMP,
+
+    PRIMARY KEY (realm_id, idempotency_key)
+);
+
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
+    ON idempotency_records (realm_id, expires_at);
+
+-- ============================================================================
+-- SCAN METRICS REPORT TABLE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS scan_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    table_id BIGINT NOT NULL,
+
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+
+    -- Scan context
+    snapshot_id BIGINT,
+    schema_id INT4,
+    filter_expression TEXT,
+    projected_field_ids TEXT,
+    projected_field_names TEXT,
+
+    -- Scan metrics
+    result_data_files BIGINT DEFAULT 0,
+    result_delete_files BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+    total_data_manifests BIGINT DEFAULT 0,
+    total_delete_manifests BIGINT DEFAULT 0,
+    scanned_data_manifests BIGINT DEFAULT 0,
+    scanned_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_manifests BIGINT DEFAULT 0,
+    skipped_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_files BIGINT DEFAULT 0,
+    skipped_delete_files BIGINT DEFAULT 0,
+    total_planning_duration_ms BIGINT DEFAULT 0,
+
+    -- Equality/positional delete metrics
+    equality_delete_files BIGINT DEFAULT 0,
+    positional_delete_files BIGINT DEFAULT 0,
+    indexed_delete_files BIGINT DEFAULT 0,
+    total_delete_file_size_bytes BIGINT DEFAULT 0,
+
+    -- Additional metadata (for extensibility)
+    metadata JSONB DEFAULT '{}'::JSONB,
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class entities';
+
+-- Index for retention cleanup by timestamp
+CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
+
+-- Index for query lookups by catalog_id and table_id
+CREATE INDEX IF NOT EXISTS idx_scan_report_lookup ON scan_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
+-- ============================================================================
+-- COMMIT METRICS REPORT TABLE
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS commit_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    table_id BIGINT NOT NULL,
+
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+
+    -- Commit context
+    snapshot_id BIGINT NOT NULL,
+    sequence_number BIGINT,
+    operation TEXT NOT NULL,
+
+    -- File metrics
+    added_data_files BIGINT DEFAULT 0,
+    removed_data_files BIGINT DEFAULT 0,
+    total_data_files BIGINT DEFAULT 0,
+    added_delete_files BIGINT DEFAULT 0,
+    removed_delete_files BIGINT DEFAULT 0,
+    total_delete_files BIGINT DEFAULT 0,
+
+    -- Equality delete files
+    added_equality_delete_files BIGINT DEFAULT 0,
+    removed_equality_delete_files BIGINT DEFAULT 0,
+
+    -- Positional delete files
+    added_positional_delete_files BIGINT DEFAULT 0,
+    removed_positional_delete_files BIGINT DEFAULT 0,
+
+    -- Record metrics
+    added_records BIGINT DEFAULT 0,
+    removed_records BIGINT DEFAULT 0,
+    total_records BIGINT DEFAULT 0,
+
+    -- Size metrics
+    added_file_size_bytes BIGINT DEFAULT 0,
+    removed_file_size_bytes BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+
+    -- Duration and attempts
+    total_duration_ms BIGINT DEFAULT 0,
+    attempts INT4 DEFAULT 1,
+
+    -- Additional metadata (for extensibility)
+    metadata JSONB DEFAULT '{}'::JSONB,
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class entities';
+
+-- Index for retention cleanup by timestamp
+CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
+
+-- Index for query lookups by catalog_id and table_id
+CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
 
 -- INT4 type used directly in table definitions for CockroachDB JDBC compatibility
 -- CockroachDB requires explicit INT4 type declarations to correctly map columns to Java's Integer type.
