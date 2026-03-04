@@ -30,6 +30,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -48,6 +51,7 @@ import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.apache.ranger.authz.model.RangerUserInfo;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,6 +95,18 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     LOG.info("RangerPolarisAuthorizer initialized successfully");
+  }
+
+  @Override
+  public void resolveAuthorizationInputs(@NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+            "resolveAuthorizationInputs is not implemented yet for RangerPolarisAuthorizer");
+  }
+
+  @Override
+  public @NonNull AuthorizationDecision authorize(@NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+    throw new UnsupportedOperationException(
+            "authorize is not implemented yet for RangerPolarisAuthorizer");
   }
 
   @Override
