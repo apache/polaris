@@ -317,6 +317,8 @@ weight: 900
 
 ### CORS
 
+When any `cors.*` value is set, `quarkus.http.cors.enabled=true` is automatically added to the generated `application.properties`.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | cors.allowedOrigins | list | `[]` | Origins allowed for CORS, e.g. http://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression. |

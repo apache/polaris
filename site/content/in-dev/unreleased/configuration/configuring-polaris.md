@@ -95,6 +95,7 @@ Please refer to the [Quarkus documentation](https://quarkus.io/guides/) for more
 | `quarkus.http.port`                                  | `8181`                          | Define the HTTP port number.                                                |
 | `quarkus.http.auth.basic`                            | `false`                         | Enable the HTTP basic authentication.                                       |
 | `quarkus.http.limits.max-body-size`                  | `10240K`                        | Define the HTTP max body size limit.                                        |
+| `quarkus.http.cors.enabled`                          | `false`                         | Enable the HTTP CORS filter. Must be set to `true` for any other CORS property to take effect. |
 | `quarkus.http.cors.origins`                          |                                 | Define the HTTP CORS origins.                                               |
 | `quarkus.http.cors.methods`                          | `PATCH, POST, DELETE, GET, PUT` | Define the HTTP CORS covered methods.                                       |
 | `quarkus.http.cors.headers`                          | `*`                             | Define the HTTP CORS covered headers.                                       |

@@ -114,6 +114,9 @@ data:
     {{- $_ = set $map "quarkus.management.port" (get (first .Values.managementService.ports) "port") -}}
 
     {{- /* CORS */ -}}
+    {{- if or .Values.cors.allowedOrigins .Values.cors.allowedMethods .Values.cors.allowedHeaders .Values.cors.exposedHeaders .Values.cors.accessControlMaxAge (ne .Values.cors.accessControlAllowCredentials nil) -}}
+    {{- $_ = set $map "quarkus.http.cors.enabled" "true" -}}
+    {{- end -}}
     {{- if .Values.cors.allowedOrigins -}}
     {{- $_ = set $map "quarkus.http.cors.origins" (join "," .Values.cors.allowedOrigins) -}}
     {{- end -}}
