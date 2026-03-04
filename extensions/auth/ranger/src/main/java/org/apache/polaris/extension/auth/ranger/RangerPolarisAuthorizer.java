@@ -98,15 +98,17 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
-  public void resolveAuthorizationInputs(@NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+  public void resolveAuthorizationInputs(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
-            "resolveAuthorizationInputs is not implemented yet for RangerPolarisAuthorizer");
+        "resolveAuthorizationInputs is not implemented yet for RangerPolarisAuthorizer");
   }
 
   @Override
-  public @NonNull AuthorizationDecision authorize(@NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+  public @NonNull AuthorizationDecision authorize(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
-            "authorize is not implemented yet for RangerPolarisAuthorizer");
+        "authorize is not implemented yet for RangerPolarisAuthorizer");
   }
 
   @Override
