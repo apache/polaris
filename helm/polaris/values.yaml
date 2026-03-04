@@ -1072,6 +1072,10 @@ oidc:
 
 # Polaris CORS configuration.
 cors:
+  # @schema type:[boolean, null]
+  # -- Specifies whether the CORS filter should be enabled. See [CORS](https://quarkus.io/guides/http-reference#cors-filter) for details.
+  # @section -- CORS
+  enabled: false
   # @schema item: string
   # -- Origins allowed for CORS, e.g. http://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression.
   # @section -- CORS

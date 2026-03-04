@@ -370,9 +370,16 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
         not: true
 
+  - it: should not enable CORS filter when cors.enabled is false
+    set:
+      cors: { enabled: false, allowedOrigins: [ "http://localhost:3000" ] }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled" }
+        not: true
+
   - it: should include CORS configuration if defined
     set:
-      cors: { allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
+      cors: { enabled: true, allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.origins=http://localhost:3000,https://localhost:4000" }
@@ -381,13 +388,6 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.exposed-headers=X-Exposed-Custom1,X-Exposed-Custom2" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-max-age=PT1H" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-allow-credentials=false" }
-
-  - it: should enable CORS when only allowedMethods is set
-    set:
-      cors: { allowedMethods: [ "GET", "POST" ] }
-    asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled=true" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.methods=GET,POST" }
 
   - it: should configure rate-limiter with default values
     asserts:
