@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.test.commons;
 
+import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.Map;
@@ -37,9 +39,14 @@ public class CockroachRelationalJdbcLifeCycleManagement
   }
 
   @Override
+  @SuppressWarnings("resource")
   public Map<String, String> start() {
-    // CockroachDB testcontainers uses PostgreSQL wire protocol compatibility
-    cockroach = new CockroachContainer("cockroachdb/cockroach:v24.3.0");
+    cockroach =
+        new CockroachContainer(
+            containerSpecHelper(
+                    "cockroachdb", CockroachRelationalJdbcLifeCycleManagement.class)
+                .dockerImageName(null)
+                .asCompatibleSubstituteFor("cockroachdb/cockroach"));
 
     if (initScript != null) {
       cockroach.withInitScript(initScript);
