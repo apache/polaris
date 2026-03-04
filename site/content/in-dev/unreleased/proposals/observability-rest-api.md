@@ -924,6 +924,19 @@ components:
           format: int64
 
     ListMetricsResponse:
+      description: >
+        Polymorphic response for metrics queries. The concrete type is determined
+        by the metricType discriminator field.
+      oneOf:
+        - $ref: '#/components/schemas/ListScanMetricsResponse'
+        - $ref: '#/components/schemas/ListCommitMetricsResponse'
+      discriminator:
+        propertyName: metricType
+        mapping:
+          scan: '#/components/schemas/ListScanMetricsResponse'
+          commit: '#/components/schemas/ListCommitMetricsResponse'
+
+    ListScanMetricsResponse:
       type: object
       required:
         - metricType
@@ -934,18 +947,32 @@ components:
           description: Cursor for fetching the next page of results
         metricType:
           type: string
-          enum: [scan, commit]
-          description: The type of metrics in this response
+          const: scan
+          description: Discriminator indicating this response contains scan metrics
         reports:
           type: array
-          description: >
-            Array of metrics reports. The schema of each report depends on metricType:
-            - For metricType=scan: ScanMetricsReport objects
-            - For metricType=commit: CommitMetricsReport objects
+          description: Array of scan metrics reports
           items:
-            oneOf:
-              - $ref: '#/components/schemas/ScanMetricsReport'
-              - $ref: '#/components/schemas/CommitMetricsReport'
+            $ref: '#/components/schemas/ScanMetricsReport'
+
+    ListCommitMetricsResponse:
+      type: object
+      required:
+        - metricType
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          description: Cursor for fetching the next page of results
+        metricType:
+          type: string
+          const: commit
+          description: Discriminator indicating this response contains commit metrics
+        reports:
+          type: array
+          description: Array of commit metrics reports
+          items:
+            $ref: '#/components/schemas/CommitMetricsReport'
 
     CommitMetricsReport:
       type: object
