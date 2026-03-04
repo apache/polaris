@@ -65,12 +65,11 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    # EOL releases (0.9.0, 1.0.0, 1.0.1) should NOT be listed here!
+    # When changing this list, also modify /docs/_index.md.
     - "1.3.0"
     - "1.2.0"
     - "1.1.0"
-    - "1.0.1"
-    - "1.0.0"
-    - "0.9.0"
 
   ui:
     ul_show: 1
@@ -78,8 +77,10 @@ params:
     sidebar_menu_foldable: true
     sidebar_cache_limit: 1000
     # Dark doesn't look great for example with the `redoc` shortcode :(
+    # https://www.docsy.dev/docs/content/lookandfeel/#how-to-disable-dark-mode
     #showLightDarkModeMenu: true
     sidebar_search_disable: true
+    navbar_theme: light
 
   plantuml:
     # Disabled for now, loads external JS, see ASF data policy
@@ -90,10 +91,13 @@ params:
     # https://privacy.apache.org/policies/website-policy.html
     enable: false
 
+  # See code highlighting below
+  #prism_syntax_highlighting: true
+
 imaging:
   resampleFilter: "CatmullRom"
   quality: 75
-  anchor: "smart"
+  anchor: Smart
 
 menu:
   main:
@@ -102,10 +106,18 @@ menu:
       weight: 100
       params:
         orderby: weight.desc
+    - name: "Overview"
+      url: "/docs/"
+      parent: "doc"
+      weight: -100
     - name: "In Development"
       url: "/in-dev/unreleased/"
       parent: "doc"
       weight: 1
+    - name: "Latest"
+      url: "/releases/latest/"
+      parent: "doc"
+      weight: 2
     - name: "1.3.0"
       url: "/releases/1.3.0/"
       parent: "doc"
@@ -253,14 +265,15 @@ menu:
 module:
   hugoVersion:
     extended: true
-    # The Hugo versions (as of 2024/09/04):
-    #   in latest Ubuntu 24.04: 0.123.7
-    #   in brew: 0.134.0
-    min: 0.123.7
+    # The Hugo versions (as of 2026/02/26):
+    #   in the latest Ubuntu 25.10: 0.157.0 (via 'snap', not 'apt')
+    #   in brew: 0.157.0
+    # When changing the version, also update the version in site/docker/Dockerfile
+    min: 0.157.0
   imports:
     - path: github.com/google/docsy
       # Pin to this release, newer releases _might_ break the customized layouts
-      version: v0.10.0
+      version: v0.14.3
 
 outputs:
   section:
@@ -271,6 +284,12 @@ outputs:
 
 markup:
   highlight:
+    # See https://www.docsy.dev/docs/content/lookandfeel/#code-highlighting-with-chroma
+    # See https://gohugo.io/content-management/syntax-highlighting/
+    #
+    # "Prism" syntax highlighting looks a bit nicer, but quite some code blocks become a bit
+    # too big (horizontally), so users would have to scroll horizontally to see the code.
+    # 'lineNumbersInTable=true' is "required" (for UX reasons) as well.
     anchorLineNos: false
     codeFences: true
     guessSyntax: false
@@ -278,16 +297,20 @@ markup:
     hl_inline: false
     lineAnchors: ''
     lineNoStart: 1
-    lineNos: false
-    lineNumbersInTable: true
+    lineNos: true
+    lineNumbersInTable: false
     noClasses: true
     noHl: false
-    style: 'monokai'
+    # 'tango' == "Chroma" syntax highlighting theme
+    style: 'tango'
     tabWidth: 4
   goldmark:
     parser:
       autoHeadingID: true
       autoHeadingIDType: github
+      attribute:
+        # See https://gohugo.io/render-hooks/blockquotes/#alerts
+        block: true
     renderer:
       unsafe: true
 
@@ -301,7 +324,7 @@ privacy:
     disable: true
   instagram:
     simple: true
-  twitter:
+  x: # was 'twitter'
     enableDNT: false
     simple: true
   vimeo:

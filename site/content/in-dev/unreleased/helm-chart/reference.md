@@ -28,6 +28,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | replicaCount | int | `1` | The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager. See [Scaling](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#scaling) for production recommendations. |
+| deploymentAnnotations | object | `{}` | Additional Annotations to apply to polaris deployment. |
 | revisionHistoryLimit | int | `nil` | The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10). |
 
 ### Image

@@ -35,7 +35,7 @@ under the License.
     $("#td-sidebar-menu").toggleClass("d-none"); 
     });
   </script>
-  {{ partialCached "sidebar-releases-tree.html" . .FirstSection.RelPermalink }}
+  {{ partialCached "sidebar-docs-tree.html" . .FirstSection.RelPermalink }}
 {{ else -}}
-  {{ partial "sidebar-releases-tree.html" . }}
+  {{ partial "sidebar-docs-tree.html" . }}
 {{- end }}

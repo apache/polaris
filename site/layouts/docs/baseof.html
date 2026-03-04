@@ -14,7 +14,12 @@
       <div class="td-main">
         <div class="row flex-xl-nowrap">
           <aside class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
-            {{ partial "sidebar.html" . }}
+            {{/* Use the unified docs sidebar for /docs/, /in-dev/unreleased/ and /releases/ pages */}}
+            {{ if or (eq .RelPermalink "/docs/") (hasPrefix .RelPermalink "/in-dev/unreleased") (hasPrefix .RelPermalink "/releases/") }}
+              {{ partial "sidebar-docs.html" . }}
+            {{ else }}
+              {{ partial "sidebar.html" . }}
+            {{ end }}
           </aside>
           <!-- Polaris custom flag to include the _right_ side page TOC -->
           {{ if .Params.show_page_toc -}}

@@ -9,14 +9,8 @@ to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
 
 --------------------------------------------------------------------------------
 
-This binary artifact bundles the following projects with NOTICE:
-
---------------------------------------------------------------------------------
-
-Group: com.aayushatharva.brotli4j Name: brotli4j Version: 1.16.0
-Group: com.aayushatharva.brotli4j Name: service Version: 1.16.0
-
-NOTICE:
+This product bundles brotli4j with the following in its NOTICE:
+|
 | =============== Brotli4j ===============
 | 
 | Copyright 2021, Aayush Atharva
@@ -56,9 +50,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: info.picocli Name: picocli Version: 4.7.7
-
-Relevant information from NOTICE:
+This product bundles Picocli with the following in its NOTICE:
+|
 | This project includes one or more documentation files from OpenJDK, licensed under GPL v2 with Classpath Exception.
 |
 | These files are included in the source distributions, not in the binary distributions of this project.
@@ -66,26 +59,8 @@ Relevant information from NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.grpc Name: grpc-alts Version: 1.75.0
-Group: io.grpc Name: grpc-api Version: 1.75.0
-Group: io.grpc Name: grpc-auth Version: 1.75.0
-Group: io.grpc Name: grpc-context Version: 1.75.0
-Group: io.grpc Name: grpc-core Version: 1.75.0
-Group: io.grpc Name: grpc-googleapis Version: 1.75.0
-Group: io.grpc Name: grpc-grpclb Version: 1.75.0
-Group: io.grpc Name: grpc-inprocess Version: 1.75.0
-Group: io.grpc Name: grpc-netty Version: 1.75.0
-Group: io.grpc Name: grpc-netty-shaded Version: 1.75.0
-Group: io.grpc Name: grpc-opentelemetry Version: 1.75.0
-Group: io.grpc Name: grpc-protobuf Version: 1.75.0
-Group: io.grpc Name: grpc-protobuf-lite Version: 1.75.0
-Group: io.grpc Name: grpc-rls Version: 1.75.0
-Group: io.grpc Name: grpc-services Version: 1.75.0
-Group: io.grpc Name: grpc-stub Version: 1.75.0
-Group: io.grpc Name: grpc-util Version: 1.75.0
-Group: io.grpc Name: grpc-xds Version: 1.75.0
-
-NOTICE:
+This product bundles gRPC with the following in its NOTICE:
+|
 | Copyright 2014 The gRPC Authors
 | 
 | Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,12 +126,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.14.7
-Group: io.micrometer Name: micrometer-core Version: 1.14.7
-Group: io.micrometer Name: micrometer-observation Version: 1.14.7
-Group: io.micrometer Name: micrometer-registry-prometheus-simpleclient Version: 1.14.7
-
-NOTICE:
+This product bundles Micrometer with the following in its NOTICE:
+|
 | Micrometer
 | 
 | Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
@@ -205,30 +176,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.128.Final
-Group: io.netty Name: netty-codec Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-haproxy Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.128.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.128.Final
-Group: io.netty Name: netty-common Version: 4.1.128.Final
-Group: io.netty Name: netty-handler Version: 4.1.128.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.128.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.128.Final
-Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.74.Final
-Group: io.netty Name: netty-tcnative-classes Version: 2.0.74.Final
-Group: io.netty Name: netty-transport Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.128.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.128.Final
-
-NOTICE:
+This product bundles and includes code from Netty with the following in its NOTICE:
+|
 | 
 |                             The Netty Project
 |                             =================
@@ -496,9 +445,7 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.perfmark Name: perfmark-api Version: 0.27.0
-
-NOTICE:
+This product bundles Perfmark with the following in its NOTICE:
 | 
 | Copyright 2019 Google LLC
 | 
@@ -543,13 +490,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.prometheus Name: simpleclient Version: 0.16.0
-Group: io.prometheus Name: simpleclient_common Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_common Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_otel Version: 0.16.0
-Group: io.prometheus Name: simpleclient_tracer_otel_agent Version: 0.16.0
-
-NOTICE:
+This product bundles Prometheus SimpleClient with the following in its NOTICE:
+|
 | Prometheus instrumentation library for JVM applications
 | Copyright 2012-2015 The Prometheus Authors
 | 
@@ -564,12 +506,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.14.1
-Group: io.smallrye.config Name: smallrye-config-validator Version: 3.14.1
-
-NOTICE:
+This product bundles SmallRye with the following in its NOTICE:
+|
 | Copyright 2009-2017 Mark Struberg
 | Copyright 2018 Red Hat, inc.
 | 
@@ -578,12 +516,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.swagger Name: swagger-annotations Version: 1.6.16
-Group: io.swagger Name: swagger-core Version: 1.6.16
-Group: io.swagger Name: swagger-jaxrs Version: 1.6.16
-Group: io.swagger Name: swagger-models Version: 1.6.16
-
-NOTICE:
+This product bundles Swagger with the following in its NOTICE:
+|
 | Swagger Core - ${pom.name}
 | Copyright (c) 2015. SmartBear Software Inc.
 | Swagger Core - ${pom.name}  is licensed under Apache 2.0 license.
@@ -591,37 +525,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.20
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.20.1
-
-NOTICE:
-| # Jackson JSON processor
-| 
-| Jackson is a high-performance, Free/Open Source JSON processing library.
-| It was originally written by Tatu Saloranta (tatu.saloranta@iki.fi), and has
-| been in development since 2007.
-| It is currently developed by a community of developers.
-| 
-| ## Copyright
-| 
-| Copyright 2007-, Tatu Saloranta (tatu.saloranta@iki.fi)
-| 
-| ## Licensing
-| 
-| Jackson 2.x core and extension components are licensed under Apache License 2.0
-| To find the details that apply to this artifact see the accompanying LICENSE file.
-| 
-| ## Credits
-| 
-| A list of contributors may be found from CREDITS(-2.x) file, which is included
-| in some artifacts (usually source distributions); but is always available
-| from the source code management (SCM) system project uses.
-
---------------------------------------------------------------------------------
-
-Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.20.1
-
-NOTICE:
+This product bundles Jackson JSON Processor with the following in its NOTICE:
+|
 | # Jackson JSON processor
 | 
 | Jackson is a high-performance, Free/Open Source JSON processing library.
@@ -657,64 +562,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-smile Version: 2.20.1
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-xml Version: 2.20.1
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.20.1
-
-NOTICE:
-| # Jackson JSON processor
-| 
-| Jackson is a high-performance, Free/Open Source JSON processing library.
-| It was originally written by Tatu Saloranta (tatu.saloranta@iki.fi), and has
-| been in development since 2007.
-| It is currently developed by a community of developers.
-| 
-| ## Copyright
-| 
-| Copyright 2007-, Tatu Saloranta (tatu.saloranta@iki.fi)
-| 
-| ## Licensing
-| 
-| Jackson components are licensed under Apache (Software) License, version 2.0,
-| as per accompanying LICENSE file.
-| 
-| ## Credits
-| 
-| A list of contributors may be found from CREDITS file, which is included
-| in some artifacts (usually source distributions); but is always available
-| from the source code management (SCM) system project uses.
-
---------------------------------------------------------------------------------
-
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-guava Version: 2.20.1
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jdk8 Version: 2.20.1
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.20.1
-
-NOTICE:
-| # Jackson JSON processor
-| 
-| Jackson is a high-performance, Free/Open Source JSON processing library.
-| It was originally written by Tatu Saloranta (tatu.saloranta@iki.fi), and has
-| been in development since 2007.
-| It is currently developed by a community of developers.
-| 
-| ## Licensing
-| 
-| Jackson components are licensed under Apache (Software) License, version 2.0,
-| as per accompanying LICENSE file.
-| 
-| ## Credits
-| 
-| A list of contributors may be found from CREDITS file, which is included
-| in some artifacts (usually source distributions); but is always available
-| from the source code management (SCM) system project uses.
-
---------------------------------------------------------------------------------
-
-Group: jakarta.enterprise Name: jakarta.enterprise.cdi-api Version: 4.1.0
-Group: jakarta.inject Name: jakarta.inject-api Version: 2.0.1
-
-NOTICE:
+This product bundles CDI with the following in its NOTICE:
+|
 | # Notices for Jakarta Contexts and Dependency Injection
 | 
 | This content is produced and maintained by the Jakarta Contexts and Dependency Injection
@@ -768,10 +617,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.validation Name: jakarta.validation-api Version: 3.1.1
-Group: javax.validation Name: validation-api Version: 1.1.0.Final
-
-NOTICE:
+This product bundles jakarta.validation-api with the following in its NOTICE:
+|
 | # Notices for Eclipse Jakarta Validation
 | 
 | This content is produced and maintained by the Eclipse Jakarta Validation
@@ -817,9 +664,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.conscrypt Name: conscrypt-openjdk-uber Version: 2.5.2
-
-NOTICE:
+This product bundles Conscrypt (openjdk uber) with the following in its NOTICE:
+|
 | Copyright 2016 The Android Open Source Project
 | 
 | Licensed under the Apache License, Version 2.0 (the "License");
@@ -853,17 +699,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.jetty Name: jetty-http Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-io Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-security Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-server Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-servlet Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-util Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-util-ajax Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-webapp Version: 9.4.57.v20241219
-Group: org.eclipse.jetty Name: jetty-xml Version: 9.4.57.v20241219
-
-NOTICE:
+This product bundles Jetty with the following in its NOTICE:
+|
 | Notices for Eclipse Jetty
 | =========================
 | This content is produced and maintained by the Eclipse Jetty project.
@@ -960,9 +797,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.microprofile.config Name: microprofile-config-api Version: 3.1
-
-NOTICE:
+This product bundles Microprofile with the following in its NOTICE:
+|
 | =========================================================================
 | ==  NOTICE file corresponding to section 4(d) of the Apache License,   ==
 | ==  Version 2.0, in this case for Microprofile Config                  ==
@@ -993,9 +829,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.microprofile.health Name: microprofile-health-api Version: 4.0.1
-
-NOTICE:
+This product bundles Microprofile (health) with the following in its NOTICE:
+|
 | =========================================================================
 | ==  NOTICE file corresponding to section 4(d) of the Apache License,   ==
 | ==  Version 2.0, in this case for Microprofile Health                  ==
@@ -1016,9 +851,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.xerial.snappy Name: snappy-java Version: 1.1.10.5
-
-NOTICE:
+This product bundles Snappy Java with the following in its NOTICE:
+|
 | This product includes software developed by Google
 |  Snappy: http://code.google.com/p/snappy/ (New BSD License)
 | 
@@ -1045,44 +879,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.39.2
-Group: software.amazon.awssdk Name: apache-client Version: 2.39.2
-Group: software.amazon.awssdk Name: arns Version: 2.39.2
-Group: software.amazon.awssdk Name: auth Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-core Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-json-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.39.2
-Group: software.amazon.awssdk Name: cloudwatchlogs Version: 2.39.2
-Group: software.amazon.awssdk Name: checksums Version: 2.39.2
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: crt-core Version: 2.39.2
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.39.2
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.39.2
-Group: software.amazon.awssdk Name: identity-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: json-utils Version: 2.39.2
-Group: software.amazon.awssdk Name: kms Version: 2.39.2
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.39.2
-Group: software.amazon.awssdk Name: profiles Version: 2.39.2
-Group: software.amazon.awssdk Name: protocol-core Version: 2.39.2
-Group: software.amazon.awssdk Name: rds Version: 2.39.2
-Group: software.amazon.awssdk Name: regions Version: 2.39.2
-Group: software.amazon.awssdk Name: retries Version: 2.39.2
-Group: software.amazon.awssdk Name: retries-spi Version: 2.39.2
-Group: software.amazon.awssdk Name: s3 Version: 2.39.2
-Group: software.amazon.awssdk Name: sdk-core Version: 2.39.2
-Group: software.amazon.awssdk Name: sts Version: 2.39.2
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.39.2
-Group: software.amazon.awssdk Name: utils Version: 2.39.2
-Group: software.amazon.awssdk Name: utils-lite Version: 2.39.2
-
-NOTICE:
+This product bundles AWS Java SDK with the following in its NOTICE:
+|
 | AWS SDK for Java
 | Copyright 2010-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 | 
@@ -1100,17 +898,15 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.eventstream Name: eventstream Version: 1.0.1
-
-NOTICE:
+This product bundles AWS EventStream for Java with the following in its NOTICE:
+|
 | AWS EventStream for Java
 | Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved. 
 
 --------------------------------------------------------------------------------
 
-Group: org.bitbucket.b_c Name: jose4j Version: 0.9.6
-
-NOTICE:
+This product bundles Jose4J with the following in its NOTICE:
+|
 | jose4j
 | Copyright 2012-2015 Brian Campbell
 | 

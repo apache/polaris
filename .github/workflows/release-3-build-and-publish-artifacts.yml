@@ -477,9 +477,14 @@ jobs:
           # Copy the updated index.yaml to the dist dev directory
           exec_process cp "$WORK_DIR/index.yaml" "${dist_dev_dir}/helm-chart/index.yaml"
 
-          # Commit the updated index
+          # Copy the artifacthub-repo.yml to the dist dev directory
+          exec_process cp "helm/polaris/artifacthub-repo.yml" "${dist_dev_dir}/helm-chart/artifacthub-repo.yml"
+
           exec_process cd "${dist_dev_dir}"
-          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} RC${rc_number}"
+          # Add artifacthub-repo.yml if not already versioned
+          exec_process svn add helm-chart/artifacthub-repo.yml || true
+          # Commit the updated index and artifacthub-repo.yml
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index and artifacthub-repo.yml for ${version_without_rc} RC${rc_number}"
 
           echo "## Helm Index Summary" >> $GITHUB_STEP_SUMMARY
           ARCHIVE_COUNT=$(echo "$ARCHIVE_VERSIONS" | grep -v '^$' | wc -w | tr -d ' ')
@@ -491,6 +496,7 @@ jobs:
           | Charts from archive.apache.org | ✅ ${ARCHIVE_COUNT} versions indexed |
           | Current RC | ✅ ${version_without_rc} added with relative URL |
           | Helm index | ✅ Committed to dist dev |
+          | Artifact Hub metadata | ✅ Committed to dist dev |
           EOT
 
   generate-release-email:

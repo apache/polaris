@@ -225,27 +225,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return catalogEntity;
   }
 
-  /**
-   * TODO: Make the helper in org.apache.iceberg.rest.CatalogHandlers public instead of needing to
-   * copy/paste here.
-   */
-  public static boolean isCreate(UpdateTableRequest request) {
-    boolean isCreate =
-        request.requirements().stream()
-            .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
-
-    if (isCreate) {
-      List<UpdateRequirement> invalidRequirements =
-          request.requirements().stream()
-              .filter(req -> !(req instanceof UpdateRequirement.AssertTableDoesNotExist))
-              .collect(Collectors.toList());
-      Preconditions.checkArgument(
-          invalidRequirements.isEmpty(), "Invalid create requirements: %s", invalidRequirements);
-    }
-
-    return isCreate;
-  }
-
   private boolean shouldDecodeToken() {
     return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
   }
@@ -672,7 +651,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    metricsReporter().reportMetric(catalogName(), identifier, request.report(), clock().instant());
+    // Get catalog and table IDs from resolved entities (already resolved during authorization)
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    long catalogId = catalogEntity.getId();
+
+    // Get the table ID from the resolved path
+    PolarisResolvedPathWrapper resolvedTable = resolutionManifest.getResolvedPath(identifier);
+    PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
+    long tableId = tableEntity.getId();
+
+    metricsReporter()
+        .reportMetric(
+            catalogName(), catalogId, identifier, tableId, request.report(), clock().instant());
   }
 
   /**
@@ -1063,7 +1053,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 throw new IllegalStateException(
                     "Cannot wrap catalog that does not produce BaseTable");
               }
-              if (isCreate(change)) {
+              if (CatalogHandlerUtils.isCreate(change)) {
                 throw new BadRequestException(
                     "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
                     change);
@@ -1092,8 +1082,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",
-                                change.identifier(),
-                                ((MetadataUpdate.SetLocation) singleUpdate).location());
+                                change.identifier(), setLocation.location());
                           }
                         }
 

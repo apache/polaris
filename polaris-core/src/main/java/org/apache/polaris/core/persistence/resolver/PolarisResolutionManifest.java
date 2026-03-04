@@ -96,7 +96,13 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     addTopLevelName(PolarisEntityConstants.getRootContainerName(), PolarisEntityType.ROOT, true);
   }
 
-  /** Adds a name of a top-level entity (Catalog, Principal, PrincipalRole) to be resolved. */
+  /**
+   * Adds a named entity to be resolved via the resolver's name-based registration surface.
+   *
+   * <p>This includes top-level entities (Catalog, Principal, PrincipalRole), and also {@code
+   * CATALOG_ROLE}. For {@code CATALOG_ROLE}, a reference catalog must be present on the
+   * manifest/resolver context.
+   */
   public void addTopLevelName(String entityName, PolarisEntityType entityType, boolean isOptional) {
     addedTopLevelNames.put(entityName, entityType);
     if (isOptional) {
@@ -140,6 +146,22 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
+    return primaryResolverStatus;
+  }
+
+  /**
+   * Resolves explicitly requested components.
+   *
+   * <p>Selections control which resolver components are executed. Callers are expected to add paths
+   * or top-level entity names before invoking this method.
+   */
+  public ResolverStatus resolveSelections(Set<Resolvable> selections) {
+    diagnostics.checkNotNull(selections, "resolver_selections_is_null");
+    primaryResolverStatus = primaryResolver.resolveSelections(selections);
+    diagnostics.check(
+        primaryResolverStatus.getStatus()
+            != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
+        "caller_principal_does_not_exist_at_resolution_time");
     return primaryResolverStatus;
   }
 

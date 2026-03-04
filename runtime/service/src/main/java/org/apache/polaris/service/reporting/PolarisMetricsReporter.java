@@ -43,14 +43,18 @@ public interface PolarisMetricsReporter {
    * Reports an Iceberg metrics report for a specific table.
    *
    * @param catalogName the name of the catalog containing the table
+   * @param catalogId the internal Polaris ID of the catalog
    * @param table the identifier of the table the metrics are for
+   * @param tableId the internal Polaris ID of the table entity
    * @param metricsReport the Iceberg metrics report (e.g., {@link
    *     org.apache.iceberg.metrics.ScanReport} or {@link org.apache.iceberg.metrics.CommitReport})
    * @param receivedTimestamp the timestamp when the metrics were received by Polaris
    */
   void reportMetric(
       String catalogName,
+      long catalogId,
       TableIdentifier table,
+      long tableId,
       MetricsReport metricsReport,
       Instant receivedTimestamp);
 }

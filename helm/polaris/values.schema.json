@@ -182,6 +182,13 @@
                 }
             }
         },
+        "deploymentAnnotations": {
+            "description": "Additional Annotations to apply to polaris deployment.",
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
         "extraEnv": {
             "description": "Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: [EnvVar API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) This can be useful to get configuration values from Kubernetes secrets or config maps.",
             "type": "array",

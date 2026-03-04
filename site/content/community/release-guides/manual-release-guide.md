@@ -139,8 +139,13 @@ echo "x.y.z" > version.txt
 
 and update the version in the Helm Chart in:
 
-* `helm/polaris/Chart.yaml`
+* `helm/polaris/Chart.yaml` 
+  - update `version` and `appVersion` fields
+  - update the `Documentation` link in the `artifacthub.io/links` annotation to point to 
+    `https://polaris.apache.org/releases/x.y.z/`
 * `helm/polaris/README.md`
+* `helm/polaris/values.yaml` 
+  - update the `image.tag` field from `"latest"` to `"x.y.z"`
 
 and update the documentation URLs in `helm/polaris/values.yaml` and `helm/polaris/values.schema.json` to point to the released documentation.
 Replace `/in-dev/unreleased/` with `/releases/x.y.z/` in all documentation URLs, for example:
@@ -255,13 +260,17 @@ cp ../helm/*.tgz*  helm-chart/x.y.z
 svn add helm-chart/x.y.z
 ```
 
-You can now update the Helm index:
+You can now update the Helm index and copy the Artifact Hub metadata:
 
 ```
 cd helm-chart
 helm repo index .
 svn add index.yaml
+cp /path/to/polaris/github/clone/repo/helm/polaris/artifacthub-repo.yml .
+svn add artifacthub-repo.yml
 ```
+
+Note: `artifacthub-repo.yml` only needs to be added with `svn add` on the first release. On subsequent releases, it will already be versioned and the `cp` command will update it.
 
 Dist repository is now "complete" and we can push/commit:
 
@@ -370,14 +379,13 @@ svn mv https://dist.apache.org/repos/dist/dev/polaris/x.y.z https://dist.apache.
 svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/polaris/helm-chart
 ```
 
-Then, update the Helm Chart repository index on https://dist.apache.org/repos/dist/release/polaris/helm-chart/index.yaml:
+Then, transfer the Helm index and Artifact Hub metadata from dist dev to dist release:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/release/polaris/helm-chart polaris-dist-release-helm-chart
-cd polaris-dist-release-helm-chart
-helm repo index .
-svn add index.yaml
-svn commit -m "Update Helm index for x.y.z release"
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/index.yaml \
+  https://dist.apache.org/repos/dist/dev/polaris/helm-chart/artifacthub-repo.yml \
+  https://dist.apache.org/repos/dist/release/polaris/helm-chart/ \
+  -m "Transfer Helm index and artifacthub-repo.yml for x.y.z release"
 ```
 
 Next, add a release tag to the git repository based on the candidate tag:

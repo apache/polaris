@@ -86,6 +86,25 @@ tests:
           content:
             app.kubernetes.io/component: polaris
 
+  # metadata.annotations
+  - it: should not set deployment annotations by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: metadata.annotations
+  - it: should set deployment annotations
+    template: deployment.yaml
+    set:
+      deploymentAnnotations:
+        foo: bar
+        baz: qux
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            foo: bar
+            baz: qux
+
   # spec.replicas
   - it: should set default replicas
     template: deployment.yaml
