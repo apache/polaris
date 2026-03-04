@@ -114,7 +114,7 @@ Adding read-only REST endpoints enables:
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/catalog/v1/{prefix}/events` | Query events for a catalog (Iceberg-compatible) |
-| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/metrics` | List metrics for a table (type specified via query parameter) |
+| GET | `/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}` | List metrics for a table (type specified via query parameter) |
 
 > **Note:** The Events API uses POST (not GET) and follows the Iceberg REST Catalog path structure (`/api/catalog/v1/{prefix}/events`) for compatibility with the [Iceberg Events API specification](https://github.com/apache/iceberg/pull/12584). The metrics API uses a dedicated `/api/metrics-reports/v1/` namespace since it exposes pre-populated records rather than managing catalog state - a server that doesn't support catalog management may still expose metrics reports.
 
@@ -180,7 +180,7 @@ For Polaris-specific events not covered by the Iceberg spec, use the `x-` prefix
 
 ### 4.4 Query Parameters (Metrics API)
 
-#### List Table Metrics (`/.../tables/{table}/metrics`)
+#### List Table Metrics (`/.../tables/{table}`)
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -320,7 +320,7 @@ Content-Type: application/json
 
 **Request:**
 ```http
-GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/metrics?metricType=scan&pageSize=2&timestampFrom=1709251200000
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views?metricType=scan&pageSize=2&timestampFrom=1709251200000
 Authorization: Bearer <token>
 ```
 
@@ -369,7 +369,7 @@ Authorization: Bearer <token>
 
 **Request:**
 ```http
-GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views/metrics?metricType=commit&operation=append&pageSize=2
+GET /api/metrics-reports/v1/catalogs/my-catalog/namespaces/analytics%1Fevents/tables/page_views?metricType=commit&operation=append&pageSize=2
 Authorization: Bearer <token>
 ```
 
@@ -547,7 +547,7 @@ Add the following to a new `spec/metrics-reports-service.yml` (or extend existin
 
 ```yaml
 paths:
-  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/metrics:
+  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}:
     parameters:
       - $ref: '#/components/parameters/catalogName'
       - $ref: '#/components/parameters/namespace'
