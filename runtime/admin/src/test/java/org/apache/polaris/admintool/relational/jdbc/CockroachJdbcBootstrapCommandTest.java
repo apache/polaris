@@ -32,10 +32,10 @@ public class CockroachJdbcBootstrapCommandTest extends RelationalJdbcBootstrapCo
   @Test
   public void testBootstrapFailsWhenAddingRealmWithDifferentSchemaVersion(
       QuarkusMainLauncher launcher) {
-    // CockroachDB only has schema v3 (no v1 or v2 schemas exist).
-    // Override to bootstrap with v3, which is the only version available for CockroachDB.
+    // CockroachDB only has schema v4 (no v1, v2 or v3 schemas exist).
+    // Override to bootstrap with v4, which is the only version available for CockroachDB.
     LaunchResult result1 =
-        launcher.launch("bootstrap", "-v", "3", "-r", "realm1", "-c", "realm1,root,s3cr3t");
+        launcher.launch("bootstrap", "-v", "4", "-r", "realm1", "-c", "realm1,root,s3cr3t");
     assertThat(result1.exitCode()).isEqualTo(0);
     assertThat(result1.getOutput()).contains("Bootstrap completed successfully.");
   }
