@@ -4440,6 +4440,12 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;/thead&gt;
  &lt;tbody&gt;
  &lt;tr&gt;
+ &lt;td&gt;cors.enabled&lt;/td&gt;
+ &lt;td&gt;bool&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;false&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Specifies whether the CORS filter should be enabled. See &lt;a href="https://quarkus.io/guides/http-reference#cors-filter"&gt;CORS&lt;/a&gt; for details.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
  &lt;td&gt;cors.allowedOrigins&lt;/td&gt;
  &lt;td&gt;list&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;[]&lt;/code&gt;&lt;/td&gt;
