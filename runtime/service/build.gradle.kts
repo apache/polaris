@@ -39,6 +39,8 @@ dependencies {
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
+  compileOnly(project(":polaris-config-docs-annotations"))
+
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
@@ -111,6 +113,9 @@ dependencies {
   implementation(libs.jakarta.servlet.api)
 
   runtimeOnly(project(":polaris-async-vertx"))
+
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies

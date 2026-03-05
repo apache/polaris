@@ -30,17 +30,19 @@ public class DefaultMetricsReporterTest {
 
   @Test
   void testLogging() {
-    @SuppressWarnings("unchecked")
-    DefaultMetricsReporter.QuadConsumer<String, TableIdentifier, MetricsReport, Instant>
-        mockConsumer = mock(DefaultMetricsReporter.QuadConsumer.class);
+    DefaultMetricsReporter.ReportConsumer mockConsumer =
+        mock(DefaultMetricsReporter.ReportConsumer.class);
     DefaultMetricsReporter reporter = new DefaultMetricsReporter(mockConsumer);
     String warehouse = "testWarehouse";
+    long catalogId = 12345L;
     TableIdentifier table = TableIdentifier.of("testNamespace", "testTable");
+    long tableId = 67890L;
     MetricsReport metricsReport = mock(MetricsReport.class);
     Instant receivedTimestamp = Instant.ofEpochMilli(1234567890L);
 
-    reporter.reportMetric(warehouse, table, metricsReport, receivedTimestamp);
+    reporter.reportMetric(warehouse, catalogId, table, tableId, metricsReport, receivedTimestamp);
 
-    verify(mockConsumer).accept(warehouse, table, metricsReport, receivedTimestamp);
+    verify(mockConsumer)
+        .accept(warehouse, catalogId, table, tableId, metricsReport, receivedTimestamp);
   }
 }

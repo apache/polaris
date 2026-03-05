@@ -46,17 +46,20 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
 - Added `priorityClassName` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
-- Added support for including OpenTelemetry trace IDs in AWS STS session tags. This requires session tags to be enabled via `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and can be toggled with `INCLUDE_TRACE_ID_IN_SESSION_TAGS` (default: false). Note: enabling trace IDs disables credential caching (each request has a unique trace ID), which may increase STS calls and latency.
+- Added per-field selection for AWS STS session tags in credential vending. The new `SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` configuration accepts a comma-separated list of fields to include as session tags (supported: `realm`, `catalog`, `namespace`, `table`, `principal`, `roles`, `trace_id`). This replaces the previous `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and `INCLUDE_TRACE_ID_IN_SESSION_TAGS` boolean flags. Selecting only the fields needed helps avoid AWS STS packed policy size limit errors (2048 characters) caused by long namespace paths. Note: including `trace_id` disables credential caching, which may increase STS calls and latency.
 - Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart.
 - Added `hierarchical` flag to `AzureStorageConfigInfo` to allow more precise SAS token down-scoping in ADLS when
   the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
   feature is enabled in Azure.
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
+- Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
+- Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
 
 ### Changes
 

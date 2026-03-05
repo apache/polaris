@@ -18,6 +18,7 @@
 #
 
 # This file contains the globally banned dependencies.
+
 # Each banned dependency must be in the form
 #   <group-id> ':' <module>
 # or
@@ -26,3 +27,13 @@
 
 # Contains old javax.* annotations that we do not want
 com.google.code.findbugs:jsr305
+javax.annotation:javax.annotation-api
+javax.servlet.jsp:jsp-api
+# Cannot globally ban javax.servlet:javax.servlet-api, because it is needed by Spark 3.5 integration tests
+javax.validation:validation-api
+javax.ws.rs:jsr311-api
+
+
+# See https://github.com/RoaringBitmap/RoaringBitmap/issues/749, should only use org.roaringbitmap:RoaringBitmap
+com.github.RoaringBitmap.RoaringBitmap
+org.roaringbitmap:roaringbitmap

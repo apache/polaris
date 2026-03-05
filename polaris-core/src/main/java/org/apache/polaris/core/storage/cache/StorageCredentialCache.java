@@ -25,6 +25,7 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -127,19 +128,20 @@ public class StorageCredentialCache {
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    List<String> sessionTagFields =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags = !sessionTagFields.isEmpty();
 
     // When session tags are enabled, the cache key needs to include:
     // 1. The credential vending context to avoid returning cached credentials with different
-    //    session tags (catalog/namespace/table/roles/traceId)
+    //    session tags (realm/catalog/namespace/table/roles/traceId)
     // 2. The principal, because the polaris:principal session tag is included in AWS credentials
     //    and we must not serve credentials tagged for principal A to principal B
     // When session tags are disabled, we only include principal if explicitly configured.
     //
     // Note: The trace ID is controlled at the source (StorageAccessConfigProvider). When
-    // INCLUDE_TRACE_ID_IN_SESSION_TAGS is disabled, the context's traceId is left empty,
-    // which allows efficient caching across requests with different trace IDs.
+    // "trace_id" is not in SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL, the context's traceId is left
+    // empty, which allows efficient caching across requests with different trace IDs.
     boolean includePrincipalInCacheKey =
         includePrincipalNameInSubscopedCredential || includeSessionTags;
     // When session tags are disabled, use empty context to ensure consistent cache key behavior

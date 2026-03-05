@@ -57,10 +57,17 @@ jobs:
             -x :polaris-admin:test \
             -x intTest \
             --continue
+      - name: Verify configuration reference is up to date
+        run: |
+          ./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
+          if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/; then
+            echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
+            exit 1
+          fi
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -89,7 +96,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -114,7 +121,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -139,7 +146,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -170,7 +177,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -404,6 +411,17 @@ jobs:
       - regtest
       - markdown-link-check
       - site
+    # Always run this job, even if a "needed" job fails. Without this one, GitHub will not run
+    # this job and that yields "Success" to the branch protection rule, which is wrong.
+    # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
+    # We consider `success` and `skipped` as "ok", `failure` and `cancelled` as "not ok".
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
-      - run: echo "All checks passed"
+      - run: |
+          if [[ "${{ join(needs.*.result, ',') }}" =~ .*(failure|cancelled).* ]]; then
+            echo "At least one check failed"
+            exit 1
+          else
+            echo "All checks passed"
+          fi

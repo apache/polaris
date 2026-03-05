@@ -21,25 +21,32 @@ under the License.
 {{ $releasesRootBy := $s.Pages.ByParam "all_releases_root" -}}
 {{ $activeReleasePages := slice -}}
 {{ $eolReleasePages := slice -}}
+{{ $unreleasedPage := false -}}
+
+{{/* Find the "In Development" / unreleased page */}}
+{{ $inDevPage := $s.GetPage "/in-dev/unreleased" -}}
+{{ if $inDevPage -}}
+  {{ $unreleasedPage = $inDevPage -}}
+{{ end -}}
 
 {{ with $releasesRootBy -}}
   {{ $releasesRootPage := index . 0 -}}
   {{ if eq $releasesRootPage.Params.all_releases_root true }}
-    {{ $sortedVersions := partial "versions-sorted.html" (dict "site" $s "onlyActive" false) -}}
     {{ $activeReleases := $s.Params.active_releases }}
 
-    {{ $pagesByVersion := $releasesRootPage.Pages.GroupByParam "release_version" -}}
-    {{ range $sortedVersions -}}
-      {{ $version := . -}}
-      {{ $versionPages := where $pagesByVersion "Key" $version -}}
-      {{ $versionPage := index ((index $versionPages 0).Pages) 0 }}
-      {{ if in $activeReleases $version -}}
-        {{ $activeReleasePages = $activeReleasePages | append $versionPage }}
-      {{ else -}}
-        {{ $eolReleasePages = $eolReleasePages | append $versionPage }}
+    {{/* Iterate over release pages sorted by weight descending (higher weight = more recent) */}}
+    {{ range $releasesRootPage.Pages.ByWeight.Reverse -}}
+      {{ $versionPage := . -}}
+      {{ $version := $versionPage.Params.release_version -}}
+      {{ if $version -}}
+        {{ if in $activeReleases $version -}}
+          {{ $activeReleasePages = $activeReleasePages | append $versionPage }}
+        {{ else -}}
+          {{ $eolReleasePages = $eolReleasePages | append $versionPage }}
+        {{ end -}}
       {{ end -}}
     {{ end -}}
   {{ end -}}
 {{ end -}}
 
-{{ return (dict "active" $activeReleasePages "eol" $eolReleasePages) }}
+{{ return (dict "unreleased" $unreleasedPage "active" $activeReleasePages "eol" $eolReleasePages) }}

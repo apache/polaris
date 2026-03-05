@@ -21,6 +21,8 @@ package org.apache.polaris.service.catalog.iceberg;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -63,7 +65,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
@@ -222,27 +223,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
     diagnostics().checkNotNull(catalogEntity, "No catalog available");
     return catalogEntity;
-  }
-
-  /**
-   * TODO: Make the helper in org.apache.iceberg.rest.CatalogHandlers public instead of needing to
-   * copy/paste here.
-   */
-  public static boolean isCreate(UpdateTableRequest request) {
-    boolean isCreate =
-        request.requirements().stream()
-            .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
-
-    if (isCreate) {
-      List<UpdateRequirement> invalidRequirements =
-          request.requirements().stream()
-              .filter(req -> !(req instanceof UpdateRequirement.AssertTableDoesNotExist))
-              .collect(Collectors.toList());
-      Preconditions.checkArgument(
-          invalidRequirements.isEmpty(), "Invalid create requirements: %s", invalidRequirements);
-    }
-
-    return isCreate;
   }
 
   private boolean shouldDecodeToken() {
@@ -478,7 +458,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(tableIdentifier)) {
-      throw new AlreadyExistsException("Table already exists: %s", tableIdentifier);
+      throw alreadyExistsExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     Map<String, String> properties = Maps.newHashMap();
@@ -508,7 +489,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
@@ -519,7 +501,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(ident)) {
-      throw new AlreadyExistsException("Table already exists: %s", ident);
+      throw alreadyExistsExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     Map<String, String> properties = Maps.newHashMap();
@@ -669,7 +651,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
-    metricsReporter().reportMetric(catalogName(), identifier, request.report(), clock().instant());
+    // Get catalog and table IDs from resolved entities (already resolved during authorization)
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    long catalogId = catalogEntity.getId();
+
+    // Get the table ID from the resolved path
+    PolarisResolvedPathWrapper resolvedTable = resolutionManifest.getResolvedPath(identifier);
+    PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
+    long tableId = tableEntity.getId();
+
+    metricsReporter()
+        .reportMetric(
+            catalogName(), catalogId, identifier, tableId, request.report(), clock().instant());
   }
 
   /**
@@ -828,7 +821,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
@@ -1059,7 +1053,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 throw new IllegalStateException(
                     "Cannot wrap catalog that does not produce BaseTable");
               }
-              if (isCreate(change)) {
+              if (CatalogHandlerUtils.isCreate(change)) {
                 throw new BadRequestException(
                     "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
                     change);
@@ -1088,8 +1082,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",
-                                change.identifier(),
-                                ((MetadataUpdate.SetLocation) singleUpdate).location());
+                                change.identifier(), setLocation.location());
                           }
                         }
 

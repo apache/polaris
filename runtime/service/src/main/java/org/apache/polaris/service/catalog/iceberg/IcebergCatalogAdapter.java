@@ -472,7 +472,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          if (IcebergCatalogHandler.isCreate(revisedRequest)) {
+          if (CatalogHandlerUtils.isCreate(revisedRequest)) {
             return Response.ok(catalog.updateTableForStagedCreate(tableIdentifier, revisedRequest))
                 .build();
           } else {

@@ -63,7 +63,7 @@ runs:
           echo "::endgroup::"
         fi
     - name: Archive code-checks incremental
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       with:
         name: ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}

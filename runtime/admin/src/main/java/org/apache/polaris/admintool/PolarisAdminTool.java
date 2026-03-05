@@ -17,6 +17,7 @@ package org.apache.polaris.admintool;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 import java.io.PrintWriter;
+import org.apache.polaris.admintool.nosql.NoSqlCommand;
 import org.apache.polaris.version.PolarisVersionProvider;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
@@ -31,8 +32,9 @@ import picocli.CommandLine.HelpCommand;
       HelpCommand.class,
       BootstrapCommand.class,
       PurgeCommand.class,
+      NoSqlCommand.class,
     })
-public class PolarisAdminTool extends BaseMetaStoreCommand {
+public class PolarisAdminTool extends BaseCommand {
 
   @Override
   public Integer call() {

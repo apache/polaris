@@ -93,11 +93,6 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
           paramLabel = "<schema version>",
           description = "The version of the schema to load in [1, 2, 3, LATEST].")
       Integer schemaVersion;
-
-      @CommandLine.Option(
-          names = {"--include-metrics"},
-          description = "Include metrics schema tables during bootstrap.")
-      boolean includeMetrics;
     }
   }
 
@@ -139,10 +134,6 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
 
         if (inputOptions.schemaInputOptions.schemaVersion != null) {
           builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
-        }
-
-        if (inputOptions.schemaInputOptions.includeMetrics) {
-          builder.includeMetrics(true);
         }
 
         schemaOptions = builder.build();

@@ -27,6 +27,10 @@ metadata:
     {{- if .Values.podLabels }}
     {{- tpl (toYaml .Values.podLabels) . | nindent 4 }}
     {{- end }}
+  {{- if .Values.deploymentAnnotations }}
+  annotations:
+    {{- tpl (toYaml .Values.deploymentAnnotations) . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}

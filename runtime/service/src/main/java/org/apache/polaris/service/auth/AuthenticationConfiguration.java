@@ -24,6 +24,7 @@ import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.docs.ConfigDocs;
 
 @ConfigMapping(prefix = "polaris.authentication")
 public interface AuthenticationConfiguration {
@@ -33,6 +34,7 @@ public interface AuthenticationConfiguration {
   @WithParentName
   @WithUnnamedKey(DEFAULT_REALM_KEY)
   @WithDefaults
+  @ConfigDocs.ConfigPropertyName("realm")
   Map<String, AuthenticationRealmConfiguration> realms();
 
   default AuthenticationRealmConfiguration forRealm(RealmContext realmContext) {
