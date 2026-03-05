@@ -144,6 +144,7 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
           .readText()
           .split("\n${LicenseFileValidation.SEPARATOR}\n")
           .map { it.trim() }
+          .drop(1)
           .filter { it.isNotBlank() }
       }
       .distinct()
