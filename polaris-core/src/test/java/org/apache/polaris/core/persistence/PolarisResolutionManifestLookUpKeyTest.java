@@ -32,6 +32,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -39,7 +40,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class PolarisResolutionManifestLookUpKeyTest {
+public class PolarisResolutionManifestLookupKeyTest {
 
   @Test
   void pathKeyLookupResolvesRegisteredPath() {
@@ -67,11 +68,8 @@ public class PolarisResolutionManifestLookUpKeyTest {
     manifest.addPath(tablePath);
     manifest.resolveAll();
 
-    assertThat(
-            manifest
-                .getResolvedPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE, false)
-                .getResolvedFullPath())
-        .containsExactly(referenceCatalog, resolvedLeaf);
+    var byKey = manifest.getResolvedPath(ResolvedPathKey.of(tablePath), false);
+    assertThat(byKey.getResolvedFullPath()).containsExactly(referenceCatalog, resolvedLeaf);
   }
 
   @Test
@@ -98,9 +96,10 @@ public class PolarisResolutionManifestLookUpKeyTest {
     assertThatThrownBy(
             () ->
                 manifest.getResolvedPath(
-                    List.of("does_not_exist"), PolarisEntityType.NAMESPACE, false))
+                    ResolvedPathKey.of(List.of("does_not_exist"), PolarisEntityType.NAMESPACE),
+                    false))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("never_registered_standardized_key_for_resolved_path");
+        .hasMessageContaining("never_registered_key_for_resolved_path");
   }
 
   @Test
@@ -112,12 +111,9 @@ public class PolarisResolutionManifestLookUpKeyTest {
     when(resolver.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
     when(resolver.getIsPassthroughFacade()).thenReturn(false);
 
-    ResolvedPolarisEntity referenceCatalog = Mockito.mock(ResolvedPolarisEntity.class);
     ResolvedPolarisEntity resolvedLeaf = Mockito.mock(ResolvedPolarisEntity.class);
-    when(resolver.getResolvedReferenceCatalog()).thenReturn(referenceCatalog);
-    // First registration resolves to a partial path and is non-optional (returns non-null).
-    // Second registration for the same canonical path resolves to a partial path but is optional
-    // (returns null). Last-write-wins on canonical key should therefore return null.
+    when(resolver.getResolvedReferenceCatalog())
+        .thenReturn(Mockito.mock(ResolvedPolarisEntity.class));
     when(resolver.getResolvedPaths())
         .thenReturn(List.of(List.of(resolvedLeaf), List.of(resolvedLeaf)));
 
@@ -138,8 +134,6 @@ public class PolarisResolutionManifestLookUpKeyTest {
     manifest.addPath(optionalPath);
     manifest.resolveAll();
 
-    assertThat(
-            manifest.getResolvedPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE, false))
-        .isNull();
+    assertThat(manifest.getResolvedPath(ResolvedPathKey.of(optionalPath), false)).isNull();
   }
 }

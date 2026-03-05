@@ -42,6 +42,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -131,8 +132,7 @@ public abstract class CatalogHandler {
 
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -164,8 +164,7 @@ public abstract class CatalogHandler {
             Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */));
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE, true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(parentNamespace), true);
     if (target == null) {
       throw noSuchNamespaceException(parentNamespace);
     }
@@ -201,8 +200,7 @@ public abstract class CatalogHandler {
             true /* optional */));
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
       throw noSuchNamespaceException(namespace);
     }
@@ -247,11 +245,7 @@ public abstract class CatalogHandler {
       TableIdentifier identifier) {
     ensureResolutionManifestForTable(identifier);
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            subType,
-            true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
     if (target == null) {
       throw notFoundExceptionForTableLikeEntity(identifier, subType);
     }
@@ -298,10 +292,7 @@ public abstract class CatalogHandler {
                 identifier ->
                     Optional.ofNullable(
                             resolutionManifest.getResolvedPath(
-                                PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                                PolarisEntityType.TABLE_LIKE,
-                                subType,
-                                true))
+                                ResolvedPathKey.ofTableLike(identifier), subType, true))
                         .orElseThrow(
                             () -> notFoundExceptionForTableLikeEntity(identifier, subType)))
             .toList();
@@ -337,8 +328,7 @@ public abstract class CatalogHandler {
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {
       throw noSuchNamespaceException(dst.namespace());
-    } else if (resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE, subType)
+    } else if (resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(src), subType)
         == null) {
       throw notFoundExceptionForTableLikeEntity(dst, subType);
     }
@@ -351,8 +341,7 @@ public abstract class CatalogHandler {
     // TODO: Possibly modify the exception thrown depending on whether the caller has privileges
     // on the parent namespace.
     PolarisEntitySubType dstLeafSubType =
-        resolutionManifest.getLeafSubType(
-            PolarisCatalogHelpers.tableIdentifierToList(dst), PolarisEntityType.TABLE_LIKE);
+        resolutionManifest.getLeafSubType(ResolvedPathKey.ofTableLike(dst));
 
     switch (dstLeafSubType) {
       case ICEBERG_TABLE:
@@ -367,14 +356,9 @@ public abstract class CatalogHandler {
     }
 
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.tableIdentifierToList(src),
-            PolarisEntityType.TABLE_LIKE,
-            subType,
-            true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(src), subType, true);
     PolarisResolvedPathWrapper secondary =
-        resolutionManifest.getResolvedPath(
-            Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE, true);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(dst.namespace()), true);
     authorizer()
         .authorizeOrThrow(
             polarisPrincipal(),

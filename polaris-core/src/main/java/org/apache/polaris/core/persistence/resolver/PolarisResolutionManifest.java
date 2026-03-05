@@ -57,15 +57,13 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
 
-  private final Map<ResolverPathKey, Integer> pathLookup = new HashMap<>();
+  private final Map<ResolvedPathKey, Integer> pathLookup = new HashMap<>();
   private final List<ResolverPath> addedPaths = new ArrayList<>();
   private final Multimap<String, PolarisEntityType> addedTopLevelNames = HashMultimap.create();
 
-  private final Map<ResolverPathKey, ResolverPath> passthroughPaths = new HashMap<>();
+  private final Map<ResolvedPathKey, ResolverPath> passthroughPaths = new HashMap<>();
 
   private int currentPathIndex = 0;
-
-  private record ResolverPathKey(List<String> entityNames, PolarisEntityType entityType) {}
 
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
@@ -119,24 +117,19 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     primaryResolver.addPath(path);
     // Preserve prior manifest lookup behavior: re-registering the same lookup key overwrites the
     // previous mapping (last-write-wins).
-    pathLookup.put(resolverPathKey(path), currentPathIndex);
+    pathLookup.put(resolvedPathKey(path), currentPathIndex);
     addedPaths.add(path);
     ++currentPathIndex;
   }
 
-  private static ResolverPathKey resolverPathKey(ResolverPath path) {
-    return new ResolverPathKey(List.copyOf(path.entityNames()), path.lastEntityType());
-  }
-
-  private static ResolverPathKey resolverPathKey(
-      List<String> entityNames, PolarisEntityType entityType) {
-    return new ResolverPathKey(List.copyOf(entityNames), entityType);
+  private static ResolvedPathKey resolvedPathKey(ResolverPath path) {
+    return ResolvedPathKey.of(path);
   }
 
   /** Adds a passthrough path using canonical registration semantics only. */
   public void addPassthroughPath(ResolverPath path) {
     addPath(path);
-    passthroughPaths.put(resolverPathKey(path), path);
+    passthroughPaths.put(resolvedPathKey(path), path);
   }
 
   public ResolverStatus resolveAll() {
@@ -177,27 +170,24 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType) {
-    return getResolvedPath(entityNames, entityType, false);
+  public PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key) {
+    return getResolvedPath(key, false);
   }
 
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    return getResolvedPath(entityNames, entityType, subType, false);
+      ResolvedPathKey key, PolarisEntitySubType subType) {
+    return getResolvedPath(key, subType, false);
   }
 
   @Override
-  public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType) {
-    ResolverPath requestedPath = passthroughPaths.get(resolverPathKey(entityNames, entityType));
+  public PolarisResolvedPathWrapper getPassthroughResolvedPath(ResolvedPathKey key) {
+    ResolverPath requestedPath = passthroughPaths.get(key);
     diagnostics.check(
         requestedPath != null,
         "invalid_path_key_for_passthrough_resolved_path",
-        "entityNames={} entityType={} passthroughPaths={}",
-        entityNames,
-        entityType,
+        "key={} passthroughPaths={}",
+        key,
         passthroughPaths);
 
     // Run a single-use Resolver for this path.
@@ -235,8 +225,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(entityNames, entityType);
+      ResolvedPathKey key, PolarisEntitySubType subType) {
+    PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(key);
     if (resolvedPath == null) {
       return null;
     }
@@ -311,15 +301,12 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
   }
 
-  public PolarisEntitySubType getLeafSubType(
-      List<String> entityNames, PolarisEntityType entityType) {
-    ResolverPathKey key = resolverPathKey(entityNames, entityType);
+  public PolarisEntitySubType getLeafSubType(ResolvedPathKey key) {
     diagnostics.check(
         pathLookup.containsKey(key),
-        "never_registered_standardized_key_for_resolved_path",
-        "entityNames={} entityType={} pathLookup={}",
-        entityNames,
-        entityType,
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
         pathLookup);
     int index = pathLookup.get(key);
     List<ResolvedPolarisEntity> resolved = primaryResolver.getResolvedPaths().get(index);
@@ -329,27 +316,21 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return resolved.get(resolved.size() - 1).getEntity().getSubType();
   }
 
-  /** Resolves a registered path using the standardized key shape: (entityNames, entityType). */
+  /** Resolves a registered path using a canonical lookup key. */
   public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType, boolean prependRootContainer) {
-    ResolverPathKey key = resolverPathKey(entityNames, entityType);
+      ResolvedPathKey key, boolean prependRootContainer) {
     diagnostics.check(
         pathLookup.containsKey(key),
-        "never_registered_standardized_key_for_resolved_path",
-        "entityNames={} entityType={} pathLookup={}",
-        entityNames,
-        entityType,
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
         pathLookup);
     return getResolvedPathByIndex(pathLookup.get(key), prependRootContainer);
   }
 
   public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames,
-      PolarisEntityType entityType,
-      PolarisEntitySubType subType,
-      boolean prependRootContainer) {
-    PolarisResolvedPathWrapper resolvedPath =
-        getResolvedPath(entityNames, entityType, prependRootContainer);
+      ResolvedPathKey key, PolarisEntitySubType subType, boolean prependRootContainer) {
+    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
     if (resolvedPath == null) {
       return null;
     }

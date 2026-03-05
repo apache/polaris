@@ -34,6 +34,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
@@ -147,9 +148,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
-            PolarisEntityType.POLICY,
-            true);
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()), true);
     if (target == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
@@ -241,8 +240,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisResolvedPathWrapper policyWrapper =
         resolutionManifest.getPassthroughResolvedPath(
-            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
-            PolarisEntityType.POLICY,
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()),
             PolarisEntitySubType.NULL_SUBTYPE);
     if (policyWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));

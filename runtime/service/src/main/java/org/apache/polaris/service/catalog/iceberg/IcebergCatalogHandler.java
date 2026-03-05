@@ -89,7 +89,6 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
-import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -106,6 +105,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -327,8 +327,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           reservedProperties()
               .removeReservedProperties(
                   resolutionManifest
-                      .getPassthroughResolvedPath(
-                          Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE)
+                      .getPassthroughResolvedPath(ResolvedPathKey.ofNamespace(namespace))
                       .getRawLeafEntity()
                       .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
@@ -659,8 +658,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Get the table ID from the resolved path
     PolarisResolvedPathWrapper resolvedTable =
-        resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
     PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
     long tableId = tableEntity.getId();
 
@@ -677,9 +675,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(
-            PolarisCatalogHelpers.tableIdentifierToList(tableIdentifier),
-            PolarisEntityType.TABLE_LIKE);
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier));
     PolarisEntity rawLeafEntity = target.getRawLeafEntity();
     if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(rawLeafEntity);

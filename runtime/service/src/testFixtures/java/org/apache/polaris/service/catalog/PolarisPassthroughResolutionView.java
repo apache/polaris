@@ -18,14 +18,13 @@
  */
 package org.apache.polaris.service.catalog;
 
-import java.util.List;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 
 /**
@@ -61,36 +60,34 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   }
 
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType) {
+  public PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key) {
     PolarisResolutionManifest manifest = newResolutionManifest();
-    manifest.addPath(new ResolverPath(entityNames, entityType));
+    manifest.addPath(new ResolverPath(key.entityNames(), key.entityType()));
     manifest.resolveAll();
-    return manifest.getResolvedPath(entityNames, entityType);
+    return manifest.getResolvedPath(key);
   }
 
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType) {
+      ResolvedPathKey key, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest = newResolutionManifest();
-    manifest.addPath(new ResolverPath(entityNames, entityType));
+    manifest.addPath(new ResolverPath(key.entityNames(), key.entityType()));
     manifest.resolveAll();
-    return manifest.getResolvedPath(entityNames, entityType, subType);
+    return manifest.getResolvedPath(key, subType);
+  }
+
+  @Override
+  public PolarisResolvedPathWrapper getPassthroughResolvedPath(ResolvedPathKey key) {
+    PolarisResolutionManifest manifest = newResolutionManifest();
+    manifest.addPassthroughPath(new ResolverPath(key.entityNames(), key.entityType()));
+    return manifest.getPassthroughResolvedPath(key);
   }
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType) {
+      ResolvedPathKey key, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest = newResolutionManifest();
-    manifest.addPassthroughPath(new ResolverPath(entityNames, entityType));
-    return manifest.getPassthroughResolvedPath(entityNames, entityType);
-  }
-
-  @Override
-  public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      List<String> entityNames, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    PolarisResolutionManifest manifest = newResolutionManifest();
-    manifest.addPassthroughPath(new ResolverPath(entityNames, entityType));
-    return manifest.getPassthroughResolvedPath(entityNames, entityType, subType);
+    manifest.addPassthroughPath(new ResolverPath(key.entityNames(), key.entityType()));
+    return manifest.getPassthroughResolvedPath(key, subType);
   }
 }
