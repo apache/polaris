@@ -173,6 +173,10 @@
                         "type": "string"
                     }
                 },
+                "enabled": {
+                    "description": "Specifies whether the CORS filter should be enabled. See [CORS](https://quarkus.io/guides/http-reference#cors-filter) for details.",
+                    "type": "boolean"
+                },
                 "exposedHeaders": {
                     "description": "HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list.",
                     "type": "array",
