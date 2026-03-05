@@ -19,9 +19,8 @@
 
 package org.apache.polaris.service.catalog.common;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,6 +31,7 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -100,7 +100,12 @@ public class CatalogUtils {
             });
   }
 
+  /** Decode the namespace as extracted by the REST layer from the request URI path parameter. */
   public static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, UTF_8));
+    // Need to encode the namespace because RESTUtil expects the namespace to be URL encoded,
+    // but the REST layer has already decoded it.
+    String encodedNamespace = URLEncoder.encode(namespace, StandardCharsets.UTF_8);
+    return RESTUtil.decodeNamespace(
+        encodedNamespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
   }
 }

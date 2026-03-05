@@ -30,6 +30,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -50,7 +51,8 @@ public class GenericTableApi extends PolarisRestApi {
   }
 
   public List<TableIdentifier> listGenericTables(String catalog, Namespace namespace) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns =
+        RESTUtil.encodeNamespace(namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request("polaris/v1/{cat}/namespaces/{ns}/generic-tables", Map.of("cat", catalog, "ns", ns))
             .get()) {
@@ -60,7 +62,9 @@ public class GenericTableApi extends PolarisRestApi {
   }
 
   public void dropGenericTable(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
@@ -71,7 +75,9 @@ public class GenericTableApi extends PolarisRestApi {
   }
 
   public GenericTable getGenericTable(String catalog, TableIdentifier id) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
@@ -83,7 +89,9 @@ public class GenericTableApi extends PolarisRestApi {
 
   public GenericTable createGenericTable(
       String catalog, TableIdentifier id, String format, Map<String, String> properties) {
-    String ns = RESTUtil.encodeNamespace(id.namespace());
+    String ns =
+        RESTUtil.encodeNamespace(
+            id.namespace(), NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
