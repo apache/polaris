@@ -247,8 +247,8 @@ components:
         storage-access-configs:
           type: array
           description: |
-            Storage configurations required to access the table, including credentials and other configurations needed to 
-            access the storage, such as client region for S3.
+            Storage configurations required to access the table, encompassing both credentials and other necessary 
+            settings for storage access, such as the client region for S3.
           items:
             $ref: '#/components/schemas/StorageAccessConfig'
 
