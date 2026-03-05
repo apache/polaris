@@ -20,7 +20,14 @@
 # This file creates the /releases/latest/ redirect to the current latest stable release.
 # Update the 'redirect_to' parameter below when publishing a new release.
 title: 'Latest Release'
+linkTitle: 'Latest'
 layout: 'redirect'
 params:
   redirect_to: '/releases/1.3.0/'
+menus:
+  main:
+    parent: doc
+    weight: -999997 # 3rd item in the menu
+    identifier: doc-latest
+    name: Latest
 ---
