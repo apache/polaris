@@ -51,7 +51,6 @@ import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.apache.ranger.authz.model.RangerUserInfo;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   private static final String OPERATION_NOT_ALLOWED_FOR_USER_ERROR =
       "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE";
-  private static final String ROOT_PRINCIPLE_NEEDED_ERROR =
+  private static final String ROOT_PRINCIPAL_NEEDED_ERROR =
       "Principal '%s' is not authorized for op %s as only root principal can perform this operation";
   private static final String RANGER_AUTH_FAILED_ERROR =
       "Principal '%s' is not authorized for op '%s'";
@@ -74,16 +73,18 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private static final Set<PolarisAuthorizableOperation> AUTHORIZED_OPERATIONS =
       initAuthorizedOperations();
 
-  private final RealmConfig realmConfig;
   private final RangerAuthorizer authorizer;
   private final String serviceName;
+  private final boolean enforceCredentialRotationRequiredState;
 
   public RangerPolarisAuthorizer(RangerPolarisAuthorizerConfig config, RealmConfig realmConfig) {
     LOG.info("Initializing RangerPolarisAuthorizer");
 
     Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
 
-    this.realmConfig = realmConfig;
+    this.enforceCredentialRotationRequiredState =
+        realmConfig.getConfig(
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     this.authorizer = new RangerEmbeddedAuthorizer(rangerProp);
     this.serviceName = rangerProp.getProperty(SERVICE_NAME_PROPERTY);
 
@@ -99,14 +100,14 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
         "resolveAuthorizationInputs is not implemented yet for RangerPolarisAuthorizer");
   }
 
   @Override
-  public @NonNull AuthorizationDecision authorize(
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+  public @Nonnull AuthorizationDecision authorize(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     throw new UnsupportedOperationException(
         "authorize is not implemented yet for RangerPolarisAuthorizer");
   }
@@ -134,26 +135,22 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     try {
-      if (authzOp == PolarisAuthorizableOperation.ROTATE_CREDENTIALS) {
-        boolean enforceCredentialRotationRequiredState =
-            realmConfig.getConfig(
-                FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+      if (enforceCredentialRotationRequiredState
+          && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
+          && polarisPrincipal
+              .getProperties()
+              .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
+        throw new ForbiddenException(
+            OPERATION_NOT_ALLOWED_FOR_USER_ERROR, polarisPrincipal.getName(), authzOp.name());
+      }
 
-        if (enforceCredentialRotationRequiredState
-            && !polarisPrincipal
-                .getProperties()
-                .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
-          // TODO: enable ranger audit from here to ensure that the request denied captured.
-          throw new ForbiddenException(
-              OPERATION_NOT_ALLOWED_FOR_USER_ERROR, polarisPrincipal.getName(), authzOp.name());
-        }
-      } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+      if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
         boolean isRootPrincipal = getRootPrincipalName().equals(polarisPrincipal.getName());
 
         if (!isRootPrincipal) {
           // TODO: enable ranger audit from here to ensure that the request denied captured.
           throw new ForbiddenException(
-              ROOT_PRINCIPLE_NEEDED_ERROR, polarisPrincipal.getName(), authzOp.name());
+              ROOT_PRINCIPAL_NEEDED_ERROR, polarisPrincipal.getName(), authzOp.name());
         }
       } else if (!AUTHORIZED_OPERATIONS.contains(authzOp)) {
         throw new ForbiddenException(RANGER_UNSUPPORTED_OPERATION, authzOp.name());

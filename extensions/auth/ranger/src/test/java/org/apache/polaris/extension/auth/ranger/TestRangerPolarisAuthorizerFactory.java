@@ -30,6 +30,9 @@ public class TestRangerPolarisAuthorizerFactory {
   public void testAuthorizerInstantiation() {
     RangerPolarisAuthorizerFactory factory =
         new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
+
+    factory.initialize();
+
     RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
 
     assertNotNull(authorizer);

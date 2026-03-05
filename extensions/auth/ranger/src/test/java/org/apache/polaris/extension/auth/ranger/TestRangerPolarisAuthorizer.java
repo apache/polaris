@@ -22,23 +22,30 @@ package org.apache.polaris.extension.auth.ranger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -52,21 +59,13 @@ public class TestRangerPolarisAuthorizer {
   private static final String RESOURCE_TYPE_NAME_SEP = ":";
   private static final String RESOURCE_ELEMENTS_SEP = "/";
 
-  private final Gson gsonBuilder;
   private final PolarisAuthorizer authorizer;
 
-  public TestRangerPolarisAuthorizer() throws Exception {
-    gsonBuilder =
-        new GsonBuilder()
-            .setDateFormat("yyyyMMdd-HH:mm:ss.SSSZ")
-            .setPrettyPrinting()
-            .registerTypeAdapter(PolarisPrincipal.class, new PolarisPrincipalDeserializer())
-            .registerTypeAdapter(
-                PolarisResolvedPathWrapper.class, new PolarisResolvedPathWrapperDeserializer())
-            .create();
-
+  public TestRangerPolarisAuthorizer() {
     RangerPolarisAuthorizerFactory factory =
         new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
+
+    factory.initialize();
 
     authorizer = factory.create(createRealmConfig());
 
@@ -74,74 +73,79 @@ public class TestRangerPolarisAuthorizer {
   }
 
   @Test
-  public void testAuthzRoot() {
+  public void testAuthzRoot() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_root.json");
   }
 
   @Test
-  public void testAuthzCatalog() {
+  public void testAuthzCatalog() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_catalog.json");
   }
 
   @Test
-  public void testAuthzPrincipal() {
+  public void testAuthzPrincipal() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_principal.json");
   }
 
   @Test
-  public void testAuthzNamespace() {
+  public void testAuthzNamespace() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_namespace.json");
   }
 
   @Test
-  public void testAuthzTable() {
+  public void testAuthzTable() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_table.json");
   }
 
   @Test
-  public void testAuthzPolicy() {
+  public void testAuthzPolicy() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_policy.json");
   }
 
   @Test
-  public void testAuthzUnsupported() {
+  public void testAuthzUnsupported() throws Exception {
     runTests(authorizer, "/authz_tests/tests_authz_unsupported.json");
   }
 
-  private void runTests(PolarisAuthorizer authorizer, String testFilename) {
+  private void runTests(PolarisAuthorizer authorizer, String testFilename) throws Exception {
     InputStream inStream = this.getClass().getResourceAsStream(testFilename);
     InputStreamReader reader = new InputStreamReader(inStream, UTF_8);
-
-    TestSuite testSuite = gsonBuilder.fromJson(reader, TestSuite.class);
+    TestSuite testSuite = getMapper().readValue(reader, TestSuite.class);
 
     for (TestData test : testSuite.tests) {
-      try {
-        authorizer.authorizeOrThrow(
-            test.request.principal,
-            Collections.emptySet(),
-            test.request.authzOp,
-            test.request.target,
-            test.request.secondary);
-
-        assertEquals(
-            test.result.isAllowed,
-            Boolean.TRUE,
+      if (test.result.isAllowed) {
+        try {
+          authorizer.authorizeOrThrow(
+              test.request.principal,
+              Collections.emptySet(),
+              test.request.authzOp,
+              test.request.target,
+              test.request.secondary);
+        } catch (ForbiddenException excp) {
+          fail(
+              test.request.principal
+                  + " should be allowed to perform "
+                  + test.request.authzOp
+                  + " on (target: "
+                  + test.request.target
+                  + ", secondary: "
+                  + test.request.secondary
+                  + ")",
+              excp);
+        }
+      } else {
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                authorizer.authorizeOrThrow(
+                    test.request.principal,
+                    Collections.emptySet(),
+                    test.request.authzOp,
+                    test.request.target,
+                    test.request.secondary),
             () ->
                 test.request.principal
-                    + " performed "
-                    + test.request.authzOp
-                    + " on (target: "
-                    + test.request.target
-                    + ", secondary: "
-                    + test.request.secondary
-                    + ")");
-      } catch (Throwable t) {
-        assertEquals(
-            test.result.isAllowed,
-            Boolean.FALSE,
-            () ->
-                test.request.principal
-                    + " performed "
+                    + " should not be allowed to perform "
                     + test.request.authzOp
                     + " on (target: "
                     + test.request.target
@@ -152,39 +156,64 @@ public class TestRangerPolarisAuthorizer {
     }
   }
 
+  @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   private static class TestSuite {
-    List<TestData> tests;
+    public List<TestData> tests;
   }
 
+  @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   private static class TestData {
-    TestRequest request;
-    TestResult result;
+    public TestRequest request;
+    public TestResult result;
   }
 
+  @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   private static class TestRequest {
-    PolarisAuthorizableOperation authzOp;
-    PolarisPrincipal principal;
-    PolarisResolvedPathWrapper target;
-    PolarisResolvedPathWrapper secondary;
+    public PolarisAuthorizableOperation authzOp;
+    public PolarisPrincipal principal;
+    public PolarisResolvedPathWrapper target;
+    public PolarisResolvedPathWrapper secondary;
   }
 
+  @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   private static class TestResult {
-    Boolean isAllowed;
+    public Boolean isAllowed;
   }
 
-  static class PolarisPrincipalDeserializer implements JsonDeserializer<PolarisPrincipal> {
+  private ObjectMapper getMapper() {
+    ObjectMapper ret = new ObjectMapper();
+
+    SimpleModule serDeModule = new SimpleModule("testSerDe");
+
+    serDeModule.addDeserializer(PolarisPrincipal.class, new PolarisPrincipalDeserializer());
+    serDeModule.addDeserializer(
+        PolarisResolvedPathWrapper.class, new PolarisResolvedPathWrapperDeserializer());
+
+    ret.registerModule(serDeModule);
+
+    return ret;
+  }
+
+  static class PolarisPrincipalDeserializer extends JsonDeserializer<PolarisPrincipal> {
     @Override
-    public PolarisPrincipal deserialize(
-        JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
-        throws JsonParseException {
-      String name = jsonElement.getAsJsonObject().get("name").getAsString();
+    public PolarisPrincipal deserialize(JsonParser parser, DeserializationContext context)
+        throws IOException {
+      ObjectCodec codec = parser.getCodec();
+      TreeNode root = codec.readTree(parser);
+      JsonNode nameNode = root != null ? (JsonNode) root.get("name") : null;
+
+      String name = nameNode != null ? nameNode.asText() : null;
 
       return PolarisPrincipal.of(name, Collections.emptyMap(), Collections.emptySet());
     }
   }
 
   static class PolarisResolvedPathWrapperDeserializer
-      implements JsonDeserializer<PolarisResolvedPathWrapper> {
+      extends JsonDeserializer<PolarisResolvedPathWrapper> {
     private static final Map<String, PolarisEntityType[]> RESOURCE_PATHS = new HashMap<>();
 
     static {
@@ -235,10 +264,9 @@ public class TestRangerPolarisAuthorizer {
     }
 
     @Override
-    public PolarisResolvedPathWrapper deserialize(
-        JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext)
-        throws JsonParseException {
-      String target = jsonElement.getAsString();
+    public PolarisResolvedPathWrapper deserialize(JsonParser parser, DeserializationContext context)
+        throws IOException {
+      String target = parser.getValueAsString();
       String[] typeAndName = target.split(RESOURCE_TYPE_NAME_SEP, 2);
 
       if (typeAndName.length != 2) {
