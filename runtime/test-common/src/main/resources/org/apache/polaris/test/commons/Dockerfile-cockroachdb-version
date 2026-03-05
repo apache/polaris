@@ -1,4 +1,3 @@
----
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,15 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: smallrye-polaris_persistence_relational_jdbc
-build:
-  list: never
-  render: never
----
 
-| Property | Default Value | Type | Description |
-|----------|---------------|------|-------------|
-| `polaris.persistence.relational.jdbc.max-retries` |  | `int` |  |
-| `polaris.persistence.relational.jdbc.max-duration-in-ms` |  | `long` |  |
-| `polaris.persistence.relational.jdbc.initial-delay-in-ms` |  | `long` |  |
-| `polaris.persistence.relational.jdbc.database-type` |  | `string` |  |
+# Dockerfile to provide the image name and tag to a test.
+# Version is managed by Renovate - do not edit.
+FROM cockroachdb/cockroach:v24.3.0
