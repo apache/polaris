@@ -71,14 +71,13 @@ abstract class LicenseNoticeMerge @Inject constructor(objectFactory: ObjectFacto
       writer.write(noticeHeaderFile.get().asFile.readText())
       noticeBlocks.forEach { block ->
         writer.write("\n${LicenseFileValidation.SEPARATOR}\n\n")
-        println(block)
         writer.write("${block}\n\n")
       }
       writer.write("\n${LicenseFileValidation.SEPARATOR}\n")
     }
   }
 
-  class LicenseBlock(val header: String, val dependencies: List<String>, val suffix: String)
+  data class LicenseBlock(val header: String, val dependencies: List<String>, val suffix: String)
 
   private fun readLicenseBlocks(): Collection<LicenseBlock> {
     val errors = mutableListOf<String>()
