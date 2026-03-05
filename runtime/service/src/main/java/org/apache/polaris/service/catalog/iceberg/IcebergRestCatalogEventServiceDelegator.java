@@ -343,6 +343,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -366,6 +367,7 @@ public class IcebergRestCatalogEventServiceDelegator
             accessDelegationMode,
             ifNoneMatchString,
             snapshots,
+            referencedBy,
             realmContext,
             securityContext);
 
@@ -629,6 +631,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String namespace,
       String table,
       String planId,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -642,7 +645,8 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)));
     Response resp =
-        delegate.loadCredentials(prefix, namespace, table, planId, realmContext, securityContext);
+        delegate.loadCredentials(
+            prefix, namespace, table, planId, referencedBy, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_CREDENTIALS,
@@ -659,6 +663,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String view,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -671,7 +676,8 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.VIEW_NAME, view)));
-    Response resp = delegate.loadView(prefix, namespace, view, realmContext, securityContext);
+    Response resp =
+        delegate.loadView(prefix, namespace, view, referencedBy, realmContext, securityContext);
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_VIEW,

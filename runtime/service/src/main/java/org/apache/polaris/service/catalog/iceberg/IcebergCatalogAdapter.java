@@ -323,6 +323,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
@@ -522,6 +523,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String planId,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
@@ -548,6 +550,7 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String view,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);

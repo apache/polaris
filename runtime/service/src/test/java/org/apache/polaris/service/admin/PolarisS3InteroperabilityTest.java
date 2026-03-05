@@ -182,6 +182,7 @@ public class PolarisS3InteroperabilityTest {
                 null,
                 null,
                 "ALL",
+                null,
                 services.realmContext(),
                 services.securityContext())) {
       return response.readEntity(LoadTableResponse.class);
