@@ -117,6 +117,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   /** Adds a statically resolved path using canonical registration semantics only. */
   public void addPath(ResolverPath path) {
     primaryResolver.addPath(path);
+    // Preserve prior manifest lookup behavior: re-registering the same lookup key overwrites the
+    // previous mapping (last-write-wins).
     pathLookup.put(resolverPathKey(path), currentPathIndex);
     addedPaths.add(path);
     ++currentPathIndex;

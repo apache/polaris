@@ -67,10 +67,10 @@ public class PolarisResolutionManifestLookUpKeyTest {
     manifest.addPath(tablePath);
     manifest.resolveAll();
 
-    var byStandardizedKey =
-        manifest.getResolvedPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE, false);
-
-    assertThat(byStandardizedKey.getResolvedFullPath())
+    assertThat(
+            manifest
+                .getResolvedPath(List.of("ns1", "tbl1"), PolarisEntityType.TABLE_LIKE, false)
+                .getResolvedFullPath())
         .containsExactly(referenceCatalog, resolvedLeaf);
   }
 
