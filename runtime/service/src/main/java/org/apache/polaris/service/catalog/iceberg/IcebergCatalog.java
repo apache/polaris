@@ -452,8 +452,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug(
         "Metadata file validated to be within table directory for identifier={}", identifier);
 
-    PolarisResolvedPathWrapper resolvedStorageEntity = resolvedPath;
-
     List<PolarisEntity> resolvedNamespace = resolvedPath.getRawParentPath();
     Set<String> dataLocations =
         StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
@@ -463,7 +461,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         identifier);
     // Mirror updateTable location validation to prevent invalid or overlapping locations.
     CatalogUtils.validateLocationsForTableLike(
-        realmConfig, identifier, dataLocations, resolvedStorageEntity);
+        realmConfig, identifier, dataLocations, resolvedPath);
     dataLocations.forEach(
         location ->
             validateNoLocationOverlap(
@@ -471,7 +469,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 identifier,
                 resolvedNamespace,
                 location,
-                resolvedStorageEntity.getRawLeafEntity()));
+                resolvedPath.getRawLeafEntity()));
     LOGGER.debug("Location overlap validation completed for identifier={}", identifier);
 
     // Ensure the raw entity is an Iceberg table-like entity (not a view/generic table).
