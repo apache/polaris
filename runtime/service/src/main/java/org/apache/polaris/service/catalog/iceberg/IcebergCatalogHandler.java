@@ -65,8 +65,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
@@ -607,11 +605,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     boolean overwrite = request.overwrite();
 
-    LOGGER.debug(
-        "registerTable: identifier={}, overwrite={}, request={}", identifier, overwrite, request);
-
     if (overwrite) {
-      LOGGER.debug("registerTable: overwrite requested for {}", identifier);
       authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
           PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE, identifier);
       return registerTableWithOverwrite(identifier, request);
@@ -620,16 +614,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // Creating new table requires REGISTER_TABLE privilege
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
-    LOGGER.debug("registerTable: authorized REGISTER_TABLE for {}", identifier);
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
   }
 
   private LoadTableResponse registerTableWithOverwrite(
       TableIdentifier identifier, RegisterTableRequest request) {
-    LOGGER.debug(
-        "registerTableWithOverwrite: identifier={}, metadataLocation={}",
-        identifier,
-        request.metadataLocation());
     // Handle Polaris-specific overwrite logic.
     //
     // NOTE: Register-table overwrite is currently only implemented for Polaris's
@@ -637,29 +626,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // implementations (for example RESTCatalog) and do not expose this Polaris-
     // specific overwrite contract, so overwrite requests are rejected below.
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
-      LOGGER.debug(
-          "registerTableWithOverwrite: using IcebergCatalog.registerTable for {}", identifier);
       // Use the overwrite-capable registration path for IcebergCatalog
       Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
       if (table instanceof BaseTable baseTable) {
         TableMetadata metadata = baseTable.operations().current();
-        LOGGER.debug(
-            "registerTableWithOverwrite: registered and loaded metadata for {} (metadataLocation={})",
-            identifier,
-            metadata.location());
         return LoadTableResponse.builder().withTableMetadata(metadata).build();
       }
-      LOGGER.debug(
-          "registerTableWithOverwrite: unexpected table implementation for {}", identifier);
       throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
     }
 
     // For non-Polaris/federated catalogs, reject overwrite until this is
     // supported by a common catalog contract.
-    LOGGER.debug(
-        "registerTableWithOverwrite: unsupported baseCatalog type {} for overwrite on {}",
-        baseCatalog.getClass().getName(),
-        identifier);
     throw new BadRequestException(
         "Register table overwrite is only supported for internal Polaris catalogs; unsupported catalog type: %s",
         baseCatalog.getClass().getName());
