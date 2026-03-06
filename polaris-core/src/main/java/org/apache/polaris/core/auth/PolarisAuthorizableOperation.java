@@ -80,6 +80,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLIC
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
@@ -127,6 +128,7 @@ public enum PolarisAuthorizableOperation {
   CREATE_TABLE_STAGED(TABLE_CREATE),
   CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION(EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA)),
   REGISTER_TABLE(TABLE_CREATE),
+  REGISTER_TABLE_OVERWRITE(TABLE_FULL_METADATA),
   LOAD_TABLE(TABLE_READ_PROPERTIES),
   LOAD_TABLE_WITH_READ_DELEGATION(TABLE_READ_DATA),
   LOAD_TABLE_WITH_WRITE_DELEGATION(TABLE_WRITE_DATA),

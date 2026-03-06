@@ -602,11 +602,44 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    boolean overwrite = request.overwrite();
 
+    if (overwrite) {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE, identifier);
+      return registerTableWithOverwrite(identifier, request);
+    }
+
+    // Creating new table requires REGISTER_TABLE privilege
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
+  }
+
+  private LoadTableResponse registerTableWithOverwrite(
+      TableIdentifier identifier, RegisterTableRequest request) {
+    // Handle Polaris-specific overwrite logic.
+    //
+    // NOTE: Register-table overwrite is currently only implemented for Polaris's
+    // IcebergCatalog. Federated catalogs are initialized as external catalog
+    // implementations (for example RESTCatalog) and do not expose this Polaris-
+    // specific overwrite contract, so overwrite requests are rejected below.
+    if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
+      // Use the overwrite-capable registration path for IcebergCatalog
+      Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
+      if (table instanceof BaseTable baseTable) {
+        TableMetadata metadata = baseTable.operations().current();
+        return LoadTableResponse.builder().withTableMetadata(metadata).build();
+      }
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    }
+
+    // For non-Polaris/federated catalogs, reject overwrite until this is
+    // supported by a common catalog contract.
+    throw new BadRequestException(
+        "Register table overwrite is only supported for internal Polaris catalogs; unsupported catalog type: %s",
+        baseCatalog.getClass().getName());
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
