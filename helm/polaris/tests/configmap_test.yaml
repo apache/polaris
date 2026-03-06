@@ -370,10 +370,18 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
         not: true
 
+  - it: should not include any CORS properties when cors.enabled is false
+    set:
+      cors: { enabled: false, allowedOrigins: [ "http://localhost:3000" ], allowedMethods: [ "GET" ], allowedHeaders: [ "X-Custom" ], exposedHeaders: [ "X-Exposed" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: true }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
+        not: true
+
   - it: should include CORS configuration if defined
     set:
-      cors: { allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
+      cors: { enabled: true, allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
     asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.origins=http://localhost:3000,https://localhost:4000" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.methods=GET,POST" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.headers=X-Custom1,X-Custom2" }
