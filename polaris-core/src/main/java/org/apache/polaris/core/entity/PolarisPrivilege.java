@@ -261,9 +261,9 @@ public enum PolarisPrivilege {
    * Intended for data analyst principals who need to read tables and views across an entire catalog
    * without any write or administrative capabilities.
    *
-   * <p>This privilege subsumes: {@link #NAMESPACE_LIST}, {@link #NAMESPACE_READ_PROPERTIES},
-   * {@link #TABLE_LIST}, {@link #TABLE_READ_PROPERTIES}, {@link #TABLE_READ_DATA}, {@link
-   * #VIEW_LIST}, and {@link #VIEW_READ_PROPERTIES}.
+   * <p>This privilege subsumes: {@link #NAMESPACE_LIST}, {@link #NAMESPACE_READ_PROPERTIES}, {@link
+   * #TABLE_LIST}, {@link #TABLE_READ_PROPERTIES}, {@link #TABLE_READ_DATA}, {@link #VIEW_LIST}, and
+   * {@link #VIEW_READ_PROPERTIES}.
    */
   CATALOG_READ_DATA(103, PolarisEntityType.CATALOG),
   ;
