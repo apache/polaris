@@ -297,6 +297,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
+* Maven group:artifact IDs: io.quarkus:quarkus-devservices
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
 * Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
@@ -308,7 +309,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-narayana-jta
 * Maven group:artifact IDs: io.quarkus:quarkus-netty
 * Maven group:artifact IDs: io.quarkus:quarkus-picocli
-* Maven group:artifact IDs: io.quarkus:quarkus-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-security-runtime-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-smallrye-context-propagation
 * Maven group:artifact IDs: io.quarkus:quarkus-tls-registry
@@ -317,6 +317,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx-http
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx-latebound-mdc-provider
+* Maven group:artifact IDs: io.quarkus:quarkus-value-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-virtual-threads
 * Maven group:artifact IDs: io.quarkus.security:quarkus-security
 
