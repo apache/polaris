@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.IdempotencyRecordSerde;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
@@ -73,7 +75,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
       insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
 
-      List<Object> values = insertMap.values().stream().toList();
+      // Stream#toList returns an unmodifiable list and rejects nulls; these columns are nullable.
+      List<Object> values = new ArrayList<>(insertMap.values());
       QueryGenerator.PreparedQuery insert =
           QueryGenerator.generateInsertQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
@@ -191,26 +194,66 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
+  public boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey,
+                  ModelIdempotencyRecord.EXECUTOR_ID,
+                  executorId),
+              Map.of(),
+              Map.of(),
+              Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+              Set.of());
+      return datasourceOperations.executeUpdate(delete) > 0;
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException(
+          "Failed to cancel in-progress idempotency reservation", e);
+    }
+  }
+
+  @Override
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt) {
+    final String responseHeadersJson;
+    if (responseHeaders == null || responseHeaders.isEmpty()) {
+      responseHeadersJson = null;
+    } else {
+      try {
+        responseHeadersJson = IdempotencyRecordSerde.serializeResponseHeaders(responseHeaders);
+      } catch (Exception e) {
+        throw new IdempotencyPersistenceException(
+            "Failed to serialize idempotency response headers", e);
+      }
+    }
+
     // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
+    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeadersJson);
     setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
     setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
 
     Map<String, Object> whereEquals = new HashMap<>();
     whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+    whereEquals.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
