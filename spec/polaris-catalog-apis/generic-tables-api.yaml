@@ -274,7 +274,8 @@ components:
         prefix:
           type: string
           description: Indicates a storage location prefix where the configuration is relevant. Clients should choose the most 
-            specific prefix (by selecting the longest prefix) if several configurations of the same type are available.
+            specific prefix (by selecting the longest common prefix) if several configurations of the same type are available.
+            If multiple configurations share the same longest common prefix, the client may select any of them.
         config:
           type: object
           description: |
@@ -283,13 +284,12 @@ components:
               
             ## S3 Configurations
               
-            The following configurations should be respected when working with tables stored in AWS S3
+            The following configurations should be respected when working with tables stored on S3, including AWS S3, S3-Compatible systems:
               - `s3.access-key-id`: id for credentials that provide access to the data in S3
               - `s3.secret-access-key`: secret for credentials that provide access to data in S3
               - `s3.session-token`: if present, this value should be used for as the session token
               - `s3.session-token-expires-at-ms`: the time the aws session token expires, in milliseconds
-            Extra properties:
-              - `s3.client.region`: region to configure client for making requests to AWS
+              - `s3.client.region`: region to configure client for making requests to S3
               - `s3.client.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
               
             ## GCP GCS Configurations
@@ -297,7 +297,6 @@ components:
             The following configurations should be respected when working with tables stored in GCP GCS
               - `gcs.oauth2.token`: the gcs scoped access token
               - `gcs.oauth2.token-expires-at`: the time the gcs access token expires, in milliseconds
-            Extra properties:
               - `gcs.oauth2.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
             
             ## AZURE ADLS Configuration
@@ -305,7 +304,6 @@ components:
             The following configurations should be respected when working with tables stored in AZURE ADLS
               - `adls.sas-token.<hostname>`: an azure shared access signature token
               - `adls.sas-token-expires-at-ms.<hostname>`: the expiration time for the access token, in milliseconds
-            Extra properties:
               - `adls.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
 
           additionalProperties:
