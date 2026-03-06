@@ -30,6 +30,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_ACC
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_CONTENT;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_DROP;
