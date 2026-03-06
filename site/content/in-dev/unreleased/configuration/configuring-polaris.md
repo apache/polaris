@@ -87,25 +87,19 @@ For a comprehensive reference of all Polaris configuration options, see the [Con
 Some often useful Quarkus configuration properties are listed below.
 Please refer to the [Quarkus documentation](https://quarkus.io/guides/) for more details.
 
-| Configuration Property                               | Default Value                                  | Description                                                                                    |
-|------------------------------------------------------|------------------------------------------------|------------------------------------------------------------------------------------------------|
-| `quarkus.log.level`                                  | `INFO`                                         | Define the root log level.                                                                     |
-| `quarkus.log.category."org.apache.polaris".level`    |                                                | Define the log level for a specific category.                                                  |
-| `quarkus.default-locale`                             | System locale                                  | Force the use of a specific locale, for instance `en_US`.                                      |
-| `quarkus.http.port`                                  | `8181`                                         | Define the HTTP port number.                                                                   |
-| `quarkus.http.auth.basic`                            | `false`                                        | Enable the HTTP basic authentication.                                                          |
-| `quarkus.http.limits.max-body-size`                  | `10240K`                                       | Define the HTTP max body size limit.                                                           |
-| `quarkus.http.cors.enabled`                          | `false`                                        | Enable the HTTP CORS filter. Must be set to `true` for any other CORS property to take effect. |
-| `quarkus.http.cors.origins`                          |                                                | Define the HTTP CORS origins.                                                                  |
-| `quarkus.http.cors.methods`                          | `PATCH, POST, DELETE, GET, PUT, HEAD, OPTIONS` | Define the HTTP CORS covered methods.                                                          |
-| `quarkus.http.cors.headers`                          | `*`                                            | Define the HTTP CORS covered headers.                                                          |
-| `quarkus.http.cors.exposed-headers`                  | `*`                                            | Define the HTTP CORS covered exposed headers.                                                  |
-| `quarkus.http.cors.access-control-max-age`           | `PT10M`                                        | Define the HTTP CORS access control max age.                                                   |
-| `quarkus.http.cors.access-control-allow-credentials` | `true`                                         | Define the HTTP CORS access control allow credentials flag.                                    |
-| `quarkus.management.enabled`                         | `true`                                         | Enable the management server.                                                                  |
-| `quarkus.management.port`                            | `8182`                                         | Define the port number of the Polaris management server.                                       |
-| `quarkus.management.root-path`                       |                                                | Define the root path where `/metrics` and `/health` endpoints are based on.                    |
-| `quarkus.otel.sdk.disabled`                          | `true`                                         | Enable the OpenTelemetry layer.                                                                |
+| Configuration Property                            | Default Value in Polaris | Description                                                                                    |
+|---------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------|
+| `quarkus.log.level`                               | `INFO`                   | Define the root log level.                                                                     |
+| `quarkus.log.category."org.apache.polaris".level` |                          | Define the log level for a specific category.                                                  |
+| `quarkus.default-locale`                          | System locale            | Force the use of a specific locale, for instance `en_US`.                                      |
+| `quarkus.http.port`                               | `8181`                   | Define the HTTP port number.                                                                   |
+| `quarkus.http.auth.basic`                         | `false`                  | Enable the HTTP basic authentication.                                                          |
+| `quarkus.http.limits.max-body-size`               | `10240K`                 | Define the HTTP max body size limit.                                                           |
+| `quarkus.http.cors.enabled`                       | `false`                  | Enable the HTTP CORS filter. Must be set to `true` for any other CORS property to take effect. |
+| `quarkus.management.enabled`                      | `true`                   | Enable the management server.                                                                  |
+| `quarkus.management.port`                         | `8182`                   | Define the port number of the Polaris management server.                                       |
+| `quarkus.management.root-path`                    |                          | Define the root path where `/metrics` and `/health` endpoints are based on.                    |
+| `quarkus.otel.sdk.disabled`                       | `true`                   | Enable the OpenTelemetry layer.                                                                |
 
 ## JVM Configuration Options
 
