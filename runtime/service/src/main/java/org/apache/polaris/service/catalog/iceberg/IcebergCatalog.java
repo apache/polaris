@@ -2170,6 +2170,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  /**
+   * Loads FileIO for table operations with hierarchical storage config resolution.
+   *
+   * <p>The {@code resolvedStorageEntity} contains the complete entity hierarchy (catalog →
+   * namespace(s) → table). Storage configuration is resolved hierarchically with the following
+   * priority order: table > namespace(s) > catalog.
+   *
+   * <p>This method delegates to {@link StorageAccessConfigProvider} which uses {@link FileIOUtil}
+   * to walk the entity hierarchy backward (leaf to root) to find the first entity with storage
+   * configuration. This enables tables and namespaces to override storage configuration inherited
+   * from their parent entities.
+   *
+   * @param identifier the table identifier for logging and credential vending
+   * @param readLocations set of storage locations that will be read from
+   * @param resolvedStorageEntity complete resolved path with all namespace levels in the hierarchy
+   * @param tableProperties Iceberg table properties for FileIO initialization
+   * @param storageActions the storage operations to scope credentials to (READ, WRITE, LIST,
+   *     DELETE)
+   * @return A configured {@link FileIO} instance with appropriately scoped credentials
+   */
   private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,

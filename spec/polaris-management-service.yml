@@ -806,6 +806,173 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
+  /catalogs/{catalogName}/namespaces/{namespace}/storage-config:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The name of the catalog
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+      - name: namespace
+        in: path
+        description: |
+          A namespace identifier as a single string.
+          Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+        required: true
+        schema:
+          type: string
+        examples:
+          singlepart_namespace:
+            value: "accounting"
+          multipart_namespace:
+            value: "accounting%1Ftax"
+    get:
+      operationId: getNamespaceStorageConfig
+      summary: Get effective storage configuration for namespace
+      description: |
+        Returns the effective storage configuration for the namespace.
+        This is either the namespace-specific override (if set) or the catalog-wide config.
+      responses:
+        200:
+          description: Storage configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageConfigInfo'
+        403:
+          description: "The caller does not have permission to read namespace storage configuration"
+        404:
+          description: "The namespace or catalog does not exist"
+    put:
+      operationId: setNamespaceStorageConfig
+      summary: Set or update namespace storage configuration override
+      description: |
+        Sets a namespace-specific storage configuration override.
+        This will take precedence over the catalog-wide config for operations  
+        on tables within this namespace (unless the table has its own override).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageConfigInfo'
+      responses:
+        200:
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceStorageConfigResponse'
+        400:
+          description: "Invalid storage configuration"
+        403:
+          description: "The caller does not have permission to modify namespace storage configuration"
+        404:
+          description: "The namespace or catalog does not exist"
+    delete:
+      operationId: deleteNamespaceStorageConfig
+      summary: Remove namespace storage configuration override
+      description: |
+        Removes the namespace-specific storage configuration override.
+        The namespace will revert to using the catalog-wide config.
+      responses:
+        204:
+          description: "Configuration removed successfully"
+        403:
+          description: "The caller does not have permission to delete namespace storage configuration"
+        404:
+          description: "The namespace or catalog does not exist"
+
+  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}/storage-config:
+    parameters:
+      - name: catalogName
+        in: path
+        description: The name of the catalog
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+      - name: namespace
+        in: path
+        description: |
+          A namespace identifier as a single string.
+          Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+        required: true
+        schema:
+          type: string
+        examples:
+          singlepart_namespace:
+            value: "accounting"
+          multipart_namespace:
+            value: "accounting%1Ftax"
+      - name: table
+        in: path
+        description: A table name
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getTableStorageConfig
+      summary: Get effective storage configuration for table
+      description: |
+        Returns the effective storage configuration for the table.
+        This is resolved from the hierarchy: table override → namespace override → catalog config.
+      responses:
+        200:
+          description: Storage configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageConfigInfo'
+        403:
+          description: "The caller does not have permission to read table storage configuration"
+        404:
+          description: "The table, namespace, or catalog does not exist"
+    put:
+      operationId: setTableStorageConfig
+      summary: Set or update table storage configuration override
+      description: |
+        Sets a table-specific storage configuration override.
+        This will take precedence over namespace and catalog configurations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageConfigInfo'
+      responses:
+        200:
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableStorageConfigResponse'
+        400:
+          description: "Invalid storage configuration"
+        403:
+          description: "The caller does not have permission to modify table storage configuration"
+        404:
+          description: "The table, namespace, or catalog does not exist"
+    delete:
+      operationId: deleteTableStorageConfig
+      summary: Remove table storage configuration override
+      description: |
+        Removes the table-specific storage configuration override.
+        The table will revert to using the namespace or catalog config.
+      responses:
+        204:
+          description: "Configuration removed successfully"
+        403:
+          description: "The caller does not have permission to delete table storage configuration"
+        404:
+          description: "The table, namespace, or catalog does not exist"
+
 components:
   securitySchemes:
     OAuth2:
@@ -1199,6 +1366,51 @@ components:
       description: file storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
+
+    NamespaceStorageConfigResponse:
+      type: object
+      description: Response after setting or updating namespace storage configuration
+      properties:
+        namespace:
+          type: array
+          items:
+            type: string
+          description: The namespace identifier as an array of parts
+          example: ["accounting", "tax"]
+        storageConfigInfo:
+          $ref: '#/components/schemas/StorageConfigInfo'
+        message:
+          type: string
+          description: Optional message about the operation
+          example: "Storage configuration updated successfully"
+      required:
+        - namespace
+        - storageConfigInfo
+
+    TableStorageConfigResponse:
+      type: object
+      description: Response after setting or updating table storage configuration
+      properties:
+        namespace:
+          type: array
+          items:
+            type: string
+          description: The namespace identifier as an array of parts
+          example: ["accounting", "tax"]
+        table:
+          type: string
+          description: The table name
+          example: "sales"
+        storageConfigInfo:
+          $ref: '#/components/schemas/StorageConfigInfo'
+        message:
+          type: string
+          description: Optional message about the operation
+          example: "Storage configuration updated successfully"
+      required:
+        - namespace
+        - table
+        - storageConfigInfo
 
     ServiceIdentityInfo:
       type: object

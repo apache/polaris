@@ -317,4 +317,97 @@ public class ManagementApi extends PolarisRestApi {
 
     deleteCatalog(catalogName);
   }
+
+  // Storage Configuration Management Methods
+
+  /**
+   * Get the storage configuration for a namespace.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @return Response with StorageConfigInfo or error
+   */
+  public Response getNamespaceStorageConfig(String catalogName, String namespace) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace))
+        .get();
+  }
+
+  /**
+   * Set the storage configuration for a namespace.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @param storageConfig the storage configuration to set
+   * @return Response with NamespaceStorageConfigResponse or error
+   */
+  public Response setNamespaceStorageConfig(
+      String catalogName, String namespace, Object storageConfig) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace))
+        .put(Entity.json(storageConfig));
+  }
+
+  /**
+   * Delete the storage configuration override for a namespace.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @return Response (204 on success)
+   */
+  public Response deleteNamespaceStorageConfig(String catalogName, String namespace) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace))
+        .delete();
+  }
+
+  /**
+   * Get the storage configuration for a table.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @param table the table name
+   * @return Response with StorageConfigInfo or error
+   */
+  public Response getTableStorageConfig(String catalogName, String namespace, String table) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/tables/{tbl}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace, "tbl", table))
+        .get();
+  }
+
+  /**
+   * Set the storage configuration for a table.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @param table the table name
+   * @param storageConfig the storage configuration to set
+   * @return Response with TableStorageConfigResponse or error
+   */
+  public Response setTableStorageConfig(
+      String catalogName, String namespace, String table, Object storageConfig) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/tables/{tbl}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace, "tbl", table))
+        .put(Entity.json(storageConfig));
+  }
+
+  /**
+   * Delete the storage configuration override for a table.
+   *
+   * @param catalogName the catalog name
+   * @param namespace the namespace (use unit separator 0x1F for multipart namespaces)
+   * @param table the table name
+   * @return Response (204 on success)
+   */
+  public Response deleteTableStorageConfig(String catalogName, String namespace, String table) {
+    return request(
+            "v1/catalogs/{cat}/namespaces/{ns}/tables/{tbl}/storage-config",
+            Map.of("cat", catalogName, "ns", namespace, "tbl", table))
+        .delete();
+  }
 }

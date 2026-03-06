@@ -75,12 +75,17 @@ public class StorageAccessConfigProvider {
   /**
    * Vends credentials for accessing table storage at explicit locations.
    *
+   * <p>This method performs hierarchical storage configuration resolution by searching the entity
+   * path (table → namespace(s) → catalog) to find the most specific storage configuration. This
+   * enables tables and namespaces to override storage configuration inherited from parent entities.
+   *
    * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
    * @param tableLocations set of storage location URIs to scope credentials to
    * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
    *     to
    * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
-   * @param resolvedPath the entity hierarchy to search for storage configuration
+   * @param resolvedPath the complete entity hierarchy (catalog → namespace(s) → table) to search
+   *     for storage configuration
    * @return {@link StorageAccessConfig} with scoped credentials and metadata; empty if no storage
    *     config found
    */
