@@ -332,7 +332,7 @@ This product includes code from Project Nessie.
 * tools/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/RustfsAccess.java
 * tools/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/RustfsContainer.java
 * tools/rustfs-testcontainer/src/main/java/org/apache/polaris/test/rustfs/RustfsExtension.java
-* runtime/admin/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
+* runtime/admin-base/src/main/java/org/apache/polaris/admintool/PolarisAdminTool.java
 * runtime/service/src/main/java/org/apache/polaris/service/storage/aws/StsClientsPool.java
 * helm/polaris/tests/logging_storage_test.yaml
 * helm/polaris/tests/quantity_test.yaml
