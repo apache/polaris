@@ -57,11 +57,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
 
-  private final Map<Object, Integer> pathLookup = new HashMap<>();
+  private final Map<ResolvedPathKey, Integer> pathLookup = new HashMap<>();
   private final List<ResolverPath> addedPaths = new ArrayList<>();
   private final Multimap<String, PolarisEntityType> addedTopLevelNames = HashMultimap.create();
 
-  private final Map<Object, ResolverPath> passthroughPaths = new HashMap<>();
+  private final Map<ResolvedPathKey, ResolverPath> passthroughPaths = new HashMap<>();
 
   private int currentPathIndex = 0;
 
@@ -112,29 +112,24 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
   }
 
-  /**
-   * Adds a path that will be statically resolved with the primary Resolver when resolveAll() is
-   * called, and which contributes to the resolution status of whether all paths have successfully
-   * resolved.
-   *
-   * @param key the friendly lookup key for retrieving resolvedPaths after resolveAll(); typically
-   *     might be a Namespace or TableIdentifier object.
-   */
-  public void addPath(ResolverPath path, Object key) {
+  /** Adds a statically resolved path using canonical registration semantics only. */
+  public void addPath(ResolverPath path) {
     primaryResolver.addPath(path);
-    pathLookup.put(key, currentPathIndex);
+    // Preserve prior manifest lookup behavior: re-registering the same lookup key overwrites the
+    // previous mapping (last-write-wins).
+    pathLookup.put(resolvedPathKey(path), currentPathIndex);
     addedPaths.add(path);
     ++currentPathIndex;
   }
 
-  /**
-   * Adds a path that is allowed to be dynamically resolved with a new Resolver when
-   * getPassthroughResolvedPath is called. These paths are also included in the primary static
-   * resolution set resolved during resolveAll().
-   */
-  public void addPassthroughPath(ResolverPath path, Object key) {
-    addPath(path, key);
-    passthroughPaths.put(key, path);
+  private static ResolvedPathKey resolvedPathKey(ResolverPath path) {
+    return ResolvedPathKey.of(path);
+  }
+
+  /** Adds a passthrough path using canonical registration semantics only. */
+  public void addPassthroughPath(ResolverPath path) {
+    addPath(path);
+    passthroughPaths.put(resolvedPathKey(path), path);
   }
 
   public ResolverStatus resolveAll() {
@@ -174,40 +169,26 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return getResolvedReferenceCatalogEntity(false);
   }
 
-  /**
-   * @param key the key associated with the path to retrieve that was specified in addPath
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional"
-   */
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(Object key) {
+  public PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key) {
     return getResolvedPath(key, false);
   }
 
-  /**
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
-   */
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    return getResolvedPath(key, entityType, subType, false);
+      ResolvedPathKey key, PolarisEntitySubType subType) {
+    return getResolvedPath(key, subType, false);
   }
 
-  /**
-   * @param key the key associated with the path to retrieve that was specified in addPath
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional"
-   */
   @Override
-  public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
+  public PolarisResolvedPathWrapper getPassthroughResolvedPath(ResolvedPathKey key) {
+    ResolverPath requestedPath = passthroughPaths.get(key);
     diagnostics.check(
-        passthroughPaths.containsKey(key),
-        "invalid_key_for_passthrough_resolved_path",
+        requestedPath != null,
+        "invalid_path_key_for_passthrough_resolved_path",
         "key={} passthroughPaths={}",
         key,
         passthroughPaths);
-    ResolverPath requestedPath = passthroughPaths.get(key);
 
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver = resolverFactory.createResolver(principal, catalogName);
@@ -215,22 +196,19 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     ResolverStatus status = passthroughResolver.resolveAll();
 
     if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
-      LOGGER.debug("Returning null for key {} due to resolver status {}", key, status.getStatus());
+      LOGGER.debug(
+          "Returning null for path {} due to resolver status {}",
+          requestedPath,
+          status.getStatus());
       return null;
     }
 
     List<ResolvedPolarisEntity> resolvedPath = passthroughResolver.getResolvedPath();
-    // If the catalog is a passthrough facade, we can go ahead and just return only as much of
-    // the parent path as was successfully found.
-    // TODO: For passthrough facade semantics, consider whether this should be where we generate
-    // the JIT-created entities that would get committed after we find them in the remote
-    // catalog.
     if (requestedPath.optional() && !getIsPassthroughFacade()) {
       if (resolvedPath.size() != requestedPath.entityNames().size()) {
         LOGGER.debug(
-            "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
+            "Returning null due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
-            key,
             resolvedPath,
             requestedPath.entityNames());
         return null;
@@ -245,13 +223,9 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 
-  /**
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
-   */
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
+      ResolvedPathKey key, PolarisEntitySubType subType) {
     PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(key);
     if (resolvedPath == null) {
       return null;
@@ -327,7 +301,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
   }
 
-  public PolarisEntitySubType getLeafSubType(Object key) {
+  public PolarisEntitySubType getLeafSubType(ResolvedPathKey key) {
     diagnostics.check(
         pathLookup.containsKey(key),
         "never_registered_key_for_resolved_path",
@@ -342,25 +316,38 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return resolved.get(resolved.size() - 1).getEntity().getSubType();
   }
 
-  /**
-   * @param key the key associated with the path to retrieve that was specified in addPath
-   * @param prependRootContainer if true, also includes the rootContainer as the first element of
-   *     the path; otherwise, the first element begins with the referenceCatalog.
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional"
-   */
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, boolean prependRootContainer) {
+  /** Resolves a registered path using a canonical lookup key. */
+  public PolarisResolvedPathWrapper getResolvedPath(
+      ResolvedPathKey key, boolean prependRootContainer) {
     diagnostics.check(
         pathLookup.containsKey(key),
         "never_registered_key_for_resolved_path",
         "key={} pathLookup={}",
         key,
         pathLookup);
+    return getResolvedPathByIndex(pathLookup.get(key), prependRootContainer);
+  }
 
+  public PolarisResolvedPathWrapper getResolvedPath(
+      ResolvedPathKey key, PolarisEntitySubType subType, boolean prependRootContainer) {
+    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
+    if (resolvedPath == null) {
+      return null;
+    }
+    if (!getIsPassthroughFacade()
+        && resolvedPath.getRawLeafEntity() != null
+        && subType != PolarisEntitySubType.ANY_SUBTYPE
+        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
+      return null;
+    }
+    return resolvedPath;
+  }
+
+  private PolarisResolvedPathWrapper getResolvedPathByIndex(
+      int index, boolean prependRootContainer) {
     if (!isResolveAllSucceeded()) {
       return null;
     }
-    int index = pathLookup.get(key);
 
     // Return null for a partially-resolved "optional" path.
     ResolverPath requestedPath = addedPaths.get(index);
@@ -383,33 +370,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
     resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
     return new PolarisResolvedPathWrapper(resolvedEntities);
-  }
-
-  /**
-   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
-   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
-   */
-  public PolarisResolvedPathWrapper getResolvedPath(
-      Object key,
-      PolarisEntityType entityType,
-      PolarisEntitySubType subType,
-      boolean prependRootContainer) {
-    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
-    if (resolvedPath == null) {
-      return null;
-    }
-    // In the case of a passthrough facade, we may have only resolved part of the parent path
-    // in which case the subtype wouldn't match; return the path anyways in this case.
-    //
-    // TODO: Reconcile how we'll handle "TABLE_NOT_FOUND" or "VIEW_NOT_FOUND" semantics
-    // against the remote catalog.
-    if (!getIsPassthroughFacade()
-        && resolvedPath.getRawLeafEntity() != null
-        && subType != PolarisEntitySubType.ANY_SUBTYPE
-        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
-      return null;
-    }
-    return resolvedPath;
   }
 
   public PolarisResolvedPathWrapper getResolvedTopLevelEntity(

@@ -33,9 +33,9 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Utility methods for working with Polaris catalog entities. */
@@ -52,11 +52,12 @@ public class CatalogUtils {
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
         resolvedEntityView.getResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
     if (resolvedTableEntities != null) {
       return resolvedTableEntities;
     }
-    return resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+    return resolvedEntityView.getResolvedPath(
+        ResolvedPathKey.ofNamespace(tableIdentifier.namespace()));
   }
 
   /**
