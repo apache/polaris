@@ -35,6 +35,7 @@ public enum AuthenticationType {
   BEARER(2),
   IMPLICIT(3),
   SIGV4(4),
+  GCP(5),
   ;
 
   private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;

@@ -471,7 +471,7 @@ The list of supported storage types for a catalog
 The list of supported authentication types for catalog federation
 
 - **Type:** `List<String>`
-- **Default:** `[OAUTH, BEARER, SIGV4]`
+- **Default:** `[OAUTH, BEARER, GCP, SIGV4]`
 
 ---
 
