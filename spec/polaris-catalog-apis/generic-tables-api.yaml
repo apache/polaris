@@ -279,7 +279,7 @@ components:
         config:
           type: object
           description: |
-            Storage access configurations for AWS S3, GCP GCS, and Azure ADLS are supported. The following outlines 
+            Storage access configurations for S3, GCP GCS, and Azure ADLS are supported. The following outlines 
             the currently supported configuration options:
               
             ## S3 Configurations
