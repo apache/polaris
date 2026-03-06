@@ -140,6 +140,11 @@ public interface IdempotencyStore {
    * should only cancel the record if it is still in-progress (i.e., not finalized) and owned by the
    * given executor.
    *
+   * <p>This operation is best-effort. The caller has already determined the HTTP response by the
+   * time cancel runs, so neither the return value nor any exception affects the response sent to
+   * the client. If cancel fails or throws, the record will expire naturally via TTL and be cleaned
+   * up by purge.
+   *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
    * @param executorId identifier of the executor that owns the reservation

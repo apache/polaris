@@ -61,6 +61,10 @@ public record IdempotencyRecord(
     String executorId,
     Instant expiresAt) {
 
+  public IdempotencyRecord {
+    responseHeaders = responseHeaders == null ? null : Map.copyOf(responseHeaders);
+  }
+
   /**
    * Normalized identifier of the resource affected by the operation.
    *
