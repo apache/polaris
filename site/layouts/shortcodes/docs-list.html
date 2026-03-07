@@ -16,15 +16,18 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- $version := .version -}}
-{{- $path := "" -}}
-{{- $link := "" -}}
-{{- if eq $version "unreleased" -}}
-  {{- $path = "/in-dev/unreleased/" -}}
-  {{- $link = "Unreleased" -}}
-{{- else -}}
-  {{- $path = printf "/releases/%s/" $version -}}
-  {{- $link = $version -}}
-{{- end -}}
-<a href="{{ $path }}">{{ $link }}</a>
+{{ $releasePages := partial "releasePages.html" (dict "site" .Page.Site) -}}
 
+<ul>
+
+<li>{{ partial "docs-link.html" (dict "version" "unreleased") }}</li>
+
+{{ range $releasePages.active -}}
+<li>{{ partial "docs-link.html" (dict "version" .Params.release_version) }}</li>
+{{ end -}}
+
+{{ range $releasePages.eol -}}
+<li>{{ partial "docs-link.html" (dict "version" .Params.release_version) }} (EOL)</li>
+{{ end -}}
+
+</ul>

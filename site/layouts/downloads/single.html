@@ -16,15 +16,6 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- $version := .version -}}
-{{- $path := "" -}}
-{{- $link := "" -}}
-{{- if eq $version "unreleased" -}}
-  {{- $path = "/in-dev/unreleased/" -}}
-  {{- $link = "Unreleased" -}}
-{{- else -}}
-  {{- $path = printf "/releases/%s/" $version -}}
-  {{- $link = $version -}}
-{{- end -}}
-<a href="{{ $path }}">{{ $link }}</a>
-
+{{ define "main" }}
+{{ .Render "_td-content" }}
+{{ end }}

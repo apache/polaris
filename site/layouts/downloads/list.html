@@ -16,15 +16,24 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- $version := .version -}}
-{{- $path := "" -}}
-{{- $link := "" -}}
-{{- if eq $version "unreleased" -}}
-  {{- $path = "/in-dev/unreleased/" -}}
-  {{- $link = "Unreleased" -}}
-{{- else -}}
-  {{- $path = printf "/releases/%s/" $version -}}
-  {{- $link = $version -}}
-{{- end -}}
-<a href="{{ $path }}">{{ $link }}</a>
-
+{{ define "main" }}
+<div class="td-content">
+	<h1>{{ .Title }}</h1>
+  {{ with .Params.description }}<div class="lead">{{ . | markdownify }}</div>{{ end }}
+	<header class="article-meta">
+		{{ partial "taxonomy_terms_article_wrapper.html" . -}}
+		{{ if (and (not .Params.hide_readingtime) (.Site.Params.ui.readingtime.enable)) -}}
+			{{ partial "reading-time.html" . -}}
+		{{ end -}}
+	</header>
+  {{ .Render "_td-content-after-header" -}}
+	{{ .Content }}
+  {{ partial "section-index.html" . -}}
+	{{ partial "feedback.html" . -}}
+  {{ if (.Site.Config.Services.Disqus.Shortname) -}}
+  <br />
+  {{- partial "disqus-comment.html" . -}}
+  {{ end -}}
+	{{ partial "page-meta-lastmod.html" . -}}
+</div>
+{{ end -}}

@@ -34,8 +34,8 @@ under the License.
   {{ if eq $releasesRootPage.Params.all_releases_root true }}
     {{ $activeReleases := $s.Params.active_releases }}
 
-    {{/* Iterate over release pages sorted by weight descending (higher weight = more recent) */}}
-    {{ range $releasesRootPage.Pages.ByWeight.Reverse -}}
+    {{/* Iterate over release pages sorted by weight ascending (lower weight = more recent) */}}
+    {{ range $releasesRootPage.Pages.ByWeight -}}
       {{ $versionPage := . -}}
       {{ $version := $versionPage.Params.release_version -}}
       {{ if $version -}}

@@ -17,20 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Documentation'
-linkTitle: 'Documentation'
-type: docs
-# Mark this as the documentation root - used by breadcrumb.html partial
+# This file creates the /downloads/latest/ redirect to the current latest stable download.
+# Update the 'redirect_to' parameter below when publishing a new release.
+title: 'Latest Download'
+linkTitle: 'Latest'
+type: 'redirect'
+layout: 'redirect'
 params:
-  docs_root: true
+  redirect_to: '/downloads/1.3.0/' # Replace after a Polaris release
+hide_summary: true
+exclude_search: true
+toc_hide: true
 menus:
   main:
-    parent: doc
-    weight: -999999 # 1st item in the menu
-    identifier: doc-overview
-    name: Overview
+    parent: releases
+    weight: -999998 # 2nd item in the menu
+    identifier: releases-latest
 ---
-
-Welcome to the Apache Polaris documentation. Select a version below to get started.
-
-{{< docs-list >}}
