@@ -23,6 +23,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Properties;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
@@ -30,8 +31,6 @@ import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Properties;
 
 @ApplicationScoped
 @Identifier("ranger")
@@ -54,24 +53,24 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
 
   @PostConstruct
   public void initialize() {
-      LOG.info("Initializing RangerAuthorizer");
+    LOG.info("Initializing RangerAuthorizer");
 
-      config.validate();
+    config.validate();
 
-      try {
-          Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
-          RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(rangerProp);
+    try {
+      Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
+      RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(rangerProp);
 
-          authorizer.init();
+      authorizer.init();
 
-          this.authorizer = authorizer;
-          this.serviceName = rangerProp.getProperty(SERVICE_NAME_PROPERTY);
-      } catch (RangerAuthzException t) {
-          LOG.error("Failed to initialize RangerPolarisAuthorizer", t);
-          throw new RuntimeException(t);
-      }
+      this.authorizer = authorizer;
+      this.serviceName = rangerProp.getProperty(SERVICE_NAME_PROPERTY);
+    } catch (RangerAuthzException t) {
+      LOG.error("Failed to initialize RangerPolarisAuthorizer", t);
+      throw new RuntimeException(t);
+    }
 
-      LOG.info("RangerAuthorizer initialized successfully");
+    LOG.info("RangerAuthorizer initialized successfully");
   }
 
   @PreDestroy
