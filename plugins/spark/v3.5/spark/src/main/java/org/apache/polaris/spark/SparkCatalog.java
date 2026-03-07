@@ -29,6 +29,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.spark.utils.DeltaHelper;
 import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PaimonHelper;
@@ -77,6 +78,11 @@ public class SparkCatalog
   @VisibleForTesting protected DeltaHelper deltaHelper = null;
   @VisibleForTesting protected HudiHelper hudiHelper = null;
   @VisibleForTesting protected PaimonHelper paimonHelper = null;
+
+  private static final int MAX_POLARIS_REGISTRATION_RETRIES = 3;
+  private static final long RETRY_MIN_WAIT_MS = 1000L;
+  private static final long RETRY_MAX_WAIT_MS = 5000L;
+  private static final long RETRY_TOTAL_TIMEOUT_MS = 30000L;
 
   @Override
   public String name() {
@@ -196,19 +202,55 @@ public class SparkCatalog
       Table paimonTable = paimonCatalog.createTable(ident, schema, transforms, properties);
 
       // Register the table in Polaris as a generic table so it's visible via SHOW TABLES.
-      // Paimon table location follows the convention: warehouse/database.db/table_name
+      // Paimon's SparkTable.properties() populates "location" from CoreOptions.PATH,
       String tableLocation = paimonTable.properties().get(TableCatalog.PROP_LOCATION);
       if (tableLocation == null) {
-        // Fallback: construct location from Paimon warehouse convention
-        tableLocation = paimonHelper.resolveTableLocation(ident.namespace(), ident.name());
+        throw new IllegalStateException(
+            String.format(
+                "Paimon table %s was created but its properties do not contain a location. "
+                    + "This is unexpected — Paimon should always populate the location from its CoreOptions.PATH.",
+                ident));
       }
       Map<String, String> registrationProps = new java.util.HashMap<>(properties);
       registrationProps.put(TableCatalog.PROP_LOCATION, tableLocation);
+
       try {
-        this.polarisSparkCatalog.createTable(ident, schema, transforms, registrationProps);
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to register Paimon table {} in Polaris catalog: {}", ident, e.getMessage());
+        Tasks.foreach(registrationProps)
+            .retry(MAX_POLARIS_REGISTRATION_RETRIES)
+            .exponentialBackoff(RETRY_MIN_WAIT_MS, RETRY_MAX_WAIT_MS, RETRY_TOTAL_TIMEOUT_MS, 2.0)
+            .shouldRetryTest(
+                e ->
+                    !(e instanceof TableAlreadyExistsException)
+                        && !(e instanceof NoSuchNamespaceException))
+            .throwFailureWhenFinished()
+            .run(
+                props -> {
+                  try {
+                    String format = props.get(PolarisCatalogUtils.TABLE_PROVIDER_KEY);
+                    String baseLocation = props.get(TableCatalog.PROP_LOCATION);
+                    this.polarisSparkCatalog.registerGenericTable(
+                        ident, format, baseLocation, props);
+                  } catch (TableAlreadyExistsException | NoSuchNamespaceException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
+      } catch (RuntimeException e) {
+        Throwable cause = e.getCause();
+        LOG.error(
+            "Failed to register Paimon table {} in Polaris, rolling back Paimon table creation: {}",
+            ident,
+            e.getMessage());
+        rollbackPaimonTableCreation(ident);
+        if (cause instanceof TableAlreadyExistsException tableAlreadyExistsException) {
+          throw tableAlreadyExistsException;
+        } else if (cause instanceof NoSuchNamespaceException noSuchNamespaceException) {
+          throw noSuchNamespaceException;
+        }
+        throw new RuntimeException(
+            String.format(
+                "Failed to register Paimon table %s in Polaris after %d attempts",
+                ident, MAX_POLARIS_REGISTRATION_RETRIES),
+            e);
       }
       return paimonTable;
     } else {
@@ -287,13 +329,26 @@ public class SparkCatalog
       String provider = this.polarisSparkCatalog.getTableFormat(ident);
 
       if (PolarisCatalogUtils.usePaimon(provider)) {
-        // For Paimon tables, drop from both Polaris and Paimon catalog
-        boolean droppedFromPolaris = this.polarisSparkCatalog.dropTable(ident);
+        // For Paimon tables, drop from Paimon first, then Polaris.
         try {
           TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
           paimonCatalog.dropTable(ident);
         } catch (Exception e) {
-          LOG.warn("Failed to drop table {} from Paimon catalog: {}", ident, e.getMessage());
+          LOG.error(
+              "Failed to drop table {} from Paimon catalog. "
+                  + "Polaris metadata will not be removed to maintain consistency: {}",
+              ident,
+              e.getMessage());
+          throw new RuntimeException(
+              String.format("Failed to drop Paimon table %s: %s", ident, e.getMessage()), e);
+        }
+        // Paimon drop succeeded; now remove the Polaris metadata entry
+        boolean droppedFromPolaris = this.polarisSparkCatalog.dropTable(ident);
+        if (!droppedFromPolaris) {
+          LOG.warn(
+              "Paimon table {} data was dropped but Polaris metadata removal failed. "
+                  + "The stale Polaris entry may need manual cleanup.",
+              ident);
         }
         return droppedFromPolaris;
       }
@@ -305,6 +360,19 @@ public class SparkCatalog
       // Table not found in Polaris
       LOG.warn("Table {} not found in Polaris catalog during drop operation", ident);
       return false;
+    }
+  }
+
+  private void rollbackPaimonTableCreation(Identifier ident) {
+    try {
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      paimonCatalog.dropTable(ident);
+      LOG.info("Successfully rolled back Paimon table creation for {}", ident);
+    } catch (Exception rollbackEx) {
+      LOG.error(
+          "Failed to roll back Paimon table {} creation. Manual cleanup may be required: {}",
+          ident,
+          rollbackEx.getMessage());
     }
   }
 

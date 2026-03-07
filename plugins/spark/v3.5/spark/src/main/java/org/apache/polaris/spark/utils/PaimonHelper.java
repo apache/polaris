@@ -125,21 +125,6 @@ public class PaimonHelper {
   }
 
   /**
-   * Resolve the table location based on Paimon's warehouse convention.
-   *
-   * <p>Paimon stores tables at: warehouse/database.db/table_name
-   *
-   * @param namespace the namespace (database) of the table
-   * @param tableName the name of the table
-   * @return the resolved table location path
-   */
-  public String resolveTableLocation(String[] namespace, String tableName) {
-    // Paimon convention: warehouse/database.db/table_name
-    String dbPath = String.join(".", namespace) + ".db";
-    return this.paimonWarehouse + "/" + dbPath + "/" + tableName;
-  }
-
-  /**
    * Ensure the namespace exists in Paimon catalog before creating a table.
    *
    * @param namespace the namespace to ensure exists
