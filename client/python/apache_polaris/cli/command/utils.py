@@ -42,11 +42,11 @@ def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
         configuration.proxy_headers = mgmt_config.proxy_headers
 
     catalog_client = ApiClient(configuration)
-    
+
     # Preserve custom headers (like Polaris-Realm) from management client
     if hasattr(api.api_client, "default_headers"):
         for header_name, header_value in api.api_client.default_headers.items():
             if header_name != "User-Agent":  # Don't override User-Agent
                 catalog_client.set_default_header(header_name, header_value)
-    
+
     return catalog_client
