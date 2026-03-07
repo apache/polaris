@@ -1,0 +1,136 @@
+{
+  "tests": [
+    {
+      "request": { "authzOp": "RENAME_TABLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1", "secondary": "NAMESPACE:root_container/catalog1/namespace1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "DROP_TABLE_WITHOUT_PURGE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "DROP_TABLE_WITH_PURGE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "UPDATE_TABLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_TABLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_TABLE_WITH_READ_DELEGATION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_TABLE_WITH_WRITE_DELEGATION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REPORT_READ_METRICS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REPORT_WRITE_METRICS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ATTACH_POLICY_TO_TABLE", "principal": { "name": "admin1" }, "target": "POLICY:root_container/catalog1/namespace1/policy1", "secondary": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "DETACH_POLICY_FROM_TABLE", "principal": { "name": "admin1" }, "target": "POLICY:root_container/catalog1/namespace1/policy1", "secondary": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_APPLICABLE_POLICIES_ON_TABLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ASSIGN_TABLE_UUID", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "UPGRADE_TABLE_FORMAT_VERSION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ADD_TABLE_SCHEMA", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_CURRENT_SCHEMA", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ADD_TABLE_PARTITION_SPEC", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ADD_TABLE_SORT_ORDER", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_DEFAULT_SORT_ORDER", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ADD_TABLE_SNAPSHOT", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_SNAPSHOT_REF", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REMOVE_TABLE_SNAPSHOTS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REMOVE_TABLE_SNAPSHOT_REF", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_LOCATION", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_PROPERTIES", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REMOVE_TABLE_PROPERTIES", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "SET_TABLE_STATISTICS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REMOVE_TABLE_STATISTICS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REMOVE_TABLE_PARTITION_SPECS", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "DROP_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "REPLACE_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "RENAME_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1", "secondary": "NAMESPACE:root_container/catalog1/namespace1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LOAD_VIEW", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": true }
+    }
+  ]
+}
