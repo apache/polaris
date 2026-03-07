@@ -104,6 +104,23 @@ public class AuthBootstrapUtil {
         rootContainer,
         PolarisPrivilege.SERVICE_MANAGE_ACCESS);
 
+    // create the catalog_role_manager principal role for catalog admins to list principal roles
+    PrincipalRoleEntity catalogRoleManagerPrincipalRole =
+        new PrincipalRoleEntity.Builder()
+            .setId(generateId(metaStoreManager, ctx))
+            .setName(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(ctx, null, catalogRoleManagerPrincipalRole);
+
+    // grant PRINCIPAL_ROLE_LIST on the rootContainer to the catalogRoleManagerPrincipalRole
+    metaStoreManager.grantPrivilegeOnSecurableToRole(
+        ctx,
+        catalogRoleManagerPrincipalRole,
+        null,
+        rootContainer,
+        PolarisPrivilege.PRINCIPAL_ROLE_LIST);
+
     return metaStoreManager.loadPrincipalSecrets(ctx, rootPrincipal.getClientId());
   }
 
