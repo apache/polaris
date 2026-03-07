@@ -2618,7 +2618,8 @@ public class PolarisAdminService {
 
     // Find all principals that have catalog_role_manager
     LoadGrantsResult grantsResult =
-        metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), catalogRoleManagerEntity);
+        metaStoreManager.loadGrantsOnSecurable(
+            getCurrentPolarisContext(), catalogRoleManagerEntity);
 
     if (grantsResult.isSuccess()) {
       for (PolarisGrantRecord grant : grantsResult.getGrantRecords()) {
