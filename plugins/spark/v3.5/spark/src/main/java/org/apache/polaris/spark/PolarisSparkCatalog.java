@@ -82,6 +82,47 @@ public class PolarisSparkCatalog implements TableCatalog {
     }
   }
 
+  /**
+   * Register a table in Polaris as a GenericTable without performing Spark DataSource resolution.
+   * This is intended for table formats (e.g., Paimon) whose real table object is already created by
+   * a separate, format-specific catalog. Only the lightweight Polaris metadata record is written;
+   * no DataSource look-up or Spark Table instantiation is attempted.
+   *
+   * @throws TableAlreadyExistsException if the table already exists in Polaris
+   * @throws NoSuchNamespaceException if the parent namespace does not exist
+   */
+  public void registerGenericTable(
+      Identifier identifier, String format, String baseLocation, Map<String, String> properties)
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
+    try {
+      this.polarisCatalog.createGenericTable(
+          Spark3Util.identifierToTableIdentifier(identifier),
+          format,
+          baseLocation,
+          null,
+          properties);
+    } catch (AlreadyExistsException e) {
+      throw new TableAlreadyExistsException(identifier);
+    } catch (org.apache.iceberg.exceptions.NoSuchNamespaceException e) {
+      throw new NoSuchNamespaceException(identifier.namespace());
+    }
+  }
+
+  /**
+   * Get the table format/provider string from Polaris without performing Spark DataSource
+   * resolution. This is useful when only the format is needed for routing decisions, without
+   * requiring a full Spark Table object.
+   */
+  public String getTableFormat(Identifier identifier) throws NoSuchTableException {
+    try {
+      GenericTable genericTable =
+          this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
+      return genericTable.format();
+    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
+      throw new NoSuchTableException(identifier);
+    }
+  }
+
   @Override
   @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
