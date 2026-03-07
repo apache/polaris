@@ -141,19 +141,15 @@ public interface IdempotencyStore {
    * given executor.
    *
    * <p>This operation is best-effort. The caller has already determined the HTTP response by the
-   * time cancel runs, so neither the return value nor any exception affects the response sent to
-   * the client. If cancel fails or throws, the record will expire naturally via TTL and be cleaned
-   * up by purge.
+   * time cancel runs, so any exception does not affect the response sent to the client. If cancel
+   * fails or throws, the record will expire naturally via TTL and be cleaned up by purge.
    *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
    * @param executorId identifier of the executor that owns the reservation
-   * @return {@code true} if a record was cancelled, {@code false} otherwise
    */
-  default boolean cancelInProgressReservation(
-      String realmId, String idempotencyKey, String executorId) {
-    return false;
-  }
+  default void cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {}
 
   /**
    * Marks an idempotency record as finalized, recording HTTP status and response metadata.
