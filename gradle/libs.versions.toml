@@ -19,6 +19,7 @@
 
 [versions]
 checkstyle = "13.3.0"
+graalvm = "25.0.2"
 hadoop = "3.4.3"
 iceberg = "1.10.1" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.1"
@@ -55,6 +56,14 @@ commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" 
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.48.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.86.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.64.0" }
+graalvm-graal-sdk = { module = "org.graalvm.sdk:graal-sdk", version.ref = "graalvm" }
+graalvm-inspect-community = { module = "org.graalvm.polyglot:inspect-community", version.ref = "graalvm" }
+graalvm-js-community = { module = "org.graalvm.polyglot:js-community", version.ref = "graalvm" }
+graalvm-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graalvm" }
+graalvm-nativeimage = { module = "org.graalvm.sdk:nativeimage", version.ref = "graalvm" }
+graalvm-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "graalvm" }
+graalvm-profiler-community = { module = "org.graalvm.polyglot:profiler-community", version.ref = "graalvm" }
+graalvm-truffle-api = { module = "org.graalvm.truffle:truffle-api", version.ref = "graalvm" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }

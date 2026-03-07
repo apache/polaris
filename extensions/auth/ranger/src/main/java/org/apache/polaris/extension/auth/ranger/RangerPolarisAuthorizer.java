@@ -26,7 +26,6 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -42,7 +41,6 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
-import org.apache.ranger.authz.api.RangerAuthorizer;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.apache.ranger.authz.model.RangerAccessContext;
@@ -59,7 +57,6 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private static final Logger LOG = LoggerFactory.getLogger(RangerPolarisAuthorizer.class);
 
   public static final String SERVICE_TYPE = "polaris";
-  public static final String SERVICE_NAME_PROPERTY = "ranger.plugin.polaris.service.name";
 
   private static final String OPERATION_NOT_ALLOWED_FOR_USER_ERROR =
       "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE";
@@ -73,29 +70,16 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private static final Set<PolarisAuthorizableOperation> AUTHORIZED_OPERATIONS =
       initAuthorizedOperations();
 
-  private final RangerAuthorizer authorizer;
+  private final RangerEmbeddedAuthorizer authorizer;
   private final String serviceName;
   private final boolean enforceCredentialRotationRequiredState;
 
-  public RangerPolarisAuthorizer(RangerPolarisAuthorizerConfig config, RealmConfig realmConfig) {
-    LOG.info("Initializing RangerPolarisAuthorizer");
-
-    Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
-
+  public RangerPolarisAuthorizer(RangerEmbeddedAuthorizer authorizer, String serviceName, RealmConfig realmConfig) {
+    this.authorizer = authorizer;
+    this.serviceName = serviceName;
     this.enforceCredentialRotationRequiredState =
         realmConfig.getConfig(
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
-    this.authorizer = new RangerEmbeddedAuthorizer(rangerProp);
-    this.serviceName = rangerProp.getProperty(SERVICE_NAME_PROPERTY);
-
-    try {
-      authorizer.init();
-    } catch (RangerAuthzException t) {
-      LOG.error("Failed to initialize RangerPolarisAuthorizer", t);
-      throw new RuntimeException(t);
-    }
-
-    LOG.info("RangerPolarisAuthorizer initialized successfully");
   }
 
   @Override
@@ -177,8 +161,9 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       throws RangerAuthzException {
     if (LOG.isDebugEnabled()) {
       LOG.debug(
-          "isAuthorized: users={}, groups={}",
+          "isAuthorized: user={}, properties={}, groups={}",
           polarisPrincipal.getName(),
+          polarisPrincipal.getProperties(),
           String.join(",", polarisPrincipal.getRoles()));
 
       LOG.debug(

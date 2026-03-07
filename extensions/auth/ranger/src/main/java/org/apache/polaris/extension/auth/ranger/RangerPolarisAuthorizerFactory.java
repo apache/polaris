@@ -25,15 +25,25 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
+import org.apache.ranger.authz.api.RangerAuthzException;
+import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Properties;
 
 @ApplicationScoped
 @Identifier("ranger")
 public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private static final Logger LOG = LoggerFactory.getLogger(RangerPolarisAuthorizerFactory.class);
 
+  public static final String SERVICE_NAME_PROPERTY = "ranger.plugin.polaris.service.name";
+
   private final RangerPolarisAuthorizerConfig config;
+
+  private RangerEmbeddedAuthorizer authorizer;
+  private String serviceName;
 
   @Inject
   RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
@@ -44,7 +54,24 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
 
   @PostConstruct
   public void initialize() {
-    config.validate();
+      LOG.info("Initializing RangerAuthorizer");
+
+      config.validate();
+
+      try {
+          Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
+          RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(rangerProp);
+
+          authorizer.init();
+
+          this.authorizer = authorizer;
+          this.serviceName = rangerProp.getProperty(SERVICE_NAME_PROPERTY);
+      } catch (RangerAuthzException t) {
+          LOG.error("Failed to initialize RangerPolarisAuthorizer", t);
+          throw new RuntimeException(t);
+      }
+
+      LOG.info("RangerAuthorizer initialized successfully");
   }
 
   @PreDestroy
@@ -55,7 +82,7 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
     LOG.debug("Creating RangerPolarisAuthorizer");
 
     try {
-      return new RangerPolarisAuthorizer(config, realmConfig);
+      return new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
     } catch (Throwable t) {
       LOG.error("Failed to create RangerPolarisAuthorizer", t);
 
