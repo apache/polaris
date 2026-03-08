@@ -43,8 +43,7 @@ public class CockroachRelationalJdbcLifeCycleManagement
   public Map<String, String> start() {
     cockroach =
         new CockroachContainer(
-            containerSpecHelper(
-                    "cockroachdb", CockroachRelationalJdbcLifeCycleManagement.class)
+            containerSpecHelper("cockroachdb", CockroachRelationalJdbcLifeCycleManagement.class)
                 .dockerImageName(null)
                 .asCompatibleSubstituteFor("cockroachdb/cockroach"));
 
