@@ -388,8 +388,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     validateMetadataFileInTableDir(identifier, metadata);
 
     List<PolarisEntity> resolvedNamespace = resolvedPath.getRawParentPath();
-    Set<String> tableLocations =
-        StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
+    var tableLocations = StorageUtil.getLocationsUsedByTable(metadata);
     CatalogUtils.validateLocationsForTableLike(
         realmConfig, identifier, tableLocations, resolvedPath);
     tableLocations.forEach(
