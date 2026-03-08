@@ -332,11 +332,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
-    if (!tableExists) {
-      return registerNewTable(identifier, metadataFileLocation, locationDir);
-    }
-
-    return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+    if (tableExists) {
+         overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+    } else {
+         registerNewTable(identifier, metadataFileLocation, locationDir);
+    }    
   }
 
   private Table registerNewTable(
