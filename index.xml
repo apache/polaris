@@ -312,11 +312,11 @@ well as for Polaris binary distributions.&lt;/p&gt;
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.2.0/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.2.0-incubating/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.2.0/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.2.0-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-management-api/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -380,11 +380,11 @@ well as for Polaris binary distributions.&lt;/p&gt;
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.3.0-incubating/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Open Policy Agent (OPA) Integration</title><link>https://polaris.apache.org/in-dev/unreleased/managing-security/external-pdp/opa/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/managing-security/external-pdp/opa/</guid><description>&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.3.0-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Open Policy Agent (OPA) Integration</title><link>https://polaris.apache.org/in-dev/unreleased/managing-security/external-pdp/opa/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/managing-security/external-pdp/opa/</guid><description>&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
  ⚠️ Preview Feature&lt;/p&gt;
  &lt;strong&gt;OPA integration is currently an preview feature&lt;/strong&gt; and may undergo breaking changes in future versions. Use with caution in production environments.
 &lt;/div&gt;
@@ -609,11 +609,11 @@ and then grants access to resources to principals by assigning catalog roles to 
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.2.0/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.2.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.2.0/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Apache Polaris Catalog Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.2.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Apache Polaris Catalog Service OpenAPI Specification</title><link>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/polaris-api-specs/polaris-catalog-api/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -677,11 +677,11 @@ and then grants access to resources to principals by assigning catalog roles to 
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.3.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.3.0/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Configuration Reference</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/</guid><description>&lt;p&gt;This document provides a comprehensive reference for all Polaris configuration options.&lt;/p&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.3.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Configuration Reference</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference/</guid><description>&lt;p&gt;This document provides a comprehensive reference for all Polaris configuration options.&lt;/p&gt;
 &lt;p&gt;All properties listed here are &lt;strong&gt;runtime&lt;/strong&gt; properties and can be changed without rebuilding Polaris.&lt;/p&gt;
 &lt;h2 id="table-of-contents" id="table-of-contents"&gt;Table of Contents&lt;a class="heading-anchor" href="#table-of-contents" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
@@ -2699,11 +2699,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.0/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.0-incubating/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.0/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/1.0.1/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.1/polaris-management-service/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.0-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/1.0.1/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.1/polaris-management-service/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -2767,11 +2767,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.1/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.1-incubating/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.1/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/1.1.0/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.1.0/polaris-management-service/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.1-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title>Apache Polaris Management Service OpenAPI</title><link>https://polaris.apache.org/releases/1.1.0/polaris-management-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.1.0/polaris-management-service/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -2835,11 +2835,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.1.0/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.1.0-incubating/spec/polaris-management-service.yml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.1.0/spec/polaris-management-service.yml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.0.0/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.0/polaris-catalog-service/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.1.0-incubating/spec/polaris-management-service.yml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.0.0/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.0/polaris-catalog-service/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -2903,11 +2903,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.0/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.0/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.0.1/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.1/polaris-catalog-service/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.0.1/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.0.1/polaris-catalog-service/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -2971,11 +2971,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.1/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.1-incubating/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.0.1/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.1.0/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.1.0/polaris-catalog-service/</guid><description>&lt;style&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.0.1-incubating/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title/><link>https://polaris.apache.org/releases/1.1.0/polaris-catalog-service/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.1.0/polaris-catalog-service/</guid><description>&lt;style&gt;
  #redoc input { height: 64px; }
  #redoc span[type="put"], span[type="get"], span[type="delete"], span[type="post"], span[type="options"], span[type="patch"], span[type="basic"], span[type="link"], span[type="head"] {
  border-radius: 4px;
@@ -3039,11 +3039,11 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
 
 
 &lt;div id="redoc-container"&gt;
-&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.1.0/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
+&lt;redoc spec-url='https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.1.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml' hide-hostname="true" suppress-warnings="true" lazy-rendering native-scrollbars scroll-y-offset=".js-navbar-scroll" ZgotmplZ&gt;&lt;/redoc&gt;
 &lt;/div&gt;
 
 
-&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-1.1.0/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Apache Iceberg OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</guid><description>&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/rest-catalog-open-api.yaml" /&gt;</description></item><item><title>Values Reference</title><link>https://polaris.apache.org/in-dev/unreleased/helm-chart/reference/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/helm-chart/reference/</guid><description>&lt;h3 id="deployment" id="deployment"&gt;Deployment&lt;a class="heading-anchor" href="#deployment" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-1.1.0-incubating/spec/generated/bundled-polaris-catalog-service.yaml" /&gt;</description></item><item><title>Apache Iceberg OpenAPI</title><link>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/rest-catalog-open-api/</guid><description>&lt;meta http-equiv="refresh" content="0; url=http://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-0.9.0-incubating/spec/rest-catalog-open-api.yaml" /&gt;</description></item><item><title>Values Reference</title><link>https://polaris.apache.org/in-dev/unreleased/helm-chart/reference/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/helm-chart/reference/</guid><description>&lt;h3 id="deployment" id="deployment"&gt;Deployment&lt;a class="heading-anchor" href="#deployment" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
 &lt;table&gt;
  &lt;thead&gt;
