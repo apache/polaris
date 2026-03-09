@@ -30,9 +30,12 @@ import javax.sql.DataSource;
  */
 public interface DataSourceResolver {
 
-    String STORE_TYPE_MAIN = "main";
-    String STORE_TYPE_METRICS = "metrics";
-    String STORE_TYPE_EVENTS = "events";
+    /** The type of store representing the workload pattern. */
+    enum StoreType {
+        MAIN,
+        METRICS,
+        EVENTS
+    }
 
     /**
      * Resolves the DataSource for a given realm and store type.
@@ -41,14 +44,5 @@ public interface DataSourceResolver {
      * @param storeType the type of store (e.g., main, metrics, events)
      * @return the resolved DataSource
      */
-    DataSource resolve(String realmId, String storeType);
-
-    /**
-     * Returns all unique DataSources managed by this resolver.
-     * This is useful for global operations like schema initialization against all
-     * data sources.
-     *
-     * @return a set of all DataSources
-     */
-    Set<DataSource> getAllUniqueDataSources();
+    DataSource resolve(String realmId, StoreType storeType);
 }

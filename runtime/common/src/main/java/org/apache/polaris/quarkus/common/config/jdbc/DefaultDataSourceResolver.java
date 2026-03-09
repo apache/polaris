@@ -16,52 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.quarkus.common.config.jdbc;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.util.HashSet;
-import java.util.Set;
 import javax.sql.DataSource;
+import org.apache.polaris.persistence.relational.jdbc.DataSourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link DataSourceResolver} that routes all realms
- * and store types to a
- * single default {@link DataSource}. This serves as both the production default
- * and the base for
- * multi-datasource extensions.
- *
- * <p>
- * To enable per-realm or per-store datasource routing, this class can be
- * extended or replaced
- * with a custom implementation that resolves named datasources based on
- * configuration.
+ * and store types to a single default {@link DataSource}. This serves as both
+ * the production default and the base for multi-datasource extensions.
  */
 @ApplicationScoped
 public class DefaultDataSourceResolver implements DataSourceResolver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDataSourceResolver.class);
 
-    private final Instance<DataSource> defaultDataSource;
+    private final DataSource defaultDataSource;
 
     @Inject
-    public DefaultDataSourceResolver(Instance<DataSource> defaultDataSource) {
+    public DefaultDataSourceResolver(DataSource defaultDataSource) {
         this.defaultDataSource = defaultDataSource;
     }
 
     @Override
-    public DataSource resolve(String realmId, String storeType) {
+    public DataSource resolve(String realmId, StoreType storeType) {
         LOGGER.debug("Using default DataSource for realm '{}' and store '{}'", realmId, storeType);
-        return defaultDataSource.get();
-    }
-
-    @Override
-    public Set<DataSource> getAllUniqueDataSources() {
-        Set<DataSource> dataSources = new HashSet<>();
-        dataSources.add(defaultDataSource.get());
-        return dataSources;
+        return defaultDataSource;
     }
 }

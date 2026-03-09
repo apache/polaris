@@ -127,7 +127,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmId, metaStoreManager);
   }
 
-  public DatasourceOperations getDatasourceOperations(String realmId, String storeType) {
+  public DatasourceOperations getDatasourceOperations(String realmId, DataSourceResolver.StoreType storeType) {
     DatasourceOperations databaseOperations;
     try {
       DataSource resolvedDs = dataSourceResolver.get().resolve(realmId, storeType);
@@ -160,7 +160,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        DatasourceOperations datasourceOperations = getDatasourceOperations(realm, DataSourceResolver.STORE_TYPE_MAIN);
+        DatasourceOperations datasourceOperations = getDatasourceOperations(realm, DataSourceResolver.StoreType.MAIN);
         int currentSchemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
         int effectiveSchemaVersion = JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
@@ -222,7 +222,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
       DatasourceOperations datasourceOperations = getDatasourceOperations(
-          realmContext.getRealmIdentifier(), DataSourceResolver.STORE_TYPE_MAIN);
+          realmContext.getRealmIdentifier(), DataSourceResolver.StoreType.MAIN);
       initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(realmContext);
     }
@@ -233,7 +233,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized BasePersistence getOrCreateSession(RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       DatasourceOperations datasourceOperations = getDatasourceOperations(
-          realmContext.getRealmIdentifier(), DataSourceResolver.STORE_TYPE_MAIN);
+          realmContext.getRealmIdentifier(), DataSourceResolver.StoreType.MAIN);
       initializeForRealm(datasourceOperations, realmContext, null);
     }
     checkPolarisServiceBootstrappedForRealm(realmContext);
