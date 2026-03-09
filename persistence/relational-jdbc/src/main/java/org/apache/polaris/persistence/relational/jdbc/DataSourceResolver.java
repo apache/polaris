@@ -19,10 +19,13 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import javax.sql.DataSource;
+import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Service to resolve the correct {@link DataSource} for a given realm and store type. This enables
- * isolating different workloads (e.g., entity metadata vs metrics vs events) into different
+ * Service to resolve the correct {@link DataSource} for a given realm and store
+ * type. This enables
+ * isolating different workloads (e.g., entity metadata vs metrics vs events)
+ * into different
  * physical databases or connection pools.
  */
 public interface DataSourceResolver {
@@ -37,10 +40,9 @@ public interface DataSourceResolver {
   /**
    * Resolves the DataSource for a given realm and store type.
    *
-   * @param realmId the realm identifier
-   * @param storeType the type of store (e.g., main, metrics, events)
+   * @param realmContext the realm context
+   * @param storeType    the type of store (e.g., main, metrics, events)
    * @return the resolved DataSource
    */
-  DataSource resolve(
-      org.apache.polaris.core.context.RealmContext realmContext, StoreType storeType);
+  DataSource resolve(RealmContext realmContext, StoreType storeType);
 }
