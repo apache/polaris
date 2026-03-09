@@ -30,7 +30,7 @@ if (!project.extra.has("duplicated-project-sources")) {
       toggleOffOn()
     }
     kotlinGradle {
-      ktfmt().googleStyle()
+      ktfmt("0.61").googleStyle()
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
       target("*.gradle.kts")
     }
