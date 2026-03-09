@@ -81,6 +81,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
+- Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
 
 ### Commits
 
