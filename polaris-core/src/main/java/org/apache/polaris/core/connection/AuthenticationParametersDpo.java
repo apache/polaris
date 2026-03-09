@@ -85,8 +85,6 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
                 oauthClientCredentialsModel.getScopes());
         break;
       case BEARER:
-        BearerAuthenticationParameters bearerAuthenticationParametersModel =
-            (BearerAuthenticationParameters) authenticationParameters;
         config =
             new BearerAuthenticationParametersDpo(
                 secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));
