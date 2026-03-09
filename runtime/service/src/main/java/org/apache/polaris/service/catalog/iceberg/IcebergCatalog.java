@@ -333,9 +333,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
     if (tableExists) {
-      overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+      return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
     } else {
-      registerNewTable(identifier, metadataFileLocation, locationDir);
+      return registerNewTable(identifier, metadataFileLocation, locationDir);
     }
   }
 
