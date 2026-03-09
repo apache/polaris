@@ -24,6 +24,7 @@ plugins {
 
 dependencies {
   compileOnly(libs.smallrye.config.core)
+  implementation(project(":polaris-core"))
   implementation(project(":polaris-relational-jdbc"))
   implementation(platform(libs.quarkus.amazon.services.bom))
   implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
