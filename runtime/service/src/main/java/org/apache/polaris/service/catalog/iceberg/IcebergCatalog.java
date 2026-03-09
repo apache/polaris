@@ -292,6 +292,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public Table registerTable(TableIdentifier identifier, String metadataFileLocation) {
+    return registerTable(identifier, metadataFileLocation, false);
+  }
+
+  /**
+   * Register a table with optional overwrite semantics.
+   *
+   * <p>When {@code overwrite} is false (the default) this behaves like a normal register and will
+   * fail if the table already exists. When {@code overwrite} is true and the named table already
+   * exists, this method updates the table's stored metadata-location to point at the provided
+   * metadata file. The overwrite path performs additional validation to ensure the supplied
+   * metadata file and its location are consistent with the table's resolved storage configuration.
+   *
+   * @param identifier the table identifier
+   * @param metadataFileLocation the metadata file location
+   * @param overwrite if true, update existing table metadata; if false, throw exception if table
+   *     exists
+   * @return the registered table
+   */
+  public Table registerTable(
+      TableIdentifier identifier, String metadataFileLocation, boolean overwrite) {
     Preconditions.checkArgument(
         identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
     Preconditions.checkArgument(
@@ -305,13 +325,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         metadataFileLocation);
 
     // Throw an exception if this table already exists in the catalog.
-    if (tableExists(identifier)) {
+    boolean tableExists = tableExists(identifier);
+    if (!overwrite && tableExists) {
       throw alreadyExistsExceptionForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
+    if (tableExists) {
+      overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
+    } else {
+      registerNewTable(identifier, metadataFileLocation, locationDir);
+    }
+  }
 
+  private Table registerNewTable(
+      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
     TableOperations ops = newTableOps(identifier);
 
     PolarisResolvedPathWrapper resolvedParent =
@@ -333,6 +362,64 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     TableMetadata metadata = TableMetadataParser.read(metadataFile);
     ops.commit(null, metadata);
 
+    return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
+  }
+
+  private Table overwriteRegisteredTable(
+      TableIdentifier identifier, String metadataFileLocation, String locationDir) {
+    PolarisResolvedPathWrapper resolvedPath =
+        resolvedEntityView.getPassthroughResolvedPath(
+            identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedPath == null || resolvedPath.getRawLeafEntity() == null) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
+
+    validateLocationForTableLike(identifier, metadataFileLocation, resolvedPath);
+
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(locationDir),
+            resolvedPath,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
+    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFileLocation);
+    validateMetadataFileInTableDir(identifier, metadata);
+
+    List<PolarisEntity> resolvedNamespace = resolvedPath.getRawParentPath();
+    var tableLocations = StorageUtil.getLocationsUsedByTable(metadata);
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, identifier, tableLocations, resolvedPath);
+    tableLocations.forEach(
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity,
+                identifier,
+                resolvedNamespace,
+                location,
+                resolvedPath.getRawLeafEntity()));
+
+    PolarisEntity rawEntity = resolvedPath.getRawLeafEntity();
+    if (rawEntity.getSubType() != PolarisEntitySubType.ICEBERG_TABLE) {
+      throw alreadyExistsExceptionForTableLikeEntity(identifier, rawEntity.getSubType());
+    }
+
+    IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
+    if (existingEntity == null) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
+
+    Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+    IcebergTableLikeEntity updatedEntity =
+        new IcebergTableLikeEntity.Builder(existingEntity)
+            .setInternalProperties(storedProperties)
+            .setMetadataLocation(metadataFileLocation)
+            .build();
+
+    updateTableLike(identifier, updatedEntity);
+
+    TableOperations ops = newTableOps(identifier);
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
   }
 

@@ -104,5 +104,9 @@ Connection config properties (URI and authentication) take precedence if the sam
   the REST endpoint is unreachable or authentication is rejected.
 - **Feature parity:** Federation exposes whatever table/namespace operations the remote service
   implements. Unsupported features return the remote error directly to callers.
+- **Register table overwrite:** `POST /v1/{catalog}/namespaces/{namespace}/register` with
+  `overwrite=true` is currently supported only for internal Polaris catalogs.
+  For federated external catalogs, Polaris rejects
+  overwrite registration requests.
 - **Generic tables:** The REST federation path currently surfaces Iceberg tables only; generic table
   federation is not implemented.
