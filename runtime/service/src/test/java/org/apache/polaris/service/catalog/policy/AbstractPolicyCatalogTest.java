@@ -62,7 +62,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PolicyTypeRegistry;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.TestNonInheritablePolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
@@ -161,7 +161,7 @@ public abstract class AbstractPolicyCatalogTest {
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
     // Register the test-only non-inheritable policy type
-    PolicyType.registerCustomPolicyType(TestNonInheritablePolicyType.INSTANCE);
+    PolicyTypeRegistry.register(TestNonInheritablePolicyType.INSTANCE);
 
     storageCredentialCache.invalidateAll();
 
@@ -268,7 +268,7 @@ public abstract class AbstractPolicyCatalogTest {
   public void after() throws IOException {
     metaStoreManager.purge(polarisContext);
     // Unregister the test-only non-inheritable policy type
-    PolicyType.unregisterCustomPolicyType(TestNonInheritablePolicyType.INSTANCE);
+    PolicyTypeRegistry.unregister(TestNonInheritablePolicyType.INSTANCE);
   }
 
   @Test
