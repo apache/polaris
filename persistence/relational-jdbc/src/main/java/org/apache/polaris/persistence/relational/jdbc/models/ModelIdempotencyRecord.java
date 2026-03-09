@@ -45,7 +45,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
   String TABLE_NAME = "idempotency_records";
 
   ObjectMapper RESPONSE_HEADERS_MAPPER = new ObjectMapper();
-  TypeReference<Map<String, String>> RESPONSE_HEADERS_TYPE = new TypeReference<>() {};
+  TypeReference<Map<String, List<String>>> RESPONSE_HEADERS_TYPE = new TypeReference<>() {};
 
   // Logical tenant / realm identifier.
   String REALM_ID = "realm_id";
@@ -152,7 +152,7 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     Integer httpStatus = (Integer) rs.getObject(HTTP_STATUS);
     String errorSubtype = rs.getString(ERROR_SUBTYPE);
     String responseSummary = rs.getString(RESPONSE_SUMMARY);
-    Map<String, String> responseHeaders = null;
+    Map<String, List<String>> responseHeaders = null;
     String responseHeadersRaw = rs.getString(RESPONSE_HEADERS);
     if (responseHeadersRaw != null && !responseHeadersRaw.isBlank()) {
       try {

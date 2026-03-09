@@ -17,7 +17,9 @@
 package org.apache.polaris.core.entity;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Immutable snapshot of an idempotency reservation and its finalization status.
@@ -53,7 +55,7 @@ public record IdempotencyRecord(
     Integer httpStatus,
     String errorSubtype,
     String responseSummary,
-    Map<String, String> responseHeaders,
+    Map<String, List<String>> responseHeaders,
     Instant createdAt,
     Instant updatedAt,
     Instant finalizedAt,
@@ -62,7 +64,13 @@ public record IdempotencyRecord(
     Instant expiresAt) {
 
   public IdempotencyRecord {
-    responseHeaders = responseHeaders == null ? null : Map.copyOf(responseHeaders);
+    responseHeaders =
+        responseHeaders == null
+            ? null
+            : responseHeaders.entrySet().stream()
+                .collect(
+                    Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey, e -> List.copyOf(e.getValue())));
   }
 
   /**
@@ -121,7 +129,7 @@ public record IdempotencyRecord(
    * <p>How this map is persisted is store-specific.
    */
   @Override
-  public Map<String, String> responseHeaders() {
+  public Map<String, List<String>> responseHeaders() {
     return responseHeaders;
   }
 

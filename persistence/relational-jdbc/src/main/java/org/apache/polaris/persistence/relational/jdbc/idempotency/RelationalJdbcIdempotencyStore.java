@@ -229,7 +229,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      Map<String, String> responseHeaders,
+      Map<String, List<String>> responseHeaders,
       Instant finalizedAt) {
     final String responseHeadersJson;
     if (responseHeaders == null || responseHeaders.isEmpty()) {

@@ -17,6 +17,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.entity.IdempotencyRecord;
@@ -179,7 +180,7 @@ public interface IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      Map<String, String> responseHeaders,
+      Map<String, List<String>> responseHeaders,
       Instant finalizedAt);
 
   /**
