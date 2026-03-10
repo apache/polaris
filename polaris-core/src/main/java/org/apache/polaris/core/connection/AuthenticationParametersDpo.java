@@ -25,7 +25,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
-import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
@@ -92,8 +91,6 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
                 oauthClientCredentialsModel.getScopes());
         break;
       case BEARER:
-        BearerAuthenticationParameters bearerAuthenticationParametersModel =
-            (BearerAuthenticationParameters) authenticationParameters;
         config =
             new BearerAuthenticationParametersDpo(
                 secretReferences.get(INLINE_BEARER_TOKEN_REFERENCE_KEY));

@@ -18,10 +18,14 @@ Copied from Docsy shortcodes/redoc.html.
 {{- $ver := partial "releaseVersion.html" . -}}
 {{- $spec := ( .Get 0 ) -}}
 {{- $url := "" -}}
+{{- $incubating := "" -}}
+{{- if lt $ver "1.4.0" -}}
+{{- $incubating = "-incubating" -}}
+{{- end -}}
 {{- if eq $ver "[unreleased]" -}}
 {{- $url = printf "https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/%s" $spec }}
 {{- else -}}
-{{- $url = printf "https://raw.githubusercontent.com/apache/polaris/refs/tags/polaris-%s/spec/%s" $ver $spec }}
+{{- $url = printf "https://raw.githubusercontent.com/apache/polaris/refs/tags/apache-polaris-%s%s/spec/%s" $ver $incubating $spec }}
 {{- end -}}
 
 <!-- CSS style overrides for Redoc API docs -->
