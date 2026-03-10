@@ -28,7 +28,7 @@ storage system's certificate does not have a trust chain leading to a well-known
 such a certificate is simply self-signed.
 
 In this situation the JVM inside the Polaris Server will need to be configured with a custom
-trust store containing the self-signed certificated or its CA certificate.
+trust store containing the self-signed certificate or its CA certificate.
 
 The example below assumes using a self-signed certificate for storage and `docker` for running Polaris.
 
