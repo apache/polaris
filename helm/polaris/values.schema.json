@@ -429,6 +429,9 @@
                     "description": "Specifies whether an HTTPRoute should be created. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information.",
                     "type": "boolean"
                 },
+                "exposeManagementEndpoints": {
+                    "type": "boolean"
+                },
                 "gatewayName": {
                     "description": "Name of the Gateway resource to attach to. Required.",
                     "type": "string"
