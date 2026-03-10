@@ -2309,6 +2309,115 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCatalogRoleManagerRevokedWhenPrincipalRoleDeleted() {
+    // This tests the privilege leak scenario where deleting a PrincipalRole
+    // with catalog_admin should revoke catalog_role_manager from affected principals
+
+    // Create a catalog
+    String catalogName = client.newEntityName("catalog_role_delete_test");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    // Create two principal roles: one will be deleted, one will remain
+    String principalRoleName1 = client.newEntityName("test_role_to_delete");
+    managementApi.createPrincipalRole(principalRoleName1);
+
+    String principalRoleName2 = client.newEntityName("test_role_to_keep");
+    managementApi.createPrincipalRole(principalRoleName2);
+
+    // Create two principals
+    PrincipalWithCredentials principal1 =
+        managementApi.createPrincipal(client.newEntityName("test_principal_role_delete1"));
+    PrincipalWithCredentials principal2 =
+        managementApi.createPrincipal(client.newEntityName("test_principal_role_delete2"));
+
+    // Assign principals to roles
+    managementApi.assignPrincipalRole(principal1.getPrincipal().getName(), principalRoleName1);
+    managementApi.assignPrincipalRole(
+        principal2.getPrincipal().getName(), principalRoleName1); // both principals in role1
+    managementApi.assignPrincipalRole(
+        principal2.getPrincipal().getName(), principalRoleName2); // principal2 also in role2
+
+    // Grant catalog_admin to both roles
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
+    managementApi.grantCatalogRoleToPrincipalRole(
+        principalRoleName1, catalogName, catalogAdminRole);
+    managementApi.grantCatalogRoleToPrincipalRole(
+        principalRoleName2, catalogName, catalogAdminRole);
+
+    // Verify both principals have catalog_role_manager
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principals/{p}/principal-roles",
+                Map.of("p", principal1.getPrincipal().getName()))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
+      assertThat(roles.getRoles())
+          .extracting(PrincipalRole::getName)
+          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+    }
+
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principals/{p}/principal-roles",
+                Map.of("p", principal2.getPrincipal().getName()))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
+      assertThat(roles.getRoles())
+          .extracting(PrincipalRole::getName)
+          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+    }
+
+    // Delete principalRole1
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles/{pr}", Map.of("pr", principalRoleName1))
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+
+    // Verify principal1 no longer has catalog_role_manager (lost only source of catalog_admin)
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principals/{p}/principal-roles",
+                Map.of("p", principal1.getPrincipal().getName()))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
+      assertThat(roles.getRoles())
+          .extracting(PrincipalRole::getName)
+          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+    }
+
+    // Verify principal2 STILL has catalog_role_manager (still has role2 with catalog_admin)
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principals/{p}/principal-roles",
+                Map.of("p", principal2.getPrincipal().getName()))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
+      assertThat(roles.getRoles())
+          .extracting(PrincipalRole::getName)
+          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+    }
+  }
+
+  @Test
   public void testTableManageAccessCanGrantAndRevokeFromCatalogRoles() {
     // Create a PrincipalRole and a new catalog.
     String principalRoleName = client.newEntityName("mypr_table_manage");

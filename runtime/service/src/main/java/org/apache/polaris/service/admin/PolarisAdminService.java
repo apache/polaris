@@ -1246,6 +1246,29 @@ public class PolarisAdminService {
         authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.PRINCIPAL_ROLE);
 
     PrincipalRoleEntity entity = getPrincipalRoleByName(resolutionManifest, name);
+
+    // Before deleting the principal role, collect all principals that have this role
+    // We need to check them after deletion to revoke catalog_role_manager if needed
+    List<PrincipalEntity> principalsWithRole = new java.util.ArrayList<>();
+    LoadGrantsResult grantsResult =
+        metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), entity);
+
+    if (grantsResult.isSuccess()) {
+      for (PolarisGrantRecord grant : grantsResult.getGrantRecords()) {
+        if (grant.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+          EntityResult principalResult =
+              metaStoreManager.loadEntity(
+                  getCurrentPolarisContext(),
+                  grant.getGranteeCatalogId(),
+                  grant.getGranteeId(),
+                  PolarisEntityType.PRINCIPAL);
+          if (principalResult.isSuccess() && principalResult.getEntity() != null) {
+            principalsWithRole.add(PrincipalEntity.of(principalResult.getEntity()));
+          }
+        }
+      }
+    }
+
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
@@ -1260,6 +1283,12 @@ public class PolarisAdminService {
             "Polaris service admin principal role cannot be dropped, "
                 + "concurrent modification detected. Please try again");
       }
+    }
+
+    // After successfully deleting the principal role, check if any principals
+    // should lose catalog_role_manager because they no longer have catalog_admin
+    for (PrincipalEntity principal : principalsWithRole) {
+      revokeCatalogRoleManagerFromPrincipalIfNeeded(principal);
     }
   }
 
