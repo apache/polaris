@@ -17,14 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris 1.0.0 Documentation'
 linkTitle: '1.0.0'
-title: 'Overview'
 type: docs
-weight: 10000
+weight: -10000
 params:
   top_hidden: true
   show_page_toc: false
   release_version: '1.0.0'
+menus:
+  main:
+    parent: doc
+    weight: -10000
+    identifier: doc-1.0.0
 cascade:
   type: docs
   params:
