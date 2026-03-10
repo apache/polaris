@@ -1724,7 +1724,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCatalogAdminGrantAndRevokeCatalogRoles() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
-    String principalRoleName = client.newEntityName("mypr33");
+    String principalRoleName = client.newEntityName("mypr_catalog_admin_grant_revoke");
     managementApi.createPrincipalRole(principalRoleName);
 
     String catalogName = client.newEntityName("myuniquetestcatalog");
@@ -1743,7 +1743,7 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
-        managementApi.createPrincipal(client.newEntityName("principal1"));
+        managementApi.createPrincipal(client.newEntityName("principal_catalog_admin_grant_revoke"));
 
     managementApi.assignPrincipalRole(
         catalogAdminPrincipal.getPrincipal().getName(), principalRoleName);
@@ -1752,12 +1752,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Create a second principal role. Use the catalog admin principal to list principal roles and
     // grant a catalog role to the new principal role
-    String principalRoleName2 = "mypr2";
+    String principalRoleName2 = client.newEntityName("mypr2_catalog_admin_grant_revoke");
     PrincipalRole principalRole2 = new PrincipalRole(principalRoleName2);
     managementApi.createPrincipalRole(principalRole2);
 
     // create a catalog role and grant it manage_content privilege
-    String catalogRoleName = "mycr1";
+    String catalogRoleName = client.newEntityName("mycr1_catalog_admin_grant_revoke");
     client.managementApi(catalogAdminToken).createCatalogRole(catalogName, catalogRoleName);
 
     CatalogPrivilege privilege = CatalogPrivilege.CATALOG_MANAGE_CONTENT;
@@ -1774,8 +1774,8 @@ public class PolarisManagementServiceIntegrationTest {
         .grantCatalogRoleToPrincipalRole(
             principalRoleName2, catalogName, new CatalogRole(catalogRoleName));
 
-    // But the catalog admin cannot revoke the role because it requires
-    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE
+    // The catalog admin can now revoke the role since it has
+    // CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE
     try (Response response =
         client
             .managementApi(catalogAdminToken)
@@ -1787,11 +1787,17 @@ public class PolarisManagementServiceIntegrationTest {
                     + "/"
                     + catalogRoleName)
             .delete()) {
-      assertThat(response).returns(FORBIDDEN.getStatusCode(), Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
-    // The service admin can revoke the role because it has the
-    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE privilege
+    // Re-grant the role to test that service admin can also revoke
+    client
+        .managementApi(catalogAdminToken)
+        .grantCatalogRoleToPrincipalRole(
+            principalRoleName2, catalogName, new CatalogRole(catalogRoleName));
+
+    // The service admin can also revoke the role (has CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE
+    // via catalog-scoped privileges)
     try (Response response =
         managementApi
             .request(
@@ -1828,7 +1834,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testServiceAdminCanTransferCatalogAdmin() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
-    String principalRoleName = client.newEntityName("mypr33");
+    String principalRoleName = client.newEntityName("mypr_service_admin_transfer");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
@@ -1848,14 +1854,14 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
-        managementApi.createPrincipal(client.newEntityName("principal1"));
+        managementApi.createPrincipal(client.newEntityName("principal_service_admin_transfer"));
 
     managementApi.assignPrincipalRole(
         catalogAdminPrincipal.getPrincipal().getName(), principalRole1.getName());
 
     String catalogAdminToken = client.obtainToken(catalogAdminPrincipal);
 
-    // service_admin revokes the catalog_admin privilege from its principal role
+    // service_admin revokes the catalog_admin privilege from its own principal role
     try {
       try (Response response =
           managementApi
@@ -1868,10 +1874,11 @@ public class PolarisManagementServiceIntegrationTest {
             .returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
       }
 
-      // the service_admin can not revoke the catalog_admin privilege from the new principal role
+      // After revoking its own catalog_admin, service_admin can no longer revoke the
+      // catalog_admin privilege from the new principal role because it no longer has
+      // CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE (which comes from having catalog_admin)
       try (Response response =
-          client
-              .managementApi(catalogAdminToken)
+          managementApi
               .request(
                   "v1/principal-roles/"
                       + principalRoleName
@@ -1896,7 +1903,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCatalogAdminGrantAndRevokeCatalogRolesFromWrongCatalog() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
-    String principalRoleName = client.newEntityName("mypr33");
+    String principalRoleName = client.newEntityName("mypr_wrong_catalog");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
@@ -1923,7 +1930,7 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalog(catalog2);
 
     // create a catalog role *in the second catalog* and grant it manage_content privilege
-    String catalogRoleName = "mycr1";
+    String catalogRoleName = client.newEntityName("mycr1_wrong_catalog");
     managementApi.createCatalogRole(catalogName2, catalogRoleName);
 
     // Get the catalog admin role from the *first* catalog and grant that role to the principal role
@@ -1934,7 +1941,7 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Create a principal and grant the principal role to it
     PrincipalWithCredentials catalogAdminPrincipal =
-        managementApi.createPrincipal(client.newEntityName("principal1"));
+        managementApi.createPrincipal(client.newEntityName("principal_wrong_catalog"));
     managementApi.assignPrincipalRole(
         catalogAdminPrincipal.getPrincipal().getName(), principalRole1.getName());
 
@@ -1959,7 +1966,7 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testTableManageAccessCanGrantAndRevokeFromCatalogRoles() {
     // Create a PrincipalRole and a new catalog.
-    String principalRoleName = client.newEntityName("mypr33");
+    String principalRoleName = client.newEntityName("mypr_table_manage");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
@@ -1975,7 +1982,8 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalog(catalog);
 
     // create a valid target CatalogRole in this catalog
-    managementApi.createCatalogRole(catalogName, "target_catalog_role");
+    String targetCatalogRoleName = client.newEntityName("target_catalog_role");
+    managementApi.createCatalogRole(catalogName, targetCatalogRoleName);
 
     // create a second catalog
     String catalogName2 = client.newEntityName("anothertablemanagecatalog");
@@ -1989,17 +1997,18 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalog(catalog2);
 
     // create an *invalid* target CatalogRole in second catalog
-    managementApi.createCatalogRole(catalogName2, "invalid_target_catalog_role");
+    String invalidTargetCatalogRoleName = client.newEntityName("invalid_target_catalog_role");
+    managementApi.createCatalogRole(catalogName2, invalidTargetCatalogRoleName);
 
     // create the namespace "c" in *both* namespaces
-    String namespaceName = "c";
+    String namespaceName = client.newEntityName("c");
     catalogApi.createNamespace(catalogName, namespaceName);
     catalogApi.createNamespace(catalogName2, namespaceName);
 
     // create a catalog role *in the first catalog* and grant it manage_content privilege at the
     // namespace level
     // grant that role to the PrincipalRole
-    String catalogRoleName = "ns_manage_access_role";
+    String catalogRoleName = client.newEntityName("ns_manage_access_role");
     managementApi.createCatalogRole(catalogName, catalogRoleName);
     managementApi.addGrant(
         catalogName,
@@ -2028,7 +2037,7 @@ public class PolarisManagementServiceIntegrationTest {
         .managementApi(manageAccessUserToken)
         .addGrant(
             catalogName,
-            "target_catalog_role",
+            targetCatalogRoleName,
             new NamespaceGrant(
                 List.of(namespaceName),
                 NamespacePrivilege.TABLE_CREATE,
@@ -2044,7 +2053,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(manageAccessUserToken)
             .request("v1/principal-roles/" + principalRoleName + "/catalog-roles/" + catalogName)
             .put(
-                Entity.json(new GrantCatalogRoleRequest(new CatalogRole("target_catalog_role"))))) {
+                Entity.json(new GrantCatalogRoleRequest(new CatalogRole(targetCatalogRoleName))))) {
       assertThat(response).returns(FORBIDDEN.getStatusCode(), Response::getStatus);
     }
 
@@ -2054,7 +2063,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(manageAccessUserToken)
             .request(
                 "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                Map.of("cat", catalogName, "role", "target_catalog_role"))
+                Map.of("cat", catalogName, "role", targetCatalogRoleName))
             .put(
                 Entity.json(
                     new CatalogGrant(
@@ -2070,7 +2079,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(manageAccessUserToken)
             .request(
                 "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                Map.of("cat", catalogName2, "role", "invalid_target_catalog_role"))
+                Map.of("cat", catalogName2, "role", invalidTargetCatalogRoleName))
             .put(
                 Entity.json(
                     new NamespaceGrant(
@@ -2086,7 +2095,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(manageAccessUserToken)
             .request(
                 "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                Map.of("cat", catalogName2, "role", "invalid_target_catalog_role"))
+                Map.of("cat", catalogName2, "role", invalidTargetCatalogRoleName))
             .put(
                 Entity.json(
                     new CatalogGrant(
