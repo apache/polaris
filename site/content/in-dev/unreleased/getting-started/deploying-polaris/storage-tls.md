@@ -38,7 +38,7 @@ The example below assumes using a self-signed certificate for storage and `docke
 * Add the storage system's certificate to it.
 
 ```shell
-keytool -importcert -file STORAGE_CERT.pem -keystore cacerts
+keytool -importcert -file STORAGE_CERT.pem -keystore cacerts -alias STORAGE_CERT
 ```
 
 Here, `STORAGE_CERT.pem` is the file containing the storage system's certificate; `cacerts` is the name of a custom
