@@ -1,6 +1,5 @@
 User-agent: *
 Disallow: /releases/0.9.0/rest-catalog-open-api/
-Disallow: /releases/0.9.0/
 Disallow: /releases/0.9.0/polaris-management-service/
 Disallow: /releases/0.9.0/metastores/
 Disallow: /releases/0.9.0/configuring-polaris-for-production/
@@ -9,7 +8,7 @@ Disallow: /releases/0.9.0/entities/
 Disallow: /releases/0.9.0/command-line-interface/
 Disallow: /releases/0.9.0/overview/
 Disallow: /releases/0.9.0/quickstart/
-Disallow: /releases/1.0.0/
+Disallow: /releases/0.9.0/
 Disallow: /releases/1.0.0/evolution/
 Disallow: /releases/1.0.0/polaris-catalog-service/
 Disallow: /releases/1.0.0/polaris-management-service/
@@ -33,7 +32,7 @@ Disallow: /releases/1.0.0/admin-tool/
 Disallow: /releases/1.0.0/getting-started/quickstart/
 Disallow: /releases/1.0.0/getting-started/
 Disallow: /releases/1.0.0/getting-started/install-dependencies/
-Disallow: /releases/1.0.1/
+Disallow: /releases/1.0.0/
 Disallow: /releases/1.0.1/evolution/
 Disallow: /releases/1.0.1/polaris-catalog-service/
 Disallow: /releases/1.0.1/polaris-management-service/
@@ -57,7 +56,7 @@ Disallow: /releases/1.0.1/admin-tool/
 Disallow: /releases/1.0.1/getting-started/quickstart/
 Disallow: /releases/1.0.1/getting-started/
 Disallow: /releases/1.0.1/getting-started/install-dependencies/
-Disallow: /releases/1.1.0/
+Disallow: /releases/1.0.1/
 Disallow: /releases/1.1.0/evolution/
 Disallow: /releases/1.1.0/polaris-catalog-service/
 Disallow: /releases/1.1.0/polaris-management-service/
@@ -84,7 +83,7 @@ Disallow: /releases/1.1.0/admin-tool/
 Disallow: /releases/1.1.0/getting-started/quickstart/
 Disallow: /releases/1.1.0/getting-started/
 Disallow: /releases/1.1.0/getting-started/install-dependencies/
-Disallow: /releases/1.2.0/
+Disallow: /releases/1.1.0/
 Disallow: /releases/1.2.0/polaris-api-specs/
 Disallow: /releases/1.2.0/evolution/
 Disallow: /releases/1.2.0/federation/hive-metastore-federation/
@@ -125,3 +124,4 @@ Disallow: /releases/1.2.0/getting-started/creating-a-catalog/s3/
 Disallow: /releases/1.2.0/polaris-api-specs/polaris-management-api/
 Disallow: /releases/1.2.0/getting-started/install-dependencies/
 Disallow: /releases/1.2.0/getting-started/creating-a-catalog/s3/catalog-aws/
+Disallow: /releases/1.2.0/
