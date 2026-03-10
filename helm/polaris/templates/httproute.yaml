@@ -41,8 +41,21 @@ spec:
       sectionName: {{ .Values.httproute.sectionName }}
       {{- end }}
   rules:
-    # We don't specify a matches block here, so the default is a prefix path match on "/" (match every HTTP request)
-    # The backend (Service) to send matching requests to
+    {{- if .Values.httproute.exposeManagementEndpoints }}
+    - matches:
+      - path:
+          type: PathPrefix
+          value: "/mgmt"
+      backendRefs:
+        - name: {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}
+          port: {{ get (first .Values.managementService.ports) "port" }}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: "/"
+    {{- end }}
     - backendRefs:
         - name: {{ $fullName }}
           port: {{ get (first .Values.service.ports) "port" }}

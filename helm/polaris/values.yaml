@@ -472,6 +472,8 @@ httproute:
   # @section -- HTTPRoute
   hosts:
     - chart-example.local
+  
+  exposeManagementEndpoints: false
 
 # @schema type: object
 # -- Configures the resources requests and limits for polaris pods.
