@@ -475,9 +475,6 @@ httproute:
   # -- Enable to expose the health endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.
   # @section -- HTTPRoute
   exposeManagementEndpoints: false
-  # -- Configure where the management endpoints are exposed. The default is /mgmt, which means that the management endpoints will be exposed on the /mgmt path of the HTTPRoute.
-  # @section -- HTTPRoute
-  managementPathPrefix: /mgmt
 
 # @schema type: object
 # -- Configures the resources requests and limits for polaris pods.

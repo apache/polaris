@@ -45,16 +45,10 @@ spec:
     - matches:
       - path:
           type: PathPrefix
-          value: {{ .Values.httproute.managementPathPrefix }}
+          value: "/q"
       backendRefs:
         - name: {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}
           port: {{ get (first .Values.managementService.ports) "port" }}
-      filters:
-        - type: URLRewrite
-          urlRewrite:
-            path:
-              type: ReplacePrefixMatch
-              replacePrefixMatch: "/"
     {{- end }}
     - backendRefs:
         - name: {{ $fullName }}
