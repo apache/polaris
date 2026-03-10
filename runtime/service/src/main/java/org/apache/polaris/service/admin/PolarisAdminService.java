@@ -1464,8 +1464,17 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(principalRoleEntity)) {
       throw new ValidationException("Cannot assign a federated role to a principal");
     }
-    return metaStoreManager.grantUsageOnRoleToGrantee(
-        getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
+    PrivilegeResult result =
+        metaStoreManager.grantUsageOnRoleToGrantee(
+            getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
+
+    // If the principal role already has catalog_admin on any catalog,
+    // grant catalog_role_manager to this principal
+    if (result.isSuccess() && hasCatalogAdminOnAnyCatalog(principalRoleEntity)) {
+      grantCatalogRoleManagerToPrincipalIfNeeded(principalEntity);
+    }
+
+    return result;
   }
 
   public PrivilegeResult revokePrincipalRole(String principalName, String principalRoleName) {
@@ -2645,6 +2654,53 @@ public class PolarisAdminService {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Grants catalog_role_manager to a specific principal if they don't already have it. This is
+   * called when a principal is assigned to a principal role that already has catalog_admin.
+   */
+  private void grantCatalogRoleManagerToPrincipalIfNeeded(PrincipalEntity principal) {
+    // Load catalog_role_manager directly from metastore
+    EntityResult catalogRoleManagerResult =
+        metaStoreManager.readEntityByName(
+            getCurrentPolarisContext(),
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+
+    if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
+      LOGGER.warn(
+          "catalog_role_manager role not found. This role should be created during bootstrap. "
+              + "Existing deployments may need to re-bootstrap to enable this feature.");
+      return;
+    }
+
+    PrincipalRoleEntity catalogRoleManagerEntity =
+        PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
+
+    // Check if the principal already has catalog_role_manager
+    LoadGrantsResult principalGrantsResult =
+        metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principal);
+
+    boolean alreadyHasCatalogRoleManager = false;
+    if (principalGrantsResult.isSuccess()) {
+      for (PolarisGrantRecord existingGrant : principalGrantsResult.getGrantRecords()) {
+        if (existingGrant.getSecurableId() == catalogRoleManagerEntity.getId()
+            && existingGrant.getPrivilegeCode()
+                == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
+          alreadyHasCatalogRoleManager = true;
+          break;
+        }
+      }
+    }
+
+    // Only grant if not already granted
+    if (!alreadyHasCatalogRoleManager) {
+      metaStoreManager.grantUsageOnRoleToGrantee(
+          getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
     }
   }
 }
