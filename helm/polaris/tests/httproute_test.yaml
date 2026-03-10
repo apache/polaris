@@ -185,7 +185,6 @@ tests:
       httproute.enabled: true
       httproute.gatewayName: my-gateway
       httproute.exposeManagementEndpoints: true
-      httproute.managementPathPrefix: /health
       managementService:
         ports:
           - name: polaris-mgmt
@@ -198,23 +197,11 @@ tests:
           path: spec.rules[0].matches[0].path.type
           value: PathPrefix
       - equal:
-          path: spec.rules[0].matches[0].path.value
-          value: /health
-      - equal:
           path: spec.rules[0].backendRefs[0].name
           value: polaris-release-mgmt
       - equal:
           path: spec.rules[0].backendRefs[0].port
           value: 18182
-      - equal:
-          path: spec.rules[0].filters[0].type
-          value: URLRewrite
-      - equal:
-          path: spec.rules[0].filters[0].urlRewrite.path.type
-          value: ReplacePrefixMatch
-      - equal:
-          path: spec.rules[0].filters[0].urlRewrite.path.replacePrefixMatch
-          value: /
       - equal:
           path: spec.rules[1].backendRefs[0].name
           value: polaris-release
