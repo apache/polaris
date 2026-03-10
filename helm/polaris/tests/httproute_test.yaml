@@ -171,11 +171,55 @@ tests:
       httproute.enabled: true
       httproute.gatewayName: my-gateway
     asserts:
+      - lengthEqual:
+          path: spec.rules
+          count: 1
       - equal:
           path: spec.rules[0].backendRefs[0].name
           value: polaris-release
       - equal:
           path: spec.rules[0].backendRefs[0].port
+          value: 8181
+  - it: should expose management endpoints rule when enabled
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.exposeManagementEndpoints: true
+      httproute.managementPathPrefix: /health
+      managementService:
+        ports:
+          - name: polaris-mgmt
+            port: 18182
+    asserts:
+      - lengthEqual:
+          path: spec.rules
+          count: 2
+      - equal:
+          path: spec.rules[0].matches[0].path.type
+          value: PathPrefix
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /health
+      - equal:
+          path: spec.rules[0].backendRefs[0].name
+          value: polaris-release-mgmt
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 18182
+      - equal:
+          path: spec.rules[0].filters[0].type
+          value: URLRewrite
+      - equal:
+          path: spec.rules[0].filters[0].urlRewrite.path.type
+          value: ReplacePrefixMatch
+      - equal:
+          path: spec.rules[0].filters[0].urlRewrite.path.replacePrefixMatch
+          value: /
+      - equal:
+          path: spec.rules[1].backendRefs[0].name
+          value: polaris-release
+      - equal:
+          path: spec.rules[1].backendRefs[0].port
           value: 8181
 
   # validation

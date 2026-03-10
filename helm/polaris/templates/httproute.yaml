@@ -45,7 +45,7 @@ spec:
     - matches:
       - path:
           type: PathPrefix
-          value: "/mgmt"
+          value: {{ .Values.httproute.managementPathPrefix }}
       backendRefs:
         - name: {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}
           port: {{ get (first .Values.managementService.ports) "port" }}

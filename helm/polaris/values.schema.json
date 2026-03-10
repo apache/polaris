@@ -430,6 +430,7 @@
                     "type": "boolean"
                 },
                 "exposeManagementEndpoints": {
+                    "description": "Enable to expose the health endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.",
                     "type": "boolean"
                 },
                 "gatewayName": {
@@ -446,6 +447,10 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "managementPathPrefix": {
+                    "description": "Configure where the management endpoints are exposed. The default is /mgmt, which means that the management endpoints will be exposed on the /mgmt path of the HTTPRoute.",
+                    "type": "string"
                 },
                 "sectionName": {
                     "description": "Section name within the gateway to use (optional).",
