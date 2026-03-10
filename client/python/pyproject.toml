@@ -25,6 +25,7 @@ authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.or
 requires-python = ">=3.10,<3.14"
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 keywords = [
     "Apache Polaris",
     "Polaris",
@@ -54,7 +55,7 @@ dev = [
     "flake8>= 4.0.0",
     "types-python-dateutil>= 2.8.19.14",
     "mypy>=1.19, <=1.19.1",
-    "pyiceberg==0.10.0",
+    "pyiceberg==0.11.1",
     "pre-commit==4.5.1",
     # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
     "openapi-generator-cli==7.12.0",
@@ -66,7 +67,9 @@ include = [
     "generate_clients.py",
     "apache_polaris",
     "templates/",
-    ".openapi-generator-ignore"
+    ".openapi-generator-ignore",
+    "LICENSE",
+    "NOTICE",
 ]
 
 [tool.hatch.build.targets.sdist.force-include]

@@ -28,6 +28,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | replicaCount | int | `1` | The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager. See [Scaling](https://polaris.apache.org/in-dev/unreleased/helm-chart/production/#scaling) for production recommendations. |
+| deploymentAnnotations | object | `{}` | Additional Annotations to apply to polaris deployment. |
 | revisionHistoryLimit | int | `nil` | The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10). |
 
 ### Image
@@ -318,6 +319,7 @@ weight: 900
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| cors.enabled | bool | `false` | Specifies whether the CORS filter should be enabled. See [CORS](https://quarkus.io/guides/http-reference#cors-filter) for details. |
 | cors.allowedOrigins | list | `[]` | Origins allowed for CORS, e.g. http://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression. |
 | cors.allowedMethods | list | `[]` | HTTP methods allowed for CORS, ex: GET, PUT, POST. If this is not set or empty, all requested methods are considered allowed. |
 | cors.allowedHeaders | list | `[]` | HTTP headers allowed for CORS, ex: X-Custom, Content-Disposition. If this is not set or empty, all requested headers are considered allowed. |

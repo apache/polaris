@@ -63,9 +63,10 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
-  excludes.add("DISCLAIMER_WIP")
   excludes.add("LICENSE")
   excludes.add("NOTICE")
+
+  excludes.add("**/no-license-notice-marker")
 
   // Files copied from Docsy (ASLv2 licensed) don't have header
   excludes.add("site/layouts/docs/baseof.html")

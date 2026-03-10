@@ -198,7 +198,8 @@ https://gohugo.io/installation/
 
 To develop the site locally (aka `hugo serve -D`), install the following dependencies using the `root` user:
 ```bash
-apt install hugo asciidoctor
+apt install asciidoctor
+snap install hugo
 snap install dart-sass
 ```
 
