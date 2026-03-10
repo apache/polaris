@@ -65,6 +65,7 @@ The resulting version page should have a front matter matching the one below:
 title: "Apache Polaris [version]"  # Full title shown on the page
 linkTitle: "[version]"  # Short version shown in the sidebar
 release_version: "[version]"  # Used for active/EOL categorization
+release_date: [YYYY-MM-DD]. # Date of release in YYYY-MM-DD format
 weight: [number]  # Negative weight derived from the version, e.g. 1.2.3 -> -10203
 hide_summary: true
 exclude_search: true
