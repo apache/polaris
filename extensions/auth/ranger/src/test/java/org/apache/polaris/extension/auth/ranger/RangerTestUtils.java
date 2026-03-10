@@ -30,7 +30,7 @@ public class RangerTestUtils {
     return new RangerPolarisAuthorizerConfig() {
       @Override
       public Optional<String> configFileName() {
-        return Optional.of(configFilename);
+        return configFilename == null ? Optional.empty() : Optional.of(configFilename);
       }
     };
   }

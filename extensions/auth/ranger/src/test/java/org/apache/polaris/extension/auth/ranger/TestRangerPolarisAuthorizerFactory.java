@@ -22,6 +22,7 @@ package org.apache.polaris.extension.auth.ranger;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,5 +37,33 @@ public class TestRangerPolarisAuthorizerFactory {
     RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
 
     assertNotNull(authorizer);
+  }
+
+  @Test
+  public void testAuthorizerInitMissingConfigFile() {
+    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig(null));
+
+    assertThrows(IllegalStateException.class, factory::initialize);
+    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
+  }
+
+  @Test
+  public void testAuthorizerInitNonExistingConfigFile() {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(
+            createConfig("authz_tests/ranger-plugin-non-existing.properties"));
+
+    assertThrows(IllegalStateException.class, factory::initialize);
+    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
+  }
+
+  @Test
+  public void testAuthorizerInitInvalidConfigFile() {
+    RangerPolarisAuthorizerFactory factory =
+        new RangerPolarisAuthorizerFactory(
+            createConfig("authz_tests/ranger-plugin-invalid.properties"));
+
+    assertThrows(IllegalStateException.class, factory::initialize);
+    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
   }
 }

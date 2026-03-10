@@ -49,29 +49,35 @@ public class RangerUtils {
   private static final Logger LOG = LoggerFactory.getLogger(RangerUtils.class);
 
   public static Properties loadProperties(String resourcePath) {
-    Properties prop = new Properties();
-
-    if (resourcePath != null) {
-      resourcePath = resourcePath.trim();
-
-      if (!resourcePath.startsWith("/")) {
-        LOG.info("Adding / to the configFileName [{}]", resourcePath);
-
-        resourcePath = "/" + resourcePath;
-      }
-
-      try (InputStream in = RangerPolarisAuthorizer.class.getResourceAsStream(resourcePath)) {
-        if (in != null) {
-          prop.load(in);
-        } else {
-          LOG.error("Unable to find ranger config file in the classpath : [{}]", resourcePath);
-        }
-      } catch (IOException e) {
-        LOG.error("Unable to load config file: [{}]", resourcePath, e);
-      }
+    if (resourcePath == null) {
+      throw new IllegalStateException("invalid resource path: null");
     }
 
-    return prop;
+    resourcePath = resourcePath.trim();
+
+    if (!resourcePath.startsWith("/")) {
+      LOG.info("Prefixing / to resource path: {}", resourcePath);
+
+      resourcePath = "/" + resourcePath;
+    }
+
+    try (InputStream in = RangerPolarisAuthorizer.class.getResourceAsStream(resourcePath)) {
+      if (in != null) {
+        Properties prop = new Properties();
+
+        prop.load(in);
+
+        return prop;
+      } else {
+        LOG.error("Unable to find {} in the classpath", resourcePath);
+
+        throw new IllegalStateException("failed to find " + resourcePath);
+      }
+    } catch (IOException e) {
+      LOG.error("Unable to load {}", resourcePath, e);
+
+      throw new IllegalStateException("failed to load " + resourcePath);
+    }
   }
 
   public static String toResourceType(PolarisEntityType entityType) {
