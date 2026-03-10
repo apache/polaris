@@ -430,7 +430,7 @@
                     "type": "boolean"
                 },
                 "exposeManagementEndpoints": {
-                    "description": "Enable to expose the health endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.",
+                    "description": "Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.",
                     "type": "boolean"
                 },
                 "gatewayName": {

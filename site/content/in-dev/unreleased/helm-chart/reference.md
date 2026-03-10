@@ -152,7 +152,7 @@ weight: 900
 | httproute.gatewayNamespace | string | `"default"` | Namespace where the Gateway is deployed. Required. |
 | httproute.sectionName | string | `""` | Section name within the gateway to use (optional). |
 | httproute.hosts | list | `["chart-example.local"]` | A list of hostnames that the HTTPRoute should match. |
-| httproute.exposeManagementEndpoints | bool | `false` | Enable to expose the health endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster. |
+| httproute.exposeManagementEndpoints | bool | `false` | Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster. |
 
 ### Resources and Autoscaling
 
