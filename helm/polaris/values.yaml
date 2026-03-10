@@ -472,7 +472,7 @@ httproute:
   # @section -- HTTPRoute
   hosts:
     - chart-example.local
-  # -- Enable to expose the health endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.
+  # -- Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.
   # @section -- HTTPRoute
   exposeManagementEndpoints: false
 
