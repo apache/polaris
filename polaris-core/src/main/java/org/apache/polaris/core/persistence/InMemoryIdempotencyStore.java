@@ -127,16 +127,18 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   @Override
   public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
     Key key = new Key(realmId, idempotencyKey);
-    RecordState s = records.get(key);
-    if (s == null) {
-      return Optional.empty();
-    }
-    Instant expiresAt = s.record.expiresAt();
-    if (expiresAt != null && expiresAt.isBefore(Instant.now())) {
-      records.remove(key, s);
-      return Optional.empty();
-    }
-    return Optional.of(s.record);
+    IdempotencyRecord[] result = new IdempotencyRecord[1];
+    records.computeIfPresent(
+        key,
+        (k, existing) -> {
+          Instant exp = existing.record.expiresAt();
+          if (exp != null && exp.isBefore(Instant.now())) {
+            return null;
+          }
+          result[0] = existing.record;
+          return existing;
+        });
+    return Optional.ofNullable(result[0]);
   }
 
   @Override
