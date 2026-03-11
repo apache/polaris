@@ -321,7 +321,8 @@ public class IdempotencyFilter {
       }
       return;
     }
-    final String body = responseEntityAsString(response, objectMapper);
+    final String body =
+        boundedResponseSummary(response, objectMapper, configuration.responseSummaryMaxBytes());
     final Map<String, String> headers =
         headerSnapshot(response, configuration.responseHeaderAllowlist());
     Instant now = clock.instant();
@@ -664,21 +665,32 @@ public class IdempotencyFilter {
         && Catalog.TypeEnum.INTERNAL.equals(catalogEntity.getCatalogType());
   }
 
-  private static String responseEntityAsString(
-      ContainerResponseContext response, ObjectMapper objectMapper) {
+  private static String boundedResponseSummary(
+      ContainerResponseContext response, ObjectMapper objectMapper, int maxBytes) {
     Object entity = response.getEntity();
     if (entity == null) {
       return null;
     }
+    String serialized;
     if (entity instanceof String string) {
-      return string;
+      serialized = string;
+    } else {
+      try {
+        serialized = objectMapper.writeValueAsString(entity);
+      } catch (Exception e) {
+        LOG.debug("Failed to serialize response entity for idempotency; body will not be replayed", e);
+        return null;
+      }
     }
-    try {
-      return objectMapper.writeValueAsString(entity);
-    } catch (Exception e) {
-      // Best-effort fallback.
-      return entity.toString();
+    if (maxBytes > 0 && serialized.length() > maxBytes) {
+      LOG.warnf(
+          "Response body (%d chars) exceeds responseSummaryMaxBytes (%d); "
+              + "replay will return status and headers only",
+          serialized.length(),
+          maxBytes);
+      return null;
     }
+    return serialized;
   }
 
   private static void applyReplayedHeaders(

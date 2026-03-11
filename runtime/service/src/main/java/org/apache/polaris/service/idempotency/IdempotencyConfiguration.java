@@ -119,6 +119,17 @@ public interface IdempotencyConfiguration {
   Duration leaseTtl();
 
   /**
+   * Maximum byte size of the serialized response body stored for replay.
+   *
+   * <p>If the serialized body exceeds this limit, it is discarded and replay returns only the
+   * status code and headers. This prevents unbounded memory and storage usage from large responses
+   * (e.g. table metadata that can reach hundreds of MB).
+   */
+  @WithName("response-summary-max-bytes")
+  @WithDefault("262144")
+  int responseSummaryMaxBytes();
+
+  /**
    * Response headers that are persisted and replayed (exact names).
    *
    * <p>Only the first header value is stored and replayed.
