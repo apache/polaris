@@ -19,6 +19,7 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
@@ -36,10 +37,10 @@ public class DefaultDataSourceResolver implements DataSourceResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDataSourceResolver.class);
 
-  private final DataSource defaultDataSource;
+  private final Instance<DataSource> defaultDataSource;
 
   @Inject
-  public DefaultDataSourceResolver(DataSource defaultDataSource) {
+  public DefaultDataSourceResolver(Instance<DataSource> defaultDataSource) {
     this.defaultDataSource = defaultDataSource;
   }
 
@@ -49,6 +50,6 @@ public class DefaultDataSourceResolver implements DataSourceResolver {
         "Using default DataSource for realm '{}' and store '{}'",
         realmContext.getRealmIdentifier(),
         storeType);
-    return defaultDataSource;
+    return defaultDataSource.get();
   }
 }
