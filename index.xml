@@ -352,7 +352,13 @@ that they, run following SQL statement under &lt;code&gt;POLARIS_SCHEMA&lt;/code
 &lt;/table&gt;
 &lt;h3 id="release-notes" id="release-notes"&gt;Release Notes&lt;a class="heading-anchor" href="#release-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
-&lt;p&gt;Apache Polaris 0.9.0 was the first Polaris release. Only the source distribution is available for this release.&lt;/p&gt;</description></item><item><title>Getting Started</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;p&gt;Please see the &lt;a href="../../in-dev/unreleased/getting-started"&gt;quickstart guide&lt;/a&gt; for more information.&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
+&lt;p&gt;Apache Polaris 0.9.0 was the first Polaris release. Only the source distribution is available for this release.&lt;/p&gt;</description></item><item><title>Getting Started</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;p&gt;Please see the &lt;a href="../../in-dev/unreleased/getting-started"&gt;quickstart guide&lt;/a&gt; for more information.&lt;/p&gt;
+&lt;!--
+```shell
+cd "$SITE_TEST_GUIDE_DIR"
+docker compose up
+```
+--&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
 &lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;ul&gt;
@@ -1565,6 +1571,11 @@ A Jupyter notebook is used to run PySpark.&lt;/p&gt;
 &lt;h2 id="build-the-polaris-image" id="build-the-polaris-image"&gt;Build the Polaris image&lt;a class="heading-anchor" href="#build-the-polaris-image" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;If a Polaris image is not already present locally, build one with the following command:&lt;/p&gt;
+&lt;!-- Guide testing: does not work without AWS.
+```shell
+exit 0
+```
+--&gt;
 &lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-shell" data-lang="shell"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;./gradlew &lt;span style="color:#4e9a06"&gt;\
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;2&lt;/span&gt;&lt;span&gt; :polaris-server:assemble &lt;span style="color:#4e9a06"&gt;\
 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;3&lt;/span&gt;&lt;span&gt; :polaris-server:quarkusAppPartsBuild --rerun &lt;span style="color:#4e9a06"&gt;\
