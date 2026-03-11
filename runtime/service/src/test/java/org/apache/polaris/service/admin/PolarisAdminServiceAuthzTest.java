@@ -642,6 +642,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
