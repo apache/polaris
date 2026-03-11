@@ -45,5 +45,5 @@ polaris.authorization.ranger.config-file-name=ranger-plugin.properties
   folder where application.properties file is located and update the config
   file according your Ranger installation.
 
-3. Restart Polaris to see that all accesses are authorized by Ranger policies,
+3. Run or restart Polaris to see that all accesses are authorized by Ranger policies,
    with access audit records available in Apache Ranger console.
