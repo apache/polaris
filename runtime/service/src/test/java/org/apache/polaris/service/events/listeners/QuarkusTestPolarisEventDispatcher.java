@@ -16,18 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events.listeners;
 
-import org.apache.polaris.service.events.PolarisEvent;
+import io.quarkus.arc.profile.IfBuildProfile;
+import jakarta.enterprise.context.ApplicationScoped;
 
-/**
- * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes via {@link
- * PolarisEvent#attributes()}.
- */
-public interface PolarisEventListener {
-
-  default void onEvent(PolarisEvent event) {}
-
-  String identifier();
-}
+@ApplicationScoped
+@IfBuildProfile("test")
+public class QuarkusTestPolarisEventDispatcher extends TestPolarisEventDispatcher {}

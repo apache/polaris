@@ -140,9 +140,9 @@ import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -178,7 +178,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
   private final PolarisPrincipal principal;
-  private final PolarisEventListener polarisEventListener;
+  private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
@@ -211,7 +211,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener,
+      PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
@@ -226,7 +226,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
-    this.polarisEventListener = polarisEventListener;
+    this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
@@ -1455,7 +1455,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onEvent(
+        polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_TABLE,
                 eventMetadataFactory.create(),
@@ -1481,7 +1481,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventListener.onEvent(
+        polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_TABLE,
                 eventMetadataFactory.create(),
@@ -1875,7 +1875,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onEvent(
+        polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_VIEW,
                 eventMetadataFactory.create(),
@@ -1903,7 +1903,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onEvent(
+        polarisEventDispatcher.dispatch(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_VIEW,
                 eventMetadataFactory.create(),

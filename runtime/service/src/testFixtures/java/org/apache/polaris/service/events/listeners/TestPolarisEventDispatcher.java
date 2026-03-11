@@ -16,18 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events.listeners;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
+import org.apache.polaris.service.events.PolarisEventType;
 
-/**
- * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes via {@link
- * PolarisEvent#attributes()}.
- */
-public interface PolarisEventListener {
+public class TestPolarisEventDispatcher implements PolarisEventDispatcher {
+  private final Map<PolarisEventType, PolarisEvent> latestEvents = new ConcurrentHashMap<>();
 
-  default void onEvent(PolarisEvent event) {}
+  public void clear() {
+    latestEvents.clear();
+  }
 
-  String identifier();
+  public PolarisEvent getLatest(PolarisEventType type) {
+    var latest = latestEvents.get(type);
+    if (latest == null) {
+      throw new IllegalStateException("No event of type " + type + " recorded");
+    }
+    return latest;
+  }
+
+  @Override
+  public void dispatch(PolarisEvent event) {
+    latestEvents.put(event.type(), event);
+  }
 }

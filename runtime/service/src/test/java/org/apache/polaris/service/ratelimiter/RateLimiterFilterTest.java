@@ -33,9 +33,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
 import org.apache.polaris.service.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.test.PolarisIntegrationTestHelper;
@@ -78,14 +78,13 @@ public class RateLimiterFilterTest {
           .put("polaris.realm-context.type", "test")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
           .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
-          .put("polaris.event-listener.type", "test")
           .build();
     }
   }
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
-  @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -142,7 +141,7 @@ public class RateLimiterFilterTest {
     }
 
     PolarisEvent event =
-        ((TestPolarisEventListener) polarisEventListener)
+        ((TestPolarisEventDispatcher) polarisEventDispatcher)
             .getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
     assertThat(event.attributes().getRequired(EventAttributes.HTTP_METHOD)).isEqualTo("GET");
 

@@ -20,6 +20,7 @@ package org.apache.polaris.service.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @StaticInitSafe
@@ -30,4 +31,15 @@ public interface PolarisEventListenerConfiguration {
    * identifier.
    */
   String type();
+
+  /**
+   * Comma separated list of event listers, each item must be a registered {@link
+   * PolarisEventListener} identifier.
+   */
+  @WithDefault("no-op")
+  String types();
+
+  default String[] enabledPolarisEventListener() {
+    return types().split(",");
+  }
 }

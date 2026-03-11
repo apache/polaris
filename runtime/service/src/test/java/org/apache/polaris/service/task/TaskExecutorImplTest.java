@@ -30,7 +30,7 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -43,8 +43,8 @@ public class TaskExecutorImplTest {
 
     TestServices testServices = TestServices.builder().realmContext(realmContext).build();
 
-    TestPolarisEventListener testPolarisEventListener =
-        (TestPolarisEventListener) testServices.polarisEventListener();
+    TestPolarisEventDispatcher testPolarisEventDispatcher =
+        (TestPolarisEventDispatcher) testServices.polarisEventDispatcher();
 
     PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
 
@@ -71,7 +71,7 @@ public class TaskExecutorImplTest {
             new TaskFileIOSupplier(
                 testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
             new RealmContextHolder(),
-            testServices.polarisEventListener(),
+            testServices.polarisEventDispatcher(),
             testServices.eventMetadataFactory(),
             null,
             new PolarisPrincipalHolder(),
@@ -87,7 +87,7 @@ public class TaskExecutorImplTest {
           @Override
           public boolean handleTask(TaskEntity task, CallContext callContext) {
             PolarisEvent beforeTaskAttemptedEvent =
-                testPolarisEventListener.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
+                testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
             Assertions.assertEquals(
                 taskEntity.getId(),
                 beforeTaskAttemptedEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID));
@@ -105,7 +105,7 @@ public class TaskExecutorImplTest {
         attempt);
 
     PolarisEvent afterAttemptTaskEvent =
-        testPolarisEventListener.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
     Assertions.assertEquals(
         taskEntity.getId(),
         afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID));

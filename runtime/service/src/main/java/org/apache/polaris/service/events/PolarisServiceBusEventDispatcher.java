@@ -16,18 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events.listeners;
 
-import org.apache.polaris.service.events.PolarisEvent;
+package org.apache.polaris.service.events;
 
-/**
- * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes via {@link
- * PolarisEvent#attributes()}.
- */
-public interface PolarisEventListener {
+import io.quarkus.arc.DefaultBean;
+import io.vertx.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
-  default void onEvent(PolarisEvent event) {}
+@ApplicationScoped
+@DefaultBean
+public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher {
+  public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
 
-  String identifier();
+  @Inject EventBus eventBus;
+
+  //  @Inject PolarisEventListeners polarisEventListeners;
+
+  @Override
+  public void dispatch(PolarisEvent event) {
+    eventBus.publish(POLARIS_EVENT_CHANNEL, event);
+  }
 }

@@ -16,18 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events.listeners;
 
-import org.apache.polaris.service.events.PolarisEvent;
+package org.apache.polaris.service.events;
 
-/**
- * Event listener that responds to notable moments during Polaris's execution. Implementations can
- * filter events by checking {@link PolarisEvent#type()} or by querying attributes via {@link
- * PolarisEvent#attributes()}.
- */
-public interface PolarisEventListener {
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.vertx.LocalEventBusCodec;
+import io.vertx.core.eventbus.EventBus;
+import jakarta.enterprise.event.Observes;
 
-  default void onEvent(PolarisEvent event) {}
+public class EventBusConfigurer {
+  private static final String LOCAL_CODEC_NAME = "local";
+  private static final LocalEventBusCodec<PolarisEvent> LOCAL_CODEC =
+      new LocalEventBusCodec<>(LOCAL_CODEC_NAME);
 
-  String identifier();
+  void configureEventBus(@Observes StartupEvent ev, EventBus eventBus) {
+    eventBus.registerDefaultCodec(PolarisEvent.class, LOCAL_CODEC);
+  }
 }

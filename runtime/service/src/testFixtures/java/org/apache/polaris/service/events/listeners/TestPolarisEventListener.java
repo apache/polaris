@@ -32,6 +32,11 @@ public class TestPolarisEventListener implements PolarisEventListener {
     latestEvents.put(event.type(), event);
   }
 
+  @Override
+  public String identifier() {
+    return "test";
+  }
+
   public void clear() {
     latestEvents.clear();
   }

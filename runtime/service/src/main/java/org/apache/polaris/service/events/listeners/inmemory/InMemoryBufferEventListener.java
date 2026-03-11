@@ -43,10 +43,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-@Identifier("persistence-in-memory-buffer")
+@Identifier(InMemoryBufferEventListener.ID)
 public class InMemoryBufferEventListener extends PolarisPersistenceEventListener {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryBufferEventListener.class);
+
+  public static final String ID = "persistence-in-memory-buffer";
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject InMemoryBufferEventListenerConfiguration configuration;
@@ -105,5 +107,10 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
         realmId,
         error);
     processors.invalidate(realmId);
+  }
+
+  @Override
+  public String identifier() {
+    return ID;
   }
 }
