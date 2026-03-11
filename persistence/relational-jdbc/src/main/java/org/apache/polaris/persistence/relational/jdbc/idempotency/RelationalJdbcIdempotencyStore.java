@@ -230,7 +230,9 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       }
     }
 
-    // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
+    // Single atomic UPDATE: the WHERE clause guards on executor_id and http_status IS NULL.
+    // Row-level locking in the DB ensures that concurrent finalize attempts are serialized;
+    // at most one caller sees updated > 0.
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
