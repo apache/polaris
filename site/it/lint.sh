@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,17 +18,10 @@
 # under the License.
 #
 
-# This file contains the dependencies banned from Quarkus production runtime.
+set -euo pipefail
 
-# Each banned dependency must be in the form
-#   <group-id> ':' <module>
-# or
-#   <group-id>
+script_dir="$(cd -- "$(dirname "$0")" && pwd)"
+cd "${script_dir}"
 
-
-# Contains old javax.* annotations that we do not want
-javax.servlet:javax.servlet-api
-
-
-# Don't need compile-time annotations in runtime
-com.google.errorprone:error_prone_annotations
+python3 -m ruff format .
+python3 -m ruff check --fix .

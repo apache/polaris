@@ -429,6 +429,10 @@
                     "description": "Specifies whether an HTTPRoute should be created. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information.",
                     "type": "boolean"
                 },
+                "exposeManagementEndpoints": {
+                    "description": "Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.",
+                    "type": "boolean"
+                },
                 "gatewayName": {
                     "description": "Name of the Gateway resource to attach to. Required.",
                     "type": "string"

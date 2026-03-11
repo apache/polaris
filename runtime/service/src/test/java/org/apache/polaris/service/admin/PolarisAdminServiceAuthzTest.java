@@ -71,6 +71,13 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_LIST)
+        .shouldPassWith(PolarisPrivilege.CATALOG_CREATE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -97,6 +104,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_CREATE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -113,6 +122,11 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -141,6 +155,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -169,6 +187,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_DROP)
+        .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -185,6 +205,11 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_LIST)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_CREATE)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -212,6 +237,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_CREATE)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -228,6 +255,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -256,6 +286,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -285,6 +317,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_DROP)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -301,6 +335,11 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_LIST)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -330,6 +369,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -346,6 +387,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -376,6 +420,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -406,6 +452,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_DROP)
+        .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -414,6 +462,11 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     return authzTestsBuilder("listCatalogRoles")
         .action(() -> newTestAdminService().listCatalogRoles(CATALOG_NAME))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_LIST)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -436,6 +489,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 newTestAdminService(Set.of(PRINCIPAL_ROLE2))
                     .deleteCatalogRole(CATALOG_NAME, newCatalogRole.getName()))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -444,6 +499,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     return authzTestsBuilder("getCatalogRole")
         .action(() -> newTestAdminService().getCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -467,6 +525,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             })
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
         .createTests();
   }
 
@@ -490,6 +549,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 newTestAdminService(Set.of(PRINCIPAL_ROLE2))
                     .createCatalogRole(CATALOG_NAME, newCatalogRole))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_DROP)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -512,6 +573,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -558,6 +620,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -579,6 +642,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
                     PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -597,6 +661,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnCatalogFromRole(
                     CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -615,6 +682,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnCatalogFromRole(
                     CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -667,6 +737,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                     .grantPrivilegeOnCatalogToRole(
                         CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -708,6 +779,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                             adminService.revokePrivilegeOnCatalogFromRole(
                                 catalogName, CATALOG_ROLE1, privilege))
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
                     .createTests());
   }
 
@@ -732,6 +804,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 adminService.revokePrivilegeOnCatalogFromRole(
                     FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -773,6 +846,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                             adminService.revokePrivilegeOnCatalogFromRole(
                                 catalogName, CATALOG_ROLE1, privilege))
                     .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
                     .createTests());
   }
 
@@ -806,6 +880,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                         VIEW_NS1_1,
                         PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 
@@ -839,6 +914,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                         POLICY_NS1_1,
                         PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
   }
 }

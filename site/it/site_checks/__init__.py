@@ -16,18 +16,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-# This file contains the dependencies banned from Quarkus production runtime.
-
-# Each banned dependency must be in the form
-#   <group-id> ':' <module>
-# or
-#   <group-id>
-
-
-# Contains old javax.* annotations that we do not want
-javax.servlet:javax.servlet-api
-
-
-# Don't need compile-time annotations in runtime
-com.google.errorprone:error_prone_annotations

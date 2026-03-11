@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,17 +18,10 @@
 # under the License.
 #
 
-# This file contains the dependencies banned from Quarkus production runtime.
+import sys
 
-# Each banned dependency must be in the form
-#   <group-id> ':' <module>
-# or
-#   <group-id>
+from site_checks.markdown_testing import markdown_testing
 
-
-# Contains old javax.* annotations that we do not want
-javax.servlet:javax.servlet-api
-
-
-# Don't need compile-time annotations in runtime
-com.google.errorprone:error_prone_annotations
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    raise SystemExit(0 if markdown_testing(args) else 1)
