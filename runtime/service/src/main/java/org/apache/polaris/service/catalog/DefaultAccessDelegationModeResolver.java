@@ -43,7 +43,8 @@ import org.slf4j.LoggerFactory;
  * <p>The resolution logic:
  *
  * <ol>
- *   <li>If no delegation mode is requested, returns {@link AccessDelegationMode#UNKNOWN}
+ *   <li>If no valid delegation mode is requested (empty or only UNKNOWN), throws {@link
+ *       IllegalArgumentException}
  *   <li>If exactly one delegation mode is requested (excluding UNKNOWN), returns that mode
  *   <li>If both {@link AccessDelegationMode#VENDED_CREDENTIALS} and {@link
  *       AccessDelegationMode#REMOTE_SIGNING} are requested:
@@ -75,19 +76,14 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       @Nonnull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
 
-    // Case 1: No delegation mode requested
-    if (requestedModes.isEmpty()) {
-      LOGGER.debug("No delegation mode requested, returning UNKNOWN");
-      return UNKNOWN;
-    }
-
     // Filter out UNKNOWN mode from consideration for selection logic
     EnumSet<AccessDelegationMode> effectiveModes = EnumSet.copyOf(requestedModes);
     effectiveModes.remove(UNKNOWN);
 
+    // Case 1: No valid delegation mode requested
     if (effectiveModes.isEmpty()) {
-      LOGGER.debug("Only UNKNOWN mode requested, returning UNKNOWN");
-      return UNKNOWN;
+      throw new IllegalArgumentException(
+          "Unsupported access delegation mode: no valid values were requested");
     }
 
     // Case 2: Exactly one delegation mode requested
@@ -127,22 +123,6 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "No catalog entity available for mode resolution, defaulting to VENDED_CREDENTIALS");
       return VENDED_CREDENTIALS;
-    }
-
-    // Check if credential vending is enabled for this catalog.
-    // For internal catalogs, credential vending is always enabled.
-    // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is
-    // enabled.
-    boolean credentialVendingEnabled =
-        !catalogEntity.isExternal()
-            || realmConfig.getConfig(
-                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity);
-
-    if (!credentialVendingEnabled) {
-      LOGGER.debug(
-          "Credential vending is not enabled for external catalog {}, selecting REMOTE_SIGNING",
-          catalogEntity.getName());
-      return REMOTE_SIGNING;
     }
 
     // Check if credential subscoping is skipped - if so, VENDED_CREDENTIALS won't work properly

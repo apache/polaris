@@ -469,10 +469,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableDirect(namespace, request, delegationModes);
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
-    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
-
-    // Check if external catalog access delegation is allowed for the resolved mode
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     request.validate();
 
@@ -603,10 +605,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableStaged(namespace, request, delegationModes);
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
-    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
-
-    // Check if external catalog access delegation is allowed for the resolved mode
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -812,10 +816,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         authorizeLoadTable(tableIdentifier, delegationModes);
 
     // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
-    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
-
-    // Check if external catalog access delegation is allowed for the resolved mode
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1355,12 +1361,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
 
-    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info(
-        "allow external catalog access delegation: {}",
-        realmConfig()
-            .getConfig(
-                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
@@ -1387,18 +1387,19 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
-   * <p>If no modes are requested, returns {@link AccessDelegationMode#UNKNOWN} immediately.
-   * Otherwise, delegates to the resolver to determine the optimal mode based on catalog
-   * capabilities.
+   * <p>Callers must ensure that {@code requestedModes} is not empty before invoking this method. If
+   * no delegation is needed, callers should skip resolution entirely rather than passing an empty
+   * set.
    *
-   * @param requestedModes The set of delegation modes requested by the client
+   * @param requestedModes The non-empty set of delegation modes requested by the client
    * @return The resolved access delegation mode
+   * @throws IllegalArgumentException if {@code requestedModes} is empty
    */
   protected AccessDelegationMode resolveAccessDelegationModes(
       EnumSet<AccessDelegationMode> requestedModes) {
-    if (requestedModes.isEmpty()) {
-      return AccessDelegationMode.UNKNOWN;
-    }
+    Preconditions.checkArgument(
+        !requestedModes.isEmpty(),
+        "requestedModes must not be empty; callers should skip resolution when no delegation is needed");
 
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
     AccessDelegationMode resolvedMode =
