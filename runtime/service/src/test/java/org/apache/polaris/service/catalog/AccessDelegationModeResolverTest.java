@@ -22,6 +22,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIG
 import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
@@ -67,41 +68,20 @@ class AccessDelegationModeResolverTest {
         .thenReturn(skipCredentialSubscoping);
   }
 
-  /**
-   * Helper to set up config mock for external catalog tests.
-   *
-   * @param skipCredentialSubscoping whether to skip credential subscoping
-   * @param allowFederatedCredentialVending whether to allow federated catalog credential vending
-   */
-  private void mockConfigForExternalCatalog(
-      boolean skipCredentialSubscoping, boolean allowFederatedCredentialVending) {
-    // Mock ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING (catalog-level)
-    when(realmConfig.getConfig(
-            org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any(),
-            org.mockito.ArgumentMatchers.<CatalogEntity>any()))
-        .thenReturn(allowFederatedCredentialVending);
-
-    // Mock SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION (realm-level only)
-    when(realmConfig.getConfig(org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any()))
-        .thenReturn(skipCredentialSubscoping);
-  }
-
   @Test
-  void resolveEmptyModes_returnsUnknown() {
+  void resolveEmptyModes_throwsIllegalArgument() {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
-
-    assertThat(result).isEqualTo(UNKNOWN);
+    assertThatThrownBy(() -> resolver.resolve(requestedModes, null))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
-  void resolveOnlyUnknownMode_returnsUnknown() {
+  void resolveOnlyUnknownMode_throwsIllegalArgument() {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(UNKNOWN);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
-
-    assertThat(result).isEqualTo(UNKNOWN);
+    assertThatThrownBy(() -> resolver.resolve(requestedModes, null))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @ParameterizedTest
@@ -234,52 +214,29 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolve_emptyModes_returnsUnknown() {
-    EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
-
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
-
-    assertThat(result).isEqualTo(UNKNOWN);
-  }
-
-  // Tests for external/federated catalogs
-
-  @Test
-  void resolveBothModes_externalCatalog_withFederatedVendingAllowed_returnsVendedCredentials() {
-    mockConfigForExternalCatalog(false, true); // federatedVendingAllowed=true
+  void resolveBothModes_externalCatalog_withStsAvailable_returnsVendedCredentials() {
+    mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
+    // Resolver does not check external catalog credential vending config;
+    // that gate is enforced by IcebergCatalogHandler.checkAllowExternalCatalogAccessDelegation()
     assertThat(result).isEqualTo(VENDED_CREDENTIALS);
   }
 
   @Test
-  void resolveBothModes_externalCatalog_withFederatedVendingDisallowed_returnsRemoteSigning() {
-    mockConfigForExternalCatalog(false, false); // federatedVendingAllowed=false
-    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+  void resolveBothModes_externalCatalog_withStsUnavailable_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(false);
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(true);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
 
     assertThat(result).isEqualTo(REMOTE_SIGNING);
-  }
-
-  @Test
-  void resolveBothModes_internalCatalog_doesNotCheckFederatedVendingConfig() {
-    // For internal catalogs, we shouldn't need the federated vending config
-    mockSkipCredentialSubscopingConfig(false);
-    CatalogEntity catalogEntity = createCatalogWithAwsConfig(false); // Internal catalog
-
-    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
-
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
-
-    // Internal catalog should return VENDED_CREDENTIALS without checking federated config
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
   }
 
   private CatalogEntity createExternalCatalogWithAwsConfig(boolean stsUnavailable) {

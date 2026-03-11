@@ -22,33 +22,10 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.EnumSet;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 
 /**
  * Resolves the optimal {@link AccessDelegationMode} to use based on the client's requested modes
  * and the catalog's capabilities.
- *
- * <p>The selection algorithm is:
- *
- * <ol>
- *   <li>If no delegation mode is requested, use {@link AccessDelegationMode#UNKNOWN}
- *   <li>If exactly one delegation mode is requested, use that mode (if supported)
- *   <li>If the requested modes include both {@link AccessDelegationMode#VENDED_CREDENTIALS} and
- *       {@link AccessDelegationMode#REMOTE_SIGNING}:
- *       <ol>
- *         <li>Check if STS is available for the catalog's storage configuration
- *         <li>If STS is available and credential subscoping is not skipped, use {@link
- *             AccessDelegationMode#VENDED_CREDENTIALS}
- *         <li>Otherwise, use {@link AccessDelegationMode#REMOTE_SIGNING}
- *       </ol>
- * </ol>
- *
- * <p>This resolver improves upon the simple mode selection by considering:
- *
- * <ul>
- *   <li>STS availability from the catalog's {@link AwsStorageConfigurationInfo}
- *   <li>Feature configuration settings for credential subscoping
- * </ul>
  */
 public interface AccessDelegationModeResolver {
 
