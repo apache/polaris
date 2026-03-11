@@ -27,6 +27,9 @@ dependencies {
 
   implementation(libs.ranger.authz.embedded)
   implementation(libs.commons.lang3)
+  implementation(libs.graalvm.js.js.scriptengine)
+  implementation(libs.graalvm.polyglot.js)
+  implementation(libs.graalvm.polyglot.polyglot)
   implementation(libs.guava)
 
   // Iceberg dependency for ForbiddenException
@@ -38,13 +41,4 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.smallrye.config.core)
   compileOnly(project(":polaris-immutables"))
-
-  runtimeOnly(libs.graalvm.graal.sdk)
-  runtimeOnly(libs.graalvm.inspect.community)
-  runtimeOnly(libs.graalvm.js.community)
-  runtimeOnly(libs.graalvm.js.scriptengine)
-  runtimeOnly(libs.graalvm.nativeimage)
-  runtimeOnly(libs.graalvm.polyglot)
-  runtimeOnly(libs.graalvm.profiler.community)
-  runtimeOnly(libs.graalvm.truffle.api)
 }
