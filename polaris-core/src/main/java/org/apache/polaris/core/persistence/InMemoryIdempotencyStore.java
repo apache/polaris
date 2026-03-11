@@ -86,15 +86,6 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
     maybePurgeExpired(realmId, now);
 
     Key key = new Key(realmId, idempotencyKey);
-    // Treat expired keys as unknown; allow re-reserve after expiry.
-    RecordState prior = records.get(key);
-    if (prior != null) {
-      Instant priorExpiresAt = prior.record.expiresAt();
-      if (priorExpiresAt != null && priorExpiresAt.isBefore(now)) {
-        records.remove(key, prior);
-      }
-    }
-
     IdempotencyRecord initial =
         new IdempotencyRecord(
             realmId,
@@ -112,11 +103,25 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
             executorId,
             expiresAt);
 
-    RecordState existing = records.putIfAbsent(key, new RecordState(initial));
-    if (existing == null) {
-      return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
+    // Atomic check-and-reserve: expired records are replaced in the same lock scope.
+    RecordState[] duplicate = new RecordState[1];
+    records.compute(
+        key,
+        (k, existing) -> {
+          if (existing != null) {
+            Instant exp = existing.record.expiresAt();
+            if (exp == null || !exp.isBefore(now)) {
+              duplicate[0] = existing;
+              return existing;
+            }
+          }
+          return new RecordState(initial);
+        });
+
+    if (duplicate[0] != null) {
+      return new ReserveResult(ReserveResultType.DUPLICATE, Optional.of(duplicate[0].record));
     }
-    return new ReserveResult(ReserveResultType.DUPLICATE, Optional.of(existing.record));
+    return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
   }
 
   @Override
