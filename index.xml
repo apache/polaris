@@ -4016,6 +4016,12 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;td&gt;&lt;code&gt;[&amp;quot;chart-example.local&amp;quot;]&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;A list of hostnames that the HTTPRoute should match.&lt;/td&gt;
  &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;httproute.exposeManagementEndpoints&lt;/td&gt;
+ &lt;td&gt;bool&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;false&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.&lt;/td&gt;
+ &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id="resources-and-autoscaling" id="resources-and-autoscaling"&gt;Resources and Autoscaling&lt;a class="heading-anchor" href="#resources-and-autoscaling" aria-label="Anchor"&gt;🔗&lt;/a&gt;
