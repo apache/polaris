@@ -139,19 +139,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   @Override
   public HeartbeatResult updateHeartbeat(
       String realmId, String idempotencyKey, String executorId, Instant now) {
-    Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
-    if (existing.isEmpty()) {
-      return HeartbeatResult.NOT_FOUND;
-    }
-
-    IdempotencyRecord record = existing.get();
-    if (record.httpStatus() != null) {
-      return HeartbeatResult.FINALIZED;
-    }
-    if (record.executorId() == null || !record.executorId().equals(executorId)) {
-      return HeartbeatResult.LOST_OWNERSHIP;
-    }
-
+    // Single atomic UPDATE: the WHERE clause guards on executor_id and http_status IS NULL,
+    // so this only succeeds if the record exists, is still in-progress, and is owned by us.
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
@@ -182,7 +171,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       throw new IdempotencyPersistenceException("Failed to update idempotency heartbeat", e);
     }
 
-    // Raced with finalize/ownership loss; re-check to return a meaningful result.
+    // UPDATE matched 0 rows; determine the reason.
     Optional<IdempotencyRecord> after = load(realmId, idempotencyKey);
     if (after.isEmpty()) {
       return HeartbeatResult.NOT_FOUND;
