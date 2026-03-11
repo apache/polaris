@@ -28,9 +28,13 @@ import org.apache.polaris.core.entity.PolarisEntityType;
  * @param optional true if this path is optional, i.e. failing to fully resolve it is not an error
  */
 public record ResolverPath(ResolvedPathKey key, boolean optional) {
-
-  public ResolverPath {
-    key = new ResolvedPathKey(key.entityNames(), key.entityType());
+  /**
+   * Constructor for a non-optional path from a pre-built canonical key.
+   *
+   * @param key canonical path key (entity names + terminal entity type)
+   */
+  public ResolverPath(ResolvedPathKey key) {
+    this(key, false);
   }
 
   /**
@@ -43,6 +47,13 @@ public record ResolverPath(ResolvedPathKey key, boolean optional) {
     this(new ResolvedPathKey(entityNames, lastEntityType), false);
   }
 
+  /**
+   * Constructor for a path from entity names + terminal type.
+   *
+   * @param entityNames set of entity names, all are namespaces except the last one
+   * @param lastEntityType type of the last entity
+   * @param optional true if this path is optional, i.e. failing to fully resolve it is not an error
+   */
   public ResolverPath(
       List<String> entityNames, PolarisEntityType lastEntityType, boolean optional) {
     this(new ResolvedPathKey(entityNames, lastEntityType), optional);

@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.service.catalog;
 
+import com.google.common.base.Preconditions;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -61,6 +63,10 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
 
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key) {
+    Preconditions.checkState(
+        key.entityType() == PolarisEntityType.NAMESPACE,
+        "Trying to getResolvedPath(key) for non-namespace key %s",
+        key);
     PolarisResolutionManifest manifest = newResolutionManifest();
     manifest.addPath(new ResolverPath(key.entityNames(), key.entityType()));
     manifest.resolveAll();
@@ -78,6 +84,10 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(ResolvedPathKey key) {
+    Preconditions.checkState(
+        key.entityType() == PolarisEntityType.NAMESPACE,
+        "Trying to getPassthroughResolvedPath(key) for non-namespace key %s",
+        key);
     PolarisResolutionManifest manifest = newResolutionManifest();
     manifest.addPassthroughPath(new ResolverPath(key.entityNames(), key.entityType()));
     return manifest.getPassthroughResolvedPath(key);

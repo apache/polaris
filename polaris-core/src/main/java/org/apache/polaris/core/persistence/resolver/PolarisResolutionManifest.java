@@ -117,19 +117,15 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     primaryResolver.addPath(path);
     // Preserve prior manifest lookup behavior: re-registering the same lookup key overwrites the
     // previous mapping (last-write-wins).
-    pathLookup.put(resolvedPathKey(path), currentPathIndex);
+    pathLookup.put(ResolvedPathKey.of(path), currentPathIndex);
     addedPaths.add(path);
     ++currentPathIndex;
-  }
-
-  private static ResolvedPathKey resolvedPathKey(ResolverPath path) {
-    return ResolvedPathKey.of(path);
   }
 
   /** Adds a passthrough path using canonical registration semantics only. */
   public void addPassthroughPath(ResolverPath path) {
     addPath(path);
-    passthroughPaths.put(resolvedPathKey(path), path);
+    passthroughPaths.put(ResolvedPathKey.of(path), path);
   }
 
   public ResolverStatus resolveAll() {
@@ -325,26 +321,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         "key={} pathLookup={}",
         key,
         pathLookup);
-    return getResolvedPathByIndex(pathLookup.get(key), prependRootContainer);
-  }
-
-  public PolarisResolvedPathWrapper getResolvedPath(
-      ResolvedPathKey key, PolarisEntitySubType subType, boolean prependRootContainer) {
-    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
-    if (resolvedPath == null) {
-      return null;
-    }
-    if (!getIsPassthroughFacade()
-        && resolvedPath.getRawLeafEntity() != null
-        && subType != PolarisEntitySubType.ANY_SUBTYPE
-        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
-      return null;
-    }
-    return resolvedPath;
-  }
-
-  private PolarisResolvedPathWrapper getResolvedPathByIndex(
-      int index, boolean prependRootContainer) {
+    int index = pathLookup.get(key);
     if (!isResolveAllSucceeded()) {
       return null;
     }
@@ -370,6 +347,21 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     resolvedEntities.add(primaryResolver.getResolvedReferenceCatalog());
     resolvedPath.forEach(resolvedEntity -> resolvedEntities.add(resolvedEntity));
     return new PolarisResolvedPathWrapper(resolvedEntities);
+  }
+
+  public PolarisResolvedPathWrapper getResolvedPath(
+      ResolvedPathKey key, PolarisEntitySubType subType, boolean prependRootContainer) {
+    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
+    if (resolvedPath == null) {
+      return null;
+    }
+    if (!getIsPassthroughFacade()
+        && resolvedPath.getRawLeafEntity() != null
+        && subType != PolarisEntitySubType.ANY_SUBTYPE
+        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
+      return null;
+    }
+    return resolvedPath;
   }
 
   public PolarisResolvedPathWrapper getResolvedTopLevelEntity(

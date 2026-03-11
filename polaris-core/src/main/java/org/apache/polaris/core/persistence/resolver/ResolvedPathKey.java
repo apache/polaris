@@ -37,7 +37,7 @@ public record ResolvedPathKey(List<String> entityNames, PolarisEntityType entity
   }
 
   public static ResolvedPathKey of(ResolverPath path) {
-    return new ResolvedPathKey(path.entityNames(), path.lastEntityType());
+    return path.key();
   }
 
   public static ResolvedPathKey ofNamespace(Namespace namespace) {
