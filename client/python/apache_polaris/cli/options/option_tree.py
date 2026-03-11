@@ -901,4 +901,16 @@ class OptionTree:
                     ),
                 ],
             ),
+            Option(
+                Commands.SETUP,
+                "perform setup",
+                children=[
+                    Option(
+                        Subcommands.APPLY,
+                        args=[Argument(Arguments.DRY_RUN, bool, Hints.Setup.DRY_RUN)],
+                        input_name=Arguments.SETUP_CONFIG,
+                    ),
+                    Option(Subcommands.EXPORT),
+                ],
+            ),
         ]

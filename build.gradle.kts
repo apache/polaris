@@ -63,8 +63,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
-  excludes.add("LICENSE")
-  excludes.add("NOTICE")
+  excludes.add("**/LICENSE*")
+  excludes.add("**/NOTICE*")
 
   excludes.add("**/no-license-notice-marker")
 

@@ -303,6 +303,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-credentials
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource
 * Maven group:artifact IDs: io.quarkus:quarkus-datasource-common
+* Maven group:artifact IDs: io.quarkus:quarkus-devservices
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
 * Maven group:artifact IDs: io.quarkus:quarkus-grpc-common
@@ -324,7 +325,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-opentelemetry
 * Maven group:artifact IDs: io.quarkus:quarkus-proxy-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-reactive-routes
-* Maven group:artifact IDs: io.quarkus:quarkus-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-rest
 * Maven group:artifact IDs: io.quarkus:quarkus-rest-common
 * Maven group:artifact IDs: io.quarkus:quarkus-rest-jackson
@@ -341,6 +341,7 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx-http
 * Maven group:artifact IDs: io.quarkus:quarkus-vertx-latebound-mdc-provider
+* Maven group:artifact IDs: io.quarkus:quarkus-value-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-virtual-threads
 * Maven group:artifact IDs: io.quarkus:quarkus-websockets-next-spi
 

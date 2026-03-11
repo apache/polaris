@@ -38,6 +38,7 @@ dependencies = [
     "pydantic>=2.12.5,<2.13.0",
     "typing-extensions>=4.7.1",
     "boto3~=1.42.2",
+    "PyYAML>=6.0.3",
 ]
 
 [project.urls]

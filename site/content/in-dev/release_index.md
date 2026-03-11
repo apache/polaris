@@ -17,19 +17,32 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'POLARIS VERSION INDEX MD TEMPLATE'
+# This file is a template. It should be copied as `_index.md` into a new release's versioned docs folder.
+# Replace X.Y.Z with the release version.
+title: 'Apache Polaris X.Y.Z Documentation'
+linkTitle: 'X.Y.Z'
+type: docs
+weight: -10203  # Use a negative weight derived from the version, e.g. 1.2.3 = -10203
+params:
+  top_hidden: true
+  show_page_toc: false
+  release_version: 'X.Y.Z'
+# Uncomment and update the sections below:
+#menus:
+#  main:
+#    parent: doc
+#    weight: -10203  # Use same weight as above
+#    identifier: doc-X.Y.Z
+#cascade:
+#  params:
+#    show_page_toc: true
+#    release_version: 'X.Y.Z'
+# All releases except the latest should have the following params:
+robots: noindex
+exclude_search: true
+# The front matter items below should not be copied (they are just here to hide this template):
 toc_hide: true
 hide_summary: true
-params:
-  show_page_toc: false
-cascade:
-  # The latest release specifies 'false', all others must be 'true'
-  exclude_search: false
-  params:
-    show_page_toc: true
-# This file will be copied as `_index.md` into a new release's versioned docs folder.
 ---
 
-== Apache Polaris version {{< releaseVersion >}}
-
-Download from ...
+Apache Polaris is a catalog implementation for Apache Iceberg&trade;... 
