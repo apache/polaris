@@ -32,7 +32,7 @@ Use this guide to quickly start running Polaris. This is not intended for produc
 Run the following command:
 
 ```bash
-curl -s https://raw.githubusercontent.com/apache/polaris/main/getting-started/quickstart/docker-compose.yml | docker compose -f - up
+curl -s https://raw.githubusercontent.com/apache/polaris/main/site/content/guides/quickstart/docker-compose.yml | docker compose -f - up
 
 ```
 This command will:
