@@ -70,8 +70,7 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       this.authorizer = authorizer;
       this.serviceName = rangerProp.getProperty(PROP_POLARIS_SERVICE_NAME);
     } catch (RangerAuthzException t) {
-      LOG.error("Failed to initialize RangerPolarisAuthorizer", t);
-      throw new RuntimeException(t);
+      throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }
 
     LOG.info("RangerAuthorizer initialized successfully");
@@ -88,12 +87,6 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       throw new IllegalStateException(ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED);
     }
 
-    try {
-      return new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
-    } catch (Throwable t) {
-      LOG.error("Failed to create RangerPolarisAuthorizer", t);
-
-      throw t;
-    }
+    return new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
   }
 }

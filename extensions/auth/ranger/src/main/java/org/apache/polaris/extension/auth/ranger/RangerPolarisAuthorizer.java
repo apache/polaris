@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -119,6 +118,18 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(
+          "authorizeOrThrow(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
+          polarisPrincipal,
+          activatedEntities,
+          authzOp,
+          authzOp.getPrivilegesOnTarget(),
+          authzOp.getPrivilegesOnSecondary(),
+          targets,
+          secondaries);
+    }
+
     try {
       if (enforceCredentialRotationRequiredState
           && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
@@ -139,62 +150,14 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
         }
       } else if (!AUTHORIZED_OPERATIONS.contains(authzOp)) {
         throw new ForbiddenException(RANGER_UNSUPPORTED_OPERATION, authzOp.name());
-      } else if (!isAccessAuthorized(
-          polarisPrincipal, activatedEntities, authzOp, targets, secondaries)) {
+      } else if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
         throw new ForbiddenException(
             RANGER_AUTH_FAILED_ERROR, polarisPrincipal.getName(), authzOp.name());
       }
     } catch (RangerAuthzException excp) {
-      LOG.error("Failed to authorize principal {} for op {}", polarisPrincipal, authzOp, excp);
-      throw new IllegalStateException(excp);
-    } catch (IllegalStateException ise) {
-      LOG.error("Failed to authorize principal {} for op {}", polarisPrincipal, authzOp, ise);
-      throw ise;
+      throw new IllegalStateException(
+          "Failed to authorize principal " + polarisPrincipal + " for op {}" + authzOp, excp);
     }
-  }
-
-  private boolean isAccessAuthorized(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries)
-      throws RangerAuthzException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(
-          "isAuthorized: user={}, properties={}, groups={}",
-          polarisPrincipal.getName(),
-          polarisPrincipal.getProperties(),
-          String.join(",", polarisPrincipal.getRoles()));
-
-      LOG.debug(
-          "isAuthorized: activatedEntities={}",
-          activatedEntities.stream()
-              .map(e -> RangerUtils.toResourceType(e.getType()) + ":" + e.getName())
-              .collect(Collectors.joining(",")));
-
-      LOG.debug("isAuthorized: authzOp={}", authzOp.name());
-
-      LOG.debug(
-          "isAuthorized: permissions={}",
-          authzOp.getPrivilegesOnTarget().stream()
-              .map(RangerUtils::toAccessType)
-              .collect(Collectors.joining(",")));
-
-      if (targets != null) {
-        LOG.debug(
-            "isAuthorized: targets={}",
-            targets.stream().map(RangerUtils::toResourcePath).collect(Collectors.joining(",")));
-      }
-
-      if (secondaries != null) {
-        LOG.debug(
-            "isAuthorized: secondaries={}",
-            secondaries.stream().map(RangerUtils::toResourcePath).collect(Collectors.joining(",")));
-      }
-    }
-
-    return isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries);
   }
 
   private boolean isAccessAuthorized(
@@ -251,19 +214,32 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     RangerMultiAuthzResult authzResult = authorizer.authorize(authzRequest);
     boolean isAllowed = RangerAuthzResult.AccessDecision.ALLOW.equals(authzResult.getDecision());
 
-    if (!isAllowed && LOG.isDebugEnabled()) {
+    if (LOG.isDebugEnabled()) {
+      StringBuilder sb = new StringBuilder();
+
+      sb.append("User=")
+          .append(userInfo.getName())
+          .append(", operation=")
+          .append(authzOp)
+          .append(", result=[");
       for (int i = 0; i < accessInfos.size(); i++) {
+        if (i > 0) {
+          sb.append(",");
+        }
+
         RangerAccessInfo accessInfo = accessInfos.get(i);
         RangerAuthzResult accessResult = authzResult.getAccesses().get(i);
 
-        if (!RangerAuthzResult.AccessDecision.ALLOW.equals(accessResult.getDecision())) {
-          LOG.debug(
-              "User {} is not authorized for {} on {}",
-              userInfo.getName(),
-              authzOp,
-              accessInfo.getResource());
-        }
+        sb.append("{resource=")
+            .append(accessInfo.getResource())
+            .append(", decision=")
+            .append(accessResult.getDecision())
+            .append("}");
       }
+      sb.append("]");
+      sb.append(", isAllowed=").append(isAllowed);
+
+      LOG.debug(sb.toString());
     }
 
     return isAllowed;
