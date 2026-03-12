@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.quarkus.common.config.jdbc;
 
+import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -29,10 +30,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link DataSourceResolver} that routes all realms and store types to a
- * single default {@link DataSource}. This serves as both the production default and the base for
- * multi-datasource extensions.
+ * single default {@link DataSource}. This implementation acts as a fallback; downstream users can
+ * provide their own {@link DataSourceResolver} bean to implement custom routing logic.
  */
 @ApplicationScoped
+@DefaultBean
 public class DefaultDataSourceResolver implements DataSourceResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDataSourceResolver.class);

@@ -23,7 +23,6 @@ import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrinci
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -77,7 +76,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  @Inject Instance<DataSourceResolver> dataSourceResolver;
+  @Inject DataSourceResolver dataSourceResolver;
 
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
 
@@ -130,7 +129,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext, DataSourceResolver.StoreType storeType) {
     DatasourceOperations databaseOperations;
     try {
-      DataSource resolvedDs = dataSourceResolver.get().resolve(realmContext, storeType);
+      DataSource resolvedDs = dataSourceResolver.resolve(realmContext, storeType);
       databaseOperations = new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);

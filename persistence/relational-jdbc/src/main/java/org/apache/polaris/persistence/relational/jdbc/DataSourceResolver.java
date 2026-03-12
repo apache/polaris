@@ -22,24 +22,22 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Service to resolve the correct {@link DataSource} for a given realm and store type. This enables
- * isolating different workloads (e.g., entity metadata vs metrics vs events) into different
- * physical databases or connection pools.
+ * Service to resolve the correct {@link DataSource} for a given realm and store type.
+ * Note: Currently this is implemented as a foundation for metastore routing, not a
+ * full system-wide routing layer.
  */
 public interface DataSourceResolver {
 
   /** The type of store representing the workload pattern. */
   enum StoreType {
-    METASTORE,
-    METRICS,
-    EVENTS
+    METASTORE
   }
 
   /**
    * Resolves the DataSource for a given realm and store type.
    *
    * @param realmContext the realm context
-   * @param storeType the type of store (e.g., main, metrics, events)
+   * @param storeType the type of store
    * @return the resolved DataSource
    */
   DataSource resolve(RealmContext realmContext, StoreType storeType);
