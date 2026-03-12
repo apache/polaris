@@ -244,8 +244,7 @@ public class IdempotencyFilter {
                             Duration staleThreshold =
                                 configuration.leaseTtl().plus(configuration.ttlGrace());
                             if (lastSignal == null
-                                || Duration.between(lastSignal, checkNow)
-                                        .compareTo(staleThreshold)
+                                || Duration.between(lastSignal, checkNow).compareTo(staleThreshold)
                                     > 0) {
                               return Uni.createFrom()
                                   .item(
@@ -386,12 +385,10 @@ public class IdempotencyFilter {
                               store.updateHeartbeat(realmId, key, executorId(), clock.instant());
                           if (hr != HeartbeatResult.UPDATED) {
                             vertx.cancelTimer(tid);
-                            LOG.debugf(
-                                "Stopping heartbeat for key %s: %s", key, hr);
+                            LOG.debugf("Stopping heartbeat for key %s: %s", key, hr);
                           }
                         } catch (RuntimeException e) {
-                          warnThrottled(
-                              e, "Heartbeat failed; will retry on next interval");
+                          warnThrottled(e, "Heartbeat failed; will retry on next interval");
                         }
                       });
             });
@@ -715,7 +712,8 @@ public class IdempotencyFilter {
       try {
         serialized = objectMapper.writeValueAsString(entity);
       } catch (Exception e) {
-        LOG.debug("Failed to serialize response entity for idempotency; body will not be replayed", e);
+        LOG.debug(
+            "Failed to serialize response entity for idempotency; body will not be replayed", e);
         return null;
       }
     }
@@ -723,8 +721,7 @@ public class IdempotencyFilter {
       LOG.warnf(
           "Response body (%d chars) exceeds responseSummaryMaxBytes (%d); "
               + "replay will return status and headers only",
-          serialized.length(),
-          maxBytes);
+          serialized.length(), maxBytes);
       return null;
     }
     return serialized;

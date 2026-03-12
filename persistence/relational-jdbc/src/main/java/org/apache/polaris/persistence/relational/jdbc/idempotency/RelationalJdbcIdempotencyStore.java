@@ -285,9 +285,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
               Map.of(),
-              Map.of(
-                  ModelIdempotencyRecord.EXPIRES_AT,
-                  new SqlLiteral("CURRENT_TIMESTAMP")),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, new SqlLiteral("CURRENT_TIMESTAMP")),
               Set.of(),
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
