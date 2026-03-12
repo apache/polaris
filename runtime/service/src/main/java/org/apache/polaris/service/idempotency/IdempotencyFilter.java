@@ -227,21 +227,21 @@ public class IdempotencyFilter {
                         if (!existing.isFinalized()) {
                           if (configuration.heartbeatEnabled()) {
                             // If the owner appears stale (no recent heartbeat), don't wait
-                            // indefinitely. Full reconciliation/takeover is out of scope for this
-                            // change; return a retryable 503.
+                            // indefinitely. ttlGrace pads the check to tolerate clock skew
+                            // between nodes. Full reconciliation/takeover is a follow-up.
                             Instant checkNow = clock.instant();
                             Instant lastSignal = existing.heartbeatAt();
                             if (lastSignal == null) {
-                              // A duplicate can arrive before the first heartbeat; fall back to
-                              // updatedAt/createdAt so we don't treat fresh owners as stale.
                               lastSignal = existing.updatedAt();
                               if (lastSignal == null) {
                                 lastSignal = existing.createdAt();
                               }
                             }
+                            Duration staleThreshold =
+                                configuration.leaseTtl().plus(configuration.ttlGrace());
                             if (lastSignal == null
                                 || Duration.between(lastSignal, checkNow)
-                                        .compareTo(configuration.leaseTtl())
+                                        .compareTo(staleThreshold)
                                     > 0) {
                               return Uni.createFrom()
                                   .item(
