@@ -84,6 +84,9 @@ public class IdempotencyFilter {
   private static final long WARN_THROTTLE_MS = 60_000L;
   private static final AtomicLong LAST_WARN_AT_MS = new AtomicLong(0L);
 
+  private static final int FINALIZE_MAX_RETRIES = 3;
+  private static final long FINALIZE_RETRY_BASE_MS = 200;
+
   private static final String PROP_IDEMPOTENCY_KEY = "idempotency.key";
   private static final String PROP_IDEMPOTENCY_OPERATION = "idempotency.operation";
   private static final String PROP_IDEMPOTENCY_RESOURCE = "idempotency.resource";
@@ -332,12 +335,36 @@ public class IdempotencyFilter {
     Infrastructure.getDefaultWorkerPool()
         .execute(
             () -> {
-              try {
-                store.finalizeRecord(realmId, key, executorId(), status, null, body, headers, now);
-              } catch (RuntimeException e) {
-                warnThrottled(
-                    e,
-                    "Failed to finalize idempotency record; replay may be unavailable until a later retry or reconciliation");
+              for (int attempt = 1; attempt <= FINALIZE_MAX_RETRIES; attempt++) {
+                try {
+                  store.finalizeRecord(
+                      realmId, key, executorId(), status, null, body, headers, now);
+                  return;
+                } catch (RuntimeException e) {
+                  if (attempt < FINALIZE_MAX_RETRIES) {
+                    LOG.debugf(
+                        e,
+                        "Finalize attempt %d/%d failed for key %s; retrying",
+                        attempt,
+                        FINALIZE_MAX_RETRIES,
+                        key);
+                    try {
+                      Thread.sleep(FINALIZE_RETRY_BASE_MS * attempt);
+                    } catch (InterruptedException ie) {
+                      Thread.currentThread().interrupt();
+                      LOG.warn(
+                          "Interrupted while retrying finalize; record may remain in-progress", e);
+                      return;
+                    }
+                  } else {
+                    LOG.warnf(
+                        e,
+                        "Failed to finalize idempotency record after %d attempts for key %s; "
+                            + "record will remain in-progress until TTL expiry",
+                        FINALIZE_MAX_RETRIES,
+                        key);
+                  }
+                }
               }
             });
   }
@@ -363,8 +390,8 @@ public class IdempotencyFilter {
                                 "Stopping heartbeat for key %s: %s", key, hr);
                           }
                         } catch (RuntimeException e) {
-                          LOG.debug(
-                              "Heartbeat failed; will retry on next interval", e);
+                          warnThrottled(
+                              e, "Heartbeat failed; will retry on next interval");
                         }
                       });
             });
