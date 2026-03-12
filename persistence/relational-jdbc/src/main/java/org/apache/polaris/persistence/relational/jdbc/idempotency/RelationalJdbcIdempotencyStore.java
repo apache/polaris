@@ -19,7 +19,7 @@ package org.apache.polaris.persistence.relational.jdbc.idempotency;
 import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,6 +34,7 @@ import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
+import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.SqlLiteral;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.IdempotencyRecordSerde;
@@ -77,11 +78,14 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
       insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
       insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
-      insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, Timestamp.from(now));
+      insertMap.put(ModelIdempotencyRecord.CREATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
       insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
-      insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
+      long ttlSeconds = Duration.between(now, expiresAt).getSeconds();
+      insertMap.put(
+          ModelIdempotencyRecord.EXPIRES_AT,
+          new SqlLiteral("CURRENT_TIMESTAMP + INTERVAL '" + ttlSeconds + "' SECOND"));
 
       // Stream#toList returns an unmodifiable list and rejects nulls; these columns are nullable.
       List<Object> values = new ArrayList<>(insertMap.values());
@@ -155,9 +159,9 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
             ModelIdempotencyRecord.TABLE_NAME,
             Map.of(
                 ModelIdempotencyRecord.HEARTBEAT_AT,
-                Timestamp.from(now),
+                new SqlLiteral("CURRENT_TIMESTAMP"),
                 ModelIdempotencyRecord.UPDATED_AT,
-                Timestamp.from(now)),
+                new SqlLiteral("CURRENT_TIMESTAMP")),
             Map.of(
                 ModelIdempotencyRecord.REALM_ID,
                 realmId,
@@ -246,8 +250,8 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
     setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeadersJson);
-    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
-    setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
+    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+    setClause.put(ModelIdempotencyRecord.UPDATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
 
     Map<String, Object> whereEquals = new HashMap<>();
     whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
@@ -281,7 +285,9 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
               Map.of(),
-              Map.of(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(before)),
+              Map.of(
+                  ModelIdempotencyRecord.EXPIRES_AT,
+                  new SqlLiteral("CURRENT_TIMESTAMP")),
               Set.of(),
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
