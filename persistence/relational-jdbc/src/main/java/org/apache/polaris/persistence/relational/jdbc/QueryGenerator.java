@@ -167,7 +167,8 @@ public class QueryGenerator {
 
     List<String> placeholderList = new ArrayList<>();
     List<Object> bindParams = new ArrayList<>();
-    for (Object v : finalValues) {
+    for (int i = 0; i < finalColumns.size(); i++) {
+      Object v = (i < finalValues.size()) ? finalValues.get(i) : null;
       if (v instanceof SqlLiteral lit) {
         placeholderList.add(lit.expression());
       } else {
