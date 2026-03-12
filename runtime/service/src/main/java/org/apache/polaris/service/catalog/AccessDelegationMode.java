@@ -19,18 +19,21 @@
 package org.apache.polaris.service.catalog;
 
 import com.google.common.base.Functions;
+import jakarta.annotation.Nullable;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents access mechanisms defined in the Iceberg REST API specification (values for the {@code
  * X-Iceberg-Access-Delegation} header).
  */
 public enum AccessDelegationMode {
-  UNKNOWN("unknown"),
   VENDED_CREDENTIALS("vended-credentials"),
   REMOTE_SIGNING("remote-signing"),
   ;
@@ -61,14 +64,27 @@ public enum AccessDelegationMode {
     EnumSet<AccessDelegationMode> set = EnumSet.noneOf(AccessDelegationMode.class);
     Arrays.stream(protocolValues.split(",")) // per Iceberg REST Catalog spec
         .map(String::trim)
-        .map(n -> Mapper.byProtocolValue.getOrDefault(n, UNKNOWN))
+        .map(Mapper::map)
+        .filter(Objects::nonNull)
         .forEach(set::add);
     return set;
   }
 
   private static class Mapper {
-    private static final Map<String, AccessDelegationMode> byProtocolValue =
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Mapper.class);
+
+    private static final Map<String, AccessDelegationMode> BY_PROTOCOL_VALUE =
         Arrays.stream(AccessDelegationMode.values())
             .collect(Collectors.toMap(AccessDelegationMode::protocolValue, Functions.identity()));
+
+    @Nullable
+    public static AccessDelegationMode map(String key) {
+      AccessDelegationMode mode = Mapper.BY_PROTOCOL_VALUE.get(key);
+      if (mode == null) {
+        LOGGER.warn("Unknown access delegation mode requested: {}", key);
+      }
+      return mode;
+    }
   }
 }

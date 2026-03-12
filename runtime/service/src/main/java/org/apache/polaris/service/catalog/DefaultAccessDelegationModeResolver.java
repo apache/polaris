@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
-import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
 import jakarta.annotation.Nonnull;
@@ -27,6 +26,7 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
+import java.util.Optional;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -71,58 +71,45 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   }
 
   @Override
-  @Nonnull
-  public AccessDelegationMode resolve(
+  public @Nonnull Optional<AccessDelegationMode> resolve(
       @Nonnull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
 
-    // Filter out UNKNOWN mode from consideration for selection logic
-    EnumSet<AccessDelegationMode> effectiveModes = EnumSet.copyOf(requestedModes);
-    effectiveModes.remove(UNKNOWN);
-
-    // Case 1: No valid delegation mode requested
-    if (effectiveModes.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Unsupported access delegation mode: no valid values were requested");
+    // Case 1: No valid delegation mode found, or none requested
+    if (requestedModes.isEmpty()) {
+      return Optional.empty();
     }
 
     // Case 2: Exactly one delegation mode requested
-    if (effectiveModes.size() == 1) {
-      AccessDelegationMode mode = effectiveModes.iterator().next();
+    if (requestedModes.size() == 1) {
+      AccessDelegationMode mode = requestedModes.iterator().next();
       LOGGER.debug("Single delegation mode requested: {}", mode);
-      return mode;
+      return Optional.of(mode);
     }
 
     // Case 3: Both VENDED_CREDENTIALS and REMOTE_SIGNING requested
-    if (effectiveModes.contains(VENDED_CREDENTIALS) && effectiveModes.contains(REMOTE_SIGNING)) {
-      return resolveVendedCredentialsVsRemoteSigning(catalogEntity);
-    }
-
-    // Case 4: Unknown combination - reject to prevent unintended credential exposure
-    throw new IllegalArgumentException(
-        "Unsupported access delegation mode combination: " + requestedModes);
-  }
-
-  /**
-   * Resolves between VENDED_CREDENTIALS and REMOTE_SIGNING based on catalog capabilities.
-   *
-   * <p>The logic prefers VENDED_CREDENTIALS when:
-   *
-   * <ul>
-   *   <li>STS is available for the catalog's storage (for AWS)
-   *   <li>Credential subscoping is not skipped
-   * </ul>
-   *
-   * <p>Otherwise, REMOTE_SIGNING is preferred as it doesn't require STS.
-   */
-  private AccessDelegationMode resolveVendedCredentialsVsRemoteSigning(
-      @Nullable CatalogEntity catalogEntity) {
 
     // If no catalog entity available, default to VENDED_CREDENTIALS for backward compatibility
     if (catalogEntity == null) {
       LOGGER.debug(
           "No catalog entity available for mode resolution, defaulting to VENDED_CREDENTIALS");
-      return VENDED_CREDENTIALS;
+      return Optional.of(VENDED_CREDENTIALS);
+    }
+
+    // Check if credential vending is enabled for this catalog.
+    // For internal catalogs, credential vending is always enabled.
+    // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is
+    // enabled.
+    boolean credentialVendingEnabled =
+        !catalogEntity.isExternal()
+            || realmConfig.getConfig(
+                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity);
+
+    if (!credentialVendingEnabled) {
+      LOGGER.debug(
+          "Credential vending is not enabled for external catalog {}, selecting REMOTE_SIGNING",
+          catalogEntity.getName());
+      return Optional.of(REMOTE_SIGNING);
     }
 
     // Check if credential subscoping is skipped - if so, VENDED_CREDENTIALS won't work properly
@@ -133,7 +120,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
 
     if (skipCredentialSubscoping) {
       LOGGER.debug("Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");
-      return REMOTE_SIGNING;
+      return Optional.of(REMOTE_SIGNING);
     }
 
     // Check credential vending availability from storage configuration
@@ -143,12 +130,12 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "Credential vending is available for catalog {}, selecting VENDED_CREDENTIALS",
           catalogEntity.getName());
-      return VENDED_CREDENTIALS;
+      return Optional.of(VENDED_CREDENTIALS);
     } else {
       LOGGER.debug(
           "Credential vending is not available for catalog {}, selecting REMOTE_SIGNING",
           catalogEntity.getName());
-      return REMOTE_SIGNING;
+      return Optional.of(REMOTE_SIGNING);
     }
   }
 

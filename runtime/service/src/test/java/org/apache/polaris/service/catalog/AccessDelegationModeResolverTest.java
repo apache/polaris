@@ -19,16 +19,16 @@
 package org.apache.polaris.service.catalog;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
-import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -64,24 +64,26 @@ class AccessDelegationModeResolverTest {
 
   /** Helper to set up config mock for tests that need it */
   private void mockSkipCredentialSubscopingConfig(boolean skipCredentialSubscoping) {
-    when(realmConfig.getConfig(org.mockito.ArgumentMatchers.<PolarisConfiguration<Boolean>>any()))
+    when(realmConfig.getConfig(eq(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION)))
         .thenReturn(skipCredentialSubscoping);
   }
 
-  @Test
-  void resolveEmptyModes_throwsIllegalArgument() {
-    EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
-
-    assertThatThrownBy(() -> resolver.resolve(requestedModes, null))
-        .isInstanceOf(IllegalArgumentException.class);
+  /** Helper to set up config mock for external catalog credential vending */
+  private void mockAllowFederatedCatalogsCredentialVending(
+      CatalogEntity catalogEntity, boolean allowCredentialVending) {
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING),
+            eq(catalogEntity)))
+        .thenReturn(allowCredentialVending);
   }
 
   @Test
-  void resolveOnlyUnknownMode_throwsIllegalArgument() {
-    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(UNKNOWN);
+  void resolveEmptyModes_returnsEmpty() {
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.noneOf(AccessDelegationMode.class);
 
-    assertThatThrownBy(() -> resolver.resolve(requestedModes, null))
-        .isInstanceOf(IllegalArgumentException.class);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, null);
+
+    assertThat(result).isEmpty();
   }
 
   @ParameterizedTest
@@ -91,18 +93,9 @@ class AccessDelegationModeResolverTest {
   void resolveSingleMode_returnsThatMode(AccessDelegationMode mode) {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(mode);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, null);
 
-    assertThat(result).isEqualTo(mode);
-  }
-
-  @Test
-  void resolveSingleModeWithUnknown_returnsSingleMode() {
-    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, UNKNOWN);
-
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
-
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(mode);
   }
 
   @Test
@@ -112,9 +105,9 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
@@ -124,9 +117,9 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(REMOTE_SIGNING);
+    assertThat(result).hasValue(REMOTE_SIGNING);
   }
 
   @Test
@@ -136,18 +129,18 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(REMOTE_SIGNING);
+    assertThat(result).hasValue(REMOTE_SIGNING);
   }
 
   @Test
   void resolveBothModes_withNullCatalogEntity_returnsVendedCredentials() {
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, null);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, null);
 
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
@@ -157,9 +150,9 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
@@ -169,10 +162,10 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
     // Azure uses different mechanisms, assumes credential vending is available
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
@@ -182,23 +175,10 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
     // GCP uses service accounts, assumes credential vending is available
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
-  }
-
-  @Test
-  void resolveBothModesWithUnknown_withStsAvailable_returnsVendedCredentials() {
-    mockSkipCredentialSubscopingConfig(false);
-    CatalogEntity catalogEntity = createCatalogWithAwsConfig(false);
-
-    EnumSet<AccessDelegationMode> requestedModes =
-        EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING, UNKNOWN);
-
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
-
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
@@ -208,35 +188,48 @@ class AccessDelegationModeResolverTest {
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(REMOTE_SIGNING);
+    assertThat(result).hasValue(REMOTE_SIGNING);
   }
 
   @Test
   void resolveBothModes_externalCatalog_withStsAvailable_returnsVendedCredentials() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowFederatedCatalogsCredentialVending(catalogEntity, true);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    // Resolver does not check external catalog credential vending config;
-    // that gate is enforced by IcebergCatalogHandler.checkAllowExternalCatalogAccessDelegation()
-    assertThat(result).isEqualTo(VENDED_CREDENTIALS);
+    assertThat(result).hasValue(VENDED_CREDENTIALS);
   }
 
   @Test
   void resolveBothModes_externalCatalog_withStsUnavailable_returnsRemoteSigning() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(true);
+    mockAllowFederatedCatalogsCredentialVending(catalogEntity, true);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
-    AccessDelegationMode result = resolver.resolve(requestedModes, catalogEntity);
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
 
-    assertThat(result).isEqualTo(REMOTE_SIGNING);
+    assertThat(result).hasValue(REMOTE_SIGNING);
+  }
+
+  @Test
+  void resolveBothModes_externalCatalog_credentialVendingDisabled_returnsRemoteSigning() {
+    mockSkipCredentialSubscopingConfig(false);
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowFederatedCatalogsCredentialVending(catalogEntity, false);
+
+    EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
+
+    Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
   }
 
   private CatalogEntity createExternalCatalogWithAwsConfig(boolean stsUnavailable) {

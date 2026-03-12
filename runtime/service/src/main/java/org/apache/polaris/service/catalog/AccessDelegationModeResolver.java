@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.EnumSet;
+import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 /**
@@ -36,9 +37,9 @@ public interface AccessDelegationModeResolver {
    * @param requestedModes The set of delegation modes requested by the client
    * @param catalogEntity The catalog entity, used to determine storage configuration and
    *     capabilities
-   * @return The resolved access delegation mode
+   * @return The resolved access delegation mode, or empty if no suitable mode is available.
    */
   @Nonnull
-  AccessDelegationMode resolve(
+  Optional<AccessDelegationMode> resolve(
       @Nonnull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);
 }
