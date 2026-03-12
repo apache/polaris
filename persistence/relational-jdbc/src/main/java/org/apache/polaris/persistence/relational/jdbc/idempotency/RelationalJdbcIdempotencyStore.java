@@ -39,6 +39,14 @@ import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.IdempotencyRecordSerde;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
+/**
+ * JDBC-backed {@link IdempotencyStore}.
+ *
+ * <p>Every public method executes exactly one SQL statement, so the default JDBC auto-commit mode
+ * provides the correct transaction boundary (each statement is its own transaction). Explicit
+ * {@code BEGIN}/{@code COMMIT} calls are intentionally omitted because they would add overhead
+ * without changing semantics for single-statement operations.
+ */
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
