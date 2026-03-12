@@ -76,6 +76,11 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(
       ResolvedPathKey key, PolarisEntitySubType subType) {
+    Preconditions.checkState(
+        key.entityType() == PolarisEntityType.TABLE_LIKE
+            || key.entityType() == PolarisEntityType.POLICY,
+        "Trying to getResolvedPath(key, subType) for unsupported key %s",
+        key);
     PolarisResolutionManifest manifest = newResolutionManifest();
     manifest.addPath(new ResolverPath(key.entityNames(), key.entityType()));
     manifest.resolveAll();
@@ -96,6 +101,11 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
       ResolvedPathKey key, PolarisEntitySubType subType) {
+    Preconditions.checkState(
+        key.entityType() == PolarisEntityType.TABLE_LIKE
+            || key.entityType() == PolarisEntityType.POLICY,
+        "Trying to getPassthroughResolvedPath(key, subType) for unsupported key %s",
+        key);
     PolarisResolutionManifest manifest = newResolutionManifest();
     manifest.addPassthroughPath(new ResolverPath(key.entityNames(), key.entityType()));
     return manifest.getPassthroughResolvedPath(key, subType);
