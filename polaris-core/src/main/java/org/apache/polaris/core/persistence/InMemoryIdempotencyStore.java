@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +34,8 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  */
 public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
-  private static final int PURGE_EVERY_N_RESERVES = 256;
+  private static final int PURGE_EVERY_N_RESERVES = 32;
+  private static final int MAX_ENTRIES = 10_000;
 
   private static final class Key {
     private final String realmId;
@@ -276,9 +278,23 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
 
   private void maybePurgeExpired(String realmId, Instant now) {
     // PURGE_EVERY_N_RESERVES is a power of two; use bitmask instead of modulo.
-    if ((reserveCount.incrementAndGet() & (PURGE_EVERY_N_RESERVES - 1)) != 0) {
+    if ((reserveCount.incrementAndGet() & (PURGE_EVERY_N_RESERVES - 1)) == 0
+        || records.size() > MAX_ENTRIES) {
+      purgeExpired(realmId, now);
+    }
+    if (records.size() > MAX_ENTRIES) {
+      evictOldest();
+    }
+  }
+
+  private void evictOldest() {
+    int excess = records.size() - MAX_ENTRIES;
+    if (excess <= 0) {
       return;
     }
-    purgeExpired(realmId, now);
+    records.entrySet().stream()
+        .sorted(Comparator.comparing(e -> e.getValue().record.createdAt()))
+        .limit(excess)
+        .forEach(e -> records.remove(e.getKey(), e.getValue()));
   }
 }
