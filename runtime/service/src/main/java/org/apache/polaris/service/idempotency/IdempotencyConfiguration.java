@@ -109,6 +109,25 @@ public interface IdempotencyConfiguration {
   Duration inProgressWait();
 
   /**
+   * Initial poll delay when waiting for an in-progress key to finalize.
+   *
+   * <p>Subsequent polls use exponential backoff up to {@link #pollMaxDelay()}.
+   */
+  @WithName("poll-initial-delay")
+  @WithDefault("PT0.2S")
+  Duration pollInitialDelay();
+
+  /**
+   * Maximum poll delay when waiting for an in-progress key to finalize.
+   *
+   * <p>Higher values reduce DB load from duplicate requests at the cost of slightly higher replay
+   * latency.
+   */
+  @WithName("poll-max-delay")
+  @WithDefault("PT2S")
+  Duration pollMaxDelay();
+
+  /**
    * Lease TTL for considering an in-progress owner "active" based on {@code heartbeatAt}.
    *
    * <p>If a duplicate observes {@code now - heartbeatAt > leaseTtl()}, the owner is treated as

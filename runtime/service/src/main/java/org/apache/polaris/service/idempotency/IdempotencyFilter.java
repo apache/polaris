@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iceberg.rest.responses.ErrorResponse;
@@ -527,13 +528,13 @@ public class IdempotencyFilter {
   }
 
   private Uni<IdempotencyRecord> waitForFinalized(String realmId, String key, Instant deadline) {
-    // Start with a small delay for low-latency replays, then exponentially back off (capped below)
-    // to avoid tight polling when the original attempt takes longer.
-    return pollUntilFinalized(realmId, key, deadline, 25L);
+    long initialMs = configuration.pollInitialDelay().toMillis();
+    return pollUntilFinalized(realmId, key, deadline, initialMs);
   }
 
   private Uni<IdempotencyRecord> pollUntilFinalized(
       String realmId, String key, Instant deadline, long delayMs) {
+    long maxMs = configuration.pollMaxDelay().toMillis();
     return Uni.createFrom()
         .item(() -> store.load(realmId, key))
         .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
@@ -547,12 +548,13 @@ public class IdempotencyFilter {
                 return Uni.createFrom()
                     .failure(new TimeoutException("Timed out waiting for finalize"));
               }
-              long nextDelayMs = Math.min(500L, Math.max(25L, delayMs * 2));
+              long nextDelayMs = Math.min(maxMs, delayMs * 2);
+              long jitter = ThreadLocalRandom.current().nextLong(delayMs / 2);
               return Uni.createFrom()
                   .nullItem()
                   .onItem()
                   .delayIt()
-                  .by(Duration.ofMillis(delayMs))
+                  .by(Duration.ofMillis(delayMs + jitter))
                   .onItem()
                   .transformToUni(
                       ignored -> pollUntilFinalized(realmId, key, deadline, nextDelayMs));
