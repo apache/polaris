@@ -32,6 +32,9 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  implementation(libs.slf4j.jboss.logmanager)
+
   implementation(project(":polaris-runtime-service"))
 
   testImplementation(project(":polaris-tests"))

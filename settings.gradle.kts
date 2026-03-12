@@ -53,7 +53,7 @@ fun polarisProject(name: String, directory: File) {
 
 val projects = Properties()
 
-loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
+loadProperties(file("gradle/projects.main.properties")).forEach { (name, directory) ->
   polarisProject(name as String, file(directory as String))
 }
 
@@ -117,25 +117,11 @@ plugins {
   id("com.gradle.common-custom-user-data-gradle-plugin") version "2.4.0"
 }
 
+@Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
     mavenCentral()
-    val useApacheSnapshots =
-      providers.gradleProperty("useApacheSnapshots").orNull?.toBoolean() == true
-    if (useApacheSnapshots) {
-      // This is a hack to let Renovate _not_ query the Apache snapshot repository for all
-      // dependencies.
-      // See https://github.com/renovatebot/renovate/discussions/41291
-      fun configureIndirectForRenovate(asfSnap: MavenArtifactRepository) {
-        asfSnap.url = uri("https://repository.apache.org/content/repositories/snapshots/")
-        asfSnap.mavenContent { snapshotsOnly() }
-      }
-      maven {
-        name = "ApacheSnapshots"
-        configureIndirectForRenovate(this)
-      }
-    }
     gradlePluginPortal()
   }
 }
@@ -171,7 +157,7 @@ develocity {
   } else {
     // In all other cases, especially PR CI runs, use Gradle's public Develocity instance.
     var cfgPrjId: String? = System.getenv("DEVELOCITY_PROJECT_ID")
-    projectId = if (cfgPrjId == null || cfgPrjId.isEmpty()) "polaris" else cfgPrjId
+    projectId = if (cfgPrjId.isNullOrEmpty()) "polaris" else cfgPrjId
     buildScan {
       val isGradleTosAccepted = "true" == System.getenv("GRADLE_TOS_ACCEPTED")
       val isGitHubPullRequest = gitHubRef?.startsWith("refs/pull/") ?: false
@@ -189,7 +175,7 @@ develocity {
         System.getenv("GITHUB_SERVER_URL")?.run {
           val ghUrl = this
           val ghRepo = System.getenv("GITHUB_REPOSITORY")
-          val prNumber = gitHubRef!!.substringAfter("refs/pull/").substringBefore("/merge")
+          val prNumber = gitHubRef.substringAfter("refs/pull/").substringBefore("/merge")
           link("GitHub pull request", "$ghUrl/$ghRepo/pull/$prNumber")
         }
       }
