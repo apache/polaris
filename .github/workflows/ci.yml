@@ -374,6 +374,60 @@ jobs:
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
 
+  test-site-guides:
+    name: Site Guides
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: '3.14'
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Test site testing
+        working-directory: site/it
+        run: |
+          echo "::group::Setup"
+          python3 -m pip install --upgrade pip
+          python3 -m venv .venv
+          . .venv/bin/activate
+          UV_VERSION="$(cat pyproject.toml | grep -A1 tool.uv | grep -v tool.uv | grep required-version | sed 's/required-version *= *\"\([^\"]*\)\".*/\1/')"
+          pip install "uv$UV_VERSION"
+          uv sync --all-packages
+          echo "::endgroup::"
+
+          echo "::group::pytest"
+          pytest
+          echo "::endgroup::"
+
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
+
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+
+      - name: Guide testing
+        working-directory: site
+        run: it/markdown-testing.py
+
+      - name: Archive test results
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        if: always()
+        with:
+          name: upload-guides-test-artifacts
+          path: |
+            site/it/build/tests/**
+
   store-gradle-cache:
     name: Store Gradle Cache
     runs-on: ubuntu-24.04
@@ -410,6 +464,7 @@ jobs:
       - regtest
       - markdown-link-check
       - site
+      - test-site-guides
     # Always run this job, even if a "needed" job fails. Without this one, GitHub will not run
     # this job and that yields "Success" to the branch protection rule, which is wrong.
     # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
