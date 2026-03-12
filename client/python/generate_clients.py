@@ -93,6 +93,7 @@ EXCLUDE_EXTENSIONS = [
     "iml",
     "keep",
     "gitignore",
+    "pyc",
 ]
 
 logger = logging.getLogger(__name__)
