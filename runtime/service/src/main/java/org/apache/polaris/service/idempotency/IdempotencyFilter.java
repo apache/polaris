@@ -50,6 +50,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -348,14 +349,21 @@ public class IdempotencyFilter {
     long timerId =
         vertx.setPeriodic(
             intervalMs,
-            ignored -> {
+            tid -> {
               Infrastructure.getDefaultWorkerPool()
                   .execute(
                       () -> {
                         try {
-                          store.updateHeartbeat(realmId, key, executorId(), clock.instant());
-                        } catch (RuntimeException ignored2) {
-                          // Best-effort.
+                          HeartbeatResult hr =
+                              store.updateHeartbeat(realmId, key, executorId(), clock.instant());
+                          if (hr != HeartbeatResult.UPDATED) {
+                            vertx.cancelTimer(tid);
+                            LOG.debugf(
+                                "Stopping heartbeat for key %s: %s", key, hr);
+                          }
+                        } catch (RuntimeException e) {
+                          LOG.debug(
+                              "Heartbeat failed; will retry on next interval", e);
                         }
                       });
             });
