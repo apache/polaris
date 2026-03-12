@@ -382,7 +382,7 @@ docker compose up
 &lt;h2 id="running" id="running"&gt;Running&lt;a class="heading-anchor" href="#running" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;Run the following command:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/main/getting-started/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -f - up
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -f - up
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will:&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;Create a Catalog named &lt;code&gt;quickstart_catalog&lt;/code&gt; with MinIO-backed storage.&lt;/li&gt;
