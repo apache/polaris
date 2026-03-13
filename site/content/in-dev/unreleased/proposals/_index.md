@@ -30,5 +30,6 @@ This section contains design proposals for new features and enhancements to Apac
 
 | Proposal | Status | Description |
 |----------|--------|-------------|
-| [Observability REST API](observability-rest-api.md) | Draft | REST API endpoints for querying table metrics and catalog events |
+| [Events REST API](events-rest-api.md) | Draft | REST API endpoint for querying catalog events (Iceberg Events API compatible) |
+| [Table Metrics REST API](table-metrics-rest-api.md) | Draft | REST API endpoints for querying table scan and commit metrics |
 
