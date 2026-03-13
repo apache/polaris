@@ -16,25 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.quarkus.common.config.jdbc;
+package org.apache.polaris.persistence.relational.jdbc;
 
-import io.quarkus.arc.DefaultBean;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.persistence.relational.jdbc.DataSourceResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of {@link DataSourceResolver} that routes all realms and store types to a
- * single default {@link DataSource}. This implementation acts as a fallback; downstream users can
- * provide their own {@link DataSourceResolver} bean to implement custom routing logic.
+ * Default implementation of {@link DataSourceResolver} that routes all realms to a single default
+ * {@link DataSource}.
  */
 @ApplicationScoped
-@DefaultBean
+@Identifier("polaris")
 public class DefaultDataSourceResolver implements DataSourceResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDataSourceResolver.class);
@@ -42,16 +41,13 @@ public class DefaultDataSourceResolver implements DataSourceResolver {
   private final Instance<DataSource> defaultDataSource;
 
   @Inject
-  public DefaultDataSourceResolver(Instance<DataSource> defaultDataSource) {
+  public DefaultDataSourceResolver(@Any Instance<DataSource> defaultDataSource) {
     this.defaultDataSource = defaultDataSource;
   }
 
   @Override
-  public DataSource resolve(RealmContext realmContext, StoreType storeType) {
-    LOGGER.debug(
-        "Using default DataSource for realm '{}' and store '{}'",
-        realmContext.getRealmIdentifier(),
-        storeType);
+  public DataSource resolve(RealmContext realmContext) {
+    LOGGER.debug("Using default DataSource for realm '{}'", realmContext.getRealmIdentifier());
     return defaultDataSource.get();
   }
 }

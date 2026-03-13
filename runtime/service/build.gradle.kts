@@ -31,7 +31,7 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
 
-  runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation(project(":polaris-relational-jdbc"))
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))

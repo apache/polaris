@@ -22,23 +22,16 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Service to resolve the correct {@link DataSource} for a given realm and store type.
- * Note: Currently this is implemented as a foundation for metastore routing, not a
- * full system-wide routing layer.
+ * Service to resolve the correct {@link DataSource} for a given realm. Note: Currently this is
+ * implemented as a foundation for metastore routing.
  */
 public interface DataSourceResolver {
 
-  /** The type of store representing the workload pattern. */
-  enum StoreType {
-    METASTORE
-  }
-
   /**
-   * Resolves the DataSource for a given realm and store type.
+   * Resolves the DataSource for a given realm.
    *
    * @param realmContext the realm context
-   * @param storeType the type of store
    * @return the resolved DataSource
    */
-  DataSource resolve(RealmContext realmContext, StoreType storeType);
+  DataSource resolve(RealmContext realmContext);
 }
