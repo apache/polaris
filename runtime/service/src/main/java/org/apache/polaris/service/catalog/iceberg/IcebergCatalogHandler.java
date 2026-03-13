@@ -106,6 +106,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -327,7 +328,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           reservedProperties()
               .removeReservedProperties(
                   resolutionManifest
-                      .getPassthroughResolvedPath(namespace)
+                      .getPassthroughResolvedPath(ResolvedPathKey.ofNamespace(namespace))
                       .getRawLeafEntity()
                       .getPropertiesAsMap());
       return CreateNamespaceResponse.builder()
@@ -657,7 +658,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     long catalogId = catalogEntity.getId();
 
     // Get the table ID from the resolved path
-    PolarisResolvedPathWrapper resolvedTable = resolutionManifest.getResolvedPath(identifier);
+    PolarisResolvedPathWrapper resolvedTable =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier));
     PolarisEntity tableEntity = resolvedTable.getRawLeafEntity();
     long tableId = tableEntity.getId();
 
@@ -673,7 +675,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @return the Polaris table entity for the table or null for external catalogs
    */
   private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier));
     PolarisEntity rawLeafEntity = target.getRawLeafEntity();
     if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
       return IcebergTableLikeEntity.of(rawLeafEntity);

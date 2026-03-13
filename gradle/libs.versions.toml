@@ -54,7 +54,7 @@ commons-configuration2 = { module = "org.apache.commons:commons-configuration2",
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.48.0" } # required by the polaris-java plugin
-google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.86.0" }
+google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.87.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.64.0" }
 graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graalvm" }
 graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "graalvm" }
