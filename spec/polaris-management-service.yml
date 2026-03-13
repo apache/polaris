@@ -1193,6 +1193,13 @@ components:
             gcsServiceAccount:
               type: string
               description: a Google cloud storage service account
+            hierarchicalNamespace:
+              type: boolean
+              description: >-
+                If set to `true`, indicates that the GCS bucket has Hierarchical Namespace (HNS) enabled.
+                When HNS is enabled, folders must be created explicitly and credential vending will include
+                additional permissions for folder management. This flag should be set only if HNS is enabled
+                on the GCS bucket. Using this feature with non-HNS buckets may grant unnecessary permissions.
 
     FileStorageConfigInfo:
       type: object

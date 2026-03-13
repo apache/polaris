@@ -1,0 +1,60 @@
+{
+  "accessBoundaryRules": [
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyObjectReader",
+        "inRole:roles/storage.objectViewer"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/metadata-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/metadata-bucket/objects/ns/table/metadata/') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('ns/table/metadata/')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyObjectReader",
+        "inRole:roles/storage.objectViewer"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/data-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/data-bucket/objects/ns/table/data/') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('ns/table/data/')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyBucketWriter"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/metadata-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/metadata-bucket/objects/ns/table/metadata/')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyBucketWriter"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/data-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/data-bucket/objects/ns/table/data/')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.folderAdmin"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/metadata-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/metadata-bucket/managedFolders/ns/table/metadata/')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.folderAdmin"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/data-bucket",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/data-bucket/managedFolders/ns/table/data/')"
+      }
+    }
+  ]
+}

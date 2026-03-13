@@ -30,3 +30,20 @@ All catalog operations in Polaris for Google Cloud Storage (GCS)—including lis
 Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if HNS is enabled) to be properly configured. Even with the correct IAM role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
 
 **Note:** HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
+
+## Enabling HNS support in catalog configuration
+
+If your GCS bucket has HNS enabled, set the `hierarchicalNamespace` flag to `true` in the catalog's storage configuration:
+
+```json
+{
+  "storageType": "GCS",
+  "allowedLocations": ["gs://my-hns-bucket/warehouse/"],
+  "gcsServiceAccount": "my-service-account@my-project.iam.gserviceaccount.com",
+  "hierarchicalNamespace": true
+}
+```
+
+When this flag is enabled, credential vending will include an additional access boundary rule granting `roles/storage.folderAdmin` on write paths. This allows the scoped (vended) token to create managed folders, which HNS buckets require for path operations. The permission is scoped to specific write paths using `resource.name.startsWith(...)` conditions.
+
+**Important:** Only set `hierarchicalNamespace: true` if your GCS bucket actually has HNS enabled. Using this flag with non-HNS buckets grants unnecessary `roles/storage.folderAdmin` permissions.
