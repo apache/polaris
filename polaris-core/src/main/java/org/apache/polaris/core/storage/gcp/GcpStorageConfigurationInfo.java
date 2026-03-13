@@ -49,4 +49,12 @@ public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigur
   /** The gcp service account */
   @Nullable
   public abstract String getGcpServiceAccount();
+
+  /**
+   * Flag indicating whether the GCS bucket has Hierarchical Namespace (HNS) enabled. When HNS is
+   * enabled, folders must be created explicitly and credential vending includes additional
+   * permissions for folder management.
+   */
+  @Nullable
+  public abstract Boolean isHierarchicalNamespace();
 }
