@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "request": { "authzOp": "DELETE_PRINCIPAL", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "UPDATE_PRINCIPAL", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "GET_PRINCIPAL", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "ROTATE_CREDENTIALS", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "RESET_CREDENTIALS", "principal": { "name": "root" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": true }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "tests": [
+    {
+      "request": { "authzOp": "CREATE_CATALOG", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LIST_CATALOGS", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "CREATE_PRINCIPAL", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "LIST_PRINCIPALS", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+
+    {
+      "request": { "authzOp": "CREATE_CATALOG", "principal": { "name": "user1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_CATALOGS", "principal": { "name": "user1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+    {
+      "request": { "authzOp": "CREATE_PRINCIPAL", "principal": { "name": "user1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_PRINCIPALS", "principal": { "name": "user1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": true }
+    },
+
+    {
+      "request": { "authzOp": "CREATE_CATALOG", "principal": { "name": "user2" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_CATALOGS", "principal": { "name": "user2" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "CREATE_PRINCIPAL", "principal": { "name": "user2" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_PRINCIPALS", "principal": { "name": "user2" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    }
+  ]
+}
