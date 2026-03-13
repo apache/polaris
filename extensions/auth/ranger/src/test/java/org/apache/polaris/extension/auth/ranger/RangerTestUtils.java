@@ -19,6 +19,7 @@
 
 package org.apache.polaris.extension.auth.ranger;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfiguration;
@@ -26,11 +27,28 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 public class RangerTestUtils {
-  public static RangerPolarisAuthorizerConfig createConfig(String configFilename) {
+  public static RangerPolarisAuthorizerConfig createConfig() {
+    Map<String, String> properties = new HashMap<>();
+
+    properties.put(
+        "ranger.authz.default.policy.source.impl",
+        "org.apache.ranger.admin.client.EmbeddedResourcePolicySource");
+    properties.put("ranger.authz.default.policy.source.embedded_resource.path", "/authz_tests");
+
+    return createConfig("dev_polaris", properties);
+  }
+
+  public static RangerPolarisAuthorizerConfig createConfig(
+      String serviceName, Map<String, String> properties) {
     return new RangerPolarisAuthorizerConfig() {
       @Override
-      public Optional<String> configFileName() {
-        return configFilename == null ? Optional.empty() : Optional.of(configFilename);
+      public Optional<String> serviceName() {
+        return serviceName == null ? Optional.empty() : Optional.of(serviceName);
+      }
+
+      @Override
+      public Map<String, String> properties() {
+        return properties;
       }
     };
   }

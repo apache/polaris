@@ -62,8 +62,7 @@ public class TestRangerPolarisAuthorizer {
   private final PolarisAuthorizer authorizer;
 
   public TestRangerPolarisAuthorizer() {
-    RangerPolarisAuthorizerFactory factory =
-        new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
+    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
 
     factory.initialize();
 

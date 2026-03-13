@@ -27,13 +27,15 @@ Ranger authorizer for Polaris requires Apache Ranger version 2.8.0 or later.
 ```
 polaris.authorization.type=ranger
 ```
-2. Specify the location of Ranger authorizer configuration file by setting the following property in application.properties:
-```
-polaris.authorization.ranger.config-file-name=ranger-plugin.properties
-```
 
-Ranger authorizer searches for the specified configuration file in classpath. It is recommended to place the configuration file in the same location as application.properties file.
+2. Configure Ranger authorizer by setting configurations having name that start with "polaris.authorization.ranger." in application.properties, for example:
+```
+polaris.authorization.ranger.service-name=dev_polaris
+polaris.authorization.ranger."ranger.authz.default.policy.source.impl"=org.apache.ranger.admin.client.RangerAdminRESTClient
+polaris.authorization.ranger."ranger.authz.default.policy.rest.url"=http://ranger-admin:6080
+polaris.authorization.ranger."ranger.authz.audit.destination.solr"=enabled
+polaris.authorization.ranger."ranger.authz.audit.destination.solr.urls"=http://solr-service:8983/solr/ranger_audits
 
-Consider copying sample file from sample-conf/ranger-plugin.properties to the folder where application.properties file is located and update the config file according your Ranger installation.
+```
 
 3. Run or restart Polaris to see that all accesses are authorized by Ranger policies, with access audit records available in Apache Ranger console.

@@ -27,7 +27,6 @@ import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.slf4j.Logger;
@@ -59,14 +58,13 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
     config.validate();
 
     try {
-      Properties rangerProp = RangerUtils.loadProperties(config.configFileName().orElseThrow());
-
-      RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(rangerProp);
+      Properties properties = config.toRangerProperties();
+      RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(properties);
 
       authorizer.init();
 
       this.authorizer = authorizer;
-      this.serviceName = rangerProp.getProperty("ranger.plugin.polaris.service.name");
+      this.serviceName = config.serviceName().orElseThrow();
     } catch (RangerAuthzException t) {
       throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }

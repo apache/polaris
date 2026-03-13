@@ -19,36 +19,30 @@
 package org.apache.polaris.extension.auth.ranger;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithParentName;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 
 @ConfigMapping(prefix = "polaris.authorization.ranger")
 public interface RangerPolarisAuthorizerConfig {
-  Optional<String> configFileName();
+  Optional<String> serviceName();
+
+  @WithParentName
+  Map<String, String> properties();
+
+  default Properties toRangerProperties() {
+    Properties props = new Properties();
+
+    props.putAll(properties());
+
+    return props;
+  }
 
   default void validate() {
-    boolean isConfigFileNamePresent = configFileName().isPresent();
-
-    if (!isConfigFileNamePresent) {
+    if (serviceName().isEmpty()) {
       throw new IllegalStateException(
-          "Invalid Ranger authorizer configuration: missing configuration polaris.authorization.ranger.config-file-name");
-    }
-
-    String fileName = configFileName().get();
-
-    Properties prop = RangerUtils.loadProperties(fileName);
-
-    String cfgName = "ranger.plugin.polaris.service.name";
-    String serviceName = prop.getProperty(cfgName);
-
-    if (StringUtils.isBlank(serviceName)) {
-      throw new IllegalStateException(
-          "Invalid Ranger authorizer configuration file "
-              + fileName
-              + ": missing mandatory configuration "
-              + cfgName);
+          "Invalid Ranger authorizer configuration: missing configuration polaris.authorization.ranger.service-name");
     }
   }
 }

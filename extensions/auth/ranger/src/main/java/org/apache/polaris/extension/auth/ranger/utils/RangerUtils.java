@@ -19,14 +19,11 @@
 
 package org.apache.polaris.extension.auth.ranger.utils;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -37,49 +34,12 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.extension.auth.ranger.RangerPolarisAuthorizer;
 import org.apache.ranger.authz.model.RangerAccessInfo;
 import org.apache.ranger.authz.model.RangerResourceInfo;
 import org.apache.ranger.authz.model.RangerUserInfo;
 import org.apache.ranger.authz.util.RangerResourceNameParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RangerUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(RangerUtils.class);
-
-  public static Properties loadProperties(String resourcePath) {
-    if (resourcePath == null) {
-      throw new IllegalStateException("invalid resource path: null");
-    }
-
-    resourcePath = resourcePath.trim();
-
-    if (!resourcePath.startsWith("/")) {
-      LOG.info("Prefixing / to resource path: {}", resourcePath);
-
-      resourcePath = "/" + resourcePath;
-    }
-
-    try (InputStream in = RangerPolarisAuthorizer.class.getResourceAsStream(resourcePath)) {
-      if (in != null) {
-        Properties prop = new Properties();
-
-        prop.load(in);
-
-        return prop;
-      } else {
-        LOG.error("Unable to find {} in the classpath", resourcePath);
-
-        throw new IllegalStateException("failed to find " + resourcePath);
-      }
-    } catch (IOException e) {
-      LOG.error("Unable to load {}", resourcePath, e);
-
-      throw new IllegalStateException("failed to load " + resourcePath);
-    }
-  }
-
   public static String toResourceType(PolarisEntityType entityType) {
     return switch (entityType) {
       case ROOT -> "root";

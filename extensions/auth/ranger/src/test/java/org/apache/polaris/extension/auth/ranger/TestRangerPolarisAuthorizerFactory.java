@@ -24,13 +24,13 @@ import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRea
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 public class TestRangerPolarisAuthorizerFactory {
   @Test
   public void testAuthorizerInstantiation() {
-    RangerPolarisAuthorizerFactory factory =
-        new RangerPolarisAuthorizerFactory(createConfig("authz_tests/ranger-plugin.properties"));
+    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
 
     factory.initialize();
 
@@ -40,30 +40,10 @@ public class TestRangerPolarisAuthorizerFactory {
   }
 
   @Test
-  public void testAuthorizerInitMissingConfigFile() {
-    RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig(null));
-
-    assertThrows(IllegalStateException.class, factory::initialize);
-    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
-  }
-
-  @Test
-  public void testAuthorizerInitNonExistingConfigFile() {
+  public void testAuthorizerInitMissingServiceName() {
     RangerPolarisAuthorizerFactory factory =
-        new RangerPolarisAuthorizerFactory(
-            createConfig("authz_tests/ranger-plugin-non-existing.properties"));
+        new RangerPolarisAuthorizerFactory(createConfig(null, Collections.emptyMap()));
 
-    assertThrows(IllegalStateException.class, factory::initialize);
-    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
-  }
-
-  @Test
-  public void testAuthorizerInitInvalidConfigFile() {
-    RangerPolarisAuthorizerFactory factory =
-        new RangerPolarisAuthorizerFactory(
-            createConfig("authz_tests/ranger-plugin-invalid.properties"));
-
-    assertThrows(IllegalStateException.class, factory::initialize);
-    assertThrows(IllegalStateException.class, () -> factory.create(createRealmConfig()));
+    assertThrows(IllegalStateException.class, () -> factory.initialize());
   }
 }
