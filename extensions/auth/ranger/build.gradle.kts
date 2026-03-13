@@ -25,7 +25,10 @@ plugins {
 dependencies {
   implementation(project(":polaris-core"))
 
-  implementation(libs.ranger.authz.embedded)
+  implementation(libs.ranger.authz.embedded) {
+    exclude("org.apache.hadoop", "hadoop-client-api")
+    exclude("org.apache.hadoop", "hadoop-client-runtime")
+  }
   implementation(libs.commons.lang3)
   implementation(libs.graalvm.js.js.scriptengine)
   implementation(libs.graalvm.polyglot.js)
