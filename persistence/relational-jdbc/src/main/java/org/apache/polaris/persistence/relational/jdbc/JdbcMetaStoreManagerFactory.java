@@ -23,7 +23,6 @@ import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrinci
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -72,10 +71,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
 
   @Inject Clock clock;
+
   @Inject PolarisDiagnostics diagnostics;
+
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  @Inject Instance<DataSource> dataSource;
+
+  @Inject DataSourceResolver dataSourceResolver;
+
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+
   @Inject RealmConfig realmConfig;
 
   protected JdbcMetaStoreManagerFactory() {}
@@ -121,10 +125,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmId, metaStoreManager);
   }
 
-  public DatasourceOperations getDatasourceOperations() {
+  public DatasourceOperations getDatasourceOperations(RealmContext realmContext) {
     DatasourceOperations databaseOperations;
     try {
-      databaseOperations = new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+      DataSource resolvedDs = dataSourceResolver.resolve(realmContext);
+      databaseOperations = new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);
     }
@@ -154,7 +159,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        DatasourceOperations datasourceOperations = getDatasourceOperations();
+        DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
         int currentSchemaVersion =
             JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
@@ -219,7 +224,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
       initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(realmContext);
     }
@@ -229,7 +234,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public synchronized BasePersistence getOrCreateSession(RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
       initializeForRealm(datasourceOperations, realmContext, null);
     }
     checkPolarisServiceBootstrappedForRealm(realmContext);
