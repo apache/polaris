@@ -34,6 +34,9 @@ dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
+  implementation("org.apache.iceberg:iceberg-data")
+  implementation("org.apache.iceberg:iceberg-orc")
+  implementation("org.apache.iceberg:iceberg-parquet")
 
   implementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   implementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")

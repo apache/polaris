@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_WILDCARD_LOCATION;
 
 import jakarta.annotation.Nonnull;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
    */
   public static Map<String, Map<PolarisStorageActions, ValidationResult>> validateAllowedLocations(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull List<String> allowedLocationsToValid,
+      @Nonnull Collection<String> allowedLocationsToValid,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
     // trim trailing / from allowed locations so that locations missing the trailing slash still

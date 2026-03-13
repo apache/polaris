@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
+import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -74,6 +75,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
       @Nonnull CredentialVendingContext credentialVendingContext);
+
+  /** Returns a remote signing access config with the necessary properties for remote signing. */
+  public StorageAccessConfig getRemoteSigningAccessConfig(
+      URI signerUri, String signerEndpoint, String signerToken) {
+    throw new UnsupportedOperationException(
+        "Remote signing is not supported for " + getStorageIdentifierOrId());
+  }
 
   /**
    * Validate access for the provided operation actions and locations.

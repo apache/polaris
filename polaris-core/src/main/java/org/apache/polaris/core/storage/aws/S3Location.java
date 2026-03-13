@@ -20,31 +20,30 @@
 package org.apache.polaris.core.storage.aws;
 
 import jakarta.annotation.Nonnull;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.StorageLocation;
 
 public class S3Location extends StorageLocation {
-  private static final Pattern URI_PATTERN = Pattern.compile("^(s3a?):(.+)$");
   private final String scheme;
   private final String locationWithoutScheme;
 
   public S3Location(@Nonnull String location) {
     super(location);
-    Matcher matcher = URI_PATTERN.matcher(location);
-    if (!matcher.matches()) {
+    if (location.startsWith("s3:")) {
+      this.scheme = "s3";
+      this.locationWithoutScheme = location.substring(3);
+    } else if (location.startsWith("s3a:")) {
+      this.scheme = "s3a";
+      this.locationWithoutScheme = location.substring(4);
+    } else {
       throw new IllegalArgumentException("Invalid S3 location uri " + location);
     }
-    this.scheme = matcher.group(1);
-    this.locationWithoutScheme = matcher.group(2);
   }
 
   public static boolean isS3Location(String location) {
     if (location == null) {
       return false;
     }
-    Matcher matcher = URI_PATTERN.matcher(location);
-    return matcher.matches();
+    return location.startsWith("s3:") || location.startsWith("s3a:");
   }
 
   @Override
@@ -65,6 +64,14 @@ public class S3Location extends StorageLocation {
   @Override
   public String withoutScheme() {
     return locationWithoutScheme;
+  }
+
+  @Override
+  public S3Location normalize() {
+    if (scheme.equals("s3a")) {
+      return new S3Location("s3:" + locationWithoutScheme);
+    }
+    return this;
   }
 
   @Override

@@ -171,7 +171,7 @@ class InMemoryStorageIntegrationTest {
         @Nonnull PolarisPrincipal polarisPrincipal,
         Optional<String> refreshCredentialsEndpoint,
         @Nonnull CredentialVendingContext credentialVendingContext) {
-      return null;
+      return StorageAccessConfig.EMPTY;
     }
   }
 }

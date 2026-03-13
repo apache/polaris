@@ -402,6 +402,25 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ---
 
+##### `polaris.features."REMOTE_SIGNING_CACHE_ENABLED"`
+
+If true, the remote signing endpoint will return a Cache-Control header instructing clients to cache signed read requests. Write requests are never cached, regardless of this setting.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+
+---
+
+##### `polaris.features."REMOTE_SIGNING_ENABLED"`
+
+If true, the remote signing endpoint is enabled either globally, or for a specific catalog.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.remote-signing.enabled`
+
+---
+
 ##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
 
 If set to true, resolve AWS credentials based on the storageName field of the storage configuration. When disabled, the default AWS credentials are used for all storages.

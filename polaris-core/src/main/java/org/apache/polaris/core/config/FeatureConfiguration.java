@@ -563,4 +563,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "When disabled, the default AWS credentials are used for all storages.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> REMOTE_SIGNING_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("REMOTE_SIGNING_ENABLED")
+          .catalogConfig("polaris.config.remote-signing.enabled")
+          .description(
+              "If true, the remote signing endpoint is enabled either globally, or for a specific catalog.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> REMOTE_SIGNING_CACHE_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("REMOTE_SIGNING_CACHE_ENABLED")
+          .description(
+              "If true, the remote signing endpoint will return a Cache-Control header instructing "
+                  + "clients to cache signed read requests. Write requests are never cached, "
+                  + "regardless of this setting.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }

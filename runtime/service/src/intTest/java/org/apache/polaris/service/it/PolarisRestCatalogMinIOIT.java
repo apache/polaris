@@ -104,6 +104,6 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
       // own S3 credentials.
       return s3Properties;
     }
-    return Map.of();
+    return super.extraCatalogProperties(testInfo);
   }
 }

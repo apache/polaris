@@ -215,5 +215,14 @@ public abstract class PolarisStorageConfigurationInfo {
     public List<String> getPrefixes() {
       return prefixes;
     }
+
+    public static StorageType forLocation(String loc) {
+      for (StorageType type : StorageType.values()) {
+        if (type.prefixes.stream().anyMatch(loc::startsWith)) {
+          return type;
+        }
+      }
+      throw new IllegalArgumentException("Unsupported storage location: " + loc);
+    }
   }
 }

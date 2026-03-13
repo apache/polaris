@@ -20,7 +20,7 @@
 [versions]
 checkstyle = "13.3.0"
 hadoop = "3.4.3"
-iceberg = "1.11.0-SNAPSHOT" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
+iceberg = "1.11.0-remote-signing" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.1"
 jmh = "1.37"
 picocli = "4.7.7"
@@ -83,6 +83,7 @@ microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-to
 mockito-core = { module = "org.mockito:mockito-core", version = "5.22.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.22.0" }
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.6.4" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version = "10.7" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }

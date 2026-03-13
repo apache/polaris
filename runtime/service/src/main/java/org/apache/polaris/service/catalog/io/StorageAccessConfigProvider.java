@@ -24,7 +24,9 @@ import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,11 +36,16 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,17 +66,20 @@ public class StorageAccessConfigProvider {
   private final StorageCredentialsVendor storageCredentialsVendor;
   private final PolarisPrincipal polarisPrincipal;
   private final RealmContext realmContext;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
       StorageCredentialsVendor storageCredentialsVendor,
       PolarisPrincipal polarisPrincipal,
-      RealmContext realmContext) {
+      RealmContext realmContext,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.storageCredentialCache = storageCredentialCache;
     this.storageCredentialsVendor = storageCredentialsVendor;
     this.polarisPrincipal = polarisPrincipal;
     this.realmContext = realmContext;
+    this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
   /**
@@ -84,7 +94,7 @@ public class StorageAccessConfigProvider {
    * @return {@link StorageAccessConfig} with scoped credentials and metadata; empty if no storage
    *     config found
    */
-  public StorageAccessConfig getStorageAccessConfig(
+  public StorageAccessConfig getStorageAccessConfigForCredentialsVending(
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
@@ -101,7 +111,7 @@ public class StorageAccessConfigProvider {
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+      return StorageAccessConfig.EMPTY;
     }
     PolarisEntity storageInfoEntity = storageInfo.get();
 
@@ -114,7 +124,7 @@ public class StorageAccessConfigProvider {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
-      return StorageAccessConfig.builder().build();
+      return StorageAccessConfig.EMPTY;
     }
 
     boolean allowList =
@@ -222,5 +232,36 @@ public class StorageAccessConfigProvider {
       return Optional.of(spanContext.getTraceId());
     }
     return Optional.empty();
+  }
+
+  /** Generates a remote signing configuration for accessing object storage. */
+  public StorageAccessConfig getStorageAccessConfigForRemoteSigning(
+      TableIdentifier tableIdentifier,
+      PolarisResolvedPathWrapper resolvedPath,
+      URI signerUri,
+      String signerEndpoint,
+      String signerToken) {
+    LOGGER
+        .atDebug()
+        .addKeyValue("tableIdentifier", tableIdentifier)
+        .log("Fetching remote signing config for table");
+
+    Optional<PolarisEntity> storageEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedPath);
+    Optional<PolarisStorageConfigurationInfo> configurationInfo =
+        storageEntity
+            .map(PolarisEntity::getInternalPropertiesAsMap)
+            .map(info -> info.get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+            .map(PolarisStorageConfigurationInfo::deserialize);
+
+    if (configurationInfo.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Table entity has no storage configuration in its hierarchy");
+    }
+
+    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+        Objects.requireNonNull(
+            storageIntegrationProvider.getStorageIntegrationForConfig(configurationInfo.get()));
+
+    return storageIntegration.getRemoteSigningAccessConfig(signerUri, signerEndpoint, signerToken);
   }
 }

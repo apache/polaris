@@ -77,6 +77,17 @@ dependencies {
   // of spark-sql dependency
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.3")
 
+  // The hudi-spark3.5-bundle_2.12:1.1.1 JAR contains shaded Parquet classes (in the
+  // shaded.parquet namespace) with an older version of fastutil (1.13.1). This conflicts
+  // with parquet-column:1.17.0 used by iceberg-spark-runtime 1.11.0, which requires a
+  // method that's missing in the older shaded fastutil. Since these conflicting classes are shaded
+  // inside the Hudi JAR, they cannot be excluded via Gradle dependency management.
+  // To resolve this, we explicitly declare a dependency on parquet-avro:1.17.0 *before*
+  // the Hudi dependency, ensuring that the correct version of parquet-avro is used throughout
+  // the classpath.
+  // TODO remove when Hudi upgrades the dependency
+  testImplementation("org.apache.parquet:parquet-avro:1.17.0")
+
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
   testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1") {
     // exclude log4j dependencies to match spark-sql exclusions

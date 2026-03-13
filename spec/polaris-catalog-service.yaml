@@ -100,6 +100,9 @@ paths:
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
 
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/sign:
+    $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1sign'
+
   /v1/{prefix}/tables/rename:
     $ref: './iceberg-rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
 
