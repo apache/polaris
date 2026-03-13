@@ -37,11 +37,4 @@ public interface PersistenceConfiguration {
   default boolean isAutoBootstrap() {
     return autoBootstrapTypes().contains(type());
   }
-
-  /**
-   * The type of the {@link org.apache.polaris.persistence.relational.jdbc.DataSourceResolver} to
-   * use. Only applicable when using JDBC persistence.
-   */
-  @WithDefault("polaris")
-  String dataSourceResolver();
 }

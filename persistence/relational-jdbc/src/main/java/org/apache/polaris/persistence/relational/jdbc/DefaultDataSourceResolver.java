@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * {@link DataSource}.
  */
 @ApplicationScoped
-@Identifier("polaris")
+@Identifier("default")
 public class DefaultDataSourceResolver implements DataSourceResolver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDataSourceResolver.class);
