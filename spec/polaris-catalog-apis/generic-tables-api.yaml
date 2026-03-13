@@ -276,7 +276,7 @@ components:
           description: Indicates a storage location prefix where the configuration is relevant. Clients should choose the most 
             specific prefix (by selecting the longest common prefix) if several configurations of the same type are available.
             If multiple configurations share the same longest matching prefix, the client may select any of them. However, 
-            a well-designed server should avoid generating multiple configurations for the same prefix.
+            a server should avoid generating multiple configurations for the same prefix.
         config:
           type: object
           description: |
