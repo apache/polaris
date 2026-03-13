@@ -88,7 +88,9 @@ public class RangerUtils {
       case NAMESPACE -> "namespace";
       case TABLE_LIKE -> "table";
       case POLICY -> "policy";
-      default -> entityType.name(); // NULL_TYPE, PRINCIPAL_ROLE, CATALOG_ROLE, TASK, FILE
+      default ->
+          throw new UnsupportedOperationException(
+              entityType + ": unsupported entity type in Ranger authorizer");
     };
   }
 
@@ -170,7 +172,9 @@ public class RangerUtils {
       case POLICY_ATTACH -> "policy-attach";
       case POLICY_DETACH -> "policy-detach";
 
-      default -> privilege.name();
+      default ->
+          throw new UnsupportedOperationException(
+              privilege + ": unsupported permission in Ranger authorizer");
     };
   }
 

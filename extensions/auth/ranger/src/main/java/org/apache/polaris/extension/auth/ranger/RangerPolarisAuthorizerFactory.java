@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.extension.auth.ranger;
 
-import static org.apache.polaris.extension.auth.ranger.RangerPolarisAuthorizerConfig.PROP_POLARIS_SERVICE_NAME;
-
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -61,14 +59,14 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
     config.validate();
 
     try {
-      Properties rangerProp = RangerUtils.loadProperties(config.configFileName().get());
+      Properties rangerProp = RangerUtils.loadProperties(config.configFileName().orElseThrow());
 
       RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(rangerProp);
 
       authorizer.init();
 
       this.authorizer = authorizer;
-      this.serviceName = rangerProp.getProperty(PROP_POLARIS_SERVICE_NAME);
+      this.serviceName = rangerProp.getProperty("ranger.plugin.polaris.service.name");
     } catch (RangerAuthzException t) {
       throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }

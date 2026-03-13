@@ -23,50 +23,32 @@ import java.util.Optional;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-@PolarisImmutable
 @ConfigMapping(prefix = "polaris.authorization.ranger")
 public interface RangerPolarisAuthorizerConfig {
-  Logger LOG = LoggerFactory.getLogger(RangerPolarisAuthorizerConfig.class);
-
-  String PROP_RANGER_CONFIG_FILE_NAME = "polaris.authorization.ranger.config-file-name";
-  String PROP_POLARIS_SERVICE_NAME = "ranger.plugin.polaris.service.name";
-
-  String ERR_INVALID_AUTHORIZER_CONFIG_MISSING_CONFIG_FILE_NAME =
-      "Invalid Ranger authorizer configuration: missing configuration "
-          + PROP_RANGER_CONFIG_FILE_NAME;
-  String ERR_INVALID_CONFIG_FILE_MISSING_CONFIGURATION =
-      "Invalid Ranger authorizer configuration file %s: missing mandatory configuration %s";
-
   Optional<String> configFileName();
 
   default void validate() {
     boolean isConfigFileNamePresent = configFileName().isPresent();
 
     if (!isConfigFileNamePresent) {
-      LOG.error(ERR_INVALID_AUTHORIZER_CONFIG_MISSING_CONFIG_FILE_NAME);
-
-      throw new IllegalStateException(ERR_INVALID_AUTHORIZER_CONFIG_MISSING_CONFIG_FILE_NAME);
+      throw new IllegalStateException(
+          "Invalid Ranger authorizer configuration: missing configuration polaris.authorization.ranger.config-file-name");
     }
 
     String fileName = configFileName().get();
 
     Properties prop = RangerUtils.loadProperties(fileName);
 
-    String serviceName = prop.getProperty(PROP_POLARIS_SERVICE_NAME);
+    String cfgName = "ranger.plugin.polaris.service.name";
+    String serviceName = prop.getProperty(cfgName);
 
     if (StringUtils.isBlank(serviceName)) {
-      LOG.error(
-          "{}",
-          ERR_INVALID_CONFIG_FILE_MISSING_CONFIGURATION.formatted(
-              fileName, PROP_POLARIS_SERVICE_NAME));
-
       throw new IllegalStateException(
-          ERR_INVALID_CONFIG_FILE_MISSING_CONFIGURATION.formatted(
-              fileName, PROP_POLARIS_SERVICE_NAME));
+          "Invalid Ranger authorizer configuration file "
+              + fileName
+              + ": missing mandatory configuration "
+              + cfgName);
     }
   }
 }
