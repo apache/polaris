@@ -50,6 +50,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -512,15 +513,20 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    Optional<String> refreshEndpoint =
+        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
+          // Vend credentials directly from entity properties, avoiding a full table metadata read
+          if (realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_CREDENTIAL_VENDING)) {
+            return Response.ok(
+                    catalog.loadCredentialsFromEntityProperties(tableIdentifier, refreshEndpoint))
+                .build();
+          }
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(
-                  tableIdentifier,
-                  "all",
-                  Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
+              catalog.loadTableWithAccessDelegation(tableIdentifier, "all", refreshEndpoint);
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
