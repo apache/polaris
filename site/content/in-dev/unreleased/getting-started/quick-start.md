@@ -31,10 +31,8 @@ Use this guide to quickly start running Polaris. This is not intended for produc
 ## Running
 
 Run the following command:
-
 ```bash
-curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml | docker compose -f - up
-
+curl -s https://raw.githubusercontent.com/apache/polaris/main/site/content/guides/quickstart/docker-compose.yml | docker compose -f - up
 ```
 This command will:
 1. Create a Catalog named `quickstart_catalog` with RustFS-backed storage.
