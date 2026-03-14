@@ -48,9 +48,10 @@ public class PolarisEventListeners {
       return;
     }
     Set<String> listenerTypeSet =
-        Arrays.stream(listerTypes.split(","))
-            .map(String::trim)
-            .collect(Collectors.toUnmodifiableSet());
+        Arrays.stream(listerTypes.split(",")).map(String::trim).collect(Collectors.toSet());
+    if (configuration.type().isPresent()) {
+      listenerTypeSet.add(configuration.type().get());
+    }
     for (String enabledEventListener : listenerTypeSet) {
       PolarisEventListener listener =
           eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
