@@ -32,9 +32,9 @@ import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -48,7 +48,7 @@ public class CatalogPolicyEventServiceDelegator
     implements PolarisCatalogPolicyApiService, CatalogAdapter {
 
   @Inject @Delegate PolicyCatalogAdapter delegate;
-  @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
 
@@ -60,7 +60,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_POLICY,
             eventMetadataFactory.create(),
@@ -71,7 +71,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.createPolicy(
             prefix, namespace, createPolicyRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_POLICY,
             eventMetadataFactory.create(),
@@ -92,7 +92,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_POLICIES,
             eventMetadataFactory.create(),
@@ -103,7 +103,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.listPolicies(
             prefix, namespace, pageToken, pageSize, policyType, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_POLICIES,
             eventMetadataFactory.create(),
@@ -122,7 +122,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LOAD_POLICY,
             eventMetadataFactory.create(),
@@ -132,7 +132,7 @@ public class CatalogPolicyEventServiceDelegator
                 .put(EventAttributes.POLICY_NAME, policyName)));
     Response resp =
         delegate.loadPolicy(prefix, namespace, policyName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_POLICY,
             eventMetadataFactory.create(),
@@ -152,7 +152,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_UPDATE_POLICY,
             eventMetadataFactory.create(),
@@ -164,7 +164,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.updatePolicy(
             prefix, namespace, policyName, updatePolicyRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_UPDATE_POLICY,
             eventMetadataFactory.create(),
@@ -184,7 +184,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_DROP_POLICY,
             eventMetadataFactory.create(),
@@ -196,7 +196,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.dropPolicy(
             prefix, namespace, policyName, detachAll, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_DROP_POLICY,
             eventMetadataFactory.create(),
@@ -217,7 +217,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_ATTACH_POLICY,
             eventMetadataFactory.create(),
@@ -229,7 +229,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.attachPolicy(
             prefix, namespace, policyName, attachPolicyRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_ATTACH_POLICY,
             eventMetadataFactory.create(),
@@ -250,7 +250,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_DETACH_POLICY,
             eventMetadataFactory.create(),
@@ -262,7 +262,7 @@ public class CatalogPolicyEventServiceDelegator
     Response resp =
         delegate.detachPolicy(
             prefix, namespace, policyName, detachPolicyRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_DETACH_POLICY,
             eventMetadataFactory.create(),
@@ -285,7 +285,7 @@ public class CatalogPolicyEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES,
             eventMetadataFactory.create(),
@@ -304,7 +304,7 @@ public class CatalogPolicyEventServiceDelegator
             policyType,
             realmContext,
             securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_GET_APPLICABLE_POLICIES,
             eventMetadataFactory.create(),

@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import io.quarkus.arc.DefaultBean;
+import io.vertx.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface PolarisEventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   */
-  Optional<String> type();
+@ApplicationScoped
+@DefaultBean
+public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher {
+  public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
 
-  /**
-   * Comma separated list of event listers, each item must be a registered {@link
-   * PolarisEventListener} identifier.
-   */
-  Optional<String> types();
+  @Inject EventBus eventBus;
+
+  //  @Inject PolarisEventListeners polarisEventListeners;
+
+  @Override
+  public void dispatch(PolarisEvent event) {
+    eventBus.publish(POLARIS_EVENT_CHANNEL, event);
+  }
 }

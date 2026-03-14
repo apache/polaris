@@ -85,10 +85,10 @@ import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFacto
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -120,7 +120,7 @@ public record TestServices(
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
-    PolarisEventListener polarisEventListener,
+    PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider) {
 
@@ -298,7 +298,7 @@ public record TestServices(
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
-      PolarisEventListener polarisEventListener = new TestPolarisEventListener();
+      PolarisEventDispatcher polarisEventDispatcher = new TestPolarisEventDispatcher();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
@@ -306,7 +306,7 @@ public record TestServices(
               taskExecutor,
               storageAccessConfigProvider,
               fileIOFactory,
-              polarisEventListener,
+              polarisEventDispatcher,
               eventMetadataFactory,
               metaStoreManager,
               callContext,
@@ -362,13 +362,13 @@ public record TestServices(
         finalRestCatalogService =
             new IcebergRestCatalogEventServiceDelegator(
                 catalogService,
-                polarisEventListener,
+                polarisEventDispatcher,
                 eventMetadataFactory,
                 new DefaultCatalogPrefixParser(),
                 eventAttributeMap);
         finalRestConfigurationService =
             new IcebergRestConfigurationEventServiceDelegator(
-                catalogService, polarisEventListener, eventMetadataFactory);
+                catalogService, polarisEventDispatcher, eventMetadataFactory);
       }
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
@@ -409,7 +409,7 @@ public record TestServices(
           metaStoreManager,
           fileIOFactory,
           taskExecutor,
-          polarisEventListener,
+          polarisEventDispatcher,
           eventMetadataFactory,
           storageAccessConfigProvider);
     }

@@ -16,25 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
+package org.apache.polaris.service.events.listeners;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface PolarisEventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   */
-  Optional<String> type();
+import io.quarkus.arc.profile.IfBuildProfile;
+import jakarta.enterprise.context.ApplicationScoped;
 
-  /**
-   * Comma separated list of event listers, each item must be a registered {@link
-   * PolarisEventListener} identifier.
-   */
-  Optional<String> types();
-}
+@ApplicationScoped
+@IfBuildProfile("test")
+public class QuarkusTestPolarisEventDispatcher extends TestPolarisEventDispatcher {}

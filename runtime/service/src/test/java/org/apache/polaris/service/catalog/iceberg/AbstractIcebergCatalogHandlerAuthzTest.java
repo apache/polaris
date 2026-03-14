@@ -1457,7 +1457,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         Mockito.mock(),
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener,
+        polarisEventDispatcher,
         eventMetadataFactory,
         metaStoreManager,
         callContext,

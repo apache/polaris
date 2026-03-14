@@ -140,10 +140,10 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -233,7 +233,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
@@ -253,7 +253,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
 
-  private TestPolarisEventListener testPolarisEventListener;
+  private TestPolarisEventDispatcher testPolarisEventDispatcher;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -326,8 +326,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
-    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
-    testPolarisEventListener.clear();
+
+    testPolarisEventDispatcher = (TestPolarisEventDispatcher) polarisEventDispatcher;
+    testPolarisEventDispatcher.clear();
   }
 
   @AfterEach
@@ -407,7 +408,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener,
+        polarisEventDispatcher,
         eventMetadataFactory);
   }
 
@@ -2476,13 +2477,13 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     table.updateProperties().set(key, valNew).commit();
 
     PolarisEvent beforeRefreshEvent =
-        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);
+        testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);
     Assertions.assertThat(
             beforeRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
-        testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_TABLE);
+        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_REFRESH_TABLE);
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
