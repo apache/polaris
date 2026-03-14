@@ -374,6 +374,16 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ---
 
+##### `polaris.features."OPTIMIZED_CREDENTIAL_VENDING"`
+
+When enabled, the loadCredentials endpoint vends storage credentials using location data from entity internal properties, avoiding a full table metadata read from object storage. Falls back to the standard path if the entity lacks the required properties.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+- **Catalog Config:** `polaris.config.optimized-credential-vending`
+
+---
+
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
 When set, an index is used to perform the sibling check between tables, views, and namespaces. New locations will be checked against previous ones based on components, so the new location /foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way to enforce this when new locations are added. Only supported by the JDBC metastore.
