@@ -350,6 +350,7 @@ public class PolarisServiceImpl
             .setProperties(
                 reservedProperties.removeReservedProperties(
                     request.getPrincipalRole().getProperties()))
+            .setFederated(request.getPrincipalRole().getFederated())
             .build();
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
