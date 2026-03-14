@@ -28,6 +28,13 @@ import jakarta.annotation.Nullable;
  *
  * <p>A policy type can be either inheritable or non-inheritable. Inheritable policies are passed
  * down to lower-level entities (e.g., from a namespace to a table).
+ *
+ * <p>Policy type resolution order:
+ *
+ * <ol>
+ *   <li>{@link PredefinedPolicyTypes} - production policy types
+ *   <li>{@link PolicyTypeRegistry} - fallback for custom/test policy types
+ * </ol>
  */
 public interface PolicyType {
 
@@ -56,29 +63,35 @@ public interface PolicyType {
   /**
    * Retrieves a {@link PolicyType} instance corresponding to the given type code.
    *
-   * <p>This method searches for the policy type in predefined policy types. If a custom policy type
-   * storage mechanism is implemented in the future, it may also check registered custom policy
-   * types.
+   * <p>This method first checks predefined policy types, then falls back to the {@link
+   * PolicyTypeRegistry} for custom policy types.
    *
    * @param code the type code of the policy type
    * @return the corresponding {@link PolicyType}, or {@code null} if no matching type is found
    */
   @JsonCreator
   static @Nullable PolicyType fromCode(int code) {
-    return PredefinedPolicyTypes.fromCode(code);
+    PolicyType predefined = PredefinedPolicyTypes.fromCode(code);
+    if (predefined != null) {
+      return predefined;
+    }
+    return PolicyTypeRegistry.fromCode(code);
   }
 
   /**
    * Retrieves a {@link PolicyType} instance corresponding to the given policy name.
    *
-   * <p>This method searches for the policy type in predefined policy types. If a custom policy type
-   * storage mechanism is implemented in the future, it may also check registered custom policy
-   * types.
+   * <p>This method first checks predefined policy types, then falls back to the {@link
+   * PolicyTypeRegistry} for custom policy types.
    *
    * @param name the name of the policy type
    * @return the corresponding {@link PolicyType}, or {@code null} if no matching type is found
    */
   static @Nullable PolicyType fromName(String name) {
-    return PredefinedPolicyTypes.fromName(name);
+    PolicyType predefined = PredefinedPolicyTypes.fromName(name);
+    if (predefined != null) {
+      return predefined;
+    }
+    return PolicyTypeRegistry.fromName(name);
   }
 }
