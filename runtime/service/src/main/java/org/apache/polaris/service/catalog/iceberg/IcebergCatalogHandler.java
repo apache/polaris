@@ -82,9 +82,9 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
-import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
@@ -739,33 +739,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Resolves the storage entity for the given table and vends credentials for the specified
-   * locations and actions. Returns {@code null} if no storage configuration is found.
-   */
-  private StorageAccessConfig vendCredentials(
-      TableIdentifier tableIdentifier,
-      Set<String> tableLocations,
-      Set<PolarisStorageActions> actionsRequested,
-      Optional<String> refreshCredentialsEndpoint) {
-    PolarisResolvedPathWrapper resolvedStoragePath =
-        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
-    if (resolvedStoragePath == null) {
-      LOGGER.debug(
-          "Unable to find storage configuration information for table {}", tableIdentifier);
-      return null;
-    }
-
-    return storageAccessConfigProvider()
-        .getStorageAccessConfig(
-            tableIdentifier,
-            tableLocations,
-            actionsRequested,
-            refreshCredentialsEndpoint,
-            resolvedStoragePath);
-  }
-
-
-  /**
    * Vend credentials for a table using location data from entity internal properties, avoiding a
    * full table metadata read from object storage. Falls back to the standard
    * loadTableWithAccessDelegation path if the entity lacks the required properties.
@@ -805,7 +778,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         StorageUtil.getLocationsUsedByTable(baseLocation, internalProperties);
 
     StorageAccessConfig storageAccessConfig =
-        vendCredentials(tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
+        vendCredentials(
+            tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
     if (storageAccessConfig == null) {
       return ImmutableLoadCredentialsResponse.builder().build();
     }
@@ -816,10 +790,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (!credentialConfig.isEmpty()) {
       responseBuilder.addCredentials(
-          ImmutableCredential.builder()
-              .prefix(baseLocation)
-              .config(credentialConfig)
-              .build());
+          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
     } else {
       Boolean skipCredIndirection =
           realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
@@ -830,15 +801,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return responseBuilder.build();
-  }
-
-  private ImmutableLoadCredentialsResponse fallbackToFullLoadTable(
-      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
-    LoadTableResponse loadTableResponse =
-        loadTableWithAccessDelegation(tableIdentifier, "all", refreshCredentialsEndpoint);
-    return ImmutableLoadCredentialsResponse.builder()
-        .credentials(loadTableResponse.credentials())
-        .build();
   }
 
   private Set<PolarisStorageActions> authorizeLoadTable(
@@ -1475,6 +1437,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig()))
                 .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig()))
                 .build())
+        .build();
+  }
+
+  private StorageAccessConfig vendCredentials(
+      TableIdentifier tableIdentifier,
+      Set<String> tableLocations,
+      Set<PolarisStorageActions> actionsRequested,
+      Optional<String> refreshCredentialsEndpoint) {
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
+    if (resolvedStoragePath == null) {
+      LOGGER.debug(
+          "Unable to find storage configuration information for table {}", tableIdentifier);
+      return null;
+    }
+
+    return storageAccessConfigProvider()
+        .getStorageAccessConfig(
+            tableIdentifier,
+            tableLocations,
+            actionsRequested,
+            refreshCredentialsEndpoint,
+            resolvedStoragePath);
+  }
+
+  private ImmutableLoadCredentialsResponse fallbackToFullLoadTable(
+      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+    LoadTableResponse loadTableResponse =
+        loadTableWithAccessDelegation(tableIdentifier, "all", refreshCredentialsEndpoint);
+    return ImmutableLoadCredentialsResponse.builder()
+        .credentials(loadTableResponse.credentials())
         .build();
   }
 }

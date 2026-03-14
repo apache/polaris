@@ -40,6 +40,7 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 
 /**
@@ -171,6 +172,18 @@ public class CatalogApi extends PolarisRestApi {
       String catalog, TableIdentifier id, String snapshots) {
     return loadTable(
         catalog, id, snapshots, Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadCredentialsResponse loadCredentials(String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}/credentials",
+                Map.of("cat", catalog, "table", id.name()))
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(OK.getStatusCode());
+      return res.readEntity(LoadCredentialsResponse.class);
+    }
   }
 
   public LoadTableResponse loadTable(

@@ -559,6 +559,17 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
+  Stream<DynamicNode> testLoadCredentialsFromEntityPropertiesPrivileges() {
+    return authzTestsBuilder("loadCredentialsFromEntityProperties")
+        .action(
+            () -> newHandler().loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
   Stream<DynamicNode> testLoadTableWithWriteAccessDelegationPrivileges() {
     // TODO: Once we give different creds for read/write privilege, move this
     // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
