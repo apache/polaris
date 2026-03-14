@@ -21,8 +21,8 @@ package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -49,13 +49,11 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 
 @ApplicationScoped
-@Identifier(AwsCloudWatchEventListener.ID)
+@Identifier("aws-cloudwatch")
 public class AwsCloudWatchEventListener implements PolarisEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
 
-  public static final String ID = "aws-cloudwatch";
-
-  private volatile CloudWatchLogsAsyncClient client;
+  private CloudWatchLogsAsyncClient client;
 
   private final String logGroup;
   private final String logStream;
@@ -75,21 +73,10 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     this.clock = clock;
   }
 
-  @VisibleForTesting
+  @PostConstruct
   void start() {
     this.client = createCloudWatchAsyncClient();
     ensureLogGroupAndStream();
-  }
-
-  private CloudWatchLogsAsyncClient client() {
-    if (client == null) {
-      synchronized (this) {
-        if (client == null) {
-          start();
-        }
-      }
-    }
-    return client;
   }
 
   protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
@@ -99,7 +86,7 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
   private void ensureLogGroupAndStream() {
     ensureResourceExists(
         () ->
-            client()
+            client
                 .describeLogGroups(
                     DescribeLogGroupsRequest.builder().logGroupNamePrefix(logGroup).build())
                 .join()
@@ -107,14 +94,14 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
                 .stream()
                 .anyMatch(g -> g.logGroupName().equals(logGroup)),
         () ->
-            client()
+            client
                 .createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build())
                 .join(),
         "group",
         logGroup);
     ensureResourceExists(
         () ->
-            client()
+            client
                 .describeLogStreams(
                     DescribeLogStreamsRequest.builder()
                         .logGroupName(logGroup)
@@ -125,7 +112,7 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
                 .stream()
                 .anyMatch(s -> s.logStreamName().equals(logStream)),
         () ->
-            client()
+            client
                 .createLogStream(
                     CreateLogStreamRequest.builder()
                         .logGroupName(logGroup)
@@ -197,7 +184,7 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
             .logStreamName(logStream)
             .logEvents(List.of(inputLogEvent));
     CompletableFuture<PutLogEventsResponse> future =
-        client()
+        client
             .putLogEvents(requestBuilder.build())
             .whenComplete(
                 (resp, err) -> {
@@ -209,10 +196,5 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     if (synchronousMode) {
       future.join();
     }
-  }
-
-  @Override
-  public String identifier() {
-    return ID;
   }
 }

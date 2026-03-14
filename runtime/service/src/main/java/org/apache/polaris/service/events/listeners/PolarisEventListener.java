@@ -28,6 +28,4 @@ import org.apache.polaris.service.events.PolarisEvent;
 public interface PolarisEventListener {
 
   default void onEvent(PolarisEvent event) {}
-
-  String identifier();
 }

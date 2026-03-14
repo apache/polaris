@@ -22,6 +22,7 @@ package org.apache.polaris.service.events;
 import static org.apache.polaris.service.events.PolarisServiceBusEventDispatcher.POLARIS_EVENT_CHANNEL;
 
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.common.annotation.Identifier;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
@@ -31,6 +32,8 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @ApplicationScoped
@@ -40,15 +43,19 @@ public class PolarisEventListeners {
   @Inject PolarisEventListenerConfiguration configuration;
 
   public void onStartup(@Observes StartupEvent event) {
-    for (PolarisEventListener listener : eventListeners) {
-      // This approach is suboptimal, as it triggers bean initialization logic.
-      // Maybe custom annotation can help?
-      if (Arrays.stream(configuration.enabledPolarisEventListener())
-          .toList()
-          .contains(listener.identifier())) {
-        Handler<Message<PolarisEvent>> handler = e -> listener.onEvent(e.body());
-        eventBus.localConsumer(POLARIS_EVENT_CHANNEL, handler);
-      }
+    String listerTypes = configuration.types().orElse("");
+    if (listerTypes.isBlank()) {
+      return;
+    }
+    Set<String> listenerTypeSet =
+        Arrays.stream(listerTypes.split(","))
+            .map(String::trim)
+            .collect(Collectors.toUnmodifiableSet());
+    for (String enabledEventListener : listenerTypeSet) {
+      PolarisEventListener listener =
+          eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      Handler<Message<PolarisEvent>> handler = e -> listener.onEvent(e.body());
+      eventBus.localConsumer(POLARIS_EVENT_CHANNEL, handler);
     }
   }
 }
