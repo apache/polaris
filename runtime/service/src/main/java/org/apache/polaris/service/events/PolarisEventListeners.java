@@ -32,6 +32,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -43,12 +44,15 @@ public class PolarisEventListeners {
   @Inject PolarisEventListenerConfiguration configuration;
 
   public void onStartup(@Observes StartupEvent event) {
-    String listerTypes = configuration.types().orElse("");
-    if (listerTypes.isBlank()) {
-      return;
-    }
     Set<String> listenerTypeSet =
-        Arrays.stream(listerTypes.split(",")).map(String::trim).collect(Collectors.toSet());
+        configuration
+            .types()
+            .map(
+                types ->
+                    Arrays.stream(types.split(","))
+                        .map(String::trim)
+                        .collect(Collectors.toCollection(HashSet::new)))
+            .orElseGet(HashSet::new);
     if (configuration.type().isPresent()) {
       listenerTypeSet.add(configuration.type().get());
     }
