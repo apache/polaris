@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
@@ -84,5 +85,12 @@ public class AuthorizationRequestTest {
                     PolarisSecurable.of(PolarisEntityType.CATALOG, List.of("catalog")), null)));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isFalse();
+  }
+
+  @Test
+  void securableRequiresNonEmptyNameParts() {
+    assertThatThrownBy(() -> PolarisSecurable.of(PolarisEntityType.CATALOG, List.of()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("nameParts must be non-empty");
   }
 }

@@ -18,10 +18,12 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * Intent-only target reference for authorization decisions.
@@ -44,4 +46,13 @@ public interface PolarisSecurable {
   /** Returns the name parts that identify the securable in hierarchical order. */
   @Nonnull
   List<String> getNameParts();
+
+  @Value.Check
+  default void validate() {
+    // Every target Securable must have a name
+    Preconditions.checkState(
+        !getNameParts().isEmpty(),
+        "PolarisSecurable nameParts must be non-empty for entityType=%s",
+        getEntityType());
+  }
 }
