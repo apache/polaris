@@ -396,7 +396,7 @@ jobs:
           exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
 
           exec_process cd "${dist_dev_dir}"
-          exec_process svn add "helm-chart/${version_without_rc}"
+          exec_process svn add --parents "helm-chart/${version_without_rc}"
 
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
 
