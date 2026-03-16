@@ -60,5 +60,7 @@ def format_timestamp(ms_since_epoch: int) -> str:
     """
     if ms_since_epoch is None:
         return "Unknown"
-    dt = datetime.datetime.fromtimestamp(ms_since_epoch / 1000, tz=datetime.timezone.utc)
+    dt = datetime.datetime.fromtimestamp(
+        ms_since_epoch / 1000, tz=datetime.timezone.utc
+    )
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
