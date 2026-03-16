@@ -28,7 +28,6 @@ dependencies {
   implementation(project(":polaris-version"))
 
   implementation(libs.smallrye.common.annotation)
-  implementation(libs.smallrye.config.core)
   implementation(libs.jakarta.enterprise.cdi.api)
 
   implementation(enforcedPlatform(libs.quarkus.bom))
