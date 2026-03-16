@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
-public class TestRangerPolarisAuthorizerFactory {
+public class RangerPolarisAuthorizerFactoryTest {
   @Test
   public void testAuthorizerInstantiation() {
     RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());

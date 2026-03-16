@@ -30,9 +30,6 @@ dependencies {
     exclude("org.apache.hadoop", "hadoop-client-runtime")
   }
   implementation(libs.commons.lang3)
-  implementation(libs.graalvm.js.js.scriptengine)
-  implementation(libs.graalvm.polyglot.js)
-  implementation(libs.graalvm.polyglot.polyglot)
   implementation(libs.guava)
 
   // Iceberg dependency for ForbiddenException
@@ -44,4 +41,8 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.smallrye.config.core)
   compileOnly(project(":polaris-immutables"))
+
+  runtimeOnly(libs.graalvm.js.js.scriptengine)
+  runtimeOnly(libs.graalvm.polyglot.js)
+  runtimeOnly(libs.graalvm.polyglot.polyglot)
 }

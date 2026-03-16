@@ -55,13 +55,13 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.junit.jupiter.api.Test;
 
-public class TestRangerPolarisAuthorizer {
+public class RangerPolarisAuthorizerTest {
   private static final String RESOURCE_TYPE_NAME_SEP = ":";
   private static final String RESOURCE_ELEMENTS_SEP = "/";
 
   private final PolarisAuthorizer authorizer;
 
-  public TestRangerPolarisAuthorizer() {
+  public RangerPolarisAuthorizerTest() {
     RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
 
     factory.initialize();
