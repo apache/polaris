@@ -355,6 +355,7 @@ jobs:
 
   markdown-link-check:
     name: "Markdown Link Check"
+    if: github.repository == 'apache/polaris'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
