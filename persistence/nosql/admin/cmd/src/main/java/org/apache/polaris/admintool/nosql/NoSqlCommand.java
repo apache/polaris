@@ -19,12 +19,10 @@
 package org.apache.polaris.admintool.nosql;
 
 import jakarta.enterprise.inject.Default;
-import jakarta.inject.Inject;
 import org.apache.polaris.admintool.AdminSubCommand;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceInfoCommand;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceLogCommand;
 import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceRunCommand;
-import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import picocli.CommandLine;
 
 @CommandLine.Command(
