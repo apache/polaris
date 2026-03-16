@@ -25,10 +25,6 @@ import org.apache.polaris.persistence.nosql.api.backend.Backend;
 public abstract class BaseNoSqlCommand extends BaseCommand {
   @Inject protected Backend backend;
 
-  public BaseNoSqlCommand() {
-    this.backend = null;
-  }
-
   protected void checkInMemory() {
     if ("InMemory".equals(backend.type())) {
       var err = spec.commandLine().getErr();

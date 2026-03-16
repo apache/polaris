@@ -39,7 +39,6 @@ import picocli.CommandLine;
 @AdminSubCommand
 @Default
 public class NoSqlCommand extends BaseNoSqlCommand {
-  @Inject protected Backend backend;
 
   @Override
   public Integer call() {
