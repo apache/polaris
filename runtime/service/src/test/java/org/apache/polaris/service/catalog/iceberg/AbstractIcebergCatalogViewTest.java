@@ -20,6 +20,9 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -63,7 +66,8 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.test.TestData;
 import org.assertj.core.api.Assertions;
@@ -90,6 +94,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
           .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
           .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -107,6 +112,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
+  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
   @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject ResolverFactory resolverFactory;
@@ -123,7 +129,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   private String realmName;
   private PolarisCallContext polarisContext;
 
-  private TestPolarisEventDispatcher testPolarisEventDispatcher;
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -194,8 +200,9 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
 
-    testPolarisEventDispatcher = (TestPolarisEventDispatcher) polarisEventDispatcher;
-    testPolarisEventDispatcher.clear();
+    testPolarisEventListener =
+        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener.clear();
     this.catalog =
         new IcebergCatalog(
             diagServices,
@@ -257,13 +264,13 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     view.updateProperties().set(key, valNew).commit();
 
     PolarisEvent beforeRefreshEvent =
-        testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
     Assertions.assertThat(
             beforeRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
-        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);

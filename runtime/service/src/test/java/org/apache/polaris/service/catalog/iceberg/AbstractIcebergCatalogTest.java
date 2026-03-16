@@ -38,7 +38,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -143,7 +146,8 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -203,6 +207,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.test.rootAugmentor.enabled", "true")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -233,7 +238,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject PolarisEventDispatcher polarisEventDispatcher;
+  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
@@ -246,6 +251,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisPrincipal authenticatedRoot;
   @Inject PolarisAdminService adminService;
   @Inject ResolverFactory resolverFactory;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -253,7 +259,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
 
-  private TestPolarisEventDispatcher testPolarisEventDispatcher;
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -326,9 +332,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
-
-    testPolarisEventDispatcher = (TestPolarisEventDispatcher) polarisEventDispatcher;
-    testPolarisEventDispatcher.clear();
+    testPolarisEventListener =
+        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener.clear();
   }
 
   @AfterEach
@@ -2477,13 +2483,13 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     table.updateProperties().set(key, valNew).commit();
 
     PolarisEvent beforeRefreshEvent =
-        testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);
     Assertions.assertThat(
             beforeRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
-        testPolarisEventDispatcher.getLatest(PolarisEventType.AFTER_REFRESH_TABLE);
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_TABLE);
     Assertions.assertThat(
             afterRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
         .isEqualTo(TestData.TABLE);

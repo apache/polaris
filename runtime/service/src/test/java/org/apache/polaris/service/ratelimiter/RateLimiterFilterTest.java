@@ -26,6 +26,9 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response.Status;
 import java.util.Map;
@@ -33,9 +36,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
-import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
 import org.apache.polaris.service.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.test.PolarisIntegrationTestHelper;
@@ -78,13 +81,16 @@ public class RateLimiterFilterTest {
           .put("polaris.realm-context.type", "test")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
           .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
-  @Inject PolarisEventDispatcher polarisEventDispatcher;
+  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
+
+  private TestPolarisEventListener testPolarisEventListener;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -107,6 +113,10 @@ public class RateLimiterFilterTest {
   public void resetMeterRegistry() {
     MockRateLimiter.allowProceed = true;
     meterRegistry.clear();
+
+    testPolarisEventListener =
+        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener.clear();
   }
 
   @Test
@@ -141,8 +151,7 @@ public class RateLimiterFilterTest {
     }
 
     PolarisEvent event =
-        ((TestPolarisEventDispatcher) polarisEventDispatcher)
-            .getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
     assertThat(event.attributes().getRequired(EventAttributes.HTTP_METHOD)).isEqualTo("GET");
 
     // Examples of expected metrics:
