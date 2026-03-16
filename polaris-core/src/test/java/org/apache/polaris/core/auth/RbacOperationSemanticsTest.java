@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.EnumSet;
-import org.apache.polaris.core.auth.RbacOperationSemantics.PathEvaluationScope;
+import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +40,7 @@ public class RbacOperationSemanticsTest {
   void nullSecondaryPrivilegesNormalizeToEmpty() {
     RbacOperationSemantics semantics =
         new RbacOperationSemantics(
-            EnumSet.of(PolarisPrivilege.TABLE_DROP), null, PathEvaluationScope.ROOT, null);
+            EnumSet.of(PolarisPrivilege.TABLE_DROP), null, ResolvedPathRooting.ROOT, null);
 
     assertThat(semantics.secondaryPrivileges()).isEmpty();
     assertThat(semantics.secondaryScope()).isNull();
@@ -51,7 +51,7 @@ public class RbacOperationSemanticsTest {
     assertThatThrownBy(
             () ->
                 new RbacOperationSemantics(
-                    EnumSet.noneOf(PolarisPrivilege.class), null, PathEvaluationScope.ROOT, null))
+                    EnumSet.noneOf(PolarisPrivilege.class), null, ResolvedPathRooting.ROOT, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("targetPrivileges must be non-empty");
   }
@@ -63,7 +63,7 @@ public class RbacOperationSemanticsTest {
                 new RbacOperationSemantics(
                     EnumSet.of(PolarisPrivilege.TABLE_DROP),
                     EnumSet.of(PolarisPrivilege.TABLE_CREATE),
-                    PathEvaluationScope.ROOT,
+                    ResolvedPathRooting.ROOT,
                     null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("secondaryScope must be non-null");

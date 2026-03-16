@@ -133,7 +133,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.auth.RbacOperationSemantics.PathEvaluationScope;
+import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -792,10 +792,12 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       RbacOperationSemantics semantics,
       List<PolarisSecurable> securables,
       TargetType targetType) {
+    // ResolvedPathRooting determines whether RBAC prepends the root container to the resolved
+    // path before privilege evaluation.
     boolean prependRootContainer =
         switch (targetType) {
-          case TARGET -> semantics.targetScope() == PathEvaluationScope.ROOT;
-          case SECONDARY -> semantics.secondaryScope() == PathEvaluationScope.ROOT;
+          case TARGET -> semantics.targetScope() == ResolvedPathRooting.ROOT;
+          case SECONDARY -> semantics.secondaryScope() == ResolvedPathRooting.ROOT;
         };
 
     return securables.stream()
