@@ -63,6 +63,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
 - Added setup options to Polaris CLI.
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
+- Added summary subcommand to Polaris CLI.
 
 ### Changes
 
