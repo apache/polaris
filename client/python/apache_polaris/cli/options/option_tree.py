@@ -337,6 +337,10 @@ class OptionTree:
                         ],
                         input_name=Arguments.CATALOG,
                     ),
+                    Option(
+                        Subcommands.SUMMARY,
+                        input_name=Arguments.CATALOG,
+                    ),
                 ],
             ),
             Option(
@@ -402,6 +406,10 @@ class OptionTree:
                                 Hints.Principals.Reset.CLIENT_SECRET,
                             ),
                         ],
+                        input_name=Arguments.PRINCIPAL,
+                    ),
+                    Option(
+                        Subcommands.SUMMARY,
                         input_name=Arguments.PRINCIPAL,
                     ),
                 ],
@@ -480,6 +488,10 @@ class OptionTree:
                                 Hints.PrincipalRoles.Revoke.PRINCIPAL,
                             )
                         ],
+                        input_name=Arguments.PRINCIPAL_ROLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARY,
                         input_name=Arguments.PRINCIPAL_ROLE,
                     ),
                 ],
@@ -581,6 +593,15 @@ class OptionTree:
                                 str,
                                 Hints.CatalogRoles.CATALOG_ROLE,
                             ),
+                        ],
+                        input_name=Arguments.CATALOG_ROLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARY,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            )
                         ],
                         input_name=Arguments.CATALOG_ROLE,
                     ),
@@ -750,6 +771,15 @@ class OptionTree:
                         ],
                         input_name=Arguments.NAMESPACE,
                     ),
+                    Option(
+                        Subcommands.SUMMARY,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            )
+                        ],
+                        input_name=Arguments.NAMESPACE,
+                    ),
                 ],
             ),
             Option(
@@ -896,6 +926,16 @@ class OptionTree:
                                 Hints.Policies.PARAMETERS,
                                 allow_repeats=True,
                             ),
+                        ],
+                        input_name=Arguments.POLICY,
+                    ),
+                    Option(
+                        Subcommands.SUMMARY,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         ],
                         input_name=Arguments.POLICY,
                     ),

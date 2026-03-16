@@ -26,12 +26,13 @@ from apache_polaris.cli.constants import (
     Arguments,
     AuthenticationType,
     ServiceIdentityType,
+    UNIT_SEPARATOR,
 )
 from apache_polaris.cli.options.option_tree import Argument
 
 from dataclasses import dataclass
 from pydantic import StrictStr, SecretStr
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple, Callable
 
 from apache_polaris.sdk.management import (
     PolarisDefaultApi,
@@ -53,6 +54,9 @@ from apache_polaris.sdk.management import (
     IcebergRestConnectionConfigInfo,
     AwsIamServiceIdentityInfo,
 )
+from apache_polaris.cli.command.utils import get_catalog_api_client, format_timestamp
+from apache_polaris.sdk.catalog import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 
 
 @dataclass
@@ -487,5 +491,86 @@ class CatalogsCommand(Command):
                 )
 
             api.update_catalog(self.catalog_name, request)
+        elif self.catalogs_subcommand == Subcommands.SUMMARY:
+            self._generate_summary(api)
         else:
             raise Exception(f"{self.catalogs_subcommand} is not supported in the CLI")
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        print(f"Catalog: {self.catalog_name}")
+        print("-" * 80)
+        # Metadata
+        catalog = api.get_catalog(self.catalog_name)
+        print("Metadata")
+        print(f"  {'Type:':<30} {catalog.type}")
+        storage_info = catalog.storage_config_info
+        print(f"  {'Storage Type:':<30} {storage_info.storage_type}")
+        print(f"  {'Base Location:':<30} {catalog.properties.default_base_location}")
+        print(
+            f"  {'Allowed Locations:':<30} {','.join(storage_info.allowed_locations or [])}"
+        )
+        print(f"  {'Created:':<30} {format_timestamp(catalog.create_timestamp)}")
+        print(f"  {'Modified:':<30} {format_timestamp(catalog.last_update_timestamp)}")
+        print(f"  {'Version:':<30} {catalog.entity_version}")
+        # Inventory
+        catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
+        total_ns, total_tables, total_views = self._get_sub_entities_count(catalog_api)
+        print("Inventory")
+        print(f"  {'Namespaces:':<30} {total_ns}")
+        print(f"  {'Tables:':<30} {total_tables}")
+        print(f"  {'Views:':<30} {total_views}")
+        # Access Control
+        catalog_roles = api.list_catalog_roles(self.catalog_name).roles or []
+        principal_roles_names = set()
+        for catalog_role in catalog_roles:
+            pr_resp = api.list_assignee_principal_roles_for_catalog_role(
+                self.catalog_name, catalog_role.name
+            )
+            roles = pr_resp.roles or []
+            for pr in roles:
+                principal_roles_names.add(pr.name)
+        print("Access Control")
+        print(f"  {'Catalog Roles:':<30} {len(catalog_roles)}")
+        print(f"  {'Assigned Principal Roles:':<30} {len(principal_roles_names)}")
+        # Policies
+        policy_api = PolicyAPI(catalog_api.api_client)
+        policies_resp = policy_api.get_applicable_policies(prefix=self.catalog_name)
+        print("Applicable Policies")
+        applicable_policies = policies_resp.applicable_policies or []
+        if applicable_policies:
+            for policy in sorted(applicable_policies, key=lambda x: x.name):
+                print(f"  - {policy.name}")
+        else:
+            print("  No applicable policies")
+        print("-" * 80)
+
+    def _get_sub_entities_count(
+        self, catalog_api: IcebergCatalogAPI
+    ) -> Tuple[int, int, int]:
+        def count_entities(func: Callable, ns_str: str) -> int:
+            try:
+                resp = func(prefix=self.catalog_name, namespace=ns_str)
+                return len(resp.identifiers or [])
+            except Exception as e:
+                print(
+                    f"Warning: Could not list entity for namespace {ns_str}: {e}",
+                )
+                return 0
+
+        def recursive(parent: Optional[str] = None) -> Tuple[int, int, int]:
+            ns_resp = catalog_api.list_namespaces(
+                prefix=self.catalog_name, parent=parent
+            )
+            namespaces = ns_resp.namespaces or []
+            total_ns, total_tables, total_views = len(namespaces), 0, 0
+            for ns in namespaces:
+                ns_str = UNIT_SEPARATOR.join(ns)
+                total_tables += count_entities(catalog_api.list_tables, ns_str)
+                total_views += count_entities(catalog_api.list_views, ns_str)
+                ns_cnt, tables_cnt, views_cnt = recursive(ns_str)
+                total_ns += ns_cnt
+                total_tables += tables_cnt
+                total_views += views_cnt
+            return total_ns, total_tables, total_views
+
+        return recursive()

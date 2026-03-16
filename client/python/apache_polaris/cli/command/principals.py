@@ -32,6 +32,7 @@ from apache_polaris.sdk.management import (
     UpdatePrincipalRequest,
     ResetPrincipalRequest,
 )
+from apache_polaris.cli.command.utils import format_timestamp
 
 
 @dataclass
@@ -193,5 +194,39 @@ class PrincipalsCommand(Command):
                         api.reset_credentials(self.principal_name, None)
                     )
                 )
+        elif self.principals_subcommand == Subcommands.SUMMARY:
+            self._generate_summary(api)
         else:
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        print(f"Principal: {self.principal_name}")
+        print("-" * 80)
+        # Metadata
+        principal = api.get_principal(self.principal_name)
+        print("Metadata")
+        print(f"  {'Client ID:':<30} {principal.client_id}")
+        print(f"  {'Created:':<30} {format_timestamp(principal.create_timestamp)}")
+        print(
+            f"  {'Modified:':<30} {format_timestamp(principal.last_update_timestamp)}"
+        )
+        print(f"  {'Version:':<30} {principal.entity_version}")
+        # Assigned Roles
+        principal_roles = list(self._get_principal_roles(api))
+        print("Assigned Roles")
+        for principal_role in principal_roles:
+            print(f"  - {principal_role}")
+        catalogs = api.list_catalogs().catalogs or []
+        accessible_catalogs = []
+        for catalog in catalogs:
+            if any(
+                api.list_catalog_roles_for_principal_role(role_name, catalog.name).roles
+                for role_name in principal_roles
+            ):
+                accessible_catalogs.append(catalog.name)
+        # Accessible Catalogs
+        print("Accessible Catalogs")
+        if accessible_catalogs:
+            for catalog in sorted(accessible_catalogs):
+                print(f"  - {catalog}")
+        print("-" * 80)
