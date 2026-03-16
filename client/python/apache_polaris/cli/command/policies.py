@@ -241,6 +241,7 @@ class PoliciesCommand(Command):
         print(f"  {'Inheritable:':<30} {policy.inheritable}")
         content = json.loads(policy.content) if policy.content else {}
         content_json = json.dumps(content, indent=4)
-        print(f"  {'Content:':<30} {content_json.replace('\n', '\n' + ' ' * 33)}")
+        formatted_content = content_json.replace("\n", "\n" + " " * 33)
+        print(f"  {'Content:':<30} {formatted_content}")
         print(f"  {'Metadata Version:':<30} {policy.version}")
         print("-" * 80)
