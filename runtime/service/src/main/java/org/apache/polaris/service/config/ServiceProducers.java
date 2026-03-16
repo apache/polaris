@@ -234,7 +234,7 @@ public class ServiceProducers {
   public DataSourceResolver dataSourceResolver(
       RelationalJdbcConfiguration jdbcConfig,
       @Any Instance<DataSourceResolver> dataSourceResolvers) {
-    String type = jdbcConfig.dataSourceResolverType().orElse("default");
+    String type = jdbcConfig.dataSourceResolverType();
     return dataSourceResolvers.select(Identifier.Literal.of(type)).get();
   }
 

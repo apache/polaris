@@ -36,8 +36,6 @@ public interface RelationalJdbcConfiguration {
    */
   Optional<String> databaseType();
 
-  /** The type of the {@link DataSourceResolver} to use. Defaults to "default". */
-  default Optional<String> dataSourceResolverType() {
-    return Optional.of("default");
-  }
+  /** The type of the {@link DataSourceResolver} to use. */
+  String dataSourceResolverType();
 }
