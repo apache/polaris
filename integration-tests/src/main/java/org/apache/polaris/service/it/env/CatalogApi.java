@@ -163,6 +163,48 @@ public class CatalogApi extends PolarisRestApi {
     }
   }
 
+  public LoadTableResponse registerTable(
+      String catalog, Namespace namespace, String tableName, String metadataLocation) {
+    return registerTable(catalog, namespace, tableName, metadataLocation, Map.of());
+  }
+
+  public LoadTableResponse registerTableWithAccessDelegation(
+      String catalog, Namespace namespace, String tableName, String metadataLocation) {
+    return registerTable(
+        catalog,
+        namespace,
+        tableName,
+        metadataLocation,
+        Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse registerTable(
+      String catalog,
+      Namespace namespace,
+      String tableName,
+      String metadataLocation,
+      Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
+    String ns = RESTUtil.encodeNamespace(namespace);
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/" + ns + "/register",
+                Map.of("cat", catalog),
+                Map.of(),
+                allHeaders)
+            .post(Entity.json(Map.of("name", tableName, "metadata-location", metadataLocation)))) {
+      if (res.getStatus() == Response.Status.OK.getStatusCode()) {
+        return res.readEntity(LoadTableResponse.class);
+      }
+      throw new RESTException(
+          "Unhandled error: %s",
+          ((ErrorHandler) ErrorHandlers.defaultErrorHandler())
+              .parseResponse(res.getStatus(), res.readEntity(String.class)));
+    }
+  }
+
   public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
     return loadTable(catalog, id, snapshots, Map.of());
   }
