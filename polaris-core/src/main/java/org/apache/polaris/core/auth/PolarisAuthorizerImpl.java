@@ -133,6 +133,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -142,6 +143,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,6 +159,11 @@ import org.slf4j.LoggerFactory;
  */
 public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizerImpl.class);
+
+  private enum TargetType {
+    TARGET,
+    SECONDARY
+  }
 
   @VisibleForTesting
   static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
@@ -747,15 +755,77 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   @Override
   public void resolveAuthorizationInputs(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "resolveAuthorizationInputs is not implemented yet for PolarisAuthorizerImpl");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    resolutionManifest.resolveAll();
   }
 
   @Override
+  @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "authorize is not implemented yet for PolarisAuthorizerImpl");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
+    // Delegate to legacy authorizeOrThrow() to preserve existing RBAC privilege
+    // evaluation semantics. A later cleanup can refactor internals to a
+    // decision-first approach and remove this exception-to-decision adaptation.
+    try {
+      List<PolarisResolvedPathWrapper> resolvedSecondaries =
+          !semantics.hasSecondaryPrivileges() || request.getSecondaries().isEmpty()
+              ? null
+              : getResolvedSecurables(
+                  resolutionManifest, semantics, request.getSecondaries(), TargetType.SECONDARY);
+      authorizeOrThrow(
+          request.getPrincipal(),
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          request.getOperation(),
+          getResolvedSecurables(
+              resolutionManifest, semantics, request.getTargets(), TargetType.TARGET),
+          resolvedSecondaries);
+      return AuthorizationDecision.allow();
+    } catch (ForbiddenException e) {
+      return AuthorizationDecision.deny(e.getMessage());
+    }
+  }
+
+  private List<PolarisResolvedPathWrapper> getResolvedSecurables(
+      PolarisResolutionManifest resolutionManifest,
+      RbacOperationSemantics semantics,
+      List<PolarisSecurable> securables,
+      TargetType targetType) {
+    // ResolvedPathRooting determines whether RBAC prepends the root container to the resolved
+    // path before privilege evaluation.
+    boolean prependRootContainer =
+        switch (targetType) {
+          case TARGET -> semantics.targetScope() == ResolvedPathRooting.ROOT;
+          case SECONDARY -> semantics.secondaryScope() == ResolvedPathRooting.ROOT;
+        };
+
+    return securables.stream()
+        .map(
+            securable -> {
+              PolarisResolvedPathWrapper resolvedSecurable =
+                  getResolvedSecurable(resolutionManifest, securable, prependRootContainer);
+              Preconditions.checkState(
+                  resolvedSecurable != null,
+                  "Resolved path for securable is null for entityType=%s nameParts=%s",
+                  securable.getEntityType(),
+                  securable.getNameParts());
+              return resolvedSecurable;
+            })
+        .toList();
+  }
+
+  private PolarisResolvedPathWrapper getResolvedSecurable(
+      PolarisResolutionManifest resolutionManifest,
+      PolarisSecurable securable,
+      boolean prependRootContainer) {
+    if (securable.getEntityType().isTopLevel()) {
+      String entityName = securable.getNameParts().get(securable.getNameParts().size() - 1);
+      return resolutionManifest.getResolvedTopLevelEntity(entityName, securable.getEntityType());
+    }
+    return resolutionManifest.getResolvedPath(
+        ResolvedPathKey.of(securable.getNameParts(), securable.getEntityType()),
+        prependRootContainer);
   }
 
   /**
@@ -854,9 +924,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(authzOp);
     Set<Long> entityIdSet =
         activatedEntities.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-    for (PolarisPrivilege privilegeOnTarget : authzOp.getPrivilegesOnTarget()) {
+    for (PolarisPrivilege privilegeOnTarget : semantics.targetPrivileges()) {
       // If any privileges are required on target, the target must be non-null.
       Preconditions.checkState(
           targets != null,
@@ -871,7 +942,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         }
       }
     }
-    for (PolarisPrivilege privilegeOnSecondary : authzOp.getPrivilegesOnSecondary()) {
+    for (PolarisPrivilege privilegeOnSecondary : semantics.secondaryPrivileges()) {
       Preconditions.checkState(
           secondaries != null,
           "Got null secondary when authorizing authzOp %s for privilege %s",
