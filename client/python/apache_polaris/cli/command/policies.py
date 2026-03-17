@@ -221,27 +221,6 @@ class PoliciesCommand(Command):
                         else None,
                     ),
                 )
-        elif self.policies_subcommand == Subcommands.SUMMARIZE:
-            self._generate_summary(policy_api)
         else:
             raise Exception(f"{self.policies_subcommand} is not supported in the CLI")
 
-    def _generate_summary(self, policy_api: PolicyAPI) -> None:
-        print(f"Policy: {self.policy_name}")
-        print("-" * 80)
-        # Metadata
-        ns_str = self.namespace.replace(".", UNIT_SEPARATOR) if self.namespace else ""
-        policy_resp = policy_api.load_policy(
-            prefix=self.catalog_name, namespace=ns_str, policy_name=self.policy_name
-        )
-        policy = policy_resp.policy
-        print("Metadata")
-        print(f"  {'Type:':<30} {policy.policy_type}")
-        print(f"  {'Description:':<30} {policy.description}")
-        print(f"  {'Inheritable:':<30} {policy.inheritable}")
-        content = json.loads(policy.content) if policy.content else {}
-        content_json = json.dumps(content, indent=4)
-        formatted_content = content_json.replace("\n", "\n" + " " * 33)
-        print(f"  {'Content:':<30} {formatted_content}")
-        print(f"  {'Metadata Version:':<30} {policy.version}")
-        print("-" * 80)

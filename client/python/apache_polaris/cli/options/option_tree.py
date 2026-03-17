@@ -929,16 +929,6 @@ class OptionTree:
                         ],
                         input_name=Arguments.POLICY,
                     ),
-                    Option(
-                        Subcommands.SUMMARIZE,
-                        args=[
-                            Argument(
-                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
-                            ),
-                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
-                        ],
-                        input_name=Arguments.POLICY,
-                    ),
                 ],
             ),
             Option(

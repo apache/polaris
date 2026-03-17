@@ -1349,7 +1349,6 @@ The `policies` command is used to manage policies within Polaris.
 5. get
 6. list
 7. update
-8. summarize
 
 #### attach
 
@@ -1521,27 +1520,6 @@ options:
 polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json my_policy
 
 polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json --policy-description "Updated policy description" my_policy
-```
-
-#### summarize
-
-The `summarize` subcommand is used to display summary for a policy.
-
-```
-input: polaris policies summarize --help
-options:
-  summarize
-    Named arguments:
-      --catalog  The name of an existing catalog
-      --namespace  A period-delimited namespace
-    Positional arguments:
-      policy
-```
-
-##### Examples
-
-```
-polaris policies summarize --catalog some_catalog --namespace some.schema my_policy
 ```
 
 ### repair
