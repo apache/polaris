@@ -32,6 +32,7 @@ import java.util.OptionalLong;
 import org.agrona.collections.LongArrayList;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.Commits;
+import org.apache.polaris.persistence.nosql.api.exceptions.CommitOffsetTraversalLimitExceededException;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 
@@ -69,7 +70,7 @@ final class CommitsImpl implements Commits {
     }
 
     visited.add(head.id());
-    var traversed = 1L;
+    var traversed = 0L;
     var tail = head.tail();
     outer:
     while (tail.length != 0) {
@@ -77,18 +78,11 @@ final class CommitsImpl implements Commits {
         if (tailId == offset) {
           break outer;
         }
-        visited.add(tailId);
         if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
-          throw new IllegalStateException(
-              "Exceeded commit offset traversal limit while resolving offset "
-                  + offset
-                  + " for ref '"
-                  + refName
-                  + "'. Traversed="
-                  + traversed
-                  + ", max="
-                  + maxTraversal);
+          throw new CommitOffsetTraversalLimitExceededException(
+              refName, offset, traversed, maxTraversal);
         }
+        visited.add(tailId);
       }
 
       while (!visited.isEmpty()) {
@@ -180,15 +174,8 @@ final class CommitsImpl implements Commits {
           }
           lastId = tailId;
           if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
-            throw new IllegalStateException(
-                "Exceeded commit offset traversal limit while resolving offset "
-                    + off
-                    + " for ref '"
-                    + refName
-                    + "'. Traversed="
-                    + traversed
-                    + ", max="
-                    + maxTraversal);
+            throw new CommitOffsetTraversalLimitExceededException(
+                refName, off, traversed, maxTraversal);
           }
         }
 
