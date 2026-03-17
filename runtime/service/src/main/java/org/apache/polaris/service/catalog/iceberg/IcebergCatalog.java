@@ -735,6 +735,63 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return true;
   }
 
+  /**
+   * Update properties for a namespace.
+   *
+   * @param namespace the namespace to update properties for
+   * @param removals the set of properties to remove
+   * @param updates the map of properties to update
+   * @return true if the properties were updated, false otherwise
+   */
+  public boolean updateProperties(
+      Namespace namespace, Set<String> removals, Map<String, String> updates)
+      throws NoSuchNamespaceException {
+    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    if (resolvedEntities == null) {
+      throw noSuchNamespaceException(namespace);
+    }
+    PolarisEntity entity = resolvedEntities.getRawLeafEntity();
+    Map<String, String> newProperties = new HashMap<>(entity.getPropertiesAsMap());
+
+    // Merge new properties into existing map.
+    newProperties.putAll(updates);
+    // Remove properties.
+    removals.forEach(newProperties::remove);
+
+    PolarisEntity updatedEntity =
+        new PolarisEntity.Builder(entity).setProperties(newProperties).build();
+
+    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+      LOGGER.debug("Validating no overlap with sibling tables or namespaces");
+      validateNoLocationOverlap(
+          NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
+    } else {
+      LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
+    }
+    if (!realmConfig.getConfig(
+        BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
+      if (updates.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
+        validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+      }
+    }
+
+    List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
+    PolarisEntity returnedEntity =
+        Optional.ofNullable(
+                getMetaStoreManager()
+                    .updateEntityPropertiesIfNotChanged(
+                        getCurrentPolarisContext(),
+                        PolarisEntity.toCoreList(parentPath),
+                        updatedEntity)
+                    .getEntity())
+            .map(PolarisEntity::new)
+            .orElse(null);
+    if (returnedEntity == null) {
+      throw new CommitConflictException("Concurrent modification of namespace: %s", namespace);
+    }
+    return true;
+  }
+
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
