@@ -110,19 +110,20 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERT
 import com.google.common.base.Preconditions;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Set;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
 /** Polaris RBAC-specific interpretation of an authorizable operation. */
 record RbacOperationSemantics(
-    EnumSet<PolarisPrivilege> targetPrivileges,
-    EnumSet<PolarisPrivilege> secondaryPrivileges,
+    Set<PolarisPrivilege> targetPrivileges,
+    Set<PolarisPrivilege> secondaryPrivileges,
     ResolvedPathRooting rooting) {
 
   public RbacOperationSemantics {
     Preconditions.checkNotNull(targetPrivileges, "targetPrivileges must be non-null");
     Preconditions.checkNotNull(rooting, "rooting must be non-null");
-    secondaryPrivileges =
-        secondaryPrivileges == null ? EnumSet.noneOf(PolarisPrivilege.class) : secondaryPrivileges;
+    targetPrivileges = Set.copyOf(targetPrivileges);
+    secondaryPrivileges = secondaryPrivileges == null ? Set.of() : Set.copyOf(secondaryPrivileges);
     Preconditions.checkArgument(!targetPrivileges.isEmpty(), "targetPrivileges must be non-empty");
   }
 
