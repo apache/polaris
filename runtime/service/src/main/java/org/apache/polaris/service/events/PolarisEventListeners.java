@@ -33,6 +33,8 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @ApplicationScoped
@@ -42,10 +44,11 @@ public class PolarisEventListeners {
   @Inject PolarisEventListenerConfiguration configuration;
 
   public void onStartup(@Observes StartupEvent event) {
-    Set<String> listenerTypeSet = configuration.types().orElseGet(HashSet::new);
-    if (configuration.type().isPresent()) {
-      listenerTypeSet.add(configuration.type().get());
-    }
+    Set<String> listenerTypeSet =
+        Stream.concat(
+                configuration.types().orElseGet(HashSet::new).stream(),
+                configuration.type().stream())
+            .collect(Collectors.toSet());
     for (String enabledEventListener : listenerTypeSet) {
       PolarisEventListener listener =
           eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
