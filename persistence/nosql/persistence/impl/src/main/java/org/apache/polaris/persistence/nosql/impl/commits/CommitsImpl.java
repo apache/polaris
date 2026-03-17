@@ -38,6 +38,7 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 final class CommitsImpl implements Commits {
   private final Persistence persistence;
   private static final int REVERSE_COMMIT_FETCH_SIZE = 20;
+  private static final long UNLIMITED_TRAVERSAL = 0L;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -55,13 +56,12 @@ final class CommitsImpl implements Commits {
 
     var head = headOpt.get();
     var type = head.type().id();
+    var maxTraversal = persistence.params().commitOffsetLookupMaxTraversal();
 
     // find commit with Obj.id() == offset, memoize visited commits
 
     // Contains the seen IDs, without the 'offset', in _natural_ order (most recent commit ID first)
     var visited = new LongArrayList();
-
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
 
     // Only walk, if the most recent commit ID is != offset
     if (head.id() == offset) {
@@ -69,6 +69,7 @@ final class CommitsImpl implements Commits {
     }
 
     visited.add(head.id());
+    var traversed = 1L;
     var tail = head.tail();
     outer:
     while (tail.length != 0) {
@@ -77,6 +78,17 @@ final class CommitsImpl implements Commits {
           break outer;
         }
         visited.add(tailId);
+        if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
+          throw new IllegalStateException(
+              "Exceeded commit offset traversal limit while resolving offset "
+                  + offset
+                  + " for ref '"
+                  + refName
+                  + "'. Traversed="
+                  + traversed
+                  + ", max="
+                  + maxTraversal);
+        }
       }
 
       while (!visited.isEmpty()) {
@@ -146,8 +158,7 @@ final class CommitsImpl implements Commits {
 
     var head = headOpt.get();
     var type = head.type().id();
-
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
+    var maxTraversal = persistence.params().commitOffsetLookupMaxTraversal();
 
     if (offset.isPresent()) {
       var off = offset.getAsLong();
@@ -157,6 +168,7 @@ final class CommitsImpl implements Commits {
         return singletonList(head).iterator();
       }
 
+      var traversed = 0L;
       var tail = head.tail();
       outer:
       while (tail.length != 0) {
@@ -167,6 +179,17 @@ final class CommitsImpl implements Commits {
             break outer;
           }
           lastId = tailId;
+          if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
+            throw new IllegalStateException(
+                "Exceeded commit offset traversal limit while resolving offset "
+                    + off
+                    + " for ref '"
+                    + refName
+                    + "'. Traversed="
+                    + traversed
+                    + ", max="
+                    + maxTraversal);
+          }
         }
 
         var id = objRef(type, lastId, 1);
