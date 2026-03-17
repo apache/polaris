@@ -221,7 +221,7 @@ class PoliciesCommand(Command):
                         else None,
                     ),
                 )
-        elif self.policies_subcommand == Subcommands.SUMMARY:
+        elif self.policies_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(policy_api)
         else:
             raise Exception(f"{self.policies_subcommand} is not supported in the CLI")

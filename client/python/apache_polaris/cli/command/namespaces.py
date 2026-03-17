@@ -87,7 +87,7 @@ class NamespacesCommand(Command):
                     prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
                 ).to_json()
             )
-        elif self.namespaces_subcommand == Subcommands.SUMMARY:
+        elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(catalog_api)
         else:
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")

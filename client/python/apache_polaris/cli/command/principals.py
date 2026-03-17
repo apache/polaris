@@ -194,7 +194,7 @@ class PrincipalsCommand(Command):
                         api.reset_credentials(self.principal_name, None)
                     )
                 )
-        elif self.principals_subcommand == Subcommands.SUMMARY:
+        elif self.principals_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")

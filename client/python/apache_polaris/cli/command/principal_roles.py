@@ -119,7 +119,7 @@ class PrincipalRolesCommand(Command):
             api.assign_principal_role(self.principal_name, request)
         elif self.principal_roles_subcommand == Subcommands.REVOKE:
             api.revoke_principal_role(self.principal_name, self.principal_role_name)
-        elif self.principal_roles_subcommand == Subcommands.SUMMARY:
+        elif self.principal_roles_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
             raise Exception(

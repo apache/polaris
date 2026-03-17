@@ -338,7 +338,7 @@ class OptionTree:
                         input_name=Arguments.CATALOG,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         input_name=Arguments.CATALOG,
                     ),
                 ],
@@ -409,7 +409,7 @@ class OptionTree:
                         input_name=Arguments.PRINCIPAL,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         input_name=Arguments.PRINCIPAL,
                     ),
                 ],
@@ -491,7 +491,7 @@ class OptionTree:
                         input_name=Arguments.PRINCIPAL_ROLE,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         input_name=Arguments.PRINCIPAL_ROLE,
                     ),
                 ],
@@ -597,7 +597,7 @@ class OptionTree:
                         input_name=Arguments.CATALOG_ROLE,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         args=[
                             Argument(
                                 Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
@@ -772,7 +772,7 @@ class OptionTree:
                         input_name=Arguments.NAMESPACE,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         args=[
                             Argument(
                                 Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
@@ -930,7 +930,7 @@ class OptionTree:
                         input_name=Arguments.POLICY,
                     ),
                     Option(
-                        Subcommands.SUMMARY,
+                        Subcommands.SUMMARIZE,
                         args=[
                             Argument(
                                 Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME

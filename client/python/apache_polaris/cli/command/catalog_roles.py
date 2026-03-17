@@ -123,7 +123,7 @@ class CatalogRolesCommand(Command):
             api.revoke_catalog_role_from_principal_role(
                 self.principal_role_name, self.catalog_name, self.catalog_role_name
             )
-        elif self.catalog_roles_subcommand == Subcommands.SUMMARY:
+        elif self.catalog_roles_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
             raise Exception(

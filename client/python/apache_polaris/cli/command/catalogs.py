@@ -491,7 +491,7 @@ class CatalogsCommand(Command):
                 )
 
             api.update_catalog(self.catalog_name, request)
-        elif self.catalogs_subcommand == Subcommands.SUMMARY:
+        elif self.catalogs_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
             raise Exception(f"{self.catalogs_subcommand} is not supported in the CLI")

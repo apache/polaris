@@ -134,7 +134,7 @@ The `catalogs` command is used to create, discover, and otherwise manage catalog
 3. get
 4. list
 5. update
-6. summary
+6. summarize
 
 #### create
 
@@ -269,14 +269,14 @@ polaris catalogs list
 polaris catalogs list --principal-role some_user
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a catalog.
+The `summarize` subcommand is used to display summary for a catalog.
 
 ```
-input: polaris catalogs summary --help
+input: polaris catalogs summarize --help
 options:
-  summary
+  summarize
     Positional arguments:
       catalog
 ```
@@ -284,7 +284,7 @@ options:
 ##### Examples
 
 ```
-polaris catalogs stats some_catalog
+polaris catalogs summarize some_catalog
 ```
 
 #### update
@@ -488,14 +488,14 @@ polaris principals reset --new-client-secret ${NEW_CLIENT_SECRET} some_user
 polaris principals reset --new-client-id ${NEW_CLIENT_ID} --new-client-secret ${NEW_CLIENT_SECRET} some_user
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a principal.
+The `summarize` subcommand is used to display summary for a principal.
 
 ```
-input: polaris principals summary --help
+input: polaris principals summarize --help
 options:
-  summary
+  summarize
     Positional arguments:
       principal
 ```
@@ -503,7 +503,7 @@ options:
 ##### Examples
 
 ```
-polaris principals summary some_user
+polaris principals summarize some_user
 ```
 
 ### Principal Roles
@@ -519,7 +519,7 @@ The `principal-roles` command is used to create, discover, and manage principal 
 5. update
 6. grant
 7. revoke
-8. summary
+8. summarize
 
 #### create
 
@@ -673,14 +673,14 @@ polaris principal-roles revoke --principal former.employee data_engineer
 polaris principal-roles revoke data_scientist --principal changed.role
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a principal role.
+The `summarize` subcommand is used to display summary for a principal role.
 
 ```
-input: polaris principal-roles summary --help
+input: polaris principal-roles summarize --help
 options:
-  summary
+  summarize
     Positional arguments:
       principal_role
 ```
@@ -688,7 +688,7 @@ options:
 ##### Examples
 
 ```
-polaris principal-roles summary some_catalog
+polaris principal-roles summarize some_catalog
 ```
 
 ### Catalog Roles
@@ -704,7 +704,7 @@ The catalog-roles command is used to create, discover, and manage catalog roles 
 5. update
 6. grant
 7. revoke
-8. summary
+8. summarize
 
 #### create
 
@@ -865,14 +865,14 @@ polaris catalog-roles revoke sensitive_data --catalog some_catalog --principal-r
 polaris catalog-roles revoke --catalog sales_data contains_cc_info_catalog_role --principal-role financial_analyst_role
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a catalog role.
+The `summarize` subcommand is used to display summary for a catalog role.
 
 ```
-input: polaris catalog-roles summary --help
+input: polaris catalog-roles summarize --help
 options:
-  summary
+  summarize
     Named arguments:
       --catalog  The name of an existing catalog
     Positional arguments:
@@ -882,7 +882,7 @@ options:
 ##### Examples
 
 ```
-polaris catalog-roles summary --catalog some_catalog some_catalog_role
+polaris catalog-roles summarize --catalog some_catalog some_catalog_role
 ```
 
 ### Namespaces
@@ -895,7 +895,7 @@ The `namespaces` command is used to manage namespaces within Polaris.
 2. delete
 3. get
 4. list
-5. summary
+5. summarize
 
 #### create
 
@@ -990,14 +990,14 @@ polaris namespaces list --catalog my_catalog --parent a
 polaris namespaces list --catalog my_catalog --parent a.b
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a namespace.
+The `summarize` subcommand is used to display summary for a namespace.
 
 ```
-input: polaris namespaces summary --help
+input: polaris namespaces summarize --help
 options:
-  summary
+  summarize
     Named arguments:
       --catalog  The name of an existing catalog
     Positional arguments:
@@ -1349,7 +1349,7 @@ The `policies` command is used to manage policies within Polaris.
 5. get
 6. list
 7. update
-8. summary
+8. summarize
 
 #### attach
 
@@ -1523,14 +1523,14 @@ polaris policies update --catalog some_catalog --namespace some.schema --policy-
 polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json --policy-description "Updated policy description" my_policy
 ```
 
-#### summary
+#### summarize
 
-The `summary` subcommand is used to display summary for a policy.
+The `summarize` subcommand is used to display summary for a policy.
 
 ```
-input: polaris policies summary --help
+input: polaris policies summarize --help
 options:
-  summary
+  summarize
     Named arguments:
       --catalog  The name of an existing catalog
       --namespace  A period-delimited namespace
@@ -1541,7 +1541,7 @@ options:
 ##### Examples
 
 ```
-polaris policies summary --catalog some_catalog --namespace some.schema my_policy
+polaris policies summarize --catalog some_catalog --namespace some.schema my_policy
 ```
 
 ### repair
