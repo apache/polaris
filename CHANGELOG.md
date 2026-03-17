@@ -72,6 +72,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Changed from Poetry to UV for Python package management.
 - Exclude KMS policies when KMS is not being used for S3.
 - Improved default KMS permission handling to better distinguish read-only and read-write access.
+- Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`.
 
 ### Deprecations
 

@@ -17,11 +17,12 @@
 # under the License.
 #
 
-[libraries]
-errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "5.1.0" }
-idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.4.1" }
-jandex = { module = "org.kordamp.gradle:jandex-gradle-plugin", version = "2.3.0" }
-license-report = { module = "com.github.jk1:gradle-license-report", version = "3.1.1" }
-nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version = "2.0.0" }
-shadow = { module = "com.gradleup.shadow:shadow-gradle-plugin", version = "9.4.0" }
-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version = "8.3.0" }
+# Wildcard redirect for /releases/latest/{subpath} → /releases/x.y.z/{subpath}
+# This ensures that deep links like /releases/latest/getting-started/ work correctly.
+# Note: the root /releases/latest/ redirect is also handled here (empty subpath).
+#
+# IMPORTANT: update this version number when publishing a new latest release
+# (alongside site/content/releases/latest/index.md in the versioned-docs branch).
+RewriteEngine On
+RewriteRule ^releases/latest$ /releases/1.3.0/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/1.3.0/$1 [R=302,L]

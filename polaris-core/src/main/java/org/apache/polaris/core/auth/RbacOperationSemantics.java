@@ -393,12 +393,6 @@ record RbacOperationSemantics(
         new RbacOperationSemantics(
             EnumSet.of(PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE),
-            EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-            ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LIST_GRANTS_ON_PRINCIPAL,
         new RbacOperationSemantics(
             EnumSet.of(PRINCIPAL_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
@@ -406,12 +400,6 @@ record RbacOperationSemantics(
         PolarisAuthorizableOperation.ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE,
         new RbacOperationSemantics(
             EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE),
-            EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-            ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LIST_GRANTS_ON_PRINCIPAL_ROLE,
         new RbacOperationSemantics(
