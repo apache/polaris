@@ -55,7 +55,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE;
-import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_RESET_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_CREATE;
@@ -180,10 +179,6 @@ public enum PolarisAuthorizableOperation {
   ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE(SERVICE_MANAGE_ACCESS),
   REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE(
       SERVICE_MANAGE_ACCESS, PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-  REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE(
-      PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE, PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-  REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE(
-      PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE, PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
   ADD_CATALOG_GRANT_TO_CATALOG_ROLE(CATALOG_MANAGE_GRANTS_ON_SECURABLE),
   REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE(
       CATALOG_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
