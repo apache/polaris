@@ -69,6 +69,7 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -96,6 +97,7 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -1403,10 +1405,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
-    String prefix = prefixParser().catalogNameToPrefix(catalogName());
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
-        .withOverrides(ImmutableMap.of("prefix", prefix))
+        .withOverrides(
+            ImmutableMap.of(
+                "prefix",
+                prefixParser().catalogNameToPrefix(catalogName()),
+                RESTCatalogProperties.NAMESPACE_SEPARATOR,
+                NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8))
         .withEndpoints(
             ImmutableList.<Endpoint>builder()
                 .addAll(DEFAULT_ENDPOINTS)

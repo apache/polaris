@@ -166,7 +166,9 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY,
+            RESTUtil.encodeNamespace(
+                namespace, NamespaceEntity.NAMESPACE_SEPARATOR_URLENCODED_UTF_8));
       }
       return this;
     }
