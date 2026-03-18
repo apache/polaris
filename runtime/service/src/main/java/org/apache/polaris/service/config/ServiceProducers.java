@@ -60,8 +60,6 @@ import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
-import org.apache.polaris.persistence.relational.jdbc.DataSourceResolver;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -228,14 +226,6 @@ public class ServiceProducers {
       PersistenceConfiguration config,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  @Produces
-  public DataSourceResolver dataSourceResolver(
-      RelationalJdbcConfiguration jdbcConfig,
-      @Any Instance<DataSourceResolver> dataSourceResolvers) {
-    String type = jdbcConfig.dataSourceResolverType();
-    return dataSourceResolvers.select(Identifier.Literal.of(type)).get();
   }
 
   @Produces

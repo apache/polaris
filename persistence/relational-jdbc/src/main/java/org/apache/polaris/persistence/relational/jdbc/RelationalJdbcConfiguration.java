@@ -36,6 +36,9 @@ public interface RelationalJdbcConfiguration {
    */
   Optional<String> databaseType();
 
-  /** The type of the {@link DataSourceResolver} to use. */
+  /**
+   * The identifier of the {@link DataSourceResolver} bean to use. Used by {@link JdbcCdiProducers}
+   * to select the resolver via CDI's {@link io.smallrye.common.annotation.Identifier}.
+   */
   String dataSourceResolverType();
 }
