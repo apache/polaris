@@ -59,8 +59,10 @@ public class PaimonHelper {
   private TableCatalog paimonCatalog = null;
   private final String paimonCatalogImpl;
   private final String paimonWarehouse;
+  private final String catalogName;
 
-  public PaimonHelper(CaseInsensitiveStringMap options) {
+  public PaimonHelper(String catalogName, CaseInsensitiveStringMap options) {
+    this.catalogName = catalogName;
     if (options.get(PAIMON_CATALOG_IMPL_KEY) != null) {
       this.paimonCatalogImpl = options.get(PAIMON_CATALOG_IMPL_KEY);
     } else {
@@ -76,11 +78,10 @@ public class PaimonHelper {
    * <p>Paimon SparkCatalog requires a warehouse path to manage table locations. This method
    * initializes Paimon with the warehouse path configured via the paimon-warehouse option.
    *
-   * @param catalogName the name of the catalog
    * @return the configured Paimon TableCatalog
    * @throws IllegalArgumentException if paimon-warehouse is not configured
    */
-  public TableCatalog loadPaimonCatalog(String catalogName) {
+  public synchronized TableCatalog loadPaimonCatalog() {
     if (this.paimonCatalog != null) {
       return this.paimonCatalog;
     }
@@ -118,7 +119,7 @@ public class PaimonHelper {
 
     // Initialize Paimon catalog with the catalog name and options
     ((CatalogPlugin) catalog)
-        .initialize(catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
+        .initialize(this.catalogName + "_paimon", new CaseInsensitiveStringMap(paimonOptions));
     this.paimonCatalog = catalog;
 
     return this.paimonCatalog;

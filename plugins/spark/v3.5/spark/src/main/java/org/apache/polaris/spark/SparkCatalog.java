@@ -145,7 +145,7 @@ public class SparkCatalog
     initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
     this.hudiHelper = new HudiHelper(options);
-    this.paimonHelper = new PaimonHelper(options);
+    this.paimonHelper = new PaimonHelper(name, options);
   }
 
   @Override
@@ -166,7 +166,7 @@ public class SparkCatalog
       try {
         // For Paimon tables, use Paimon's SparkCatalog to load the table
         // This ensures proper handling of Paimon's metadata and schema files
-        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog();
         return paimonCatalog.loadTable(ident);
       } catch (NoSuchTableException paimonException) {
         throw paimonException;
@@ -196,7 +196,7 @@ public class SparkCatalog
       // then register it in Polaris so it appears in the unified catalog view (SHOW TABLES).
       // Paimon manages its own table paths at warehouse/database.db/table_name
       // so we don't require a location to be specified.
-      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog();
       // Ensure namespace exists in Paimon before creating table
       paimonHelper.ensureNamespaceExists(ident.namespace());
       Table paimonTable = paimonCatalog.createTable(ident, schema, transforms, properties);
@@ -300,7 +300,7 @@ public class SparkCatalog
       return hudiCatalog.alterTable(ident, changes);
     } else if (PolarisCatalogUtils.usePaimon(provider)) {
       try {
-        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+        TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog();
         return paimonCatalog.alterTable(ident, changes);
       } catch (NoSuchTableException paimonException) {
         throw paimonException;
@@ -331,7 +331,7 @@ public class SparkCatalog
       if (PolarisCatalogUtils.usePaimon(provider)) {
         // For Paimon tables, drop from Paimon first, then Polaris.
         try {
-          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+          TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog();
           paimonCatalog.dropTable(ident);
         } catch (Exception e) {
           LOG.error(
@@ -365,7 +365,7 @@ public class SparkCatalog
 
   private void rollbackPaimonTableCreation(Identifier ident) {
     try {
-      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog(this.catalogName);
+      TableCatalog paimonCatalog = paimonHelper.loadPaimonCatalog();
       paimonCatalog.dropTable(ident);
       LOG.info("Successfully rolled back Paimon table creation for {}", ident);
     } catch (Exception rollbackEx) {

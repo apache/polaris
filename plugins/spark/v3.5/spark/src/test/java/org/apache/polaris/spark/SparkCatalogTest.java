@@ -111,7 +111,7 @@ public class SparkCatalogTest {
 
       this.deltaHelper = new DeltaHelper(options);
       this.hudiHelper = new HudiHelper(options);
-      this.paimonHelper = new PaimonHelper(options);
+      this.paimonHelper = new PaimonHelper(name, options);
     }
   }
 

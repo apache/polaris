@@ -42,9 +42,9 @@ public class PaimonHelperTest {
                 "org.apache.polaris.spark.NoopPaimonCatalog",
                 PaimonHelper.PAIMON_WAREHOUSE_KEY,
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(TEST_CATALOG_NAME);
+    TableCatalog paimonCatalog = helper.loadPaimonCatalog();
 
     assertThat(paimonCatalog).isNotNull();
     assertThat(paimonCatalog).isInstanceOf(NoopPaimonCatalog.class);
@@ -61,10 +61,10 @@ public class PaimonHelperTest {
                 "org.apache.polaris.spark.NoopPaimonCatalog",
                 PaimonHelper.PAIMON_WAREHOUSE_KEY,
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
-    TableCatalog paimonCatalog1 = helper.loadPaimonCatalog(TEST_CATALOG_NAME);
-    TableCatalog paimonCatalog2 = helper.loadPaimonCatalog(TEST_CATALOG_NAME);
+    TableCatalog paimonCatalog1 = helper.loadPaimonCatalog();
+    TableCatalog paimonCatalog2 = helper.loadPaimonCatalog();
 
     // Should return the same cached instance
     assertThat(paimonCatalog1).isSameAs(paimonCatalog2);
@@ -79,9 +79,9 @@ public class PaimonHelperTest {
                 "com.example.NonExistentPaimonCatalog",
                 PaimonHelper.PAIMON_WAREHOUSE_KEY,
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
-    assertThatThrownBy(() -> helper.loadPaimonCatalog(TEST_CATALOG_NAME))
+    assertThatThrownBy(() -> helper.loadPaimonCatalog())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Cannot initialize Paimon Catalog")
         .hasMessageContaining("com.example.NonExistentPaimonCatalog");
@@ -97,9 +97,9 @@ public class PaimonHelperTest {
                 "org.apache.polaris.spark.NoopPaimonCatalog",
                 "PAIMON-WAREHOUSE",
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(TEST_CATALOG_NAME);
+    TableCatalog paimonCatalog = helper.loadPaimonCatalog();
 
     assertThat(paimonCatalog).isNotNull();
     assertThat(paimonCatalog).isInstanceOf(NoopPaimonCatalog.class);
@@ -113,9 +113,9 @@ public class PaimonHelperTest {
             ImmutableMap.of(
                 PaimonHelper.PAIMON_CATALOG_IMPL_KEY,
                 "org.apache.polaris.spark.NoopPaimonCatalog"));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
-    assertThatThrownBy(() -> helper.loadPaimonCatalog(TEST_CATALOG_NAME))
+    assertThatThrownBy(() -> helper.loadPaimonCatalog())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Paimon warehouse path is required")
         .hasMessageContaining("paimon-warehouse");
@@ -130,10 +130,10 @@ public class PaimonHelperTest {
                 "org.apache.polaris.spark.NoopPaimonCatalog",
                 PaimonHelper.PAIMON_WAREHOUSE_KEY,
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
 
     // Load the catalog first
-    TableCatalog paimonCatalog = helper.loadPaimonCatalog(TEST_CATALOG_NAME);
+    TableCatalog paimonCatalog = helper.loadPaimonCatalog();
 
     // Ensure namespace exists should not throw
     String[] namespace = new String[] {"test_db"};
@@ -154,8 +154,8 @@ public class PaimonHelperTest {
                 "org.apache.polaris.spark.NoopPaimonCatalog",
                 PaimonHelper.PAIMON_WAREHOUSE_KEY,
                 TEST_WAREHOUSE));
-    PaimonHelper helper = new PaimonHelper(options);
-    helper.loadPaimonCatalog(TEST_CATALOG_NAME);
+    PaimonHelper helper = new PaimonHelper(TEST_CATALOG_NAME, options);
+    helper.loadPaimonCatalog();
 
     String[] namespace = new String[] {"test_db"};
 
