@@ -287,7 +287,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // credentials for non-rest remote catalog
       this.baseCatalog = federatedCatalog;
     } else {
-      LOGGER.atDebug().log("Initializing non-federated catalog");
+      LOGGER.debug("Initializing non-federated catalog");
       this.baseCatalog = catalogFactory().createCallContextCatalog(resolutionManifest);
     }
     this.namespaceCatalog =
