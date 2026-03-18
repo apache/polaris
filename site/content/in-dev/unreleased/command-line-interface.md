@@ -688,7 +688,7 @@ options:
 ##### Examples
 
 ```
-polaris principal-roles summarize some_catalog
+polaris principal-roles summarize data_engineer
 ```
 
 ### Catalog Roles
@@ -1007,7 +1007,7 @@ options:
 ##### Examples
 
 ```
-polaris namespaces stats --catalog my_catalog a.b
+polaris namespaces summarize --catalog my_catalog a.b
 ```
 
 ### Privileges
