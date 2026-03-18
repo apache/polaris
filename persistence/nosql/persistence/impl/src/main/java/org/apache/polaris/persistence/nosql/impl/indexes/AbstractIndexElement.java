@@ -20,27 +20,30 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import com.google.common.base.MoreObjects;
 import com.google.errorprone.annotations.Var;
-import java.util.Map;
 import java.util.Objects;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 
-abstract class AbstractIndexElement<V> implements IndexElement<V> {
+abstract class AbstractIndexElement<V> implements InternalIndexElement<V> {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof Map.Entry<?, ?> other)) {
-      return false;
-    }
     if (o == this) {
       return true;
     }
-    return getKey().equals(other.getKey()) && Objects.equals(getValue(), other.getValue());
+    if (o instanceof InternalIndexElement<?> other) {
+      return key().equals(other.key()) && Objects.equals(valueNullable(), other.valueNullable());
+    }
+    if (o instanceof Index.Element<?> other) {
+      return key().equals(other.key()) && Objects.equals(valueNullable(), other.value());
+    }
+    return false;
   }
 
   @Override
   public int hashCode() {
     @Var var h = 5381;
-    h += (h << 5) + getKey().hashCode();
-    var v = getValue();
+    h += (h << 5) + key().hashCode();
+    var v = valueNullable();
     if (v != null) {
       h += (h << 5) + v.hashCode();
     }
@@ -51,8 +54,8 @@ abstract class AbstractIndexElement<V> implements IndexElement<V> {
   public String toString() {
     return MoreObjects.toStringHelper("StoreIndexElement")
         .omitNullValues()
-        .add("key", getKey())
-        .add("content", getValue())
+        .add("key", key())
+        .add("content", valueNullable())
         .toString();
   }
 }

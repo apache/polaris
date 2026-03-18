@@ -83,7 +83,7 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@Nonnull InternalIndexElement<V> element) {
     throw unsupported();
   }
 
@@ -104,7 +104,7 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
 
   @Nullable
   @Override
-  public IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
     return null;
   }
 
@@ -127,13 +127,13 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
 
   @Nonnull
   @Override
-  public Iterator<IndexElement<V>> elementIterator(
+  public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return emptyIterator();
   }
 
   @Override
-  public Iterator<IndexElement<V>> reverseElementIterator(
+  public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return emptyIterator();
   }

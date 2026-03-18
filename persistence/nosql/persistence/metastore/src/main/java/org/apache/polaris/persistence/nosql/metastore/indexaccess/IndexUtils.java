@@ -43,7 +43,7 @@ public final class IndexUtils {
           iter.next();
           if (iter.hasNext()) {
             var e = iter.next();
-            var nextKey = e.getKey();
+            var nextKey = e.key();
             var parentIdent = indexKeyToIdentifier(parentNameKey);
             var nextIdent = indexKeyToIdentifier(nextKey);
             return nextIdent.parent().equals(parentIdent);
@@ -65,7 +65,7 @@ public final class IndexUtils {
     iter.next();
     if (iter.hasNext()) {
       var e = iter.next();
-      var nextKey = e.getKey();
+      var nextKey = e.key();
       var nextIdent = indexKeyToIdentifier(nextKey);
       return nextIdent.parent().equals(ident);
     }

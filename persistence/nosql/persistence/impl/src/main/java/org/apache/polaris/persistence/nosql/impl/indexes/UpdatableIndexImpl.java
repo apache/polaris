@@ -110,8 +110,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     var newEmbedded = newStoreIndex(serializer);
     for (var elemIter = embedded.elementIterator(); elemIter.hasNext(); ) {
       var elem = elemIter.next();
-      var key = elem.getKey();
-      var value = elem.getValue();
+      var key = elem.key();
+      var value = elem.valueNullable();
       if (value == null) {
         if (reference.contains(key)) {
           // 'key' is being removed, only keep it in the embedded index, if it is required to shadow
@@ -160,8 +160,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   private void updateAffectedStripes(IndexSpi<V> mutableReference) {
     for (var elemIter = embedded.elementIterator(); elemIter.hasNext(); ) {
       var indexElement = elemIter.next();
-      var key = indexElement.getKey();
-      var value = indexElement.getValue();
+      var key = indexElement.key();
+      var value = indexElement.valueNullable();
       var stripe = mutableReference.mutableStripeForKey(key);
 
       if (value == null) {
@@ -228,11 +228,11 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // Mutators
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@Nonnull InternalIndexElement<V> element) {
     checkNotFinalized();
     var added = embedded.add(element);
     if (added) {
-      return !reference.containsElement(element.getKey());
+      return !reference.containsElement(element.key());
     }
     return false;
   }
@@ -241,7 +241,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   public boolean remove(@Nonnull IndexKey key) {
     checkNotFinalized();
     var updExisting = embedded.getElement(key);
-    if (updExisting != null && updExisting.getValue() == null) {
+    if (updExisting != null && updExisting.valueNullable() == null) {
       // removal sentinel is already present, do nothing
       return false;
     }
@@ -273,7 +273,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Nullable
   @Override
-  public IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
     checkNotFinalized();
     return super.getElement(key);
   }
@@ -315,21 +315,21 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Nonnull
   @Override
-  public Iterator<IndexElement<V>> elementIterator(
+  public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     checkNotFinalized();
     return new AbstractIterator<>() {
-      final Iterator<IndexElement<V>> base =
+      final Iterator<InternalIndexElement<V>> base =
           UpdatableIndexImpl.super.elementIterator(lower, higher, prefetch);
 
       @Override
-      protected IndexElement<V> computeNext() {
+      protected InternalIndexElement<V> computeNext() {
         while (true) {
           if (!base.hasNext()) {
             return endOfData();
           }
           var elem = base.next();
-          if (elem.getValue() == null) {
+          if (elem.valueNullable() == null) {
             continue;
           }
           return elem;
