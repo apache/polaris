@@ -2868,6 +2868,283 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  public void testLeafStorageNameOverrideUsesLeafCredentialsDuringVending() {
+    final String parentStorageName = "parent-storage";
+    final String leafStorageName = "leaf-storage";
+    final String parentAccessKey = "parent_access_key";
+    final String parentSecretKey = "parent_secret_key";
+    final String parentSessionToken = "parent_session_token";
+    final String leafAccessKey = "leaf_access_key";
+    final String leafSecretKey = "leaf_secret_key";
+    final String leafSessionToken = "leaf_session_token";
+
+    when(storageIntegrationProvider.getStorageIntegrationForConfig(
+            isA(AwsStorageConfigurationInfo.class)))
+        .thenAnswer(
+            invocation -> {
+              AwsStorageConfigurationInfo config = invocation.getArgument(0);
+              String storageName = config.getStorageName();
+
+              String accessKey = TEST_ACCESS_KEY;
+              String secretKey = SECRET_ACCESS_KEY;
+              String sessionToken = SESSION_TOKEN;
+              if (parentStorageName.equals(storageName)) {
+                accessKey = parentAccessKey;
+                secretKey = parentSecretKey;
+                sessionToken = parentSessionToken;
+              } else if (leafStorageName.equals(storageName)) {
+                accessKey = leafAccessKey;
+                secretKey = leafSecretKey;
+                sessionToken = leafSessionToken;
+              }
+
+              StsClient stsClient = Mockito.mock(StsClient.class);
+              when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
+                  .thenReturn(
+                      AssumeRoleResponse.builder()
+                          .credentials(
+                              Credentials.builder()
+                                  .accessKeyId(accessKey)
+                                  .secretAccessKey(secretKey)
+                                  .sessionToken(sessionToken)
+                                  .build())
+                          .build());
+              return (PolarisStorageIntegration<?>)
+                  new AwsCredentialsStorageIntegration(config, stsClient);
+            });
+
+    Namespace ns = Namespace.of("leaf_override_ns");
+    catalog.createNamespace(ns, Map.of("polaris.storage.name", parentStorageName));
+    TableIdentifier tableId = TableIdentifier.of(ns, "leaf_override_table");
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty("polaris.storage.name", leafStorageName)
+            .create();
+
+    EntityResult nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    Assertions.assertThat(nsResult).returns(true, EntityResult::isSuccess);
+
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, nsResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            tableId.name());
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+
+    PolarisStorageConfigurationInfo parentConfig =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(nsResult.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+    PolarisStorageConfigurationInfo leafConfig =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(tableResult.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+
+    Assertions.assertThat(parentConfig.getStorageName()).isEqualTo(parentStorageName);
+    Assertions.assertThat(leafConfig.getStorageName()).isEqualTo(leafStorageName);
+
+    TableMetadata tableMetadata = ((BaseTable) table).operations().current();
+    Map<String, String> credentials =
+        metaStoreManager
+            .getSubscopedCredsForEntity(
+                polarisContext,
+                tableResult.getEntity().getCatalogId(),
+                tableResult.getEntity().getId(),
+                PolarisEntityType.TABLE_LIKE,
+                true,
+                Set.of(tableMetadata.location()),
+                Set.of(tableMetadata.location()),
+                authenticatedRoot,
+                Optional.empty(),
+                CredentialVendingContext.empty())
+            .getStorageAccessConfig()
+            .credentials();
+
+    Assertions.assertThat(credentials)
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), leafAccessKey)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), leafSecretKey)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), leafSessionToken);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testNamespaceStorageNameOverridesCatalogCredentialsDuringVending() {
+    final String namespaceStorageName = "ns-storage";
+    final String catalogAccessKey = "catalog_access_key";
+    final String catalogSecretKey = "catalog_secret_key";
+    final String catalogSessionToken = "catalog_session_token";
+    final String namespaceAccessKey = "namespace_access_key";
+    final String namespaceSecretKey = "namespace_secret_key";
+    final String namespaceSessionToken = "namespace_session_token";
+
+    when(storageIntegrationProvider.getStorageIntegrationForConfig(
+            isA(AwsStorageConfigurationInfo.class)))
+        .thenAnswer(
+            invocation -> {
+              AwsStorageConfigurationInfo config = invocation.getArgument(0);
+              String storageName = config.getStorageName();
+
+              String accessKey = catalogAccessKey;
+              String secretKey = catalogSecretKey;
+              String sessionToken = catalogSessionToken;
+              if (namespaceStorageName.equals(storageName)) {
+                accessKey = namespaceAccessKey;
+                secretKey = namespaceSecretKey;
+                sessionToken = namespaceSessionToken;
+              }
+
+              StsClient stsClient = Mockito.mock(StsClient.class);
+              when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
+                  .thenReturn(
+                      AssumeRoleResponse.builder()
+                          .credentials(
+                              Credentials.builder()
+                                  .accessKeyId(accessKey)
+                                  .secretAccessKey(secretKey)
+                                  .sessionToken(sessionToken)
+                                  .build())
+                          .build());
+              return (PolarisStorageIntegration<?>)
+                  new AwsCredentialsStorageIntegration(config, stsClient);
+            });
+
+    Namespace ns = Namespace.of("ns_override_catalog_creds");
+    catalog.createNamespace(ns, Map.of("polaris.storage.name", namespaceStorageName));
+    TableIdentifier tableId = TableIdentifier.of(ns, "ns_override_table");
+    Table table = catalog.buildTable(tableId, SCHEMA).create();
+    TableMetadata tableMetadata = ((BaseTable) table).operations().current();
+
+    boolean dropped = catalog.dropTable(tableId, true);
+    Assertions.assertThat(dropped).isTrue();
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
+    Assertions.assertThat(tasks).hasSize(1);
+    TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+
+    Map<String, String> credentials =
+        metaStoreManager
+            .getSubscopedCredsForEntity(
+                polarisContext,
+                0,
+                taskEntity.getId(),
+                taskEntity.getType(),
+                true,
+                Set.of(tableMetadata.location()),
+                Set.of(tableMetadata.location()),
+                authenticatedRoot,
+                Optional.empty(),
+                CredentialVendingContext.empty())
+            .getStorageAccessConfig()
+            .credentials();
+
+    Assertions.assertThat(credentials)
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), namespaceAccessKey)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), namespaceSecretKey)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), namespaceSessionToken)
+        .doesNotContainEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), catalogAccessKey);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testTableStorageNameOverridesCatalogCredentialsDuringVending() {
+    final String tableStorageName = "table-storage";
+    final String catalogAccessKey = "catalog_access_key";
+    final String catalogSecretKey = "catalog_secret_key";
+    final String catalogSessionToken = "catalog_session_token";
+    final String tableAccessKey = "table_access_key";
+    final String tableSecretKey = "table_secret_key";
+    final String tableSessionToken = "table_session_token";
+
+    when(storageIntegrationProvider.getStorageIntegrationForConfig(
+            isA(AwsStorageConfigurationInfo.class)))
+        .thenAnswer(
+            invocation -> {
+              AwsStorageConfigurationInfo config = invocation.getArgument(0);
+              String storageName = config.getStorageName();
+
+              String accessKey = catalogAccessKey;
+              String secretKey = catalogSecretKey;
+              String sessionToken = catalogSessionToken;
+              if (tableStorageName.equals(storageName)) {
+                accessKey = tableAccessKey;
+                secretKey = tableSecretKey;
+                sessionToken = tableSessionToken;
+              }
+
+              StsClient stsClient = Mockito.mock(StsClient.class);
+              when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
+                  .thenReturn(
+                      AssumeRoleResponse.builder()
+                          .credentials(
+                              Credentials.builder()
+                                  .accessKeyId(accessKey)
+                                  .secretAccessKey(secretKey)
+                                  .sessionToken(sessionToken)
+                                  .build())
+                          .build());
+              return (PolarisStorageIntegration<?>)
+                  new AwsCredentialsStorageIntegration(config, stsClient);
+            });
+
+    Namespace ns = Namespace.of("table_override_catalog_creds");
+    catalog.createNamespace(ns);
+    TableIdentifier tableId = TableIdentifier.of(ns, "table_override_table");
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty("polaris.storage.name", tableStorageName)
+            .create();
+    TableMetadata tableMetadata = ((BaseTable) table).operations().current();
+
+    boolean dropped = catalog.dropTable(tableId, true);
+    Assertions.assertThat(dropped).isTrue();
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
+    Assertions.assertThat(tasks).hasSize(1);
+    TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+
+    Map<String, String> credentials =
+        metaStoreManager
+            .getSubscopedCredsForEntity(
+                polarisContext,
+                0,
+                taskEntity.getId(),
+                taskEntity.getType(),
+                true,
+                Set.of(tableMetadata.location()),
+                Set.of(tableMetadata.location()),
+                authenticatedRoot,
+                Optional.empty(),
+                CredentialVendingContext.empty())
+            .getStorageAccessConfig()
+            .credentials();
+
+    Assertions.assertThat(credentials)
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), tableAccessKey)
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), tableSecretKey)
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), tableSessionToken)
+        .doesNotContainEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), catalogAccessKey);
+  }
+
+  @Test
   public void testTableWithInvalidStorageName() {
     Namespace ns = Namespace.of("table_invalid_storage_ns");
     catalog.createNamespace(ns);
