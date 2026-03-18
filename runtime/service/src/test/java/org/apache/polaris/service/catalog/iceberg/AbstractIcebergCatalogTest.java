@@ -108,6 +108,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -124,6 +125,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -2621,5 +2623,263 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         catalog.dropNamespace(Namespace.of("pagination_namespace_" + i));
       }
     }
+  }
+
+  // ---- Storage name override integration tests (Phase 1) ----
+
+  @Test
+  public void testCreateNamespaceWithStorageNameOverride() {
+    Namespace ns = Namespace.of("storage_name_ns");
+    catalog.createNamespace(ns, Map.of("polaris.storage.name", "my-storage"));
+
+    EntityResult nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    Assertions.assertThat(nsResult).returns(true, EntityResult::isSuccess);
+
+    PolarisEntity nsEntity = PolarisEntity.of(nsResult.getEntity());
+    String serializedConfig =
+        nsEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    Assertions.assertThat(serializedConfig).isNotNull();
+
+    PolarisStorageConfigurationInfo config =
+        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
+    Assertions.assertThat(config.getStorageName()).isEqualTo("my-storage");
+    Assertions.assertThat(config).isInstanceOf(AwsStorageConfigurationInfo.class);
+
+    // User-facing property should still be visible
+    Assertions.assertThat(catalog.loadNamespaceMetadata(ns))
+        .containsEntry("polaris.storage.name", "my-storage");
+  }
+
+  @Test
+  public void testNamespaceSetPropertiesAddsStorageName() {
+    Namespace ns = Namespace.of("storage_set_props_ns");
+    catalog.createNamespace(ns);
+
+    // Initially no storage config on namespace
+    EntityResult nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    PolarisEntity nsEntity = PolarisEntity.of(nsResult.getEntity());
+    Assertions.assertThat(
+            nsEntity
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .isNull();
+
+    // Now set polaris.storage.name via setProperties
+    catalog.setProperties(ns, Map.of("polaris.storage.name", "added-storage"));
+
+    nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    nsEntity = PolarisEntity.of(nsResult.getEntity());
+    String serializedConfig =
+        nsEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    Assertions.assertThat(serializedConfig).isNotNull();
+
+    PolarisStorageConfigurationInfo config =
+        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
+    Assertions.assertThat(config.getStorageName()).isEqualTo("added-storage");
+  }
+
+  @Test
+  public void testNamespaceRemovePropertiesClearsStorageName() {
+    Namespace ns = Namespace.of("storage_remove_props_ns");
+    catalog.createNamespace(ns, Map.of("polaris.storage.name", "my-storage"));
+
+    // Verify it was set
+    EntityResult nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    Assertions.assertThat(
+            PolarisEntity.of(nsResult.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .isNotNull();
+
+    // Remove the property
+    catalog.removeProperties(ns, Set.of("polaris.storage.name"));
+
+    nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    PolarisEntity nsEntity = PolarisEntity.of(nsResult.getEntity());
+    Assertions.assertThat(
+            nsEntity
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .isNull();
+  }
+
+  @Test
+  public void testNestedNamespaceInheritsStorageConfig() {
+    Namespace parent = Namespace.of("parent_ns_storage");
+    Namespace child = Namespace.of("parent_ns_storage", "child_ns");
+    catalog.createNamespace(parent, Map.of("polaris.storage.name", "parent-storage"));
+    catalog.createNamespace(child, Map.of("polaris.storage.name", "child-storage"));
+
+    // Verify parent
+    EntityResult parentResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            parent.toString());
+    PolarisStorageConfigurationInfo parentConfig =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(parentResult.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+    Assertions.assertThat(parentConfig.getStorageName()).isEqualTo("parent-storage");
+
+    // Verify child has its own storage name
+    EntityResult childResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, parentResult.getEntity()),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            child.level(1));
+    PolarisStorageConfigurationInfo childConfig =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(childResult.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+    Assertions.assertThat(childConfig.getStorageName()).isEqualTo("child-storage");
+  }
+
+  @Test
+  public void testSiblingNamespacesHaveIndependentStorageNames() {
+    Namespace sibling1 = Namespace.of("sibling_ns_1");
+    Namespace sibling2 = Namespace.of("sibling_ns_2");
+    catalog.createNamespace(sibling1, Map.of("polaris.storage.name", "storage-a"));
+    catalog.createNamespace(sibling2, Map.of("polaris.storage.name", "storage-b"));
+
+    EntityResult r1 =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            sibling1.toString());
+    EntityResult r2 =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            sibling2.toString());
+
+    PolarisStorageConfigurationInfo config1 =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(r1.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+    PolarisStorageConfigurationInfo config2 =
+        PolarisStorageConfigurationInfo.deserialize(
+            PolarisEntity.of(r2.getEntity())
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+
+    Assertions.assertThat(config1.getStorageName()).isEqualTo("storage-a");
+    Assertions.assertThat(config2.getStorageName()).isEqualTo("storage-b");
+  }
+
+  @Test
+  public void testCreateNamespaceWithInvalidStorageName() {
+    Namespace ns = Namespace.of("invalid_storage_ns");
+
+    Assertions.assertThatThrownBy(
+            () -> catalog.createNamespace(ns, Map.of("polaris.storage.name", "has.dots")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("invalid characters");
+  }
+
+  @Test
+  public void testTableWithStorageNameOverride() {
+    Namespace ns = Namespace.of("table_storage_ns");
+    catalog.createNamespace(ns);
+    TableIdentifier tableId = TableIdentifier.of(ns, "test_table");
+
+    Table table =
+        catalog
+            .buildTable(tableId, SCHEMA)
+            .withProperty("polaris.storage.name", "table-storage")
+            .create();
+
+    Assertions.assertThat(table).isNotNull();
+    Assertions.assertThat(table.properties())
+        .containsEntry("polaris.storage.name", "table-storage");
+
+    // Verify storage config was persisted in entity
+    EntityResult nsResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            ns.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, nsResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "test_table");
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+
+    String serializedConfig =
+        PolarisEntity.of(tableResult.getEntity())
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    Assertions.assertThat(serializedConfig).isNotNull();
+
+    PolarisStorageConfigurationInfo config =
+        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
+    Assertions.assertThat(config.getStorageName()).isEqualTo("table-storage");
+    Assertions.assertThat(config).isInstanceOf(AwsStorageConfigurationInfo.class);
+  }
+
+  @Test
+  public void testTableWithInvalidStorageName() {
+    Namespace ns = Namespace.of("table_invalid_storage_ns");
+    catalog.createNamespace(ns);
+    TableIdentifier tableId = TableIdentifier.of(ns, "bad_table");
+
+    Assertions.assertThatThrownBy(
+            () ->
+                catalog
+                    .buildTable(tableId, SCHEMA)
+                    .withProperty("polaris.storage.name", "invalid.name")
+                    .create())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("invalid characters");
   }
 }
