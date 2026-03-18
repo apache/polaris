@@ -63,6 +63,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
 - Added setup options to Polaris CLI.
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
+- Added `hierarchicalNamespace` flag to `GcpStorageConfigInfo` to support GCS buckets with
+  [Hierarchical Namespace (HNS)](https://cloud.google.com/storage/docs/hns-overview) enabled.
+  When set to `true`, credential vending includes additional `roles/storage.folderAdmin` permissions
+  scoped to write paths so that managed folders can be created explicitly as required by HNS buckets.
 
 ### Changes
 
