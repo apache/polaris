@@ -61,6 +61,59 @@ public class PolarisSecurableTest {
   }
 
   @Test
+  void securableAllowsNestedNamespaceLeaf() {
+    PolarisSecurable nestedNamespace =
+        PolarisSecurable.of(
+            List.of(
+                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns2")));
+
+    assertThat(nestedNamespace.getLeaf())
+        .isEqualTo(new PathSegment(PolarisEntityType.NAMESPACE, "ns2"));
+    assertThat(nestedNamespace.getParents())
+        .containsExactly(
+            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"));
+    assertThat(nestedNamespace.getPathSegments())
+        .containsExactly(
+            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns2"));
+  }
+
+  @Test
+  void securableAllowsNestedNamespaces() {
+    PolarisSecurable table =
+        PolarisSecurable.of(
+            List.of(
+                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+                new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
+                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")));
+
+    assertThat(table.getLeaf()).isEqualTo(new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"));
+    assertThat(table.getParents())
+        .containsExactly(
+            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns2"));
+  }
+
+  @Test
+  void securableRejectsInvalidInChainParentHierarchy() {
+    assertThatThrownBy(
+            () ->
+                PolarisSecurable.of(
+                    List.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1"))))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must follow declared parent hierarchy");
+  }
+
+  @Test
   void securableRejectsInvalidParentHierarchy() {
     assertThatThrownBy(
             () ->

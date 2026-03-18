@@ -90,7 +90,9 @@ public interface PolarisSecurable {
         PathSegment parent = getPathSegments().get(i - 1);
         PathSegment child = getPathSegments().get(i);
         Preconditions.checkState(
-            child.entityType().getParentType() == parent.entityType(),
+            child.entityType().getParentType() == parent.entityType()
+                || (child.entityType().isParentSelfReference()
+                    && child.entityType() == parent.entityType()),
             "PathSegments must follow declared parent hierarchy for child=%s",
             child);
       }

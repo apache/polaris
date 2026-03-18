@@ -18,13 +18,24 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.google.common.base.Preconditions;
-import org.apache.polaris.core.entity.PolarisEntityType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** One segment in a fully qualified resource path. */
-public record PathSegment(PolarisEntityType entityType, String name) {
-  public PathSegment {
-    Preconditions.checkNotNull(entityType, "entityType must be non-null");
-    Preconditions.checkNotNull(name, "name must be non-null");
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.junit.jupiter.api.Test;
+
+public class PathSegmentTest {
+
+  @Test
+  void pathSegmentRejectsNullEntityType() {
+    assertThatThrownBy(() -> new PathSegment(null, "name"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("entityType must be non-null");
+  }
+
+  @Test
+  void pathSegmentRejectsNullName() {
+    assertThatThrownBy(() -> new PathSegment(PolarisEntityType.CATALOG, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("name must be non-null");
   }
 }
