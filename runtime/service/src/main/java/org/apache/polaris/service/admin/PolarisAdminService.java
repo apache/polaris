@@ -852,16 +852,19 @@ public class PolarisAdminService {
     if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
+      // Allow setting a role ARN when none was previously configured, but prevent changing the
+      // AWS account ID once it has been set.
+      if (currentAwsConfig.getAwsAccountId() != null
+          && !currentAwsConfig.getAwsAccountId().equals(newAwsConfig.getAwsAccountId())) {
         throw new BadRequestException(
-            "Cannot modify Role ARN in storage config from %s to %s",
+            "Cannot modify AWS account ID in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
 
-      if ((currentAwsConfig.getExternalId() != null
-              && !currentAwsConfig.getExternalId().equals(newAwsConfig.getExternalId()))
-          || (newAwsConfig.getExternalId() != null
-              && !newAwsConfig.getExternalId().equals(currentAwsConfig.getExternalId()))) {
+      // Allow setting an external ID when none was previously configured, but prevent changing
+      // it once it has been set.
+      if (currentAwsConfig.getExternalId() != null
+          && !currentAwsConfig.getExternalId().equals(newAwsConfig.getExternalId())) {
         throw new BadRequestException(
             "Cannot modify ExternalId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
