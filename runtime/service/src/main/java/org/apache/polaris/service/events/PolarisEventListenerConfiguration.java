@@ -30,7 +30,10 @@ public interface PolarisEventListenerConfiguration {
   /**
    * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
    * identifier.
+   *
+   * @deprecated since 1.5.0, use 'polaris.event-listener.types' instead
    */
+  @Deprecated(since = "1.5.0", forRemoval = true)
   Optional<String> type();
 
   /**
