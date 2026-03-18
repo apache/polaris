@@ -604,26 +604,50 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    *
    * @param namespace The namespace to register the table in
    * @param request the register table request
+   * @param delegationModes the access delegation modes to use
+   * @param refreshCredentialsEndpoint the refresh credentials endpoint to use
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
+  public LoadTableResponse registerTable(
+      Namespace namespace,
+      RegisterTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
+
+    request.validate();
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     boolean overwrite = request.overwrite();
 
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeRegisterTable(identifier, delegationModes, overwrite);
+
     if (overwrite) {
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE, identifier);
-      return registerTableWithOverwrite(identifier, request);
+      return registerTableWithOverwrite(
+          identifier, request, delegationModes, actionsRequested, refreshCredentialsEndpoint);
     }
 
-    // Creating new table requires REGISTER_TABLE privilege
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
-    return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
+    Table table = baseCatalog.registerTable(identifier, request.metadataLocation());
+
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              identifier,
+              tableMetadata,
+              delegationModes,
+              actionsRequested,
+              refreshCredentialsEndpoint)
+          .build();
+    }
+
+    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
   private LoadTableResponse registerTableWithOverwrite(
-      TableIdentifier identifier, RegisterTableRequest request) {
+      TableIdentifier identifier,
+      RegisterTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Set<PolarisStorageActions> actionsRequested,
+      Optional<String> refreshCredentialsEndpoint) {
     // Handle Polaris-specific overwrite logic.
     //
     // NOTE: Register-table overwrite is currently only implemented for Polaris's
@@ -635,7 +659,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
       if (table instanceof BaseTable baseTable) {
         TableMetadata metadata = baseTable.operations().current();
-        return LoadTableResponse.builder().withTableMetadata(metadata).build();
+        return buildLoadTableResponseWithDelegationCredentials(
+                identifier, metadata, delegationModes, actionsRequested, refreshCredentialsEndpoint)
+            .build();
       }
       throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
     }
@@ -805,6 +831,44 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } catch (ForbiddenException e) {
       authorizeBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    }
+
+    checkAllowExternalCatalogCredentialVending(delegationModes);
+
+    return actionsRequested;
+  }
+
+  private Set<PolarisStorageActions> authorizeRegisterTable(
+      TableIdentifier tableIdentifier,
+      EnumSet<AccessDelegationMode> delegationModes,
+      boolean overwrite) {
+
+    if (delegationModes.isEmpty()) {
+      PolarisAuthorizableOperation op =
+          overwrite
+              ? PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE
+              : PolarisAuthorizableOperation.REGISTER_TABLE;
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, tableIdentifier);
+      return Set.of();
+    }
+
+    PolarisAuthorizableOperation readOp =
+        overwrite
+            ? PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION
+            : PolarisAuthorizableOperation.REGISTER_TABLE_WITH_READ_DELEGATION;
+    PolarisAuthorizableOperation writeOp =
+        overwrite
+            ? PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION
+            : PolarisAuthorizableOperation.REGISTER_TABLE_WITH_WRITE_DELEGATION;
+
+    Set<PolarisStorageActions> actionsRequested =
+        EnumSet.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
+
+    try {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(writeOp, tableIdentifier);
+      actionsRequested.add(PolarisStorageActions.WRITE);
+    } catch (ForbiddenException e) {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(readOp, tableIdentifier);
     }
 
     checkAllowExternalCatalogCredentialVending(delegationModes);
