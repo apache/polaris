@@ -2021,3 +2021,214 @@ Project URL: https://github.com/aeron-io/agrona
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
+
+This product bundles Apache Ranger libraries.
+
+* Maven group:artifact IDs: org.apache.ranger:authz-embedded
+* Maven group:artifact IDs: org.apache.ranger:ranger-audit-core
+* Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-hdfs
+* Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-solr
+* Maven group:artifact IDs: org.apache.ranger:ranger-authz-api
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugin-classloader
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugins-common
+* Maven group:artifact IDs: org.apache.ranger:ranger-plugins-cred
+* Maven group:artifact IDs: org.apache.ranger:ugsync-util
+
+Project URL: https://github.com/apache/ranger
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Jetty libraries.
+
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-client
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-http
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-io
+* Maven group:artifact IDs: org.eclipse.jetty:jetty-util
+
+Home page: https://github.com/jetty/jetty.project/
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles FasterXML libraries.
+
+* Maven group:artifact IDs: com.fasterxml.jackson.jaxrs:jackson-jaxrs-base
+* Maven group:artifact IDs: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider
+* Maven group:artifact IDs: com.fasterxml.jackson.module:jackson-module-jaxb-annotations
+
+Home page: https://github.com/FasterXML/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles HttpComponents libraries.
+
+* Maven group:artifact IDs: org.apache.httpcomponents:httpasyncclient
+* Maven group:artifact IDs: org.apache.httpcomponents:httpcore-nio
+* Maven group:artifact IDs: org.apache.httpcomponents:httpmime
+
+Home page: https://hc.apache.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles JSON Smart libraries.
+
+* Maven group:artifact IDs: net.minidev:json-smart
+* Maven group:artifact IDs: net.minidev:accessors-smart
+
+Home page: https://github.com/netplex/json-smart-v2
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Zookeeper libraries.
+
+* Maven group:artifact IDs: org.apache.zookeeper:zookeeper
+* Maven group:artifact IDs: org.apache.zookeeper:zookeeper-jute
+
+Home page: https://github.com/apache/zookeeper
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Commons Collections library.
+
+* Maven group:artifact IDs: commons-collections:commons-collections
+
+Home page: https://github.com/apache/commons-collections
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Commons Lang library.
+
+* Maven group:artifact IDs: commons-lang:commons-lang
+
+Home page: https://github.com/apache/commons-lang
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Reload4j library.
+
+* Maven group:artifact IDs: ch.qos.reload4j:reload4j
+
+Home page: https://github.com/qos-ch/reload4j
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles High Performance Primitive Collections library.
+
+* Maven group:artifact IDs: com.carrotsearch:hppc
+
+Home page: https://github.com/carrotsearch/hppc
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Metrics Core library.
+
+* Maven group:artifact IDs: io.dropwizard.metrics:metrics-core
+
+Home page: https://github.com/dropwizard/metrics
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Joda Time library.
+
+* Maven group:artifact IDs: joda-time:joda-time
+
+Home page: https://github.com/JodaOrg/joda-time
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Solr library.
+
+* Maven group:artifact IDs: org.apache.solr:solr-solrj
+
+Home page: https://github.com/apache/solr
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Apache Yetus library.
+
+* Maven group:artifact IDs: org.apache.yetus:audience-annotations
+
+Home page: https://github.com/apache/yetus
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles ASM library.
+
+* Maven group:artifact IDs: org.ow2.asm:asm
+
+Home page: https://gitlab.ow2.org/asm/asm
+License: BSD 3-Clause - https://gitlab.ow2.org/asm/asm/-/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Gethostname4j library.
+
+* Maven group:artifact IDs: com.kstruct:gethostname4j
+
+Home page: https://github.com/mattsheppard/gethostname4j
+License: MIT License - https://mit-license.org/
+
+--------------------------------------------------------------------------------
+
+This product bundles Jersey Bundle library.
+
+* Maven group:artifact IDs: com.sun.jersey:jersey-bundle
+
+Home page: https://github.com/eclipse-ee4j/jersey
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles JAXB API library.
+
+* Maven group:artifact IDs: javax.xml.bind:jaxb-api
+
+Home page: https://javaee.github.io/jaxb-v2/
+License: CDDL - https://javaee.github.io/jaxb-v2/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles GraalVM libraries.
+
+* Maven group:artifact IDs: org.graalvm.js:js
+* Maven group:artifact IDs: org.graalvm.js:js-language
+* Maven group:artifact IDs: org.graalvm.js:js-scriptengine
+* Maven group:artifact IDs: org.graalvm.polyglot:js
+* Maven group:artifact IDs: org.graalvm.polyglot:polyglot
+* Maven group:artifact IDs: org.graalvm.regex:regex
+* Maven group:artifact IDs: org.graalvm.sdk:collections
+* Maven group:artifact IDs: org.graalvm.sdk:jniutils
+* Maven group:artifact IDs: org.graalvm.sdk:nativeimage
+* Maven group:artifact IDs: org.graalvm.sdk:word
+* Maven group:artifact IDs: org.graalvm.shadowed:icu4j
+* Maven group:artifact IDs: org.graalvm.shadowed:xz
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-api
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-compiler
+* Maven group:artifact IDs: org.graalvm.truffle:truffle-runtime
+
+Home page: https://github.com/oracle/graal/
+License: The GNU General Public License (GPL) - https://github.com/oracle/graal/blob/master/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles SLF4J Reload4j Provider library.
+
+* Maven group:artifact IDs: org.slf4j:slf4j-reload4j
+
+Home page: https://github.com/qos-ch/slf4j/tree/master/slf4j-reload4j
+License: MIT License - https://mit-license.org/
+
+--------------------------------------------------------------------------------
