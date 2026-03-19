@@ -24,7 +24,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  
+
   implementation(libs.ranger.authz.embedded) {
     exclude("org.apache.ranger", "ranger-audit-dest-hdfs")
   }

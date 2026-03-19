@@ -2026,7 +2026,6 @@ This product bundles Apache Ranger libraries.
 
 * Maven group:artifact IDs: org.apache.ranger:authz-embedded
 * Maven group:artifact IDs: org.apache.ranger:ranger-audit-core
-* Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-hdfs
 * Maven group:artifact IDs: org.apache.ranger:ranger-audit-dest-solr
 * Maven group:artifact IDs: org.apache.ranger:ranger-authz-api
 * Maven group:artifact IDs: org.apache.ranger:ranger-plugin-classloader
