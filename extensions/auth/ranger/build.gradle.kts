@@ -29,6 +29,7 @@ dependencies {
     exclude("org.apache.hadoop", "hadoop-client-api")
     exclude("org.apache.hadoop", "hadoop-client-runtime")
   }
+  implementation("org.apache.hadoop:hadoop-common:3.4.2")
   implementation(libs.commons.lang3)
   implementation(libs.guava)
 
