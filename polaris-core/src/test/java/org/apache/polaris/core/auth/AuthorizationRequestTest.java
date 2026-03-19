@@ -37,8 +37,7 @@ public class AuthorizationRequestTest {
             PolarisAuthorizableOperation.LOAD_TABLE,
             List.of(
                 AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(
-                        List.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice"))),
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
                     null)));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL)).isTrue();
@@ -52,12 +51,9 @@ public class AuthorizationRequestTest {
             PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE,
             List.of(
                 AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
                     PolarisSecurable.of(
-                        List.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice"))),
-                    PolarisSecurable.of(
-                        List.of(
-                            new PathSegment(
-                                PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin"))))));
+                        new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isTrue();
   }
@@ -71,17 +67,14 @@ public class AuthorizationRequestTest {
             List.of(
                 AuthorizationTargetBinding.of(
                     PolarisSecurable.of(
-                        List.of(
-                            new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                            new PathSegment(PolarisEntityType.NAMESPACE, "ns"))),
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
                     null),
                 AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
                     PolarisSecurable.of(
-                        List.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
-                    PolarisSecurable.of(
-                        List.of(
-                            new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                            new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role"))))));
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role")))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.CATALOG_ROLE)).isTrue();
   }
@@ -94,8 +87,7 @@ public class AuthorizationRequestTest {
             PolarisAuthorizableOperation.LOAD_VIEW,
             List.of(
                 AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(
-                        List.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
                     null)));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isFalse();
@@ -104,7 +96,7 @@ public class AuthorizationRequestTest {
   @Test
   void throwsWhenSecurableDoesNotStartWithTopLevelEntity() {
     assertThatThrownBy(
-            () -> PolarisSecurable.of(List.of(new PathSegment(PolarisEntityType.NAMESPACE, "ns"))))
+            () -> PolarisSecurable.of(new PathSegment(PolarisEntityType.NAMESPACE, "ns")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must start with a top-level entity");
   }

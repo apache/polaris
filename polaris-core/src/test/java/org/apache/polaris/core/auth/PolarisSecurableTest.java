@@ -21,7 +21,6 @@ package org.apache.polaris.core.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +29,7 @@ public class PolarisSecurableTest {
   @Test
   void topLevelSecurableHasLeafOnly() {
     PolarisSecurable principal =
-        PolarisSecurable.of(List.of(new PathSegment(PolarisEntityType.PRINCIPAL, "principalA")));
+        PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "principalA"));
 
     assertThat(principal.getLeaf())
         .isEqualTo(new PathSegment(PolarisEntityType.PRINCIPAL, "principalA"));
@@ -43,10 +42,9 @@ public class PolarisSecurableTest {
   void catalogScopedSecurableHasCorrectParentEntities() {
     PolarisSecurable table =
         PolarisSecurable.of(
-            List.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")));
+            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"));
 
     assertThat(table.getLeaf()).isEqualTo(new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"));
     assertThat(table.getParents())
@@ -61,36 +59,13 @@ public class PolarisSecurableTest {
   }
 
   @Test
-  void securableAllowsNestedNamespaceLeaf() {
-    PolarisSecurable nestedNamespace =
-        PolarisSecurable.of(
-            List.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns2")));
-
-    assertThat(nestedNamespace.getLeaf())
-        .isEqualTo(new PathSegment(PolarisEntityType.NAMESPACE, "ns2"));
-    assertThat(nestedNamespace.getParents())
-        .containsExactly(
-            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"));
-    assertThat(nestedNamespace.getPathSegments())
-        .containsExactly(
-            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-            new PathSegment(PolarisEntityType.NAMESPACE, "ns2"));
-  }
-
-  @Test
   void securableAllowsNestedNamespaces() {
     PolarisSecurable table =
         PolarisSecurable.of(
-            List.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
-                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")));
+            new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
+            new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"));
 
     assertThat(table.getLeaf()).isEqualTo(new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"));
     assertThat(table.getParents())
@@ -101,26 +76,35 @@ public class PolarisSecurableTest {
   }
 
   @Test
+  void securableRejectsRootInPath() {
+    assertThatThrownBy(
+            () ->
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.ROOT, "root"),
+                    new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must not include ROOT");
+  }
+
+  @Test
   void securableRejectsInvalidInChainParentHierarchy() {
     assertThatThrownBy(
             () ->
                 PolarisSecurable.of(
-                    List.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
-                        new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"),
-                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1"))))
+                    new PathSegment(PolarisEntityType.CATALOG, "catalogA"),
+                    new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"),
+                    new PathSegment(PolarisEntityType.NAMESPACE, "ns1")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must follow declared parent hierarchy");
   }
 
   @Test
-  void securableRejectsInvalidParentHierarchy() {
+  void securableRejectsPathThatDoesNotStartWithTopLevelEntity() {
     assertThatThrownBy(
             () ->
                 PolarisSecurable.of(
-                    List.of(
-                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                        new PathSegment(PolarisEntityType.TABLE_LIKE, "table1"))))
+                    new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+                    new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must start with a top-level entity");
   }
@@ -130,9 +114,8 @@ public class PolarisSecurableTest {
     assertThatThrownBy(
             () ->
                 PolarisSecurable.of(
-                    List.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalogParent"),
-                        new PathSegment(PolarisEntityType.CATALOG, "catalogA"))))
+                    new PathSegment(PolarisEntityType.CATALOG, "catalogParent"),
+                    new PathSegment(PolarisEntityType.CATALOG, "catalogA")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must not declare parents");
   }

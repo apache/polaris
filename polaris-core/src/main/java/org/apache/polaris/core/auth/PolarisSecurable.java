@@ -29,17 +29,17 @@ import org.immutables.value.Value;
 @PolarisImmutable
 public interface PolarisSecurable {
   static PolarisSecurable of(@Nonnull PathSegment leaf) {
-    return of(List.of(leaf));
+    return ImmutablePolarisSecurable.builder().addPathSegment(leaf).build();
   }
 
   /**
    * Creates a securable from a full ordered path.
    *
-   * <p>{@code pathSegments} must be ordered from the highest parent segment to the leaf segment.
-   * For example, a table path should be {@code [CATALOG, NAMESPACE, TABLE_LIKE]}.
+   * <p>The segments must be ordered from the furthest parent segment to the leaf segment. For
+   * example, a table path should be ordered as {@code CATALOG, NAMESPACE, TABLE_LIKE}.
    */
-  static PolarisSecurable of(@Nonnull List<PathSegment> pathSegments) {
-    return ImmutablePolarisSecurable.builder().pathSegments(pathSegments).build();
+  static PolarisSecurable of(@Nonnull PathSegment first, @Nonnull PathSegment... rest) {
+    return ImmutablePolarisSecurable.builder().addPathSegment(first).addPathSegments(rest).build();
   }
 
   /**
@@ -55,6 +55,8 @@ public interface PolarisSecurable {
   @Value.Derived
   default PathSegment getLeaf() {
     List<PathSegment> pathSegments = getPathSegments();
+    Preconditions.checkState(
+        !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
     return pathSegments.get(pathSegments.size() - 1);
   }
 
@@ -63,12 +65,13 @@ public interface PolarisSecurable {
   @Value.Derived
   default List<PathSegment> getParents() {
     List<PathSegment> pathSegments = getPathSegments();
+    Preconditions.checkState(
+        !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
     return pathSegments.subList(0, pathSegments.size() - 1);
   }
 
   @Value.Check
   default void validate() {
-    Preconditions.checkState(getPathSegments() != null, "PathSegments must be non-null");
     Preconditions.checkState(
         !getPathSegments().isEmpty(), "PathSegments must contain at least one segment");
     Preconditions.checkState(
