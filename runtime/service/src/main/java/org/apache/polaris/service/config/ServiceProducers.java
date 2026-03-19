@@ -202,6 +202,7 @@ public class ServiceProducers {
   // Polaris service beans - selected from @Identifier-annotated beans
 
   @Produces
+  @Singleton // used in instanceof checks
   public RealmContextResolver realmContextResolver(
       RealmContextConfiguration config, @Any Instance<RealmContextResolver> realmContextResolvers) {
     return realmContextResolvers.select(Identifier.Literal.of(config.type())).get();
@@ -215,6 +216,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @Singleton // used in instanceof checks
   public PolarisEventListener polarisEventListener(
       PolarisEventListenerConfiguration config,
       @Any Instance<PolarisEventListener> polarisEventListeners) {
@@ -222,6 +224,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @Singleton // used in instanceof checks
   public MetaStoreManagerFactory metaStoreManagerFactory(
       PersistenceConfiguration config,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
@@ -243,6 +246,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public UserSecretsManagerFactory userSecretsManagerFactory(
       SecretsManagerConfiguration config,
       @Any Instance<UserSecretsManagerFactory> userSecretsManagerFactories) {
@@ -353,12 +357,14 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public RateLimiter rateLimiter(
       RateLimiterFilterConfiguration config, @Any Instance<RateLimiter> rateLimiters) {
     return rateLimiters.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces
+  @ApplicationScoped
   public TokenBucketFactory tokenBucketFactory(
       TokenBucketConfiguration config, @Any Instance<TokenBucketFactory> tokenBucketFactories) {
     return tokenBucketFactories.select(Identifier.Literal.of(config.type())).get();
@@ -425,6 +431,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public OidcTenantResolver oidcTenantResolver(
       OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
