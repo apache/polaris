@@ -24,11 +24,11 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-
+  
   implementation(libs.ranger.authz.embedded) {
-    exclude("org.apache.hadoop", "hadoop-client-api")
-    exclude("org.apache.hadoop", "hadoop-client-runtime")
+    exclude("org.apache.ranger", "ranger-audit-dest-hdfs")
   }
+
   implementation(libs.commons.lang3)
   implementation(libs.guava)
 
