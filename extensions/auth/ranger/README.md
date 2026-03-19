@@ -31,10 +31,10 @@ polaris.authorization.type=ranger
 2. Configure Ranger authorizer by setting configurations having name that start with "polaris.authorization.ranger." in application.properties, for example:
 ```
 polaris.authorization.ranger.service-name=dev_polaris
-polaris.authorization.ranger."ranger.authz.default.policy.source.impl"=org.apache.ranger.admin.client.RangerAdminRESTClient
-polaris.authorization.ranger."ranger.authz.default.policy.rest.url"=http://ranger-admin:6080
-polaris.authorization.ranger."ranger.authz.audit.destination.solr"=enabled
-polaris.authorization.ranger."ranger.authz.audit.destination.solr.urls"=http://solr-service:8983/solr/ranger_audits
+polaris.authorization.ranger.authz.default.policy.source.impl=org.apache.ranger.admin.client.RangerAdminRESTClient
+polaris.authorization.ranger.authz.default.policy.rest.url=http://ranger-admin:6080
+polaris.authorization.ranger.authz.audit.destination.solr=enabled
+polaris.authorization.ranger.authz.audit.destination.solr.urls=http://solr-service:8983/solr/ranger_audits
 
 ```
 

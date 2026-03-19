@@ -26,6 +26,10 @@ import java.util.Properties;
 
 @ConfigMapping(prefix = "polaris.authorization.ranger")
 public interface RangerPolarisAuthorizerConfig {
+
+  static final String RANGER_KEY_PREFIX = "ranger.";
+  static final String XASECURE_KEY_PREFIX = "xasecure.";
+
   Optional<String> serviceName();
 
   @WithParentName
@@ -33,9 +37,14 @@ public interface RangerPolarisAuthorizerConfig {
 
   default Properties toRangerProperties() {
     Properties props = new Properties();
-
-    props.putAll(properties());
-
+    for (String key : properties().keySet()) {
+      if (!key.startsWith(RANGER_KEY_PREFIX) && !key.startsWith(XASECURE_KEY_PREFIX)) {
+        props.setProperty(RANGER_KEY_PREFIX + key, properties().get(key));
+      }
+      else {
+        props.setProperty(key, properties().get(key));
+      }
+    }
     return props;
   }
 
