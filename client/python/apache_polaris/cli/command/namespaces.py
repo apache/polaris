@@ -27,6 +27,7 @@ from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI, CreateNamespaceRequest
 from apache_polaris.sdk.management import PolarisDefaultApi
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 
 
 @dataclass
@@ -86,5 +87,51 @@ class NamespacesCommand(Command):
                     prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
                 ).to_json()
             )
+        elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
+            self._generate_summary(catalog_api)
         else:
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")
+
+    def _generate_summary(self, catalog_api: IcebergCatalogAPI) -> None:
+        ns_str = UNIT_SEPARATOR.join(self.namespace)
+        print(f"Namespace: {'.'.join(self.namespace)}")
+        print("-" * 80)
+        # Metadata
+        print("Metadata")
+        print(f"  {'Level:':<30} {len(self.namespace)}")
+        if len(self.namespace) > 1:
+            print(f"  {'Parent:':<30} {UNIT_SEPARATOR.join(self.namespace[:-1])}")
+        sub_ns = (
+            catalog_api.list_namespaces(prefix=self.catalog, parent=ns_str).namespaces
+            or []
+        )
+        print(f"  {'Sub-namespaces:':<30} {len(sub_ns)}")
+        tables = (
+            catalog_api.list_tables(prefix=self.catalog, namespace=ns_str).identifiers
+            or []
+        )
+        print(f"  {'Tables:':<30} {len(tables)}")
+        views = (
+            catalog_api.list_views(prefix=self.catalog, namespace=ns_str).identifiers
+            or []
+        )
+        print(f"  {'Views:':<30} {len(views)}")
+        # Effective policies
+        policy_api = PolicyAPI(catalog_api.api_client)
+        policies_resp = policy_api.get_applicable_policies(
+            prefix=self.catalog, namespace=ns_str
+        )
+        print("Effective Policies")
+        applicable_policies = policies_resp.applicable_policies or []
+        if applicable_policies:
+            for policy in sorted(applicable_policies, key=lambda x: x.name):
+                source = "Direct"
+                if policy.inherited:
+                    target = (
+                        ".".join(policy.namespace) if policy.namespace else "Catalog"
+                    )
+                    source = f"Inherited from {target}"
+                print(f"  - {policy.name} ({source})")
+        else:
+            print("  No policies apply to this namespace")
+        print("-" * 80)
