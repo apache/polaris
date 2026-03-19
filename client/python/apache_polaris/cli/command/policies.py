@@ -221,6 +221,5 @@ class PoliciesCommand(Command):
                         else None,
                     ),
                 )
-
         else:
             raise Exception(f"{self.policies_subcommand} is not supported in the CLI")

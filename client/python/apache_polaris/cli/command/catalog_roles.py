@@ -31,6 +31,7 @@ from apache_polaris.sdk.management import (
     UpdateCatalogRoleRequest,
     GrantCatalogRoleRequest,
 )
+from apache_polaris.cli.command.utils import format_timestamp
 
 
 @dataclass
@@ -122,7 +123,53 @@ class CatalogRolesCommand(Command):
             api.revoke_catalog_role_from_principal_role(
                 self.principal_role_name, self.catalog_name, self.catalog_role_name
             )
+        elif self.catalog_roles_subcommand == Subcommands.SUMMARIZE:
+            self._generate_summary(api)
         else:
             raise Exception(
                 f"{self.catalog_roles_subcommand} is not supported in the CLI"
             )
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        grants = (
+            api.list_grants_for_catalog_role(
+                self.catalog_name, self.catalog_role_name
+            ).grants
+            or []
+        )
+        print(f"Catalog Role: {self.catalog_role_name} [Catalog: {self.catalog_name}]")
+        print("-" * 80)
+        # Metadata
+        role = api.get_catalog_role(self.catalog_name, self.catalog_role_name)
+        print("Metadata")
+        print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
+        print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
+        print(f"  {'Version:':<30} {role.entity_version}")
+        # Assignments
+        principal_roles = (
+            api.list_assignee_principal_roles_for_catalog_role(
+                self.catalog_name, self.catalog_role_name
+            ).roles
+            or []
+        )
+        print("Assignments")
+        print(f"  {'Assigned Principal Roles:':<30} {len(principal_roles)}")
+        print(f"  {'Total Grants:':<30} {len(grants)}")
+        # Privileges
+        print("Privileges")
+        if not grants:
+            print("  No grants found.")
+        else:
+            for grant in sorted(
+                grants, key=lambda x: (str(x.privilege), str(x.namespace))
+            ):
+                privilege = grant.privilege.value
+                resource = ""
+                if grant.type == "namespace":
+                    resource = f" on {'.'.join(grant.namespace)}"
+                elif grant.type == "table":
+                    resource = f" on {'.'.join(grant.namespace)}.{grant.table}"
+                elif grant.type == "view":
+                    resource = f" on {'.'.join(grant.namespace)}.{grant.view}"
+                print(f"  - {privilege}{resource}")
+        print("-" * 80)

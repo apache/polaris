@@ -23,7 +23,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
@@ -40,7 +39,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES;
@@ -57,7 +55,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE;
-import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_RESET_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_CREATE;
@@ -81,7 +78,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
@@ -102,7 +98,6 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPER
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
-import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
@@ -386,40 +381,6 @@ record RbacOperationSemantics(
             EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
             ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_ROOT,
-        new RbacOperationSemantics(
-            EnumSet.of(SERVICE_MANAGE_ACCESS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_PRINCIPAL,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_PRINCIPAL_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(PRINCIPAL_ROLE_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE),
-            EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-            ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_CATALOG_ROLE,
-        new RbacOperationSemantics(
-            EnumSet.of(CATALOG_ROLE_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE,
         new RbacOperationSemantics(
             EnumSet.of(CATALOG_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
@@ -429,10 +390,6 @@ record RbacOperationSemantics(
             EnumSet.of(CATALOG_MANAGE_GRANTS_ON_SECURABLE),
             EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
             ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_CATALOG,
-        new RbacOperationSemantics(
-            EnumSet.of(CATALOG_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE,
         new RbacOperationSemantics(
@@ -444,10 +401,6 @@ record RbacOperationSemantics(
             EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
             ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_NAMESPACE,
-        new RbacOperationSemantics(
-            EnumSet.of(NAMESPACE_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE,
         new RbacOperationSemantics(
             EnumSet.of(TABLE_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
@@ -458,9 +411,6 @@ record RbacOperationSemantics(
             EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
             ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_TABLE,
-        new RbacOperationSemantics(EnumSet.of(TABLE_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE,
         new RbacOperationSemantics(
             EnumSet.of(VIEW_MANAGE_GRANTS_ON_SECURABLE), null, ResolvedPathRooting.ROOT));
@@ -470,9 +420,6 @@ record RbacOperationSemantics(
             EnumSet.of(VIEW_MANAGE_GRANTS_ON_SECURABLE),
             EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
             ResolvedPathRooting.ROOT));
-    RBAC_SEMANTICS_BY_OPERATION.put(
-        PolarisAuthorizableOperation.LIST_GRANTS_ON_VIEW,
-        new RbacOperationSemantics(EnumSet.of(VIEW_LIST_GRANTS), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_POLICY,
         new RbacOperationSemantics(EnumSet.of(POLICY_CREATE), null, ResolvedPathRooting.ROOT));
