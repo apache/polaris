@@ -40,8 +40,7 @@ public interface RangerPolarisAuthorizerConfig {
     for (String key : properties().keySet()) {
       if (!key.startsWith(RANGER_KEY_PREFIX) && !key.startsWith(XASECURE_KEY_PREFIX)) {
         props.setProperty(RANGER_KEY_PREFIX + key, properties().get(key));
-      }
-      else {
+      } else {
         props.setProperty(key, properties().get(key));
       }
     }
