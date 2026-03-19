@@ -41,7 +41,7 @@ final class IndexElementIter<V> extends AbstractIterator<Index.Element<V>> {
       var next = delegate.next();
       var value = next.valueNullable();
       if (value != null) {
-        return Index.Element.of(next.key(), value);
+        return next;
       }
     }
     return endOfData();
