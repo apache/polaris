@@ -39,7 +39,7 @@ import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
  * index segments.
  *
  * <p>The only place where instances of this type can "escape" is via the {@link Iterator} returning
- * functions of the {@link Index} interface. The implemntations of the {@code iterator()} and {@code
+ * functions of the {@link Index} interface. The implementations of the {@code iterator()} and {@code
  * reverseIterator()} functions in {@link IndexSpi} uses {@link IndexElementIter} to ensure that
  * only elements with non-{@code null} values "escape".
  *
