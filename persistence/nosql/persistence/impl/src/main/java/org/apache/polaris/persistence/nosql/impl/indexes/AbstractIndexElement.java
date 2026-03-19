@@ -34,6 +34,7 @@ abstract class AbstractIndexElement<V> implements InternalIndexElement<V> {
       return key().equals(other.key()) && Objects.equals(valueNullable(), other.valueNullable());
     }
     if (o instanceof Index.Element<?> other) {
+      // This case is just for tests, not for actual production usage.
       return key().equals(other.key()) && Objects.equals(valueNullable(), other.value());
     }
     return false;
