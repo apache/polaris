@@ -20,18 +20,35 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.task.TaskExecutor;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -206,6 +223,36 @@ class StorageNameOverrideTest {
         .hasMessageContaining("invalid characters");
   }
 
+  @Test
+  void storageNameOverrideDisabled_throwsBadRequest() throws Exception {
+    var method =
+        IcebergCatalog.class.getDeclaredMethod(
+            "enforceStorageNameOverrideEnabledIfRequested", Map.class);
+    method.setAccessible(true);
+
+    IcebergCatalog catalog = createCatalogForStorageNameOverrideFeature(false);
+
+    assertThatThrownBy(
+            () ->
+                method.invoke(
+                    catalog, Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage")))
+        .hasCauseInstanceOf(BadRequestException.class)
+        .cause()
+        .hasMessageContaining("not enabled for this realm");
+  }
+
+  @Test
+  void storageNameOverrideEnabled_allowsProperty() throws Exception {
+    var method =
+        IcebergCatalog.class.getDeclaredMethod(
+            "enforceStorageNameOverrideEnabledIfRequested", Map.class);
+    method.setAccessible(true);
+
+    IcebergCatalog catalog = createCatalogForStorageNameOverrideFeature(true);
+
+    method.invoke(catalog, Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage"));
+  }
+
   private static PolarisEntity createEntityWithStorageConfig(
       PolarisStorageConfigurationInfo config) {
     return new PolarisEntity.Builder()
@@ -228,5 +275,35 @@ class StorageNameOverrideTest {
         .setType(PolarisEntityType.NAMESPACE)
         .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
         .build();
+  }
+
+  private static IcebergCatalog createCatalogForStorageNameOverrideFeature(boolean enabled) {
+    RealmConfig realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE))
+        .thenReturn(enabled);
+
+    CallContext callContext = mock(CallContext.class);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+
+    CatalogEntity catalogEntity = mock(CatalogEntity.class);
+    when(catalogEntity.getId()).thenReturn(1L);
+    when(catalogEntity.getName()).thenReturn("test-catalog");
+
+    PolarisResolutionManifestCatalogView resolvedEntityView =
+        mock(PolarisResolutionManifestCatalogView.class);
+    when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
+
+    return new IcebergCatalog(
+        mock(PolarisDiagnostics.class),
+        mock(ResolverFactory.class),
+        mock(PolarisMetaStoreManager.class),
+        callContext,
+        resolvedEntityView,
+        mock(PolarisPrincipal.class),
+        mock(TaskExecutor.class),
+        mock(StorageAccessConfigProvider.class),
+        mock(FileIOFactory.class),
+        mock(PolarisEventListener.class),
+        mock(PolarisEventMetadataFactory.class));
   }
 }

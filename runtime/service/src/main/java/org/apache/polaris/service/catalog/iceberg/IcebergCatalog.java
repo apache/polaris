@@ -166,6 +166,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   static final String POLARIS_STORAGE_NAME_PROPERTY = "polaris.storage.name";
 
+  private static final String STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE =
+      "Storage name overrides are not enabled for this realm. "
+          + "Remove property 'polaris.storage.name' or enable feature flag "
+          + "ALLOW_STORAGE_NAME_OVERRIDE.";
+
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
@@ -529,6 +534,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       baseLocation += "/";
     }
 
+    enforceStorageNameOverrideEnabledIfRequested(metadata);
+
     PolarisStorageConfigurationInfo namespaceStorageConfig =
         storageConfigFromPropertyOverride(metadata, resolvedParent.getRawFullPath());
 
@@ -737,6 +744,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     newProperties.putAll(properties);
     PolarisEntity.Builder updatedEntityBuilder =
         new PolarisEntity.Builder(entity).setProperties(newProperties);
+
+    enforceStorageNameOverrideEnabledIfRequested(properties);
 
     // Handle polaris.storage.name override on namespace update
     PolarisStorageConfigurationInfo namespaceStorageConfig =
@@ -1648,6 +1657,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
         }
       }
+
+      enforceStorageNameOverrideEnabledForTableCommit(base, metadata);
+
       Map<String, String> storedProperties =
           buildTableMetadataPropertiesMap(base, metadata, resolvedNamespace);
       IcebergTableLikeEntity entity =
@@ -1845,6 +1857,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return PolarisStorageConfigurationInfo.deserialize(serializedConfig);
             })
         .orElse(null);
+  }
+
+  private void enforceStorageNameOverrideEnabledIfRequested(Map<String, String> properties) {
+    if (properties.containsKey(POLARIS_STORAGE_NAME_PROPERTY)
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE);
+    }
+  }
+
+  private void enforceStorageNameOverrideEnabledForTableCommit(
+      @Nullable TableMetadata base, TableMetadata metadata) {
+    if (!metadata.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      return;
+    }
+    String priorValue = base == null ? null : base.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
+    String requestedValue = metadata.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
+    if (!Objects.equal(priorValue, requestedValue)
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE);
+    }
   }
 
   private static Map<String, String> buildTableMetadataPropertiesMap(
