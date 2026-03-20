@@ -90,8 +90,7 @@ public class MinioExtension
       MinioAccess container =
           context
               .getStore(NAMESPACE)
-              .getOrComputeIfAbsent(
-                  field.toString(), x -> createContainer(minio), MinioAccess.class);
+              .computeIfAbsent(field.toString(), x -> createContainer(minio), MinioAccess.class);
 
       makeAccessible(field).set(context.getTestInstance().orElse(null), container);
     } catch (Throwable t) {
@@ -115,7 +114,7 @@ public class MinioExtension
       throws ParameterResolutionException {
     return extensionContext
         .getStore(NAMESPACE)
-        .getOrComputeIfAbsent(
+        .computeIfAbsent(
             MinioExtension.class.getName() + '#' + parameterContext.getParameter().getName(),
             k -> {
               Minio minio = parameterContext.findAnnotation(Minio.class).get();
