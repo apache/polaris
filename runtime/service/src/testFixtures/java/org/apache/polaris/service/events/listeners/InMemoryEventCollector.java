@@ -25,7 +25,7 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventType;
 
-public class TestPolarisEventDispatcher implements PolarisEventDispatcher {
+public class InMemoryEventCollector implements PolarisEventDispatcher {
   private final Map<PolarisEventType, PolarisEvent> latestEvents = new ConcurrentHashMap<>();
 
   public void clear() {

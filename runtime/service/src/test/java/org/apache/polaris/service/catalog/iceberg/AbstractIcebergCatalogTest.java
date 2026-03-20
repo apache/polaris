@@ -40,8 +40,6 @@ import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -238,7 +236,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
@@ -332,8 +334,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
-    testPolarisEventListener =
-        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
   }
 

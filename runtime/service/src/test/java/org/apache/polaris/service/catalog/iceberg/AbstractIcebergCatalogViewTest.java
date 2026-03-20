@@ -21,8 +21,6 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -112,7 +110,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
-  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
   @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject ResolverFactory resolverFactory;
@@ -200,8 +202,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
 
-    testPolarisEventListener =
-        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
     this.catalog =
         new IcebergCatalog(

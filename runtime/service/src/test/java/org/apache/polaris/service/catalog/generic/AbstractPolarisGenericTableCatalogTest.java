@@ -69,7 +69,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -234,7 +234,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             taskExecutor,
             storageAccessConfigProvider,
             fileIOFactory,
-            new TestPolarisEventDispatcher(),
+            new InMemoryEventCollector(),
             eventMetadataFactory);
     this.icebergCatalog.initialize(
         CATALOG_NAME,

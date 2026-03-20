@@ -26,10 +26,8 @@ import jakarta.enterprise.event.Observes;
 
 public class EventBusConfigurer {
   private static final String LOCAL_CODEC_NAME = "local";
-  private static final LocalEventBusCodec<PolarisEvent> LOCAL_CODEC =
-      new LocalEventBusCodec<>(LOCAL_CODEC_NAME);
 
   void configureEventBus(@Observes StartupEvent ev, EventBus eventBus) {
-    eventBus.registerDefaultCodec(PolarisEvent.class, LOCAL_CODEC);
+    eventBus.registerDefaultCodec(PolarisEvent.class, new LocalEventBusCodec<>(LOCAL_CODEC_NAME));
   }
 }

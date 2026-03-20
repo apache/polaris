@@ -27,8 +27,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response.Status;
 import java.util.Map;
@@ -88,7 +86,10 @@ public class RateLimiterFilterTest {
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
-  @Inject @Any Instance<PolarisEventListener> polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -114,8 +115,7 @@ public class RateLimiterFilterTest {
     MockRateLimiter.allowProceed = true;
     meterRegistry.clear();
 
-    testPolarisEventListener =
-        (TestPolarisEventListener) polarisEventListener.select(Identifier.Literal.of("test")).get();
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
   }
 

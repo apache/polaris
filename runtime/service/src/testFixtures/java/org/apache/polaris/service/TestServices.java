@@ -88,7 +88,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -298,7 +298,7 @@ public record TestServices(
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
-      PolarisEventDispatcher polarisEventDispatcher = new TestPolarisEventDispatcher();
+      PolarisEventDispatcher polarisEventDispatcher = new InMemoryEventCollector();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,

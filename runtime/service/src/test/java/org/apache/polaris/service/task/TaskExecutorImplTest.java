@@ -30,7 +30,7 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -43,8 +43,8 @@ public class TaskExecutorImplTest {
 
     TestServices testServices = TestServices.builder().realmContext(realmContext).build();
 
-    TestPolarisEventDispatcher testPolarisEventDispatcher =
-        (TestPolarisEventDispatcher) testServices.polarisEventDispatcher();
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
 
     PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
 

@@ -45,7 +45,7 @@ import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.TestPolarisEventDispatcher;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,8 +76,8 @@ public class CommitTransactionEventTest {
 
     // Verify that all (Before/After)CommitTransaction and (Before/After)UpdateTable events were
     // emitted
-    TestPolarisEventDispatcher testPolarisEventDispatcher =
-        (TestPolarisEventDispatcher) testServices.polarisEventDispatcher();
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
     assertThat(testPolarisEventDispatcher.getLatest(PolarisEventType.BEFORE_COMMIT_TRANSACTION))
         .isNotNull();
     PolarisEvent beforeUpdateEvent =
@@ -103,8 +103,8 @@ public class CommitTransactionEventTest {
     executeTransactionTest(true, table3Name, table4Name, testServices);
 
     // Verify that all (Before)CommitTable events were emitted
-    TestPolarisEventDispatcher testPolarisEventDispatcher =
-        (TestPolarisEventDispatcher) testServices.polarisEventDispatcher();
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
 
     // Verify that all BeforeCommitTransaction and BeforeUpdateTable events were emitted,
     // and that the AfterCommitTransaction and AfterUpdateTable events were not emitted
@@ -132,8 +132,8 @@ public class CommitTransactionEventTest {
     String table2Name = "test-table-6";
     executeTransactionTest(false, table1Name, table2Name, testServices);
 
-    TestPolarisEventDispatcher testPolarisEventDispatcher =
-        (TestPolarisEventDispatcher) testServices.polarisEventDispatcher();
+    InMemoryEventCollector testPolarisEventDispatcher =
+        (InMemoryEventCollector) testServices.polarisEventDispatcher();
 
     // Verify that AfterUpdateTable events contain LoadTableResponse objects
     PolarisEvent afterUpdateTableEvent =

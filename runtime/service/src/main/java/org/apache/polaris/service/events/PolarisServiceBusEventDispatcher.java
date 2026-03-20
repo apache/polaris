@@ -31,8 +31,6 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
 
   @Inject EventBus eventBus;
 
-  //  @Inject PolarisEventListeners polarisEventListeners;
-
   @Override
   public void dispatch(PolarisEvent event) {
     eventBus.publish(POLARIS_EVENT_CHANNEL, event);
