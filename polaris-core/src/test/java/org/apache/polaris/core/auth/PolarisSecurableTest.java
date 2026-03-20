@@ -87,6 +87,13 @@ public class PolarisSecurableTest {
   }
 
   @Test
+  void securableRejectsRootLeaf() {
+    assertThatThrownBy(() -> PolarisSecurable.of(new PathSegment(PolarisEntityType.ROOT, "root")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must not include ROOT");
+  }
+
+  @Test
   void securableRejectsInvalidInChainParentHierarchy() {
     assertThatThrownBy(
             () ->

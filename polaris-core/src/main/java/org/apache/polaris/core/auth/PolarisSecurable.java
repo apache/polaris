@@ -77,11 +77,9 @@ public interface PolarisSecurable {
     Preconditions.checkState(
         getPathSegments().get(0).entityType().isTopLevel(),
         "PathSegments must start with a top-level entity");
-    for (PathSegment parent : getParents()) {
+    for (PathSegment segment : getPathSegments()) {
       Preconditions.checkState(
-          parent.entityType() != PolarisEntityType.ROOT,
-          "PathSegments must not include ROOT for securable leaf=%s",
-          getLeaf());
+          segment.entityType() != PolarisEntityType.ROOT, "PathSegments must not include ROOT");
     }
     if (getLeaf().entityType().isTopLevel()) {
       Preconditions.checkState(
