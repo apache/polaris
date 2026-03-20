@@ -83,6 +83,14 @@ public interface PersistenceParams {
   @WithDefault(DEFAULT_MAX_SERIALIZED_VALUE_SIZE_STRING)
   MemorySize maxSerializedValueSize();
 
+  /**
+   * Maximum number of commit-IDs to traverse while resolving an offset for commit log iteration.
+   *
+   * <p>A value of {@code 0} disables the safeguard (unlimited traversal).
+   */
+  @WithDefault("0")
+  long commitOffsetLookupMaxTraversal();
+
   @PolarisImmutable
   interface BuildablePersistenceParams extends PersistenceParams {
     static ImmutableBuildablePersistenceParams.Builder builder() {
@@ -129,6 +137,12 @@ public interface PersistenceParams {
     @Value.Default
     default MemorySize maxSerializedValueSize() {
       return DEFAULT_MAX_SERIALIZED_VALUE_SIZE;
+    }
+
+    @Override
+    @Value.Default
+    default long commitOffsetLookupMaxTraversal() {
+      return 0L;
     }
   }
 }
