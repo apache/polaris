@@ -128,8 +128,10 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.StorageNameValidator;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
@@ -156,6 +158,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
+
+  /**
+   * Reserved Iceberg property that references a server-side named storage credential configuration.
+   * When set on a namespace or table, the entity inherits the catalog's storage config but with the
+   * storageName overridden, enabling per-entity credential resolution.
+   */
+  static final String POLARIS_STORAGE_NAME_PROPERTY = "polaris.storage.name";
+
+  private static final String STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE =
+      "Storage name overrides are not enabled for this realm. "
+          + "Remove property 'polaris.storage.name' or enable feature flag "
+          + "ALLOW_STORAGE_NAME_OVERRIDE.";
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -520,15 +534,35 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       baseLocation += "/";
     }
 
-    NamespaceEntity entity =
+    enforceStorageNameOverrideEnabledIfRequested(metadata);
+
+    PolarisStorageConfigurationInfo namespaceStorageConfig =
+        storageConfigFromPropertyOverride(metadata, resolvedParent.getRawFullPath());
+
+    NamespaceEntity.Builder nsBuilder =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
             .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
             .setParentId(resolvedParent.getRawLeafEntity().getId())
             .setProperties(metadata)
             .setCreateTimestamp(System.currentTimeMillis())
-            .setBaseLocation(baseLocation)
-            .build();
+            .setBaseLocation(baseLocation);
+    NamespaceEntity entity;
+    if (namespaceStorageConfig != null) {
+      LOGGER.debug(
+          "Applying storage name override '{}' on namespace {}",
+          namespaceStorageConfig.getStorageName(),
+          namespace);
+      entity =
+          new NamespaceEntity(
+              new PolarisEntity.Builder(nsBuilder.build())
+                  .addInternalProperty(
+                      PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+                      namespaceStorageConfig.serialize())
+                  .build());
+    } else {
+      entity = nsBuilder.build();
+    }
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());
@@ -708,8 +742,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     // Merge new properties into existing map.
     newProperties.putAll(properties);
-    PolarisEntity updatedEntity =
-        new PolarisEntity.Builder(entity).setProperties(newProperties).build();
+    PolarisEntity.Builder updatedEntityBuilder =
+        new PolarisEntity.Builder(entity).setProperties(newProperties);
+
+    enforceStorageNameOverrideEnabledIfRequested(properties);
+
+    // Handle polaris.storage.name override on namespace update
+    PolarisStorageConfigurationInfo namespaceStorageConfig =
+        storageConfigFromPropertyOverride(properties, resolvedEntities.getRawParentPath());
+    if (namespaceStorageConfig != null) {
+      LOGGER.debug(
+          "Applying storage name override '{}' on namespace {}",
+          namespaceStorageConfig.getStorageName(),
+          namespace);
+      updatedEntityBuilder.addInternalProperty(
+          PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+          namespaceStorageConfig.serialize());
+    }
+
+    PolarisEntity updatedEntity = updatedEntityBuilder.build();
 
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
@@ -755,8 +806,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Map<String, String> updatedProperties = new HashMap<>(entity.getPropertiesAsMap());
     properties.forEach(updatedProperties::remove);
 
-    PolarisEntity updatedEntity =
-        new PolarisEntity.Builder(entity).setProperties(updatedProperties).build();
+    PolarisEntity.Builder updatedEntityBuilder =
+        new PolarisEntity.Builder(entity).setProperties(updatedProperties);
+
+    // If polaris.storage.name is being removed, clear the storage config override
+    if (properties.contains(POLARIS_STORAGE_NAME_PROPERTY)) {
+      LOGGER.debug("Clearing storage name override on namespace {}", namespace);
+      Map<String, String> updatedInternalProperties =
+          new HashMap<>(entity.getInternalPropertiesAsMap());
+      updatedInternalProperties.remove(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+      updatedEntityBuilder.setInternalProperties(updatedInternalProperties);
+    }
+
+    PolarisEntity updatedEntity = updatedEntityBuilder.build();
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
     PolarisEntity returnedEntity =
@@ -1595,7 +1657,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw alreadyExistsExceptionWithSameNameForTableLikeEntity(tableIdentifier, subType);
         }
       }
-      Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
+
+      enforceStorageNameOverrideEnabledForTableCommit(base, metadata);
+
+      Map<String, String> storedProperties =
+          buildTableMetadataPropertiesMap(base, metadata, resolvedNamespace);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
@@ -1745,7 +1811,78 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static Map<String, String> buildTableMetadataPropertiesMap(TableMetadata metadata) {
+  /**
+   * Resolves a storage configuration override from the {@code polaris.storage.name} property. If
+   * the property is present, walks the parent entity path to find the nearest ancestor with a
+   * storage configuration and returns a copy with the storageName overridden.
+   *
+   * @param properties the namespace or table properties to inspect
+   * @param parentPath the parent entity path (root-to-leaf) to search for inherited storage config
+   * @return the overridden config, or null if no override is requested
+   */
+  private static @Nullable PolarisStorageConfigurationInfo storageConfigFromPropertyOverride(
+      Map<String, String> properties, List<PolarisEntity> parentPath) {
+    if (!properties.containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      return null;
+    }
+
+    String rawValue = properties.get(POLARIS_STORAGE_NAME_PROPERTY);
+    String storageName = StorageNameValidator.normalizeBlankToNull(rawValue);
+    if (storageName != null) {
+      StorageNameValidator.validate(storageName);
+    }
+
+    PolarisStorageConfigurationInfo baseConfig = deserializeStorageConfigFromEntityPath(parentPath);
+    if (baseConfig == null) {
+      throw new BadRequestException(
+          "Cannot apply storage name override: no parent storage configuration found");
+    }
+
+    return PolarisStorageConfigurationInfo.withStorageName(baseConfig, storageName);
+  }
+
+  /**
+   * Walks an entity path from leaf to root, returning the first entity's deserialized storage
+   * configuration, or null if none is found. Uses the shared hierarchy walk logic from FileIOUtil.
+   */
+  private static @Nullable PolarisStorageConfigurationInfo deserializeStorageConfigFromEntityPath(
+      List<PolarisEntity> entityPath) {
+    return FileIOUtil.findEntityWithStorageConfigInHierarchy(entityPath)
+        .map(
+            entity -> {
+              String serializedConfig =
+                  entity
+                      .getInternalPropertiesAsMap()
+                      .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+              return PolarisStorageConfigurationInfo.deserialize(serializedConfig);
+            })
+        .orElse(null);
+  }
+
+  private void enforceStorageNameOverrideEnabledIfRequested(Map<String, String> properties) {
+    if (properties.containsKey(POLARIS_STORAGE_NAME_PROPERTY)
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE);
+    }
+  }
+
+  private void enforceStorageNameOverrideEnabledForTableCommit(
+      @Nullable TableMetadata base, TableMetadata metadata) {
+    if (!metadata.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      return;
+    }
+    String priorValue = base == null ? null : base.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
+    String requestedValue = metadata.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
+    if (!Objects.equal(priorValue, requestedValue)
+        && !realmConfig.getConfig(FeatureConfiguration.ALLOW_STORAGE_NAME_OVERRIDE)) {
+      throw new BadRequestException(STORAGE_NAME_OVERRIDE_DISABLED_MESSAGE);
+    }
+  }
+
+  private static Map<String, String> buildTableMetadataPropertiesMap(
+      @Nullable TableMetadata base,
+      TableMetadata metadata,
+      @Nullable List<PolarisEntity> parentPath) {
     Map<String, String> storedProperties = new HashMap<>();
     // Location specific properties
     storedProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
@@ -1788,6 +1925,28 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           IcebergTableLikeEntity.LAST_PARTITION_ID,
           String.valueOf(metadata.lastAssignedPartitionId()));
     }
+
+    // Handle polaris.storage.name property for table-level storage override
+    if (metadata.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      PolarisStorageConfigurationInfo baseConfig =
+          deserializeStorageConfigFromEntityPath(parentPath == null ? List.of() : parentPath);
+      if (baseConfig == null) {
+        throw new BadRequestException(
+            "Cannot apply table storage name override: no parent storage configuration found");
+      }
+      String rawValue = metadata.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
+      String storageName = StorageNameValidator.normalizeBlankToNull(rawValue);
+      if (storageName != null) {
+        StorageNameValidator.validate(storageName);
+      }
+      storedProperties.put(
+          PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+          PolarisStorageConfigurationInfo.withStorageName(baseConfig, storageName).serialize());
+    } else if (base != null && base.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
+      // Property was explicitly removed from table: clear inline storage override
+      storedProperties.remove(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    }
+
     return storedProperties;
   }
 
