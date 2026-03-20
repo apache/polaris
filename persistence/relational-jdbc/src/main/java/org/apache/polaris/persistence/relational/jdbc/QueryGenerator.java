@@ -51,6 +51,13 @@ public class QueryGenerator {
   record QueryFragment(String sql, List<Object> parameters) {}
 
   /**
+   * Marker for a raw SQL expression that should be inlined into the generated SQL instead of being
+   * bound as a {@code ?} parameter. Use sparingly and only with trusted expressions (e.g. {@code
+   * CURRENT_TIMESTAMP}).
+   */
+  public record SqlLiteral(String expression) {}
+
+  /**
    * Generates a SELECT query with projection and filtering.
    *
    * @param projections List of columns to retrieve.
@@ -157,16 +164,28 @@ public class QueryGenerator {
     finalColumns.add("realm_id");
     finalValues.add(realmId);
     String columns = String.join(", ", finalColumns);
-    String placeholders = finalColumns.stream().map(c -> "?").collect(Collectors.joining(", "));
+
+    List<String> placeholderList = new ArrayList<>();
+    List<Object> bindParams = new ArrayList<>();
+    for (int i = 0; i < finalColumns.size(); i++) {
+      Object v = (i < finalValues.size()) ? finalValues.get(i) : null;
+      if (v instanceof SqlLiteral lit) {
+        placeholderList.add(lit.expression());
+      } else {
+        placeholderList.add("?");
+        bindParams.add(v);
+      }
+    }
+
     String sql =
         "INSERT INTO "
             + getFullyQualifiedTableName(tableName)
             + " ("
             + columns
             + ") VALUES ("
-            + placeholders
+            + String.join(", ", placeholderList)
             + ")";
-    return new PreparedQuery(sql, finalValues);
+    return new PreparedQuery(sql, bindParams);
   }
 
   /**
@@ -232,8 +251,12 @@ public class QueryGenerator {
     List<String> setParts = new ArrayList<>();
     List<Object> params = new ArrayList<>();
     for (Map.Entry<String, Object> entry : setClause.entrySet()) {
-      setParts.add(entry.getKey() + " = ?");
-      params.add(entry.getValue());
+      if (entry.getValue() instanceof SqlLiteral lit) {
+        setParts.add(entry.getKey() + " = " + lit.expression());
+      } else {
+        setParts.add(entry.getKey() + " = ?");
+        params.add(entry.getValue());
+      }
     }
     params.addAll(where.parameters());
 
@@ -335,16 +358,28 @@ public class QueryGenerator {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
-      conditions.add(entry.getKey() + " = ?");
-      parameters.add(entry.getValue());
+      if (entry.getValue() instanceof SqlLiteral lit) {
+        conditions.add(entry.getKey() + " = " + lit.expression());
+      } else {
+        conditions.add(entry.getKey() + " = ?");
+        parameters.add(entry.getValue());
+      }
     }
     for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {
-      conditions.add(entry.getKey() + " > ?");
-      parameters.add(entry.getValue());
+      if (entry.getValue() instanceof SqlLiteral lit) {
+        conditions.add(entry.getKey() + " > " + lit.expression());
+      } else {
+        conditions.add(entry.getKey() + " > ?");
+        parameters.add(entry.getValue());
+      }
     }
     for (Map.Entry<String, Object> entry : whereLess.entrySet()) {
-      conditions.add(entry.getKey() + " < ?");
-      parameters.add(entry.getValue());
+      if (entry.getValue() instanceof SqlLiteral lit) {
+        conditions.add(entry.getKey() + " < " + lit.expression());
+      } else {
+        conditions.add(entry.getKey() + " < ?");
+        parameters.add(entry.getValue());
+      }
     }
     for (String column : whereIsNull) {
       conditions.add(column + " IS NULL");

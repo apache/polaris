@@ -147,7 +147,9 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     Integer httpStatus = (Integer) rs.getObject(HTTP_STATUS);
     String errorSubtype = rs.getString(ERROR_SUBTYPE);
     String responseSummary = rs.getString(RESPONSE_SUMMARY);
-    String responseHeaders = rs.getString(RESPONSE_HEADERS);
+    String responseHeadersRaw = rs.getString(RESPONSE_HEADERS);
+    Map<String, String> responseHeaders =
+        IdempotencyRecordSerde.parseResponseHeaders(responseHeadersRaw);
 
     Instant createdAt = rs.getTimestamp(CREATED_AT).toInstant();
     Instant updatedAt = rs.getTimestamp(UPDATED_AT).toInstant();
