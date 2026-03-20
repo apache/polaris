@@ -42,7 +42,6 @@ import static org.assertj.core.groups.Tuple.tuple;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -53,6 +52,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.assertj.core.api.SoftAssertions;
@@ -696,7 +696,7 @@ public class TestIndexImpl {
           .toIterable()
           .describedAs("%s..%s", lower, higher)
           .hasSize(size)
-          .extracting(Map.Entry::getKey)
+          .extracting(Index.Element::key)
           .containsExactlyElementsOf(expected);
 
       if (!prefix) {
@@ -704,7 +704,7 @@ public class TestIndexImpl {
             .toIterable()
             .describedAs("reverse %s..%s", lower, higher)
             .hasSize(size)
-            .extracting(Map.Entry::getKey)
+            .extracting(Index.Element::key)
             .containsExactlyElementsOf(expected.reversed());
       } else {
         soft.assertThatIllegalArgumentException()
@@ -720,7 +720,7 @@ public class TestIndexImpl {
   public void updateAll() {
     var indexTestSet = basicIndexTestSet();
 
-    soft.assertThat(indexTestSet.keyIndex()).isNotEmpty().allMatch(el -> el.getValue().id() > 0);
+    soft.assertThat(indexTestSet.keyIndex()).isNotEmpty().allMatch(el -> el.value().id() > 0);
 
     var index = indexTestSet.keyIndex();
     for (var k : indexTestSet.keys()) {
@@ -730,11 +730,11 @@ public class TestIndexImpl {
 
     soft.assertThat(indexTestSet.keyIndex())
         .hasSize(indexTestSet.keys().size())
-        .allMatch(el -> el.getValue().id() < 0);
+        .allMatch(el -> el.value().id() < 0);
     soft.assertThatIterator(indexTestSet.keyIndex().elementIterator())
         .toIterable()
         .hasSize(indexTestSet.keys().size())
-        .allMatch(el -> el.getValue().id() < 0);
+        .allMatch(el -> el.value().id() < 0);
 
     indexTestSet.keys().forEach(index::remove);
 
