@@ -35,6 +35,7 @@ import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
 import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
@@ -382,6 +383,71 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     return resp;
+  }
+
+  @Override
+  public Response getNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.getNamespaceStorageConfig(
+        catalogName, namespace, realmContext, securityContext);
+  }
+
+  @Override
+  public Response setNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.setNamespaceStorageConfig(
+        catalogName, namespace, storageConfigInfo, realmContext, securityContext);
+  }
+
+  @Override
+  public Response deleteNamespaceStorageConfig(
+      String catalogName,
+      String namespace,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.deleteNamespaceStorageConfig(
+        catalogName, namespace, realmContext, securityContext);
+  }
+
+  @Override
+  public Response getTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.getTableStorageConfig(
+        catalogName, namespace, table, realmContext, securityContext);
+  }
+
+  @Override
+  public Response setTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      StorageConfigInfo storageConfigInfo,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.setTableStorageConfig(
+        catalogName, namespace, table, storageConfigInfo, realmContext, securityContext);
+  }
+
+  @Override
+  public Response deleteTableStorageConfig(
+      String catalogName,
+      String namespace,
+      String table,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.deleteTableStorageConfig(
+        catalogName, namespace, table, realmContext, securityContext);
   }
 
   private PolarisPrivilege getPrivilegeFromGrantResource(GrantResource grantResource) {

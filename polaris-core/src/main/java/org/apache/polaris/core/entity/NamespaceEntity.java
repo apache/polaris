@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /**
  * Namespace-specific subclass of the {@link PolarisEntity} that provides accessors interacting with
@@ -72,6 +73,22 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
+  /**
+   * Get the storage configuration for this namespace entity, if present. This allows
+   * namespace-level storage configuration overrides.
+   *
+   * @return the storage configuration, or null if not set
+   */
+  @JsonIgnore
+  public @Nullable PolarisStorageConfigurationInfo getStorageConfigurationInfo() {
+    String configStr =
+        getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    if (configStr != null) {
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
+    }
+    return null;
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<NamespaceEntity, Builder> {
