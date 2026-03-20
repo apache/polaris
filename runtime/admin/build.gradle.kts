@@ -25,49 +25,17 @@ plugins {
 }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation(project(":polaris-version"))
-  implementation(project(":polaris-api-management-service"))
-  implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-relational-jdbc-admin"))
+  implementation(project(":polaris-admin-defaults"))
 
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-
-  runtimeOnly(project(":polaris-relational-jdbc"))
-  runtimeOnly("org.postgresql:postgresql")
-
-  implementation(project(":polaris-persistence-nosql-api"))
-  implementation(project(":polaris-persistence-nosql-maintenance-api"))
-  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
-  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
-  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
-  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
-  runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
-
-  runtimeOnly("io.quarkus:quarkus-mongodb-client")
+  if (!project.hasProperty("ExcludeNoSqlPersistence")) {
+    implementation(project(":polaris-persistence-nosql-admin"))
+  }
 
   implementation("io.quarkus:quarkus-jdbc-postgresql")
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  implementation(project(":polaris-runtime-common"))
-
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
-  compileOnly("com.fasterxml.jackson.core:jackson-databind")
-
-  testImplementation(project(":polaris-runtime-test-common"))
-  testFixturesApi(project(":polaris-core"))
-
-  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
-  testFixturesApi("io.quarkus:quarkus-junit")
-
-  testFixturesApi(project(":polaris-container-spec-helper"))
-  testFixturesApi(platform(libs.testcontainers.bom))
-  testFixturesApi("org.testcontainers:testcontainers")
-  testFixturesApi("org.testcontainers:testcontainers-postgresql")
-  testFixturesImplementation(testFixtures(project(":polaris-persistence-nosql-mongodb")))
-
-  testRuntimeOnly("org.postgresql:postgresql")
 }
 
 quarkus {
