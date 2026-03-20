@@ -153,6 +153,7 @@ dependencies {
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
+  testImplementation(testFixtures(project(":polaris-core")))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
