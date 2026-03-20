@@ -1,0 +1,116 @@
+{
+  "tests": [
+    {
+      "request": { "authzOp": "CREATE_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_PRINCIPAL_ROLES", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_PRINCIPAL_ROLES", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "ROOT:root_container" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "ROOT:root_container", "secondary": "PRINCIPAL_ROLE:root_container/principal_role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "CREATE_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG:root_container/catalog1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "DELETE_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "UPDATE_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "GET_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_CATALOG_ROLES", "principal": { "name": "admin1" }, "target": "ROOT:root_container/catalog1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "CATALOG_ROLE:root_container/catalog1/role1", "secondary": "PRINCIPAL_ROLE:root_container/principal_role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "ROOT:root_container/catalog1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "ROOT:root_container/catalog1", "secondary": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL_ROLE:root_container/principal_role1", "secondary": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "LIST_GRANTS_FOR_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1", "secondary": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ADD_TABLE_GRANT_TO_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/table1", "secondary": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "ADD_VIEW_GRANT_TO_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE", "principal": { "name": "admin1" }, "target": "TABLE_LIKE:root_container/catalog1/namespace1/view1", "secondary": "CATALOG_ROLE:root_container/catalog1/role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "DELETE_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL_ROLE:root_container/principal_role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "GET_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL_ROLE:root_container/principal_role1" },
+      "result":  { "isAllowed": false }
+    },
+    {
+      "request": { "authzOp": "UPDATE_PRINCIPAL_ROLE", "principal": { "name": "admin1" }, "target": "PRINCIPAL_ROLE:root_container/principal_role1" },
+      "result":  { "isAllowed": false }
+    }
+  ]
+}
