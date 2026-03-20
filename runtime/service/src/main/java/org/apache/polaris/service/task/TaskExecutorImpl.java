@@ -53,10 +53,10 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +79,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final PolarisPrincipal polarisPrincipal;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
-  private final PolarisEventListener polarisEventListener;
+  private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
 
@@ -97,7 +97,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       RealmContextHolder realmContextHolder,
-      PolarisEventListener polarisEventListener,
+      PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
       PolarisPrincipalHolder polarisPrincipalHolder,
@@ -107,7 +107,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
     this.realmContextHolder = realmContextHolder;
-    this.polarisEventListener = polarisEventListener;
+    this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
     this.polarisPrincipalHolder = polarisPrincipalHolder;
@@ -198,7 +198,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_ATTEMPT_TASK,
             eventMetadataFactory.copy(eventMetadata),
@@ -247,7 +247,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onEvent(
+      polarisEventDispatcher.dispatch(
           new PolarisEvent(
               PolarisEventType.AFTER_ATTEMPT_TASK,
               eventMetadataFactory.copy(eventMetadata),
