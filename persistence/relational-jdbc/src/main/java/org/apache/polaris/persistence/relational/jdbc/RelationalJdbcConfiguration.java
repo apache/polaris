@@ -35,4 +35,10 @@ public interface RelationalJdbcConfiguration {
    * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
    */
   Optional<String> databaseType();
+
+  /**
+   * The identifier of the {@link DataSourceResolver} bean to use. Used by {@link JdbcCdiProducers}
+   * to select the resolver via CDI's {@link io.smallrye.common.annotation.Identifier}.
+   */
+  String dataSourceResolverType();
 }

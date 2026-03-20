@@ -202,5 +202,10 @@ class MetricsReportPersistenceTest {
     public Optional<String> databaseType() {
       return Optional.empty();
     }
+
+    @Override
+    public String dataSourceResolverType() {
+      return "default";
+    }
   }
 }

@@ -16,16 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.persistence.relational.jdbc;
 
-plugins {
-  id("org.kordamp.gradle.jandex")
-  id("polaris-server")
-}
+import javax.sql.DataSource;
+import org.apache.polaris.core.context.RealmContext;
 
-dependencies {
-  compileOnly(libs.smallrye.config.core)
-  implementation(project(":polaris-core"))
-  implementation(project(":polaris-relational-jdbc"))
-  implementation(platform(libs.quarkus.amazon.services.bom))
-  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
+/**
+ * Service to resolve the correct {@link DataSource} for a given realm. Note: Currently this is
+ * implemented as a foundation for metastore routing.
+ */
+public interface DataSourceResolver {
+
+  /**
+   * Resolves the DataSource for a given realm.
+   *
+   * @param realmContext the realm context
+   * @return the resolved DataSource
+   */
+  DataSource resolve(RealmContext realmContext);
 }
