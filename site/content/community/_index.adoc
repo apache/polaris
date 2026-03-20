@@ -30,7 +30,7 @@ cascade:
 {{% blocks/feature icon="fa-solid fa-graduation-cap" title="Learn, Connect and Collaborate" %}}
 [cols="2,3"]
 |===
-| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-3niqssi92-s2IQMbe1jJ89ayZ4jQv2EQ[Slack]
+| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-3rw95a9d3-Gk~1cnpjCYpm8JL8vry_ww[Slack]
 | Public chat, open to everybody
 
 | link:{{% ref "meetings" %}}[Community Meetings]
@@ -56,15 +56,15 @@ cascade:
 | Development oriented content
 | mailto:dev-subscribe@polaris.apache.org[Subscribe to dev@]
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
+pass:[<a href="https://lists.apache.org/list.html?dev@polaris.apache.org" target="_blank" rel="noopener">Mailing List Archives</a>]
 | Notifications about GitHub issues and PRs
 | mailto:issues-subscribe@polaris.apache.org[Subscribe to issues@]
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
+pass:[<a href="https://lists.apache.org/list.html?issues@polaris.apache.org" target="_blank" rel="noopener">Mailing List Archives</a>]
 | Notifications about Git commits
 | mailto:commits-subscribe@polaris.apache.org[Subscribe to commits@]
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
+pass:[<a href="https://lists.apache.org/list.html?commits@polaris.apache.org" target="_blank" rel="noopener">Mailing List Archives</a>]
 |===
 {{% /blocks/feature %}}
 

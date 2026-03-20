@@ -22,7 +22,6 @@ import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
 /**
@@ -39,13 +38,12 @@ public interface PolarisResolutionManifestCatalogView {
         .orElse(null);
   }
 
-  PolarisResolvedPathWrapper getResolvedPath(Object key);
+  PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key);
 
-  PolarisResolvedPathWrapper getResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
+  PolarisResolvedPathWrapper getResolvedPath(ResolvedPathKey key, PolarisEntitySubType subType);
 
-  PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key);
+  PolarisResolvedPathWrapper getPassthroughResolvedPath(ResolvedPathKey key);
 
   PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
+      ResolvedPathKey key, PolarisEntitySubType subType);
 }

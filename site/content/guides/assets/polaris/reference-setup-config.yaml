@@ -1,0 +1,226 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# =================================================================
+#  Apache Polaris - Comprehensive Setup Configuration Sample
+#
+#  This file provides a comprehensive set of examples for all
+#  supported options in the `polaris setup apply` command.
+#  It is intended to be a reference document.
+# =================================================================
+
+# ==================================
+#        Global Entities
+# ==================================
+# Principals are identities that can be granted access, like users or services.
+principals:
+  # A principal for a quickstart user
+  quickstart_user:
+    type: service
+    roles:
+      - quickstart_user_role
+  # A principal for a readonly user
+  readonly_user:
+    type: service
+    roles:
+      - readonly_user_role
+  # A principal for a development user
+  dev_user:
+    type: service
+    roles:
+      - dev_user_role
+
+# Principal roles are global roles that group principals.
+principal_roles:
+  - quickstart_user_role
+  - readonly_user_role
+  - dev_user_role
+
+# ==================================
+#     Catalog Specific Entities
+# ==================================
+catalogs:
+  # =================================================================
+  #  Section 1: Internal Catalogs (Polaris-Managed)
+  # =================================================================
+  # Internal catalogs have their metadata managed by Polaris.
+
+  # --- Example 1.1: Internal Catalog with File Storage ---
+  - name: "quickstart_catalog"
+    type: internal
+    storage_type: "file"
+    default_base_location: "file:///var/tmp/quickstart_catalog/"
+    allowed_locations:
+      - "file:///var/tmp/quickstart_catalog/"
+    properties:
+      catalog: quickstart_catalog
+    
+    # --- Roles and Privileges ---
+    # Catalog roles are scoped to this specific catalog.
+    roles:
+      quickstart_catalog_role:
+        # Assigns this catalog role to one or more principal roles.
+        assign_to:
+          - quickstart_user_role
+        privileges:
+          # Privileges applied to the whole catalog
+          catalog:
+            - CATALOG_MANAGE_CONTENT
+      readonly_catalog_role:
+        assign_to:
+          - readonly_user_role
+        privileges:
+          catalog:
+            - TABLE_READ_DATA
+            - TABLE_FULL_METADATA
+            - VIEW_FULL_METADATA
+            - NAMESPACE_FULL_METADATA
+            - CATALOG_READ_PROPERTIES
+      dev_catalog_role:
+        assign_to: 
+          - dev_user_role
+        privileges:
+          # Privileges scoped to specific namespaces within this catalog
+          namespace:
+            dev_namespace:
+              - TABLE_READ_DATA
+              - TABLE_WRITE_DATA
+              - TABLE_FULL_METADATA
+
+    # --- Namespaces ---
+    # List of namespaces to create within this catalog.
+    namespaces:
+      - dev_namespace.sub_namespace
+
+    # --- Policies ---
+    # Defines policies that can be attached to entities in this catalog.
+    policies:
+      compaction-policy:
+        namespace: dev_namespace
+        type: "system.data-compaction"
+        description: "Policy to enable data compaction for tables"
+        content: {
+          "version": "2025-02-03",
+          "enable": true,
+          "config": {
+            "target_file_size_bytes": 134217728,
+            "compaction_strategy": "bin-pack",
+            "max-concurrent-file-group-rewrites": 5,
+            "key1": "value1"
+          }
+        }
+        ## commented out as table/view doesn't exist out of box
+        # attach:
+        #   - { type: table-like, path: dev_namespace.sub_namespace.dev_table }
+      snapshot-expiry-policy:
+        namespace: dev_namespace
+        type: "system.snapshot-expiry"
+        description: "Policy to expire old snapshots"
+        content: {
+          "version": "2025-02-03",
+          "enable": true,
+          "config": {
+            "min_snapshot_to_keep": 1,
+            "max_snapshot_age_days": 2,
+            "max_ref_age_days": 3,
+            "key1": "value1"
+          }
+        }
+        attach:
+          - { type: namespace, path: dev_namespace }
+      orphan-file-policy:
+        namespace: dev_namespace
+        type: "system.orphan-file-removal"
+        description: "Policy to remove orphan files"
+        content: {
+          "version": "2025-02-03",
+          "enable": true,
+          "max_orphan_file_age_in_days": 30,
+          "locations": ["s3://my-bucket/my-table-location"],
+          "config": {
+            "prefix_mismatch_mode": "ignore",
+            "key1": "value1"
+          }
+        }
+        attach:
+          - { type: catalog }
+
+  # --- Example 1.2: Internal Catalog with S3 Storage ---
+  - name: "quickstart_catalog_s3"
+    type: internal
+    storage_type: "s3"
+    default_base_location: "s3://quickstart-bucket/quickstart_catalog/"
+    allowed_locations:
+      - "s3://quickstart-bucket/quickstart_catalog/"
+    # --- S3-Specific Properties ---
+    # The ARN of the IAM role Polaris assumes to access S3.
+    role_arn: "arn:aws:iam::123456789012:role/QuickstartS3Role"
+    # The External ID for the IAM role assumption.
+    external_id: "12345678-1234-1234-1234-123456789abc"
+    # The ARN of the IAM user that assumes the role.
+    user_arn: "arn:aws:iam::123456789012:user/QuickstartUser"
+    # The AWS region for the S3 bucket.
+    region: "us-west-2"
+    # Custom S3 endpoint.
+    endpoint: "https://s3.us-west-2.amazonaws.com"
+    # Set to true if the storage does not support AWS STS for credential vending.
+    sts_unavailable: false
+    # Set to true to disable KMS key policies.
+    kms_unavailable: false
+    # Set to true to use path-style access.
+    path_style_access: false
+    # The ARN of the default KMS key for server-side encryption.
+    current_kms_key: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    # A list of other KMS keys that are allowed for this catalog.
+    allowed_kms_keys:
+      - "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    properties:
+      catalog: quickstart_catalog_s3
+
+  # --- Example 1.3: Internal Catalog with Azure Storage ---
+  - name: "quickstart_catalog_azure"
+    type: internal
+    storage_type: "azure"
+    default_base_location: "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+    allowed_locations:
+      - "abfss://container@storageaccount.blob.core.windows.net/quickstart_catalog/"
+    # --- Azure-Specific Properties ---
+    # The Azure Tenant ID for the storage account.
+    tenant_id: "12345678-1234-1234-1234-123456789abc"
+    # The name of the multi-tenant app used for authentication.
+    multi_tenant_app_name: "QuickstartAzureApp"
+    # The URL for OAuth consent.
+    consent_url: "https://login.microsoftonline.com/consent"
+    properties:
+      catalog: quickstart_catalog_azure
+
+  # --- Example 1.4: Internal Catalog with GCS Storage ---
+  ## commented out as implicitly gcs auth is needed
+  # - name: "quickstart_catalog_gcs"
+  #   type: internal
+  #   storage_type: "gcs"
+  #   default_base_location: "gs://quickstart-bucket/quickstart_catalog/"
+  #   allowed_locations:
+  #     - "gs://quickstart-bucket/quickstart_catalog/"    
+  #   # --- GCS-Specific Properties ---
+  #   # The GCS service account Polaris uses to access the bucket.
+  #   service_account: "quickstart-service-account@gcs-project.iam.gserviceaccount.com"
+  #   properties:
+  #     catalog: quickstart_catalog_gcs
+

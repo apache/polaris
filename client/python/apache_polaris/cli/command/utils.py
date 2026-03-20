@@ -18,6 +18,8 @@
 #
 import re
 
+import datetime
+
 from apache_polaris.sdk.catalog.api_client import ApiClient
 from apache_polaris.sdk.catalog.configuration import Configuration
 from apache_polaris.sdk.management import PolarisDefaultApi
@@ -41,4 +43,24 @@ def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
     if hasattr(mgmt_config, "proxy_headers"):
         configuration.proxy_headers = mgmt_config.proxy_headers
 
-    return ApiClient(configuration)
+    catalog_client = ApiClient(configuration)
+
+    # Preserve custom headers (like Polaris-Realm) from management client
+    if hasattr(api.api_client, "default_headers"):
+        for header_name, header_value in api.api_client.default_headers.items():
+            if header_name != "User-Agent":  # Don't override User-Agent
+                catalog_client.set_default_header(header_name, header_value)
+
+    return catalog_client
+
+
+def format_timestamp(ms_since_epoch: int) -> str:
+    """
+    Convert a timestamp in milliseconds since epoch to a human-readable string
+    """
+    if ms_since_epoch is None:
+        return "Unknown"
+    dt = datetime.datetime.fromtimestamp(
+        ms_since_epoch / 1000, tz=datetime.timezone.utc
+    )
+    return dt.strftime("%Y-%m-%d %H:%M:%S UTC")

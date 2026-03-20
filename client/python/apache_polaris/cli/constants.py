@@ -90,6 +90,7 @@ class Commands:
     NAMESPACES = "namespaces"
     PROFILES = "profiles"
     POLICIES = "policies"
+    SETUP = "setup"
 
 
 class Subcommands:
@@ -114,6 +115,9 @@ class Subcommands:
     RESET = "reset"
     ATTACH = "attach"
     DETACH = "detach"
+    APPLY = "apply"
+    EXPORT = "export"
+    SUMMARIZE = "summarize"
 
 
 class Actions:
@@ -209,6 +213,8 @@ class Arguments:
     APPLICABLE = "applicable"
     ATTACHMENT_TYPE = "attachment_type"
     ATTACHMENT_PATH = "attachment_path"
+    SETUP_CONFIG = "setup_config"
+    DRY_RUN = "dry_run"
     REALM = "realm"
     HEADER = "header"
 
@@ -235,6 +241,9 @@ class Hints:
         " the same update command then the list of removals is applied last. Multiple"
         " can be provided by specifying this option more than once"
     )
+
+    class Setup:
+        DRY_RUN = "If specified, the command will only print the actions to be taken without executing them."
 
     class Catalogs:
         GRANT = "Grant a catalog role to a catalog"

@@ -856,7 +856,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     Set<Long> entityIdSet =
         activatedEntities.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
-    for (PolarisPrivilege privilegeOnTarget : authzOp.getPrivilegesOnTarget()) {
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(authzOp);
+    for (PolarisPrivilege privilegeOnTarget : semantics.targetPrivileges()) {
       // If any privileges are required on target, the target must be non-null.
       Preconditions.checkState(
           targets != null,
@@ -871,7 +872,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         }
       }
     }
-    for (PolarisPrivilege privilegeOnSecondary : authzOp.getPrivilegesOnSecondary()) {
+    for (PolarisPrivilege privilegeOnSecondary : semantics.secondaryPrivileges()) {
       Preconditions.checkState(
           secondaries != null,
           "Got null secondary when authorizing authzOp %s for privilege %s",

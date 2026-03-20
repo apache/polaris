@@ -54,6 +54,7 @@ import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
@@ -91,7 +92,8 @@ public class PolicyCatalog {
   public Policy createPolicy(
       PolicyIdentifier policyIdentifier, String type, String description, String content) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(policyIdentifier.namespace());
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofNamespace(policyIdentifier.namespace()));
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -102,7 +104,8 @@ public class PolicyCatalog {
 
     PolarisResolvedPathWrapper resolvedPolicyEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            ResolvedPathKey.ofPolicy(policyIdentifier.namespace(), policyIdentifier.name()),
+            PolarisEntitySubType.NULL_SUBTYPE);
 
     PolicyEntity entity =
         PolicyEntity.of(
@@ -155,7 +158,8 @@ public class PolicyCatalog {
   }
 
   public List<PolicyIdentifier> listPolicies(Namespace namespace, @Nullable PolicyType policyType) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
       throw new IllegalStateException(
           String.format("Failed to fetch resolved namespace '%s'", namespace));
@@ -446,7 +450,8 @@ public class PolicyCatalog {
       return List.of(catalogEntity);
     } else if (Strings.isNullOrEmpty(targetName)) {
       // namespace
-      var resolvedTargetEntity = resolvedEntityView.getResolvedPath(namespace);
+      var resolvedTargetEntity =
+          resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
       if (resolvedTargetEntity == null) {
         throw noSuchNamespaceException(namespace);
       }
@@ -457,7 +462,7 @@ public class PolicyCatalog {
       // only Iceberg tables are supported
       var resolvedTableEntity =
           resolvedEntityView.getResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
       if (resolvedTableEntity == null) {
         throw notFoundExceptionForTableLikeEntity(
             tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -478,7 +483,8 @@ public class PolicyCatalog {
   private PolarisResolvedPathWrapper getResolvedPathWrapper(PolicyIdentifier policyIdentifier) {
     var resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            policyIdentifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            ResolvedPathKey.ofPolicy(policyIdentifier.namespace(), policyIdentifier.name()),
+            PolarisEntitySubType.NULL_SUBTYPE);
     if (resolvedEntities == null || resolvedEntities.getResolvedLeafEntity() == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", policyIdentifier));
     }

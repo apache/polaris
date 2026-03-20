@@ -236,7 +236,7 @@ Common examples include:
 - Setting `default allow := false` to deny by default
 - Explicitly allowing only operations your users need
 
-**Internal-Only Operations**: Some operations like `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE` and `CREATE_POLICY` manage Polaris's internal privilege system. **These should always be denied in OPA policies** since privilege management should be handled through Polaris's native authorization system, not external policies.
+**Internal-Only Operations**: Some operations like `CREATE_POLICY` manage Polaris's internal privilege system. **These should always be denied in OPA policies** since privilege management should be handled through Polaris's native authorization system, not external policies.
 {{< /alert >}}
 
 #### Resource Object
@@ -330,7 +330,7 @@ allow if {
 ```
 
 {{< alert info "Best Practice" >}}
-**Explicit Allow Lists for Data Operations Only**: The example above uses an explicit allow-list approach where only catalog, namespace, and table operations are permitted. Policy and grant operations (like `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `CREATE_POLICY`) are automatically denied by the `default allow := false` since they're not in any allow rule. This ensures privilege management remains within Polaris's native authorization system, and new operations added in future Polaris versions will be denied by default until you explicitly allow them.
+**Explicit Allow Lists for Data Operations Only**: The example above uses an explicit allow-list approach where only catalog, namespace, and table operations are permitted. Policy and grant operations (like `CREATE_POLICY`) are automatically denied by the `default allow := false` since they're not in any allow rule. This ensures privilege management remains within Polaris's native authorization system, and new operations added in future Polaris versions will be denied by default until you explicitly allow them.
 {{< /alert >}}
 
 ### Testing Policies
@@ -350,22 +350,6 @@ test_admin_can_create_catalog if {
             "targets": [{
                 "type": "CATALOG",
                 "name": "new_catalog",
-                "parents": []
-            }],
-            "secondaries": []
-        },
-        "context": {"request_id": "test"}
-    }
-}
-
-test_admin_cannot_grant_privileges if {
-    not allow with input as {
-        "actor": {"principal": "admin", "roles": ["ADMIN"]},
-        "action": "ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE",
-        "resource": {
-            "targets": [{
-                "type": "PRINCIPAL_ROLE",
-                "name": "some_role",
                 "parents": []
             }],
             "secondaries": []

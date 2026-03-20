@@ -17,13 +17,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris Documentation (Unreleased)'
 linkTitle: 'In Development'
-title: 'Overview'
 type: docs
 weight: 200
 params:
   top_hidden: true
   show_page_toc: false
+menus:
+  main:
+    parent: doc
+    weight: -999998 # 2nd item in the menu
+    identifier: doc-in-dev
 cascade:
   type: docs
   params:

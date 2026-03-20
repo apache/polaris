@@ -30,6 +30,7 @@ from apache_polaris.sdk.management import (
     UpdatePrincipalRoleRequest,
     GrantPrincipalRoleRequest,
 )
+from apache_polaris.cli.command.utils import format_timestamp
 
 
 @dataclass
@@ -118,7 +119,51 @@ class PrincipalRolesCommand(Command):
             api.assign_principal_role(self.principal_name, request)
         elif self.principal_roles_subcommand == Subcommands.REVOKE:
             api.revoke_principal_role(self.principal_name, self.principal_role_name)
+        elif self.principal_roles_subcommand == Subcommands.SUMMARIZE:
+            self._generate_summary(api)
         else:
             raise Exception(
                 f"{self.principal_roles_subcommand} is not supported in the CLI"
             )
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        print(f"Principal Role: {self.principal_role_name}")
+        print("-" * 80)
+        # Metadata
+        role = api.get_principal_role(self.principal_role_name)
+        print("Metadata")
+        print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
+        print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
+        print(f"  {'Version:':<30} {role.entity_version}")
+        # Assigned Principals
+        principals = (
+            api.list_assignee_principals_for_principal_role(
+                self.principal_role_name
+            ).principals
+            or []
+        )
+        print("Assigned Principals")
+        if principals:
+            for principal in sorted(principals, key=lambda x: x.name):
+                print(f"  - {principal.name}")
+        else:
+            print("  No principals assigned.")
+        # Assigned Catalog Roles
+        assigned_catalog_roles = []
+        catalogs = api.list_catalogs().catalogs or []
+        for catalog in catalogs:
+            catalog_roles = (
+                api.list_catalog_roles_for_principal_role(
+                    self.principal_role_name, catalog.name
+                ).roles
+                or []
+            )
+            for catalog_role in catalog_roles:
+                assigned_catalog_roles.append((catalog_role.name, catalog.name))
+        print("Assigned Catalog Roles")
+        if assigned_catalog_roles:
+            for catalog_role_name, catalog_name in sorted(assigned_catalog_roles):
+                print(f"  - {catalog_role_name} (Catalog: {catalog_name})")
+        else:
+            print("  No catalog roles assigned.")
+        print("-" * 80)

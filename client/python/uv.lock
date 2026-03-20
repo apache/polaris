@@ -19,6 +19,7 @@ dependencies = [
     { name = "boto3" },
     { name = "pydantic" },
     { name = "python-dateutil" },
+    { name = "pyyaml" },
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
@@ -41,6 +42,7 @@ requires-dist = [
     { name = "boto3", specifier = "~=1.42.2" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "typing-extensions", specifier = ">=4.7.1" },
     { name = "urllib3", specifier = ">=1.25.3,<3.0.0" },
 ]
