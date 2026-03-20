@@ -50,6 +50,9 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  implementation(platform(libs.jackson.bom))
+
   implementation(project(":polaris-runtime-common"))
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")

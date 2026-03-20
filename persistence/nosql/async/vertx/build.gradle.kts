@@ -31,7 +31,8 @@ dependencies {
   implementation(libs.guava)
 
   compileOnly(enforcedPlatform(libs.quarkus.bom))
-  compileOnly("io.vertx:vertx-core")
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  compileOnly(libs.vertx.core)
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
@@ -47,7 +48,8 @@ dependencies {
   testFixturesApi(libs.jakarta.enterprise.cdi.api)
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
-  testFixturesApi("io.vertx:vertx-core")
+  // Need the full dep reference for local Quarkus snapshot builds
+  testFixturesApi(libs.vertx.core)
 
   testImplementation(testFixtures(project(":polaris-async-api")))
 }
