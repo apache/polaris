@@ -227,12 +227,10 @@ function proc_exec {
   "${@}" > "${output_file}" 2>&1
   exit_code=$?
   if [[ $exit_code -ne 0 ]]; then
-    local output=()
-    while IFS= read -r line; do
-      output+=("$line")
-    done < "${output_file}"
+    local output
+    output=$(cat "${output_file}")
     rm -f "${output_file}"
-    log_fatal "${err_msg}" "${output[@]}"
+    log_fatal "${err_msg}" "${output}"
     return 1
   fi
   rm -f "${output_file}"
