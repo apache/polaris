@@ -98,7 +98,7 @@ public interface AuthorizationRequest {
   }
 
   static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
-    PolarisEntityType entityType = securable.getEntityType();
+    PolarisEntityType entityType = securable.getLeaf().entityType();
     for (PolarisEntityType type : types) {
       if (entityType == type) {
         return true;
