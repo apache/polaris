@@ -104,8 +104,7 @@ public class RestCatalogMinIOSpecialIT {
   private static final String MINIO_ACCESS_KEY = "test-ak-123";
   private static final String MINIO_SECRET_KEY = "test-sk-123";
   private static final String TEST_REGION = "us-west-2";
-  private static final String TEST_ROLE_ARN =
-      "arn:aws:iam::000000000000:role/polaris-access-role";
+  private static final String TEST_ROLE_ARN = "arn:aws:iam::000000000000:role/polaris-access-role";
   private static String adminToken;
 
   public static class Profile implements QuarkusTestProfile {
@@ -303,13 +302,12 @@ public class RestCatalogMinIOSpecialIT {
 
   @ParameterizedTest
   @CsvSource({
-    "false, false, false",
-    "true,  false, false",
-    "false, true,  false",
-    "true,  true,  true",
+    "false, false",
+    "true,  false",
+    "false, true",
   })
-  public void testCreateTableVendedCredentialsWithAwsShapeTriggersMinioKmsFailure(
-      boolean includeRegion, boolean includeRoleArn, boolean expectFailure) throws IOException {
+  public void testCreateTableVendedCredentialsWithPartialAwsShapePasses(
+      boolean includeRegion, boolean includeRoleArn) throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(
             Optional.of(endpoint),
@@ -322,32 +320,34 @@ public class RestCatalogMinIOSpecialIT {
             includeRoleArn ? Optional.of(TEST_ROLE_ARN) : Optional.empty(),
             Optional.of(false))) {
       TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
-      if (expectFailure) {
-        assertThatThrownBy(
-                () ->
-                    catalogApi.loadTable(
-                        catalogName,
-                        id,
-                        "ALL",
-                        Map.of(
-                            "X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-            .hasMessageContaining("Failed to get subscoped credentials")
-            .hasMessageContaining("invalid resource")
-            .hasMessageContaining("arn:aws:kms:us-west-2:000000000000:key/*");
-      } else {
-        LoadTableResponse response =
-            catalogApi.loadTable(
-                catalogName,
-                id,
-                "ALL",
-                Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue()));
-        assertThat(response.config())
-            .containsEntry(
-                REFRESH_CREDENTIALS_ENDPOINT,
-                "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
-        assertThat(response.credentials()).hasSize(1);
+      try {
+        assertLoadTableWithVendedCredentialsSucceeds(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
       }
-      catalogApi.dropTable(catalogName, id);
+    }
+  }
+
+  @Test
+  public void testCreateTableVendedCredentialsWithFullAwsShapeAndKmsEnabledFails()
+      throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true,
+            Optional.of(TEST_REGION),
+            Optional.of(TEST_ROLE_ARN),
+            Optional.of(false))) {
+      TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+      try {
+        assertLoadTableWithVendedCredentialsFailsWithKmsError(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
     }
   }
 
@@ -366,24 +366,43 @@ public class RestCatalogMinIOSpecialIT {
             Optional.of(TEST_ROLE_ARN),
             Optional.of(true))) {
       TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
-      LoadTableResponse response =
-          catalogApi.loadTable(
-              catalogName,
-              id,
-              "ALL",
-              Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue()));
-      assertThat(response.config())
-          .containsEntry(
-              REFRESH_CREDENTIALS_ENDPOINT,
-              "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
-      assertThat(response.credentials()).hasSize(1);
-      catalogApi.dropTable(catalogName, id);
+      try {
+        assertLoadTableWithVendedCredentialsSucceeds(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
     }
   }
 
+  private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
+    assertThatThrownBy(
+            () ->
+                catalogApi.loadTable(
+                    catalogName,
+                    id,
+                    "ALL",
+                    Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+        .hasMessageContaining("Failed to get subscoped credentials")
+        .hasMessageContaining("invalid resource")
+        .hasMessageContaining("arn:aws:kms:us-west-2:000000000000:key/*");
+  }
+
+  private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {
+    LoadTableResponse response =
+        catalogApi.loadTable(
+            catalogName,
+            id,
+            "ALL",
+            Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue()));
+    assertThat(response.config())
+        .containsEntry(
+            REFRESH_CREDENTIALS_ENDPOINT,
+            "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
+    assertThat(response.credentials()).hasSize(1);
+  }
+
   private LoadTableResponse doTestCreateTable(
-      boolean pathStyle, Optional<AccessDelegationMode> dm, boolean stsEnabled)
-      throws IOException {
+      boolean pathStyle, Optional<AccessDelegationMode> dm, boolean stsEnabled) throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle, dm, stsEnabled)) {
       LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog, dm);
