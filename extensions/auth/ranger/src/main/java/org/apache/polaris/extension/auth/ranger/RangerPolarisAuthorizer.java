@@ -118,14 +118,18 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+
+    RangerPolarisOperationSemantics semantics =
+        RangerPolarisOperationSemantics.forOperation(authzOp);
+
     if (LOG.isDebugEnabled()) {
       LOG.debug(
           "authorizeOrThrow(principal={}, activatedEntities={}, authzOp={name: {}, targetPrivileges: {}, secondaryPrivileges: {}), targets={}, secondaries={}",
           polarisPrincipal,
           activatedEntities,
           authzOp,
-          authzOp.getPrivilegesOnTarget(),
-          authzOp.getPrivilegesOnSecondary(),
+          semantics.targetPrivileges(),
+          semantics.secondaryPrivileges(),
           targets,
           secondaries);
     }
@@ -170,15 +174,18 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     boolean isSecondarySpecified = secondaries != null && !secondaries.isEmpty();
     List<RangerAccessInfo> accessInfos = new ArrayList<>();
 
-    if (!authzOp.getPrivilegesOnTarget().isEmpty()) {
+    RangerPolarisOperationSemantics semantics =
+        RangerPolarisOperationSemantics.forOperation(authzOp);
+
+    if (!semantics.targetPrivileges().isEmpty()) {
       Preconditions.checkState(
           isTargetSpecified,
           "No target provided to authorize %s for privileges %s",
           authzOp,
-          authzOp.getPrivilegesOnTarget());
+          semantics.targetPrivileges());
 
       for (PolarisResolvedPathWrapper target : targets) {
-        accessInfos.add(RangerUtils.toAccessInfo(target, authzOp, authzOp.getPrivilegesOnTarget()));
+        accessInfos.add(RangerUtils.toAccessInfo(target, authzOp, semantics.targetPrivileges()));
       }
     } else if (isTargetSpecified) {
       LOG.warn(
@@ -188,16 +195,16 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
           principal.getName());
     }
 
-    if (!authzOp.getPrivilegesOnSecondary().isEmpty()) {
+    if (!semantics.secondaryPrivileges().isEmpty()) {
       Preconditions.checkState(
           isSecondarySpecified,
           "No secondaries provided to authorize %s for privileges %s",
           authzOp,
-          authzOp.getPrivilegesOnSecondary());
+          semantics.secondaryPrivileges());
 
       for (PolarisResolvedPathWrapper secondary : secondaries) {
         accessInfos.add(
-            RangerUtils.toAccessInfo(secondary, authzOp, authzOp.getPrivilegesOnSecondary()));
+            RangerUtils.toAccessInfo(secondary, authzOp, semantics.secondaryPrivileges()));
       }
     } else if (isSecondarySpecified) {
       LOG.warn(

@@ -20,7 +20,6 @@
 package org.apache.polaris.extension.auth.ranger.utils;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -146,7 +145,7 @@ public class RangerUtils {
   public static RangerAccessInfo toAccessInfo(
       PolarisResolvedPathWrapper entity,
       PolarisAuthorizableOperation authzOp,
-      EnumSet<PolarisPrivilege> privileges) {
+      Set<PolarisPrivilege> privileges) {
     return new RangerAccessInfo(
         RangerUtils.toResourceInfo(entity), authzOp.name(), RangerUtils.toPermissions(privileges));
   }
@@ -186,7 +185,7 @@ public class RangerUtils {
     return ret;
   }
 
-  private static Set<String> toPermissions(EnumSet<PolarisPrivilege> privileges) {
+  private static Set<String> toPermissions(Set<PolarisPrivilege> privileges) {
     return privileges.stream().map(RangerUtils::toAccessType).collect(Collectors.toSet());
   }
 
