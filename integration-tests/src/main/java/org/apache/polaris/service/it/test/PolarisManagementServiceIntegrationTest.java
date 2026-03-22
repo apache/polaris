@@ -747,16 +747,17 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
-  public void testUpdateCatalogAddRoleArn() {
-    // Create a catalog without a role ARN
-    StorageConfigInfo storageConfigWithoutArn =
-        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3).build();
+  public void testUpdateCatalogChangeAwsAccountIdRejected() {
+    StorageConfigInfo initialConfig =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789011:role/myrole")
+            .build();
     String catalogName = client.newEntityName("mycatalog");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(storageConfigWithoutArn)
+            .setStorageConfigInfo(initialConfig)
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
 
@@ -767,48 +768,23 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalogName)).get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
-      assertThat(fetchedCatalog.getStorageConfigInfo())
-          .isInstanceOf(AwsStorageConfigInfo.class)
-          .hasFieldOrPropertyWithValue("roleArn", null);
     }
 
-    // Update the catalog to add a role ARN
-    StorageConfigInfo storageConfigWithArn =
+    // Changing to a different AWS account should be rejected
+    StorageConfigInfo differentAccountConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setRoleArn("arn:aws:iam::123456789011:role/myrole")
+            .setRoleArn("arn:aws:iam::999999999999:role/otherrole")
             .build();
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            storageConfigWithArn);
+            differentAccountConfig);
 
     try (Response response =
         managementApi
             .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = response.readEntity(Catalog.class);
-      assertThat(fetchedCatalog.getStorageConfigInfo())
-          .isInstanceOf(AwsStorageConfigInfo.class)
-          .hasFieldOrPropertyWithValue("roleArn", "arn:aws:iam::123456789011:role/myrole");
-    }
-
-    // Once the role ARN is set, changing the AWS account ID should be rejected
-    StorageConfigInfo storageConfigDifferentAccount =
-        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setRoleArn("arn:aws:iam::999999999999:role/otherrole")
-            .build();
-    UpdateCatalogRequest badUpdateRequest =
-        new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(),
-            Map.of("default-base-location", "s3://bucket1/"),
-            storageConfigDifferentAccount);
-
-    try (Response response =
-        managementApi
-            .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
-            .put(Entity.json(badUpdateRequest))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
       ErrorResponse error = response.readEntity(ErrorResponse.class);
@@ -816,14 +792,13 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .extracting(ErrorResponse::message)
           .asString()
-          .startsWith("Cannot modify");
+          .startsWith("Cannot modify AWS account ID");
     }
   }
 
   @Test
-  public void testUpdateCatalogAddExternalId() {
-    // Create a catalog without an external ID
-    StorageConfigInfo storageConfigWithoutExternalId =
+  public void testUpdateCatalogChangeRoleWithinSameAccountAllowed() {
+    StorageConfigInfo initialConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .build();
@@ -832,7 +807,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(storageConfigWithoutExternalId)
+            .setStorageConfigInfo(initialConfig)
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
 
@@ -843,22 +818,18 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalogName)).get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
-      assertThat(fetchedCatalog.getStorageConfigInfo())
-          .isInstanceOf(AwsStorageConfigInfo.class)
-          .hasFieldOrPropertyWithValue("externalId", null);
     }
 
-    // Update the catalog to add an external ID
-    StorageConfigInfo storageConfigWithExternalId =
+    // Changing role name within the same account should succeed
+    StorageConfigInfo updatedConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-            .setRoleArn("arn:aws:iam::123456789011:role/myrole")
-            .setExternalId("my-external-id")
+            .setRoleArn("arn:aws:iam::123456789011:role/otherrole")
             .build();
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            storageConfigWithExternalId);
+            updatedConfig);
 
     try (Response response =
         managementApi
@@ -868,25 +839,51 @@ public class PolarisManagementServiceIntegrationTest {
       fetchedCatalog = response.readEntity(Catalog.class);
       assertThat(fetchedCatalog.getStorageConfigInfo())
           .isInstanceOf(AwsStorageConfigInfo.class)
-          .hasFieldOrPropertyWithValue("externalId", "my-external-id");
+          .hasFieldOrPropertyWithValue("roleArn", "arn:aws:iam::123456789011:role/otherrole");
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogChangeExternalIdRejected() {
+    StorageConfigInfo initialConfig =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789011:role/myrole")
+            .setExternalId("my-external-id")
+            .build();
+    String catalogName = client.newEntityName("mycatalog");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(initialConfig)
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalogName)).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
     }
 
-    // Once external ID is set, changing it should be rejected
-    StorageConfigInfo storageConfigDifferentExternalId =
+    // Changing the external ID should be rejected
+    StorageConfigInfo configWithDifferentExternalId =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .setExternalId("different-external-id")
             .build();
-    UpdateCatalogRequest badUpdateRequest =
+    UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            storageConfigDifferentExternalId);
+            configWithDifferentExternalId);
 
     try (Response response =
         managementApi
             .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
-            .put(Entity.json(badUpdateRequest))) {
+            .put(Entity.json(updateRequest))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
       ErrorResponse error = response.readEntity(ErrorResponse.class);
@@ -894,7 +891,7 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .extracting(ErrorResponse::message)
           .asString()
-          .startsWith("Cannot modify");
+          .startsWith("Cannot modify ExternalId");
     }
   }
 
