@@ -18,30 +18,85 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
-/**
- * Intent-only target reference for authorization decisions.
- *
- * <p>Represents the target name and entity type without any resolved RBAC state. This captures the
- * pure authorization intent of a request. Callers should provide the full name path as {@link
- * #getNameParts()} for hierarchical entities.
- */
+/** Fully qualified resource path represented as ordered PathSegments. */
 @PolarisImmutable
 public interface PolarisSecurable {
-  static PolarisSecurable of(
-      @Nonnull PolarisEntityType entityType, @Nonnull List<String> nameParts) {
-    return ImmutablePolarisSecurable.builder().entityType(entityType).nameParts(nameParts).build();
+  static PolarisSecurable of(@Nonnull PathSegment leaf) {
+    return ImmutablePolarisSecurable.builder().addPathSegment(leaf).build();
   }
 
-  /** Returns the entity type of the securable. */
-  @Nonnull
-  PolarisEntityType getEntityType();
+  /**
+   * Creates a securable from a full ordered path.
+   *
+   * <p>The segments must be ordered from the furthest parent segment to the leaf segment. For
+   * example, a table path should be ordered as {@code CATALOG, NAMESPACE, TABLE_LIKE}.
+   */
+  static PolarisSecurable of(@Nonnull PathSegment first, @Nonnull PathSegment... rest) {
+    return ImmutablePolarisSecurable.builder().addPathSegment(first).addPathSegments(rest).build();
+  }
 
-  /** Returns the name parts that identify the securable in hierarchical order. */
+  /**
+   * Returns the full ordered path from the highest parent segment to the leaf segment.
+   *
+   * <p>For example, a table path would be ordered as {@code [CATALOG, NAMESPACE, TABLE_LIKE]}.
+   */
   @Nonnull
-  List<String> getNameParts();
+  List<PathSegment> getPathSegments();
+
+  /** Returns the leaf segment of the path. */
+  @Nonnull
+  @Value.Derived
+  default PathSegment getLeaf() {
+    List<PathSegment> pathSegments = getPathSegments();
+    Preconditions.checkState(
+        !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
+    return pathSegments.get(pathSegments.size() - 1);
+  }
+
+  /** Returns ordered parent segments from furthest parent to immediate parent. */
+  @Nonnull
+  @Value.Derived
+  default List<PathSegment> getParents() {
+    List<PathSegment> pathSegments = getPathSegments();
+    Preconditions.checkState(
+        !pathSegments.isEmpty(), "PathSegments must contain at least one segment");
+    return pathSegments.subList(0, pathSegments.size() - 1);
+  }
+
+  @Value.Check
+  default void validate() {
+    Preconditions.checkState(
+        !getPathSegments().isEmpty(), "PathSegments must contain at least one segment");
+    Preconditions.checkState(
+        getPathSegments().get(0).entityType().isTopLevel(),
+        "PathSegments must start with a top-level entity");
+    for (PathSegment segment : getPathSegments()) {
+      Preconditions.checkState(
+          segment.entityType() != PolarisEntityType.ROOT, "PathSegments must not include ROOT");
+    }
+    if (getLeaf().entityType().isTopLevel()) {
+      Preconditions.checkState(
+          getParents().isEmpty(),
+          "top-level securable leaf=%s must not declare parents",
+          getLeaf());
+    } else {
+      for (int i = 1; i < getPathSegments().size(); i++) {
+        PathSegment parent = getPathSegments().get(i - 1);
+        PathSegment child = getPathSegments().get(i);
+        Preconditions.checkState(
+            child.entityType().getParentType() == parent.entityType()
+                || (child.entityType().isParentSelfReference()
+                    && child.entityType() == parent.entityType()),
+            "PathSegments must follow declared parent hierarchy for child=%s",
+            child);
+      }
+    }
+  }
 }

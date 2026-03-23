@@ -237,7 +237,19 @@ jobs:
         with:
           version: ${{ matrix.helm-version }}
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        run: |
+          CT_VERSION=3.14.0
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64) ARCH=amd64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+          esac
+          curl -sSLo ct.tar.gz "https://github.com/helm/chart-testing/releases/download/v${CT_VERSION}/chart-testing_${CT_VERSION}_linux_${ARCH}.tar.gz"
+          sudo tar -xzf ct.tar.gz -C /usr/local/bin ct
+          mkdir -p .ct
+          tar -xzf ct.tar.gz --strip-components=1 -C .ct etc
+          rm ct.tar.gz
+          pip install yamllint yamale
       - name: Set up helm-docs
         run: |
           go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
