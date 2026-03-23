@@ -72,6 +72,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       CreateGenericTableRequest createGenericTableRequest,
+      String xGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
@@ -116,6 +117,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       String genericTable,
+      String xGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
