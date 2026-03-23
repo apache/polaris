@@ -53,6 +53,7 @@ public class CatalogGenericTableEventServiceDelegator
       String prefix,
       String namespace,
       CreateGenericTableRequest createGenericTableRequest,
+      String xGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -143,6 +144,7 @@ public class CatalogGenericTableEventServiceDelegator
       String prefix,
       String namespace,
       String genericTable,
+      String xGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
