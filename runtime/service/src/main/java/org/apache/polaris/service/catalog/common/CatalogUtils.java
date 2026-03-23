@@ -45,9 +45,25 @@ public class CatalogUtils {
    */
   public static PolarisResolvedPathWrapper findResolvedStorageEntity(
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
+    return findResolvedStorageEntity(
+        resolvedEntityView, tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+  }
+
+  /**
+   * Find the resolved entity path that may contain storage information for a given table-like
+   * subtype.
+   *
+   * @param resolvedEntityView The resolved entity view containing catalog entities.
+   * @param tableIdentifier The table identifier for which to find storage information.
+   * @param subType The entity subtype to resolve (e.g., ICEBERG_TABLE, GENERIC_TABLE).
+   * @return The resolved path wrapper that may contain storage information.
+   */
+  public static PolarisResolvedPathWrapper findResolvedStorageEntity(
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      TableIdentifier tableIdentifier,
+      PolarisEntitySubType subType) {
     PolarisResolvedPathWrapper resolvedTableEntities =
-        resolvedEntityView.getResolvedPath(
-            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier), subType);
     if (resolvedTableEntities != null) {
       return resolvedTableEntities;
     }
