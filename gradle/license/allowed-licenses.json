@@ -91,6 +91,11 @@
       "moduleLicense": null,
       "moduleName": "javax.servlet.jsp:jsp-api",
       "moduleVersion": "2.1"
+    },
+    {
+       "moduleLicense": "Unicode/ICU License",
+       "moduleName": "org.graalvm.shadowed:icu4j",
+       "moduleVersion": "25.0.2"
     }
   ]
 }
