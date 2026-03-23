@@ -91,6 +91,8 @@ class Commands:
     PROFILES = "profiles"
     POLICIES = "policies"
     SETUP = "setup"
+    TABLES = "tables"
+    FIND = "find"
 
 
 class Subcommands:
@@ -217,6 +219,7 @@ class Arguments:
     DRY_RUN = "dry_run"
     REALM = "realm"
     HEADER = "header"
+    IDENTIFIER = "identifier"
 
 
 class Hints:
@@ -421,6 +424,13 @@ class Hints:
         APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
         ATTACHMENT_TYPE = "The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like."
         ATTACHMENT_PATH = "The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment."
+
+    class Find:
+        IDENTIFIER = "The name of the entity to find."
+
+    class Tables:
+        SUMMARIZE = "Display summary for a table."
+        DELETE = "De-register a table from catalog (metadata-only delete)."
 
 
 UNIT_SEPARATOR = chr(0x1F)

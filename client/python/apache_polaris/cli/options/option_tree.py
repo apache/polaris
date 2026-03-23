@@ -943,4 +943,58 @@ class OptionTree:
                     Option(Subcommands.EXPORT),
                 ],
             ),
+            Option(
+                Commands.TABLES,
+                "manage tables",
+                children=[
+                    Option(
+                        Subcommands.LIST,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                    ),
+                    Option(
+                        Subcommands.GET,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                        input_name=Arguments.TABLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARIZE,
+                        hint=Hints.Tables.SUMMARIZE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                    ),
+                    Option(
+                        Subcommands.DELETE,
+                        hint=Hints.Tables.DELETE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                        input_name=Arguments.TABLE,
+                    ),
+                ],
+            ),
+            Option(
+                Commands.FIND,
+                "find an identifier",
+                args=[
+                    Argument(Arguments.IDENTIFIER, str, Hints.Find.IDENTIFIER),
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                ],
+            ),
         ]
