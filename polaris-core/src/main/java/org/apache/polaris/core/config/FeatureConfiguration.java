@@ -321,6 +321,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING")
+          .catalogConfig("polaris.config.enable.generic-tables.credential-vending")
+          .description(
+              "If set to true, credential vending is enabled for generic tables. "
+                  + "When a generic table has a base location, scoped storage credentials "
+                  + "will be returned in the load and create responses.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
       PolarisConfiguration.<Long>builder()
           .key("ENTITY_CACHE_WEIGHER_TARGET")
