@@ -128,7 +128,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public DatasourceOperations getDatasourceOperations(RealmContext realmContext) {
     DatasourceOperations databaseOperations;
     try {
-      DataSource resolvedDs = dataSourceResolver.resolve(realmContext);
+      DataSource resolvedDs =
+          dataSourceResolver.resolve(realmContext, DataSourceResolver.StoreType.METASTORE);
       databaseOperations = new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);

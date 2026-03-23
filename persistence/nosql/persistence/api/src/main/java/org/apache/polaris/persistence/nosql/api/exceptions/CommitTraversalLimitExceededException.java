@@ -16,30 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
-
-import javax.sql.DataSource;
-import org.apache.polaris.core.context.RealmContext;
+package org.apache.polaris.persistence.nosql.api.exceptions;
 
 /**
- * Service to resolve the correct {@link DataSource} for a given realm. Note: Currently this is
- * implemented as a foundation for metastore routing.
+ * Thrown when the commit history traversal exceeds the configured limit. This is a safeguard
+ * against unbounded resource consumption.
  */
-public interface DataSourceResolver {
-
-  /** The type of store representing the workload pattern. */
-  enum StoreType {
-    METASTORE,
-    METRICS,
-    EVENTS
+public class CommitTraversalLimitExceededException extends PersistenceException {
+  public CommitTraversalLimitExceededException(String message) {
+    super(message);
   }
-
-  /**
-   * Resolves the DataSource for a given realm and store type.
-   *
-   * @param realmContext the realm context
-   * @param storeType the type of store
-   * @return the resolved DataSource
-   */
-  DataSource resolve(RealmContext realmContext, StoreType storeType);
 }

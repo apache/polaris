@@ -83,6 +83,17 @@ public interface PersistenceParams {
   @WithDefault(DEFAULT_MAX_SERIALIZED_VALUE_SIZE_STRING)
   MemorySize maxSerializedValueSize();
 
+  String DEFAULT_MAX_COMMIT_HISTORY_TRAVERSAL_COUNT_STRING = "1000";
+  int DEFAULT_MAX_COMMIT_HISTORY_TRAVERSAL_COUNT =
+      Integer.parseInt(DEFAULT_MAX_COMMIT_HISTORY_TRAVERSAL_COUNT_STRING);
+
+  /**
+   * The maximum number of commits to traverse when searching for an offset in the commit log. This
+   * is a safeguard against unbounded resource consumption for large histories or invalid offsets.
+   */
+  @WithDefault(DEFAULT_MAX_COMMIT_HISTORY_TRAVERSAL_COUNT_STRING)
+  int maxCommitHistoryTraversalCount();
+
   @PolarisImmutable
   interface BuildablePersistenceParams extends PersistenceParams {
     static ImmutableBuildablePersistenceParams.Builder builder() {
@@ -129,6 +140,12 @@ public interface PersistenceParams {
     @Value.Default
     default MemorySize maxSerializedValueSize() {
       return DEFAULT_MAX_SERIALIZED_VALUE_SIZE;
+    }
+
+    @Override
+    @Value.Default
+    default int maxCommitHistoryTraversalCount() {
+      return DEFAULT_MAX_COMMIT_HISTORY_TRAVERSAL_COUNT;
     }
   }
 }

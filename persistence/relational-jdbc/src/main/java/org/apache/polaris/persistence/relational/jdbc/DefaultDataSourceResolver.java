@@ -46,8 +46,11 @@ public class DefaultDataSourceResolver implements DataSourceResolver {
   }
 
   @Override
-  public DataSource resolve(RealmContext realmContext) {
-    LOGGER.debug("Using default DataSource for realm '{}'", realmContext.getRealmIdentifier());
+  public DataSource resolve(RealmContext realmContext, StoreType storeType) {
+    LOGGER.debug(
+        "Using default DataSource for realm '{}' and store '{}'",
+        realmContext.getRealmIdentifier(),
+        storeType);
     return defaultDataSource.get();
   }
 }
