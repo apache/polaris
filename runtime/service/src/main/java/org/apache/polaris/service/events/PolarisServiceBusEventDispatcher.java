@@ -24,13 +24,20 @@ import io.vertx.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+/** An event dispatcher that publishes events to the Vert.x event bus. */
 @ApplicationScoped
 @DefaultBean
 public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher {
+  /** The address of the event bus channel where Polaris service events are published. */
   public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
 
   @Inject EventBus eventBus;
 
+  /**
+   * Dispatches the given Polaris service event to the Vert.x event bus.
+   *
+   * @param event The Polaris service event to dispatch.
+   */
   @Override
   public void dispatch(PolarisEvent event) {
     eventBus.publish(POLARIS_EVENT_CHANNEL, event);

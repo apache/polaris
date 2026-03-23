@@ -79,7 +79,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
 - `PolarisConfigurationStore` has been deprecated for removal.
-- The configuration option `polaris.event-listener.type` is no longer supported and should be removed. Please use `polaris.event-listener.types` instead.
+- The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
 

@@ -22,8 +22,10 @@ package org.apache.polaris.service.events;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.vertx.LocalEventBusCodec;
 import io.vertx.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+@ApplicationScoped
 public class EventBusConfigurer {
   private static final String LOCAL_CODEC_NAME = "local";
 
