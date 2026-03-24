@@ -71,7 +71,7 @@ def format_timestamp(ms_since_epoch: int) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def is_fuzzy_match(query: str, target: str, threshold: float = 0.7) -> bool:
+def is_fuzzy_match(query: str, target: str, threshold: float = 0.85) -> bool:
     """
     Determine if a query matches a target using multi-stage fuzzy strategies.
     """
