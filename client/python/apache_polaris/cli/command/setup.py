@@ -39,7 +39,7 @@ from apache_polaris.cli.constants import (
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
-from apache_polaris.sdk.catalog.exceptions import NotFoundException
+from apache_polaris.sdk.catalog.exceptions import NotFoundException, ConflictException
 from apache_polaris.sdk.catalog.models.create_policy_request import CreatePolicyRequest
 from apache_polaris.cli.command.principals import PrincipalsCommand
 from apache_polaris.cli.command.principal_roles import PrincipalRolesCommand
@@ -1157,17 +1157,18 @@ class SetupCommand(Command):
         logger.info(f"--- Processing namespaces for catalog: {catalog_name} ---")
         catalog_api_client = self._get_catalog_api(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
+        existing_namespaces: Set[str] = set()
+        listed_parents: Set[str] = set()
+
         try:
-            existing_namespaces = {
-                ".".join(ns)
-                for ns in catalog_api.list_namespaces(prefix=catalog_name).namespaces
-            }
+            for ns in catalog_api.list_namespaces(prefix=catalog_name).namespaces:
+                existing_namespaces.add(".".join(ns))
+                listed_parents.add("")
         except NotFoundException:
             # This is expected if the catalog has no namespaces yet
-            existing_namespaces = set()
+            listed_parents.add("")
         except Exception:
             logger.exception(f"Failed to fetch namespaces for catalog '{catalog_name}'")
-            existing_namespaces = set()
         all_namespaces_to_create = set()
         namespace_data_map = {}
         for ns_item in namespaces_config:
@@ -1196,6 +1197,22 @@ class SetupCommand(Command):
                 all_namespaces_to_create.add(parent_ns_name)
         sorted_namespaces = sorted(list(all_namespaces_to_create))
         for ns_name in sorted_namespaces:
+            parts = ns_name.split(".")
+            if len(parts) > 1:
+                parent_ns = ".".join(parts[:-1])
+                if parent_ns in existing_namespaces and parent_ns not in listed_parents:
+                    try:
+                        sub_ns = catalog_api.list_namespaces(
+                            prefix=catalog_name, parent=UNIT_SEPARATOR.join(parts[:-1])
+                        ).namespaces
+                        for ns in sub_ns:
+                            existing_namespaces.add(".".join(ns))
+                            listed_parents.add(parent_ns)
+                    except Exception:
+                        logger.exception(
+                            f"Failed to list sub-namespaces for '{parent_ns}'"
+                        )
+
             if ns_name in existing_namespaces:
                 logger.info(
                     f"Skipping creation for already existing namespace '{ns_name}' in catalog '{catalog_name}'"
@@ -1207,6 +1224,7 @@ class SetupCommand(Command):
                 self._log_dry_run(
                     "create", "namespace", ns_name, {"catalog": catalog_name, **ns_data}
                 )
+                existing_namespaces.add(ns_name)
             else:
                 try:
                     logger.info(
@@ -1225,6 +1243,12 @@ class SetupCommand(Command):
                     logger.info(
                         f"Namespace '{ns_name}' created successfully in catalog '{catalog_name}'."
                     )
+                    existing_namespaces.add(ns_name)
+                except ConflictException:
+                    logger.info(
+                        f"Namespace '{ns_name}' already exists in catalog '{catalog_name}'."
+                    )
+                    existing_namespaces.add(ns)
                 except Exception:
                     logger.exception(
                         f"Failed to create namespace '{ns_name}' in catalog '{catalog_name}'"
