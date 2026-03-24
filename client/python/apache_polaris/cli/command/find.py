@@ -46,7 +46,7 @@ class FindCommand(Command):
             )
 
     def execute(self, api: PolarisDefaultApi) -> None:
-        print(f"Searching fpr '{self.identifier}'...")
+        print(f"Searching for '{self.identifier}'...")
         target_catalog, target_ns, target_leaf = resolve_identifier(self.identifier)
         # If catalog_name is provided, rebuilt the target_ns as first part will now be namespace instead of catalog
         if self.catalog_name and target_catalog:
@@ -64,7 +64,7 @@ class FindCommand(Command):
         else:
             try:
                 catalogs_to_search = [
-                    catalog.name for catalog in api.list_catalogs() or []
+                    catalog.name for catalog in api.list_catalogs().catalogs or []
                 ]
             except Exception as e:
                 handle_api_exception("Catalog Listig", e)
@@ -75,22 +75,22 @@ class FindCommand(Command):
         if self._results_count > 0:
             print(f"Found {self._results_count} matching identifiers.")
         else:
-            print("No identifiers found matching '{self.identifier}'.")
+            print(f"No identifiers found matching '{self.identifier}'.")
 
     def _find_management_entities(self, api: PolarisDefaultApi, name: str) -> None:
         # Check principals
         try:
             for principal in api.list_principals().principals or []:
                 if is_fuzzy_match(name, principal.name):
-                    print(f". {'[Principal]':<30} {principal.name}")
+                    print(f"  {'[Principal]':<30} {principal.name}")
                     self._results_count += 1
         except Exception as e:
             handle_api_exception("Principals", e)
-        # Check principal Roles
+        # Check principal roles
         try:
             for principal_role in api.list_principal_roles().roles or []:
                 if is_fuzzy_match(name, principal_role.name):
-                    print(f". {'[Principal Role]':<30} {principal_role.name}")
+                    print(f"  {'[Principal Role]':<30} {principal_role.name}")
                     self._results_count += 1
         except Exception as e:
             handle_api_exception("Principal Roles", e)
@@ -98,7 +98,7 @@ class FindCommand(Command):
         try:
             for catalog in api.list_catalogs().catalogs or []:
                 if is_fuzzy_match(name, catalog.name):
-                    print(f". {'[Catalog]':<30} {catalog.name}")
+                    print(f"  {'[Catalog]':<30} {catalog.name}")
                     self._results_count += 1
         except Exception as e:
             handle_api_exception("Catalogs", e)
