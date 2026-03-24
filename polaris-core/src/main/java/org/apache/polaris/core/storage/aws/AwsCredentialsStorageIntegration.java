@@ -113,19 +113,25 @@ public class AwsCredentialsStorageIntegration
             : "PolarisAwsCredentialsStorageIntegration";
 
     if (shouldUseSts(storageConfig)) {
+      IamPolicy policy;
+      if (isS3TablesRequest(credentialVendingContext)) {
+        policy = s3TablesPolicyString(credentialVendingContext, !allowedWriteLocations.isEmpty());
+      } else {
+        policy =
+            policyString(
+                storageConfig,
+                allowListOperation,
+                allowedReadLocations,
+                allowedWriteLocations,
+                region);
+      }
+
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
               .externalId(storageConfig.getExternalId())
               .roleArn(storageConfig.getRoleARN())
               .roleSessionName(roleSessionName)
-              .policy(
-                  policyString(
-                          storageConfig,
-                          allowListOperation,
-                          allowedReadLocations,
-                          allowedWriteLocations,
-                          region)
-                      .toJson())
+              .policy(policy.toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
       // Add session tags for the configured fields.
@@ -391,6 +397,36 @@ public class AwsCredentialsStorageIntegration
 
   private static String arnKeyAll(String region, String accountId) {
     return String.format("arn:aws:kms:%s:%s:key/*", region, accountId);
+  }
+
+  private boolean isS3TablesRequest(CredentialVendingContext context) {
+    return context.signingName().map("s3tables"::equals).orElse(false);
+  }
+
+  /**
+   * Generates an IAM session policy for S3 Tables access. Read access always includes GetTableData
+   * and GetTableMetadataLocation. Write access additionally includes UpdateTableMetadataLocation
+   * and PutTableData. Resources are scoped to the specific table ARN(s) from the context.
+   */
+  private IamPolicy s3TablesPolicyString(CredentialVendingContext context, boolean canWrite) {
+    IamStatement.Builder statement =
+        IamStatement.builder()
+            .effect(IamEffect.ALLOW)
+            .addAction("s3tables:GetTableData")
+            .addAction("s3tables:GetTableMetadataLocation");
+
+    if (canWrite) {
+      statement
+          .addAction("s3tables:UpdateTableMetadataLocation")
+          .addAction("s3tables:PutTableData");
+    }
+
+    List<String> arns = context.resourceArns().orElse(List.of());
+    for (String arn : arns) {
+      statement.addResource(IamResource.create(arn));
+    }
+
+    return IamPolicy.builder().addStatement(statement.build()).build();
   }
 
   private static String arnPrefixForPartition(String awsPartition) {

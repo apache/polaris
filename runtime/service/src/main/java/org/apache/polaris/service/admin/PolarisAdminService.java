@@ -82,6 +82,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -764,12 +765,15 @@ public class PolarisAdminService {
         Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional =
             serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
 
+        ConnectionConfigInfoDpo connectionConfigInfoDpo =
+            ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
+                    connectionConfigInfo, processedSecretReferences)
+                .withServiceIdentity(serviceIdentityInfoDpoOptional.orElse(null));
+
         entity =
             new CatalogEntity.Builder(entity)
-                .setConnectionConfigInfoDpoWithSecrets(
-                    connectionConfigInfo,
-                    processedSecretReferences,
-                    serviceIdentityInfoDpoOptional.orElse(null))
+                .setConnectionConfigInfoDpo(connectionConfigInfoDpo)
+                .setSigningNameFromConnectionConfig(connectionConfigInfoDpo)
                 .build();
       }
     }

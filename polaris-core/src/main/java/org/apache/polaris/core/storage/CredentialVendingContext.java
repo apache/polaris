@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
+import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -89,6 +90,20 @@ public interface CredentialVendingContext {
   Optional<String> traceId();
 
   /**
+   * Resource ARNs to scope the session policy to. When present, these are used directly as IAM
+   * policy resources instead of deriving ARNs from s3:// locations. For S3 Tables, this contains
+   * the table ARN(s).
+   */
+  Optional<List<String>> resourceArns();
+
+  /**
+   * The SigV4 signing name of the storage service (e.g., "s3tables"). Determines the IAM action
+   * namespace used in session policies. When absent, the standard S3 policy generation path is
+   * used.
+   */
+  Optional<String> signingName();
+
+  /**
    * Creates a new builder for CredentialVendingContext.
    *
    * @return a new builder instance
@@ -119,6 +134,10 @@ public interface CredentialVendingContext {
     Builder activatedRoles(Optional<String> activatedRoles);
 
     Builder traceId(Optional<String> traceId);
+
+    Builder resourceArns(Optional<? extends List<String>> resourceArns);
+
+    Builder signingName(Optional<String> signingName);
 
     CredentialVendingContext build();
   }

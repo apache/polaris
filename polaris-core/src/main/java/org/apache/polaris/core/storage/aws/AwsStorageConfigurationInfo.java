@@ -117,6 +117,14 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
    */
   public abstract @Nullable Boolean getKmsUnavailable();
 
+  /**
+   * SigV4 signing name for the storage service. When set to "s3tables", the credential vending
+   * system generates s3tables:* IAM policies instead of s3:* policies. Null for standard S3
+   * catalogs.
+   */
+  @Nullable
+  public abstract String getSigningName();
+
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();

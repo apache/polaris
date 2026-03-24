@@ -2197,7 +2197,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Set<PolarisStorageActions> storageActions) {
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
-            identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
+            identifier,
+            readLocations,
+            storageActions,
+            Optional.empty(),
+            resolvedStorageEntity,
+            List.of());
     // Reload fileIO based on table specific context
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed

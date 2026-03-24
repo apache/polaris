@@ -34,11 +34,14 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +92,8 @@ public class StorageAccessConfigProvider {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisResolvedPathWrapper resolvedPath) {
+      @Nonnull PolarisResolvedPathWrapper resolvedPath,
+      @Nonnull List<String> resourceArns) {
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
@@ -129,7 +133,8 @@ public class StorageAccessConfigProvider {
 
     // Build credential vending context for session tags
     CredentialVendingContext credentialVendingContext =
-        buildCredentialVendingContext(tableIdentifier, resolvedPath);
+        buildCredentialVendingContext(
+            tableIdentifier, resolvedPath, resourceArns, storageInfoEntity);
 
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -168,7 +173,10 @@ public class StorageAccessConfigProvider {
    * @return a credential vending context with catalog, namespace, table, and activated roles
    */
   private CredentialVendingContext buildCredentialVendingContext(
-      TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
+      TableIdentifier tableIdentifier,
+      PolarisResolvedPathWrapper resolvedPath,
+      List<String> resourceArns,
+      PolarisEntity storageInfoEntity) {
     CredentialVendingContext.Builder builder = CredentialVendingContext.builder();
 
     List<String> sessionTagFields =
@@ -206,6 +214,22 @@ public class StorageAccessConfigProvider {
     // the vended credentials), which disables effective credential caching.
     if (sessionTagFields.contains(FeatureConfiguration.SESSION_TAG_FIELD_TRACE_ID)) {
       builder.traceId(getCurrentTraceId());
+    }
+
+    // Set resource ARNs if provided
+    if (resourceArns != null && !resourceArns.isEmpty()) {
+      builder.resourceArns(Optional.of(resourceArns));
+    }
+
+    // Extract signing name from storage configuration
+    PolarisStorageConfigurationInfo storageConfig =
+        PolarisStorageConfigurationInfo.deserialize(
+            storageInfoEntity
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
+    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig
+        && awsConfig.getSigningName() != null) {
+      builder.signingName(Optional.of(awsConfig.getSigningName()));
     }
 
     return builder.build();

@@ -42,7 +42,9 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
@@ -399,6 +401,67 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       internalProperties.put(
           PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
           connectionConfigInfoDpo.serialize());
+      return this;
+    }
+
+    /**
+     * Reads the signing name from a {@link SigV4AuthenticationParametersDpo} in the connection
+     * config and copies it onto the {@link AwsStorageConfigurationInfo} stored in
+     * internalProperties.
+     *
+     * @param connectionConfig the connection configuration, may be null
+     * @return this builder for chaining
+     */
+    public Builder setSigningNameFromConnectionConfig(
+        @Nullable ConnectionConfigInfoDpo connectionConfig) {
+      if (connectionConfig == null) {
+        return this;
+      }
+      String storageConfigStr =
+          internalProperties.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+      if (storageConfigStr == null) {
+        return this;
+      }
+      PolarisStorageConfigurationInfo configInfo =
+          PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
+      if (configInfo instanceof AwsStorageConfigurationInfo awsConfig) {
+        AuthenticationParametersDpo authParams = connectionConfig.getAuthenticationParameters();
+        if (authParams instanceof SigV4AuthenticationParametersDpo sigV4Params
+            && sigV4Params.getSigningName() != null) {
+          // Validate that S3 Tables catalogs have an ARN-based default-base-location
+          if ("s3tables".equals(sigV4Params.getSigningName())) {
+            String baseLocation = properties.get(DEFAULT_BASE_LOCATION_KEY);
+            if (baseLocation == null || !baseLocation.startsWith("arn:")) {
+              throw new IllegalArgumentException(
+                  "S3 Tables catalogs (signingName=s3tables) require default-base-location "
+                      + "to be an S3 Tables bucket ARN (e.g. "
+                      + "arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket), "
+                      + "but got: "
+                      + baseLocation);
+            }
+          }
+          AwsStorageConfigurationInfo updatedConfig =
+              AwsStorageConfigurationInfo.builder()
+                  .allowedLocations(awsConfig.getAllowedLocations())
+                  .storageName(awsConfig.getStorageName())
+                  .roleARN(awsConfig.getRoleARN())
+                  .currentKmsKey(awsConfig.getCurrentKmsKey())
+                  .allowedKmsKeys(awsConfig.getAllowedKmsKeys())
+                  .externalId(awsConfig.getExternalId())
+                  .userARN(awsConfig.getUserARN())
+                  .region(awsConfig.getRegion())
+                  .endpoint(awsConfig.getEndpoint())
+                  .stsEndpoint(awsConfig.getStsEndpoint())
+                  .pathStyleAccess(awsConfig.getPathStyleAccess())
+                  .stsUnavailable(awsConfig.getStsUnavailable())
+                  .endpointInternal(awsConfig.getEndpointInternal())
+                  .kmsUnavailable(awsConfig.getKmsUnavailable())
+                  .signingName(sigV4Params.getSigningName())
+                  .build();
+          internalProperties.put(
+              PolarisEntityConstants.getStorageConfigInfoPropertyName(), updatedConfig.serialize());
+        }
+      }
       return this;
     }
 
