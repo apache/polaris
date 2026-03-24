@@ -24,6 +24,7 @@ import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSes
 import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -124,12 +125,20 @@ public class AwsCredentialsStorageIntegration
               .durationSeconds(storageCredentialDurationSeconds);
 
       // Add session tags when the credential vending context is non-empty.
-      // The context is non-empty iff INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL is enabled
+      // The context is non-empty iff session tags are enabled
       // (decided by buildStorageAccessConfigParameters).
       CredentialVendingContext credentialVendingContext = params.credentialVendingContext();
       if (!credentialVendingContext.equals(CredentialVendingContext.empty())) {
+        List<String> sessionTagFieldNames =
+            realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+        Set<SessionTagField> enabledSessionTagFields =
+            sessionTagFieldNames.stream()
+                .map(SessionTagField::fromConfigName)
+                .flatMap(Optional::stream)
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
         List<Tag> sessionTags =
-            buildSessionTags(params.principalName().orElse(""), credentialVendingContext);
+            buildSessionTags(
+                params.principalName().orElse(""), credentialVendingContext, enabledSessionTagFields);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support
@@ -425,8 +434,9 @@ public class AwsCredentialsStorageIntegration
       @Nonnull CredentialVendingContext credentialVendingContext) {
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    List<String> sessionTagFields =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags = !sessionTagFields.isEmpty();
     boolean includePrincipalInCacheKey =
         includePrincipalNameInSubscopedCredential || includeSessionTags;
     CredentialVendingContext contextForCacheKey =

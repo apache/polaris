@@ -1256,7 +1256,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             stsClient)
         .getSubscopedCreds(
-            sessionTagsEnabledConfig,
+            SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1440,7 +1440,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             stsClient)
         .getSubscopedCreds(
-            sessionTagsEnabledConfig,
+            SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1498,7 +1498,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             stsClient)
         .getSubscopedCreds(
-            sessionTagsEnabledConfig,
+            SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1539,7 +1539,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             stsClient)
         .getSubscopedCreds(
-            sessionTagsEnabledConfig,
+            SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1584,12 +1584,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             stsClient)
         .getSubscopedCreds(
             realmConfig,
-            true,
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            POLARIS_PRINCIPAL,
-            Optional.empty(),
-            context);
+            buildParams(
+                true,
+                Set.of(s3Path(bucket, warehouseKeyPrefix)),
+                Set.of(s3Path(bucket, warehouseKeyPrefix)),
+                Optional.empty(),
+                Optional.of(POLARIS_PRINCIPAL.getName()),
+                false,
+                context));
 
     return requestCaptor.getValue();
   }
@@ -1690,7 +1692,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .build(),
                         stsClient)
                     .getSubscopedCreds(
-                        sessionTagsEnabledConfig,
+                        SESSION_TAGS_ENABLED_CONFIG,
                         buildParams(
                             true,
                             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1760,19 +1762,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     RealmConfig sessionTagsConfig =
-        new RealmConfigImpl(
-            new PolarisConfigurationStore() {
-              @SuppressWarnings("unchecked")
-              @Override
-              public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
-                if (configName.equals(
-                    FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
-                  return "true";
-                }
-                return null;
-              }
-            },
-            () -> "realm");
+        sessionTagFields("catalog", "namespace", "table", "principal", "roles");
 
     CredentialVendingContext context =
         CredentialVendingContext.builder()

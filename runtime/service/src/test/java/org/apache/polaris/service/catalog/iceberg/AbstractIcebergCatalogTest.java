@@ -23,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -122,16 +124,16 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisCredentialVendorImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageAccessConfigParameters;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.cache.ImmutableDefaultStorageAccessConfigParameters;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -1867,18 +1869,16 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getSubscopedCredsForEntity(
                 polarisContext,
                 taskEntity,
-                ImmutableDefaultStorageAccessConfigParameters.of(
+                AwsStorageAccessConfigParameters.of(
                     realmName,
-                    taskEntity.getCatalogId(),
-                    taskEntity
-                        .getInternalPropertiesAsMap()
-                        .get(
-                            org.apache.polaris.core.entity.PolarisEntityConstants
-                                .getStorageConfigInfoPropertyName()),
+                    taskEntity,
                     true,
                     Set.of(tableMetadata.location()),
                     Set.of(tableMetadata.location()),
-                    Optional.empty()))
+                    Optional.empty(),
+                    Optional.empty(),
+                    false,
+                    CredentialVendingContext.empty()))
             .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
