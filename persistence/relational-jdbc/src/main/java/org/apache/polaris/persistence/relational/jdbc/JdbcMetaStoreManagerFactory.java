@@ -98,7 +98,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   private void initializeForRealm(
-      DatasourceOperations datasourceOperations,
+      DatasourceOperations metastoreOps,
       RealmContext realmContext,
       RootCredentialsSet rootCredentialsSet) {
     // Materialize realmId so that background tasks that don't have an active
@@ -107,15 +107,22 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // determine schemaVersion once per realm
     final int schemaVersion =
         JdbcBasePersistenceImpl.loadSchemaVersion(
-            datasourceOperations,
+            metastoreOps,
             realmConfig.getConfig(BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+
+    DatasourceOperations metricsOps =
+        getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METRICS);
+    DatasourceOperations eventOps =
+        getDatasourceOperations(realmContext, DataSourceResolver.StoreType.EVENTS);
 
     sessionSupplierMap.put(
         realmId,
         () ->
             new JdbcBasePersistenceImpl(
                 diagnostics,
-                datasourceOperations,
+                metastoreOps,
+                metricsOps,
+                eventOps,
                 secretsGenerator(realmId, rootCredentialsSet),
                 storageIntegrationProvider,
                 realmId,
@@ -125,11 +132,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     metaStoreManagerMap.put(realmId, metaStoreManager);
   }
 
-  public DatasourceOperations getDatasourceOperations(RealmContext realmContext) {
+  public DatasourceOperations getDatasourceOperations(
+      RealmContext realmContext, DataSourceResolver.StoreType storeType) {
     DatasourceOperations databaseOperations;
     try {
-      DataSource resolvedDs =
-          dataSourceResolver.resolve(realmContext, DataSourceResolver.StoreType.METASTORE);
+      DataSource resolvedDs = dataSourceResolver.resolve(realmContext, storeType);
       databaseOperations = new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);
@@ -160,7 +167,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
+        DatasourceOperations datasourceOperations =
+            getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METASTORE);
         int currentSchemaVersion =
             JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
@@ -225,7 +233,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
+      DatasourceOperations datasourceOperations =
+          getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METASTORE);
       initializeForRealm(datasourceOperations, realmContext, null);
       checkPolarisServiceBootstrappedForRealm(realmContext);
     }
@@ -235,7 +244,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public synchronized BasePersistence getOrCreateSession(RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations(realmContext);
+      DatasourceOperations datasourceOperations =
+          getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METASTORE);
       initializeForRealm(datasourceOperations, realmContext, null);
     }
     checkPolarisServiceBootstrappedForRealm(realmContext);
