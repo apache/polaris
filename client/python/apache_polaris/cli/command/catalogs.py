@@ -156,7 +156,7 @@ class CatalogsCommand(Command):
                 elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
                     if not self.catalog_role_arn or not self.catalog_signing_region:
                         raise Exception(
-                            f"Authentication type 'SIGV4 requires"
+                            f"Authentication type 'SIGV4' requires"
                             f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}"
                         )
@@ -338,7 +338,7 @@ class CatalogsCommand(Command):
             )
 
         service_identity = None
-        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM:
+        if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
             service_identity = AwsIamServiceIdentityInfo(
                 identity_type=self.catalog_service_identity_type.upper(),
                 iam_arn=self.catalog_service_identity_iam_arn,
