@@ -222,7 +222,7 @@ class Command(ABC):
         elif options.command == Commands.TABLES:
             from apache_polaris.cli.command.tables import TableCommand
 
-            subcommand = options_get(f"{Commands.SETUP}_subcommand")
+            subcommand = options_get(f"{Commands.TABLES}_subcommand")
             command = TableCommand(
                 subcommand,
                 catalog_name=options_get(Arguments.CATALOG),

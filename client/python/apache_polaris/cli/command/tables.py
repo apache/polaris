@@ -46,12 +46,8 @@ class TableCommand(Command):
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
-        if self.table_subcommand != Subcommands.LIST and not self.table_name:
-            raise Exception(
-                f"Missing required argument: {Argument.to_flag_name(Arguments.TABLE)}"
-            )
 
-    def exec(self, api: PolarisDefaultApi) -> None:
+    def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
         if self.table_subcommand == Subcommands.LIST:
             ns_str = UNIT_SEPARATOR.join(self.namespace)
@@ -107,7 +103,7 @@ class TableCommand(Command):
             print(f" {'Format Version:':<30} {metadata.format_version}")
             print(f" {'Current Schema ID:':<30} {metadata.current_schema_id}")
             print(f" {'Current Snapshot ID:':<30} {metadata.current_snapshot_id}")
-            print(f" {'Snaphosts:':<30} {len(metadata.snapshots)}")
+            print(f" {'Snapshots:':<30} {len(metadata.snapshots)}")
             print(
                 f" {'Last updated:':<30} {format_timestamp(metadata.last_updated_ms)}"
             )

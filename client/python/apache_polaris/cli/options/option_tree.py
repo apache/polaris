@@ -975,6 +975,7 @@ class OptionTree:
                             ),
                             Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         ],
+                        input_name=Arguments.TABLE,
                     ),
                     Option(
                         Subcommands.DELETE,
@@ -993,8 +994,8 @@ class OptionTree:
                 Commands.FIND,
                 "find an identifier",
                 args=[
-                    Argument(Arguments.IDENTIFIER, str, Hints.Find.IDENTIFIER),
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                 ],
+                input_name=Arguments.IDENTIFIER,
             ),
         ]

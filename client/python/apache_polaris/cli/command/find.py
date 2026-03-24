@@ -29,8 +29,6 @@ from apache_polaris.cli.command.utils import (
 )
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.management import PolarisDefaultApi
-from apache_polaris.cli.options.option_tree import Argument
-from apache_polaris.cli.constants import Arguments
 
 
 @dataclass
@@ -41,10 +39,7 @@ class FindCommand(Command):
     _current_context: Optional[str] = field(default=None, repr=False)
 
     def validate(self) -> None:
-        if not self.identifier:
-            raise Exception(
-                f"Missing required argument: {Argument.to_flag_name(Arguments.IDENTIFIER)}"
-            )
+        pass
 
     def execute(self, api: PolarisDefaultApi) -> None:
         print(f"Searching for '{self.identifier}'...")
@@ -118,7 +113,7 @@ class FindCommand(Command):
                 if is_fuzzy_match(name, principal_role.name):
                     self._print_result(context, "Principal Rolee", principal_role.name)
         except Exception as e:
-            handle_api_exception("Principal Roles", e)
+            handle_api_exception("Principal Role", e)
         # Check catalogs
         try:
             for catalog in api.list_catalogs().catalogs or []:
@@ -149,7 +144,7 @@ class FindCommand(Command):
                     if is_fuzzy_match(leaf_name, catalog_role.name):
                         self._print_result(context, "Catalog Role", catalog_role.name)
             except Exception as e:
-                handle_api_exception(f"Catalog Roles ({catalog_name})", e)
+                handle_api_exception(f"Catalog Role ({catalog_name})", e)
         # Search namespaces recursively
         for entity_type, path in crawl_namespace(
             catalog_api=catalog_api,
