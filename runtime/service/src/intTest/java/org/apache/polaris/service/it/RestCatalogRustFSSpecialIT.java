@@ -103,6 +103,8 @@ public class RestCatalogRustFSSpecialIT {
   private static final String BUCKET_URI_PREFIX = "/rustfs-test";
   private static final String RUSTFS_ACCESS_KEY = "test-ak-123";
   private static final String RUSTFS_SECRET_KEY = "test-sk-123";
+  private static final String TEST_REGION = "us-west-2";
+  private static final String TEST_ROLE_ARN = "arn:aws:iam::000000000000:role/polaris-access-role";
   private static String adminToken;
 
   public static class Profile implements QuarkusTestProfile {
@@ -173,7 +175,15 @@ public class RestCatalogRustFSSpecialIT {
       Optional<AccessDelegationMode> delegationMode,
       boolean stsEnabled) {
     return createCatalog(
-        endpoint, stsEndpoint, pathStyleAccess, Optional.empty(), delegationMode, stsEnabled);
+        endpoint,
+        stsEndpoint,
+        pathStyleAccess,
+        Optional.empty(),
+        delegationMode,
+        stsEnabled,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   private RESTCatalog createCatalog(
@@ -183,6 +193,28 @@ public class RestCatalogRustFSSpecialIT {
       Optional<String> endpointInternal,
       Optional<AccessDelegationMode> delegationMode,
       boolean stsEnabled) {
+    return createCatalog(
+        endpoint,
+        stsEndpoint,
+        pathStyleAccess,
+        endpointInternal,
+        delegationMode,
+        stsEnabled,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private RESTCatalog createCatalog(
+      Optional<String> endpoint,
+      Optional<String> stsEndpoint,
+      boolean pathStyleAccess,
+      Optional<String> endpointInternal,
+      Optional<AccessDelegationMode> delegationMode,
+      boolean stsEnabled,
+      Optional<String> region,
+      Optional<String> roleArn,
+      Optional<Boolean> kmsUnavailable) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -193,6 +225,9 @@ public class RestCatalogRustFSSpecialIT {
     endpoint.ifPresent(storageConfig::setEndpoint);
     stsEndpoint.ifPresent(storageConfig::setStsEndpoint);
     endpointInternal.ifPresent(storageConfig::setEndpointInternal);
+    region.ifPresent(storageConfig::setRegion);
+    roleArn.ifPresent(storageConfig::setRoleArn);
+    kmsUnavailable.ifPresent(storageConfig::setKmsUnavailable);
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
@@ -259,6 +294,106 @@ public class RestCatalogRustFSSpecialIT {
   public void testCreateTableVendedCredentials(boolean pathStyle) throws IOException {
     LoadTableResponse response =
         doTestCreateTable(pathStyle, Optional.of(VENDED_CREDENTIALS), true);
+    assertThat(response.config())
+        .containsEntry(
+            REFRESH_CREDENTIALS_ENDPOINT,
+            "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
+    assertThat(response.credentials()).hasSize(1);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "false, false",
+    "true,  false",
+    "false, true",
+  })
+  public void testCreateTableVendedCredentialsWithPartialAwsShapePasses(
+      boolean includeRegion, boolean includeRoleArn) throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true,
+            includeRegion ? Optional.of(TEST_REGION) : Optional.empty(),
+            includeRoleArn ? Optional.of(TEST_ROLE_ARN) : Optional.empty(),
+            Optional.of(false))) {
+      TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+      try {
+        assertLoadTableWithVendedCredentialsSucceeds(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
+    }
+  }
+
+  @Test
+  public void testCreateTableVendedCredentialsWithFullAwsShapeAndKmsEnabledFails()
+      throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true,
+            Optional.of(TEST_REGION),
+            Optional.of(TEST_ROLE_ARN),
+            Optional.of(false))) {
+      TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+      try {
+        assertLoadTableWithVendedCredentialsFailsWithKmsError(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
+    }
+  }
+
+  @Test
+  public void testCreateTableVendedCredentialsWithAwsShapeAndKmsUnavailablePasses()
+      throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true,
+            Optional.of(TEST_REGION),
+            Optional.of(TEST_ROLE_ARN),
+            Optional.of(true))) {
+      TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+      try {
+        assertLoadTableWithVendedCredentialsSucceeds(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
+    }
+  }
+
+  private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
+    assertThatThrownBy(
+            () ->
+                catalogApi.loadTable(
+                    catalogName,
+                    id,
+                    "ALL",
+                    Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+        .hasMessageContaining("Failed to get subscoped credentials")
+        .hasMessageContaining("Status Code: 400");
+  }
+
+  private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {
+    LoadTableResponse response =
+        catalogApi.loadTable(
+            catalogName,
+            id,
+            "ALL",
+            Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue()));
     assertThat(response.config())
         .containsEntry(
             REFRESH_CREDENTIALS_ENDPOINT,
@@ -361,11 +496,33 @@ public class RestCatalogRustFSSpecialIT {
 
   public LoadTableResponse doTestCreateTable(
       RESTCatalog restCatalog, Optional<AccessDelegationMode> dm) {
+    TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+    assertThat(restCatalog.tableExists(id)).isTrue();
+
+    try {
+      LoadTableResponse loadTableResponse =
+          catalogApi.loadTable(
+              catalogName,
+              id,
+              "ALL",
+              dm.map(v -> Map.of("X-Iceberg-Access-Delegation", v.protocolValue()))
+                  .orElse(Map.of()));
+
+      assertThat(loadTableResponse.config()).containsKey(ENDPOINT);
+      return loadTableResponse;
+    } finally {
+      if (restCatalog.tableExists(id)) {
+        restCatalog.dropTable(id);
+        assertThat(restCatalog.tableExists(id)).isFalse();
+      }
+    }
+  }
+
+  private TableIdentifier createTableAndVerifyMetadata(RESTCatalog restCatalog) {
     catalogApi.createNamespace(catalogName, "test-ns");
     TableIdentifier id = TableIdentifier.of("test-ns", "t1");
     Table table = restCatalog.createTable(id, SCHEMA);
     assertThat(table).isNotNull();
-    assertThat(restCatalog.tableExists(id)).isTrue();
 
     TableOperations ops = ((HasTableOperations) table).operations();
     URI location = URI.create(ops.current().metadataFileLocation());
@@ -379,19 +536,7 @@ public class RestCatalogRustFSSpecialIT {
                     .build())
             .response();
     assertThat(response.contentLength()).isGreaterThan(0);
-
-    LoadTableResponse loadTableResponse =
-        catalogApi.loadTable(
-            catalogName,
-            id,
-            "ALL",
-            dm.map(v -> Map.of("X-Iceberg-Access-Delegation", v.protocolValue())).orElse(Map.of()));
-
-    assertThat(loadTableResponse.config()).containsKey(ENDPOINT);
-
-    restCatalog.dropTable(id);
-    assertThat(restCatalog.tableExists(id)).isFalse();
-    return loadTableResponse;
+    return id;
   }
 
   @ParameterizedTest
