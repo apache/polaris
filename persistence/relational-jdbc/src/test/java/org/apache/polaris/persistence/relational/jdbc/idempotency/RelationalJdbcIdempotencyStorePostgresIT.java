@@ -80,12 +80,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
           @Override
           public Optional<String> databaseType() {
-            return Optional.empty();
-          }
-
-          @Override
-          public String dataSourceResolverType() {
-            return "default";
+            return Optional.of("postgresql");
           }
         };
     DatasourceOperations ops = new DatasourceOperations(dataSource, cfg);

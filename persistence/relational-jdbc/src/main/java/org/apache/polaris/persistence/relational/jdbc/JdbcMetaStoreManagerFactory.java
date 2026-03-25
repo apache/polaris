@@ -167,33 +167,39 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
-        DatasourceOperations datasourceOperations =
+        DatasourceOperations metastoreOps =
             getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METASTORE);
-        int currentSchemaVersion =
-            JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
+        DatasourceOperations metricsOps =
+            getDatasourceOperations(realmContext, DataSourceResolver.StoreType.METRICS);
+        DatasourceOperations eventOps =
+            getDatasourceOperations(realmContext, DataSourceResolver.StoreType.EVENTS);
+
+        int currentSchemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(metastoreOps, true);
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
         int effectiveSchemaVersion =
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
-                datasourceOperations.getDatabaseType(),
+                metastoreOps.getDatabaseType(),
                 currentSchemaVersion,
                 requestedSchemaVersion,
-                JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
+                JdbcBasePersistenceImpl.entityTableExists(metastoreOps));
         LOGGER.info(
             "Effective schema version: {} for bootstrapping realm: {}",
             effectiveSchemaVersion,
             realm);
+
         try {
-          // Run the set-up script to create the tables.
-          datasourceOperations.executeScript(
-              datasourceOperations
-                  .getDatabaseType()
-                  .openInitScriptResource(effectiveSchemaVersion));
+          // Run the set-up script to create the tables on all data sources.
+          metastoreOps.executeScript(
+              metastoreOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
+          metricsOps.executeScript(
+              metricsOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
+          eventOps.executeScript(
+              eventOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
         }
-        initializeForRealm(
-            datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
+        initializeForRealm(metastoreOps, realmContext, bootstrapOptions.rootCredentialsSet());
 
         PolarisMetaStoreManager metaStoreManager =
             metaStoreManagerMap.get(realmContext.getRealmIdentifier());

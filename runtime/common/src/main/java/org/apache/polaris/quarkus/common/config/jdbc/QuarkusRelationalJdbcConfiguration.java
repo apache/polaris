@@ -25,8 +25,6 @@ import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguratio
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
 public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
-
-  @Override
   @WithName("datasource-resolver.type")
   @WithDefault("default")
   String dataSourceResolverType();
