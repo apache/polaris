@@ -21,28 +21,28 @@ package org.apache.polaris.persistence.nosql.api.index;
 
 import com.google.errorprone.annotations.Var;
 import jakarta.annotation.Nonnull;
+import java.util.Objects;
 
 /**
  * Package-private implementation of {@link Index.Element} for {@link Index.Element#of(IndexKey,
  * Object)}.
  */
-record IndexElem<V>(IndexKey key, V value) implements Index.Element<V> {
+public abstract class IndexElem<V> implements Index.Element<V> {
 
-  IndexElem(@Nonnull IndexKey key, @Nonnull V value) {
-    this.key = key;
-    this.value = value;
-  }
+  public static <V> Index.Element<V> of(@Nonnull IndexKey key, @Nonnull V value) {
+    return new IndexElem<>() {
+      @Override
+      @Nonnull
+      public IndexKey key() {
+        return key;
+      }
 
-  @Override
-  @Nonnull
-  public IndexKey key() {
-    return key;
-  }
-
-  @Override
-  @Nonnull
-  public V value() {
-    return value;
+      @Override
+      @Nonnull
+      public V value() {
+        return value;
+      }
+    };
   }
 
   @Override
@@ -59,7 +59,7 @@ record IndexElem<V>(IndexKey key, V value) implements Index.Element<V> {
       return true;
     }
     if (o instanceof Index.Element<?> other) {
-      return key.equals(other.key()) && value.equals(other.value());
+      return Objects.equals(key(), other.key()) && Objects.equals(value(), other.value());
     }
     return false;
   }
