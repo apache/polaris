@@ -584,75 +584,8 @@ public class PolarisServiceImpl
         grantRequest,
         catalogRoleName,
         catalogName);
-    PrivilegeResult result;
-    PolarisPrivilege privilege;
-    switch (grantRequest.getGrant()) {
-      // The per-securable-type Privilege enums must be exact String match for a subset of all
-      // PolarisPrivilege values.
-      case ViewGrant viewGrant:
-        {
-          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
-          String viewName = viewGrant.getViewName();
-          String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
-          result =
-              adminService.grantPrivilegeOnViewToRole(
-                  catalogName,
-                  catalogRoleName,
-                  TableIdentifier.of(Namespace.of(namespaceParts), viewName),
-                  privilege);
-          break;
-        }
-      case TableGrant tableGrant:
-        {
-          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
-          String tableName = tableGrant.getTableName();
-          String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
-          result =
-              adminService.grantPrivilegeOnTableToRole(
-                  catalogName,
-                  catalogRoleName,
-                  TableIdentifier.of(Namespace.of(namespaceParts), tableName),
-                  privilege);
-          break;
-        }
-      case NamespaceGrant namespaceGrant:
-        {
-          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
-          String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
-          result =
-              adminService.grantPrivilegeOnNamespaceToRole(
-                  catalogName, catalogRoleName, Namespace.of(namespaceParts), privilege);
-          break;
-        }
-      case CatalogGrant catalogGrant:
-        {
-          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
-          result =
-              adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
-          break;
-        }
-      case PolicyGrant policyGrant:
-        {
-          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
-          String policyName = policyGrant.getPolicyName();
-          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
-          result =
-              adminService.grantPrivilegeOnPolicyToRole(
-                  catalogName,
-                  catalogRoleName,
-                  new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
-                  privilege);
-          break;
-        }
-      default:
-        LOGGER
-            .atWarn()
-            .addKeyValue("catalog", catalogName)
-            .addKeyValue("role", catalogRoleName)
-            .log("Don't know how to handle privilege grant: {}", grantRequest);
-        return Response.status(Response.Status.BAD_REQUEST).build();
-    }
-    return toResponse(result, Response.Status.CREATED);
+    return processGrantOperation(
+        grantRequest.getGrant(), catalogName, catalogRoleName, GrantDirection.GRANT);
   }
 
   /** From PolarisCatalogsApiService */
@@ -674,65 +607,96 @@ public class PolarisServiceImpl
       return Response.status(501).build(); // not implemented
     }
 
+    return processGrantOperation(
+        grantRequest.getGrant(), catalogName, catalogRoleName, GrantDirection.REVOKE);
+  }
+
+  private enum GrantDirection {
+    GRANT,
+    REVOKE
+  }
+
+  private Response processGrantOperation(
+      GrantResource grant,
+      String catalogName,
+      String catalogRoleName,
+      GrantDirection direction) {
     PrivilegeResult result;
-    PolarisPrivilege privilege;
-    switch (grantRequest.getGrant()) {
-      // The per-securable-type Privilege enums must be exact String match for a subset of all
-      // PolarisPrivilege values.
+    // The per-securable-type Privilege enums must be exact String match for a subset of all
+    // PolarisPrivilege values.
+    switch (grant) {
       case ViewGrant viewGrant:
         {
-          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
-          String viewName = viewGrant.getViewName();
-          String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          TableIdentifier identifier =
+              TableIdentifier.of(
+                  Namespace.of(viewGrant.getNamespace().toArray(new String[0])),
+                  viewGrant.getViewName());
           result =
-              adminService.revokePrivilegeOnViewFromRole(
-                  catalogName,
-                  catalogRoleName,
-                  TableIdentifier.of(Namespace.of(namespaceParts), viewName),
-                  privilege);
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnViewToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnViewFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
           break;
         }
       case TableGrant tableGrant:
         {
-          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
-          String tableName = tableGrant.getTableName();
-          String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          TableIdentifier identifier =
+              TableIdentifier.of(
+                  Namespace.of(tableGrant.getNamespace().toArray(new String[0])),
+                  tableGrant.getTableName());
           result =
-              adminService.revokePrivilegeOnTableFromRole(
-                  catalogName,
-                  catalogRoleName,
-                  TableIdentifier.of(Namespace.of(namespaceParts), tableName),
-                  privilege);
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnTableToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnTableFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
           break;
         }
       case NamespaceGrant namespaceGrant:
         {
-          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
-          String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          Namespace namespace =
+              Namespace.of(namespaceGrant.getNamespace().toArray(new String[0]));
           result =
-              adminService.revokePrivilegeOnNamespaceFromRole(
-                  catalogName, catalogRoleName, Namespace.of(namespaceParts), privilege);
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnNamespaceToRole(
+                      catalogName, catalogRoleName, namespace, privilege)
+                  : adminService.revokePrivilegeOnNamespaceFromRole(
+                      catalogName, catalogRoleName, namespace, privilege);
           break;
         }
       case CatalogGrant catalogGrant:
         {
-          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           result =
-              adminService.revokePrivilegeOnCatalogFromRole(
-                  catalogName, catalogRoleName, privilege);
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnCatalogToRole(
+                      catalogName, catalogRoleName, privilege)
+                  : adminService.revokePrivilegeOnCatalogFromRole(
+                      catalogName, catalogRoleName, privilege);
           break;
         }
       case PolicyGrant policyGrant:
         {
-          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
-          String policyName = policyGrant.getPolicyName();
-          String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          PolicyIdentifier identifier =
+              new PolicyIdentifier(
+                  Namespace.of(policyGrant.getNamespace().toArray(new String[0])),
+                  policyGrant.getPolicyName());
           result =
-              adminService.revokePrivilegeOnPolicyFromRole(
-                  catalogName,
-                  catalogRoleName,
-                  new PolicyIdentifier(Namespace.of(namespaceParts), policyName),
-                  privilege);
+              direction == GrantDirection.GRANT
+                  ? adminService.grantPrivilegeOnPolicyToRole(
+                      catalogName, catalogRoleName, identifier, privilege)
+                  : adminService.revokePrivilegeOnPolicyFromRole(
+                      catalogName, catalogRoleName, identifier, privilege);
           break;
         }
       default:
@@ -740,7 +704,10 @@ public class PolarisServiceImpl
             .atWarn()
             .addKeyValue("catalog", catalogName)
             .addKeyValue("role", catalogRoleName)
-            .log("Don't know how to handle privilege revocation: {}", grantRequest);
+            .log(
+                "Don't know how to handle privilege {}: {}",
+                direction == GrantDirection.GRANT ? "grant" : "revocation",
+                grant);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
     return toResponse(result, Response.Status.CREATED);
