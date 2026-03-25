@@ -31,6 +31,7 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,16 +41,12 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
-import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
-import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
@@ -70,22 +67,23 @@ public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
 
+  /** Pairs an {@link AsyncContextPropagator} with the opaque state it captured. */
+  record CapturedPropagator(AsyncContextPropagator propagator, @Nullable Object state) {}
+
   private final Executor executor;
   private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
-  private final RealmContextHolder realmContextHolder;
-  private final PolarisPrincipalHolder polarisPrincipalHolder;
-  private final PolarisPrincipal polarisPrincipal;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
+  private final Instance<AsyncContextPropagator> contextPropagators;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -96,22 +94,18 @@ public class TaskExecutorImpl implements TaskExecutor {
       Clock clock,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
-      RealmContextHolder realmContextHolder,
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
-      PolarisPrincipalHolder polarisPrincipalHolder,
-      PolarisPrincipal polarisPrincipal) {
+      Instance<AsyncContextPropagator> contextPropagators) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
-    this.realmContextHolder = realmContextHolder;
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
-    this.polarisPrincipalHolder = polarisPrincipalHolder;
-    this.polarisPrincipal = polarisPrincipal;
+    this.contextPropagators = contextPropagators;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -159,27 +153,32 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     // Capture the metadata now in order to capture the principal and request ID, if any.
     PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
-    tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
+
+    // Capture request-scoped context for propagation into the task thread.
+    // Each propagator independently snapshots its own piece of context.
+    List<CapturedPropagator> captured = new ArrayList<>();
+    for (AsyncContextPropagator propagator : contextPropagators) {
+      captured.add(new CapturedPropagator(propagator, propagator.capture()));
+    }
+
+    tryHandleTask(taskEntityId, clone, eventMetadata, captured, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,
+      List<CapturedPropagator> captured,
       Throwable previousError,
       int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(previousError);
     }
-    String realmId = callContext.getRealmContext().getRealmIdentifier();
-
-    PolarisPrincipal principalClone =
-        ImmutablePolarisPrincipal.builder().from(polarisPrincipal).build();
 
     return CompletableFuture.runAsync(
             () -> {
               handleTaskWithTracing(
-                  realmId, taskEntityId, callContext, principalClone, eventMetadata, attempt);
+                  taskEntityId, callContext, captured, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
@@ -190,7 +189,8 @@ public class TaskExecutorImpl implements TaskExecutor {
               }
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
-              return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
+              return tryHandleTask(
+                  taskEntityId, callContext, eventMetadata, captured, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
@@ -260,37 +260,51 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   @ActivateRequestContext
   protected void handleTaskWithTracing(
-      String realmId,
       long taskEntityId,
       CallContext callContext,
-      PolarisPrincipal principal,
+      List<CapturedPropagator> captured,
       PolarisEventMetadata eventMetadata,
       int attempt) {
-    // Note: each call to this method runs in a new CDI request context
+    // Note: each call to this method runs in a new CDI request context.
+    // Restore all propagated context into the fresh request scope.
+    // A restore failure is fatal: running a task without proper realm or principal context
+    // risks wrong-tenant or wrong-identity execution, so we abort rather than continue.
+    // The restore loop is inside the try block so the finally block cleans up any
+    // propagators that were already restored before the failure.
+    List<AutoCloseable> cleanups = new ArrayList<>();
+    try {
+      for (CapturedPropagator entry : captured) {
+        cleanups.add(entry.propagator().restore(entry.state()));
+      }
 
-    realmContextHolder.set(() -> realmId);
-    // since this is now a different context we store clone of the principal in a holder object
-    // which essentially reauthenticates the principal. PolarisPrincipal bean always looks for a
-    // principal set in PolarisPrincipalHolder first and assumes that identity if set.
-    polarisPrincipalHolder.set(principal);
-
-    if (tracer == null) {
-      handleTask(taskEntityId, callContext, eventMetadata, attempt);
-    } else {
-      Span span =
-          tracer
-              .spanBuilder("polaris.task")
-              .setParent(Context.current())
-              .setAttribute(
-                  TracingFilter.REALM_ID_ATTRIBUTE,
-                  callContext.getRealmContext().getRealmIdentifier())
-              .setAttribute("polaris.task.entity.id", taskEntityId)
-              .setAttribute("polaris.task.attempt", attempt)
-              .startSpan();
-      try (Scope ignored = span.makeCurrent()) {
+      if (tracer == null) {
         handleTask(taskEntityId, callContext, eventMetadata, attempt);
-      } finally {
-        span.end();
+      } else {
+        Span span =
+            tracer
+                .spanBuilder("polaris.task")
+                .setParent(Context.current())
+                .setAttribute(
+                    TracingFilter.REALM_ID_ATTRIBUTE,
+                    callContext.getRealmContext().getRealmIdentifier())
+                .setAttribute("polaris.task.entity.id", taskEntityId)
+                .setAttribute("polaris.task.attempt", attempt)
+                .startSpan();
+        try (Scope ignored = span.makeCurrent()) {
+          handleTask(taskEntityId, callContext, eventMetadata, attempt);
+        } finally {
+          span.end();
+        }
+      }
+    } finally {
+      // Close in reverse order (LIFO) so that later propagators clean up before
+      // earlier ones, matching standard stacked-context conventions.
+      for (int i = cleanups.size() - 1; i >= 0; i--) {
+        try {
+          cleanups.get(i).close();
+        } catch (Exception e) {
+          LOGGER.warn("Failed to close context propagator cleanup", e);
+        }
       }
     }
   }

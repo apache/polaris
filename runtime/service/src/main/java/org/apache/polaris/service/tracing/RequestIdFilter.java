@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
+import org.apache.polaris.service.context.catalog.RequestIdHolder;
 import org.apache.polaris.service.logging.LoggingConfiguration;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
@@ -40,6 +41,7 @@ public class RequestIdFilter {
 
   @Inject LoggingConfiguration loggingConfiguration;
   @Inject RequestIdGenerator requestIdGenerator;
+  @Inject RequestIdHolder requestIdHolder;
 
   @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REQUEST_ID_FILTER)
   public Uni<Response> assignRequestId(ContainerRequestContext rc) {
@@ -48,7 +50,11 @@ public class RequestIdFilter {
             ? Uni.createFrom().item(requestId)
             : requestIdGenerator.generateRequestId(rc))
         .onItem()
-        .invoke(id -> rc.setProperty(REQUEST_ID_KEY, id))
+        .invoke(
+            id -> {
+              rc.setProperty(REQUEST_ID_KEY, id);
+              requestIdHolder.set(id);
+            })
         .onItemOrFailure()
         .transform((id, error) -> error == null ? null : errorResponse(error));
   }
