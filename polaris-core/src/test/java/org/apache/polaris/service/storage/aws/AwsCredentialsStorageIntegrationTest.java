@@ -143,17 +143,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
     StorageAccessConfig storageAccessConfig =
-        new AwsCredentialsStorageIntegration(
-                AwsStorageConfigurationInfo.builder()
-                    .addAllowedLocation(warehouseDir)
-                    .roleARN(roleARN)
-                    .externalId(externalId)
-                    .build(),
-                stsClient)
+        new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 buildParams(
+                    config,
                     true,
                     Set.of(warehouseDir + "/namespace/table"),
                     Set.of(warehouseDir + "/namespace/table"),
@@ -195,17 +196,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
     StorageAccessConfig storageAccessConfig =
-        new AwsCredentialsStorageIntegration(
-                AwsStorageConfigurationInfo.builder()
-                    .addAllowedLocation(warehouseDir)
-                    .roleARN(roleARN)
-                    .externalId(externalId)
-                    .build(),
-                stsClient)
+        new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 PRINCIPAL_INCLUDER_REALM_CONFIG,
                 buildParams(
+                    config,
                     true,
                     Set.of(warehouseDir + "/namespace/table"),
                     Set.of(warehouseDir + "/namespace/table"),
@@ -335,22 +337,23 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
     switch (awsPartition) {
       case "aws-cn":
       case AWS_PARTITION:
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
-            new AwsCredentialsStorageIntegration(
-                    AwsStorageConfigurationInfo.builder()
-                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                        .roleARN(roleARN)
-                        .externalId(externalId)
-                        .region(region)
-                        .build(),
-                    stsClient)
+            new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
                     buildParams(
+                        config,
                         true,
                         Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                         Set.of(s3Path(bucket, firstPath)),
@@ -444,18 +447,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region("us-east-2")
+            .build();
     StorageAccessConfig storageAccessConfig =
-        new AwsCredentialsStorageIntegration(
-                AwsStorageConfigurationInfo.builder()
-                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                    .roleARN(roleARN)
-                    .externalId(externalId)
-                    .region("us-east-2")
-                    .build(),
-                stsClient)
+        new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 buildParams(
+                    config,
                     false, /* allowList = false */
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
@@ -560,18 +564,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
     StorageAccessConfig storageAccessConfig =
-        new AwsCredentialsStorageIntegration(
-                AwsStorageConfigurationInfo.builder()
-                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                    .roleARN(roleARN)
-                    .externalId(externalId)
-                    .region(region)
-                    .build(),
-                stsClient)
+        new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 buildParams(
+                    config,
                     true, /* allowList = true */
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(),
@@ -648,18 +653,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
     StorageAccessConfig storageAccessConfig =
-        new AwsCredentialsStorageIntegration(
-                AwsStorageConfigurationInfo.builder()
-                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                    .roleARN(roleARN)
-                    .externalId(externalId)
-                    .region(region)
-                    .build(),
-                stsClient)
+        new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 buildParams(
+                    config,
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
@@ -691,22 +697,23 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             invocation -> {
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(clientRegion)
+            .build();
     switch (awsPartition) {
       case "aws-cn":
       case AWS_PARTITION:
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
-            new AwsCredentialsStorageIntegration(
-                    AwsStorageConfigurationInfo.builder()
-                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                        .roleARN(roleARN)
-                        .externalId(externalId)
-                        .region(clientRegion)
-                        .build(),
-                    stsClient)
+            new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
                     buildParams(
+                        config,
                         true, /* allowList = true */
                         Set.of(),
                         Set.of(),
@@ -738,20 +745,21 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             invocation -> {
               return ASSUME_ROLE_RESPONSE;
             });
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
     switch (awsPartition) {
       case AWS_PARTITION:
       case "aws-cn":
         StorageAccessConfig storageAccessConfig =
-            new AwsCredentialsStorageIntegration(
-                    AwsStorageConfigurationInfo.builder()
-                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                        .roleARN(roleARN)
-                        .externalId(externalId)
-                        .build(),
-                    stsClient)
+            new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
                     buildParams(
+                        config,
                         true, /* allowList = true */
                         Set.of(),
                         Set.of(),
@@ -766,16 +774,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-us-gov":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(
-                            AwsStorageConfigurationInfo.builder()
-                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                                .roleARN(roleARN)
-                                .externalId(externalId)
-                                .build(),
-                            stsClient)
+                    new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
                             EMPTY_REALM_CONFIG,
                             buildParams(
+                                config,
                                 true, /* allowList = true */
                                 Set.of(),
                                 Set.of(),
@@ -814,19 +817,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .currentKmsKey(currentKmsKey)
-                .kmsUnavailable(true)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configWithKmsUnavailable =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .currentKmsKey(currentKmsKey)
+            .kmsUnavailable(true)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configWithKmsUnavailable,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -850,18 +854,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .kmsUnavailable(true)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configWithKmsUnavailableReadOnly =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .kmsUnavailable(true)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configWithKmsUnavailableReadOnly,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(),
@@ -911,18 +916,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .currentKmsKey(currentKmsKey)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configWithCurrentKmsKey =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .currentKmsKey(currentKmsKey)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configWithCurrentKmsKey,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -963,18 +969,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .allowedKmsKeys(allowedKmsKeys)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configWithAllowedKmsKeys =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .allowedKmsKeys(allowedKmsKeys)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configWithAllowedKmsKeys,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(),
@@ -1004,17 +1011,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configNoKmsReadOnly =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configNoKmsReadOnly,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(),
@@ -1041,17 +1049,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .region(region)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo configNoKmsWrite =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .region(region)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                configNoKmsWrite,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -1086,16 +1095,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(warehouseDir)
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -1127,16 +1137,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(warehouseDir)
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -1168,16 +1179,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(warehouseDir)
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(warehouseDir)
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -1188,6 +1200,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   private static StorageAccessConfigParameters buildParams(
+      AwsStorageConfigurationInfo config,
       boolean allowListOperation,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
@@ -1195,10 +1208,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       Optional<String> principalName,
       boolean includePrincipalInRoleSessionName,
       CredentialVendingContext credentialVendingContext) {
+    String serialized = config != null ? config.serialize() : null;
     return ImmutableAwsStorageAccessConfigParameters.of(
         "testRealm",
         0L,
-        null,
+        serialized,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
@@ -1248,16 +1262,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .activatedRoles(Optional.of("admin,reader"))
             .build();
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1322,16 +1337,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .traceId(Optional.of("abc123def456"))
             .build();
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             sessionTagsAndTraceIdEnabledConfig,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1390,16 +1406,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
 
     // Use EMPTY_REALM_CONFIG which has session tags disabled by default
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1432,16 +1449,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     CredentialVendingContext context =
         CredentialVendingContext.builder().catalogName(Optional.of("test-catalog")).build();
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1490,16 +1508,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .namespace(Optional.of(longNamespace))
             .build();
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1531,16 +1550,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
     // Use empty context
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1556,12 +1576,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThat(capturedRequest.transitiveTagKeys()).isEmpty();
   }
 
-  /**
+  /*
    * Helper method to invoke getSubscopedCreds and capture the AssumeRoleRequest for assertions.
-   *
-   * @param realmConfig the realm configuration to use
-   * @param context the credential vending context
-   * @return the captured AssumeRoleRequest
    */
   private AssumeRoleRequest invokeGetSubscopedCredsAndCaptureRequest(
       RealmConfig realmConfig, CredentialVendingContext context) {
@@ -1575,16 +1591,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             realmConfig,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
                 Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1635,14 +1652,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .noneMatch(tag -> tag.key().equals("polaris:realm"));
   }
 
-  /**
-   * Tests graceful error handling when STS throws an exception due to missing sts:TagSession
-   * permission. When the IAM role's trust policy doesn't allow sts:TagSession, the assumeRole call
-   * should fail and the exception should be propagated appropriately.
-   *
-   * <p>NOTE: Full integration tests with LocalStack or real AWS to verify sts:TagSession permission
-   * behavior are recommended but out of scope for unit tests.
-   */
   @Test
   public void testSessionTagsAccessDeniedGracefulHandling() {
     StsClient stsClient = Mockito.mock(StsClient.class);
@@ -1681,19 +1690,21 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .tableName(Optional.of("test-table"))
             .build();
 
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+
     // Verify that the StsException is thrown (not swallowed) when sts:TagSession is denied
     Assertions.assertThatThrownBy(
             () ->
-                new AwsCredentialsStorageIntegration(
-                        AwsStorageConfigurationInfo.builder()
-                            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                            .roleARN(roleARN)
-                            .externalId(externalId)
-                            .build(),
-                        stsClient)
+                new AwsCredentialsStorageIntegration(stsClient)
                     .getSubscopedCreds(
                         SESSION_TAGS_ENABLED_CONFIG,
                         buildParams(
+                            config,
                             true,
                             Set.of(s3Path(bucket, warehouseKeyPrefix)),
                             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1890,16 +1901,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    new AwsCredentialsStorageIntegration(
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                .roleARN(roleARN)
-                .externalId(externalId)
-                .build(),
-            stsClient)
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+            .roleARN(roleARN)
+            .externalId(externalId)
+            .build();
+    new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
             buildParams(
+                config,
                 true,
                 Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
                 Set.of(),

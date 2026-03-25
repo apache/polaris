@@ -53,6 +53,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -79,10 +80,15 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GcpStorageConfigurationInfo config,
+      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
+    this(sourceCredentials, transportFactory, null);
+  }
+
+  public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
-      HttpTransportFactory transportFactory) {
-    super(config, GcpCredentialsStorageIntegration.class.getName());
+      HttpTransportFactory transportFactory,
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache) {
+    super(GcpCredentialsStorageIntegration.class.getName(), cache);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -103,7 +109,10 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    GoogleCredentials credentialsToDownscope = getBaseCredentials();
+    GcpStorageConfigurationInfo storageConfig =
+        (GcpStorageConfigurationInfo)
+            PolarisStorageConfigurationInfo.deserialize(params.storageConfigSerializedStr());
+    GoogleCredentials credentialsToDownscope = getBaseCredentials(storageConfig);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(
@@ -150,9 +159,9 @@ public class GcpCredentialsStorageIntegration
    * Returns the credential to be used as the source for downscoping. If a specific service account
    * is configured, it impersonates that account first.
    */
-  private GoogleCredentials getBaseCredentials() {
-    if (config().getGcpServiceAccount() != null) {
-      return createImpersonatedCredentials(sourceCredentials, config().getGcpServiceAccount());
+  private GoogleCredentials getBaseCredentials(GcpStorageConfigurationInfo storageConfig) {
+    if (storageConfig.getGcpServiceAccount() != null) {
+      return createImpersonatedCredentials(sourceCredentials, storageConfig.getGcpServiceAccount());
     }
     return sourceCredentials;
   }

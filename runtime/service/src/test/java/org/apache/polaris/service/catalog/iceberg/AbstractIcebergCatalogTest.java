@@ -124,8 +124,6 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.apache.polaris.core.storage.PolarisCredentialVendorImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -333,10 +331,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
+        new AwsCredentialsStorageIntegration(stsClient);
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
@@ -1862,24 +1857,24 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    PolarisCredentialVendor credentialVendor =
-        new PolarisCredentialVendorImpl(metaStoreManager, storageIntegrationProvider, diagServices);
+    AwsStorageAccessConfigParameters params =
+        AwsStorageAccessConfigParameters.of(
+            realmName,
+            taskEntity,
+            true,
+            Set.of(tableMetadata.location()),
+            Set.of(tableMetadata.location()),
+            Optional.empty(),
+            Optional.empty(),
+            false,
+            CredentialVendingContext.empty());
+    var integration =
+        storageIntegrationProvider.getStorageIntegrationForConfig(
+            org.apache.polaris.core.persistence.BaseMetaStoreManager
+                .extractStorageConfiguration(diagServices, taskEntity));
     Map<String, String> credentials =
-        credentialVendor
-            .getSubscopedCredsForEntity(
-                polarisContext,
-                taskEntity,
-                AwsStorageAccessConfigParameters.of(
-                    realmName,
-                    taskEntity,
-                    true,
-                    Set.of(tableMetadata.location()),
-                    Set.of(tableMetadata.location()),
-                    Optional.empty(),
-                    Optional.empty(),
-                    false,
-                    CredentialVendingContext.empty()))
-            .getStorageAccessConfig()
+        integration
+            .getSubscopedCreds(callContext.getRealmConfig(), params)
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()

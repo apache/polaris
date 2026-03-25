@@ -30,24 +30,22 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,9 +61,7 @@ public class StorageAccessConfigProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
-  private final StorageCredentialCache storageCredentialCache;
   private final CallContext callContext;
-  private final PolarisCredentialVendor credentialVendor;
   private final PolarisPrincipal polarisPrincipal;
   private final RealmContext realmContext;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -73,16 +69,12 @@ public class StorageAccessConfigProvider {
 
   @Inject
   public StorageAccessConfigProvider(
-      StorageCredentialCache storageCredentialCache,
       CallContext callContext,
-      PolarisCredentialVendor credentialVendor,
       PolarisPrincipal polarisPrincipal,
       RealmContext realmContext,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
       PolarisDiagnostics diagnostics) {
-    this.storageCredentialCache = storageCredentialCache;
     this.callContext = callContext;
-    this.credentialVendor = credentialVendor;
     this.polarisPrincipal = polarisPrincipal;
     this.realmContext = realmContext;
     this.storageIntegrationProvider = storageIntegrationProvider;
@@ -155,8 +147,8 @@ public class StorageAccessConfigProvider {
 
     RealmConfig realmConfig = callContext.getRealmConfig();
 
-    // Build storage access config parameters via the storage integration provider
-    StorageAccessConfigParameters key =
+    // Build storage access config parameters (also serves as cache key)
+    StorageAccessConfigParameters params =
         storageIntegrationProvider.buildStorageAccessConfigParameters(
             callContext.getRealmContext().getRealmIdentifier(),
             storageInfoEntity,
@@ -167,24 +159,24 @@ public class StorageAccessConfigProvider {
             refreshCredentialsEndpoint,
             polarisPrincipal,
             credentialVendingContext);
+
+    // Get the right integration for this storage type and vend credentials (with caching)
+    String storageConfigStr =
+        storageInfoEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    PolarisStorageConfigurationInfo storageConfig =
+        PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
+    var integration = storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    diagnostics.checkNotNull(
+        integration,
+        "storage_integration_not_exists",
+        "catalogId={}, entityId={}",
+        storageInfoEntity.getCatalogId(),
+        storageInfoEntity.getId());
+
     StorageAccessConfig accessConfig =
-        storageCredentialCache.getOrLoad(
-            key,
-            realmConfig,
-            () -> {
-              ScopedCredentialsResult result =
-                  credentialVendor.getSubscopedCredsForEntity(
-                      callContext.getPolarisCallContext(), storageInfoEntity, key);
-              if (result.isSuccess()) {
-                return result.getStorageAccessConfig();
-              }
-              LOGGER
-                  .atDebug()
-                  .addKeyValue("errorMessage", result.getExtraInformation())
-                  .log("Failed to get subscoped credentials");
-              throw new UnprocessableEntityException(
-                  "Failed to get subscoped credentials: %s", result.getExtraInformation());
-            });
+        integration.getOrLoadSubscopedCreds(realmConfig, params);
 
     LOGGER
         .atDebug()
@@ -208,15 +200,6 @@ public class StorageAccessConfigProvider {
   /**
    * Builds a credential vending context from the table identifier and resolved path. This context
    * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
-   *
-   * <p>The activated roles are included in this context (rather than extracted from
-   * PolarisPrincipal during session tag generation) to ensure they are part of the cache key when
-   * session tags are enabled. This prevents false positive cache hits when a principal's roles
-   * change.
-   *
-   * @param tableIdentifier the table identifier containing namespace and table name
-   * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, table, and activated roles
    */
   private CredentialVendingContext buildCredentialVendingContext(
       TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
@@ -253,8 +236,6 @@ public class StorageAccessConfigProvider {
     }
 
     // Only include trace ID when "trace_id" is in the configured session tag fields.
-    // When included, trace IDs become part of the credential cache key (since they affect
-    // the vended credentials), which disables effective credential caching.
     if (sessionTagFields.contains(FeatureConfiguration.SESSION_TAG_FIELD_TRACE_ID)) {
       builder.traceId(getCurrentTraceId());
     }
@@ -262,11 +243,6 @@ public class StorageAccessConfigProvider {
     return builder.build();
   }
 
-  /**
-   * Extracts the current OpenTelemetry trace ID from the active span context.
-   *
-   * @return the trace ID if a valid span context exists, empty otherwise
-   */
   private Optional<String> getCurrentTraceId() {
     SpanContext spanContext = Span.current().getSpanContext();
     if (spanContext.isValid()) {

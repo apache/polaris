@@ -19,29 +19,36 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
- * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
- * service principle information
+ * Abstract of Polaris Storage Integration. Each subclass handles credential vending for a specific
+ * cloud storage backend (AWS, GCP, Azure).
+ *
+ * <p>Integrations are expected to be singletons — they do not hold per-entity storage
+ * configuration. Instead, configuration is passed via {@link StorageAccessConfigParameters} at call
+ * time.
  *
  * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
  */
 public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigurationInfo> {
 
   private final String integrationIdentifierOrId;
-  private final T config;
+  @Nullable private final StorageCredentialCache cache;
 
-  public PolarisStorageIntegration(T config, String identifierOrId) {
-    this.config = config;
-    this.integrationIdentifierOrId = identifierOrId;
+  public PolarisStorageIntegration(String identifierOrId) {
+    this(identifierOrId, null);
   }
 
-  protected T config() {
-    return config;
+  public PolarisStorageIntegration(
+      String identifierOrId, @Nullable StorageCredentialCache cache) {
+    this.integrationIdentifierOrId = identifierOrId;
+    this.cache = cache;
   }
 
   public String getStorageIdentifierOrId() {
@@ -49,12 +56,30 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   }
 
   /**
-   * Subscope the creds against the allowed read and write locations.
+   * Get subscoped credentials, using the cache if available. On cache miss (or if no cache is
+   * configured), delegates to {@link #getSubscopedCreds} for actual credential vending.
+   *
+   * @param realmConfig the realm configuration
+   * @param params the storage access config parameters (also serves as the cache key)
+   * @return the storage access config with scoped credentials
+   */
+  public StorageAccessConfig getOrLoadSubscopedCreds(
+      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
+    if (cache != null) {
+      return cache.getOrLoad(params, realmConfig, () -> getSubscopedCreds(realmConfig, params));
+    }
+    return getSubscopedCreds(realmConfig, params);
+  }
+
+  /**
+   * Subscope the creds against the allowed read and write locations. Subclasses implement the
+   * actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
+   * generation).
    *
    * @param realmConfig the realm configuration (used for credential TTL and other runtime settings)
    * @param params the storage access config parameters containing allowed locations, principal
    *     name, credential vending context, and other fields needed for credential vending
-   * @return An enum map including the scoped credentials
+   * @return the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params);

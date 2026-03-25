@@ -60,6 +60,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
@@ -77,8 +78,13 @@ public class AzureCredentialsStorageIntegration
 
   final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration(AzureStorageConfigurationInfo config) {
-    super(config, AzureCredentialsStorageIntegration.class.getName());
+  public AzureCredentialsStorageIntegration() {
+    this(null);
+  }
+
+  public AzureCredentialsStorageIntegration(
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache) {
+    super(AzureCredentialsStorageIntegration.class.getName(), cache);
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
@@ -133,7 +139,10 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(realmConfig, config().getTenantId());
+    AzureStorageConfigurationInfo storageConfig =
+        (AzureStorageConfigurationInfo)
+            PolarisStorageConfigurationInfo.deserialize(params.storageConfigSerializedStr());
+    AccessToken accessToken = getAccessToken(realmConfig, storageConfig.getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
@@ -171,7 +180,7 @@ public class AzureCredentialsStorageIntegration
               Mono.just(accessToken));
     } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
       String path = null;
-      if (Boolean.TRUE.equals(config().isHierarchical())) {
+      if (Boolean.TRUE.equals(storageConfig.isHierarchical())) {
         Preconditions.checkArgument(
             allowedReadLocations.size() <= 1,
             "Allowed read locations must not have more that one entry");

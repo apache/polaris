@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -59,28 +61,39 @@ import software.amazon.awssdk.services.sts.model.Tag;
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
-  private final Optional<AwsCredentialsProvider> credentialsProvider;
+  private final Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>>
+      credentialsResolver;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
-  public AwsCredentialsStorageIntegration(
-      AwsStorageConfigurationInfo config, StsClient fixedClient) {
-    this(config, (destination) -> fixedClient);
+  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
+    this((destination) -> fixedClient);
+  }
+
+  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
+    this(stsClientProvider, config -> Optional.empty());
   }
 
   public AwsCredentialsStorageIntegration(
-      AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
-    this(config, stsClientProvider, Optional.empty());
-  }
-
-  public AwsCredentialsStorageIntegration(
-      AwsStorageConfigurationInfo config,
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> credentialsProvider) {
-    super(config, AwsCredentialsStorageIntegration.class.getName());
+    this(stsClientProvider, config -> credentialsProvider);
+  }
+
+  public AwsCredentialsStorageIntegration(
+      StsClientProvider stsClientProvider,
+      Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver) {
+    this(stsClientProvider, credentialsResolver, null);
+  }
+
+  public AwsCredentialsStorageIntegration(
+      StsClientProvider stsClientProvider,
+      Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache) {
+    super(AwsCredentialsStorageIntegration.class.getName(), cache);
     this.stsClientProvider = stsClientProvider;
-    this.credentialsProvider = credentialsProvider;
+    this.credentialsResolver = credentialsResolver;
   }
 
   /** {@inheritDoc} */
@@ -89,7 +102,9 @@ public class AwsCredentialsStorageIntegration
       @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
-    AwsStorageConfigurationInfo storageConfig = config();
+    AwsStorageConfigurationInfo storageConfig =
+        (AwsStorageConfigurationInfo)
+            PolarisStorageConfigurationInfo.deserialize(params.storageConfigSerializedStr());
     String region = storageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
@@ -147,8 +162,9 @@ public class AwsCredentialsStorageIntegration
         }
       }
 
-      credentialsProvider.ifPresent(
-          cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+      credentialsResolver
+          .apply(storageConfig)
+          .ifPresent(cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing

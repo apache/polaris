@@ -175,7 +175,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
-            gcpConfig,
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
@@ -345,7 +344,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
-            config,
             mockCreds,
             ServiceOptions.getFromServiceLoader(
                 HttpTransportFactory.class, NetHttpTransport::new)) {
@@ -365,7 +363,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ImmutableGcpStorageAccessConfigParameters.of(
             "testRealm",
             0L,
-            null,
+            config.serialize(),
             true,
             Set.of("gs://bucket/path"),
             Set.of("gs://bucket/path"),

@@ -40,6 +40,7 @@ public interface AzureStorageAccessConfigParameters extends StorageAccessConfigP
   @Value.Parameter(order = 2)
   long catalogId();
 
+  @Override
   @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();

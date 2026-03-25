@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -36,6 +37,10 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
  * vending implementations can read from the params object without casting.
  */
 public interface StorageAccessConfigParameters {
+
+  /** The serialized storage configuration string for the entity. */
+  @Nullable
+  String storageConfigSerializedStr();
 
   /** Whether LIST operations are allowed on the provided locations. */
   boolean allowedListAction();

@@ -155,9 +155,7 @@ class InMemoryStorageIntegrationTest {
   private static final class MockInMemoryStorageIntegration
       extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
     public MockInMemoryStorageIntegration() {
-      super(
-          Mockito.mock(PolarisStorageConfigurationInfo.class),
-          MockInMemoryStorageIntegration.class.getName());
+      super(MockInMemoryStorageIntegration.class.getName());
     }
 
     @Override

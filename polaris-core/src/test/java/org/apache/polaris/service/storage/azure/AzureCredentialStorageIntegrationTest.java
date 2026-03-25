@@ -349,7 +349,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             .tenantId(tenantId)
             .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration(azureConfig);
+        new AzureCredentialsStorageIntegration();
     return azureCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
         ImmutableAzureStorageAccessConfigParameters.of(

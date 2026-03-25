@@ -238,10 +238,7 @@ public abstract class AbstractPolicyCatalogTest {
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
+        new AwsCredentialsStorageIntegration(stsClient);
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
