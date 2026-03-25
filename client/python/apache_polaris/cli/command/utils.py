@@ -19,7 +19,7 @@
 import re
 import sys
 import datetime
-from typing import List, Optional, Tuple, Deque, Generator, Callable
+from typing import List, Optional, Tuple, Deque, Generator, Callable, Any
 from collections import deque
 from difflib import SequenceMatcher
 
@@ -73,18 +73,29 @@ def format_timestamp(ms_since_epoch: int) -> str:
 
 def is_fuzzy_match(query: str, target: str, threshold: float = 0.85) -> bool:
     """
-    Determine if a query matches a target using multi-stage fuzzy strategies.
+    Determine if a query matches a target using multi-stage fuzzy strategies and case-insensitive.
     """
-    # Substring match
-    if query in target:
+    if not query:
+        return False
+    q = query.lower()
+    t = target.lower()
+    query_len = len(q)
+    # Exact match
+    if q == t:
         return True
-    # Spare match
-    iterator = iter(target)
-    if all(char in iterator for char in query):
+    # Prefix match
+    if t.startswith(q):
         return True
-    # Similarity
-    if len(query) > 3:
-        return SequenceMatcher(None, query, target).ratio() >= threshold
+    # Substring match: enabled for length > 1
+    if query_len > 1 and q in t:
+        return True
+    # Spare match: enabled for length > 2
+    if query_len > 2:
+        if all(char in iter(t) for char in q):
+            return True
+    # Similarity: enabled for length > 3
+    if query_len > 3:
+        return SequenceMatcher(None, q, t).ratio() >= threshold
     return False
 
 
@@ -94,11 +105,20 @@ def handle_api_exception(entity_label: str, e: Exception) -> None:
     """
     status = getattr(e, "status", None)
     if status == 403:
-        print(f"  [!] {entity_label:<30} Permission denied", file=sys.stderr)
+        print(f"  [x] {entity_label:<30} Permission denied", file=sys.stderr)
+    if status == 404:
+        print(f"  [x] {entity_label:<30} Not found", file=sys.stderr)
     elif status:
-        print(f"  [!] {entity_label:<30} ERROR (HTTP {status}: {e})", file=sys.stderr)
+        print(f"  [x] {entity_label:<30} ERROR (HTTP {status}: {e})", file=sys.stderr)
     else:
-        print(f"  [!] {entity_label:<30} Error: {e}", file=sys.stderr)
+        print(f"  [x] {entity_label:<30} Error: {e}", file=sys.stderr)
+
+
+def format_iceberg_type(obj: Any) -> str:
+    unwrapped = getattr(obj, "actual_instance", obj)
+    if hasattr(unwrapped, "type"):
+        return str(unwrapped.type)
+    return str(unwrapped)
 
 
 def resolve_identifier(identifier: str) -> Tuple[Optional[str], List[str], str]:

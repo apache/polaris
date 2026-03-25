@@ -17,7 +17,7 @@
 # under the License.
 #
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import (
@@ -39,66 +39,88 @@ class FindCommand(Command):
     _current_context: Optional[str] = field(default=None, repr=False)
 
     def validate(self) -> None:
-        pass
+        if not self.identifier.strip():
+            raise Exception("The search identifier cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         print(f"Searching for '{self.identifier}'...")
-        # Resolve path
-        target_catalog, target_ns, target_leaf = resolve_identifier(self.identifier)
+        # If catalog name is provided, the identifier is a namespace path + leaf
+        if self.catalog_name:
+            parts = self.identifier.split(".")
+            target_catalog = None
+            target_ns = parts[:-1]
+            target_leaf = parts[-1]
+        else:
+            # Otherwise, use standard resolution to guess catalog vs namesapce for first part
+            target_catalog, target_ns, target_leaf = resolve_identifier(self.identifier)
         # Recombine if catalog_name is explicitly provided
         if self.catalog_name and target_catalog:
             target_ns = [target_catalog] + target_ns
             target_catalog = None
+        # Determine which catalogs to search
+        catalogs_to_search, effective_ns = self._resolve_search_scope(
+            api, target_catalog, target_ns
+        )
+        if not catalogs_to_search:
+            print("No catalogs found to search.")
+            return
         # Global entities search
         if not self.catalog_name and not target_catalog:
             self._find_global_entities(api, target_leaf)
         # Scoped search
-        catalogs_to_search = []
-        if self.catalog_name:
-            # fail fast if provided catalog doesn't exist
-            try:
-                api.get_catalog(catalog_name=self.catalog_name)
-            except Exception as e:
-                if getattr(e, "status", None) == 404:
-                    print(f"Catalog '{self.catalog_name}' not found.")
-                else:    
-                    handle_api_exception("Catalog Listing", e)
-                return
-            catalogs_to_search = [self.catalog_name]
-        elif target_catalog:
-            # Verify if target_catalog actually exists
-            try:
-                api.get_catalog(catalog_name=target_catalog)
-                catalogs_to_search = [target_catalog]
-            except Exception as e:
-                if getattr(e, "status", None) == 404:
-                    # not a real catalog, treat it as a namespace
-                    target_ns = [target_catalog] + target_ns
-                    target_catalog = None
-                    try:
-                        catalogs_to_search = [
-                            catalog.name
-                            for catalog in api.list_catalogs().catalogs or []
-                        ]
-                    except Exception as list_e:
-                        handle_api_exception("Catalog Listing", list_e)
-                else:
-                    handle_api_exception("Catalog Access", e)
-        else:
-            try:
-                catalogs_to_search = [
-                    catalog.name for catalog in api.list_catalogs().catalogs or []
-                ]
-            except Exception as e:
-                handle_api_exception("Catalog Listing", e)
         if catalogs_to_search:
+            catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
             for catalog_name in catalogs_to_search:
-                self._find_in_catalog(api, catalog_name, target_ns, target_leaf)
+                self._find_in_catalog(
+                    api, catalog_api, catalog_name, effective_ns, target_leaf
+                )
         # Summary
         if self._results_count > 0:
             print(f"Found {self._results_count} matching identifiers.")
         else:
             print(f"No identifiers found matching '{self.identifier}'.")
+
+    def _resolve_search_scope(
+        self,
+        api: PolarisDefaultApi,
+        target_catalog: Optional[str],
+        target_ns: List[str],
+    ) -> Tuple[Optional[List[str]], List[str]]:
+        if self.catalog_name:
+            try:
+                api.get_catalog(self.catalog_name)
+                return [self.catalog_name], target_ns
+            except Exception as e:
+                if getattr(e, "status", None) == 404:
+                    print(f"Catalog '{self.catalog_name}' not found.")
+                    return None, []
+                handle_api_exception("Catalog Access", e)
+                return [], target_ns
+        if target_catalog:
+            try:
+                api.get_catalog(target_catalog)
+                return [target_catalog], target_ns
+            except Exception as e:
+                if getattr(e, "status", None) != 404:
+                    handle_api_exception("Catalog Access", e)
+                # If not found, target_catalog is likely a top-level namespace
+                # Fallback to search all catalogs
+                effective_ns = [target_catalog] + target_ns
+                try:
+                    all_catalogs = [
+                        catalog.name for catalog in api.list_catalogs().catalogs or []
+                    ]
+                    return all_catalogs, effective_ns
+                except Exception as list_e:
+                    handle_api_exception("Catalog Listing", list_e)
+                    return [], effective_ns
+        try:
+            return [
+                catalog.name for catalog in api.list_catalogs().catalogs or []
+            ], target_ns
+        except Exception as e:
+            handle_api_exception("Catalog Listing", e)
+            return [], target_ns
 
     def _print_result(self, context: str, label: str, value: str) -> None:
         if self._current_context != context:
@@ -115,12 +137,12 @@ class FindCommand(Command):
                 if is_fuzzy_match(name, principal.name):
                     self._print_result(context, "Principal", principal.name)
         except Exception as e:
-            handle_api_exception("Principals", e)
+            handle_api_exception("Principal", e)
         # Check principal roles
         try:
             for principal_role in api.list_principal_roles().roles or []:
                 if is_fuzzy_match(name, principal_role.name):
-                    self._print_result(context, "Principal Rolee", principal_role.name)
+                    self._print_result(context, "Principal Role", principal_role.name)
         except Exception as e:
             handle_api_exception("Principal Role", e)
         # Check catalogs
@@ -129,16 +151,16 @@ class FindCommand(Command):
                 if is_fuzzy_match(name, catalog.name):
                     self._print_result(context, "Catalog", catalog.name)
         except Exception as e:
-            handle_api_exception("Catalogs", e)
+            handle_api_exception("Catalog", e)
 
     def _find_in_catalog(
         self,
         api: PolarisDefaultApi,
+        catalog_api: IcebergCatalogAPI,
         catalog_name: str,
         namespace: Optional[List[str]],
         leaf_name: str,
     ) -> None:
-        catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
         context = f"Catalog: {catalog_name}"
 
         # Helper function to suppress HTTP code 404 during find
