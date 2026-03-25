@@ -112,7 +112,7 @@ final class IndexesInternal {
     return new StripedIndexImpl<V>(stripesArr, firstLastKeysArr, indexLoader);
   }
 
-  static <V> IndexElement<V> indexElement(IndexKey key, V content) {
+  static <V> InternalIndexElement<V> indexElement(IndexKey key, V content) {
     return new DirectIndexElement<>(key, content);
   }
 

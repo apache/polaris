@@ -68,7 +68,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
   @Override
   public List<IndexKey> asKeyList() {
     var keys = new ArrayList<IndexKey>();
-    elementIterator().forEachRemaining(elem -> keys.add(elem.getKey()));
+    elementIterator().forEachRemaining(elem -> keys.add(elem.key()));
     return keys;
   }
 
@@ -81,10 +81,10 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
   public boolean contains(IndexKey key) {
     var u = embedded.getElement(key);
     if (u != null) {
-      return u.getValue() != null;
+      return u.valueNullable() != null;
     }
     var r = reference.getElement(key);
-    return r != null && r.getValue() != null;
+    return r != null && r.valueNullable() != null;
   }
 
   @Override
@@ -94,7 +94,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
 
   @Nullable
   @Override
-  public IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
     var v = embedded.getElement(key);
     return v != null ? v : reference.getElement(key);
   }
@@ -129,19 +129,19 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
 
   @Nonnull
   @Override
-  public Iterator<IndexElement<V>> elementIterator(
+  public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return new AbstractIterator<>() {
-      final Iterator<IndexElement<V>> referenceIter =
+      final Iterator<InternalIndexElement<V>> referenceIter =
           reference.elementIterator(lower, higher, prefetch);
-      final Iterator<IndexElement<V>> embeddedIter =
+      final Iterator<InternalIndexElement<V>> embeddedIter =
           embedded.elementIterator(lower, higher, prefetch);
 
-      IndexElement<V> referenceElement;
-      IndexElement<V> embeddedElement;
+      InternalIndexElement<V> referenceElement;
+      InternalIndexElement<V> embeddedElement;
 
       @Override
-      protected IndexElement<V> computeNext() {
+      protected InternalIndexElement<V> computeNext() {
         if (referenceElement == null) {
           if (referenceIter.hasNext()) {
             referenceElement = referenceIter.next();
@@ -163,7 +163,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
         } else if (referenceElement == null) {
           cmp = 1;
         } else {
-          cmp = referenceElement.getKey().compareTo(embeddedElement.getKey());
+          cmp = referenceElement.key().compareTo(embeddedElement.key());
         }
 
         if (cmp == 0) {
@@ -176,14 +176,14 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
         return yieldEmbedded();
       }
 
-      private IndexElement<V> yieldReference() {
-        IndexElement<V> e = referenceElement;
+      private InternalIndexElement<V> yieldReference() {
+        InternalIndexElement<V> e = referenceElement;
         referenceElement = null;
         return e;
       }
 
-      private IndexElement<V> yieldEmbedded() {
-        IndexElement<V> e = embeddedElement;
+      private InternalIndexElement<V> yieldEmbedded() {
+        InternalIndexElement<V> e = embeddedElement;
         embeddedElement = null;
         return e;
       }
@@ -192,19 +192,19 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
 
   @Nonnull
   @Override
-  public Iterator<IndexElement<V>> reverseElementIterator(
+  public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return new AbstractIterator<>() {
-      final Iterator<IndexElement<V>> referenceIter =
+      final Iterator<InternalIndexElement<V>> referenceIter =
           reference.reverseElementIterator(lower, higher, prefetch);
-      final Iterator<IndexElement<V>> embeddedIter =
+      final Iterator<InternalIndexElement<V>> embeddedIter =
           embedded.reverseElementIterator(lower, higher, prefetch);
 
-      IndexElement<V> referenceElement;
-      IndexElement<V> embeddedElement;
+      InternalIndexElement<V> referenceElement;
+      InternalIndexElement<V> embeddedElement;
 
       @Override
-      protected IndexElement<V> computeNext() {
+      protected InternalIndexElement<V> computeNext() {
         if (referenceElement == null) {
           if (referenceIter.hasNext()) {
             referenceElement = referenceIter.next();
@@ -226,7 +226,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
         } else if (referenceElement == null) {
           cmp = -1;
         } else {
-          cmp = referenceElement.getKey().compareTo(embeddedElement.getKey());
+          cmp = referenceElement.key().compareTo(embeddedElement.key());
         }
 
         if (cmp == 0) {
@@ -239,14 +239,14 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
         return yieldEmbedded();
       }
 
-      private IndexElement<V> yieldReference() {
-        IndexElement<V> e = referenceElement;
+      private InternalIndexElement<V> yieldReference() {
+        InternalIndexElement<V> e = referenceElement;
         referenceElement = null;
         return e;
       }
 
-      private IndexElement<V> yieldEmbedded() {
-        IndexElement<V> e = embeddedElement;
+      private InternalIndexElement<V> yieldEmbedded() {
+        InternalIndexElement<V> e = embeddedElement;
         embeddedElement = null;
         return e;
       }

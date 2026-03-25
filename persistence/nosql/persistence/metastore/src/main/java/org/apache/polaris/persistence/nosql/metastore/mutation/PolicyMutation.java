@@ -119,7 +119,7 @@ public record PolicyMutation(
                     var policyPrefixKey = keyByEntity.toPolicyTypePartialIndexKey();
                     var iter = index.iterator(policyPrefixKey, policyPrefixKey, false);
                     if (iter.hasNext()) {
-                      var key = fromIndexKey(iter.next().getKey());
+                      var key = fromIndexKey(iter.next().key());
                       if (!(key instanceof PolicyMappingsObj.KeyByEntity existing
                           && existing.policyCatalogId() == policyCatalogId
                           && existing.policyId() == policyId)) {

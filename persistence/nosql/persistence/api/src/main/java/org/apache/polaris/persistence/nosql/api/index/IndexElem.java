@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.impl.indexes;
 
+package org.apache.polaris.persistence.nosql.api.index;
+
+import com.google.errorprone.annotations.Var;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.nio.ByteBuffer;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
-import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 
-final class DirectIndexElement<V> extends AbstractIndexElement<V> {
-  private final IndexKey key;
-  private final V content;
+/**
+ * Package-private implementation of {@link Index.Element} for {@link Index.Element#of(IndexKey,
+ * Object)}.
+ */
+record IndexElem<V>(IndexKey key, V value) implements Index.Element<V> {
 
-  DirectIndexElement(@Nonnull IndexKey key, @Nullable V content) {
+  IndexElem(@Nonnull IndexKey key, @Nonnull V value) {
     this.key = key;
-    this.content = content;
+    this.value = value;
   }
 
   @Override
@@ -40,18 +40,27 @@ final class DirectIndexElement<V> extends AbstractIndexElement<V> {
   }
 
   @Override
-  @Nullable
-  public V valueNullable() {
-    return content;
+  @Nonnull
+  public V value() {
+    return value;
   }
 
   @Override
-  public void serializeContent(IndexValueSerializer<V> ser, ByteBuffer target) {
-    ser.serialize(content, target);
+  public int hashCode() {
+    @Var var h = 5381;
+    h += (h << 5) + key().hashCode();
+    h += (h << 5) + value().hashCode();
+    return h;
   }
 
   @Override
-  public int contentSerializedSize(IndexValueSerializer<V> ser) {
-    return ser.serializedSize(content);
+  public boolean equals(Object o) {
+    if (o == this) {
+      return true;
+    }
+    if (o instanceof Index.Element<?> other) {
+      return key.equals(other.key()) && value.equals(other.value());
+    }
+    return false;
   }
 }

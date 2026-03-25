@@ -282,10 +282,10 @@ public record MutationAttempt(
 
                         while (iter.hasNext()) {
                           var elem = iter.next();
-                          var key = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(elem.getKey());
+                          var key = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(elem.key());
                           var reversed = key.reverse();
 
-                          mutationResults.addPolicyIndexKeyToRemove(elem.getKey());
+                          mutationResults.addPolicyIndexKeyToRemove(elem.key());
                           mutationResults.addPolicyIndexKeyToRemove(reversed.toIndexKey());
                         }
 

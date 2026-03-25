@@ -194,7 +194,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             names ->
                 persistence
                     .bucketizedBulkFetches(
-                        Streams.stream(names).filter(Objects::nonNull).map(Map.Entry::getValue),
+                        Streams.stream(names).filter(Objects::nonNull).map(Index.Element::value),
                         CatalogObj.class)
                     .filter(Objects::nonNull)
                     .forEach(
@@ -511,7 +511,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                     var keys = new ArrayList<IndexKey>();
                     for (var iter = index.iterator(keyBy, keyBy, true); iter.hasNext(); ) {
                       var elem = iter.next();
-                      keys.add(elem.getKey());
+                      keys.add(elem.key());
                     }
 
                     if (keys.isEmpty()) {
@@ -672,13 +672,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               }
 
               var elem = iter.next();
-              var elemKey = elem.getKey();
+              var elemKey = elem.key();
               var elemIdentifier = indexKeyToIdentifier(elemKey);
               if (!elemIdentifier.startsWith(locationIdentifier)) {
                 return Optional.empty();
               }
 
-              return elem.getValue().entityIds().stream()
+              return elem.value().entityIds().stream()
                   .map(IndexKey::key)
                   .map(byId::get)
                   .filter(Objects::nonNull)
@@ -813,7 +813,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       return Page.fromItems(List.of());
     }
 
-    var objRefs = Stream.<Map.Entry<IndexKey, ObjRef>>empty();
+    var objRefs = Stream.<Index.Element<ObjRef>>empty();
     if (catalogStableId != 0L) {
       if (parentId == 0L || parentId == catalogStableId) {
         // list on catalog root
@@ -839,17 +839,13 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
           objRefs.peek(
               o ->
                   LOGGER.debug(
-                      "  listEntitiesStream (before type filter): {} : {}",
-                      o.getKey(),
-                      o.getValue()));
+                      "  listEntitiesStream (before type filter): {} : {}", o.key(), o.value()));
     }
 
     var filterType = objTypeForPolarisTypeForFiltering(entityType, entitySubType);
     objRefs =
         objRefs.filter(
-            o ->
-                filterType.isAssignableFrom(
-                    ObjTypes.objTypeById(o.getValue().type()).targetClass()));
+            o -> filterType.isAssignableFrom(ObjTypes.objTypeById(o.value().type()).targetClass()));
 
     return listEntitiesBuildPage(access, pageToken, mapper, filter, transformer, objRefs);
   }
@@ -859,19 +855,19 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         (parent.isEmpty()
                 ? catalogRootEntriesStream(nameIndex, null)
                 : catalogNamespaceEntriesStream(nameIndex, parent.toIndexKey(), parent))
-            .map(Map.Entry::getValue);
+            .map(Index.Element::value);
 
     return persistence.bucketizedBulkFetches(objRefs, ContentObj.class);
   }
 
-  private static Stream<Map.Entry<IndexKey, ObjRef>> catalogNamespaceEntriesStream(
+  private static Stream<Index.Element<ObjRef>> catalogNamespaceEntriesStream(
       Index<ObjRef> nameIndex, IndexKey offsetKey, ContentIdentifier prefix) {
     var prefixElems = prefix.elements();
     var directChildLevel = prefixElems.size() + 1;
     return Streams.stream(nameIndex.iterator(offsetKey, null, false))
         .takeWhile(
             e -> {
-              var ident = indexKeyToIdentifier(requireNonNull(e).getKey());
+              var ident = indexKeyToIdentifier(requireNonNull(e).key());
               var identElems = ident.elements();
               if (identElems.size() < prefixElems.size() + 1) {
                 return ident.equals(prefix);
@@ -880,18 +876,18 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             })
         .filter(
             e -> {
-              var ident = indexKeyToIdentifier(requireNonNull(e).getKey());
+              var ident = indexKeyToIdentifier(requireNonNull(e).key());
               return ident.elements().size() == directChildLevel;
             });
   }
 
-  private static Stream<Map.Entry<IndexKey, ObjRef>> catalogRootEntriesStream(
+  private static Stream<Index.Element<ObjRef>> catalogRootEntriesStream(
       Index<ObjRef> nameIndex, IndexKey lower) {
     return Streams.stream(nameIndex.iterator(lower, null, false))
         .filter(Objects::nonNull)
         .filter(
             e -> {
-              var ident = indexKeyToIdentifier(e.getKey());
+              var ident = indexKeyToIdentifier(e.key());
               return ident.elements().size() == 1;
             });
   }
@@ -908,12 +904,12 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       Function<ObjBase, I> mapper,
       Predicate<I> filter,
       Function<I, T> transformer,
-      Stream<Map.Entry<IndexKey, ObjRef>> objRefs) {
+      Stream<Index.Element<ObjRef>> objRefs) {
     var limit = pageToken.pageSize().orElse(Integer.MAX_VALUE);
     var nextToken = (NoSqlPaginationToken) null;
     var result = new ArrayList<T>();
 
-    var fetchBuffer = new ArrayList<Map.Entry<IndexKey, ObjRef>>();
+    var fetchBuffer = new ArrayList<Index.Element<ObjRef>>();
 
     for (var objRefIter = objRefs.iterator(); objRefIter.hasNext(); ) {
       var keyAndRef = objRefIter.next();
@@ -940,7 +936,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   @Nullable
   private <I, T> NoSqlPaginationToken listEntitiesBuildPagePart(
       IndexedContainerAccess<?> access,
-      List<Map.Entry<IndexKey, ObjRef>> fetchBuffer,
+      List<Index.Element<ObjRef>> fetchBuffer,
       Function<ObjBase, I> mapper,
       Predicate<I> filter,
       Function<I, T> transformer,
@@ -948,7 +944,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       int limit) {
     var objs =
         persistence.fetchMany(
-            ObjBase.class, fetchBuffer.stream().map(Map.Entry::getValue).toArray(ObjRef[]::new));
+            ObjBase.class, fetchBuffer.stream().map(Index.Element::value).toArray(ObjRef[]::new));
     for (int i = 0; i < fetchBuffer.size(); i++) {
       var obj = objs[i];
 
@@ -966,7 +962,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
       if (result.size() == limit) {
         return NoSqlPaginationToken.paginationToken(
-            ObjRef.objRef(access.refObj().orElseThrow()), fetchBuffer.get(i).getKey());
+            ObjRef.objRef(access.refObj().orElseThrow()), fetchBuffer.get(i).key());
       }
 
       result.add(transformed);
@@ -1088,7 +1084,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var seenPolicies = new HashSet<Long>();
     for (var iter = index.iterator(prefixKey, prefixKey, false); iter.hasNext(); ) {
       var elem = iter.next();
-      var key = fromIndexKey(elem.getKey());
+      var key = fromIndexKey(elem.key());
       if (expectedKeyType.isInstance(key)) {
         if (seenPolicies.add(key.policyId())) {
           memoizedIndexedAccess
@@ -1098,7 +1094,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .map(obj -> mapToEntity(obj, key.policyCatalogId()))
               .ifPresent(policyEntities::add);
         }
-        mappingRecords.add(key.toMappingRecord(elem.getValue()));
+        mappingRecords.add(key.toMappingRecord(elem.value()));
       } else {
         // `key` is not what we're looking for.
         // This should actually never happen due to the prefix-key.
