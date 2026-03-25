@@ -64,7 +64,7 @@ paths:
         Create a generic table under the given namespace, and return the created table information as a response.
       operationId: createGenericTable
       parameters:
-        - $ref: '#/components/parameters/generic-table-data-access'
+        - $ref: '#/components/parameters/polaris-data-access'
       requestBody:
         required: true
         content:
@@ -120,7 +120,7 @@ paths:
         The response contains all table information passed during create.
 
       parameters:
-        - $ref: '#/components/parameters/generic-table-data-access'
+        - $ref: '#/components/parameters/polaris-data-access'
       responses:
         200:
           $ref: '#/components/responses/LoadGenericTableResponse'
@@ -186,16 +186,16 @@ components:
         type: string
       example: "sales"
 
-    generic-table-data-access:
-      name: X-Generic-Table-Access-Delegation
+    polaris-data-access:
+      name: Polaris-Access-Delegation
       in: header
       description: >
-        Optional signal to the server that the client supports delegated access
-        via a comma-separated list of access mechanisms. The server may choose
-        to supply access via any or none of the requested mechanisms.
+        Optional header indicating that the client supports delegated access
+        using a specific mechanism. If the header is present, the server must
+        either provide access using the requested mechanism or fail the request.
 
 
-        When `vended-credentials` is included, the server may return scoped
+        If `vended-credentials` is specified, the server must return scoped
         storage credentials in the `storage-access-configs` field of the response.
       required: false
       schema:
