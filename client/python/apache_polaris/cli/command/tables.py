@@ -51,11 +51,6 @@ class TableCommand(Command):
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
-        # if self.table_subcommand in {Subcommands.GET, Subcommands.DELETE, Subcommands.SUMMARIZE}:
-        #     if not self.table_name:
-        #         raise Exception(
-        #             f"Missing required argument: {Argument.to_flag_name(Arguments.TABLE)}"
-        #         )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
@@ -93,7 +88,6 @@ class TableCommand(Command):
             self._generate_summary(api, catalog_api, ns_str)
 
     def _delete_table(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
-        ns_str = UNIT_SEPARATOR.join(self.namespace)
         print(f"De-registering table {'.'.join(self.namespace)}.{self.table_name}...")
         try:
             catalog_api.drop_table(

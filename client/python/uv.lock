@@ -17,6 +17,7 @@ version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
+    { name = "prettytable" },
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "pyyaml" },
@@ -31,7 +32,6 @@ dev = [
     { name = "openapi-generator-cli" },
     { name = "pip-licenses-cli" },
     { name = "pre-commit" },
-    { name = "prettytable" },
     { name = "pyiceberg" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -41,6 +41,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = "~=1.42.2" },
+    { name = "prettytable", specifier = ">=3.17.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -55,7 +56,6 @@ dev = [
     { name = "openapi-generator-cli", specifier = "==7.12.0" },
     { name = "pip-licenses-cli", specifier = "==4.0.0" },
     { name = "pre-commit", specifier = "==4.5.1" },
-    { name = "prettytable", specifier = ">=3.17.0" },
     { name = "pyiceberg", specifier = "==0.11.1" },
     { name = "pytest", specifier = ">=7.2.1" },
     { name = "pytest-cov", specifier = ">=2.8.1" },

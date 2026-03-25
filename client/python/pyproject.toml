@@ -39,6 +39,7 @@ dependencies = [
     "typing-extensions>=4.7.1",
     "boto3~=1.42.2",
     "PyYAML>=6.0.3",
+    "prettytable>=3.17.0",
 ]
 
 [project.urls]
@@ -60,7 +61,6 @@ dev = [
     # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
     "openapi-generator-cli==7.12.0",
     "pip-licenses-cli==4.0.0",
-    "prettytable>=3.17.0",
 ]
 
 [tool.hatch.build.targets.sdist]

@@ -91,7 +91,8 @@ def is_fuzzy_match(query: str, target: str, threshold: float = 0.85) -> bool:
         return True
     # Spare match: enabled for length > 2
     if query_len > 2:
-        if all(char in iter(t) for char in q):
+        iterator = iter(t)
+        if all(char in iterator for char in q):
             return True
     # Similarity: enabled for length > 3
     if query_len > 3:
@@ -106,7 +107,7 @@ def handle_api_exception(entity_label: str, e: Exception) -> None:
     status = getattr(e, "status", None)
     if status == 403:
         print(f"  [x] {entity_label:<30} Permission denied", file=sys.stderr)
-    if status == 404:
+    elif status == 404:
         print(f"  [x] {entity_label:<30} Not found", file=sys.stderr)
     elif status:
         print(f"  [x] {entity_label:<30} ERROR (HTTP {status}: {e})", file=sys.stderr)
