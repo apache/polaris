@@ -74,8 +74,6 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
-import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -213,14 +211,6 @@ public class ServiceProducers {
   public FileIOFactory fileIOFactory(
       FileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  @Produces
-  @Singleton // used in instanceof checks
-  public PolarisEventListener polarisEventListener(
-      PolarisEventListenerConfiguration config,
-      @Any Instance<PolarisEventListener> polarisEventListeners) {
-    return polarisEventListeners.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces
