@@ -193,8 +193,6 @@ components:
         Optional header indicating that the client supports delegated access
         using a specific mechanism. If the header is present, the server must
         either provide access using the requested mechanism or fail the request.
-
-
         If `vended-credentials` is specified, the server must return scoped
         storage credentials in the `storage-access-configs` field of the response.
       required: false
