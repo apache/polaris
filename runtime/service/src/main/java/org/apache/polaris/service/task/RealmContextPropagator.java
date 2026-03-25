@@ -35,11 +35,11 @@ import org.slf4j.LoggerFactory;
  * information) survive the async boundary intact.
  *
  * <p>At capture time {@link RealmContextHolder} is request-scoped; its CDI proxy resolves to the
- * holder in the currently active request scope. On a normal HTTP request thread that scope holds the
- * realm set by the request filter. When an async task handler schedules a follow-up task (no active
- * JAX-RS request), {@code RealmContextHolder} in that task's scope already contains the realm
- * restored by this propagator's {@link #restore} path, so capture continues to work correctly for
- * nested task submission.
+ * holder in the currently active request scope. On a normal HTTP request thread that scope holds
+ * the realm set by the request filter. When an async task handler schedules a follow-up task (no
+ * active JAX-RS request), {@code RealmContextHolder} in that task's scope already contains the
+ * realm restored by this propagator's {@link #restore} path, so capture continues to work correctly
+ * for nested task submission.
  */
 @ApplicationScoped
 public class RealmContextPropagator implements AsyncContextPropagator {
@@ -73,7 +73,9 @@ public class RealmContextPropagator implements AsyncContextPropagator {
 
   @Override
   public AutoCloseable restore(@Nullable Object capturedState) {
-    LOGGER.trace("restore realm={}", capturedState != null ? ((RealmContext) capturedState).getRealmIdentifier() : null);
+    LOGGER.trace(
+        "restore realm={}",
+        capturedState != null ? ((RealmContext) capturedState).getRealmIdentifier() : null);
     if (capturedState != null) {
       realmContextHolder.set((RealmContext) capturedState);
     }

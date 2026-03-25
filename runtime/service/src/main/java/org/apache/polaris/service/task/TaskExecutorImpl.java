@@ -177,8 +177,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     return CompletableFuture.runAsync(
             () -> {
-              handleTaskWithTracing(
-                  taskEntityId, callContext, captured, eventMetadata, attempt);
+              handleTaskWithTracing(taskEntityId, callContext, captured, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)

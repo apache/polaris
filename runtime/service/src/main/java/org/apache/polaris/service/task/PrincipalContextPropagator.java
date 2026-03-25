@@ -62,7 +62,8 @@ public class PrincipalContextPropagator implements AsyncContextPropagator {
     PolarisPrincipal clone = null;
     if (polarisPrincipal.isResolvable()) {
       try {
-        // Clone to allow task thread get a stable snapshot regardless of the request scope lifecycle.
+        // Clone to allow task thread get a stable snapshot regardless of the request scope
+        // lifecycle.
         clone = ImmutablePolarisPrincipal.builder().from(polarisPrincipal.get()).build();
       } catch (ContextNotActiveException e) {
         // scope not active, return null
@@ -74,7 +75,9 @@ public class PrincipalContextPropagator implements AsyncContextPropagator {
 
   @Override
   public AutoCloseable restore(@Nullable Object capturedState) {
-    LOGGER.trace("restore principal={}", capturedState != null ? ((PolarisPrincipal) capturedState).getName() : null);
+    LOGGER.trace(
+        "restore principal={}",
+        capturedState != null ? ((PolarisPrincipal) capturedState).getName() : null);
     if (capturedState != null) {
       polarisPrincipalHolder.set((PolarisPrincipal) capturedState);
     }

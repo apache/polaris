@@ -32,8 +32,8 @@ import org.slf4j.MDC;
  * Propagates the request ID across the async task boundary.
  *
  * <p>At capture time the request ID is read from {@link RequestIdHolder}, which is populated by
- * {@code RequestIdFilter} on HTTP request threads and by this propagator's {@link #restore} path
- * on task threads (enabling nested task submission).
+ * {@code RequestIdFilter} on HTTP request threads and by this propagator's {@link #restore} path on
+ * task threads (enabling nested task submission).
  *
  * <p>At restore time the ID is written to both the {@link RequestIdHolder} (so that {@code
  * RequestIdSupplier} works in task threads) and to the SLF4J MDC (so that log messages emitted by
