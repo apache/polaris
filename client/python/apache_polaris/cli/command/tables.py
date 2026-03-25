@@ -123,7 +123,7 @@ class TableCommand(Command):
                     if policy.inherited:
                         target = (
                             ".".join(policy.namespace)
-                            if policy.self.namespace
+                            if policy.namespace
                             else "Catalog"
                         )
                         source = f"Inherited from {target}"

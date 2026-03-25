@@ -55,6 +55,15 @@ class FindCommand(Command):
         # Scoped search
         catalogs_to_search = []
         if self.catalog_name:
+            # fail fast if provided catalog doesn't exist
+            try:
+                api.get_catalog(catalog_name=self.catalog_name)
+            except Exception as e:
+                if getattr(e, "status", None) == 404:
+                    print(f"Catalog '{self.catalog_name}' not found.")
+                else:    
+                    handle_api_exception("Catalog Listing", e)
+                return
             catalogs_to_search = [self.catalog_name]
         elif target_catalog:
             # Verify if target_catalog actually exists
