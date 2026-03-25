@@ -35,31 +35,6 @@ import org.junit.jupiter.api.Test;
 class PolarisEventMetadataFactoryTest {
 
   @Test
-  void testCreateReturnsNoRequestIdWhenSupplierNotResolvable() {
-    PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
-    factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
-
-    CurrentIdentityAssociation currentIdentityAssociation = mock(CurrentIdentityAssociation.class);
-    when(currentIdentityAssociation.getDeferredIdentity()).thenReturn(Uni.createFrom().nullItem());
-    factory.currentIdentityAssociation = currentIdentityAssociation;
-
-    @SuppressWarnings("unchecked")
-    Instance<RealmContext> realmContext = mock(Instance.class);
-    when(realmContext.isResolvable()).thenReturn(true);
-    when(realmContext.get()).thenReturn(() -> "test-realm");
-    factory.realmContext = realmContext;
-
-    @SuppressWarnings("unchecked")
-    Instance<RequestIdSupplier> requestIdSupplier = mock(Instance.class);
-    when(requestIdSupplier.isResolvable()).thenReturn(false);
-    factory.requestIdSupplier = requestIdSupplier;
-
-    PolarisEventMetadata metadata = factory.create();
-
-    assertThat(metadata.requestId()).isEmpty();
-  }
-
-  @Test
   void testCreateReturnsNoRequestIdWhenSupplierReturnsNull() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
@@ -74,11 +49,7 @@ class PolarisEventMetadataFactoryTest {
     when(realmContext.get()).thenReturn(() -> "test-realm");
     factory.realmContext = realmContext;
 
-    @SuppressWarnings("unchecked")
-    Instance<RequestIdSupplier> requestIdSupplier = mock(Instance.class);
-    when(requestIdSupplier.isResolvable()).thenReturn(true);
-    when(requestIdSupplier.get()).thenReturn(() -> null);
-    factory.requestIdSupplier = requestIdSupplier;
+    factory.requestIdSupplier = () -> null;
 
     PolarisEventMetadata metadata = factory.create();
 
@@ -100,11 +71,7 @@ class PolarisEventMetadataFactoryTest {
     when(realmContext.get()).thenReturn(() -> "test-realm");
     factory.realmContext = realmContext;
 
-    @SuppressWarnings("unchecked")
-    Instance<RequestIdSupplier> requestIdSupplier = mock(Instance.class);
-    when(requestIdSupplier.isResolvable()).thenReturn(true);
-    when(requestIdSupplier.get()).thenReturn(() -> "req-123");
-    factory.requestIdSupplier = requestIdSupplier;
+    factory.requestIdSupplier = () -> "req-123";
 
     PolarisEventMetadata metadata = factory.create();
 

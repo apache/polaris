@@ -39,7 +39,7 @@ public class PolarisEventMetadataFactory {
   @Inject Clock clock;
   @Inject CurrentIdentityAssociation currentIdentityAssociation;
   @Inject Instance<RealmContext> realmContext;
-  @Inject Instance<RequestIdSupplier> requestIdSupplier;
+  @Inject RequestIdSupplier requestIdSupplier;
 
   /**
    * Creates a new event metadata object.
@@ -99,18 +99,15 @@ public class PolarisEventMetadataFactory {
   }
 
   /**
-   * Extracts the request ID from the current {@link RequestIdSupplier}, if one is resolvable.
+   * Extracts the request ID from the current {@link RequestIdSupplier}.
    *
    * <p>On normal HTTP request threads the supplier is backed by the request-scoped {@link
    * org.apache.polaris.service.context.catalog.RequestIdHolder}. On async task threads it is
    * populated by {@link org.apache.polaris.service.task.RequestIdPropagator}.
    */
   private Optional<String> getRequestId() {
-    if (!requestIdSupplier.isResolvable()) {
-      return Optional.empty();
-    }
     try {
-      return Optional.ofNullable(requestIdSupplier.get().getRequestId());
+      return Optional.ofNullable(requestIdSupplier.getRequestId());
     } catch (ContextNotActiveException e) {
       // No active request scope (e.g. background thread without @ActivateRequestContext).
       return Optional.empty();
