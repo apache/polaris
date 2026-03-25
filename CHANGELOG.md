@@ -49,6 +49,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added `envFrom` support in Helm chart.
+- Request IDs are now propagated to async task threads via CDI-injectable `RequestIdSupplier`, so task log messages carry the originating request's ID. Context propagation across task boundaries is now handled by the pluggable `AsyncContextPropagator` SPI.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
