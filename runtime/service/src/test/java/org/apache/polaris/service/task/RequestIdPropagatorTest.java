@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.apache.polaris.service.context.catalog.RequestIdHolder;
 import org.apache.polaris.service.tracing.RequestIdFilter;
@@ -46,7 +47,7 @@ class RequestIdPropagatorTest {
   }
 
   @Test
-  void restore_setsHolderAndMdc() throws Exception {
+  void testRestoreSetsHolderAndMdc() throws Exception {
     try (AutoCloseable scope = propagator.restore("req-123")) {
       assertThat(holder.get()).isEqualTo("req-123");
       assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("req-123");
@@ -57,7 +58,7 @@ class RequestIdPropagatorTest {
   }
 
   @Test
-  void restore_restoresPreviousMdcValueOnClose() throws Exception {
+  void testRestoreRestoresPreviousMdcValueOnClose() throws Exception {
     MDC.put(RequestIdFilter.REQUEST_ID_KEY, "previous-id");
 
     try (AutoCloseable scope = propagator.restore("task-req-456")) {
@@ -71,7 +72,7 @@ class RequestIdPropagatorTest {
   }
 
   @Test
-  void restore_nullRequestId_doesNotSetMdc() throws Exception {
+  void testRestoreNullRequestIdDoesNotSetMdc() throws Exception {
     try (AutoCloseable scope = propagator.restore(null)) {
       assertThat(holder.get()).isNull();
       assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isNull();
@@ -79,7 +80,7 @@ class RequestIdPropagatorTest {
   }
 
   @Test
-  void capture_withNoActiveJaxrsContext_usesRestoredHolderValue() {
+  void testCaptureUsesRestoredHolderValue() {
     holder.set("nested-task-req");
 
     Object state = propagator.capture();
@@ -87,10 +88,14 @@ class RequestIdPropagatorTest {
   }
 
   @Test
-  void capture_withNoActiveJaxrsContext_andNoRestoredHolder_returnsNull() {
-    // No JAX-RS request active (CurrentRequestManager.get() returns null in unit tests).
-    // Holder is also empty.
+  void testCaptureWithEmptyHolderReturnsNull() {
     Object state = propagator.capture();
     assertThat(state).isNull();
+  }
+
+  @Test
+  void testHolderDoubleSetThrowsIllegalStateException() {
+    holder.set("first");
+    assertThrows(IllegalStateException.class, () -> holder.set("second"));
   }
 }

@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
 class PolarisEventMetadataFactoryTest {
 
   @Test
-  void createReturnsNoRequestIdWhenSupplierNotResolvable() {
+  void testCreateReturnsNoRequestIdWhenSupplierNotResolvable() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
@@ -61,7 +61,7 @@ class PolarisEventMetadataFactoryTest {
   }
 
   @Test
-  void createReturnsNoRequestIdWhenSupplierReturnsNull() {
+  void testCreateReturnsNoRequestIdWhenSupplierReturnsNull() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
@@ -88,7 +88,7 @@ class PolarisEventMetadataFactoryTest {
   }
 
   @Test
-  void createUsesRequestIdSupplier() {
+  void testCreateUsesRequestIdSupplier() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
