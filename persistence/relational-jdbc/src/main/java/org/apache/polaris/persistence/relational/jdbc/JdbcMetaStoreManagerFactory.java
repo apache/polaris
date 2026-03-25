@@ -30,7 +30,8 @@ import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -67,9 +68,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
-  final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  final Map<String, EntityCache> entityCacheMap = new HashMap<>();
-  final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
+  // Stateful per-realm cache — InMemoryEntityCache accumulates entries across requests
+  final Map<String, EntityCache> entityCacheMap = new ConcurrentHashMap<>();
+
+  // Cached per-realm schema version — loaded from DB once, stable at runtime
+  private final ConcurrentHashMap<String, Integer> schemaVersionCache = new ConcurrentHashMap<>();
+
+  // Tracks realms that have already passed the bootstrap verification check
+  // (checkPolarisServiceBootstrappedForRealm), avoiding redundant DB hits on subsequent calls.
+  private final Set<String> verifiedRealms = ConcurrentHashMap.newKeySet();
 
   @Inject Clock clock;
   @Inject PolarisDiagnostics diagnostics;
@@ -93,32 +100,30 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     return new AtomicOperationMetaStoreManager(clock, diagnostics);
   }
 
-  private void initializeForRealm(
-      DatasourceOperations datasourceOperations,
-      RealmContext realmContext,
-      RootCredentialsSet rootCredentialsSet) {
-    // Materialize realmId so that background tasks that don't have an active
-    // RealmContext (request-scoped bean) can still create a JdbcBasePersistenceImpl
-    String realmId = realmContext.getRealmIdentifier();
-    // determine schemaVersion once per realm
-    final int schemaVersion =
-        JdbcBasePersistenceImpl.loadSchemaVersion(
-            datasourceOperations,
-            realmConfig.getConfig(BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
-
-    sessionSupplierMap.put(
+  /** Loads and caches the schema version for the given realm (DB hit only on first call). */
+  private int getOrLoadSchemaVersion(DatasourceOperations datasourceOperations, String realmId) {
+    return schemaVersionCache.computeIfAbsent(
         realmId,
-        () ->
-            new JdbcBasePersistenceImpl(
-                diagnostics,
+        k ->
+            JdbcBasePersistenceImpl.loadSchemaVersion(
                 datasourceOperations,
-                secretsGenerator(realmId, rootCredentialsSet),
-                storageIntegrationProvider,
-                realmId,
-                schemaVersion));
+                realmConfig.getConfig(
+                    BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE)));
+  }
 
-    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-    metaStoreManagerMap.put(realmId, metaStoreManager);
+  /** Creates a new stateless {@link JdbcBasePersistenceImpl} for the given realm. */
+  private BasePersistence createSession(
+      DatasourceOperations datasourceOperations,
+      String realmId,
+      @Nullable RootCredentialsSet rootCredentialsSet) {
+    int schemaVersion = getOrLoadSchemaVersion(datasourceOperations, realmId);
+    return new JdbcBasePersistenceImpl(
+        diagnostics,
+        datasourceOperations,
+        secretsGenerator(realmId, rootCredentialsSet),
+        storageIntegrationProvider,
+        realmId,
+        schemaVersion);
   }
 
   public DatasourceOperations getDatasourceOperations() {
@@ -153,7 +158,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : bootstrapOptions.realms()) {
       RealmContext realmContext = () -> realm;
-      if (!metaStoreManagerMap.containsKey(realm)) {
+      if (!verifiedRealms.contains(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
         int currentSchemaVersion =
             JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
@@ -178,17 +183,18 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
         }
-        initializeForRealm(
-            datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
+        // Cache the effective schema version for this realm
+        schemaVersionCache.put(realm, effectiveSchemaVersion);
 
-        PolarisMetaStoreManager metaStoreManager =
-            metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-        BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+        PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+        BasePersistence metaStore =
+            createSession(datasourceOperations, realm, bootstrapOptions.rootCredentialsSet());
         PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
         PrincipalSecretsResult secretsResult =
             createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
         results.put(realm, secretsResult);
+        verifiedRealms.add(realm);
       }
     }
 
@@ -208,45 +214,44 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      sessionSupplierMap.remove(realm);
-      metaStoreManagerMap.remove(realm);
+      // Evict all cached state for this realm so it can be fully re-initialized if needed
+      entityCacheMap.remove(realm);
+      schemaVersionCache.remove(realm);
+      verifiedRealms.remove(realm);
     }
 
     return Map.copyOf(results);
   }
 
   @Override
-  public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
-      RealmContext realmContext) {
-    if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
-      initializeForRealm(datasourceOperations, realmContext, null);
-      checkPolarisServiceBootstrappedForRealm(realmContext);
-    }
-    return metaStoreManagerMap.get(realmContext.getRealmIdentifier());
+  public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
+    // Stateless — create a fresh instance on every call, no caching needed
+    return createNewMetaStoreManager();
   }
 
   @Override
-  public synchronized BasePersistence getOrCreateSession(RealmContext realmContext) {
-    if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
-      initializeForRealm(datasourceOperations, realmContext, null);
+  public BasePersistence getOrCreateSession(RealmContext realmContext) {
+    String realmId = realmContext.getRealmIdentifier();
+    DatasourceOperations datasourceOperations = getDatasourceOperations();
+
+    // Verify bootstrap once per realm lifetime; skip on subsequent calls
+    if (!verifiedRealms.contains(realmId)) {
+      checkPolarisServiceBootstrappedForRealm(realmContext, datasourceOperations);
     }
-    checkPolarisServiceBootstrappedForRealm(realmContext);
-    return sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+
+    // Stateless — create a fresh instance on every call; schemaVersion is cached per realm
+    return createSession(datasourceOperations, realmId, null);
   }
 
   @Override
-  public synchronized EntityCache getOrCreateEntityCache(
-      RealmContext realmContext, RealmConfig realmConfig) {
-    if (!entityCacheMap.containsKey(realmContext.getRealmIdentifier())) {
-      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      entityCacheMap.put(
-          realmContext.getRealmIdentifier(),
-          new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager));
-    }
-
-    return entityCacheMap.get(realmContext.getRealmIdentifier());
+  public EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig) {
+    // EntityCache is stateful (Caffeine + ConcurrentHashMap) — must be shared across requests
+    return entityCacheMap.computeIfAbsent(
+        realmContext.getRealmIdentifier(),
+        realmId -> {
+          PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+          return new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager);
+        });
   }
 
   /**
@@ -256,19 +261,21 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
    * and force user to run Bootstrap command and initialize MetaStore and create all the required
    * entities
    */
-  private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+  private void checkPolarisServiceBootstrappedForRealm(
+      RealmContext realmContext, DatasourceOperations datasourceOperations) {
+    String realmId = realmContext.getRealmIdentifier();
+    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+    BasePersistence metaStore = createSession(datasourceOperations, realmId, null);
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {
       LOGGER.error(
           "\n\n Realm {} is not bootstrapped, could not load root principal. Please run Bootstrap command. \n\n",
-          realmContext.getRealmIdentifier());
+          realmId);
       throw new IllegalStateException(
           "Realm is not bootstrapped, please run server in bootstrap mode.");
     }
+    verifiedRealms.add(realmId);
   }
 }
