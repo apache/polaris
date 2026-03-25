@@ -19,7 +19,10 @@
 package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import jakarta.enterprise.context.ContextNotActiveException;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +41,7 @@ class RealmContextPropagatorTest {
   }
 
   @Test
-  void capture_withRealmInHolder_returnsRealmContext() {
+  void testCaptureWithRealmInHolderReturnsRealmContext() {
     RealmContext realmContext = () -> "test-realm";
     holder.set(realmContext);
 
@@ -47,13 +50,13 @@ class RealmContextPropagatorTest {
   }
 
   @Test
-  void capture_withNullRealmInHolder_returnsNull() {
+  void testCaptureWithNullRealmInHolderReturnsNull() {
     Object state = propagator.capture();
     assertThat(state).isNull();
   }
 
   @Test
-  void restore_setsRealmInHolder() throws Exception {
+  void testRestoreSetsRealmInHolder() throws Exception {
     RealmContextHolder targetHolder = new RealmContextHolder();
     RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
 
@@ -65,7 +68,7 @@ class RealmContextPropagatorTest {
   }
 
   @Test
-  void restore_nullState_doesNotSetHolder() throws Exception {
+  void testRestoreNullStateDoesNotSetHolder() throws Exception {
     RealmContextHolder targetHolder = new RealmContextHolder();
     RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
 
@@ -76,7 +79,16 @@ class RealmContextPropagatorTest {
   }
 
   @Test
-  void restore_returnedCloseableIsNoOp() throws Exception {
+  void testCaptureWhenScopeNotActiveReturnsNull() {
+    RealmContextHolder mockHolder = mock(RealmContextHolder.class);
+    when(mockHolder.get()).thenThrow(new ContextNotActiveException());
+
+    RealmContextPropagator p = new RealmContextPropagator(mockHolder);
+    assertThat(p.capture()).isNull();
+  }
+
+  @Test
+  void testRestoreReturnedCloseableIsNoOp() throws Exception {
     RealmContextHolder targetHolder = new RealmContextHolder();
     RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
 
