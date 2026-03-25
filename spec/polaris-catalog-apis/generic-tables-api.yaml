@@ -64,7 +64,7 @@ paths:
         Create a generic table under the given namespace, and return the created table information as a response.
       operationId: createGenericTable
       parameters:
-        - $ref: '#/components/parameters/polaris-data-access'
+        - $ref: '#/components/parameters/polaris-generic-table-data-access'
       requestBody:
         required: true
         content:
@@ -120,7 +120,7 @@ paths:
         The response contains all table information passed during create.
 
       parameters:
-        - $ref: '#/components/parameters/polaris-data-access'
+        - $ref: '#/components/parameters/polaris-generic-table-data-access'
       responses:
         200:
           $ref: '#/components/responses/LoadGenericTableResponse'
@@ -186,8 +186,8 @@ components:
         type: string
       example: "sales"
 
-    polaris-data-access:
-      name: Polaris-Access-Delegation
+    polaris-generic-table-data-access:
+      name: Polaris-Generic-Table-Access-Delegation
       in: header
       description: >
         Optional header indicating that the client supports delegated access

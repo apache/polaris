@@ -72,7 +72,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       CreateGenericTableRequest createGenericTableRequest,
-      String polarisAccessDelegation,
+      String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
@@ -117,7 +117,7 @@ public class GenericTableCatalogAdapter
       String prefix,
       String namespace,
       String genericTable,
-      String polarisAccessDelegation,
+      String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
