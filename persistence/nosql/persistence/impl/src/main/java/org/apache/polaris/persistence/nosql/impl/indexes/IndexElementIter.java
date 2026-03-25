@@ -16,15 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import java.nio.ByteBuffer;
-import java.util.Map;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
-import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import com.google.common.collect.AbstractIterator;
+import java.util.Iterator;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 
-interface IndexElement<V> extends Map.Entry<IndexKey, V> {
-  void serializeContent(IndexValueSerializer<V> ser, ByteBuffer target);
+/**
+ * Index element iterator, guarantees that only elements with non-{@code null} values are returned.
+ *
+ * @param <V> element value type
+ */
+final class IndexElementIter<V> extends AbstractIterator<Index.Element<V>> {
+  private final Iterator<InternalIndexElement<V>> delegate;
 
-  int contentSerializedSize(IndexValueSerializer<V> ser);
+  IndexElementIter(Iterator<InternalIndexElement<V>> delegate) {
+    this.delegate = delegate;
+  }
+
+  @Override
+  protected Index.Element<V> computeNext() {
+    while (delegate.hasNext()) {
+      var next = delegate.next();
+      var value = next.valueNullable();
+      if (value != null) {
+        return next;
+      }
+    }
+    return endOfData();
+  }
 }

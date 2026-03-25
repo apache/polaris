@@ -220,7 +220,7 @@ public interface KeyIndexTestSet<ELEMENT> {
   @PolarisImmutable
   abstract class IndexTestSetGenerator<ELEMENT> {
 
-    public abstract Function<IndexKey, IndexElement<ELEMENT>> elementSupplier();
+    public abstract Function<IndexKey, InternalIndexElement<ELEMENT>> elementSupplier();
 
     public abstract IndexValueSerializer<ELEMENT> elementSerializer();
 
@@ -265,7 +265,7 @@ public interface KeyIndexTestSet<ELEMENT> {
     return deserializeStoreIndex(serializedSafe(), OBJ_REF_SERIALIZER);
   }
 
-  default IndexElement<ELEMENT> randomGetKey() {
+  default InternalIndexElement<ELEMENT> randomGetKey() {
     IndexKey key = randomKey();
     return keyIndex().getElement(key);
   }

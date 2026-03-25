@@ -26,7 +26,6 @@ import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.ModifiableIndex;
@@ -38,7 +37,8 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * Returns {@code true}, if there is at least one element.
    *
    * <p>Note: omitting {@code isEmpty()}, because that might be added to {@link Index}, but {@code
-   * isEmpty()} would have to respect {@code null} values from {@link IndexElement#getValue()}.
+   * isEmpty()} would have to respect {@code null} values from {@link
+   * InternalIndexElement#valueNullable()}.
    */
   boolean hasElements();
 
@@ -48,10 +48,10 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * @param element element to add
    * @return {@code true}, if the key did not exist in the index before
    */
-  boolean add(@Nonnull IndexElement<V> element);
+  boolean add(@Nonnull InternalIndexElement<V> element);
 
   /**
-   * Convenience around {@link #add(IndexElement)}.
+   * Convenience around {@link #add(InternalIndexElement)}.
    *
    * @param key key to add
    * @param value value to add
@@ -72,7 +72,7 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    *     the element for remove sentinels is not {@code null}, the value for those is {@code null}.
    */
   @Nullable
-  IndexElement<V> getElement(@Nonnull IndexKey key);
+  InternalIndexElement<V> getElement(@Nonnull IndexKey key);
 
   /**
    * Check whether the index contains the given key, with a non-{@code null} or a {@code null}
@@ -102,7 +102,7 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
   @Override
   default V get(@Nonnull IndexKey key) {
     var elem = getElement(key);
-    return elem != null ? elem.getValue() : null;
+    return elem != null ? elem.valueNullable() : null;
   }
 
   @Nullable
@@ -111,56 +111,32 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
   @Nullable
   IndexKey last();
 
-  default Iterator<IndexElement<V>> elementIterator() {
+  default Iterator<InternalIndexElement<V>> elementIterator() {
     return elementIterator(null, null, false);
   }
 
-  Iterator<IndexElement<V>> elementIterator(
+  Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch);
 
-  default Iterator<IndexElement<V>> reverseElementIterator() {
+  default Iterator<InternalIndexElement<V>> reverseElementIterator() {
     return reverseElementIterator(null, null, false);
   }
 
-  Iterator<IndexElement<V>> reverseElementIterator(
+  Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch);
 
   @Nonnull
   @Override
-  default Iterator<Map.Entry<IndexKey, V>> iterator(
+  default Iterator<Index.Element<V>> iterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
-    return new Iterator<>() {
-      final Iterator<IndexElement<V>> delegate = elementIterator(lower, higher, prefetch);
-
-      @Override
-      public boolean hasNext() {
-        return delegate.hasNext();
-      }
-
-      @Override
-      public Map.Entry<IndexKey, V> next() {
-        return delegate.next();
-      }
-    };
+    return new IndexElementIter<>(elementIterator(lower, higher, prefetch));
   }
 
   @Nonnull
   @Override
-  default Iterator<Map.Entry<IndexKey, V>> reverseIterator(
+  default Iterator<Index.Element<V>> reverseIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
-    return new Iterator<>() {
-      final Iterator<IndexElement<V>> delegate = reverseElementIterator(lower, higher, prefetch);
-
-      @Override
-      public boolean hasNext() {
-        return delegate.hasNext();
-      }
-
-      @Override
-      public Map.Entry<IndexKey, V> next() {
-        return delegate.next();
-      }
-    };
+    return new IndexElementIter<>(reverseElementIterator(lower, higher, prefetch));
   }
 
   boolean isModified();

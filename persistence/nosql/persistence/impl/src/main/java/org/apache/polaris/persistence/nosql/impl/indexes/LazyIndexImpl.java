@@ -123,7 +123,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@Nonnull InternalIndexElement<V> element) {
     return loaded().add(element);
   }
 
@@ -150,7 +150,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   @Nullable
-  public IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
     return loaded().getElement(key);
   }
 
@@ -179,14 +179,14 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   @Nonnull
-  public Iterator<IndexElement<V>> elementIterator(
+  public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().elementIterator(lower, higher, prefetch);
   }
 
   @Override
   @Nonnull
-  public Iterator<IndexElement<V>> reverseElementIterator(
+  public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().reverseElementIterator(lower, higher, prefetch);
   }
