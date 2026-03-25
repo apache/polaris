@@ -1160,15 +1160,7 @@ class SetupCommand(Command):
         existing_namespaces: Set[str] = set()
         listed_parents: Set[str] = set()
 
-        try:
-            for ns in catalog_api.list_namespaces(prefix=catalog_name).namespaces:
-                existing_namespaces.add(".".join(ns))
-                listed_parents.add("")
-        except NotFoundException:
-            # This is expected if the catalog has no namespaces yet
-            listed_parents.add("")
-        except Exception:
-            logger.exception(f"Failed to fetch namespaces for catalog '{catalog_name}'")
+        listed_parents.add("")
         all_namespaces_to_create = set()
         namespace_data_map = {}
         for ns_item in namespaces_config:
@@ -1248,7 +1240,7 @@ class SetupCommand(Command):
                     logger.info(
                         f"Namespace '{ns_name}' already exists in catalog '{catalog_name}'."
                     )
-                    existing_namespaces.add(ns)
+                    existing_namespaces.add(ns_name)
                 except Exception:
                     logger.exception(
                         f"Failed to create namespace '{ns_name}' in catalog '{catalog_name}'"
