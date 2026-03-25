@@ -22,6 +22,7 @@ import io.quarkus.arc.Unremovable;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Produces;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.context.RequestIdSupplier;
 
 /**
@@ -38,11 +39,11 @@ import org.apache.polaris.core.context.RequestIdSupplier;
 @RequestScoped
 public class RequestIdHolder {
 
-  @Nullable private String requestId;
+  private final AtomicReference<String> requestId = new AtomicReference<>();
 
   @Nullable
   public String get() {
-    return requestId;
+    return requestId.get();
   }
 
   /**
@@ -54,10 +55,12 @@ public class RequestIdHolder {
   @RequestScoped
   @Unremovable
   public RequestIdSupplier getRequestIdSupplier() {
-    return () -> requestId;
+    return () -> requestId.get();
   }
 
   public void set(@Nullable String id) {
-    this.requestId = id;
+    if (!requestId.compareAndSet(null, id)) {
+      throw new IllegalStateException("Request ID already set");
+    }
   }
 }
