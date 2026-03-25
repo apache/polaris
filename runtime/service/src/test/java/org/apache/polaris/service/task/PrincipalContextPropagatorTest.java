@@ -49,7 +49,6 @@ class PrincipalContextPropagatorTest {
 
     @SuppressWarnings("unchecked")
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
-    when(principalInstance.isResolvable()).thenReturn(true);
     when(principalInstance.get()).thenReturn(original);
 
     PrincipalContextPropagator propagator =
@@ -60,19 +59,6 @@ class PrincipalContextPropagatorTest {
     assertThat(state).isInstanceOf(ImmutablePolarisPrincipal.class);
     assertThat(state).isNotSameAs(original);
     assertThat(((PolarisPrincipal) state).getName()).isEqualTo("alice");
-  }
-
-  @Test
-  void testCaptureWhenPrincipalNotResolvableReturnsNull() {
-    @SuppressWarnings("unchecked")
-    Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
-    when(principalInstance.isResolvable()).thenReturn(false);
-
-    PrincipalContextPropagator propagator =
-        new PrincipalContextPropagator(holder, principalInstance);
-
-    Object state = propagator.capture();
-    assertThat(state).isNull();
   }
 
   @Test
@@ -114,7 +100,6 @@ class PrincipalContextPropagatorTest {
   void testCaptureWhenScopeNotActiveReturnsNull() {
     @SuppressWarnings("unchecked")
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
-    when(principalInstance.isResolvable()).thenReturn(true);
     when(principalInstance.get()).thenThrow(new ContextNotActiveException());
 
     PrincipalContextPropagator propagator =
