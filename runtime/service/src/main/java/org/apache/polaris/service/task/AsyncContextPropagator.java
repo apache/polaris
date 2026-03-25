@@ -25,10 +25,10 @@ import jakarta.annotation.Nullable;
  * Extension point for propagating request-scoped context across the async task boundary.
  *
  * <p>Each implementation is responsible for a single piece of request-scoped context (e.g. realm
- * identity, authenticated principal, request ID). Implementations are CDI beans (typically {@code
- * @ApplicationScoped}). {@link TaskExecutorImpl} discovers all implementations via CDI {@code
- * Instance} injection, so adding a new propagation concern requires only a new bean — no existing
- * code needs to change.
+ * identity, authenticated principal, request ID). Implementations are CDI beans (typically
+ * {@code @ApplicationScoped}). {@link TaskExecutorImpl} discovers all implementations via CDI
+ * {@code Instance} injection, so adding a new propagation concern requires only a new bean — no
+ * existing code needs to change.
  *
  * <p>Lifecycle:
  *

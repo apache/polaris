@@ -40,8 +40,7 @@ class PolarisEventMetadataFactoryTest {
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
     CurrentIdentityAssociation currentIdentityAssociation = mock(CurrentIdentityAssociation.class);
-    when(currentIdentityAssociation.getDeferredIdentity())
-        .thenReturn(Uni.createFrom().nullItem());
+    when(currentIdentityAssociation.getDeferredIdentity()).thenReturn(Uni.createFrom().nullItem());
     factory.currentIdentityAssociation = currentIdentityAssociation;
 
     @SuppressWarnings("unchecked")
@@ -66,8 +65,7 @@ class PolarisEventMetadataFactoryTest {
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
     CurrentIdentityAssociation currentIdentityAssociation = mock(CurrentIdentityAssociation.class);
-    when(currentIdentityAssociation.getDeferredIdentity())
-        .thenReturn(Uni.createFrom().nullItem());
+    when(currentIdentityAssociation.getDeferredIdentity()).thenReturn(Uni.createFrom().nullItem());
     factory.currentIdentityAssociation = currentIdentityAssociation;
 
     @SuppressWarnings("unchecked")
@@ -93,8 +91,7 @@ class PolarisEventMetadataFactoryTest {
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
     CurrentIdentityAssociation currentIdentityAssociation = mock(CurrentIdentityAssociation.class);
-    when(currentIdentityAssociation.getDeferredIdentity())
-        .thenReturn(Uni.createFrom().nullItem());
+    when(currentIdentityAssociation.getDeferredIdentity()).thenReturn(Uni.createFrom().nullItem());
     factory.currentIdentityAssociation = currentIdentityAssociation;
 
     @SuppressWarnings("unchecked")
