@@ -137,32 +137,20 @@ record RbacOperationSemantics(
   private static final EnumMap<PolarisAuthorizableOperation, RbacOperationSemantics>
       RBAC_SEMANTICS_BY_OPERATION = new EnumMap<>(PolarisAuthorizableOperation.class);
 
-  /** Helper method to register an operation with a single privilege using ROOT rooting. */
   private static void register(PolarisAuthorizableOperation operation, PolarisPrivilege privilege) {
-    register(operation, EnumSet.of(privilege), null, ResolvedPathRooting.ROOT);
+    register(operation, EnumSet.of(privilege));
   }
 
-  /** Helper method to register an operation with multiple privileges using ROOT rooting. */
   private static void register(
-      PolarisAuthorizableOperation operation,
-      PolarisPrivilege privilege1,
-      PolarisPrivilege privilege2) {
-    register(operation, EnumSet.of(privilege1, privilege2), null, ResolvedPathRooting.ROOT);
+      PolarisAuthorizableOperation operation, Set<PolarisPrivilege> targetPrivileges) {
+    register(operation, targetPrivileges, null);
   }
 
-  /** Helper method to register an operation with multiple privileges using ROOT rooting. */
   private static void register(
       PolarisAuthorizableOperation operation,
-      PolarisPrivilege privilege1,
-      PolarisPrivilege privilege2,
-      PolarisPrivilege privilege3,
-      PolarisPrivilege privilege4,
-      PolarisPrivilege privilege5) {
-    register(
-        operation,
-        EnumSet.of(privilege1, privilege2, privilege3, privilege4, privilege5),
-        null,
-        ResolvedPathRooting.ROOT);
+      Set<PolarisPrivilege> targetPrivileges,
+      Set<PolarisPrivilege> secondaryPrivileges) {
+    register(operation, targetPrivileges, secondaryPrivileges, ResolvedPathRooting.ROOT);
   }
 
   /** Helper method to register an operation with target and secondary privileges. */
@@ -189,13 +177,11 @@ record RbacOperationSemantics(
     register(PolarisAuthorizableOperation.CREATE_TABLE_DIRECT, TABLE_CREATE);
     register(
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
-        TABLE_CREATE,
-        TABLE_WRITE_DATA);
+        EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
     register(PolarisAuthorizableOperation.CREATE_TABLE_STAGED, TABLE_CREATE);
     register(
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION,
-        TABLE_CREATE,
-        TABLE_WRITE_DATA);
+        EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
     register(PolarisAuthorizableOperation.REGISTER_TABLE, TABLE_CREATE);
     register(PolarisAuthorizableOperation.LOAD_TABLE, TABLE_READ_PROPERTIES);
     register(PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION, TABLE_READ_DATA);
@@ -203,18 +189,17 @@ record RbacOperationSemantics(
     register(PolarisAuthorizableOperation.UPDATE_TABLE, TABLE_WRITE_PROPERTIES);
     register(PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE, TABLE_CREATE);
     register(PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE, TABLE_DROP);
-    register(PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE, TABLE_DROP, TABLE_WRITE_DATA);
+    register(
+        PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE,
+        EnumSet.of(TABLE_DROP, TABLE_WRITE_DATA));
     register(PolarisAuthorizableOperation.TABLE_EXISTS, TABLE_LIST);
     register(
         PolarisAuthorizableOperation.RENAME_TABLE,
         EnumSet.of(TABLE_DROP),
-        EnumSet.of(TABLE_LIST, TABLE_CREATE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(TABLE_LIST, TABLE_CREATE));
     register(
         PolarisAuthorizableOperation.COMMIT_TRANSACTION,
-        EnumSet.of(TABLE_WRITE_PROPERTIES, TABLE_CREATE),
-        null,
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(TABLE_WRITE_PROPERTIES, TABLE_CREATE));
 
     // View operations
     register(PolarisAuthorizableOperation.LIST_VIEWS, VIEW_LIST);
@@ -226,19 +211,15 @@ record RbacOperationSemantics(
     register(
         PolarisAuthorizableOperation.RENAME_VIEW,
         EnumSet.of(VIEW_DROP),
-        EnumSet.of(VIEW_LIST, VIEW_CREATE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(VIEW_LIST, VIEW_CREATE));
 
     // Metrics and notifications
     register(PolarisAuthorizableOperation.REPORT_READ_METRICS, TABLE_READ_DATA);
     register(PolarisAuthorizableOperation.REPORT_WRITE_METRICS, TABLE_WRITE_DATA);
     register(
         PolarisAuthorizableOperation.SEND_NOTIFICATIONS,
-        TABLE_CREATE,
-        TABLE_WRITE_PROPERTIES,
-        TABLE_DROP,
-        NAMESPACE_CREATE,
-        NAMESPACE_DROP);
+        EnumSet.of(
+            TABLE_CREATE, TABLE_WRITE_PROPERTIES, TABLE_DROP, NAMESPACE_CREATE, NAMESPACE_DROP));
 
     // Catalog operations
     register(PolarisAuthorizableOperation.LIST_CATALOGS, CATALOG_LIST);
@@ -262,8 +243,7 @@ record RbacOperationSemantics(
     register(
         PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE,
         EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Principal role operations
     register(PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES, PRINCIPAL_ROLE_LIST);
@@ -300,40 +280,35 @@ record RbacOperationSemantics(
     register(
         PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE,
         EnumSet.of(SERVICE_MANAGE_ACCESS),
-        EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
         PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE,
         CATALOG_MANAGE_GRANTS_ON_SECURABLE);
     register(
         PolarisAuthorizableOperation.REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(CATALOG_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
         PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE,
         NAMESPACE_MANAGE_GRANTS_ON_SECURABLE);
     register(
         PolarisAuthorizableOperation.REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(NAMESPACE_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
         PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE,
         TABLE_MANAGE_GRANTS_ON_SECURABLE);
     register(
         PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(TABLE_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
         PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE,
         VIEW_MANAGE_GRANTS_ON_SECURABLE);
     register(
         PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(VIEW_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Policy operations
     register(PolarisAuthorizableOperation.CREATE_POLICY, POLICY_CREATE);
@@ -392,8 +367,7 @@ record RbacOperationSemantics(
     register(
         PolarisAuthorizableOperation.REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(POLICY_MANAGE_GRANTS_ON_SECURABLE),
-        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
-        ResolvedPathRooting.ROOT);
+        EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Table metadata operations
     register(PolarisAuthorizableOperation.ASSIGN_TABLE_UUID, TABLE_ASSIGN_UUID);
