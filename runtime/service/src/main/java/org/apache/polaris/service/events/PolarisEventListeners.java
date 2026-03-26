@@ -51,12 +51,12 @@ public class PolarisEventListeners {
       if (listenerConfiguration != null && !listenerConfiguration.enabledEventTypes().isEmpty()) {
         supportedTypes = listenerConfiguration.enabledEventTypes().toArray(PolarisEventType[]::new);
       }
-      for (var polarisEventType : supportedTypes) {
-        eventsByType.set(polarisEventType.ordinal());
-      }
       var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
       Handler<Message<PolarisEvent>> handler = e -> listener.onEvent(e.body());
-      eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + event, handler);
+      for (var polarisEventType : supportedTypes) {
+        eventsByType.set(polarisEventType.ordinal());
+        eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
+      }
     }
   }
 
