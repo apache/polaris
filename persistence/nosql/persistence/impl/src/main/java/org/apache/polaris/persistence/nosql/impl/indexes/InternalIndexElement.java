@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -52,10 +49,4 @@ interface InternalIndexElement<V> extends Index.Element<V> {
 
   @Nullable
   V valueNullable();
-
-  @Override
-  @Nonnull
-  default V value() {
-    return checkNotNull(valueNullable(), key());
-  }
 }

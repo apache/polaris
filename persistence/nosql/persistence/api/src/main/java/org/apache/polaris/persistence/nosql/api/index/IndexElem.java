@@ -19,8 +19,11 @@
 
 package org.apache.polaris.persistence.nosql.api.index;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.errorprone.annotations.Var;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Objects;
 
 /**
@@ -39,17 +42,29 @@ public abstract class IndexElem<V> implements Index.Element<V> {
 
       @Override
       @Nonnull
-      public V value() {
+      public V valueNullable() {
         return value;
       }
     };
+  }
+
+  @Nullable
+  protected abstract V valueNullable();
+
+  @Override
+  @Nonnull
+  public final V value() {
+    return checkNotNull(valueNullable(), key());
   }
 
   @Override
   public int hashCode() {
     @Var var h = 5381;
     h += (h << 5) + key().hashCode();
-    h += (h << 5) + value().hashCode();
+    V value = valueNullable();
+    if (value != null) {
+      h += (h << 5) + value.hashCode();
+    }
     return h;
   }
 
@@ -58,8 +73,9 @@ public abstract class IndexElem<V> implements Index.Element<V> {
     if (o == this) {
       return true;
     }
-    if (o instanceof Index.Element<?> other) {
-      return Objects.equals(key(), other.key()) && Objects.equals(value(), other.value());
+    if (o instanceof IndexElem<?> other) {
+      return Objects.equals(key(), other.key())
+          && Objects.equals(valueNullable(), other.valueNullable());
     }
     return false;
   }

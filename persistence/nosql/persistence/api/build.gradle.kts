@@ -55,6 +55,8 @@ dependencies {
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 
+  testCompileOnly(libs.jakarta.annotation.api)
+
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
 
