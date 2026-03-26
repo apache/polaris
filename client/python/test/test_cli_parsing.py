@@ -314,6 +314,17 @@ class TestCliParsing(unittest.TestCase):
                 "ns1.ns2",
             ]
         )
+        Parser.parse(
+            [
+                "tables",
+                "summarize",
+                "my_table",
+                "--catalog",
+                "my_catalog",
+                "--namespace",
+                "ns1.ns2",
+            ]
+        )        
 
     def test_commands(self) -> None:
         def build_mock_client() -> MagicMock:
