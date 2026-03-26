@@ -37,6 +37,16 @@ from prettytable import PrettyTable
 
 @dataclass
 class TableCommand(Command):
+    """
+    A Command implemtation to represent `polaris tables`. It manages Iceberg tables within a Polaris Catalog.
+
+    Example commands:
+        * ./polaris tables list --catalog my_catalog --namespace ns1
+        * ./polaris tables get my_table --catalog my_catalog --namespace ns1
+        * ./polaris tables summarize my_table --catalog my_catalog --namespace ns1
+        * ./polaris tables delete my_table --catalog my_catalog --namesapce ns1
+    """
+
     table_subcommand: str
     catalog_name: str
     namespace: List[str]
