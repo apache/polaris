@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -31,7 +33,11 @@ public class FileIOUtil {
 
   /**
    * Finds the first entity in a hierarchy (leaf to root) that has storage configuration info in its
-   * internal properties.
+   * internal properties ({@code storageConfigInfo}).
+   *
+   * <p>This returns the <em>base</em> config entity and does not apply any {@code
+   * storageNameOverride} that may be present on descendant entities. Use {@link
+   * #resolveEffectiveStorageConfig(List)} to get the fully-resolved configuration.
    *
    * @param entityPath a list of entities ordered root-to-leaf (catalog first, leaf last)
    * @return an {@link Optional} containing the entity with storage config, or empty if not found
@@ -47,42 +53,92 @@ public class FileIOUtil {
   }
 
   /**
-   * Finds storage configuration information in the hierarchy of the resolved storage entity.
+   * Resolves the effective storage configuration for an entity hierarchy. Walks from leaf to root
+   * to find the nearest {@code storageNameOverride}, then finds the catalog's base {@code
+   * storageConfigInfo}, and applies the name override if one is present.
    *
-   * <p>This method starts at the "leaf" level (e.g., table) and walks "upwards" through namespaces
-   * in the hierarchy to the "root." It searches for the first entity containing storage config
-   * properties, identified using a key from {@link
-   * PolarisEntityConstants#getStorageConfigInfoPropertyName()}.
+   * <p>This is the primary method to use when vending credentials or loading FileIO for an entity.
    *
-   * @param resolvedStorageEntity the resolved entity wrapper containing the hierarchical path
-   * @return an {@link Optional} containing the entity with storage config, or empty if not found
+   * @param entityPath a list of entities ordered root-to-leaf (catalog first, leaf last)
+   * @return the effective {@link PolarisStorageConfigurationInfo}, or empty if no base config is
+   *     found in the hierarchy
    */
-  public static Optional<PolarisEntity> findStorageInfoFromHierarchy(
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
-    return findEntityWithStorageConfigInHierarchy(resolvedStorageEntity.getRawFullPath());
-  }
-
-  /**
-   * Deserializes and returns the storage configuration from the first entity in the hierarchy that
-   * has config. Used primarily for testing and internal operations.
-   *
-   * @param entityPath a list of entities ordered root-to-leaf
-   * @return the deserialized {@link PolarisStorageConfigurationInfo} or null if not found
-   */
-  public static PolarisStorageConfigurationInfo deserializeStorageConfigFromEntityPath(
+  public static Optional<PolarisStorageConfigurationInfo> resolveEffectiveStorageConfig(
       List<PolarisEntity> entityPath) {
-    Optional<PolarisEntity> entityWithConfig = findEntityWithStorageConfigInHierarchy(entityPath);
-    if (entityWithConfig.isEmpty()) {
-      return null;
+    // Walk leaf-to-root, find the nearest storageNameOverride (if any)
+    Optional<String> nameOverride =
+        entityPath.reversed().stream()
+            .map(
+                e ->
+                    e.getInternalPropertiesAsMap()
+                        .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+            .filter(v -> v != null)
+            .findFirst();
+
+    // Find the base storage config (typically the catalog entity)
+    Optional<PolarisEntity> baseEntity = findEntityWithStorageConfigInHierarchy(entityPath);
+    if (baseEntity.isEmpty()) {
+      return Optional.empty();
     }
-    PolarisEntity entity = entityWithConfig.get();
     String configJson =
-        entity
+        baseEntity
+            .get()
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configJson == null) {
-      return null;
+      return Optional.empty();
     }
-    return PolarisStorageConfigurationInfo.deserialize(configJson);
+    PolarisStorageConfigurationInfo baseConfig =
+        PolarisStorageConfigurationInfo.deserialize(configJson);
+
+    return Optional.of(
+        nameOverride
+            .map(name -> PolarisStorageConfigurationInfo.withStorageName(baseConfig, name))
+            .orElse(baseConfig));
+  }
+
+  /**
+   * Finds storage configuration information in the hierarchy of the resolved storage entity,
+   * applying any {@code storageNameOverride} found on descendant entities.
+   *
+   * <p>Returns a {@link PolarisEntity} whose {@code storageConfigInfo} internal property reflects
+   * the effective (potentially name-overridden) storage configuration.
+   *
+   * @param resolvedStorageEntity the resolved entity wrapper containing the hierarchical path
+   * @return an {@link Optional} containing an entity with the effective storage config, or empty if
+   *     not found
+   */
+  public static Optional<PolarisEntity> findStorageInfoFromHierarchy(
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
+    List<PolarisEntity> entityPath = resolvedStorageEntity.getRawFullPath();
+    Optional<PolarisStorageConfigurationInfo> effectiveConfig =
+        resolveEffectiveStorageConfig(entityPath);
+    if (effectiveConfig.isEmpty()) {
+      return Optional.empty();
+    }
+
+    // Return the base entity (catalog) with its storageConfigInfo replaced by the effective config.
+    // This preserves all other internal properties (e.g. storageIntegrationIdentifier) while
+    // ensuring callers read the correctly name-overridden config.
+    PolarisEntity baseEntity = findEntityWithStorageConfigInHierarchy(entityPath).orElseThrow();
+    Map<String, String> updatedInternalProps =
+        new HashMap<>(baseEntity.getInternalPropertiesAsMap());
+    updatedInternalProps.put(
+        PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+        effectiveConfig.get().serialize());
+    return Optional.of(
+        new PolarisEntity.Builder(baseEntity).setInternalProperties(updatedInternalProps).build());
+  }
+
+  /**
+   * Deserializes and returns the effective storage configuration from the hierarchy, applying any
+   * {@code storageNameOverride} found on descendant entities.
+   *
+   * @param entityPath a list of entities ordered root-to-leaf
+   * @return the effective {@link PolarisStorageConfigurationInfo} or null if not found
+   */
+  public static PolarisStorageConfigurationInfo deserializeStorageConfigFromEntityPath(
+      List<PolarisEntity> entityPath) {
+    return resolveEffectiveStorageConfig(entityPath).orElse(null);
   }
 }

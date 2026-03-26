@@ -2039,9 +2039,13 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
     }
 
+    // resolve effective storage config (handles storageNameOverride on namespaces/tables)
+    PolarisBaseEntity resolvedEntity =
+        resolveEntityStorageConfig(callCtx, reloadedEntity.getEntity());
+
     // get storage integration
     PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, reloadedEntity.getEntity());
+        ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, resolvedEntity);
 
     // cannot be null
     getDiagnostics()

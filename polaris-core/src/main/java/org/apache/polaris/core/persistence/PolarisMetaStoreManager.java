@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /**
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
@@ -537,5 +539,68 @@ public interface PolarisMetaStoreManager
       return Optional.empty();
     }
     return Optional.of(entityResult.getEntity()).map(PrincipalRoleEntity::of);
+  }
+
+  /**
+   * Resolves the effective storage configuration for an entity. If the entity only carries a {@code
+   * storageNameOverride} property (no full {@code storageConfigInfo}), loads the owning catalog
+   * entity, applies the name override to its base config, and returns a synthetic copy of the
+   * entity with the resolved {@code storageConfigInfo} property set.
+   *
+   * <p>This is required for credential vending, where the storage-integration layer expects a
+   * fully-resolved {@code storageConfigInfo} to be present on the entity it receives.
+   *
+   * @param callCtx call context
+   * @param entity the entity whose storage config should be resolved
+   * @return the entity to use (either unchanged, or a synthetic copy with resolved
+   *     storageConfigInfo)
+   */
+  default PolarisBaseEntity resolveEntityStorageConfig(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+    Map<String, String> props = entity.getInternalPropertiesAsMap();
+
+    // Fast path: entity already carries the full storageConfigInfo.
+    if (props.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
+      return entity;
+    }
+
+    // Check for the compact storageNameOverride representation.
+    String storageNameOverride =
+        props.get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    if (storageNameOverride == null) {
+      // Neither property present; let downstream code produce the appropriate error.
+      return entity;
+    }
+
+    // Load the owning catalog entity.
+    // For non-catalog entities, entity.getCatalogId() is the catalog's own entity-id,
+    // and the catalog itself lives at the null/root catalog-id (0).
+    EntityResult catalogResult =
+        loadEntity(
+            callCtx,
+            PolarisEntityConstants.getNullId(),
+            entity.getCatalogId(),
+            PolarisEntityType.CATALOG);
+    if (catalogResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return entity; // Unable to load catalog; let downstream produce the error.
+    }
+
+    String baseConfigStr =
+        catalogResult
+            .getEntity()
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    if (baseConfigStr == null) {
+      return entity; // Catalog has no base config; let downstream produce the error.
+    }
+
+    // Apply the storage-name override to the catalog's base config.
+    PolarisStorageConfigurationInfo overriddenConfig =
+        PolarisStorageConfigurationInfo.withStorageName(
+            PolarisStorageConfigurationInfo.deserialize(baseConfigStr), storageNameOverride);
+    Map<String, String> resolvedProps = new HashMap<>(props);
+    resolvedProps.put(
+        PolarisEntityConstants.getStorageConfigInfoPropertyName(), overriddenConfig.serialize());
+    return new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(resolvedProps).build();
   }
 }

@@ -62,25 +62,14 @@ class StorageNameOverrideTest {
       PolarisEntityConstants.getStorageConfigInfoPropertyName();
 
   @Test
-  void storageConfigFromPropertyOverride_noProperty_returnsNull() throws Exception {
-    // Use reflection since the method is package-private/static
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "storageConfigFromPropertyOverride", Map.class, List.class);
-    method.setAccessible(true);
-
+  void storageConfigFromPropertyOverride_noProperty_returnsNull() {
     PolarisStorageConfigurationInfo result =
-        (PolarisStorageConfigurationInfo) method.invoke(null, Map.of("other", "value"), List.of());
+        IcebergCatalog.storageConfigFromPropertyOverride(Map.of("other", "value"), List.of());
     assertThat(result).isNull();
   }
 
   @Test
-  void storageConfigFromPropertyOverride_withValidStorageName() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "storageConfigFromPropertyOverride", Map.class, List.class);
-    method.setAccessible(true);
-
+  void storageConfigFromPropertyOverride_withValidStorageName() {
     AwsStorageConfigurationInfo catalogConfig =
         AwsStorageConfigurationInfo.builder()
             .allowedLocations(List.of("s3://bucket/path"))
@@ -94,7 +83,7 @@ class StorageNameOverrideTest {
     properties.put(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage");
 
     PolarisStorageConfigurationInfo result =
-        (PolarisStorageConfigurationInfo) method.invoke(null, properties, List.of(catalogEntity));
+        IcebergCatalog.storageConfigFromPropertyOverride(properties, List.of(catalogEntity));
 
     assertThat(result).isNotNull();
     assertThat(result.getStorageName()).isEqualTo("ns-storage");
@@ -104,12 +93,7 @@ class StorageNameOverrideTest {
   }
 
   @Test
-  void storageConfigFromPropertyOverride_blankValue_clearsStorageName() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "storageConfigFromPropertyOverride", Map.class, List.class);
-    method.setAccessible(true);
-
+  void storageConfigFromPropertyOverride_blankValue_returnsNull() {
     AwsStorageConfigurationInfo catalogConfig =
         AwsStorageConfigurationInfo.builder()
             .allowedLocations(List.of("s3://bucket/path"))
@@ -123,25 +107,19 @@ class StorageNameOverrideTest {
     properties.put(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "  ");
 
     PolarisStorageConfigurationInfo result =
-        (PolarisStorageConfigurationInfo) method.invoke(null, properties, List.of(catalogEntity));
+        IcebergCatalog.storageConfigFromPropertyOverride(properties, List.of(catalogEntity));
 
-    assertThat(result).isNotNull();
-    assertThat(result.getStorageName()).isNull();
+    assertThat(result).isNull();
   }
 
   @Test
-  void storageConfigFromPropertyOverride_noParentConfig_throws() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "storageConfigFromPropertyOverride", Map.class, List.class);
-    method.setAccessible(true);
-
+  void storageConfigFromPropertyOverride_noParentConfig_throws() {
     Map<String, String> properties = new HashMap<>();
     properties.put(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage");
 
-    assertThatThrownBy(() -> method.invoke(null, properties, List.of()))
-        .hasCauseInstanceOf(org.apache.iceberg.exceptions.BadRequestException.class)
-        .cause()
+    assertThatThrownBy(
+            () -> IcebergCatalog.storageConfigFromPropertyOverride(properties, List.of()))
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("no parent storage configuration found");
   }
 
@@ -154,18 +132,12 @@ class StorageNameOverrideTest {
             .storageName("catalog-storage")
             .build();
 
-    AwsStorageConfigurationInfo nsConfig =
-        AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("s3://bucket/path"))
-            .roleARN("arn:aws:iam::123456789012:role/test-role")
-            .storageName("ns-storage")
-            .build();
-
     PolarisEntity catalogEntity = createEntityWithStorageConfig(catalogConfig);
-    PolarisEntity nsEntity = createEntityWithStorageConfig(nsConfig);
+    // Namespace carries only the name reference, not a full config copy
+    PolarisEntity nsEntity = createEntityWithStorageNameOverride("ns-storage");
     PolarisEntity tableEntity = createEntityWithoutStorageConfig();
 
-    // Path: catalog -> namespace -> table (table has no config, should find namespace)
+    // Path: catalog -> namespace -> table; namespace override should win
     PolarisStorageConfigurationInfo result =
         FileIOUtil.deserializeStorageConfigFromEntityPath(
             List.of(catalogEntity, nsEntity, tableEntity));
@@ -201,12 +173,7 @@ class StorageNameOverrideTest {
   }
 
   @Test
-  void invalidStorageName_throws() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "storageConfigFromPropertyOverride", Map.class, List.class);
-    method.setAccessible(true);
-
+  void invalidStorageName_throws() {
     FileStorageConfigurationInfo catalogConfig =
         FileStorageConfigurationInfo.builder()
             .allowedLocations(List.of("file:///tmp/warehouse"))
@@ -217,40 +184,32 @@ class StorageNameOverrideTest {
     Map<String, String> properties = new HashMap<>();
     properties.put(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "invalid.name.with.dots");
 
-    assertThatThrownBy(() -> method.invoke(null, properties, List.of(catalogEntity)))
-        .hasCauseInstanceOf(IllegalArgumentException.class)
-        .cause()
+    assertThatThrownBy(
+            () ->
+                IcebergCatalog.storageConfigFromPropertyOverride(
+                    properties, List.of(catalogEntity)))
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("invalid characters");
   }
 
   @Test
-  void storageNameOverrideDisabled_throwsBadRequest() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "enforceStorageNameOverrideEnabledIfRequested", Map.class);
-    method.setAccessible(true);
-
+  void storageNameOverrideDisabled_throwsBadRequest() {
     IcebergCatalog catalog = createCatalogForStorageNameOverrideFeature(false);
 
     assertThatThrownBy(
             () ->
-                method.invoke(
-                    catalog, Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage")))
-        .hasCauseInstanceOf(BadRequestException.class)
-        .cause()
+                catalog.enforceStorageNameOverrideEnabledIfRequested(
+                    Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage")))
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("not enabled for this realm");
   }
 
   @Test
-  void storageNameOverrideEnabled_allowsProperty() throws Exception {
-    var method =
-        IcebergCatalog.class.getDeclaredMethod(
-            "enforceStorageNameOverrideEnabledIfRequested", Map.class);
-    method.setAccessible(true);
-
+  void storageNameOverrideEnabled_allowsProperty() {
     IcebergCatalog catalog = createCatalogForStorageNameOverrideFeature(true);
 
-    method.invoke(catalog, Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage"));
+    catalog.enforceStorageNameOverrideEnabledIfRequested(
+        Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage"));
   }
 
   private static PolarisEntity createEntityWithStorageConfig(
@@ -263,6 +222,19 @@ class StorageNameOverrideTest {
         .setType(PolarisEntityType.CATALOG)
         .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
         .addInternalProperty(STORAGE_CONFIG_KEY, config.serialize())
+        .build();
+  }
+
+  private static PolarisEntity createEntityWithStorageNameOverride(String storageName) {
+    return new PolarisEntity.Builder()
+        .setId(2L)
+        .setCatalogId(0L)
+        .setParentId(1L)
+        .setName("ns-entity")
+        .setType(PolarisEntityType.NAMESPACE)
+        .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
+        .addInternalProperty(
+            PolarisEntityConstants.getStorageNameOverridePropertyName(), storageName)
         .build();
   }
 

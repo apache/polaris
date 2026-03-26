@@ -1558,10 +1558,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // we need better atomicity semantics between the base entity and the embedded storage
     // integration.
 
+    // resolve effective storage config (handles storageNameOverride on namespaces/tables)
+    PolarisBaseEntity resolvedEntity =
+        resolveEntityStorageConfig(callCtx, reloadedEntity.getEntity());
+
     // get storage integration
     PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
+        ((IntegrationPersistence) ms).loadPolarisStorageIntegration(callCtx, resolvedEntity);
 
     // cannot be null
     getDiagnostics()
