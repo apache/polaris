@@ -24,7 +24,6 @@ from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import (
     get_catalog_api_client,
     crawl_namespace,
-    resolve_identifier,
     is_fuzzy_match,
     handle_api_exception,
 )
@@ -58,18 +57,12 @@ class FindCommand(Command):
 
     def execute(self, api: PolarisDefaultApi) -> None:
         print(f"Searching for '{self.identifier}'...")
-        # If catalog name is provided, the identifier is a namespace path + leaf
-        if self.catalog_name:
-            parts = self.identifier.split(".")
-            target_catalog = None
-            target_ns = parts[:-1]
-            target_leaf = parts[-1]
-        else:
-            # Otherwise, use standard resolution to guess catalog vs namesapce for first part
-            target_catalog, target_ns, target_leaf = resolve_identifier(self.identifier)
+        parts = self.identifier.split(".")
+        target_ns = parts[:-1]
+        target_leaf = parts[-1]
 
         # Global entities search
-        if not self.catalog_name and not target_catalog:
+        if not self.catalog_name:
             global_entity_types = {
                 EntityType.PRINCIPAL.value,
                 EntityType.PRINCIPAL_ROLE.value,
@@ -87,7 +80,7 @@ class FindCommand(Command):
         }
         if not self.type_filter or self.type_filter in catalog_entity_types:
             catalogs_to_search, effective_ns = self._resolve_search_scope(
-                api, target_catalog, target_ns
+                api, target_ns
             )
             # Quick fail if catalog is not resolvable
             if catalogs_to_search is None:
@@ -99,7 +92,7 @@ class FindCommand(Command):
                     self._find_in_catalog(
                         api, catalog_api, catalog_name, effective_ns, target_leaf
                     )
-            elif not (self.catalog_name or target_catalog):
+            elif self.catalog_name:
                 print("No catalogs found to search.")
         else:
             catalogs_to_search = []
@@ -118,7 +111,6 @@ class FindCommand(Command):
     def _resolve_search_scope(
         self,
         api: PolarisDefaultApi,
-        target_catalog: Optional[str],
         target_ns: List[str],
     ) -> Tuple[Optional[List[str]], List[str]]:
         if self.catalog_name:
@@ -131,24 +123,6 @@ class FindCommand(Command):
                     return None, []
                 handle_api_exception("Catalog Access", e)
                 return [], target_ns
-        if target_catalog:
-            try:
-                api.get_catalog(target_catalog)
-                return [target_catalog], target_ns
-            except Exception as e:
-                if getattr(e, "status", None) != 404:
-                    handle_api_exception("Catalog Access", e)
-                # If not found, target_catalog is likely a top-level namespace
-                # Fallback to search all catalogs
-                effective_ns = [target_catalog] + target_ns
-                try:
-                    all_catalogs = [
-                        catalog.name for catalog in api.list_catalogs().catalogs or []
-                    ]
-                    return all_catalogs, effective_ns
-                except Exception as list_e:
-                    handle_api_exception("Catalog Listing", list_e)
-                    return [], effective_ns
         try:
             return [
                 catalog.name for catalog in api.list_catalogs().catalogs or []

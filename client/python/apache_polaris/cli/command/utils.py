@@ -139,22 +139,6 @@ def format_iceberg_type(obj: Any) -> str:
     return str(type_name) if type_name else str(unwrapped)
 
 
-def resolve_identifier(identifier: str) -> Tuple[Optional[str], List[str], str]:
-    """
-    Resolve a dot-delimited identifier into (catalog, ns_list, leaf_name)
-    """
-    if not identifier:
-        return None, [], ""
-    parts = identifier.split(".")
-    # Only one part, it must be table/view
-    if len(parts) == 1:
-        return None, [], parts[0]
-    # Only two parts, must be ns_list and leaf_name
-    if len(parts) == 2:
-        return None, [parts[0]], parts[1]
-    return parts[0], parts[1:-1], parts[-1]
-
-
 def crawl_namespace(
     catalog_api: IcebergCatalogAPI,
     catalog_name: str,

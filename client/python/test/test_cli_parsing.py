@@ -324,7 +324,7 @@ class TestCliParsing(unittest.TestCase):
                 "--namespace",
                 "ns1.ns2",
             ]
-        )        
+        )
 
     def test_commands(self) -> None:
         def build_mock_client() -> MagicMock:
