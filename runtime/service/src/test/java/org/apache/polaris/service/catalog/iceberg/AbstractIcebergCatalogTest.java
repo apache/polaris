@@ -124,7 +124,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -2635,16 +2634,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(nsResult).returns(true, EntityResult::isSuccess);
 
     PolarisEntity nsEntity = PolarisEntity.of(nsResult.getEntity());
-    String serializedConfig =
+    String storageNameOverride =
         nsEntity
             .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    Assertions.assertThat(serializedConfig).isNotNull();
-
-    PolarisStorageConfigurationInfo config =
-        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
-    Assertions.assertThat(config.getStorageName()).isEqualTo("my-storage");
-    Assertions.assertThat(config).isInstanceOf(AwsStorageConfigurationInfo.class);
+            .get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    Assertions.assertThat(storageNameOverride).isEqualTo("my-storage");
 
     // User-facing property should still be visible
     Assertions.assertThat(catalog.loadNamespaceMetadata(ns))
@@ -2668,7 +2662,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(
             nsEntity
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
         .isNull();
 
     // Now set polaris.storage.name via setProperties
@@ -2682,15 +2676,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             PolarisEntitySubType.NULL_SUBTYPE,
             ns.toString());
     nsEntity = PolarisEntity.of(nsResult.getEntity());
-    String serializedConfig =
+    String storageNameOverride =
         nsEntity
             .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    Assertions.assertThat(serializedConfig).isNotNull();
-
-    PolarisStorageConfigurationInfo config =
-        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
-    Assertions.assertThat(config.getStorageName()).isEqualTo("added-storage");
+            .get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    Assertions.assertThat(storageNameOverride).isEqualTo("added-storage");
   }
 
   @Test
@@ -2709,7 +2699,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(
             PolarisEntity.of(nsResult.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
         .isNotNull();
 
     // Remove the property
@@ -2726,7 +2716,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(
             nsEntity
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
         .isNull();
   }
 
@@ -2745,12 +2735,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             PolarisEntityType.NAMESPACE,
             PolarisEntitySubType.NULL_SUBTYPE,
             parent.toString());
-    PolarisStorageConfigurationInfo parentConfig =
-        PolarisStorageConfigurationInfo.deserialize(
+    Assertions.assertThat(
             PolarisEntity.of(parentResult.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-    Assertions.assertThat(parentConfig.getStorageName()).isEqualTo("parent-storage");
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo("parent-storage");
 
     // Verify child has its own storage name
     EntityResult childResult =
@@ -2760,12 +2749,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             PolarisEntityType.NAMESPACE,
             PolarisEntitySubType.NULL_SUBTYPE,
             child.level(1));
-    PolarisStorageConfigurationInfo childConfig =
-        PolarisStorageConfigurationInfo.deserialize(
+    Assertions.assertThat(
             PolarisEntity.of(childResult.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-    Assertions.assertThat(childConfig.getStorageName()).isEqualTo("child-storage");
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo("child-storage");
   }
 
   @Test
@@ -2790,19 +2778,16 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             PolarisEntitySubType.NULL_SUBTYPE,
             sibling2.toString());
 
-    PolarisStorageConfigurationInfo config1 =
-        PolarisStorageConfigurationInfo.deserialize(
+    Assertions.assertThat(
             PolarisEntity.of(r1.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-    PolarisStorageConfigurationInfo config2 =
-        PolarisStorageConfigurationInfo.deserialize(
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo("storage-a");
+    Assertions.assertThat(
             PolarisEntity.of(r2.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-
-    Assertions.assertThat(config1.getStorageName()).isEqualTo("storage-a");
-    Assertions.assertThat(config2.getStorageName()).isEqualTo("storage-b");
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo("storage-b");
   }
 
   @Test
@@ -2848,16 +2833,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             "test_table");
     Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
 
-    String serializedConfig =
+    String storageNameOverride =
         PolarisEntity.of(tableResult.getEntity())
             .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    Assertions.assertThat(serializedConfig).isNotNull();
-
-    PolarisStorageConfigurationInfo config =
-        PolarisStorageConfigurationInfo.deserialize(serializedConfig);
-    Assertions.assertThat(config.getStorageName()).isEqualTo("table-storage");
-    Assertions.assertThat(config).isInstanceOf(AwsStorageConfigurationInfo.class);
+            .get(PolarisEntityConstants.getStorageNameOverridePropertyName());
+    Assertions.assertThat(storageNameOverride).isEqualTo("table-storage");
   }
 
   @Test
@@ -2934,19 +2914,16 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             tableId.name());
     Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
 
-    PolarisStorageConfigurationInfo parentConfig =
-        PolarisStorageConfigurationInfo.deserialize(
+    Assertions.assertThat(
             PolarisEntity.of(nsResult.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-    PolarisStorageConfigurationInfo leafConfig =
-        PolarisStorageConfigurationInfo.deserialize(
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo(parentStorageName);
+    Assertions.assertThat(
             PolarisEntity.of(tableResult.getEntity())
                 .getInternalPropertiesAsMap()
-                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()));
-
-    Assertions.assertThat(parentConfig.getStorageName()).isEqualTo(parentStorageName);
-    Assertions.assertThat(leafConfig.getStorageName()).isEqualTo(leafStorageName);
+                .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
+        .isEqualTo(leafStorageName);
 
     TableMetadata tableMetadata = ((BaseTable) table).operations().current();
     Map<String, String> credentials =
