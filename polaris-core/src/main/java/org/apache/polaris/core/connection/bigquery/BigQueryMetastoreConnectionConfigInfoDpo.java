@@ -137,10 +137,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .add("gcpProjectId", gcpProjectId)
         .add("gcpLocation", gcpLocation)
         .add("listAllTables", listAllTables)
-        .add("impersonateServiceAccount", impersonateServiceAccount)
-        .add("impersonateLifetimeSeconds", impersonateLifetimeSeconds)
-        .add("impersonateScopes", impersonateScopes)
-        .add("impersonateDelegates", impersonateDelegates)
         .add("authenticationParameters", getAuthenticationParameters().toString())
         .toString();
   }
