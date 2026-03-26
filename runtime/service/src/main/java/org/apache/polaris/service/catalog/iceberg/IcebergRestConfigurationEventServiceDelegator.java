@@ -32,9 +32,9 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)
@@ -42,16 +42,16 @@ public class IcebergRestConfigurationEventServiceDelegator
     implements IcebergRestConfigurationApiService {
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
-  @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
 
   @VisibleForTesting
   public IcebergRestConfigurationEventServiceDelegator(
       IcebergCatalogAdapter delegate,
-      PolarisEventListener polarisEventListener,
+      PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory) {
     this.delegate = delegate;
-    this.polarisEventListener = polarisEventListener;
+    this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
@@ -60,13 +60,13 @@ public class IcebergRestConfigurationEventServiceDelegator
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_CONFIG,
             eventMetadataFactory.create(),
             new EventAttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_GET_CONFIG,
             eventMetadataFactory.create(),

@@ -34,8 +34,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private final ResolverFactory resolverFactory;
-  private final PolarisEventListener polarisEventListener;
+  private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
@@ -63,7 +63,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       TaskExecutor taskExecutor,
       StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener,
+      PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
@@ -73,7 +73,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.taskExecutor = taskExecutor;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
-    this.polarisEventListener = polarisEventListener;
+    this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
@@ -100,7 +100,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             taskExecutor,
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener,
+            polarisEventDispatcher,
             eventMetadataFactory);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());

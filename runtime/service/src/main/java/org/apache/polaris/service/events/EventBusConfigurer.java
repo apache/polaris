@@ -16,29 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
-import java.util.Set;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.vertx.LocalEventBusCodec;
+import io.vertx.core.eventbus.EventBus;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.event-listener")
-public interface PolarisEventListenerConfiguration {
-  /**
-   * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
-   * identifier.
-   *
-   * @deprecated since 1.5.0, use 'polaris.event-listener.types' instead
-   */
-  @Deprecated(since = "1.5.0", forRemoval = true)
-  Optional<String> type();
+@ApplicationScoped
+public class EventBusConfigurer {
+  private static final String LOCAL_CODEC_NAME = "polaris-events-local";
 
-  /**
-   * Comma separated list of event listers, each item must be a registered {@link
-   * PolarisEventListener} identifier.
-   */
-  Optional<Set<String>> types();
+  void configureEventBus(@Observes StartupEvent ev, EventBus eventBus) {
+    eventBus.registerDefaultCodec(PolarisEvent.class, new LocalEventBusCodec<>(LOCAL_CODEC_NAME));
+  }
 }
