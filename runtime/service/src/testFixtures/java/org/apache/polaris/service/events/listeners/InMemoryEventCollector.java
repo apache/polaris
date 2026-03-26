@@ -44,4 +44,9 @@ public class InMemoryEventCollector implements PolarisEventDispatcher {
   public void dispatch(PolarisEvent event) {
     latestEvents.put(event.type(), event);
   }
+
+  @Override
+  public boolean hasListeners(PolarisEventType polarisEventType) {
+    return true;
+  }
 }

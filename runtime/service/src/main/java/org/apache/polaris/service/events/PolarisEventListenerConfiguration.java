@@ -20,6 +20,8 @@ package org.apache.polaris.service.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithParentName;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -31,7 +33,8 @@ public interface PolarisEventListenerConfiguration {
    * The type of the event listener to use. Must be a registered {@link PolarisEventListener}
    * identifier.
    *
-   * @deprecated since 1.5.0, use 'polaris.event-listener.types' instead
+   * @deprecated since 1.5.0, use 'polaris.event-listener.types' instead, if both are set, then
+   *     polaris.event-listener.types is prioritized
    */
   @Deprecated(since = "1.5.0", forRemoval = true)
   Optional<String> type();
@@ -41,4 +44,16 @@ public interface PolarisEventListenerConfiguration {
    * PolarisEventListener} identifier.
    */
   Optional<Set<String>> types();
+
+  /** Configuration of each event listener type. */
+  @WithParentName
+  Map<String, ListenerConfiguration> listenerConfig();
+
+  interface ListenerConfiguration {
+    /**
+     * Comma separated list of enabled event types. This event listener will only receive events of
+     * the selected types.
+     */
+    Set<PolarisEventType> enabledEventTypes();
+  }
 }

@@ -21,4 +21,6 @@ package org.apache.polaris.service.events;
 
 public interface PolarisEventDispatcher {
   void dispatch(PolarisEvent event);
+
+  boolean hasListeners(PolarisEventType polarisEventType);
 }
