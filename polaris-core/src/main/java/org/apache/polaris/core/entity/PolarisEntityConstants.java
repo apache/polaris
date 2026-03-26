@@ -44,7 +44,7 @@ public class PolarisEntityConstants {
   private static final String ADMIN_PRINCIPAL_ROLE_NAME = "service_admin";
 
   // the name of the principal role for catalog admins to list principal roles
-  private static final String CATALOG_ROLE_MANAGER_PRINCIPAL_ROLE_NAME = "catalog_role_manager";
+  private static final String PRINCIPAL_ROLE_VIEWER_ROLE_NAME = "principal_role_viewer";
 
   // 24 hours retention before purging. This should be a config
   private static final long RETENTION_TIME_IN_MS = 24 * 3600_000;
@@ -94,8 +94,8 @@ public class PolarisEntityConstants {
     return ADMIN_PRINCIPAL_ROLE_NAME;
   }
 
-  public static String getNameOfCatalogRoleManagerPrincipalRole() {
-    return CATALOG_ROLE_MANAGER_PRINCIPAL_ROLE_NAME;
+  public static String getNameOfPrincipalRoleViewerRole() {
+    return PRINCIPAL_ROLE_VIEWER_ROLE_NAME;
   }
 
   public static long getRetentionTimeInMs() {

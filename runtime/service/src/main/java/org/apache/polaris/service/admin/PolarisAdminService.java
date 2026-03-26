@@ -820,7 +820,7 @@ public class PolarisAdminService {
     }
 
     // After successfully dropping the catalog, check if any principals should lose
-    // catalog_role_manager because they no longer have catalog_admin on any catalog
+    // principal_role_viewer because they no longer have catalog_admin on any catalog
     revokeCatalogRoleManagerAfterCatalogDrop(entity);
   }
 
@@ -1248,7 +1248,7 @@ public class PolarisAdminService {
     PrincipalRoleEntity entity = getPrincipalRoleByName(resolutionManifest, name);
 
     // Before deleting the principal role, collect all principals that have this role
-    // We need to check them after deletion to revoke catalog_role_manager if needed
+    // We need to check them after deletion to revoke principal_role_viewer if needed
     List<PrincipalEntity> principalsWithRole = new java.util.ArrayList<>();
     LoadGrantsResult grantsResult =
         metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), entity);
@@ -1286,7 +1286,7 @@ public class PolarisAdminService {
     }
 
     // After successfully deleting the principal role, check if any principals
-    // should lose catalog_role_manager because they no longer have catalog_admin
+    // should lose principal_role_viewer because they no longer have catalog_admin
     for (PrincipalEntity principal : principalsWithRole) {
       revokeCatalogRoleManagerFromPrincipalIfNeeded(principal);
     }
@@ -1498,7 +1498,7 @@ public class PolarisAdminService {
             getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
 
     // If the principal role already has catalog_admin on any catalog,
-    // grant catalog_role_manager to this principal
+    // grant principal_role_viewer to this principal
     if (result.isSuccess() && hasCatalogAdminOnAnyCatalog(principalRoleEntity)) {
       grantCatalogRoleManagerToPrincipalIfNeeded(principalEntity);
     }
@@ -1563,7 +1563,7 @@ public class PolarisAdminService {
         metaStoreManager.grantUsageOnRoleToGrantee(
             getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
 
-    // if granting catalog_admin, also grant catalog_role_manager to allow listing principal roles
+    // if granting catalog_admin, also grant principal_role_viewer to allow listing principal roles
     if (result.isSuccess()
         && PolarisEntityConstants.getNameOfCatalogAdminRole().equals(catalogRoleName)) {
       grantCatalogRoleManagerIfNeeded(principalRoleEntity);
@@ -2402,22 +2402,22 @@ public class PolarisAdminService {
   }
 
   /**
-   * Grants the catalog_role_manager principal role to all principals assigned to the specified
+   * Grants the principal_role_viewer principal role to all principals assigned to the specified
    * principal role. This allows catalog admins to list principal roles.
    */
   private void grantCatalogRoleManagerIfNeeded(PrincipalRoleEntity principalRoleEntity) {
-    // Load catalog_role_manager directly from metastore
+    // Load principal_role_viewer directly from metastore
     EntityResult catalogRoleManagerResult =
         metaStoreManager.readEntityByName(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
 
     if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
       LOGGER.warn(
-          "catalog_role_manager role not found. This role should be created during bootstrap. "
+          "principal_role_viewer role not found. This role should be created during bootstrap. "
               + "Existing deployments may need to re-bootstrap to enable this feature.");
       return;
     }
@@ -2425,7 +2425,7 @@ public class PolarisAdminService {
     PrincipalRoleEntity catalogRoleManagerEntity =
         PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
 
-    // Find all principals that have this principal role and grant catalog_role_manager to them
+    // Find all principals that have this principal role and grant principal_role_viewer to them
     LoadGrantsResult grantsResult =
         metaStoreManager.loadGrantsOnSecurable(getCurrentPolarisContext(), principalRoleEntity);
 
@@ -2444,7 +2444,7 @@ public class PolarisAdminService {
           if (principalResult.isSuccess() && principalResult.getEntity() != null) {
             PrincipalEntity principal = PrincipalEntity.of(principalResult.getEntity());
 
-            // Check if the principal already has catalog_role_manager
+            // Check if the principal already has principal_role_viewer
             LoadGrantsResult principalGrantsResult =
                 metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principal);
 
@@ -2472,22 +2472,22 @@ public class PolarisAdminService {
   }
 
   /**
-   * Revokes the catalog_role_manager principal role from all principals assigned to the specified
+   * Revokes the principal_role_viewer principal role from all principals assigned to the specified
    * principal role if they no longer have any catalog_admin grants.
    */
   private void revokeCatalogRoleManagerIfNeeded(PrincipalRoleEntity principalRoleEntity) {
-    // Load catalog_role_manager directly from metastore
+    // Load principal_role_viewer directly from metastore
     EntityResult catalogRoleManagerResult =
         metaStoreManager.readEntityByName(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
 
     if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
       LOGGER.warn(
-          "catalog_role_manager role not found. This role should be created during bootstrap. "
+          "principal_role_viewer role not found. This role should be created during bootstrap. "
               + "Existing deployments may need to re-bootstrap to enable this feature.");
       return;
     }
@@ -2516,7 +2516,7 @@ public class PolarisAdminService {
 
             // Check if this principal still has catalog_admin on any other catalog
             if (!hasCatalogAdminOnAnyCatalog(principal)) {
-              // Revoke catalog_role_manager from this principal
+              // Revoke principal_role_viewer from this principal
               metaStoreManager.revokeUsageOnRoleFromGrantee(
                   getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
             }
@@ -2599,22 +2599,22 @@ public class PolarisAdminService {
   }
 
   /**
-   * Revokes catalog_role_manager from a principal if they no longer have catalog_admin on any
+   * Revokes principal_role_viewer from a principal if they no longer have catalog_admin on any
    * catalog. This is called when a principal role is revoked from a principal.
    */
   private void revokeCatalogRoleManagerFromPrincipalIfNeeded(PrincipalEntity principal) {
-    // Load catalog_role_manager directly from metastore
+    // Load principal_role_viewer directly from metastore
     EntityResult catalogRoleManagerResult =
         metaStoreManager.readEntityByName(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
 
     if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
       LOGGER.warn(
-          "catalog_role_manager role not found. This role should be created during bootstrap. "
+          "principal_role_viewer role not found. This role should be created during bootstrap. "
               + "Existing deployments may need to re-bootstrap to enable this feature.");
       return;
     }
@@ -2624,29 +2624,29 @@ public class PolarisAdminService {
 
     // Check if this principal still has catalog_admin on any catalog
     if (!hasCatalogAdminOnAnyCatalog(principal)) {
-      // Revoke catalog_role_manager from this principal
+      // Revoke principal_role_viewer from this principal
       metaStoreManager.revokeUsageOnRoleFromGrantee(
           getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
     }
   }
 
   /**
-   * Revokes catalog_role_manager from all principals who had catalog_admin only on the dropped
+   * Revokes principal_role_viewer from all principals who had catalog_admin only on the dropped
    * catalog. This is called after a catalog is successfully deleted.
    */
   private void revokeCatalogRoleManagerAfterCatalogDrop(CatalogEntity droppedCatalog) {
-    // Load catalog_role_manager directly from metastore
+    // Load principal_role_viewer directly from metastore
     EntityResult catalogRoleManagerResult =
         metaStoreManager.readEntityByName(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
 
     if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
       LOGGER.warn(
-          "catalog_role_manager role not found. This role should be created during bootstrap. "
+          "principal_role_viewer role not found. This role should be created during bootstrap. "
               + "Existing deployments may need to re-bootstrap to enable this feature.");
       return;
     }
@@ -2654,14 +2654,14 @@ public class PolarisAdminService {
     PrincipalRoleEntity catalogRoleManagerEntity =
         PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
 
-    // Find all principals that have catalog_role_manager
+    // Find all principals that have principal_role_viewer
     LoadGrantsResult grantsResult =
         metaStoreManager.loadGrantsOnSecurable(
             getCurrentPolarisContext(), catalogRoleManagerEntity);
 
     if (grantsResult.isSuccess()) {
       for (PolarisGrantRecord grant : grantsResult.getGrantRecords()) {
-        // Check if this is a PRINCIPAL_ROLE_USAGE grant (principal using catalog_role_manager)
+        // Check if this is a PRINCIPAL_ROLE_USAGE grant (principal using principal_role_viewer)
         if (grant.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode()) {
           // Load the principal
           EntityResult principalResult =
@@ -2676,7 +2676,7 @@ public class PolarisAdminService {
 
             // Check if this principal still has catalog_admin on any remaining catalog
             if (!hasCatalogAdminOnAnyCatalog(principal)) {
-              // Revoke catalog_role_manager from this principal
+              // Revoke principal_role_viewer from this principal
               metaStoreManager.revokeUsageOnRoleFromGrantee(
                   getCurrentPolarisContext(), null, catalogRoleManagerEntity, principal);
             }
@@ -2687,22 +2687,22 @@ public class PolarisAdminService {
   }
 
   /**
-   * Grants catalog_role_manager to a specific principal if they don't already have it. This is
+   * Grants principal_role_viewer to a specific principal if they don't already have it. This is
    * called when a principal is assigned to a principal role that already has catalog_admin.
    */
   private void grantCatalogRoleManagerToPrincipalIfNeeded(PrincipalEntity principal) {
-    // Load catalog_role_manager directly from metastore
+    // Load principal_role_viewer directly from metastore
     EntityResult catalogRoleManagerResult =
         metaStoreManager.readEntityByName(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
 
     if (!catalogRoleManagerResult.isSuccess() || catalogRoleManagerResult.getEntity() == null) {
       LOGGER.warn(
-          "catalog_role_manager role not found. This role should be created during bootstrap. "
+          "principal_role_viewer role not found. This role should be created during bootstrap. "
               + "Existing deployments may need to re-bootstrap to enable this feature.");
       return;
     }
@@ -2710,7 +2710,7 @@ public class PolarisAdminService {
     PrincipalRoleEntity catalogRoleManagerEntity =
         PrincipalRoleEntity.of(catalogRoleManagerResult.getEntity());
 
-    // Check if the principal already has catalog_role_manager
+    // Check if the principal already has principal_role_viewer
     LoadGrantsResult principalGrantsResult =
         metaStoreManager.loadGrantsToGrantee(getCurrentPolarisContext(), principal);
 

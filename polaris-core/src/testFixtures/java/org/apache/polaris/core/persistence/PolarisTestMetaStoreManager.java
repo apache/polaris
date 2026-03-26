@@ -1906,7 +1906,7 @@ public class PolarisTestMetaStoreManager {
                 PageToken.readEverything())
             .getEntities();
 
-    // ensure not null, two elements (service_admin and catalog_role_manager)
+    // ensure not null, two elements (service_admin and principal_role_viewer)
     Assertions.assertThat(principalRoles).isNotNull().hasSize(2);
 
     // validate service_admin principal role
@@ -1924,8 +1924,7 @@ public class PolarisTestMetaStoreManager {
 
       if (role.getName().equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())) {
         serviceAdminRole = role;
-      } else if (role.getName()
-          .equals(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole())) {
+      } else if (role.getName().equals(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole())) {
         catalogRoleManagerRole = role;
       }
     }
@@ -2084,7 +2083,7 @@ public class PolarisTestMetaStoreManager {
             ImmutablePair.of("P1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("P2", PolarisEntitySubType.NULL_SUBTYPE)));
 
-    // 4 principal roles with the bootstrap service_admin and catalog_role_manager
+    // 4 principal roles with the bootstrap service_admin and principal_role_viewer
     this.validateListReturn(
         null,
         PolarisEntityType.PRINCIPAL_ROLE,
@@ -2095,7 +2094,7 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of(
-                PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole(),
+                PolarisEntityConstants.getNameOfPrincipalRoleViewerRole(),
                 PolarisEntitySubType.NULL_SUBTYPE)));
 
     // three namespaces under top-level namespace N1
@@ -2164,7 +2163,7 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of(
-                PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole(),
+                PolarisEntityConstants.getNameOfPrincipalRoleViewerRole(),
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR2", PolarisEntitySubType.NULL_SUBTYPE)));

@@ -1985,7 +1985,7 @@ public class PolarisManagementServiceIntegrationTest {
     // Assign principal to principal role
     managementApi.assignPrincipalRole(principal.getPrincipal().getName(), principalRoleName);
 
-    // Verify principal does not have catalog_role_manager yet by checking activated roles
+    // Verify principal does not have principal_role_viewer yet by checking activated roles
     Principal principalBefore = managementApi.getPrincipal(principal.getPrincipal().getName());
     assertThat(principalBefore).isNotNull();
 
@@ -1995,7 +1995,7 @@ public class PolarisManagementServiceIntegrationTest {
             catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
-    // Verify principal now has catalog_role_manager (auto-granted)
+    // Verify principal now has principal_role_viewer (auto-granted)
     try (Response response =
         managementApi
             .request(
@@ -2006,7 +2006,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
     // Verify catalog_admin can list principal roles
@@ -2024,7 +2024,7 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
-    // Verify catalog_role_manager is auto-revoked
+    // Verify principal_role_viewer is auto-revoked
     try (Response response =
         managementApi
             .request(
@@ -2035,7 +2035,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .doesNotContain(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
   }
 
@@ -2061,13 +2061,13 @@ public class PolarisManagementServiceIntegrationTest {
     // Assign principal to principal role
     managementApi.assignPrincipalRole(principal.getPrincipal().getName(), principalRoleName);
 
-    // Grant catalog_admin to the principal role (should auto-grant catalog_role_manager)
+    // Grant catalog_admin to the principal role (should auto-grant principal_role_viewer)
     CatalogRole catalogAdminRole =
         managementApi.getCatalogRole(
             catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
-    // Verify principal has catalog_role_manager
+    // Verify principal has principal_role_viewer
     try (Response response =
         managementApi
             .request(
@@ -2078,10 +2078,10 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
-    // Revoke the principal role from the principal (this should auto-revoke catalog_role_manager)
+    // Revoke the principal role from the principal (this should auto-revoke principal_role_viewer)
     try (Response response =
         managementApi
             .request(
@@ -2091,7 +2091,7 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
-    // Verify catalog_role_manager is auto-revoked
+    // Verify principal_role_viewer is auto-revoked
     try (Response response =
         managementApi
             .request(
@@ -2102,7 +2102,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .doesNotContain(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
   }
 
@@ -2138,14 +2138,14 @@ public class PolarisManagementServiceIntegrationTest {
     // Assign principal to principal role
     managementApi.assignPrincipalRole(principal.getPrincipal().getName(), principalRoleName);
 
-    // Grant catalog_admin on catalog1 (should auto-grant catalog_role_manager)
+    // Grant catalog_admin on catalog1 (should auto-grant principal_role_viewer)
     CatalogRole catalogAdminRole1 =
         managementApi.getCatalogRole(
             catalog1Name, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, catalog1Name, catalogAdminRole1);
 
-    // Verify principal has catalog_role_manager
+    // Verify principal has principal_role_viewer
     try (Response response =
         managementApi
             .request(
@@ -2156,10 +2156,10 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
-    // Drop catalog1 (principal should still have catalog_role_manager - no catalog_admin anywhere
+    // Drop catalog1 (principal should still have principal_role_viewer - no catalog_admin anywhere
     // now)
     // First revoke catalog_admin to allow deletion
     try (Response response =
@@ -2173,7 +2173,7 @@ public class PolarisManagementServiceIntegrationTest {
 
     managementApi.deleteCatalog(catalog1Name);
 
-    // Verify catalog_role_manager is auto-revoked after catalog drop (no catalog_admin on any
+    // Verify principal_role_viewer is auto-revoked after catalog drop (no catalog_admin on any
     // catalog)
     try (Response response =
         managementApi
@@ -2185,17 +2185,17 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .doesNotContain(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
-    // Now grant catalog_admin on catalog2 and verify catalog_role_manager is granted again
+    // Now grant catalog_admin on catalog2 and verify principal_role_viewer is granted again
     CatalogRole catalogAdminRole2 =
         managementApi.getCatalogRole(
             catalog2Name, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, catalog2Name, catalogAdminRole2);
 
-    // Verify principal has catalog_role_manager again
+    // Verify principal has principal_role_viewer again
     try (Response response =
         managementApi
             .request(
@@ -2206,10 +2206,10 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
-    // Drop catalog2 (should revoke catalog_role_manager again)
+    // Drop catalog2 (should revoke principal_role_viewer again)
     try (Response response =
         managementApi
             .request(
@@ -2221,7 +2221,7 @@ public class PolarisManagementServiceIntegrationTest {
 
     managementApi.deleteCatalog(catalog2Name);
 
-    // Final check - catalog_role_manager should be revoked
+    // Final check - principal_role_viewer should be revoked
     try (Response response =
         managementApi
             .request(
@@ -2232,18 +2232,18 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .doesNotContain(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
   }
 
   @Test
   public void testCatalogRoleManagerCannotBeDeleted() {
-    // Try to delete catalog_role_manager system role - should fail
+    // Try to delete principal_role_viewer system role - should fail
     try (Response response =
         managementApi
             .request(
                 "v1/principal-roles/{pr}",
-                Map.of("pr", PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole()))
+                Map.of("pr", PolarisEntityConstants.getNameOfPrincipalRoleViewerRole()))
             .delete()) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
       ErrorResponse error = response.readEntity(ErrorResponse.class);
@@ -2254,13 +2254,13 @@ public class PolarisManagementServiceIntegrationTest {
     List<PrincipalRole> allRoles = managementApi.listPrincipalRoles();
     assertThat(allRoles)
         .extracting(PrincipalRole::getName)
-        .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+        .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
   }
 
   @Test
   public void testCatalogRoleManagerGrantedWhenPrincipalAssignedToRoleWithCatalogAdmin() {
     // This tests the reverse order: grant catalog_admin to role FIRST,
-    // then assign principal to that role - principal should still get catalog_role_manager
+    // then assign principal to that role - principal should still get principal_role_viewer
 
     // Create a catalog
     String catalogName = client.newEntityName("catalog_reverse_order_test");
@@ -2288,7 +2288,7 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi.createPrincipal(client.newEntityName("test_principal_reverse"));
     managementApi.assignPrincipalRole(principal.getPrincipal().getName(), principalRoleName);
 
-    // Verify the principal automatically got catalog_role_manager
+    // Verify the principal automatically got principal_role_viewer
     try (Response response =
         managementApi
             .request(
@@ -2299,7 +2299,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
     // Verify the principal can list principal roles
@@ -2311,7 +2311,7 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testCatalogRoleManagerRevokedWhenPrincipalRoleDeleted() {
     // This tests the privilege leak scenario where deleting a PrincipalRole
-    // with catalog_admin should revoke catalog_role_manager from affected principals
+    // with catalog_admin should revoke principal_role_viewer from affected principals
 
     // Create a catalog
     String catalogName = client.newEntityName("catalog_role_delete_test");
@@ -2353,7 +2353,7 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName2, catalogName, catalogAdminRole);
 
-    // Verify both principals have catalog_role_manager
+    // Verify both principals have principal_role_viewer
     try (Response response =
         managementApi
             .request(
@@ -2364,7 +2364,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
     try (Response response =
@@ -2377,7 +2377,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
     // Delete principalRole1
@@ -2388,7 +2388,7 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
-    // Verify principal1 no longer has catalog_role_manager (lost only source of catalog_admin)
+    // Verify principal1 no longer has principal_role_viewer (lost only source of catalog_admin)
     try (Response response =
         managementApi
             .request(
@@ -2399,10 +2399,10 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .doesNotContain(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .doesNotContain(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
 
-    // Verify principal2 STILL has catalog_role_manager (still has role2 with catalog_admin)
+    // Verify principal2 STILL has principal_role_viewer (still has role2 with catalog_admin)
     try (Response response =
         managementApi
             .request(
@@ -2413,7 +2413,7 @@ public class PolarisManagementServiceIntegrationTest {
       PrincipalRoles roles = response.readEntity(PrincipalRoles.class);
       assertThat(roles.getRoles())
           .extracting(PrincipalRole::getName)
-          .contains(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole());
+          .contains(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
     }
   }
 

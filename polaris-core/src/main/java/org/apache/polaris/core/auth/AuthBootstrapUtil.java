@@ -33,6 +33,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.slf4j.Logger;
@@ -104,22 +105,18 @@ public class AuthBootstrapUtil {
         rootContainer,
         PolarisPrivilege.SERVICE_MANAGE_ACCESS);
 
-    // create the catalog_role_manager principal role for catalog admins to list principal roles
-    PrincipalRoleEntity catalogRoleManagerPrincipalRole =
+    // create the principal_role_viewer role for catalog admins to list principal roles
+    PrincipalRoleEntity principalRoleViewer =
         new PrincipalRoleEntity.Builder()
             .setId(generateId(metaStoreManager, ctx))
-            .setName(PolarisEntityConstants.getNameOfCatalogRoleManagerPrincipalRole())
+            .setName(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole())
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
-    metaStoreManager.createEntityIfNotExists(ctx, null, catalogRoleManagerPrincipalRole);
+    metaStoreManager.createEntityIfNotExists(ctx, null, principalRoleViewer);
 
-    // grant PRINCIPAL_ROLE_LIST on the rootContainer to the catalogRoleManagerPrincipalRole
+    // grant PRINCIPAL_ROLE_LIST on the rootContainer to the principalRoleViewer
     metaStoreManager.grantPrivilegeOnSecurableToRole(
-        ctx,
-        catalogRoleManagerPrincipalRole,
-        null,
-        rootContainer,
-        PolarisPrivilege.PRINCIPAL_ROLE_LIST);
+        ctx, principalRoleViewer, null, rootContainer, PolarisPrivilege.PRINCIPAL_ROLE_LIST);
 
     return metaStoreManager.loadPrincipalSecrets(ctx, rootPrincipal.getClientId());
   }
