@@ -31,8 +31,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.util.BitSet;
 import java.util.HashSet;
-import java.util.Set;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @ApplicationScoped
@@ -41,13 +41,26 @@ public class PolarisEventListeners {
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
+  private final BitSet eventsByType = new BitSet(PolarisEventType.values().length);
+
   public void onStartup(@Observes StartupEvent event) {
-    Set<String> listenerTypeSet = configuration.types().orElseGet(HashSet::new);
+    var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
     for (String enabledEventListener : listenerTypeSet) {
-      PolarisEventListener listener =
-          eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
+      var supportedTypes = PolarisEventType.values();
+      if (listenerConfiguration != null && !listenerConfiguration.enabledEventTypes().isEmpty()) {
+        supportedTypes = listenerConfiguration.enabledEventTypes().toArray(PolarisEventType[]::new);
+      }
+      for (var polarisEventType : supportedTypes) {
+        eventsByType.set(polarisEventType.ordinal());
+      }
+      var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
       Handler<Message<PolarisEvent>> handler = e -> listener.onEvent(e.body());
-      eventBus.localConsumer(POLARIS_EVENT_CHANNEL, handler);
+      eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + event, handler);
     }
+  }
+
+  public boolean hasListeners(PolarisEventType polarisEventType) {
+    return eventsByType.get(polarisEventType.ordinal());
   }
 }
