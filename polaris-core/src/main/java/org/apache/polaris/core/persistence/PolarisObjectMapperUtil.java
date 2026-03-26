@@ -163,7 +163,7 @@ public final class PolarisObjectMapperUtil {
         }
       }
       return new TaskExecutionState(executorId, lastAttemptStartTime, attemptCount);
-    } catch (IOException e) {
+    } catch (IOException | NumberFormatException e) {
       LOGGER
           .atWarn()
           .addKeyValue("json", entity.getProperties())
