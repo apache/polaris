@@ -27,7 +27,6 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -124,13 +123,12 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.aws.AwsStorageAccessConfigParameters;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -269,10 +267,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
-    doCallRealMethod()
-        .when(mock)
-        .buildStorageAccessConfigParameters(
-            any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -331,7 +325,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(stsClient);
+        new AwsCredentialsStorageIntegration(
+            (destination) -> stsClient,
+            config -> Optional.empty(),
+            storageCredentialCache,
+            () -> callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
@@ -1857,24 +1855,20 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    AwsStorageAccessConfigParameters params =
-        AwsStorageAccessConfigParameters.of(
-            realmName,
-            taskEntity,
-            true,
-            Set.of(tableMetadata.location()),
-            Set.of(tableMetadata.location()),
-            Optional.empty(),
-            Optional.empty(),
-            false,
-            CredentialVendingContext.empty());
     var integration =
         storageIntegrationProvider.getStorageIntegrationForConfig(
-            org.apache.polaris.core.persistence.BaseMetaStoreManager
-                .extractStorageConfiguration(diagServices, taskEntity));
+            org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
+                diagServices, taskEntity));
     Map<String, String> credentials =
         integration
-            .getSubscopedCreds(callContext.getRealmConfig(), params)
+            .getSubscopedCreds(
+                callContext.getRealmConfig(),
+                taskEntity,
+                true,
+                Set.of(tableMetadata.location()),
+                Set.of(tableMetadata.location()),
+                Optional.empty(),
+                CredentialVendingContext.empty())
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()

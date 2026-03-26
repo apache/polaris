@@ -55,7 +55,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.apache.polaris.core.storage.gcp.ImmutableGcpStorageAccessConfigParameters;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
@@ -70,6 +69,27 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
   private static final String REFRESH_ENDPOINT = "get/credentials";
+
+  private static org.apache.polaris.core.entity.PolarisEntity entityWithConfig(
+      org.apache.polaris.core.storage.PolarisStorageConfigurationInfo config) {
+    org.apache.polaris.core.entity.PolarisBaseEntity base =
+        new org.apache.polaris.core.entity.PolarisBaseEntity(
+            1,
+            2,
+            org.apache.polaris.core.entity.PolarisEntityType.CATALOG,
+            org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE,
+            0,
+            "test");
+    java.util.Map<String, String> internalProps = new java.util.HashMap<>();
+    internalProps.put(
+        org.apache.polaris.core.entity.PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+        config.serialize());
+    base =
+        new org.apache.polaris.core.entity.PolarisBaseEntity.Builder(base)
+            .internalPropertiesAsMap(internalProps)
+            .build();
+    return new org.apache.polaris.core.entity.PolarisEntity(base);
+  }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
@@ -179,14 +199,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        ImmutableGcpStorageAccessConfigParameters.of(
-            "testRealm",
-            0L,
-            null,
-            allowListAction,
-            new HashSet<>(allowedReadLoc),
-            new HashSet<>(allowedWriteLoc),
-            Optional.of(REFRESH_ENDPOINT)));
+        entityWithConfig(gcpConfig),
+        allowListAction,
+        new HashSet<>(allowedReadLoc),
+        new HashSet<>(allowedWriteLoc),
+        Optional.of(REFRESH_ENDPOINT),
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
@@ -360,14 +378,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     integration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        ImmutableGcpStorageAccessConfigParameters.of(
-            "testRealm",
-            0L,
-            config.serialize(),
-            true,
-            Set.of("gs://bucket/path"),
-            Set.of("gs://bucket/path"),
-            Optional.empty()));
+        entityWithConfig(config),
+        true,
+        Set.of("gs://bucket/path"),
+        Set.of("gs://bucket/path"),
+        Optional.empty(),
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(

@@ -52,7 +52,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
-import org.apache.polaris.core.storage.azure.ImmutableAzureStorageAccessConfigParameters;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -350,16 +349,32 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
+    org.apache.polaris.core.entity.PolarisBaseEntity base =
+        new org.apache.polaris.core.entity.PolarisBaseEntity(
+            1,
+            2,
+            org.apache.polaris.core.entity.PolarisEntityType.CATALOG,
+            org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE,
+            0,
+            "test");
+    java.util.Map<String, String> internalProps = new java.util.HashMap<>();
+    internalProps.put(
+        org.apache.polaris.core.entity.PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+        azureConfig.serialize());
+    base =
+        new org.apache.polaris.core.entity.PolarisBaseEntity.Builder(base)
+            .internalPropertiesAsMap(internalProps)
+            .build();
+    org.apache.polaris.core.entity.PolarisEntity entity =
+        new org.apache.polaris.core.entity.PolarisEntity(base);
     return azureCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        ImmutableAzureStorageAccessConfigParameters.of(
-            "testRealm",
-            0L,
-            null,
-            allowListAction,
-            new HashSet<>(allowedReadLoc),
-            new HashSet<>(allowedWriteLoc),
-            Optional.empty()));
+        entity,
+        allowListAction,
+        new HashSet<>(allowedReadLoc),
+        new HashSet<>(allowedWriteLoc),
+        Optional.empty(),
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private BlobContainerClient createContainerClient(

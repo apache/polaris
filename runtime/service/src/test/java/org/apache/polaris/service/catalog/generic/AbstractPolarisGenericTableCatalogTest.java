@@ -19,10 +19,7 @@
 package org.apache.polaris.service.catalog.generic;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -132,10 +129,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
-    doCallRealMethod()
-        .when(mock)
-        .buildStorageAccessConfigParameters(
-            any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -219,7 +212,11 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(stsClient);
+        new AwsCredentialsStorageIntegration(
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            () -> callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);

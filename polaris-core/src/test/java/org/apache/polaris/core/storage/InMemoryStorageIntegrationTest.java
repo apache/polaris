@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mockito;
 
 class InMemoryStorageIntegrationTest {
 
@@ -161,7 +160,24 @@ class InMemoryStorageIntegrationTest {
     @Override
     public StorageAccessConfig getSubscopedCreds(
         @Nonnull RealmConfig realmConfig,
-        @Nonnull org.apache.polaris.core.storage.cache.StorageAccessConfigParameters params) {
+        @Nonnull org.apache.polaris.core.entity.PolarisEntity entity,
+        boolean allowList,
+        @Nonnull Set<String> readLocations,
+        @Nonnull Set<String> writeLocations,
+        @Nonnull java.util.Optional<String> refreshEndpoint,
+        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
+      return null;
+    }
+
+    @Override
+    protected org.apache.polaris.core.storage.cache.StorageAccessConfigParameters buildCacheKey(
+        @Nonnull org.apache.polaris.core.entity.PolarisEntity entity,
+        @Nonnull RealmConfig realmConfig,
+        boolean allowList,
+        @Nonnull Set<String> readLocations,
+        @Nonnull Set<String> writeLocations,
+        @Nonnull java.util.Optional<String> refreshEndpoint,
+        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
       return null;
     }
   }

@@ -72,6 +72,14 @@ public interface CredentialVendingContext {
    * included in the context (rather than extracted from PolarisPrincipal) to ensure it is part of
    * the cache key when session tags are enabled.
    */
+  /** The name of the principal requesting credentials. */
+  Optional<String> principalName();
+
+  /**
+   * The activated roles for the principal, represented as a comma-separated sorted string. This is
+   * included in the context (rather than extracted from PolarisPrincipal) to ensure it is part of
+   * the cache key when session tags are enabled.
+   */
   Optional<String> activatedRoles();
 
   /**
@@ -115,6 +123,8 @@ public interface CredentialVendingContext {
     Builder namespace(Optional<String> namespace);
 
     Builder tableName(Optional<String> tableName);
+
+    Builder principalName(Optional<String> principalName);
 
     Builder activatedRoles(Optional<String> activatedRoles);
 

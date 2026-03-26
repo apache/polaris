@@ -197,18 +197,23 @@ public record TestServices(
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
       // Application level
+      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
+      StorageCredentialCache storageCredentialCache =
+          new StorageCredentialCache(storageCredentialCacheConfig);
+
+      // Use holder for lazy resolution — set later after callContext exists
+      final RealmConfig[] realmConfigHolder = new RealmConfig[1];
+
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
               (destination) -> stsClient,
               Optional.empty(),
-              () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
+              () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
+              storageCredentialCache,
+              () -> realmConfigHolder[0]);
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider);
-
-      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
-      StorageCredentialCache storageCredentialCache =
-          new StorageCredentialCache(storageCredentialCacheConfig);
 
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
@@ -217,6 +222,7 @@ public record TestServices(
       CallContext callContext =
           new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
       RealmConfig realmConfig = callContext.getRealmConfig();
+      realmConfigHolder[0] = realmConfig;
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -290,11 +296,7 @@ public record TestServices(
 
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              callContext,
-              principal,
-              realmContext,
-              storageIntegrationProvider,
-              diagnostics);
+              callContext, principal, realmContext, storageIntegrationProvider, diagnostics);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);

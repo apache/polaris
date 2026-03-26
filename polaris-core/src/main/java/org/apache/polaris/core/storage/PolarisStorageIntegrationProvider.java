@@ -18,49 +18,14 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Optional;
-import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.storage.cache.DefaultStorageAccessConfigParameters;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 
 /**
- * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
+ * Factory interface that knows how to return a {@link PolarisStorageIntegration} for a given {@link
  * PolarisStorageConfigurationInfo}.
  */
 public interface PolarisStorageIntegrationProvider {
   <T extends PolarisStorageConfigurationInfo>
       @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
-
-  /**
-   * Builds storage access config parameters for credential caching. Different storage backends may
-   * include different fields based on which parameters actually affect the vended credentials.
-   *
-   * <p>The default implementation uses {@link DefaultStorageAccessConfigParameters} which excludes
-   * principal and context. Implementations should override to dispatch to backend-specific
-   * parameter building logic.
-   */
-  default StorageAccessConfigParameters buildStorageAccessConfigParameters(
-      @Nonnull String realmId,
-      @Nonnull PolarisEntity entity,
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    return DefaultStorageAccessConfigParameters.of(
-        realmId,
-        entity,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations,
-        refreshCredentialsEndpoint);
-  }
 }

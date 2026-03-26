@@ -21,8 +21,11 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
@@ -31,8 +34,8 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
  * cloud storage backend (AWS, GCP, Azure).
  *
  * <p>Integrations are expected to be singletons — they do not hold per-entity storage
- * configuration. Instead, configuration is passed via {@link StorageAccessConfigParameters} at call
- * time.
+ * configuration. Instead, configuration is passed as method parameters at call time. Per-request
+ * state (realm config, realm ID) is resolved via suppliers provided at construction time.
  *
  * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
  */
@@ -40,49 +43,95 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
 
   private final String integrationIdentifierOrId;
   @Nullable private final StorageCredentialCache cache;
+  private final Supplier<RealmConfig> realmConfigSupplier;
 
+  /** Test-only constructor without cache or request-scoped suppliers. */
   public PolarisStorageIntegration(String identifierOrId) {
-    this(identifierOrId, null);
+    this(identifierOrId, null, () -> null);
   }
 
   public PolarisStorageIntegration(
-      String identifierOrId, @Nullable StorageCredentialCache cache) {
+      String identifierOrId,
+      @Nullable StorageCredentialCache cache,
+      Supplier<RealmConfig> realmConfigSupplier) {
     this.integrationIdentifierOrId = identifierOrId;
     this.cache = cache;
+    this.realmConfigSupplier = realmConfigSupplier;
   }
 
   public String getStorageIdentifierOrId() {
     return integrationIdentifierOrId;
   }
 
-  /**
-   * Get subscoped credentials, using the cache if available. On cache miss (or if no cache is
-   * configured), delegates to {@link #getSubscopedCreds} for actual credential vending.
-   *
-   * @param realmConfig the realm configuration
-   * @param params the storage access config parameters (also serves as the cache key)
-   * @return the storage access config with scoped credentials
-   */
-  public StorageAccessConfig getOrLoadSubscopedCreds(
-      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
-    if (cache != null) {
-      return cache.getOrLoad(params, realmConfig, () -> getSubscopedCreds(realmConfig, params));
-    }
-    return getSubscopedCreds(realmConfig, params);
+  protected Supplier<RealmConfig> realmConfigSupplier() {
+    return realmConfigSupplier;
   }
 
   /**
-   * Subscope the creds against the allowed read and write locations. Subclasses implement the
-   * actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
-   * generation).
-   *
-   * @param realmConfig the realm configuration (used for credential TTL and other runtime settings)
-   * @param params the storage access config parameters containing allowed locations, principal
-   *     name, credential vending context, and other fields needed for credential vending
-   * @return the scoped credentials
+   * Get subscoped credentials, using the cache if available. Resolves realm config and realm ID
+   * from suppliers. Delegates to {@link #buildCacheKey} for cache key construction and {@link
+   * #getSubscopedCreds} for actual credential vending.
+   */
+  public StorageAccessConfig getOrLoadSubscopedCreds(
+      @Nonnull PolarisEntity entity,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    RealmConfig realmConfig = realmConfigSupplier.get();
+    if (cache != null) {
+      StorageAccessConfigParameters key =
+          buildCacheKey(
+              entity,
+              realmConfig,
+              allowList,
+              readLocations,
+              writeLocations,
+              refreshEndpoint,
+              context);
+      return cache.getOrLoad(
+          key,
+          realmConfig,
+          () ->
+              getSubscopedCreds(
+                  realmConfig,
+                  entity,
+                  allowList,
+                  readLocations,
+                  writeLocations,
+                  refreshEndpoint,
+                  context));
+    }
+    return getSubscopedCreds(
+        realmConfig, entity, allowList, readLocations, writeLocations, refreshEndpoint, context);
+  }
+
+  /**
+   * Build a backend-specific cache key. Each subclass includes only the fields that affect the
+   * vended credentials for that backend. Realm ID is available via {@link #realmIdSupplier()}.
+   */
+  protected abstract StorageAccessConfigParameters buildCacheKey(
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context);
+
+  /**
+   * Subscope credentials for the given entity and locations. Subclasses implement the actual
+   * credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS generation).
    */
   public abstract StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params);
+      @Nonnull RealmConfig realmConfig,
+      @Nonnull PolarisEntity entity,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context);
 
   /**
    * Validate access for the provided operation actions and locations.

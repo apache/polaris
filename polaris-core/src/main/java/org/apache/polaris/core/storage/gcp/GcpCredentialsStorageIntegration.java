@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -81,14 +82,15 @@ public class GcpCredentialsStorageIntegration
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    this(sourceCredentials, transportFactory, null);
+    this(sourceCredentials, transportFactory, null, () -> null);
   }
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache) {
-    super(GcpCredentialsStorageIntegration.class.getName(), cache);
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      java.util.function.Supplier<org.apache.polaris.core.config.RealmConfig> realmConfigSupplier) {
+    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfigSupplier);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -97,11 +99,35 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
+  protected StorageAccessConfigParameters buildCacheKey(
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return GcpStorageAccessConfigParameters.of(
+        context.realm().orElse(""),
+        entity,
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint);
+  }
+
+  @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
-    boolean allowListOperation = params.allowedListAction();
-    Set<String> allowedReadLocations = params.allowedReadLocations();
-    Set<String> allowedWriteLocations = params.allowedWriteLocations();
+      @Nonnull RealmConfig realmConfig,
+      @Nonnull PolarisEntity entity,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    boolean allowListOperation = allowList;
+    Set<String> allowedReadLocations = readLocations;
+    Set<String> allowedWriteLocations = writeLocations;
 
     try {
       sourceCredentials.refresh();
@@ -109,9 +135,12 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
+    String storageConfigStr =
+        entity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     GcpStorageConfigurationInfo storageConfig =
-        (GcpStorageConfigurationInfo)
-            PolarisStorageConfigurationInfo.deserialize(params.storageConfigSerializedStr());
+        (GcpStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
     GoogleCredentials credentialsToDownscope = getBaseCredentials(storageConfig);
 
     CredentialAccessBoundary accessBoundary =
@@ -145,12 +174,10 @@ public class GcpCredentialsStorageIntegration
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
 
-    params
-        .refreshCredentialsEndpoint()
-        .ifPresent(
-            endpoint -> {
-              accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-            });
+    refreshEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
 
     return accessConfig.build();
   }

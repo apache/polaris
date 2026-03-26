@@ -45,7 +45,6 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,20 +146,7 @@ public class StorageAccessConfigProvider {
 
     RealmConfig realmConfig = callContext.getRealmConfig();
 
-    // Build storage access config parameters (also serves as cache key)
-    StorageAccessConfigParameters params =
-        storageIntegrationProvider.buildStorageAccessConfigParameters(
-            callContext.getRealmContext().getRealmIdentifier(),
-            storageInfoEntity,
-            realmConfig,
-            allowList,
-            tableLocations,
-            writeLocations,
-            refreshCredentialsEndpoint,
-            polarisPrincipal,
-            credentialVendingContext);
-
-    // Get the right integration for this storage type and vend credentials (with caching)
+    // Get the right integration for this storage type
     String storageConfigStr =
         storageInfoEntity
             .getInternalPropertiesAsMap()
@@ -175,8 +161,15 @@ public class StorageAccessConfigProvider {
         storageInfoEntity.getCatalogId(),
         storageInfoEntity.getId());
 
+    // Vend credentials (with caching handled by the integration)
     StorageAccessConfig accessConfig =
-        integration.getOrLoadSubscopedCreds(realmConfig, params);
+        integration.getOrLoadSubscopedCreds(
+            storageInfoEntity,
+            allowList,
+            tableLocations,
+            writeLocations,
+            refreshCredentialsEndpoint,
+            credentialVendingContext);
 
     LOGGER
         .atDebug()
@@ -228,7 +221,10 @@ public class StorageAccessConfigProvider {
     // Extract table name from table identifier
     builder.tableName(Optional.of(tableIdentifier.name()));
 
-    // Extract activated roles from principal - included in context to be part of cache key
+    // Principal name
+    builder.principalName(Optional.of(polarisPrincipal.getName()));
+
+    // Activated roles
     Set<String> roles = polarisPrincipal.getRoles();
     if (roles != null && !roles.isEmpty()) {
       String rolesString = roles.stream().sorted().collect(Collectors.joining(","));

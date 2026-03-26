@@ -25,10 +25,7 @@ import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_R
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -153,10 +150,6 @@ public abstract class AbstractPolicyCatalogTest {
   public static void setUpMocks() {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
-    doCallRealMethod()
-        .when(mock)
-        .buildStorageAccessConfigParameters(
-            any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
@@ -238,7 +231,11 @@ public abstract class AbstractPolicyCatalogTest {
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(stsClient);
+        new AwsCredentialsStorageIntegration(
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            () -> callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);

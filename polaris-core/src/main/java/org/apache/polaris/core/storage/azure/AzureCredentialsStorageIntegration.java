@@ -58,6 +58,7 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -79,24 +80,49 @@ public class AzureCredentialsStorageIntegration
   final DefaultAzureCredential defaultAzureCredential;
 
   public AzureCredentialsStorageIntegration() {
-    this(null);
+    this(null, () -> null);
   }
 
   public AzureCredentialsStorageIntegration(
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache) {
-    super(AzureCredentialsStorageIntegration.class.getName(), cache);
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      java.util.function.Supplier<org.apache.polaris.core.config.RealmConfig> realmConfigSupplier) {
+    super(AzureCredentialsStorageIntegration.class.getName(), cache, realmConfigSupplier);
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
   }
 
   @Override
+  protected StorageAccessConfigParameters buildCacheKey(
+      @Nonnull PolarisEntity entity,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return AzureStorageAccessConfigParameters.of(
+        context.realm().orElse(""),
+        entity,
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint);
+  }
+
+  @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig, @Nonnull StorageAccessConfigParameters params) {
-    boolean allowListOperation = params.allowedListAction();
-    Set<String> allowedReadLocations = params.allowedReadLocations();
-    Set<String> allowedWriteLocations = params.allowedWriteLocations();
-    Optional<String> refreshCredentialsEndpoint = params.refreshCredentialsEndpoint();
+      @Nonnull RealmConfig realmConfig,
+      @Nonnull PolarisEntity entity,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    boolean allowListOperation = allowList;
+    Set<String> allowedReadLocations = readLocations;
+    Set<String> allowedWriteLocations = writeLocations;
+    Optional<String> refreshCredentialsEndpoint = refreshEndpoint;
 
     String loc =
         !allowedWriteLocations.isEmpty()
@@ -139,9 +165,13 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
+    String storageConfigStr =
+        entity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     AzureStorageConfigurationInfo storageConfig =
         (AzureStorageConfigurationInfo)
-            PolarisStorageConfigurationInfo.deserialize(params.storageConfigSerializedStr());
+            PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
     AccessToken accessToken = getAccessToken(realmConfig, storageConfig.getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
