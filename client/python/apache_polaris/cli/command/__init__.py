@@ -237,6 +237,7 @@ class Command(ABC):
             command = FindCommand(
                 options_get(Arguments.IDENTIFIER),
                 catalog_name=options_get(Arguments.CATALOG),
+                type_filter=options_get(Arguments.TYPE),
             )
 
         if command is not None:

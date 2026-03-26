@@ -145,6 +145,7 @@ class CatalogRolesCommand(Command):
         print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
         print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
         print(f"  {'Version:':<30} {role.entity_version}")
+
         # Assignments
         principal_roles = (
             api.list_assignee_principal_roles_for_catalog_role(
@@ -152,13 +153,14 @@ class CatalogRolesCommand(Command):
             ).roles
             or []
         )
-        print("Assignments")
+        print("\nAssignments")
         print(f"  {'Assigned Principal Roles:':<30} {len(principal_roles)}")
         print(f"  {'Total Grants:':<30} {len(grants)}")
+
         # Privileges
-        print("Privileges")
+        print("\nPrivileges")
         if not grants:
-            print("  No grants found.")
+            print("  No grants found")
         else:
             for grant in sorted(
                 grants, key=lambda x: (str(x.privilege), str(x.namespace))

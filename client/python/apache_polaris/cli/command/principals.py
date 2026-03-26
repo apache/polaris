@@ -211,11 +211,16 @@ class PrincipalsCommand(Command):
             f"  {'Modified:':<30} {format_timestamp(principal.last_update_timestamp)}"
         )
         print(f"  {'Version:':<30} {principal.entity_version}")
+
         # Assigned Roles
         principal_roles = list(self._get_principal_roles(api))
-        print("Assigned Roles")
-        for principal_role in principal_roles:
-            print(f"  - {principal_role}")
+        print("\nAssigned Roles")
+        if principal_roles:
+            for principal_role in principal_roles:
+                print(f"  - {principal_role}")
+        else:
+            print("  No principal roles assigned")
+
         catalogs = api.list_catalogs().catalogs or []
         accessible_catalogs = []
         for catalog in catalogs:
@@ -224,9 +229,12 @@ class PrincipalsCommand(Command):
                 for role_name in principal_roles
             ):
                 accessible_catalogs.append(catalog.name)
+
         # Accessible Catalogs
-        print("Accessible Catalogs")
+        print("\nAccessible Catalogs")
         if accessible_catalogs:
             for catalog in sorted(accessible_catalogs):
                 print(f"  - {catalog}")
+        else:
+            print("  No accessible catalogs")
         print("-" * 80)

@@ -118,7 +118,9 @@ class TableCommand(Command):
             print(
                 f"  {'Last Updated:':<30} {format_timestamp(metadata.last_updated_ms)}"
             )
+
             # Statistics
+            print("\nStatistics")
             current_snapshot = next(
                 (
                     snapshot
@@ -128,15 +130,19 @@ class TableCommand(Command):
                 None,
             )
             if current_snapshot and current_snapshot.summary:
-                print("Statistics")
-                stats = current_snapshot.summary.model_dump()["additional_properties"]
-                print(f"  {'Total Records:':<30} {stats.get('total-records', '-')}")
-                print(
-                    f"  {'Total Data Files:':<30} {stats.get('total-data-files', '-')}"
+                stats = current_snapshot.summary.model_dump().get(
+                    "additional_properties", {}
                 )
-                print(f"  {'Total Size:':<30} {stats.get('total-files-size', '-')}")
+                print(f"  {'Total Records:':<30} {stats.get('total-records', '0')}")
+                print(
+                    f"  {'Total Data Files:':<30} {stats.get('total-data-files', '0')}"
+                )
+                print(f"  {'Total Size:':<30} {stats.get('total-files-size', '0')}")
+            else:
+                print("  Table is empty (no snapshots found)")
+
             # Schema
-            print("Schema")
+            print("\nSchema")
             current_schema = next(
                 (
                     schema
@@ -162,9 +168,10 @@ class TableCommand(Command):
                 )
                 print(indented_table)
             else:
-                print("  No schema information available.")
+                print("  No schema information available")
+
             # Partitioning
-            print("Partitioning")
+            print("\nPartitioning")
             current_spec = next(
                 (
                     spec
@@ -185,8 +192,9 @@ class TableCommand(Command):
                 print(indented_table)
             else:
                 print("  Table is un-partitioned.")
+
             # Sort Order
-            print("Sort order")
+            print("\nSort order")
             current_sort_order = next(
                 (
                     sort_order
@@ -217,8 +225,9 @@ class TableCommand(Command):
                 print("  Table is un-sorted.")
         except Exception as e:
             handle_api_exception("Table Metadata", e)
+
         # Effective policies
-        print("Effective policies")
+        print("\nEffective policies")
         try:
             policy_api = PolicyAPI(catalog_api.api_client)
             resp = policy_api.get_applicable_policies(
@@ -237,7 +246,7 @@ class TableCommand(Command):
                         source = f"Inherited from {target}"
                     print(f"  - {policy.name} ({source})")
             else:
-                print(" No policies apply to this table")
+                print("  No policies apply to this table")
         except Exception as e:
             handle_api_exception("Table Policies", e)
         print("-" * 80)

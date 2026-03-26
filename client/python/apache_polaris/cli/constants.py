@@ -77,6 +77,24 @@ class ServiceIdentityType(Enum):
     AWS_IAM = "aws_iam"
 
 
+class EntityType(Enum):
+    """
+    Represents the type of entities that can be searched or managed in the CLI
+    """
+
+    CATALOG = "catalog"
+    CATALOG_ROLE = "catalog-role"
+    NAMESPACE = "namespace"
+    PRINCIPAL = "principal"
+    PRINCIPAL_ROLE = "principal-role"
+    TABLE = "table"
+    VIEW = "view"
+
+    def __str__(self) -> str:
+        # Transforms 'catalog-role' tp 'Catalog Role'
+        return self.value.replace("-", " ").title()
+
+
 class Commands:
     """
     Represents the various commands available in the CLI
@@ -427,6 +445,7 @@ class Hints:
 
     class Find:
         IDENTIFIER = "The name of the entity to find."
+        TYPE = "Filter results by entity type (e.g. principal, principal-role, catalog, catalog-role, namespace, table, view)"
 
     class Tables:
         SUMMARIZE = "Display summary for a table."

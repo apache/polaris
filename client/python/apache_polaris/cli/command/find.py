@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional, List, Tuple
 
@@ -27,16 +28,29 @@ from apache_polaris.cli.command.utils import (
     is_fuzzy_match,
     handle_api_exception,
 )
+from apache_polaris.cli.constants import EntityType
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
 from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 @dataclass
 class FindCommand(Command):
+    """
+    A Command implemtation to represent `polaris find`. It searches for an identifier across global entities (principals, roles, catalogs)
+    and within catalog resources (namespaces, tables, views) using fuzzy matching.
+
+    Example commands:
+        * ./polaris find my_table
+        * ./polaris find ns1.my_table
+        * ./polaris find --catalog my_catalog my_table
+        * ./polaris find my_table --type table
+    """
+
     identifier: str
     catalog_name: Optional[str] = None
-    _results_count: int = 0
+    type_filter: Optional[str] = None
     _current_context: Optional[str] = field(default=None, repr=False)
+    _type_counts: Counter = field(default_factory=Counter, repr=False)
 
     def validate(self) -> None:
         if not self.identifier.strip():
@@ -53,30 +67,51 @@ class FindCommand(Command):
         else:
             # Otherwise, use standard resolution to guess catalog vs namesapce for first part
             target_catalog, target_ns, target_leaf = resolve_identifier(self.identifier)
-        # Recombine if catalog_name is explicitly provided
-        if self.catalog_name and target_catalog:
-            target_ns = [target_catalog] + target_ns
-            target_catalog = None
-        # Determine which catalogs to search
-        catalogs_to_search, effective_ns = self._resolve_search_scope(
-            api, target_catalog, target_ns
-        )
-        if not catalogs_to_search:
-            print("No catalogs found to search.")
-            return
+
         # Global entities search
         if not self.catalog_name and not target_catalog:
-            self._find_global_entities(api, target_leaf)
-        # Scoped search
-        if catalogs_to_search:
-            catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
-            for catalog_name in catalogs_to_search:
-                self._find_in_catalog(
-                    api, catalog_api, catalog_name, effective_ns, target_leaf
-                )
+            global_entity_types = {
+                EntityType.PRINCIPAL.value,
+                EntityType.PRINCIPAL_ROLE.value,
+                EntityType.CATALOG.value,
+            }
+            if not self.type_filter or self.type_filter in global_entity_types:
+                self._find_global_entities(api, target_leaf)
+
+        # Determine which catalogs to search
+        catalog_entity_types = {
+            EntityType.CATALOG_ROLE.value,
+            EntityType.NAMESPACE.value,
+            EntityType.TABLE.value,
+            EntityType.VIEW.value,
+        }
+        if not self.type_filter or self.type_filter in catalog_entity_types:
+            catalogs_to_search, effective_ns = self._resolve_search_scope(
+                api, target_catalog, target_ns
+            )
+            # Quick fail if catalog is not resolvable
+            if catalogs_to_search is None:
+                return
+            # Scoped search
+            if catalogs_to_search:
+                catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
+                for catalog_name in catalogs_to_search:
+                    self._find_in_catalog(
+                        api, catalog_api, catalog_name, effective_ns, target_leaf
+                    )
+            elif not (self.catalog_name or target_catalog):
+                print("No catalogs found to search.")
+        else:
+            catalogs_to_search = []
+
         # Summary
-        if self._results_count > 0:
-            print(f"Found {self._results_count} matching identifiers.")
+        total_results = sum(self._type_counts.values())
+        if total_results > 0:
+            types_str = ", ".join(
+                f"{count} {entity_type if count == 1 else entity_type + 's'}"
+                for entity_type, count in sorted(self._type_counts.items())
+            )
+            print(f"\nFound {total_results} matches ({types_str}).")
         else:
             print(f"No identifiers found matching '{self.identifier}'.")
 
@@ -122,36 +157,47 @@ class FindCommand(Command):
             handle_api_exception("Catalog Listing", e)
             return [], target_ns
 
-    def _print_result(self, context: str, label: str, value: str) -> None:
+    def _print_result(self, context: str, entity_type: EntityType, value: str) -> None:
         if self._current_context != context:
+            if self._current_context is not None:
+                print()
             print(f"[{context}]")
             self._current_context = context
-        print(f"  {label + ':':<20} {value}")
-        self._results_count += 1
+        label_str = str(entity_type)
+        print(f"  {label_str + ':':<20} {value}")
+        self._type_counts[label_str] += 1
 
     def _find_global_entities(self, api: PolarisDefaultApi, name: str) -> None:
         context = "Global"
         # Check principals
-        try:
-            for principal in api.list_principals().principals or []:
-                if is_fuzzy_match(name, principal.name):
-                    self._print_result(context, "Principal", principal.name)
-        except Exception as e:
-            handle_api_exception("Principal", e)
+        if not self.type_filter or self.type_filter == EntityType.PRINCIPAL.value:
+            try:
+                for principal in api.list_principals().principals or []:
+                    if is_fuzzy_match(name, principal.name):
+                        self._print_result(
+                            context, EntityType.PRINCIPAL, principal.name
+                        )
+            except Exception as e:
+                handle_api_exception("Principal Listing", e)
+
         # Check principal roles
-        try:
-            for principal_role in api.list_principal_roles().roles or []:
-                if is_fuzzy_match(name, principal_role.name):
-                    self._print_result(context, "Principal Role", principal_role.name)
-        except Exception as e:
-            handle_api_exception("Principal Role", e)
+        if not self.type_filter or self.type_filter == EntityType.PRINCIPAL_ROLE.value:
+            try:
+                for principal_role in api.list_principal_roles().roles or []:
+                    if is_fuzzy_match(name, principal_role.name):
+                        self._print_result(
+                            context, EntityType.PRINCIPAL_ROLE, principal_role.name
+                        )
+            except Exception as e:
+                handle_api_exception("Principal Role Listing", e)
         # Check catalogs
-        try:
-            for catalog in api.list_catalogs().catalogs or []:
-                if is_fuzzy_match(name, catalog.name):
-                    self._print_result(context, "Catalog", catalog.name)
-        except Exception as e:
-            handle_api_exception("Catalog", e)
+        if not self.type_filter or self.type_filter == EntityType.CATALOG.value:
+            try:
+                for catalog in api.list_catalogs().catalogs or []:
+                    if is_fuzzy_match(name, catalog.name):
+                        self._print_result(context, EntityType.CATALOG, catalog.name)
+            except Exception as e:
+                handle_api_exception("Catalog Listing", e)
 
     def _find_in_catalog(
         self,
@@ -169,20 +215,31 @@ class FindCommand(Command):
                 handle_api_exception(label, e)
 
         # Check catalog roles
-        if not namespace:
+        if not namespace and (
+            not self.type_filter or self.type_filter == EntityType.CATALOG_ROLE.value
+        ):
             try:
                 for catalog_role in api.list_catalog_roles(catalog_name).roles or []:
                     if is_fuzzy_match(leaf_name, catalog_role.name):
-                        self._print_result(context, "Catalog Role", catalog_role.name)
+                        self._print_result(
+                            context, EntityType.CATALOG_ROLE, catalog_role.name
+                        )
             except Exception as e:
                 handle_api_exception(f"Catalog Role ({catalog_name})", e)
         # Search namespaces recursively
-        for entity_type, path in crawl_namespace(
-            catalog_api=catalog_api,
-            catalog_name=catalog_name,
-            start_ns=namespace if namespace else None,
-            on_error=on_crawl_error,
-        ):
-            # Check if path matches to ns + fuzzy leaf
-            if is_fuzzy_match(leaf_name, path[-1]):
-                self._print_result(context, entity_type.capitalize(), ".".join(path))
+        catalog_resource_types = {
+            EntityType.NAMESPACE.value,
+            EntityType.TABLE.value,
+            EntityType.VIEW.value,
+        }
+        if not self.type_filter or self.type_filter in catalog_resource_types:
+            for entity_type, path in crawl_namespace(
+                catalog_api=catalog_api,
+                catalog_name=catalog_name,
+                start_ns=namespace if namespace else None,
+                on_error=on_crawl_error,
+                entity_type_filter=self.type_filter,
+            ):
+                # Check if path matches to ns + fuzzy leaf
+                if is_fuzzy_match(leaf_name, path[-1]):
+                    self._print_result(context, entity_type, ".".join(path))

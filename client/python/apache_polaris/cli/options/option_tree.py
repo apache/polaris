@@ -23,6 +23,7 @@ from apache_polaris.cli.constants import (
     StorageType,
     CatalogType,
     PrincipalType,
+    EntityType,
     Hints,
     Commands,
     Arguments,
@@ -995,6 +996,12 @@ class OptionTree:
                 "find an identifier",
                 args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(
+                        Arguments.TYPE,
+                        str,
+                        Hints.Find.TYPE,
+                        choices=[e.value for e in EntityType],
+                    ),
                 ],
                 input_name=Arguments.IDENTIFIER,
             ),

@@ -27,7 +27,7 @@ from apache_polaris.sdk.catalog.api_client import ApiClient
 from apache_polaris.sdk.catalog.configuration import Configuration
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
-from apache_polaris.cli.constants import UNIT_SEPARATOR
+from apache_polaris.cli.constants import UNIT_SEPARATOR, EntityType
 
 
 def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
@@ -89,7 +89,7 @@ def is_fuzzy_match(query: str, target: str, threshold: float = 0.85) -> bool:
     # Substring match: enabled for length > 1
     if query_len > 1 and q in t:
         return True
-    # Spare match: enabled for length > 2
+    # Subsequence match: enabled for length > 2
     if query_len > 2:
         iterator = iter(t)
         if all(char in iterator for char in q):
@@ -116,10 +116,27 @@ def handle_api_exception(entity_label: str, e: Exception) -> None:
 
 
 def format_iceberg_type(obj: Any) -> str:
+    """
+    Recursively format Iceberg type into a human-readble string.
+    """
     unwrapped = getattr(obj, "actual_instance", obj)
-    if hasattr(unwrapped, "type"):
-        return str(unwrapped.type)
-    return str(unwrapped)
+    type_name = getattr(unwrapped, "type", None)
+    if type_name == "struct":
+        fields = getattr(unwrapped, "fields", [])
+        fields_str = []
+        for field in fields:
+            field_name = getattr(field, "name", "?")
+            field_type = format_iceberg_type(getattr(field, "type", "unknown"))
+            fields_str.append(f"{field_name}:{field_type}")
+        return f"struct<{', '.join(fields_str)}>"
+    elif type_name == "list":
+        element_type = format_iceberg_type(getattr(unwrapped, "element", "unknown"))
+        return f"list<{element_type}>"
+    elif type_name == "map":
+        key_type = format_iceberg_type(getattr(unwrapped, "key", "unknown"))
+        val_type = format_iceberg_type(getattr(unwrapped, "value", "unknown"))
+        return f"map<{key_type}, {val_type}>"
+    return str(type_name) if type_name else str(unwrapped)
 
 
 def resolve_identifier(identifier: str) -> Tuple[Optional[str], List[str], str]:
@@ -143,7 +160,8 @@ def crawl_namespace(
     catalog_name: str,
     start_ns: Optional[List[str]] = None,
     on_error: Optional[Callable[[str, Exception], None]] = None,
-) -> Generator[Tuple[str, List[str]], None, None]:
+    entity_type_filter: Optional[str] = None,
+) -> Generator[Tuple[EntityType, List[str]], None, None]:
     """
     Iterator BFS to crawl namespaces into (type, path_list)
     """
@@ -166,27 +184,30 @@ def crawl_namespace(
         if ns_str in visited:
             continue
         visited.add(ns_str)
-        yield "namespace", current_ns
+        if not entity_type_filter or entity_type_filter == EntityType.NAMESPACE.value:
+            yield EntityType.NAMESPACE, current_ns
         # List tables
-        try:
-            resp = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
-            for table in resp.identifiers or []:
-                # Ensure the listed table is in the same namespace
-                if table.namespace == current_ns:
-                    yield "table", table.namespace + [table.name]
-        except Exception as e:
-            if on_error:
-                on_error(f"Tables in {catalog_name}.{ns_display}", e)
+        if not entity_type_filter or entity_type_filter == EntityType.TABLE.value:
+            try:
+                resp = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
+                for table in resp.identifiers or []:
+                    # Ensure the listed table is in the same namespace
+                    if table.namespace == current_ns:
+                        yield EntityType.TABLE, table.namespace + [table.name]
+            except Exception as e:
+                if on_error:
+                    on_error(f"Tables in {catalog_name}.{ns_display}", e)
         # List views:
-        try:
-            resp = catalog_api.list_views(prefix=catalog_name, namespace=ns_str)
-            for view in resp.identifiers or []:
-                # Ensure the listed view is in the same namespace
-                if view.namespace == current_ns:
-                    yield "view", view.namespace + [view.name]
-        except Exception as e:
-            if on_error:
-                on_error(f"Views in {catalog_name}.{ns_display}", e)
+        if not entity_type_filter or entity_type_filter == EntityType.VIEW.value:
+            try:
+                resp = catalog_api.list_views(prefix=catalog_name, namespace=ns_str)
+                for view in resp.identifiers or []:
+                    # Ensure the listed view is in the same namespace
+                    if view.namespace == current_ns:
+                        yield EntityType.VIEW, view.namespace + [view.name]
+            except Exception as e:
+                if on_error:
+                    on_error(f"Views in {catalog_name}.{ns_display}", e)
         # List sub-namespaces
         try:
             resp = catalog_api.list_namespaces(prefix=catalog_name, parent=ns_str)

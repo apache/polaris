@@ -135,6 +135,7 @@ class PrincipalRolesCommand(Command):
         print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
         print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
         print(f"  {'Version:':<30} {role.entity_version}")
+
         # Assigned Principals
         principals = (
             api.list_assignee_principals_for_principal_role(
@@ -142,12 +143,13 @@ class PrincipalRolesCommand(Command):
             ).principals
             or []
         )
-        print("Assigned Principals")
+        print("\nAssigned Principals")
         if principals:
             for principal in sorted(principals, key=lambda x: x.name):
                 print(f"  - {principal.name}")
         else:
-            print("  No principals assigned.")
+            print("  No principals assigned")
+
         # Assigned Catalog Roles
         assigned_catalog_roles = []
         catalogs = api.list_catalogs().catalogs or []
@@ -160,10 +162,11 @@ class PrincipalRolesCommand(Command):
             )
             for catalog_role in catalog_roles:
                 assigned_catalog_roles.append((catalog_role.name, catalog.name))
-        print("Assigned Catalog Roles")
+
+        print("\nAssigned Catalog Roles")
         if assigned_catalog_roles:
             for catalog_role_name, catalog_name in sorted(assigned_catalog_roles):
                 print(f"  - {catalog_role_name} (Catalog: {catalog_name})")
         else:
-            print("  No catalog roles assigned.")
+            print("  No catalog roles assigned")
         print("-" * 80)
