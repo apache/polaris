@@ -17,7 +17,7 @@
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "RESET_CREDENTIALS", "principal": { "name": "root" }, "target": "PRINCIPAL:root_container/principal1" },
+      "request": { "authzOp": "RESET_CREDENTIALS", "principal": { "name": "admin1" }, "target": "PRINCIPAL:root_container/principal1" },
       "result":  { "isAllowed": true }
     }
   ]
