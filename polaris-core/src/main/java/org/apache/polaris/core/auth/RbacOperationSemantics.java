@@ -101,6 +101,112 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_POLICY_GRANT_TO_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.COMMIT_TRANSACTION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_PRINCIPAL;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_STAGED;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.CREATE_VIEW;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_PRINCIPAL;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DELETE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DETACH_POLICY_FROM_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.DROP_VIEW;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOGS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_GRANTS_FOR_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_NAMESPACES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPALS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_VIEW;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.NAMESPACE_EXISTS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RENAME_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RENAME_VIEW;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REPLACE_VIEW;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REPORT_READ_METRICS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.RESET_CREDENTIALS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.ROTATE_CREDENTIALS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SEND_NOTIFICATIONS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.TABLE_EXISTS;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_CATALOG;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_CATALOG_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_NAMESPACE_PROPERTIES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_POLICY;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_PRINCIPAL;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_PRINCIPAL_ROLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.VIEW_EXISTS;
 
 import com.google.common.base.Preconditions;
 import java.util.EnumMap;
@@ -165,231 +271,231 @@ record RbacOperationSemantics(
 
   static {
     // Namespace operations
-    register(PolarisAuthorizableOperation.LIST_NAMESPACES, NAMESPACE_LIST);
-    register(PolarisAuthorizableOperation.CREATE_NAMESPACE, NAMESPACE_CREATE);
-    register(PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA, NAMESPACE_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.NAMESPACE_EXISTS, NAMESPACE_LIST);
-    register(PolarisAuthorizableOperation.DROP_NAMESPACE, NAMESPACE_DROP);
-    register(PolarisAuthorizableOperation.UPDATE_NAMESPACE_PROPERTIES, NAMESPACE_WRITE_PROPERTIES);
+    register(LIST_NAMESPACES, NAMESPACE_LIST);
+    register(CREATE_NAMESPACE, NAMESPACE_CREATE);
+    register(LOAD_NAMESPACE_METADATA, NAMESPACE_READ_PROPERTIES);
+    register(NAMESPACE_EXISTS, NAMESPACE_LIST);
+    register(DROP_NAMESPACE, NAMESPACE_DROP);
+    register(UPDATE_NAMESPACE_PROPERTIES, NAMESPACE_WRITE_PROPERTIES);
 
     // Table operations
-    register(PolarisAuthorizableOperation.LIST_TABLES, TABLE_LIST);
-    register(PolarisAuthorizableOperation.CREATE_TABLE_DIRECT, TABLE_CREATE);
+    register(LIST_TABLES, TABLE_LIST);
+    register(CREATE_TABLE_DIRECT, TABLE_CREATE);
     register(
-        PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
+        CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
         EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
-    register(PolarisAuthorizableOperation.CREATE_TABLE_STAGED, TABLE_CREATE);
+    register(CREATE_TABLE_STAGED, TABLE_CREATE);
     register(
-        PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION,
+        CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION,
         EnumSet.of(TABLE_CREATE, TABLE_WRITE_DATA));
-    register(PolarisAuthorizableOperation.REGISTER_TABLE, TABLE_CREATE);
-    register(PolarisAuthorizableOperation.LOAD_TABLE, TABLE_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION, TABLE_READ_DATA);
-    register(PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION, TABLE_WRITE_DATA);
-    register(PolarisAuthorizableOperation.UPDATE_TABLE, TABLE_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE, TABLE_CREATE);
-    register(PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE, TABLE_DROP);
+    register(REGISTER_TABLE, TABLE_CREATE);
+    register(LOAD_TABLE, TABLE_READ_PROPERTIES);
+    register(LOAD_TABLE_WITH_READ_DELEGATION, TABLE_READ_DATA);
+    register(LOAD_TABLE_WITH_WRITE_DELEGATION, TABLE_WRITE_DATA);
+    register(UPDATE_TABLE, TABLE_WRITE_PROPERTIES);
+    register(UPDATE_TABLE_FOR_STAGED_CREATE, TABLE_CREATE);
+    register(DROP_TABLE_WITHOUT_PURGE, TABLE_DROP);
     register(
-        PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE,
+        DROP_TABLE_WITH_PURGE,
         EnumSet.of(TABLE_DROP, TABLE_WRITE_DATA));
-    register(PolarisAuthorizableOperation.TABLE_EXISTS, TABLE_LIST);
+    register(TABLE_EXISTS, TABLE_LIST);
     register(
-        PolarisAuthorizableOperation.RENAME_TABLE,
+        RENAME_TABLE,
         EnumSet.of(TABLE_DROP),
         EnumSet.of(TABLE_LIST, TABLE_CREATE));
     register(
-        PolarisAuthorizableOperation.COMMIT_TRANSACTION,
+        COMMIT_TRANSACTION,
         EnumSet.of(TABLE_WRITE_PROPERTIES, TABLE_CREATE));
 
     // View operations
-    register(PolarisAuthorizableOperation.LIST_VIEWS, VIEW_LIST);
-    register(PolarisAuthorizableOperation.CREATE_VIEW, VIEW_CREATE);
-    register(PolarisAuthorizableOperation.LOAD_VIEW, VIEW_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.REPLACE_VIEW, VIEW_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.DROP_VIEW, VIEW_DROP);
-    register(PolarisAuthorizableOperation.VIEW_EXISTS, VIEW_LIST);
+    register(LIST_VIEWS, VIEW_LIST);
+    register(CREATE_VIEW, VIEW_CREATE);
+    register(LOAD_VIEW, VIEW_READ_PROPERTIES);
+    register(REPLACE_VIEW, VIEW_WRITE_PROPERTIES);
+    register(DROP_VIEW, VIEW_DROP);
+    register(VIEW_EXISTS, VIEW_LIST);
     register(
-        PolarisAuthorizableOperation.RENAME_VIEW,
+        RENAME_VIEW,
         EnumSet.of(VIEW_DROP),
         EnumSet.of(VIEW_LIST, VIEW_CREATE));
 
     // Metrics and notifications
-    register(PolarisAuthorizableOperation.REPORT_READ_METRICS, TABLE_READ_DATA);
-    register(PolarisAuthorizableOperation.REPORT_WRITE_METRICS, TABLE_WRITE_DATA);
+    register(REPORT_READ_METRICS, TABLE_READ_DATA);
+    register(REPORT_WRITE_METRICS, TABLE_WRITE_DATA);
     register(
-        PolarisAuthorizableOperation.SEND_NOTIFICATIONS,
+        SEND_NOTIFICATIONS,
         EnumSet.of(
             TABLE_CREATE, TABLE_WRITE_PROPERTIES, TABLE_DROP, NAMESPACE_CREATE, NAMESPACE_DROP));
 
     // Catalog operations
-    register(PolarisAuthorizableOperation.LIST_CATALOGS, CATALOG_LIST);
-    register(PolarisAuthorizableOperation.CREATE_CATALOG, CATALOG_CREATE);
-    register(PolarisAuthorizableOperation.GET_CATALOG, CATALOG_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.UPDATE_CATALOG, CATALOG_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.DELETE_CATALOG, CATALOG_DROP);
+    register(LIST_CATALOGS, CATALOG_LIST);
+    register(CREATE_CATALOG, CATALOG_CREATE);
+    register(GET_CATALOG, CATALOG_READ_PROPERTIES);
+    register(UPDATE_CATALOG, CATALOG_WRITE_PROPERTIES);
+    register(DELETE_CATALOG, CATALOG_DROP);
 
     // Principal operations
-    register(PolarisAuthorizableOperation.LIST_PRINCIPALS, PRINCIPAL_LIST);
-    register(PolarisAuthorizableOperation.CREATE_PRINCIPAL, PRINCIPAL_CREATE);
-    register(PolarisAuthorizableOperation.GET_PRINCIPAL, PRINCIPAL_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.UPDATE_PRINCIPAL, PRINCIPAL_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.DELETE_PRINCIPAL, PRINCIPAL_DROP);
-    register(PolarisAuthorizableOperation.ROTATE_CREDENTIALS, PRINCIPAL_ROTATE_CREDENTIALS);
-    register(PolarisAuthorizableOperation.RESET_CREDENTIALS, PRINCIPAL_RESET_CREDENTIALS);
-    register(PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES_ASSIGNED, PRINCIPAL_LIST_GRANTS);
+    register(LIST_PRINCIPALS, PRINCIPAL_LIST);
+    register(CREATE_PRINCIPAL, PRINCIPAL_CREATE);
+    register(GET_PRINCIPAL, PRINCIPAL_READ_PROPERTIES);
+    register(UPDATE_PRINCIPAL, PRINCIPAL_WRITE_PROPERTIES);
+    register(DELETE_PRINCIPAL, PRINCIPAL_DROP);
+    register(ROTATE_CREDENTIALS, PRINCIPAL_ROTATE_CREDENTIALS);
+    register(RESET_CREDENTIALS, PRINCIPAL_RESET_CREDENTIALS);
+    register(LIST_PRINCIPAL_ROLES_ASSIGNED, PRINCIPAL_LIST_GRANTS);
     register(
-        PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE,
+        ASSIGN_PRINCIPAL_ROLE,
         PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE,
+        REVOKE_PRINCIPAL_ROLE,
         EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Principal role operations
-    register(PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES, PRINCIPAL_ROLE_LIST);
-    register(PolarisAuthorizableOperation.CREATE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_CREATE);
-    register(PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE, PRINCIPAL_ROLE_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.UPDATE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.DELETE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_DROP);
+    register(LIST_PRINCIPAL_ROLES, PRINCIPAL_ROLE_LIST);
+    register(CREATE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_CREATE);
+    register(GET_PRINCIPAL_ROLE, PRINCIPAL_ROLE_READ_PROPERTIES);
+    register(UPDATE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_WRITE_PROPERTIES);
+    register(DELETE_PRINCIPAL_ROLE, PRINCIPAL_ROLE_DROP);
     register(
-        PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE,
+        LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE,
         PRINCIPAL_ROLE_LIST_GRANTS);
     register(
-        PolarisAuthorizableOperation.LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE,
+        LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE,
         PRINCIPAL_ROLE_LIST_GRANTS);
     register(
-        PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
+        ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
         CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE,
+        REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE,
         CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE);
 
     // Catalog role operations
-    register(PolarisAuthorizableOperation.LIST_CATALOG_ROLES, CATALOG_ROLE_LIST);
-    register(PolarisAuthorizableOperation.CREATE_CATALOG_ROLE, CATALOG_ROLE_CREATE);
-    register(PolarisAuthorizableOperation.GET_CATALOG_ROLE, CATALOG_ROLE_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.UPDATE_CATALOG_ROLE, CATALOG_ROLE_WRITE_PROPERTIES);
-    register(PolarisAuthorizableOperation.DELETE_CATALOG_ROLE, CATALOG_ROLE_DROP);
+    register(LIST_CATALOG_ROLES, CATALOG_ROLE_LIST);
+    register(CREATE_CATALOG_ROLE, CATALOG_ROLE_CREATE);
+    register(GET_CATALOG_ROLE, CATALOG_ROLE_READ_PROPERTIES);
+    register(UPDATE_CATALOG_ROLE, CATALOG_ROLE_WRITE_PROPERTIES);
+    register(DELETE_CATALOG_ROLE, CATALOG_ROLE_DROP);
     register(
-        PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
+        LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
         CATALOG_ROLE_LIST_GRANTS);
-    register(PolarisAuthorizableOperation.LIST_GRANTS_FOR_CATALOG_ROLE, CATALOG_ROLE_LIST_GRANTS);
+    register(LIST_GRANTS_FOR_CATALOG_ROLE, CATALOG_ROLE_LIST_GRANTS);
 
     // Grant operations
-    register(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE, SERVICE_MANAGE_ACCESS);
+    register(ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE, SERVICE_MANAGE_ACCESS);
     register(
-        PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE,
+        REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE,
         EnumSet.of(SERVICE_MANAGE_ACCESS),
         EnumSet.of(PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
-        PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE,
+        ADD_CATALOG_GRANT_TO_CATALOG_ROLE,
         CATALOG_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE,
+        REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(CATALOG_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
-        PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE,
+        ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE,
         NAMESPACE_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE,
+        REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(NAMESPACE_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
-        PolarisAuthorizableOperation.ADD_TABLE_GRANT_TO_CATALOG_ROLE,
+        ADD_TABLE_GRANT_TO_CATALOG_ROLE,
         TABLE_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE,
+        REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(TABLE_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
     register(
-        PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE,
+        ADD_VIEW_GRANT_TO_CATALOG_ROLE,
         VIEW_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE,
+        REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(VIEW_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Policy operations
-    register(PolarisAuthorizableOperation.CREATE_POLICY, POLICY_CREATE);
-    register(PolarisAuthorizableOperation.LOAD_POLICY, POLICY_READ);
-    register(PolarisAuthorizableOperation.DROP_POLICY, POLICY_DROP);
-    register(PolarisAuthorizableOperation.UPDATE_POLICY, POLICY_WRITE);
-    register(PolarisAuthorizableOperation.LIST_POLICY, POLICY_LIST);
+    register(CREATE_POLICY, POLICY_CREATE);
+    register(LOAD_POLICY, POLICY_READ);
+    register(DROP_POLICY, POLICY_DROP);
+    register(UPDATE_POLICY, POLICY_WRITE);
+    register(LIST_POLICY, POLICY_LIST);
 
     // Policy attachment operations (use CATALOG rooting)
     register(
-        PolarisAuthorizableOperation.ATTACH_POLICY_TO_CATALOG,
+        ATTACH_POLICY_TO_CATALOG,
         EnumSet.of(POLICY_ATTACH),
         EnumSet.of(CATALOG_ATTACH_POLICY),
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.ATTACH_POLICY_TO_NAMESPACE,
+        ATTACH_POLICY_TO_NAMESPACE,
         EnumSet.of(POLICY_ATTACH),
         EnumSet.of(NAMESPACE_ATTACH_POLICY),
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE,
+        ATTACH_POLICY_TO_TABLE,
         EnumSet.of(POLICY_ATTACH),
         EnumSet.of(TABLE_ATTACH_POLICY),
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.DETACH_POLICY_FROM_CATALOG,
+        DETACH_POLICY_FROM_CATALOG,
         EnumSet.of(POLICY_DETACH),
         EnumSet.of(CATALOG_DETACH_POLICY),
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE,
+        DETACH_POLICY_FROM_NAMESPACE,
         EnumSet.of(POLICY_DETACH),
         EnumSet.of(NAMESPACE_DETACH_POLICY),
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE,
+        DETACH_POLICY_FROM_TABLE,
         EnumSet.of(POLICY_DETACH),
         EnumSet.of(TABLE_DETACH_POLICY),
         ResolvedPathRooting.CATALOG);
 
     // Get applicable policies operations
     register(
-        PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_CATALOG,
+        GET_APPLICABLE_POLICIES_ON_CATALOG,
         EnumSet.of(CATALOG_READ_PROPERTIES),
         null,
         ResolvedPathRooting.CATALOG);
     register(
-        PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_NAMESPACE,
+        GET_APPLICABLE_POLICIES_ON_NAMESPACE,
         NAMESPACE_READ_PROPERTIES);
-    register(PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE, TABLE_READ_PROPERTIES);
+    register(GET_APPLICABLE_POLICIES_ON_TABLE, TABLE_READ_PROPERTIES);
 
     // Policy grant operations
     register(
-        PolarisAuthorizableOperation.ADD_POLICY_GRANT_TO_CATALOG_ROLE,
+        ADD_POLICY_GRANT_TO_CATALOG_ROLE,
         POLICY_MANAGE_GRANTS_ON_SECURABLE);
     register(
-        PolarisAuthorizableOperation.REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE,
+        REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE,
         EnumSet.of(POLICY_MANAGE_GRANTS_ON_SECURABLE),
         EnumSet.of(CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE));
 
     // Table metadata operations
-    register(PolarisAuthorizableOperation.ASSIGN_TABLE_UUID, TABLE_ASSIGN_UUID);
+    register(ASSIGN_TABLE_UUID, TABLE_ASSIGN_UUID);
     register(
-        PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION, TABLE_UPGRADE_FORMAT_VERSION);
-    register(PolarisAuthorizableOperation.ADD_TABLE_SCHEMA, TABLE_ADD_SCHEMA);
-    register(PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA, TABLE_SET_CURRENT_SCHEMA);
-    register(PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC, TABLE_ADD_PARTITION_SPEC);
-    register(PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER, TABLE_ADD_SORT_ORDER);
+        UPGRADE_TABLE_FORMAT_VERSION, TABLE_UPGRADE_FORMAT_VERSION);
+    register(ADD_TABLE_SCHEMA, TABLE_ADD_SCHEMA);
+    register(SET_TABLE_CURRENT_SCHEMA, TABLE_SET_CURRENT_SCHEMA);
+    register(ADD_TABLE_PARTITION_SPEC, TABLE_ADD_PARTITION_SPEC);
+    register(ADD_TABLE_SORT_ORDER, TABLE_ADD_SORT_ORDER);
     register(
-        PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER, TABLE_SET_DEFAULT_SORT_ORDER);
-    register(PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT, TABLE_ADD_SNAPSHOT);
-    register(PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF, TABLE_SET_SNAPSHOT_REF);
-    register(PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS, TABLE_REMOVE_SNAPSHOTS);
-    register(PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF, TABLE_REMOVE_SNAPSHOT_REF);
-    register(PolarisAuthorizableOperation.SET_TABLE_LOCATION, TABLE_SET_LOCATION);
-    register(PolarisAuthorizableOperation.SET_TABLE_PROPERTIES, TABLE_SET_PROPERTIES);
-    register(PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES, TABLE_REMOVE_PROPERTIES);
-    register(PolarisAuthorizableOperation.SET_TABLE_STATISTICS, TABLE_SET_STATISTICS);
-    register(PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS, TABLE_REMOVE_STATISTICS);
+        SET_TABLE_DEFAULT_SORT_ORDER, TABLE_SET_DEFAULT_SORT_ORDER);
+    register(ADD_TABLE_SNAPSHOT, TABLE_ADD_SNAPSHOT);
+    register(SET_TABLE_SNAPSHOT_REF, TABLE_SET_SNAPSHOT_REF);
+    register(REMOVE_TABLE_SNAPSHOTS, TABLE_REMOVE_SNAPSHOTS);
+    register(REMOVE_TABLE_SNAPSHOT_REF, TABLE_REMOVE_SNAPSHOT_REF);
+    register(SET_TABLE_LOCATION, TABLE_SET_LOCATION);
+    register(SET_TABLE_PROPERTIES, TABLE_SET_PROPERTIES);
+    register(REMOVE_TABLE_PROPERTIES, TABLE_REMOVE_PROPERTIES);
+    register(SET_TABLE_STATISTICS, TABLE_SET_STATISTICS);
+    register(REMOVE_TABLE_STATISTICS, TABLE_REMOVE_STATISTICS);
     register(
-        PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS, TABLE_REMOVE_PARTITION_SPECS);
+        REMOVE_TABLE_PARTITION_SPECS, TABLE_REMOVE_PARTITION_SPECS);
 
     EnumSet<PolarisAuthorizableOperation> missing =
         EnumSet.allOf(PolarisAuthorizableOperation.class);
