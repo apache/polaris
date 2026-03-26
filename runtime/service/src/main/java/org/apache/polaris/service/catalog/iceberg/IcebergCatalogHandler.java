@@ -532,13 +532,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
               .location();
     }
 
+    // Merge catalog-level table defaults (table-default.*) so that properties like
+    // s3.endpoint and s3.path-style-access reach S3FileIO during the commit phase.
+    // User-provided properties take precedence over catalog defaults.
+    Map<String, String> mergedProperties = Maps.newHashMap();
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      mergedProperties.putAll(
+          org.apache.iceberg.util.PropertyUtil.propertiesWithPrefix(
+              polarisCatalog.properties(), "table-default."));
+    }
+    mergedProperties.putAll(properties);
     TableMetadata metadata =
         TableMetadata.newTableMetadata(
             request.schema(),
             request.spec() != null ? request.spec() : PartitionSpec.unpartitioned(),
             request.writeOrder() != null ? request.writeOrder() : SortOrder.unsorted(),
             location,
-            properties);
+            mergedProperties);
     return metadata;
   }
 
