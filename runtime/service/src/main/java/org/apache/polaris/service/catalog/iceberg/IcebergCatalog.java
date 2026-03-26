@@ -141,9 +141,9 @@ import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
-import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -179,7 +179,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
   private final PolarisPrincipal principal;
-  private final PolarisEventDispatcher polarisEventDispatcher;
+  private final PolarisEventListener polarisEventListener;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
@@ -212,7 +212,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
-      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
@@ -227,7 +227,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
-    this.polarisEventDispatcher = polarisEventDispatcher;
+    this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
@@ -1319,6 +1319,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     public PolarisIcebergCatalogTableBuilder(TableIdentifier identifier, Schema schema) {
       super(identifier, schema);
+      withProperties(
+          PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
       this.identifier = identifier;
     }
 
@@ -1468,7 +1470,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventDispatcher.dispatch(
+        polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_TABLE,
                 eventMetadataFactory.create(),
@@ -1494,7 +1496,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventDispatcher.dispatch(
+        polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_TABLE,
                 eventMetadataFactory.create(),
@@ -1531,12 +1533,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               : resolvedTableEntities;
 
       // refresh credentials because we need to read the metadata file to validate its location
+      // Merge tableDefaultProperties so that catalog-level settings (e.g. s3.endpoint,
+      // s3.path-style-access) reach S3FileIO even when metadata.properties() is sparse
+      // (e.g. staged creates where the client does not send a SetProperties update).
+      Map<String, String> commitFileIOProps = new HashMap<>(tableDefaultProperties);
+      commitFileIOProps.putAll(metadata.properties());
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
+              commitFileIOProps,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -1891,7 +1898,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventDispatcher.dispatch(
+        polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.BEFORE_REFRESH_VIEW,
                 eventMetadataFactory.create(),
@@ -1919,7 +1926,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventDispatcher.dispatch(
+        polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_VIEW,
                 eventMetadataFactory.create(),

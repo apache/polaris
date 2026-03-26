@@ -38,7 +38,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
-import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -141,7 +140,6 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
-import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -205,7 +203,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.test.rootAugmentor.enabled", "true")
-          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -236,11 +233,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-
-  @Inject
-  @Identifier("test")
-  PolarisEventListener polarisEventListener;
-
+  @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
@@ -253,7 +246,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisPrincipal authenticatedRoot;
   @Inject PolarisAdminService adminService;
   @Inject ResolverFactory resolverFactory;
-  @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -415,7 +407,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventDispatcher,
+        polarisEventListener,
         eventMetadataFactory);
   }
 
@@ -2621,5 +2613,148 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         catalog.dropNamespace(Namespace.of("pagination_namespace_" + i));
       }
     }
+  }
+
+  /**
+   * Verifies that {@code table-default.*} catalog properties are merged into the properties passed
+   * to {@link FileIOFactory#loadFileIO} during a direct table create ({@code
+   * buildTable().create()}). Regression test for PolarisIcebergCatalogTableBuilder missing the
+   * withProperties call that PolarisIcebergCatalogViewBuilder already had.
+   */
+  @Test
+  public void testTableDefaultPropertiesReachFileIOOnDirectCreate() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    List<Map<String, String>> capturedProps = new java.util.ArrayList<>();
+    FileIOFactory capturingFactory =
+        (accessConfig, ioImplClassName, properties) -> {
+          capturedProps.add(new HashMap<>(properties));
+          return new InMemoryFileIO();
+        };
+
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, capturingFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .put(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "https://custom-s3.example.com")
+            .put(CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access", "true")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    catalog.createNamespace(TestData.NAMESPACE);
+    catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
+
+    // At least one FileIO load should have received the table-default properties
+    assertThat(capturedProps)
+        .anySatisfy(
+            props -> {
+              assertThat(props)
+                  .containsEntry("s3.endpoint", "https://custom-s3.example.com")
+                  .containsEntry("s3.path-style-access", "true");
+            });
+  }
+
+  /**
+   * Verifies that {@code table-default.*} catalog properties are merged into the properties passed
+   * to {@link FileIOFactory#loadFileIO} during a staged table create (used by clients like DuckDB
+   * that send {@code stage-create: true}). Regression test for stageTableCreateHelper missing the
+   * catalog defaults merge.
+   */
+  @Test
+  public void testTableDefaultPropertiesReachFileIOOnStagedCreate() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    List<Map<String, String>> capturedProps = new java.util.ArrayList<>();
+    FileIOFactory capturingFactory =
+        (accessConfig, ioImplClassName, properties) -> {
+          capturedProps.add(new HashMap<>(properties));
+          return new InMemoryFileIO();
+        };
+
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, capturingFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .put(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "https://custom-s3.example.com")
+            .put(CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access", "true")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    catalog.createNamespace(TestData.NAMESPACE);
+
+    // Simulate staged create: buildTable().createTransaction() then commit
+    org.apache.iceberg.Transaction txn =
+        catalog.buildTable(TestData.TABLE, TestData.SCHEMA).createTransaction();
+    txn.commitTransaction();
+
+    // The FileIO used during the transaction commit should have received catalog defaults
+    assertThat(capturedProps)
+        .anySatisfy(
+            props -> {
+              assertThat(props)
+                  .containsEntry("s3.endpoint", "https://custom-s3.example.com")
+                  .containsEntry("s3.path-style-access", "true");
+            });
+  }
+
+  /**
+   * Verifies that {@code table-default.*} catalog properties are present in FileIO properties
+   * during doCommit even when metadata.properties() is sparse (no explicit SetProperties update),
+   * as happens with DuckDB's staged create commit. Regression test for doCommit initializing FileIO
+   * only from metadata.properties() without tableDefaultProperties as baseline.
+   */
+  @Test
+  public void testTableDefaultPropertiesReachFileIOOnCommitWithSparseMetadata() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    List<Map<String, String>> capturedProps = new java.util.ArrayList<>();
+    FileIOFactory capturingFactory =
+        (accessConfig, ioImplClassName, properties) -> {
+          capturedProps.add(new HashMap<>(properties));
+          return new InMemoryFileIO();
+        };
+
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, capturingFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .put(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "https://custom-s3.example.com")
+            .put(CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access", "true")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    catalog.createNamespace(TestData.NAMESPACE);
+    Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
+
+    // Perform a schema update without setting properties — simulates a sparse commit
+    // where the client does not include a SetProperties update
+    table
+        .updateSchema()
+        .addColumn("extra_col", org.apache.iceberg.types.Types.StringType.get())
+        .commit();
+
+    // Every FileIO load during a write should have the catalog defaults
+    assertThat(capturedProps)
+        .allSatisfy(
+            props -> {
+              assertThat(props)
+                  .containsEntry("s3.endpoint", "https://custom-s3.example.com")
+                  .containsEntry("s3.path-style-access", "true");
+            });
   }
 }
