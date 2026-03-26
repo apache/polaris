@@ -38,13 +38,10 @@ dependencies {
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
+  runtimeOnly(project(":polaris-extensions-federation-bigquery"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
-  }
-
-  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("BIGQUERY") == true) {
-    runtimeOnly(project(":polaris-extensions-federation-bigquery"))
   }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
