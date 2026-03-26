@@ -27,8 +27,8 @@ import jakarta.annotation.Nullable;
 import java.util.Objects;
 
 /**
- * Package-private implementation of {@link Index.Element} for {@link Index.Element#of(IndexKey,
- * Object)}.
+ * Base class for {@link Index.Element} implementations that provides coherent {@link
+ * #equals(Object)} and {@link #hashCode()} semantics.
  */
 public abstract class IndexElem<V> implements Index.Element<V> {
 
@@ -73,6 +73,11 @@ public abstract class IndexElem<V> implements Index.Element<V> {
     if (o == this) {
       return true;
     }
+    // This equals method considers other implementations of Index.Element as "not equal"
+    // because it is impossible to guarantee that their hashCode() is equal to the hash
+    // code produced by this class (when equal() == true) without knowing the specific
+    // "other" implementation class. All Index.Element inside Polaris code are expected
+    // to extend this class.
     if (o instanceof IndexElem<?> other) {
       return Objects.equals(key(), other.key())
           && Objects.equals(valueNullable(), other.valueNullable());
