@@ -193,43 +193,20 @@ public abstract class PolarisStorageConfigurationInfo {
   public static PolarisStorageConfigurationInfo withStorageName(
       PolarisStorageConfigurationInfo baseConfig, @Nullable String storageName) {
     if (baseConfig instanceof AwsStorageConfigurationInfo awsConfig) {
-      return AwsStorageConfigurationInfo.builder()
-          .allowedLocations(awsConfig.getAllowedLocations())
-          .storageName(storageName)
-          .roleARN(awsConfig.getRoleARN())
-          .currentKmsKey(awsConfig.getCurrentKmsKey())
-          .allowedKmsKeys(awsConfig.getAllowedKmsKeys())
-          .externalId(awsConfig.getExternalId())
-          .userARN(awsConfig.getUserARN())
-          .region(awsConfig.getRegion())
-          .endpoint(awsConfig.getEndpoint())
-          .endpointInternal(awsConfig.getEndpointInternal())
-          .stsEndpoint(awsConfig.getStsEndpoint())
-          .pathStyleAccess(awsConfig.getPathStyleAccess())
-          .stsUnavailable(awsConfig.getStsUnavailable())
-          .kmsUnavailable(awsConfig.getKmsUnavailable())
-          .build();
+      return AwsStorageConfigurationInfo.builder().from(awsConfig).storageName(storageName).build();
     }
     if (baseConfig instanceof AzureStorageConfigurationInfo azureConfig) {
       return AzureStorageConfigurationInfo.builder()
-          .allowedLocations(azureConfig.getAllowedLocations())
+          .from(azureConfig)
           .storageName(storageName)
-          .tenantId(azureConfig.getTenantId())
-          .multiTenantAppName(azureConfig.getMultiTenantAppName())
-          .consentUrl(azureConfig.getConsentUrl())
-          .hierarchical(azureConfig.isHierarchical())
           .build();
     }
     if (baseConfig instanceof GcpStorageConfigurationInfo gcpConfig) {
-      return GcpStorageConfigurationInfo.builder()
-          .allowedLocations(gcpConfig.getAllowedLocations())
-          .storageName(storageName)
-          .gcpServiceAccount(gcpConfig.getGcpServiceAccount())
-          .build();
+      return GcpStorageConfigurationInfo.builder().from(gcpConfig).storageName(storageName).build();
     }
     if (baseConfig instanceof FileStorageConfigurationInfo fileConfig) {
       return FileStorageConfigurationInfo.builder()
-          .allowedLocations(fileConfig.getAllowedLocations())
+          .from(fileConfig)
           .storageName(storageName)
           .build();
     }

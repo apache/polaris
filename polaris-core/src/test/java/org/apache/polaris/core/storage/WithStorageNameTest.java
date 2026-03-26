@@ -30,21 +30,30 @@ class WithStorageNameTest {
 
   @Test
   void awsFieldsPreserved() {
+    String allowedLocation = "s3://bucket/path";
+    String roleArn = "arn:aws:iam::123456789012:role/test-role";
+    String externalId = "ext-id-123";
+    String region = "us-west-2";
+    String endpoint = "https://s3.example.com";
+    String endpointInternal = "https://s3-internal.example.com";
+    String stsEndpoint = "https://sts.example.com";
+    String kmsKey = "arn:aws:kms:us-west-2:123456789012:key/test";
+
     AwsStorageConfigurationInfo base =
         AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("s3://bucket/path"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
-            .roleARN("arn:aws:iam::123456789012:role/test-role")
-            .externalId("ext-id-123")
-            .region("us-west-2")
-            .endpoint("https://s3.example.com")
-            .endpointInternal("https://s3-internal.example.com")
-            .stsEndpoint("https://sts.example.com")
+            .roleARN(roleArn)
+            .externalId(externalId)
+            .region(region)
+            .endpoint(endpoint)
+            .endpointInternal(endpointInternal)
+            .stsEndpoint(stsEndpoint)
             .pathStyleAccess(true)
             .stsUnavailable(true)
             .kmsUnavailable(false)
-            .currentKmsKey("arn:aws:kms:us-west-2:123456789012:key/test")
-            .allowedKmsKeys(List.of("arn:aws:kms:us-west-2:123456789012:key/test"))
+            .currentKmsKey(kmsKey)
+            .allowedKmsKeys(List.of(kmsKey))
             .build();
 
     PolarisStorageConfigurationInfo result =
@@ -53,48 +62,55 @@ class WithStorageNameTest {
     assertThat(result).isInstanceOf(AwsStorageConfigurationInfo.class);
     AwsStorageConfigurationInfo awsResult = (AwsStorageConfigurationInfo) result;
     assertThat(awsResult.getStorageName()).isEqualTo("new-storage");
-    assertThat(awsResult.getAllowedLocations()).containsExactly("s3://bucket/path");
-    assertThat(awsResult.getRoleARN()).isEqualTo("arn:aws:iam::123456789012:role/test-role");
-    assertThat(awsResult.getExternalId()).isEqualTo("ext-id-123");
-    assertThat(awsResult.getRegion()).isEqualTo("us-west-2");
-    assertThat(awsResult.getEndpoint()).isEqualTo("https://s3.example.com");
-    assertThat(awsResult.getEndpointInternal()).isEqualTo("https://s3-internal.example.com");
-    assertThat(awsResult.getStsEndpoint()).isEqualTo("https://sts.example.com");
+    assertThat(awsResult.getAllowedLocations()).containsExactly(allowedLocation);
+    assertThat(awsResult.getRoleARN()).isEqualTo(roleArn);
+    assertThat(awsResult.getExternalId()).isEqualTo(externalId);
+    assertThat(awsResult.getRegion()).isEqualTo(region);
+    assertThat(awsResult.getEndpoint()).isEqualTo(endpoint);
+    assertThat(awsResult.getEndpointInternal()).isEqualTo(endpointInternal);
+    assertThat(awsResult.getStsEndpoint()).isEqualTo(stsEndpoint);
     assertThat(awsResult.getPathStyleAccess()).isTrue();
     assertThat(awsResult.getStsUnavailable()).isTrue();
     assertThat(awsResult.getKmsUnavailable()).isFalse();
-    assertThat(awsResult.getCurrentKmsKey())
-        .isEqualTo("arn:aws:kms:us-west-2:123456789012:key/test");
-    assertThat(awsResult.getAllowedKmsKeys())
-        .containsExactly("arn:aws:kms:us-west-2:123456789012:key/test");
+    assertThat(awsResult.getCurrentKmsKey()).isEqualTo(kmsKey);
+    assertThat(awsResult.getAllowedKmsKeys()).containsExactly(kmsKey);
   }
 
   @Test
   void awsNullStorageNameClearsOverride() {
+    String allowedLocation = "s3://bucket/path";
+    String roleArn = "arn:aws:iam::123456789012:role/test-role";
+
     AwsStorageConfigurationInfo base =
         AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("s3://bucket/path"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
-            .roleARN("arn:aws:iam::123456789012:role/test-role")
+            .roleARN(roleArn)
             .build();
 
     PolarisStorageConfigurationInfo result =
         PolarisStorageConfigurationInfo.withStorageName(base, null);
 
     assertThat(result.getStorageName()).isNull();
-    assertThat(result.getAllowedLocations()).containsExactly("s3://bucket/path");
+    assertThat(result.getAllowedLocations()).containsExactly(allowedLocation);
   }
 
   @Test
   void azureFieldsPreserved() {
+    String allowedLocation = "abfss://container@account.dfs.core.windows.net/path";
+    String tenantId = "tenant-123";
+    String multiTenantAppName = "my-app";
+    String consentUrl = "https://consent.example.com";
+    boolean hierarchical = true;
+
     AzureStorageConfigurationInfo base =
         AzureStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("abfss://container@account.dfs.core.windows.net/path"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
-            .tenantId("tenant-123")
-            .multiTenantAppName("my-app")
-            .consentUrl("https://consent.example.com")
-            .hierarchical(true)
+            .tenantId(tenantId)
+            .multiTenantAppName(multiTenantAppName)
+            .consentUrl(consentUrl)
+            .hierarchical(hierarchical)
             .build();
 
     PolarisStorageConfigurationInfo result =
@@ -103,21 +119,23 @@ class WithStorageNameTest {
     assertThat(result).isInstanceOf(AzureStorageConfigurationInfo.class);
     AzureStorageConfigurationInfo azureResult = (AzureStorageConfigurationInfo) result;
     assertThat(azureResult.getStorageName()).isEqualTo("azure-storage");
-    assertThat(azureResult.getAllowedLocations())
-        .containsExactly("abfss://container@account.dfs.core.windows.net/path");
-    assertThat(azureResult.getTenantId()).isEqualTo("tenant-123");
-    assertThat(azureResult.getMultiTenantAppName()).isEqualTo("my-app");
-    assertThat(azureResult.getConsentUrl()).isEqualTo("https://consent.example.com");
-    assertThat(azureResult.isHierarchical()).isTrue();
+    assertThat(azureResult.getAllowedLocations()).containsExactly(allowedLocation);
+    assertThat(azureResult.getTenantId()).isEqualTo(tenantId);
+    assertThat(azureResult.getMultiTenantAppName()).isEqualTo(multiTenantAppName);
+    assertThat(azureResult.getConsentUrl()).isEqualTo(consentUrl);
+    assertThat(azureResult.isHierarchical()).isEqualTo(hierarchical);
   }
 
   @Test
   void gcpFieldsPreserved() {
+    String allowedLocation = "gs://bucket/path";
+    String gcpServiceAccount = "sa@project.iam.gserviceaccount.com";
+
     GcpStorageConfigurationInfo base =
         GcpStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("gs://bucket/path"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
-            .gcpServiceAccount("sa@project.iam.gserviceaccount.com")
+            .gcpServiceAccount(gcpServiceAccount)
             .build();
 
     PolarisStorageConfigurationInfo result =
@@ -126,15 +144,17 @@ class WithStorageNameTest {
     assertThat(result).isInstanceOf(GcpStorageConfigurationInfo.class);
     GcpStorageConfigurationInfo gcpResult = (GcpStorageConfigurationInfo) result;
     assertThat(gcpResult.getStorageName()).isEqualTo("gcp-storage");
-    assertThat(gcpResult.getAllowedLocations()).containsExactly("gs://bucket/path");
-    assertThat(gcpResult.getGcpServiceAccount()).isEqualTo("sa@project.iam.gserviceaccount.com");
+    assertThat(gcpResult.getAllowedLocations()).containsExactly(allowedLocation);
+    assertThat(gcpResult.getGcpServiceAccount()).isEqualTo(gcpServiceAccount);
   }
 
   @Test
   void fileFieldsPreserved() {
+    String allowedLocation = "file:///tmp/warehouse";
+
     FileStorageConfigurationInfo base =
         FileStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("file:///tmp/warehouse"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
             .build();
 
@@ -143,17 +163,21 @@ class WithStorageNameTest {
 
     assertThat(result).isInstanceOf(FileStorageConfigurationInfo.class);
     assertThat(result.getStorageName()).isEqualTo("file-storage");
-    assertThat(result.getAllowedLocations()).containsExactly("file:///tmp/warehouse");
+    assertThat(result.getAllowedLocations()).containsExactly(allowedLocation);
   }
 
   @Test
   void serializationRoundTrip() {
+    String allowedLocation = "s3://bucket/path";
+    String roleArn = "arn:aws:iam::123456789012:role/test-role";
+    String region = "us-west-2";
+
     AwsStorageConfigurationInfo base =
         AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("s3://bucket/path"))
+            .allowedLocations(List.of(allowedLocation))
             .storageName("original")
-            .roleARN("arn:aws:iam::123456789012:role/test-role")
-            .region("us-west-2")
+            .roleARN(roleArn)
+            .region(region)
             .build();
 
     PolarisStorageConfigurationInfo overridden =
@@ -165,7 +189,7 @@ class WithStorageNameTest {
     assertThat(deserialized.getStorageName()).isEqualTo("new-name");
     assertThat(deserialized).isInstanceOf(AwsStorageConfigurationInfo.class);
     AwsStorageConfigurationInfo awsDeserialized = (AwsStorageConfigurationInfo) deserialized;
-    assertThat(awsDeserialized.getRoleARN()).isEqualTo("arn:aws:iam::123456789012:role/test-role");
-    assertThat(awsDeserialized.getRegion()).isEqualTo("us-west-2");
+    assertThat(awsDeserialized.getRoleARN()).isEqualTo(roleArn);
+    assertThat(awsDeserialized.getRegion()).isEqualTo(region);
   }
 }
