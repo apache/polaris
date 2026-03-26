@@ -222,7 +222,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
         String bigqueryUri =
             bigqueryConfigModel.getUri() != null
                 ? bigqueryConfigModel.getUri()
-                : "https://bigquery.googleapis.com";
+                : BigQueryMetastoreConnectionConfigInfoDpo.DEFAULT_URI;
         config =
             new BigQueryMetastoreConnectionConfigInfoDpo(
                 bigqueryUri,

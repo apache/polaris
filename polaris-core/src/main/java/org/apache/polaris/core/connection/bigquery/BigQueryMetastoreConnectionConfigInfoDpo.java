@@ -45,6 +45,8 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
  */
 public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
+  public static final String DEFAULT_URI = "https://bigquery.googleapis.com";
+
   // BigQuery Metastore catalog property keys
   private static final String GCP_BIGQUERY_PROJECT_ID = "gcp.bigquery.project-id";
   private static final String GCP_BIGQUERY_LOCATION = "gcp.bigquery.location";
