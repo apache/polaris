@@ -684,6 +684,25 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return null; // could be an external catalog
   }
 
+  /**
+   * Extract labels from a table entity's internal properties. Properties with the "label." prefix
+   * are catalog-scoped metadata (not part of Iceberg table state) and are surfaced as labels in the
+   * LoadTableResponse.
+   */
+  public Map<String, String> getLabelsForTable(TableIdentifier tableIdentifier) {
+    IcebergTableLikeEntity entity = getTableEntity(tableIdentifier);
+    if (entity == null) {
+      return Map.of();
+    }
+    Map<String, String> labels = new java.util.HashMap<>();
+    entity.getInternalPropertiesAsMap().forEach((key, value) -> {
+      if (key.startsWith("label.")) {
+        labels.put(key.substring(6), value);
+      }
+    });
+    return labels;
+  }
+
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
     return loadTableIfStale(tableIdentifier, null, snapshots).get();
   }
