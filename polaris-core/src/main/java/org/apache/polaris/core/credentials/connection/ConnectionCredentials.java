@@ -78,10 +78,7 @@ public interface ConnectionCredentials {
           expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
         } catch (NumberFormatException e) {
           throw new IllegalArgumentException(
-              "Invalid expiration timestamp value for key "
-                  + key.getPropertyName()
-                  + ": "
-                  + value,
+              "Invalid expiration timestamp value for key " + key.getPropertyName() + ": " + value,
               e);
         }
       }

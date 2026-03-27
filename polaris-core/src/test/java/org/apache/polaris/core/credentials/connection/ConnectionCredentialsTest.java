@@ -26,10 +26,6 @@ import org.junit.jupiter.api.Test;
 
 class ConnectionCredentialsTest {
 
-  /**
-   * Test that validates Bug #3 fix: Null check for expiration timestamp value prevents
-   * NullPointerException.
-   */
   @Test
   public void testPutWithNullExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -40,10 +36,6 @@ class ConnectionCredentialsTest {
         .hasMessageContaining("rest.expires-at-ms");
   }
 
-  /**
-   * Test that validates Bug #3 fix: NumberFormatException is caught and wrapped in
-   * IllegalArgumentException when expiration timestamp contains invalid non-numeric value.
-   */
   @Test
   public void testPutWithInvalidExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -55,10 +47,6 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix: NumberFormatException is caught when expiration timestamp
-   * contains an empty string.
-   */
   @Test
   public void testPutWithEmptyStringExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -69,10 +57,6 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix: NumberFormatException is caught when expiration timestamp
-   * contains a decimal value.
-   */
   @Test
   public void testPutWithDecimalExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -84,10 +68,6 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix: NumberFormatException is caught when expiration timestamp
-   * contains alphanumeric characters.
-   */
   @Test
   public void testPutWithAlphanumericExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -99,10 +79,6 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix: NumberFormatException is caught when expiration timestamp
-   * is a number that's too large for Long.
-   */
   @Test
   public void testPutWithOverflowExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -116,9 +92,6 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix: Valid expiration timestamp works correctly after the fix.
-   */
   @Test
   public void testPutWithValidExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -127,14 +100,9 @@ class ConnectionCredentialsTest {
     builder.put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(expectedMillis));
 
     ConnectionCredentials credentials = builder.build();
-    assertThat(credentials.expiresAt())
-        .isPresent()
-        .hasValue(Instant.ofEpochMilli(expectedMillis));
+    assertThat(credentials.expiresAt()).isPresent().hasValue(Instant.ofEpochMilli(expectedMillis));
   }
 
-  /**
-   * Test that validates non-expiration properties still work after the fix.
-   */
   @Test
   public void testPutWithCredentialProperty() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -145,10 +113,6 @@ class ConnectionCredentialsTest {
     assertThat(credentials.get(CatalogAccessProperty.BEARER_TOKEN)).isEqualTo("my-secret-token");
   }
 
-  /**
-   * Test that validates Bug #3 fix: Negative timestamp values are accepted (valid for dates
-   * before epoch).
-   */
   @Test
   public void testPutWithNegativeExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -157,14 +121,9 @@ class ConnectionCredentialsTest {
     builder.put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(expectedMillis));
 
     ConnectionCredentials credentials = builder.build();
-    assertThat(credentials.expiresAt())
-        .isPresent()
-        .hasValue(Instant.ofEpochMilli(expectedMillis));
+    assertThat(credentials.expiresAt()).isPresent().hasValue(Instant.ofEpochMilli(expectedMillis));
   }
 
-  /**
-   * Test that validates Bug #3 fix: Zero timestamp value is accepted.
-   */
   @Test
   public void testPutWithZeroExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -175,9 +134,6 @@ class ConnectionCredentialsTest {
     assertThat(credentials.expiresAt()).isPresent().hasValue(Instant.ofEpochMilli(0L));
   }
 
-  /**
-   * Test that validates whitespace in timestamp is not handled (should throw exception).
-   */
   @Test
   public void testPutWithWhitespaceExpirationTimestamp() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
@@ -188,25 +144,18 @@ class ConnectionCredentialsTest {
         .hasCauseInstanceOf(NumberFormatException.class);
   }
 
-  /**
-   * Test that validates Bug #3 fix works with AWS session token expiration timestamp.
-   */
   @Test
   public void testPutWithAWSSessionTokenExpiresAt() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
 
     long expectedMillis = 1711234567890L;
-    builder.put(CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expectedMillis));
+    builder.put(
+        CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expectedMillis));
 
     ConnectionCredentials credentials = builder.build();
-    assertThat(credentials.expiresAt())
-        .isPresent()
-        .hasValue(Instant.ofEpochMilli(expectedMillis));
+    assertThat(credentials.expiresAt()).isPresent().hasValue(Instant.ofEpochMilli(expectedMillis));
   }
 
-  /**
-   * Test that validates Bug #3 fix catches invalid AWS session token expiration timestamp.
-   */
   @Test
   public void testPutWithInvalidAWSSessionTokenExpiresAt() {
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
