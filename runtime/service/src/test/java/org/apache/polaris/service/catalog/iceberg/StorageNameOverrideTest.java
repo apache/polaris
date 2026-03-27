@@ -147,6 +147,64 @@ class StorageNameOverrideTest {
   }
 
   @Test
+  void resolveStorageConfigFromHierarchy_tableInheritsNamespaceOverride() {
+    AwsStorageConfigurationInfo catalogConfig =
+        AwsStorageConfigurationInfo.builder()
+            .allowedLocations(List.of("s3://bucket/path"))
+            .roleARN("arn:aws:iam::123456789012:role/test-role")
+            .storageName("catalog-storage")
+            .build();
+
+    PolarisEntity catalogEntity = createEntityWithStorageConfig(catalogConfig);
+    // Namespace has the override
+    PolarisEntity nsEntity = createEntityWithStorageNameOverride("ns-storage");
+    // Table has NO override — should inherit from namespace
+    PolarisEntity tableEntity = createEntityWithoutStorageConfig();
+
+    PolarisStorageConfigurationInfo result =
+        FileIOUtil.deserializeStorageConfigFromEntityPath(
+            List.of(catalogEntity, nsEntity, tableEntity));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getStorageName()).isEqualTo("ns-storage");
+    assertThat(result).isInstanceOf(AwsStorageConfigurationInfo.class);
+    assertThat(((AwsStorageConfigurationInfo) result).getRoleARN())
+        .isEqualTo("arn:aws:iam::123456789012:role/test-role");
+  }
+
+  @Test
+  void resolveStorageConfigFromHierarchy_tableOverrideWinsOverNamespace() {
+    AwsStorageConfigurationInfo catalogConfig =
+        AwsStorageConfigurationInfo.builder()
+            .allowedLocations(List.of("s3://bucket/path"))
+            .roleARN("arn:aws:iam::123456789012:role/test-role")
+            .storageName("catalog-storage")
+            .build();
+
+    PolarisEntity catalogEntity = createEntityWithStorageConfig(catalogConfig);
+    PolarisEntity nsEntity = createEntityWithStorageNameOverride("ns-storage");
+    // Table has its own override — should win over namespace
+    PolarisEntity tableEntity =
+        new PolarisEntity.Builder()
+            .setId(3L)
+            .setCatalogId(0L)
+            .setParentId(2L)
+            .setName("table-entity")
+            .setType(PolarisEntityType.TABLE_LIKE)
+            .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+            .addInternalProperty(
+                PolarisEntityConstants.getStorageNameOverridePropertyName(), "table-storage")
+            .build();
+
+    PolarisStorageConfigurationInfo result =
+        FileIOUtil.deserializeStorageConfigFromEntityPath(
+            List.of(catalogEntity, nsEntity, tableEntity));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getStorageName()).isEqualTo("table-storage");
+  }
+
+  @Test
   void resolveStorageConfigFromHierarchy_emptyPath_returnsNull() {
     PolarisStorageConfigurationInfo result =
         FileIOUtil.deserializeStorageConfigFromEntityPath(List.of());

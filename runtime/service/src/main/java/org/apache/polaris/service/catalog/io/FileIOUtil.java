@@ -26,6 +26,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageConfigResolver;
 
 public class FileIOUtil {
 
@@ -53,11 +54,10 @@ public class FileIOUtil {
   }
 
   /**
-   * Resolves the effective storage configuration for an entity hierarchy. Walks from leaf to root
-   * to find the nearest {@code storageNameOverride}, then finds the catalog's base {@code
-   * storageConfigInfo}, and applies the name override if one is present.
+   * Resolves the effective storage configuration for an entity hierarchy.
    *
-   * <p>This is the primary method to use when vending credentials or loading FileIO for an entity.
+   * <p>Delegates to {@link StorageConfigResolver#resolve}, which is the single source of truth for
+   * storage-name override resolution. See that class for the resolution algorithm.
    *
    * @param entityPath a list of entities ordered root-to-leaf (catalog first, leaf last)
    * @return the effective {@link PolarisStorageConfigurationInfo}, or empty if no base config is
@@ -65,36 +65,7 @@ public class FileIOUtil {
    */
   public static Optional<PolarisStorageConfigurationInfo> resolveEffectiveStorageConfig(
       List<PolarisEntity> entityPath) {
-    // Walk leaf-to-root, find the nearest storageNameOverride (if any)
-    Optional<String> nameOverride =
-        entityPath.reversed().stream()
-            .map(
-                e ->
-                    e.getInternalPropertiesAsMap()
-                        .get(PolarisEntityConstants.getStorageNameOverridePropertyName()))
-            .filter(v -> v != null)
-            .findFirst();
-
-    // Find the base storage config (typically the catalog entity)
-    Optional<PolarisEntity> baseEntity = findEntityWithStorageConfigInHierarchy(entityPath);
-    if (baseEntity.isEmpty()) {
-      return Optional.empty();
-    }
-    String configJson =
-        baseEntity
-            .get()
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    if (configJson == null) {
-      return Optional.empty();
-    }
-    PolarisStorageConfigurationInfo baseConfig =
-        PolarisStorageConfigurationInfo.deserialize(configJson);
-
-    return Optional.of(
-        nameOverride
-            .map(name -> PolarisStorageConfigurationInfo.withStorageName(baseConfig, name))
-            .orElse(baseConfig));
+    return StorageConfigResolver.resolve(entityPath.reversed());
   }
 
   /**
