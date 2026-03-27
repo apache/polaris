@@ -16,23 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage.gcp;
+package org.apache.polaris.core.storage.aws;
 
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /**
- * Storage access config parameters for GCP. GCP downscoped credentials do not support session tags,
- * so principal and credential vending context are never included.
+ * Storage access config parameters for AWS. Includes principal name and credential vending context
+ * fields that affect AWS STS AssumeRole behavior (session tags, role session name).
  */
 @PolarisImmutable
-public interface GcpStorageAccessConfigParameters extends StorageAccessConfigParameters {
+public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey {
 
   @Value.Parameter(order = 1)
   String realmId();
@@ -40,45 +41,63 @@ public interface GcpStorageAccessConfigParameters extends StorageAccessConfigPar
   @Value.Parameter(order = 2)
   long catalogId();
 
-  @Override
   @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();
 
-  @Override
   @Value.Parameter(order = 4)
   boolean allowedListAction();
 
-  @Override
   @Value.Parameter(order = 5)
   Set<String> allowedReadLocations();
 
-  @Override
   @Value.Parameter(order = 6)
   Set<String> allowedWriteLocations();
 
-  @Override
   @Value.Parameter(order = 7)
   Optional<String> refreshCredentialsEndpoint();
 
-  static GcpStorageAccessConfigParameters of(
+  @Value.Parameter(order = 8)
+  Optional<String> principalName();
+
+  /**
+   * Whether the principal name should be embedded in the AWS STS role session name. This is {@code
+   * true} only when {@code INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL} is enabled. Note that
+   * {@link #principalName()} may be present even when this is {@code false} (e.g. when only session
+   * tags are enabled, the principal name is needed for the {@code polaris:principal} tag and for
+   * cache key differentiation, but should not appear in the role session name).
+   */
+  @Value.Parameter(order = 9)
+  boolean includePrincipalInRoleSessionName();
+
+  /** Credential vending context for session tags. */
+  @Value.Parameter(order = 10)
+  CredentialVendingContext credentialVendingContext();
+
+  static AwsStorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> principalName,
+      boolean includePrincipalInRoleSessionName,
+      CredentialVendingContext credentialVendingContext) {
     String storageConfigSerializedStr =
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    return ImmutableGcpStorageAccessConfigParameters.of(
+    return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
         entity.getCatalogId(),
         storageConfigSerializedStr,
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        principalName,
+        includePrincipalInRoleSessionName,
+        credentialVendingContext);
   }
 }

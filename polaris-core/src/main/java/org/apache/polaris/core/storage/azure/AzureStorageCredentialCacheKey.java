@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -32,7 +32,7 @@ import org.immutables.value.Value;
  * principal and credential vending context are never included.
  */
 @PolarisImmutable
-public interface AzureStorageAccessConfigParameters extends StorageAccessConfigParameters {
+public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKey {
 
   @Value.Parameter(order = 1)
   String realmId();
@@ -40,28 +40,23 @@ public interface AzureStorageAccessConfigParameters extends StorageAccessConfigP
   @Value.Parameter(order = 2)
   long catalogId();
 
-  @Override
   @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();
 
-  @Override
   @Value.Parameter(order = 4)
   boolean allowedListAction();
 
-  @Override
   @Value.Parameter(order = 5)
   Set<String> allowedReadLocations();
 
-  @Override
   @Value.Parameter(order = 6)
   Set<String> allowedWriteLocations();
 
-  @Override
   @Value.Parameter(order = 7)
   Optional<String> refreshCredentialsEndpoint();
 
-  static AzureStorageAccessConfigParameters of(
+  static AzureStorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
@@ -72,7 +67,7 @@ public interface AzureStorageAccessConfigParameters extends StorageAccessConfigP
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    return ImmutableAzureStorageAccessConfigParameters.of(
+    return ImmutableAzureStorageCredentialCacheKey.of(
         realmId,
         entity.getCatalogId(),
         storageConfigSerializedStr,

@@ -64,7 +64,7 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -93,7 +93,7 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  protected StorageAccessConfigParameters buildCacheKey(
+  protected StorageCredentialCacheKey buildCacheKey(
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
@@ -101,7 +101,7 @@ public class AzureCredentialsStorageIntegration
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    return AzureStorageAccessConfigParameters.of(
+    return AzureStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         entity,
         allowList,
@@ -489,7 +489,7 @@ public class AzureCredentialsStorageIntegration
    * Builds storage access config parameters for Azure credentials. Azure SAS tokens do not support
    * session tags, so principal and credential vending context are never included.
    */
-  public static AzureStorageAccessConfigParameters buildStorageAccessConfigParameters(
+  public static AzureStorageCredentialCacheKey buildStorageCredentialCacheKey(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -499,7 +499,7 @@ public class AzureCredentialsStorageIntegration
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    return AzureStorageAccessConfigParameters.of(
+    return AzureStorageCredentialCacheKey.of(
         realmId,
         entity,
         allowListOperation,

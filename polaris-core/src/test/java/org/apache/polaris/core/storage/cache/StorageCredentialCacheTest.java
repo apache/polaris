@@ -39,7 +39,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.aws.AwsStorageAccessConfigParameters;
+import org.apache.polaris.core.storage.aws.AwsStorageCredentialCacheKey;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -58,7 +58,7 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testBadResult() {
-    StorageAccessConfigParameters key =
+    StorageCredentialCacheKey key =
         buildKey(
             getPolarisEntities().get(0),
             true,
@@ -89,7 +89,7 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    StorageAccessConfigParameters key =
+    StorageCredentialCacheKey key =
         buildKey(
             polarisEntity,
             true,
@@ -127,7 +127,7 @@ public class StorageCredentialCacheTest {
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     // Key without principal — same key for different principals
-    StorageAccessConfigParameters key =
+    StorageCredentialCacheKey key =
         buildKey(
             polarisEntity,
             true,
@@ -158,8 +158,8 @@ public class StorageCredentialCacheTest {
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     // Key with principal1 (using AWS parameters which include principalName)
-    StorageAccessConfigParameters key1 =
-        AwsStorageAccessConfigParameters.of(
+    StorageCredentialCacheKey key1 =
+        AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
             polarisEntity,
             true,
@@ -171,8 +171,8 @@ public class StorageCredentialCacheTest {
             CredentialVendingContext.empty());
 
     // Key with principal2
-    StorageAccessConfigParameters key2 =
-        AwsStorageAccessConfigParameters.of(
+    StorageCredentialCacheKey key2 =
+        AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
             polarisEntity,
             true,
@@ -205,7 +205,7 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    StorageAccessConfigParameters cacheKey =
+    StorageCredentialCacheKey cacheKey =
         buildKey(
             polarisEntity,
             true,
@@ -237,7 +237,7 @@ public class StorageCredentialCacheTest {
 
     // different catalogs will generate new cache entries
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               entity,
               true,
@@ -257,7 +257,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               PolarisEntity.of(updateEntity),
               true,
@@ -271,7 +271,7 @@ public class StorageCredentialCacheTest {
 
     // allowedListAction changed to FALSE — will generate new entry
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               entity,
               false,
@@ -285,7 +285,7 @@ public class StorageCredentialCacheTest {
 
     // different allowedWriteLocations — will generate new entry
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               entity,
               false,
@@ -304,7 +304,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               PolarisEntity.of(updateEntity),
               false,
@@ -324,7 +324,7 @@ public class StorageCredentialCacheTest {
 
     List<PolarisEntity> entityList = getPolarisEntities();
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               entity,
               true,
@@ -338,7 +338,7 @@ public class StorageCredentialCacheTest {
 
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
               true,
@@ -352,7 +352,7 @@ public class StorageCredentialCacheTest {
 
     // other property changes do not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
@@ -366,7 +366,7 @@ public class StorageCredentialCacheTest {
 
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
@@ -380,7 +380,7 @@ public class StorageCredentialCacheTest {
 
     // order of the allowedWriteLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildKey(
               new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
               true,
@@ -404,7 +404,7 @@ public class StorageCredentialCacheTest {
 
     List<PolarisEntity> entityList = getPolarisEntities();
 
-    StorageAccessConfigParameters key =
+    StorageCredentialCacheKey key =
         buildKey(
             entityList.get(0),
             true,
@@ -420,13 +420,13 @@ public class StorageCredentialCacheTest {
             Map.of("s3.endpoint", "test-endpoint1", "s3.path-style-access", "true"));
   }
 
-  private DefaultStorageAccessConfigParameters buildKey(
+  private DefaultStorageCredentialCacheKey buildKey(
       PolarisEntity entity,
       boolean allowListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
-    return DefaultStorageAccessConfigParameters.of(
+    return DefaultStorageCredentialCacheKey.of(
         realmContext.getRealmIdentifier(),
         entity,
         allowListAction,

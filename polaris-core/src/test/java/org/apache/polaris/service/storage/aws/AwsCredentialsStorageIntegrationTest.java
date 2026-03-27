@@ -43,7 +43,7 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.aws.AwsStorageAccessConfigParameters;
+import org.apache.polaris.core.storage.aws.AwsStorageCredentialCacheKey;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -1632,17 +1632,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .hasMessageContaining("sts:TagSession");
   }
 
-  // Tests for buildStorageAccessConfigParameters
+  // Tests for buildStorageCredentialCacheKey
 
   @Test
-  public void testBuildStorageAccessConfigParametersExcludesPrincipalByDefault() {
+  public void testBuildStorageCredentialCacheKeyExcludesPrincipalByDefault() {
     PolarisEntity entity =
         new PolarisEntity(
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    AwsStorageAccessConfigParameters key =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             EMPTY_REALM_CONFIG,
@@ -1657,14 +1657,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testBuildStorageAccessConfigParametersIncludesPrincipalWhenFlagSet() {
+  public void testBuildStorageCredentialCacheKeyIncludesPrincipalWhenFlagSet() {
     PolarisEntity entity =
         new PolarisEntity(
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
-    AwsStorageAccessConfigParameters key =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
@@ -1680,7 +1680,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void
-      testBuildStorageAccessConfigParametersIncludesPrincipalAndContextWhenSessionTagsFlagSet() {
+      testBuildStorageCredentialCacheKeyIncludesPrincipalAndContextWhenSessionTagsFlagSet() {
     PolarisEntity entity =
         new PolarisEntity(
             new PolarisBaseEntity(
@@ -1697,8 +1697,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .tableName(Optional.of("my-table"))
             .build();
 
-    AwsStorageAccessConfigParameters key =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             sessionTagsConfig,
@@ -1715,7 +1715,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testBuildStorageAccessConfigParametersDifferentPrincipalsProduceDifferentKeys() {
+  public void testBuildStorageCredentialCacheKeyDifferentPrincipalsProduceDifferentKeys() {
     PolarisEntity entity =
         new PolarisEntity(
             new PolarisBaseEntity(
@@ -1726,8 +1726,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     CredentialVendingContext contextBob =
         CredentialVendingContext.builder().principalName(Optional.of("bob")).build();
 
-    AwsStorageAccessConfigParameters key1 =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key1 =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
@@ -1737,8 +1737,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             contextAlice);
 
-    AwsStorageAccessConfigParameters key2 =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key2 =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
@@ -1754,7 +1754,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testBuildStorageAccessConfigParametersSamePrincipalsProduceSameKeysWhenFlagOff() {
+  public void testBuildStorageCredentialCacheKeySamePrincipalsProduceSameKeysWhenFlagOff() {
     PolarisEntity entity =
         new PolarisEntity(
             new PolarisBaseEntity(
@@ -1765,8 +1765,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     CredentialVendingContext ctxBob =
         CredentialVendingContext.builder().principalName(Optional.of("bob")).build();
 
-    AwsStorageAccessConfigParameters key1 =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key1 =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             EMPTY_REALM_CONFIG,
@@ -1776,8 +1776,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             ctxAlice);
 
-    AwsStorageAccessConfigParameters key2 =
-        AwsCredentialsStorageIntegration.buildStorageAccessConfigParameters(
+    AwsStorageCredentialCacheKey key2 =
+        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
             entity,
             EMPTY_REALM_CONFIG,

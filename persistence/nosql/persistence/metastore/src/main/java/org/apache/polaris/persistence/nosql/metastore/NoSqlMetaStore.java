@@ -1296,7 +1296,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisBaseEntity entity) {
     var storageConfig = BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return storageIntegrationProvider.getStorageIntegration(storageConfig);
   }
 
   CreatePrincipalResult createPrincipal(

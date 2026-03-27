@@ -43,7 +43,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -139,7 +139,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   @Override
   @SuppressWarnings("unchecked")
   public <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+      @Nullable PolarisStorageIntegration<T> getStorageIntegration(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     if (polarisStorageConfigurationInfo == null) {
       return null;
@@ -159,7 +159,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private static PolarisStorageIntegration<?> createFileIntegration() {
     return new PolarisStorageIntegration<PolarisStorageConfigurationInfo>("file") {
       @Override
-      protected StorageAccessConfigParameters buildCacheKey(
+      protected StorageCredentialCacheKey buildCacheKey(
           @Nonnull PolarisEntity entity,
           @Nonnull RealmConfig realmConfig,
           boolean allowList,

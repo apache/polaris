@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage;
-
-import jakarta.annotation.Nullable;
+package org.apache.polaris.core.storage.cache;
 
 /**
- * Factory interface that knows how to return a {@link PolarisStorageIntegration} for a given {@link
- * PolarisStorageConfigurationInfo}.
+ * Marker interface for storage credential cache keys. Each storage backend defines its own
+ * implementation with only the fields that affect credential vending for that backend.
+ *
+ * <p>Caffeine cache uses {@code equals()}/{@code hashCode()} for key lookup. Since Immutables
+ * generates both based on the concrete class and its fields, different backend parameter types will
+ * never collide even when sharing the same cache.
  */
-public interface PolarisStorageIntegrationProvider {
-  <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegration(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
-}
+public interface StorageCredentialCacheKey {}

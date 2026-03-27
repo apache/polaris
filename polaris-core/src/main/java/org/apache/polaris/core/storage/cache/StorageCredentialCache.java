@@ -38,7 +38,7 @@ public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private final Cache<StorageAccessConfigParameters, StorageCredentialCacheEntry> cache;
+  private final Cache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
   public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
@@ -47,7 +47,7 @@ public class StorageCredentialCache {
             .maximumSize(cacheConfig.maxEntries())
             .expireAfter(
                 Expiry.creating(
-                    (StorageAccessConfigParameters key, StorageCredentialCacheEntry entry) -> {
+                    (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
                       long expireAfterMillis =
                           Math.max(
                               0,
@@ -85,7 +85,7 @@ public class StorageCredentialCache {
    * @return the storage access config with scoped credentials
    */
   public StorageAccessConfig getOrLoad(
-      StorageAccessConfigParameters key,
+      StorageCredentialCacheKey key,
       RealmConfig realmConfig,
       Supplier<StorageAccessConfig> loader) {
     long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
@@ -102,12 +102,12 @@ public class StorageCredentialCache {
 
   @VisibleForTesting
   @Nullable
-  Map<String, String> getIfPresent(StorageAccessConfigParameters key) {
+  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
     return getAccessConfig(key).map(StorageAccessConfig::credentials).orElse(null);
   }
 
   @VisibleForTesting
-  Optional<StorageAccessConfig> getAccessConfig(StorageAccessConfigParameters key) {
+  Optional<StorageAccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
         .map(StorageCredentialCacheEntry::toAccessConfig);
   }

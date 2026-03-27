@@ -153,7 +153,7 @@ public class StorageAccessConfigProvider {
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     PolarisStorageConfigurationInfo storageConfig =
         PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
-    var integration = storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    var integration = storageIntegrationProvider.getStorageIntegration(storageConfig);
     diagnostics.checkNotNull(
         integration,
         "storage_integration_not_exists",

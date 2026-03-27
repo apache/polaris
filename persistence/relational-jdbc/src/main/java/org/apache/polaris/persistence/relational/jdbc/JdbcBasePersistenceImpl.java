@@ -1257,7 +1257,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
+    return storageIntegrationProvider.getStorageIntegration(
         polarisStorageConfigurationInfo);
   }
 
@@ -1274,7 +1274,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return storageIntegrationProvider.getStorageIntegration(storageConfig);
   }
 
   @FunctionalInterface

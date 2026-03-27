@@ -68,7 +68,7 @@ public class AdminToolProducers {
       @Override
       @Nullable
       public <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+          PolarisStorageIntegration<T> getStorageIntegration(
               PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
         return null;
       }

@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
@@ -78,7 +78,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull CredentialVendingContext context) {
     RealmConfig realmConfig = this.realmConfig;
     if (cache != null) {
-      StorageAccessConfigParameters key =
+      StorageCredentialCacheKey key =
           buildCacheKey(
               entity,
               realmConfig,
@@ -108,7 +108,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * Build a backend-specific cache key. Each subclass includes only the fields that affect the
    * vended credentials for that backend. Realm ID is available via {@link #realmIdSupplier()}.
    */
-  protected abstract StorageAccessConfigParameters buildCacheKey(
+  protected abstract StorageCredentialCacheKey buildCacheKey(
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,

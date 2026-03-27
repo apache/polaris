@@ -59,7 +59,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +99,7 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
-  protected StorageAccessConfigParameters buildCacheKey(
+  protected StorageCredentialCacheKey buildCacheKey(
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
@@ -107,7 +107,7 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    return GcpStorageAccessConfigParameters.of(
+    return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         entity,
         allowList,
@@ -332,7 +332,7 @@ public class GcpCredentialsStorageIntegration
    * Builds storage access config parameters for GCP credentials. GCP downscoped credentials do not
    * support session tags, so principal and credential vending context are never included.
    */
-  public static GcpStorageAccessConfigParameters buildStorageAccessConfigParameters(
+  public static GcpStorageCredentialCacheKey buildStorageCredentialCacheKey(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -342,7 +342,7 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    return GcpStorageAccessConfigParameters.of(
+    return GcpStorageCredentialCacheKey.of(
         realmId,
         entity,
         allowListOperation,

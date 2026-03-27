@@ -43,7 +43,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
-import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -97,7 +97,7 @@ public class AwsCredentialsStorageIntegration
   }
 
   @Override
-  protected StorageAccessConfigParameters buildCacheKey(
+  protected StorageCredentialCacheKey buildCacheKey(
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
@@ -105,7 +105,7 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    return buildStorageAccessConfigParameters(
+    return buildStorageCredentialCacheKey(
         context.realm().orElse(""),
         entity,
         realmConfig,
@@ -456,7 +456,7 @@ public class AwsCredentialsStorageIntegration
    * AssumeRole embeds these in session tags and role session names which affect the vended
    * credentials.
    */
-  public static AwsStorageAccessConfigParameters buildStorageAccessConfigParameters(
+  public static AwsStorageCredentialCacheKey buildStorageCredentialCacheKey(
       @Nonnull String realmId,
       @Nonnull PolarisEntity entity,
       @Nonnull RealmConfig realmConfig,
@@ -474,7 +474,7 @@ public class AwsCredentialsStorageIntegration
         includePrincipalNameInSubscopedCredential || includeSessionTags;
     CredentialVendingContext contextForCacheKey =
         includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
-    return AwsStorageAccessConfigParameters.of(
+    return AwsStorageCredentialCacheKey.of(
         realmId,
         entity,
         allowListOperation,

@@ -36,7 +36,7 @@ public class CdiProducers {
     return new PolarisStorageIntegrationProvider() {
       @Override
       public @Nullable <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+          PolarisStorageIntegration<T> getStorageIntegration(
               PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
         throw new UnsupportedOperationException();
       }

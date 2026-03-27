@@ -170,7 +170,7 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    protected org.apache.polaris.core.storage.cache.StorageAccessConfigParameters buildCacheKey(
+    protected org.apache.polaris.core.storage.cache.StorageCredentialCacheKey buildCacheKey(
         @Nonnull org.apache.polaris.core.entity.PolarisEntity entity,
         @Nonnull RealmConfig realmConfig,
         boolean allowList,

@@ -16,22 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage.cache;
+package org.apache.polaris.core.storage.gcp;
 
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /**
- * Storage access config parameters for FILE and unknown storage backends. Contains the minimal set
- * of fields needed for cache key identity.
+ * Storage access config parameters for GCP. GCP downscoped credentials do not support session tags,
+ * so principal and credential vending context are never included.
  */
 @PolarisImmutable
-public interface DefaultStorageAccessConfigParameters extends StorageAccessConfigParameters {
+public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey {
 
   @Value.Parameter(order = 1)
   String realmId();
@@ -39,28 +40,23 @@ public interface DefaultStorageAccessConfigParameters extends StorageAccessConfi
   @Value.Parameter(order = 2)
   long catalogId();
 
-  @Override
   @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();
 
-  @Override
   @Value.Parameter(order = 4)
   boolean allowedListAction();
 
-  @Override
   @Value.Parameter(order = 5)
   Set<String> allowedReadLocations();
 
-  @Override
   @Value.Parameter(order = 6)
   Set<String> allowedWriteLocations();
 
-  @Override
   @Value.Parameter(order = 7)
   Optional<String> refreshCredentialsEndpoint();
 
-  static DefaultStorageAccessConfigParameters of(
+  static GcpStorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
@@ -71,7 +67,7 @@ public interface DefaultStorageAccessConfigParameters extends StorageAccessConfi
         entity
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    return ImmutableDefaultStorageAccessConfigParameters.of(
+    return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         entity.getCatalogId(),
         storageConfigSerializedStr,
