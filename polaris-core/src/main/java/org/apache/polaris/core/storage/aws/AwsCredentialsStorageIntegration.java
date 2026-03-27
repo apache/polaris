@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -86,13 +85,13 @@ public class AwsCredentialsStorageIntegration
     this(stsClientProvider, credentialsResolver, null, null);
   }
 
-  /** Production constructor with cache and request-scoped suppliers. */
+  /** Production constructor with cache and realm config. */
   public AwsCredentialsStorageIntegration(
       StsClientProvider stsClientProvider,
       Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      Supplier<org.apache.polaris.core.config.RealmConfig> realmConfigSupplier) {
-    super(AwsCredentialsStorageIntegration.class.getName(), cache, realmConfigSupplier);
+      org.apache.polaris.core.config.RealmConfig realmConfig) {
+    super(AwsCredentialsStorageIntegration.class.getName(), cache, realmConfig);
     this.stsClientProvider = stsClientProvider;
     this.credentialsResolver = credentialsResolver;
   }

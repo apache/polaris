@@ -23,7 +23,6 @@ import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.cache.StorageAccessConfigParameters;
@@ -43,28 +42,26 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
 
   private final String integrationIdentifierOrId;
   @Nullable private final StorageCredentialCache cache;
-  private final Supplier<RealmConfig> realmConfigSupplier;
+  private final RealmConfig realmConfig;
 
-  /** Test-only constructor without cache or request-scoped suppliers. */
+  /** Test-only constructor without cache or request-scoped config. */
   public PolarisStorageIntegration(String identifierOrId) {
-    this(identifierOrId, null, () -> null);
+    this(identifierOrId, null, null);
   }
 
   public PolarisStorageIntegration(
-      String identifierOrId,
-      @Nullable StorageCredentialCache cache,
-      Supplier<RealmConfig> realmConfigSupplier) {
+      String identifierOrId, @Nullable StorageCredentialCache cache, RealmConfig realmConfig) {
     this.integrationIdentifierOrId = identifierOrId;
     this.cache = cache;
-    this.realmConfigSupplier = realmConfigSupplier;
+    this.realmConfig = realmConfig;
   }
 
   public String getStorageIdentifierOrId() {
     return integrationIdentifierOrId;
   }
 
-  protected Supplier<RealmConfig> realmConfigSupplier() {
-    return realmConfigSupplier;
+  protected RealmConfig realmConfig() {
+    return realmConfig;
   }
 
   /**
@@ -79,7 +76,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    RealmConfig realmConfig = realmConfigSupplier.get();
+    RealmConfig realmConfig = this.realmConfig;
     if (cache != null) {
       StorageAccessConfigParameters key =
           buildCacheKey(

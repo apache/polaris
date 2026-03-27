@@ -80,13 +80,13 @@ public class AzureCredentialsStorageIntegration
   final DefaultAzureCredential defaultAzureCredential;
 
   public AzureCredentialsStorageIntegration() {
-    this(null, () -> null);
+    this(null, null);
   }
 
   public AzureCredentialsStorageIntegration(
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      java.util.function.Supplier<org.apache.polaris.core.config.RealmConfig> realmConfigSupplier) {
-    super(AzureCredentialsStorageIntegration.class.getName(), cache, realmConfigSupplier);
+      org.apache.polaris.core.config.RealmConfig realmConfig) {
+    super(AzureCredentialsStorageIntegration.class.getName(), cache, realmConfig);
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();

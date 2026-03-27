@@ -235,7 +235,7 @@ public abstract class AbstractPolicyCatalogTest {
             (destination) -> stsClient,
             config -> java.util.Optional.empty(),
             storageCredentialCache,
-            () -> callContext.getRealmConfig());
+            callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);

@@ -329,7 +329,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             (destination) -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
-            () -> callContext.getRealmConfig());
+            callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);

@@ -66,7 +66,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       RealmConfig realmConfig,
       Clock clock,
       StorageCredentialCache cache) {
-    Supplier<RealmConfig> realmConfigSupplier = () -> realmConfig;
     this.awsIntegration =
         new AwsCredentialsStorageIntegration(
             stsClientProvider,
@@ -77,7 +76,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               return Optional.of(storageConfiguration.stsCredentials());
             },
             cache,
-            realmConfigSupplier);
+            realmConfig);
     Supplier<GoogleCredentials> gcpCredsProvider =
         storageConfiguration.gcpCredentialsSupplier(clock);
     this.gcpIntegrationSupplier =
@@ -87,9 +86,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 ServiceOptions.getFromServiceLoader(
                     HttpTransportFactory.class, NetHttpTransport::new),
                 cache,
-                realmConfigSupplier);
+                realmConfig);
     this.azureIntegrationSupplier =
-        () -> new AzureCredentialsStorageIntegration(cache, realmConfigSupplier);
+        () -> new AzureCredentialsStorageIntegration(cache, realmConfig);
     this.fileIntegration = createFileIntegration();
   }
 
@@ -98,10 +97,10 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       Optional<AwsCredentialsProvider> stsCredentials,
       Supplier<GoogleCredentials> gcpCredsProvider,
       StorageCredentialCache cache,
-      Supplier<RealmConfig> realmConfigSupplier) {
+      RealmConfig realmConfig) {
     this.awsIntegration =
         new AwsCredentialsStorageIntegration(
-            stsClientProvider, config -> stsCredentials, cache, realmConfigSupplier);
+            stsClientProvider, config -> stsCredentials, cache, realmConfig);
     this.gcpIntegrationSupplier =
         () ->
             new GcpCredentialsStorageIntegration(
@@ -109,9 +108,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 ServiceOptions.getFromServiceLoader(
                     HttpTransportFactory.class, NetHttpTransport::new),
                 cache,
-                realmConfigSupplier);
+                realmConfig);
     this.azureIntegrationSupplier =
-        () -> new AzureCredentialsStorageIntegration(cache, realmConfigSupplier);
+        () -> new AzureCredentialsStorageIntegration(cache, realmConfig);
     this.fileIntegration = createFileIntegration();
   }
 

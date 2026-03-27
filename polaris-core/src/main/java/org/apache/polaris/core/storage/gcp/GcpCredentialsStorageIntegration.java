@@ -82,15 +82,15 @@ public class GcpCredentialsStorageIntegration
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    this(sourceCredentials, transportFactory, null, () -> null);
+    this(sourceCredentials, transportFactory, null, null);
   }
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      java.util.function.Supplier<org.apache.polaris.core.config.RealmConfig> realmConfigSupplier) {
-    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfigSupplier);
+      org.apache.polaris.core.config.RealmConfig realmConfig) {
+    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =

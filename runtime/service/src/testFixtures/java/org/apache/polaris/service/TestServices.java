@@ -40,6 +40,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -201,8 +202,7 @@ public record TestServices(
       StorageCredentialCache storageCredentialCache =
           new StorageCredentialCache(storageCredentialCacheConfig);
 
-      // Use holder for lazy resolution — set later after callContext exists
-      final RealmConfig[] realmConfigHolder = new RealmConfig[1];
+      RealmConfig realmConfig = new RealmConfigImpl(configurationSource, realmContext);
 
       PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
           new PolarisStorageIntegrationProviderImpl(
@@ -210,7 +210,7 @@ public record TestServices(
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
               storageCredentialCache,
-              () -> realmConfigHolder[0]);
+              realmConfig);
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider);
@@ -221,8 +221,6 @@ public record TestServices(
       BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
           new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
-      RealmConfig realmConfig = callContext.getRealmConfig();
-      realmConfigHolder[0] = realmConfig;
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
