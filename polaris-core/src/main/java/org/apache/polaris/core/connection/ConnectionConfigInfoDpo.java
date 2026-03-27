@@ -33,10 +33,12 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
+import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.connection.bigquery.BigQueryMetastoreConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
@@ -57,6 +59,7 @@ import org.apache.polaris.core.secrets.SecretReference;
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
   @JsonSubTypes.Type(value = HadoopConnectionConfigInfoDpo.class, name = "2"),
   @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
+  @JsonSubTypes.Type(value = BigQueryMetastoreConnectionConfigInfoDpo.class, name = "4"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   // The type of the connection
@@ -208,6 +211,30 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getUri(),
                 authenticationParameters,
                 hiveConfigModel.getWarehouse(),
+                null /*Service Identity Info*/);
+        break;
+      case BIGQUERY:
+        BigQueryMetastoreConnectionConfigInfo bigqueryConfigModel =
+            (BigQueryMetastoreConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                bigqueryConfigModel.getAuthenticationParameters(), secretReferences);
+        String bigqueryUri =
+            bigqueryConfigModel.getUri() != null
+                ? bigqueryConfigModel.getUri()
+                : BigQueryMetastoreConnectionConfigInfoDpo.DEFAULT_URI;
+        config =
+            new BigQueryMetastoreConnectionConfigInfoDpo(
+                bigqueryUri,
+                authenticationParameters,
+                bigqueryConfigModel.getWarehouse(),
+                bigqueryConfigModel.getGcpProjectId(),
+                bigqueryConfigModel.getGcpLocation(),
+                bigqueryConfigModel.getListAllTables(),
+                bigqueryConfigModel.getImpersonateServiceAccount(),
+                bigqueryConfigModel.getImpersonateLifetimeSeconds(),
+                bigqueryConfigModel.getImpersonateScopes(),
+                bigqueryConfigModel.getImpersonateDelegates(),
                 null /*Service Identity Info*/);
         break;
       default:
