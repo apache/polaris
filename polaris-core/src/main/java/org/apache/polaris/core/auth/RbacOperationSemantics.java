@@ -472,5 +472,4 @@ record RbacOperationSemantics(
     }
     return semantics;
   }
-
 }
