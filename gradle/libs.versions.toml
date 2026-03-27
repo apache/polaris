@@ -27,6 +27,7 @@ picocli = "4.7.7"
 quarkus = "3.32.4"
 scala212 = "2.12.19"
 swagger = "1.6.16"
+vertx = "5.0.8"
 
 [bundles]
 
@@ -83,16 +84,19 @@ microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-to
 mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.23.0" }
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.6.4" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.60.1" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.10" }
 quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+rest-assured = { module = "io.rest-assured:rest-assured", version = "6.0.0" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.11.0" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.17" }
+slf4j-jboss-logmanager = { module = "org.jboss.slf4j:slf4j-jboss-logmanager", version = "2.1.0.Final" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.17.0" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.16.0" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.3" }
@@ -101,6 +105,7 @@ swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.4" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.1.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
+vertx-core = { module = "io.vertx:vertx-core", version.ref = "vertx" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 weld-core-bom = { module = "org.jboss.weld:weld-core-bom", version = "6.0.4.Final" }
 
