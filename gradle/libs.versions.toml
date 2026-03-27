@@ -19,12 +19,14 @@
 
 [versions]
 checkstyle = "13.3.0"
+graalvm = "25.0.2"
 hadoop = "3.4.3"
 iceberg = "1.10.1" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.1"
 jmh = "1.37"
 picocli = "4.7.7"
 quarkus = "3.32.4"
+ranger = "2.8.0"
 scala212 = "2.12.19"
 swagger = "1.6.16"
 
@@ -51,6 +53,9 @@ commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.48.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.88.0" }
+graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graalvm" }
+graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "graalvm" }
+graalvm-polyglot-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "graalvm" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.64.1" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
@@ -89,6 +94,11 @@ picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "pico
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.10" }
 quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+ranger-audit-core = { module = "org.apache.ranger:ranger-audit-core", version.ref = "ranger" }
+ranger-audit-dest-solr = { module = "org.apache.ranger:ranger-audit-dest-solr", version.ref = "ranger" }
+ranger-authz-embedded = { module = "org.apache.ranger:authz-embedded", version.ref = "ranger" }
+ranger-plugins-common = { module = "org.apache.ranger:ranger-plugins-common", version.ref = "ranger" }
+ranger-plugins-cred = { module = "org.apache.ranger:ranger-plugins-cred", version.ref = "ranger" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.11.0" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
