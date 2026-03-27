@@ -70,7 +70,17 @@ public interface ConnectionCredentials {
 
     default Builder put(CatalogAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {
-        expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
+        if (value == null) {
+          throw new IllegalArgumentException(
+              "Expiration timestamp value cannot be null for key: " + key.getPropertyName());
+        }
+        try {
+          expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
+        } catch (NumberFormatException e) {
+          throw new IllegalArgumentException(
+              "Invalid expiration timestamp value for key " + key.getPropertyName() + ": " + value,
+              e);
+        }
       }
 
       if (key.isCredential()) {
