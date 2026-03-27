@@ -954,6 +954,10 @@ public class PolarisManagementServiceIntegrationTest {
             .request("v1/principal-roles")
             .post(Entity.json(new CreatePrincipalRoleRequest(federatedPrincipalRole)))) {
       assertThat(createResponse).returns(CREATED.getStatusCode(), Response::getStatus);
+
+      // Verify that the returned principal role has federated=true
+      PrincipalRole createdRole = createResponse.readEntity(PrincipalRole.class);
+      assertThat(createdRole.getFederated()).isTrue();
     }
   }
 
