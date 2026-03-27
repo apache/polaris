@@ -64,6 +64,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added setup options to Polaris CLI.
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 - Added summarize subcommand to Polaris CLI.
+- Added automatic `principal_role_viewer` role that allows principals with `catalog_admin` privileges to list principal roles. When a principal role is granted `catalog_admin` on any catalog, all principals assigned to that role are automatically granted the `principal_role_viewer` role, which provides read-only access to list principal roles.
 
 ### Changes
 

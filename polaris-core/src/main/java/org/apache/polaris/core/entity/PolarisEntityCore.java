@@ -159,7 +159,8 @@ public class PolarisEntityCore implements Identifiable {
     return (this.typeCode == PolarisEntityType.CATALOG_ROLE.getCode()
             && this.name.equals(PolarisEntityConstants.getNameOfCatalogAdminRole()))
         || (this.typeCode == PolarisEntityType.PRINCIPAL_ROLE.getCode()
-            && this.name.equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
+            && (this.name.equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+                || this.name.equals(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole())));
   }
 
   /**
