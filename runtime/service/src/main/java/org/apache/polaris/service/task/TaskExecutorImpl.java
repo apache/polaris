@@ -198,13 +198,15 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_ATTEMPT_TASK,
-            eventMetadataFactory.copy(eventMetadata),
-            new EventAttributeMap()
-                .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                .put(EventAttributes.TASK_ATTEMPT, attempt)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_ATTEMPT_TASK)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_ATTEMPT_TASK,
+              eventMetadataFactory.copy(eventMetadata),
+              new EventAttributeMap()
+                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)));
+    }
 
     boolean success = false;
     try {
@@ -247,14 +249,16 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventDispatcher.dispatch(
-          new PolarisEvent(
-              PolarisEventType.AFTER_ATTEMPT_TASK,
-              eventMetadataFactory.copy(eventMetadata),
-              new EventAttributeMap()
-                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)
-                  .put(EventAttributes.TASK_SUCCESS, success)));
+      if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_ATTEMPT_TASK)) {
+        polarisEventDispatcher.dispatch(
+            new PolarisEvent(
+                PolarisEventType.AFTER_ATTEMPT_TASK,
+                eventMetadataFactory.copy(eventMetadata),
+                new EventAttributeMap()
+                    .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                    .put(EventAttributes.TASK_ATTEMPT, attempt)
+                    .put(EventAttributes.TASK_SUCCESS, success)));
+      }
     }
   }
 
