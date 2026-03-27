@@ -327,6 +327,21 @@ public class IdempotencyFilter {
     }
     final String body =
         boundedResponseSummary(response, objectMapper, configuration.responseSummaryMaxBytes());
+    if (body == null && response.getEntity() != null) {
+      // The response has a body but it's too large or failed to serialize.
+      // Finalizing without a body would produce a broken replay (e.g. 200 OK with empty body).
+      // Cancel the reservation so retries execute fresh.
+      Infrastructure.getDefaultWorkerPool()
+          .execute(
+              () -> {
+                try {
+                  store.cancelInProgressReservation(realmId, key, executorId());
+                } catch (RuntimeException e) {
+                  warnThrottled(e, "Failed to cancel reservation for oversized response body");
+                }
+              });
+      return;
+    }
     final Map<String, String> headers =
         headerSnapshot(response, configuration.responseHeaderAllowlist());
     Instant now = clock.instant();

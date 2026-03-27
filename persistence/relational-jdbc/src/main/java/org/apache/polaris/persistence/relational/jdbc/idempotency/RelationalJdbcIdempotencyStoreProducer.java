@@ -22,28 +22,30 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.literal.NamedLiteral;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.sql.SQLException;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.IdempotencyStore;
-import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ApplicationScoped
-@Identifier("relational-jdbc")
-public class RelationalJdbcIdempotencyStoreFactory implements IdempotencyStoreFactory {
+public class RelationalJdbcIdempotencyStoreProducer {
 
   private static final Logger LOG =
-      Logger.getLogger(RelationalJdbcIdempotencyStoreFactory.class.getName());
+      Logger.getLogger(RelationalJdbcIdempotencyStoreProducer.class.getName());
 
   @Inject Instance<DataSource> dataSource;
   @Inject @Any Instance<DataSource> anyDataSources;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
 
-  @Override
-  public IdempotencyStore create() {
+  @Produces
+  @Singleton
+  @Identifier("relational-jdbc")
+  public IdempotencyStore relationalJdbcIdempotencyStore() {
     try {
       Instance<DataSource> idempotencyDs = anyDataSources.select(NamedLiteral.of("idempotency"));
       final DataSource ds;

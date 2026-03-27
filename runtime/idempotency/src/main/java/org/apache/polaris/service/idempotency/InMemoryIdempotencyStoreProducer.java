@@ -16,15 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.service.idempotency;
 
-/**
- * Factory for creating an {@link IdempotencyStore} backend.
- *
- * <p>Implementations are selected by the runtime wiring layer (e.g. Quarkus CDI) using an
- * identifier, similar to other Polaris factories.
- */
-public interface IdempotencyStoreFactory {
-  /** Create an {@link IdempotencyStore} instance. */
-  IdempotencyStore create();
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Singleton;
+import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.InMemoryIdempotencyStore;
+
+@Singleton
+public class InMemoryIdempotencyStoreProducer {
+
+  @Produces
+  @Singleton
+  @Identifier("in-memory")
+  public IdempotencyStore inMemoryIdempotencyStore() {
+    return new InMemoryIdempotencyStore();
+  }
 }

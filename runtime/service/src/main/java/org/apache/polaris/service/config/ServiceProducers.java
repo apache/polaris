@@ -48,7 +48,6 @@ import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IdempotencyStore;
-import org.apache.polaris.core.persistence.IdempotencyStoreFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -231,17 +230,16 @@ public class ServiceProducers {
   }
 
   @Produces
-  @ApplicationScoped
-  public IdempotencyStoreFactory idempotencyStoreFactory(
+  @Singleton
+  public IdempotencyStore idempotencyStore(
       PersistenceConfiguration config,
-      @Any Instance<IdempotencyStoreFactory> idempotencyFactories) {
-    return idempotencyFactories.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  @Produces
-  @ApplicationScoped
-  public IdempotencyStore idempotencyStore(IdempotencyStoreFactory factory) {
-    return factory.create();
+      @Any Instance<IdempotencyStore> idempotencyStores) {
+    Instance<IdempotencyStore> selected =
+        idempotencyStores.select(Identifier.Literal.of(config.type()));
+    if (selected.isUnsatisfied()) {
+      selected = idempotencyStores.select(Identifier.Literal.of("in-memory"));
+    }
+    return selected.get();
   }
 
   @Produces
