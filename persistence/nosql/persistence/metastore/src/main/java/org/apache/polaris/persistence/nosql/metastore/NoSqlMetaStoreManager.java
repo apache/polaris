@@ -707,8 +707,11 @@ record NoSqlMetaStoreManager(
           reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
     }
 
+    // resolve effective storage config (handles storageNameOverride on namespaces/tables)
+    var resolvedEntity = resolveEntityStorageConfig(callCtx, reloadedEntity.getEntity());
+
     // get storage integration
-    var storageIntegration = ms(callCtx).loadPolarisStorageIntegration(reloadedEntity.getEntity());
+    var storageIntegration = ms(callCtx).loadPolarisStorageIntegration(resolvedEntity);
 
     // cannot be null
     checkNotNull(

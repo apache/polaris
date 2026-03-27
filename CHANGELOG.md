@@ -48,6 +48,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added `deploymentAnnotations` support in Helm chart.
+- Added the `ALLOW_STORAGE_NAME_OVERRIDE` feature flag (default: `false`). When enabled, clients may set the `polaris.storage.name` property on namespaces and tables to override the inherited storage credential reference for per-entity credential vending.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
 - Added `priorityClassName` support in Helm chart.

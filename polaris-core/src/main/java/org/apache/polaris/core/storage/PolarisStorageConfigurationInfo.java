@@ -180,6 +180,40 @@ public abstract class PolarisStorageConfigurationInfo {
     return Optional.empty();
   }
 
+  /**
+   * Creates a copy of the given storage configuration with only the {@code storageName} field
+   * replaced. All other fields (allowed locations, cloud identity, etc.) are preserved from the
+   * base config.
+   *
+   * @param baseConfig the storage configuration to copy
+   * @param storageName the new storage name (may be null to clear an override)
+   * @return a new configuration instance with the updated storage name
+   * @throws IllegalArgumentException if the base config type is not supported
+   */
+  public static PolarisStorageConfigurationInfo withStorageName(
+      PolarisStorageConfigurationInfo baseConfig, @Nullable String storageName) {
+    if (baseConfig instanceof AwsStorageConfigurationInfo awsConfig) {
+      return AwsStorageConfigurationInfo.builder().from(awsConfig).storageName(storageName).build();
+    }
+    if (baseConfig instanceof AzureStorageConfigurationInfo azureConfig) {
+      return AzureStorageConfigurationInfo.builder()
+          .from(azureConfig)
+          .storageName(storageName)
+          .build();
+    }
+    if (baseConfig instanceof GcpStorageConfigurationInfo gcpConfig) {
+      return GcpStorageConfigurationInfo.builder().from(gcpConfig).storageName(storageName).build();
+    }
+    if (baseConfig instanceof FileStorageConfigurationInfo fileConfig) {
+      return FileStorageConfigurationInfo.builder()
+          .from(fileConfig)
+          .storageName(storageName)
+          .build();
+    }
+    throw new IllegalArgumentException(
+        "Unsupported storage config type: " + baseConfig.getClass().getSimpleName());
+  }
+
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */
   public abstract String getFileIoImplClassName();
 
