@@ -67,7 +67,12 @@ public class CatalogGenericTableEventServiceDelegator
                 .put(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)));
     Response resp =
         delegate.createGenericTable(
-            prefix, namespace, createGenericTableRequest, polarisGenericTableAccessDelegation, realmContext, securityContext);
+            prefix,
+            namespace,
+            createGenericTableRequest,
+            polarisGenericTableAccessDelegation,
+            realmContext,
+            securityContext);
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
@@ -157,7 +162,13 @@ public class CatalogGenericTableEventServiceDelegator
                 .put(EventAttributes.NAMESPACE_NAME, namespace)
                 .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
     Response resp =
-        delegate.loadGenericTable(prefix, namespace, genericTable, polarisGenericTableAccessDelegation, realmContext, securityContext);
+        delegate.loadGenericTable(
+            prefix,
+            namespace,
+            genericTable,
+            polarisGenericTableAccessDelegation,
+            realmContext,
+            securityContext);
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_GENERIC_TABLE,
