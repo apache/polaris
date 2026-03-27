@@ -29,14 +29,23 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.AuthBootstrapUtil;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Utility class for running per-realm bootstrap tasks each in a fresh Request Context. */
 @ApplicationScoped
 class Bootstrapper {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Bootstrapper.class);
+
   private final ExecutorService executor;
   private final RealmContextHolder realmContextHolder;
   private final MetaStoreManagerFactory factory;
@@ -56,7 +65,7 @@ class Bootstrapper {
       Iterable<String> realmIds, RootCredentialsSet rootCredentialsSet) {
     HashMap<String, PrincipalSecretsResult> result = new HashMap<>();
     for (String realmId : realmIds) {
-      Task t = new Task(realmContextHolder, realmId, rootCredentialsSet, factory);
+      BootstrapTask t = new BootstrapTask(realmContextHolder, realmId, rootCredentialsSet, factory);
       try {
         // Submit an async task per realm to ensure it runs in a fresh RequestContext.
         // Note: simultaneous bootstrap of multiple realms is an edge case - no need
@@ -70,7 +79,27 @@ class Bootstrapper {
     return result;
   }
 
-  private record Task(
+  /**
+   * Runs upgrade migration for a realm to ensure principal_role_viewer exists. This method runs in
+   * a proper CDI request context with RealmContextHolder set. It gracefully handles the case where
+   * the realm doesn't exist yet (fresh install).
+   *
+   * @param realmId the realm ID to run the upgrade migration for
+   */
+  void runUpgradeMigration(String realmId) {
+    UpgradeMigrationTask task = new UpgradeMigrationTask(realmContextHolder, realmId, factory);
+    try {
+      executor.submit(task).get(1, TimeUnit.MINUTES);
+    } catch (Exception e) {
+      // This is expected for fresh installations where root container doesn't exist yet
+      LOGGER.debug(
+          "Upgrade migration for realm '{}' skipped or failed: {}. This is expected for fresh installations.",
+          realmId,
+          e.getMessage());
+    }
+  }
+
+  private record BootstrapTask(
       RealmContextHolder realmContextHolder,
       String realmId,
       RootCredentialsSet rootCredentialsSet,
@@ -84,6 +113,31 @@ class Bootstrapper {
       // Make the realm ID effective in the current request context.
       realmContextHolder.set(() -> realmId);
       return factory.bootstrapRealms(Collections.singleton(realmId), rootCredentialsSet);
+    }
+  }
+
+  private record UpgradeMigrationTask(
+      RealmContextHolder realmContextHolder, String realmId, MetaStoreManagerFactory factory)
+      implements Callable<Void> {
+
+    @Override
+    @ActivateRequestContext
+    public Void call() {
+      // Note: each call to this method runs in a new CDI request context.
+      // Make the realm ID effective in the current request context.
+      realmContextHolder.set(() -> realmId);
+
+      RealmContext realmContext = () -> realmId;
+      PolarisMetaStoreManager metaStoreManager = factory.getOrCreateMetaStoreManager(realmContext);
+      BasePersistence metaStoreSession = factory.getOrCreateSession(realmContext);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, metaStoreSession);
+
+      AuthBootstrapUtil.ensurePrincipalRoleViewerExists(metaStoreManager, callContext);
+      LOGGER.info(
+          "Successfully ran upgrade migration for realm '{}' - principal_role_viewer role ensured",
+          realmId);
+
+      return null;
     }
   }
 }

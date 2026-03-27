@@ -121,6 +121,67 @@ public class AuthBootstrapUtil {
     return metaStoreManager.loadPrincipalSecrets(ctx, rootPrincipal.getClientId());
   }
 
+  /**
+   * Ensures the principal_role_viewer role exists in an already-bootstrapped realm. This is used
+   * for upgrade migrations to add the role to realms that were bootstrapped before this role was
+   * introduced.
+   *
+   * <p>This method is idempotent - it checks if the role already exists and only creates it if
+   * missing.
+   *
+   * @param metaStoreManager the metastore manager for the realm
+   * @param ctx the call context for the realm
+   */
+  public static void ensurePrincipalRoleViewerExists(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext ctx) {
+    // Check if the role already exists
+    EntityResult existingRoleResult =
+        metaStoreManager.readEntityByName(
+            ctx,
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getNameOfPrincipalRoleViewerRole());
+
+    if (existingRoleResult.isSuccess() && existingRoleResult.getEntity() != null) {
+      // Role already exists, nothing to do
+      LOGGER.info("principal_role_viewer role already exists, skipping creation");
+      return;
+    }
+
+    LOGGER.info(
+        "principal_role_viewer role not found. Creating it for existing installation upgrade.");
+
+    // Load the root container for granting privileges
+    EntityResult rootContainerResult =
+        metaStoreManager.readEntityByName(
+            ctx,
+            null,
+            PolarisEntityType.ROOT,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootContainerName());
+
+    Preconditions.checkState(
+        rootContainerResult.isSuccess() && rootContainerResult.getEntity() != null,
+        "Root container not found - realm may not be bootstrapped");
+    PolarisBaseEntity rootContainer = rootContainerResult.getEntity();
+
+    // Create the principal_role_viewer role
+    PrincipalRoleEntity principalRoleViewer =
+        new PrincipalRoleEntity.Builder()
+            .setId(generateId(metaStoreManager, ctx))
+            .setName(PolarisEntityConstants.getNameOfPrincipalRoleViewerRole())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    metaStoreManager.createEntityIfNotExists(ctx, null, principalRoleViewer);
+
+    // Grant PRINCIPAL_ROLE_LIST privilege on the root container
+    metaStoreManager.grantPrivilegeOnSecurableToRole(
+        ctx, principalRoleViewer, null, rootContainer, PolarisPrivilege.PRINCIPAL_ROLE_LIST);
+
+    LOGGER.info("Successfully created principal_role_viewer role for upgrade migration");
+  }
+
   private static long generateId(PolarisMetaStoreManager metaStoreManager, PolarisCallContext ctx) {
     GenerateEntityIdResult res = metaStoreManager.generateNewEntityId(ctx);
     Preconditions.checkState(res.isSuccess(), "Unable to generate id for polaris entity");

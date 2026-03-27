@@ -292,6 +292,13 @@ public class ServiceProducers {
           RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
+      // Run upgrade migrations FIRST for all realms
+      // This is idempotent and will gracefully skip if the realm doesn't exist yet
+      for (String realmId : realmIds) {
+        bootstrapper.runUpgradeMigration(realmId);
+      }
+
+      // Then run bootstrap for realms that need it
       var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
 
       result.forEach(
