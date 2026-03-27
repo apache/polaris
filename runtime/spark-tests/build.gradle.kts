@@ -72,7 +72,38 @@ tasks.named<Test>("intTest").configure {
   systemProperty("java.security.manager", "allow")
   // Same issue as above: allow a java security manager after Java 21
   // (this setting is for the application under test, while the setting above is for test code).
-  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
+  // Optional: enable additional storage-resolution overrides only for targeted hierarchy tests.
+  val enableStorageHierarchyOverrides =
+    providers.gradleProperty("enableStorageHierarchyOverrides").orNull == "true"
+
+  val testArgLine = buildString {
+    append("-Djava.security.manager=allow")
+
+    if (enableStorageHierarchyOverrides) {
+      append(" -Dpolaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"=true")
+
+      // Named storages used by Spark storage hierarchy integration tests.
+      listOf(
+          "validstorage",
+          "ns-named",
+          "tbl-named",
+          "ns",
+          "tbl",
+          "billing-creds",
+          "mid",
+          "tbl-only",
+          "ns-shared",
+          "tbl-override",
+          "ns-v1",
+          "ns-v2",
+        )
+        .forEach { storageName ->
+          append(" -Dpolaris.storage.aws.$storageName.access-key=foo")
+          append(" -Dpolaris.storage.aws.$storageName.secret-key=bar")
+        }
+    }
+  }
+  systemProperty("quarkus.test.arg-line", testArgLine)
   val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
   // delete files from previous runs
   doFirst {

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.RESTException;
@@ -38,9 +39,11 @@ import org.apache.iceberg.rest.ErrorHandler;
 import org.apache.iceberg.rest.ErrorHandlers;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.types.Types;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Iceberg REST API.
@@ -53,13 +56,32 @@ public class CatalogApi extends PolarisRestApi {
   }
 
   public void createNamespace(String catalogName, String namespaceName) {
+    String[] namespaceLevels = namespaceName.split("\\u001F");
     try (Response response =
         request("v1/{cat}/namespaces", Map.of("cat", catalogName))
             .post(
                 Entity.json(
                     CreateNamespaceRequest.builder()
-                        .withNamespace(Namespace.of(namespaceName))
+                        .withNamespace(Namespace.of(namespaceLevels))
                         .build()))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  public void createTable(String catalogName, String namespaceName, String tableName) {
+    String[] namespaceLevels = namespaceName.split("\\u001F");
+    String encodedNamespace = RESTUtil.encodeNamespace(Namespace.of(namespaceLevels));
+    Schema schema =
+        new Schema(
+            Types.NestedField.required(1, "id", Types.IntegerType.get()),
+            Types.NestedField.optional(2, "data", Types.StringType.get()));
+
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName(tableName).withSchema(schema).build();
+
+    try (Response response =
+        request("v1/{cat}/namespaces/" + encodedNamespace + "/tables", Map.of("cat", catalogName))
+            .post(Entity.json(request))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
   }
