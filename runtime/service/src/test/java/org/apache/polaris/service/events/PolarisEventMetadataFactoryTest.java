@@ -29,7 +29,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RequestIdSupplier;
 import org.junit.jupiter.api.Test;
 
 class PolarisEventMetadataFactoryTest {
