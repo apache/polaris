@@ -201,6 +201,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
+  protected abstract CapturedConfigHolder capturedConfigHolder();
+
   protected abstract EventAttributeMap eventAttributeMap();
 
   protected abstract PolarisMetricsReporter metricsReporter();
@@ -487,7 +489,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              refreshCredentialsEndpoint)
+              refreshCredentialsEndpoint,
+              List.of())
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -592,7 +595,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             metadata,
             delegationModes,
             Set.of(PolarisStorageActions.ALL),
-            refreshCredentialsEndpoint)
+            refreshCredentialsEndpoint,
+            List.of())
         .build();
   }
 
@@ -812,6 +816,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
 
+    // Capture tableId from remote catalog response for S3 Tables ARN construction
+    Optional<String> capturedTableId = capturedConfigHolder().getTableId();
+    List<String> resourceArns = List.of();
+    if (capturedTableId.isPresent()) {
+      resourceArns = List.of(constructS3TablesArn(capturedTableId.get()));
+    }
+
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
       LoadTableResponse response =
@@ -820,7 +831,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   tableMetadata,
                   delegationModes,
                   actionsRequested,
-                  refreshCredentialsEndpoint)
+                  refreshCredentialsEndpoint,
+                  resourceArns)
               .build();
       return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
@@ -832,12 +844,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
+  /**
+   * Constructs an S3 Tables ARN from the catalog's default-base-location and a tableId. The
+   * default-base-location for S3 Tables catalogs is the table bucket ARN.
+   */
+  private String constructS3TablesArn(String tableId) {
+    CatalogEntity catalogEntity = CatalogEntity.of(getResolvedCatalogEntity());
+    String baseLocation = catalogEntity.getBaseLocation();
+    return baseLocation + "/table/" + tableId;
+  }
+
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       EnumSet<AccessDelegationMode> delegationModes,
       Set<PolarisStorageActions> actions,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      List<String> resourceArns) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     PolarisResolvedPathWrapper resolvedStoragePath =
@@ -867,7 +890,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   tableLocations,
                   actions,
                   refreshCredentialsEndpoint,
-                  resolvedStoragePath);
+                  resolvedStoragePath,
+                  resourceArns);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
       if (delegationModes.contains(VENDED_CREDENTIALS)) {
         if (!credentialConfig.isEmpty()) {

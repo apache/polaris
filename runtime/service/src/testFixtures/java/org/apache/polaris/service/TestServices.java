@@ -69,6 +69,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.iceberg.CapturedConfigHolder;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
@@ -344,6 +345,7 @@ public record TestServices(
                   .catalogHandlerUtils(catalogHandlerUtils)
                   .externalCatalogFactories(externalCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
+                  .capturedConfigHolder(new CapturedConfigHolder())
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)

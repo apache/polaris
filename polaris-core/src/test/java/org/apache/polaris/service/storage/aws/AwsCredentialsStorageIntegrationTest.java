@@ -1677,4 +1677,182 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             CredentialVendingContext.empty());
   }
+
+  @Test
+  public void testS3TablesReadOnlyPolicy() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String tableArn = "arn:aws:s3tables:us-east-1:012345678901:bucket/my-table-bucket/table/abc123";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .extracting(AssumeRoleRequest::policy)
+                  .extracting(IamPolicy::fromJson)
+                  .satisfies(
+                      policy -> {
+                        assertThat(policy)
+                            .extracting(IamPolicy::statements)
+                            .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                            .hasSize(1)
+                            .satisfiesExactly(
+                                statement -> {
+                                  assertThat(statement)
+                                      .returns(IamEffect.ALLOW, IamStatement::effect)
+                                      .returns(
+                                          List.of(IamResource.create(tableArn)),
+                                          IamStatement::resources)
+                                      .returns(
+                                          List.of(
+                                              IamAction.create("s3tables:GetTableData"),
+                                              IamAction.create(
+                                                  "s3tables:GetTableMetadataLocation")),
+                                          IamStatement::actions);
+                                });
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .signingName(Optional.of("s3tables"))
+            .resourceArns(Optional.of(List.of(tableArn)))
+            .build();
+
+    StorageAccessConfig storageAccessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation("s3://dummy")
+                    .roleARN(roleARN)
+                    .signingName("s3tables")
+                    .build(),
+                stsClient)
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG,
+                true,
+                Set.of("s3://dummy/ns/table"),
+                Set.of(), // no writes — read only
+                POLARIS_PRINCIPAL,
+                Optional.empty(),
+                context);
+    assertThat(storageAccessConfig.credentials())
+        .isNotEmpty()
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess");
+  }
+
+  @Test
+  public void testS3TablesReadWritePolicy() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String tableArn = "arn:aws:s3tables:us-east-1:012345678901:bucket/my-table-bucket/table/abc123";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .extracting(AssumeRoleRequest::policy)
+                  .extracting(IamPolicy::fromJson)
+                  .satisfies(
+                      policy -> {
+                        assertThat(policy)
+                            .extracting(IamPolicy::statements)
+                            .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                            .hasSize(1)
+                            .satisfiesExactly(
+                                statement -> {
+                                  assertThat(statement)
+                                      .returns(IamEffect.ALLOW, IamStatement::effect)
+                                      .returns(
+                                          List.of(IamResource.create(tableArn)),
+                                          IamStatement::resources)
+                                      .returns(
+                                          List.of(
+                                              IamAction.create("s3tables:GetTableData"),
+                                              IamAction.create("s3tables:GetTableMetadataLocation"),
+                                              IamAction.create(
+                                                  "s3tables:UpdateTableMetadataLocation"),
+                                              IamAction.create("s3tables:PutTableData")),
+                                          IamStatement::actions);
+                                });
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .signingName(Optional.of("s3tables"))
+            .resourceArns(Optional.of(List.of(tableArn)))
+            .build();
+
+    String location = "s3://dummy/ns/table";
+    StorageAccessConfig storageAccessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation("s3://dummy")
+                    .roleARN(roleARN)
+                    .signingName("s3tables")
+                    .build(),
+                stsClient)
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG,
+                true,
+                Set.of(location),
+                Set.of(location), // writes present
+                POLARIS_PRINCIPAL,
+                Optional.empty(),
+                context);
+    assertThat(storageAccessConfig.credentials())
+        .isNotEmpty()
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess");
+  }
+
+  @Test
+  public void testS3TablesFallbackToS3WhenNoSigningName() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .extracting(AssumeRoleRequest::policy)
+                  .satisfies(
+                      policyJson -> {
+                        // Should be a normal S3 policy, not S3 Tables
+                        assertThat(policyJson).contains("s3:GetObject").doesNotContain("s3tables:");
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    // No signingName in context — should fall back to S3 path
+    CredentialVendingContext context = CredentialVendingContext.empty();
+
+    String location = "s3://bucket/path/to/table";
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation("s3://bucket/path")
+                .roleARN(roleARN)
+                .region("us-east-1")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(location),
+            Set.of(),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            context);
+  }
 }
