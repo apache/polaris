@@ -47,6 +47,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -219,6 +220,19 @@ public class ServiceProducers {
       PersistenceConfiguration config,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @Singleton
+  public IdempotencyStore idempotencyStore(
+      PersistenceConfiguration config,
+      @Any Instance<IdempotencyStore> idempotencyStores) {
+    Instance<IdempotencyStore> selected =
+        idempotencyStores.select(Identifier.Literal.of(config.type()));
+    if (selected.isUnsatisfied()) {
+      selected = idempotencyStores.select(Identifier.Literal.of("in-memory"));
+    }
+    return selected.get();
   }
 
   @Produces
