@@ -18,22 +18,28 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import java.util.Optional;
+import javax.sql.DataSource;
+import org.apache.polaris.core.context.RealmContext;
 
-public interface RelationalJdbcConfiguration {
-  // max retries before giving up
-  Optional<Integer> maxRetries();
+/**
+ * Service to resolve the correct {@link DataSource} for a given realm. Note: Currently this is
+ * implemented as a foundation for metastore routing.
+ */
+public interface DataSourceResolver {
 
-  // max retry duration
-  Optional<Long> maxDurationInMs();
-
-  // initial delay
-  Optional<Long> initialDelayInMs();
+  /** The type of store representing the workload pattern. */
+  enum StoreType {
+    METASTORE,
+    METRICS,
+    EVENTS
+  }
 
   /**
-   * Explicitly configured database type. If not specified, the database type will be inferred from
-   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
+   * Resolves the DataSource for a given realm and store type.
+   *
+   * @param realmContext the realm context
+   * @param storeType the type of store
+   * @return the resolved DataSource
    */
-  Optional<String> databaseType();
-
+  DataSource resolve(RealmContext realmContext, StoreType storeType);
 }

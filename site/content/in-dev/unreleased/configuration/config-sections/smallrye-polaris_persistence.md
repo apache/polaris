@@ -33,3 +33,4 @@ build:
 | `polaris.persistence.max-index-stripe-size` | `128k` | `MemorySize` |  |
 | `polaris.persistence.bucketized-bulk-fetch-size` | `16` | `int` | The number of objects to fetch at once via (`Persistence#bucketizedBulkFetches(Stream,<br> Class)`).  |
 | `polaris.persistence.max-serialized-value-size` | `350k` | `MemorySize` | The maximum size of a serialized value in a persisted database row.  |
+| `polaris.persistence.max-commit-history-traversal-count` | `1000` | `int` | The maximum number of commits to traverse when searching for an offset in the commit log. This  is a safeguard against unbounded resource consumption for large histories or invalid offsets.  |
