@@ -46,8 +46,8 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.junit.jupiter.api.Test;
 
@@ -323,17 +323,28 @@ class StorageNameOverrideTest {
         mock(PolarisResolutionManifestCatalogView.class);
     when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
 
+    PolarisDiagnostics diagnostics = mock(PolarisDiagnostics.class);
+    ResolverFactory resolverFactory = mock(ResolverFactory.class);
+    PolarisMetaStoreManager metaStoreManager = mock(PolarisMetaStoreManager.class);
+    PolarisPrincipal principal = mock(PolarisPrincipal.class);
+    TaskExecutor taskExecutor = mock(TaskExecutor.class);
+    StorageAccessConfigProvider storageAccessConfigProvider =
+        mock(StorageAccessConfigProvider.class);
+    FileIOFactory fileIOFactory = mock(FileIOFactory.class);
+    PolarisEventDispatcher polarisEventListener = mock(PolarisEventDispatcher.class);
+    PolarisEventMetadataFactory eventMetadataFactory = mock(PolarisEventMetadataFactory.class);
+
     return new IcebergCatalog(
-        mock(PolarisDiagnostics.class),
-        mock(ResolverFactory.class),
-        mock(PolarisMetaStoreManager.class),
+        diagnostics,
+        resolverFactory,
+        metaStoreManager,
         callContext,
         resolvedEntityView,
-        mock(PolarisPrincipal.class),
-        mock(TaskExecutor.class),
-        mock(StorageAccessConfigProvider.class),
-        mock(FileIOFactory.class),
-        mock(PolarisEventListener.class),
-        mock(PolarisEventMetadataFactory.class));
+        principal,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventListener,
+        eventMetadataFactory);
   }
 }
