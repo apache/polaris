@@ -473,7 +473,4 @@ record RbacOperationSemantics(
     return semantics;
   }
 
-  boolean hasSecondaryPrivileges() {
-    return !secondaryPrivileges.isEmpty();
-  }
 }
