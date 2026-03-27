@@ -323,17 +323,28 @@ class StorageNameOverrideTest {
         mock(PolarisResolutionManifestCatalogView.class);
     when(resolvedEntityView.getResolvedCatalogEntity()).thenReturn(catalogEntity);
 
+    PolarisDiagnostics diagnostics = mock(PolarisDiagnostics.class);
+    ResolverFactory resolverFactory = mock(ResolverFactory.class);
+    PolarisMetaStoreManager metaStoreManager = mock(PolarisMetaStoreManager.class);
+    PolarisPrincipal principal = mock(PolarisPrincipal.class);
+    TaskExecutor taskExecutor = mock(TaskExecutor.class);
+    StorageAccessConfigProvider storageAccessConfigProvider =
+        mock(StorageAccessConfigProvider.class);
+    FileIOFactory fileIOFactory = mock(FileIOFactory.class);
+    PolarisEventListener polarisEventListener = mock(PolarisEventListener.class);
+    PolarisEventMetadataFactory eventMetadataFactory = mock(PolarisEventMetadataFactory.class);
+
     return new IcebergCatalog(
-        mock(PolarisDiagnostics.class),
-        mock(ResolverFactory.class),
-        mock(PolarisMetaStoreManager.class),
+        diagnostics,
+        resolverFactory,
+        metaStoreManager,
         callContext,
         resolvedEntityView,
-        mock(PolarisPrincipal.class),
-        mock(TaskExecutor.class),
-        mock(StorageAccessConfigProvider.class),
-        mock(FileIOFactory.class),
-        mock(PolarisEventListener.class),
-        mock(PolarisEventMetadataFactory.class));
+        principal,
+        taskExecutor,
+        storageAccessConfigProvider,
+        fileIOFactory,
+        polarisEventListener,
+        eventMetadataFactory);
   }
 }
