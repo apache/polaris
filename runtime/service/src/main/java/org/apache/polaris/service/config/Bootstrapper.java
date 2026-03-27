@@ -81,8 +81,8 @@ class Bootstrapper {
 
   /**
    * Runs upgrade migration for a realm to ensure principal_role_viewer exists. This method runs in
-   * a proper CDI request context with RealmContextHolder set. It gracefully handles the case where
-   * the realm doesn't exist yet (fresh install).
+   * a proper CDI request context with RealmContextHolder set. Should be called AFTER bootstrap
+   * completes.
    *
    * @param realmId the realm ID to run the upgrade migration for
    */
@@ -91,11 +91,9 @@ class Bootstrapper {
     try {
       executor.submit(task).get(1, TimeUnit.MINUTES);
     } catch (Exception e) {
-      // This is expected for fresh installations where root container doesn't exist yet
-      LOGGER.debug(
-          "Upgrade migration for realm '{}' skipped or failed: {}. This is expected for fresh installations.",
-          realmId,
-          e.getMessage());
+      // This should not happen if called after bootstrap, but log it just in case
+      LOGGER.warn("Upgrade migration for realm '{}' failed: {}", realmId, e.getMessage());
+      LOGGER.debug("Upgrade migration exception details:", e);
     }
   }
 
