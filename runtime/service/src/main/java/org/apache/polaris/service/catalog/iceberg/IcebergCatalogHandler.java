@@ -116,6 +116,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -206,6 +207,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
+
+  protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -445,7 +448,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableDirect(
@@ -454,7 +456,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Authorize first with original delegation modes to initialize resolution manifest
     authorizeCreateTableDirect(namespace, request, delegationModes);
+
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     request.validate();
 
@@ -482,7 +493,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return buildLoadTableResponseWithDelegationCredentials(
               tableIdentifier,
               tableMetadata,
-              delegationModes,
+              resolvedMode,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -573,7 +584,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableStaged(
@@ -582,7 +592,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Authorize first with original delegation modes to initialize resolution manifest
     authorizeCreateTableStaged(namespace, request, delegationModes);
+
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -590,7 +609,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
             metadata,
-            delegationModes,
+            resolvedMode,
             Set.of(PolarisStorageActions.ALL),
             refreshCredentialsEndpoint)
         .build();
@@ -773,8 +792,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
-    checkAllowExternalCatalogCredentialVending(delegationModes);
-
     return actionsRequested;
   }
 
@@ -785,8 +802,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Authorize first with original delegation modes to initialize resolution manifest
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(tableIdentifier, delegationModes);
+
+    // Resolve the optimal delegation mode based on catalog capabilities (after authorization)
+    AccessDelegationMode resolvedMode = AccessDelegationMode.UNKNOWN;
+    if (!delegationModes.isEmpty()) {
+      resolvedMode = resolveAccessDelegationModes(delegationModes);
+      // Check if external catalog access delegation is allowed for the resolved mode
+      checkAllowExternalCatalogAccessDelegation(resolvedMode);
+    }
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -818,7 +844,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           buildLoadTableResponseWithDelegationCredentials(
                   tableIdentifier,
                   tableMetadata,
-                  delegationModes,
+                  resolvedMode,
                   actionsRequested,
                   refreshCredentialsEndpoint)
               .build();
@@ -835,7 +861,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      EnumSet<AccessDelegationMode> delegationModes,
+      AccessDelegationMode delegationMode,
       Set<PolarisStorageActions> actions,
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
@@ -869,7 +895,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   refreshCredentialsEndpoint,
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (delegationModes.contains(VENDED_CREDENTIALS)) {
+      if (delegationMode == VENDED_CREDENTIALS) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
           responseBuilder.addCredential(
@@ -1319,31 +1345,65 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  private void checkAllowExternalCatalogCredentialVending(
-      EnumSet<AccessDelegationMode> delegationModes) {
+  private void checkAllowExternalCatalogAccessDelegation(AccessDelegationMode resolvedMode) {
 
-    if (delegationModes.isEmpty()) {
+    if (resolvedMode == AccessDelegationMode.UNKNOWN) {
       return;
     }
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
 
-    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info(
-        "allow external catalog credential vending: {}",
-        realmConfig()
-            .getConfig(
-                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
         && !realmConfig()
             .getConfig(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+
+      String modeDescription =
+          switch (resolvedMode) {
+            case VENDED_CREDENTIALS -> "Credential vending";
+            case REMOTE_SIGNING -> "Request signing";
+            default -> "Access delegation";
+          };
+
       throw new ForbiddenException(
-          "Access Delegation is not enabled for this catalog. Please consult applicable "
+          "%s is not enabled for this external catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
+          modeDescription,
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
+  }
+
+  /**
+   * Resolves the access delegation mode by delegating to the configured {@link
+   * AccessDelegationModeResolver}.
+   *
+   * <p>Callers must ensure that {@code requestedModes} is not empty before invoking this method. If
+   * no delegation is needed, callers should skip resolution entirely rather than passing an empty
+   * set.
+   *
+   * @param requestedModes The non-empty set of delegation modes requested by the client
+   * @return The resolved access delegation mode
+   * @throws IllegalArgumentException if {@code requestedModes} is empty
+   */
+  protected AccessDelegationMode resolveAccessDelegationModes(
+      EnumSet<AccessDelegationMode> requestedModes) {
+    Preconditions.checkArgument(
+        !requestedModes.isEmpty(),
+        "requestedModes must not be empty; callers should skip resolution when no delegation is needed");
+
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    AccessDelegationMode resolvedMode =
+        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
+
+    // TODO remove when remote signing is implemented
+    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
+    Preconditions.checkArgument(
+        resolvedMode != AccessDelegationMode.REMOTE_SIGNING,
+        "Unsupported access delegation mode: %s",
+        AccessDelegationMode.REMOTE_SIGNING);
+
+    return resolvedMode;
   }
 
   @Override
