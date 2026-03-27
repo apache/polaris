@@ -23,6 +23,7 @@ import io.opentelemetry.api.trace.SpanContext;
 import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -30,10 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.tracing.RequestIdFilter;
-import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
-import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
-import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
+import org.apache.polaris.core.context.RequestIdSupplier;
 
 @ApplicationScoped
 public class PolarisEventMetadataFactory {
@@ -41,6 +39,7 @@ public class PolarisEventMetadataFactory {
   @Inject Clock clock;
   @Inject CurrentIdentityAssociation currentIdentityAssociation;
   @Inject Instance<RealmContext> realmContext;
+  @Inject RequestIdSupplier requestIdSupplier;
 
   /**
    * Creates a new event metadata object.
@@ -100,23 +99,19 @@ public class PolarisEventMetadataFactory {
   }
 
   /**
-   * Extracts the request ID from the current request context.
+   * Extracts the request ID from the current {@link RequestIdSupplier}.
    *
-   * <p>Note: we must avoid injecting {@link jakarta.ws.rs.container.ContainerRequestContext} here,
-   * because this may cause some tests to fail, e.g. when running with no active request scope.
-   *
-   * <p>Using {@code Instance<ContainerRequestContext>} injection doesn't work either, because it's
-   * a special bean that always appears resolvable, even when it's not.
+   * <p>On normal HTTP request threads the supplier is backed by the request-scoped {@link
+   * org.apache.polaris.service.context.catalog.RequestIdHolder}. On async task threads it is
+   * populated by {@link org.apache.polaris.service.task.RequestIdPropagator}.
    */
   private Optional<String> getRequestId() {
-    // See org.jboss.resteasy.reactive.server.injection.ContextProducers
-    ResteasyReactiveRequestContext context = CurrentRequestManager.get();
-    if (context != null) {
-      ContainerRequestContextImpl request = context.getContainerRequestContext();
-      String requestId = (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      return Optional.ofNullable(requestId);
+    try {
+      return Optional.ofNullable(requestIdSupplier.getRequestId());
+    } catch (ContextNotActiveException e) {
+      // No active request scope (e.g. background thread without @ActivateRequestContext).
+      return Optional.empty();
     }
-    return Optional.empty();
   }
 
   /** Extracts the OpenTelemetry context from the current span. */
