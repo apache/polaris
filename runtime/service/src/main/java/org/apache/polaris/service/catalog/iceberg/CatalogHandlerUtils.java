@@ -239,13 +239,17 @@ public class CatalogHandlerUtils {
     Map<String, String> startProperties = catalog.loadNamespaceMetadata(namespace);
     Set<String> missing = Sets.difference(removals, startProperties.keySet());
 
-    if (!updates.isEmpty()) {
-      catalog.setProperties(namespace, updates);
-    }
+    if (catalog instanceof IcebergCatalog polarisCatalog) {
+      polarisCatalog.updateProperties(namespace, removals, updates);
+    } else {
+      if (!updates.isEmpty()) {
+        catalog.setProperties(namespace, updates);
+      }
 
-    if (!removals.isEmpty()) {
-      // remove the original set just in case there was an update just after loading properties
-      catalog.removeProperties(namespace, removals);
+      if (!removals.isEmpty()) {
+        // remove the original set just in case there was an update just after loading properties
+        catalog.removeProperties(namespace, removals);
+      }
     }
 
     return UpdateNamespacePropertiesResponse.builder()
