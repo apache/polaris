@@ -47,7 +47,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -798,40 +797,41 @@ public class TestIndexImpl {
 
   @Test
   public void multithreadedGetKey() throws Exception {
-    multithreaded(KeyIndexTestSet::randomGetKey, true);
+    multithreaded(KeyIndexTestSet::randomGetKey, 200);
   }
 
   @Test
   public void multithreadedSerialize() throws Exception {
-    multithreaded(KeyIndexTestSet::serialize, false);
+    multithreaded(KeyIndexTestSet::serialize, 50);
   }
 
   @Test
   public void multithreadedFirst() throws Exception {
-    multithreaded(ts -> ts.keyIndex().first(), false);
+    multithreaded(ts -> ts.keyIndex().first(), 50);
   }
 
   @Test
   public void multithreadedLast() throws Exception {
-    multithreaded(ts -> ts.keyIndex().last(), false);
+    multithreaded(ts -> ts.keyIndex().last(), 50);
   }
 
   @Test
   public void multithreadedKeys() throws Exception {
-    multithreaded(ts -> ts.keyIndex().asKeyList(), false);
+    multithreaded(ts -> ts.keyIndex().asKeyList(), 50);
   }
 
   @Test
   public void multithreadedElementIterator() throws Exception {
-    multithreaded(ts -> ts.keyIndex().elementIterator().forEachRemaining(el -> {}), false);
+    multithreaded(ts -> ts.keyIndex().elementIterator().forEachRemaining(el -> {}), 50);
   }
 
   @Test
   public void multithreadedIterator() throws Exception {
-    multithreaded(ts -> ts.keyIndex().iterator().forEachRemaining(el -> {}), false);
+    multithreaded(ts -> ts.keyIndex().iterator().forEachRemaining(el -> {}), 50);
   }
 
-  void multithreaded(Consumer<KeyIndexTestSet<ObjRef>> worker, boolean longTest) throws Exception {
+  void multithreaded(Consumer<KeyIndexTestSet<ObjRef>> worker, int iterationsPerThread)
+      throws Exception {
     var indexTestSet =
         KeyIndexTestSet.<ObjRef>newGenerator()
             .keySet(ImmutableRandomUuidKeySet.builder().numKeys(100_000).build())
@@ -845,7 +845,6 @@ public class TestIndexImpl {
     try (var executor = Executors.newFixedThreadPool(threads)) {
       var latch = new CountDownLatch(threads);
       var start = new Semaphore(0);
-      var stop = new AtomicBoolean();
 
       var futures =
           IntStream.range(0, threads)
@@ -859,7 +858,7 @@ public class TestIndexImpl {
                             } catch (InterruptedException e) {
                               throw new RuntimeException(e);
                             }
-                            while (!stop.get()) {
+                            for (var iter = 0; iter < iterationsPerThread; iter++) {
                               worker.accept(indexTestSet);
                             }
                           },
@@ -869,11 +868,125 @@ public class TestIndexImpl {
       latch.await();
       start.release(threads);
 
-      Thread.sleep(longTest ? TimeUnit.SECONDS.toMillis(3) : 500L);
-
-      stop.set(true);
-
-      CompletableFuture.allOf(futures).get();
+      CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
     }
+  }
+
+  @Test
+  void scratchPoolAcquireRelease() {
+    IndexImpl.clearScratchPool();
+    var buf = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(buf).isNotNull();
+    soft.assertThat(buf.position()).isEqualTo(0);
+
+    // Write some data, then release
+    buf.put((byte) 42);
+    IndexImpl.releaseScratchKeyBuffer(buf);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+
+    // Re-acquire from the same thread should return the same buffer, cleared
+    var buf2 = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(buf2).isSameAs(buf);
+    soft.assertThat(buf2.position()).isEqualTo(0);
+    IndexImpl.releaseScratchKeyBuffer(buf2);
+  }
+
+  @Test
+  void scratchPoolBounded() {
+    IndexImpl.clearScratchPool();
+
+    // The striped pool has a fixed number of slots (POOL_SIZE), each holding at most one buffer.
+    // Releasing from different threads that hash to the same slot just overwrites.
+    soft.assertThat(IndexImpl.POOL_SIZE).isGreaterThan(0);
+
+    // After releasing buffers, pool size can never exceed POOL_SIZE
+    var buffers = new ArrayList<java.nio.ByteBuffer>();
+    for (var i = 0; i < IndexImpl.POOL_SIZE + 10; i++) {
+      buffers.add(IndexImpl.acquireScratchKeyBuffer());
+    }
+    buffers.forEach(IndexImpl::releaseScratchKeyBuffer);
+
+    soft.assertThat(IndexImpl.scratchPoolSize()).isLessThanOrEqualTo(IndexImpl.POOL_SIZE);
+  }
+
+  @Test
+  void scratchPoolNestedAcquire() {
+    IndexImpl.clearScratchPool();
+
+    // First acquire takes the buffer from the slot
+    var outer = IndexImpl.acquireScratchKeyBuffer();
+    // Second acquire from the same thread hits the same (now empty) slot, must allocate fresh
+    var inner = IndexImpl.acquireScratchKeyBuffer();
+
+    soft.assertThat(inner).isNotSameAs(outer);
+
+    // Both buffers are independently usable
+    outer.put((byte) 1);
+    inner.put((byte) 2);
+    soft.assertThat(outer.get(0)).isEqualTo((byte) 1);
+    soft.assertThat(inner.get(0)).isEqualTo((byte) 2);
+
+    // Release inner first, then outer — outer wins the slot (last-write-wins)
+    IndexImpl.releaseScratchKeyBuffer(inner);
+    IndexImpl.releaseScratchKeyBuffer(outer);
+
+    // Re-acquire should get the outer buffer (last released to this slot)
+    var reacquired = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(reacquired).isSameAs(outer);
+    IndexImpl.releaseScratchKeyBuffer(reacquired);
+  }
+
+  @Test
+  void scratchPoolConcurrentAccess() throws Exception {
+    IndexImpl.clearScratchPool();
+
+    var threads = Runtime.getRuntime().availableProcessors() * 2;
+    var iterationsPerThread = 1000;
+    var latch = new CountDownLatch(threads);
+    var start = new Semaphore(0);
+
+    try (var executor = Executors.newFixedThreadPool(threads)) {
+      var futures =
+          IntStream.range(0, threads)
+              .mapToObj(
+                  i ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            latch.countDown();
+                            try {
+                              start.acquire();
+                            } catch (InterruptedException e) {
+                              throw new RuntimeException(e);
+                            }
+                            for (var iter = 0; iter < iterationsPerThread; iter++) {
+                              var buf = IndexImpl.acquireScratchKeyBuffer();
+                              // Write a marker to verify no buffer is shared concurrently
+                              var marker = (byte) (Thread.currentThread().hashCode() & 0xFF);
+                              buf.put(0, marker);
+                              // Simulate work
+                              for (var j = 1; j < 16; j++) {
+                                buf.put(j, marker);
+                              }
+                              // Verify our marker is still intact (no other thread overwrote it)
+                              for (var j = 0; j < 16; j++) {
+                                if (buf.get(j) != marker) {
+                                  throw new AssertionError(
+                                      "Buffer was concurrently modified at position " + j);
+                                }
+                              }
+                              IndexImpl.releaseScratchKeyBuffer(buf);
+                            }
+                          },
+                          executor))
+              .toArray(CompletableFuture[]::new);
+
+      latch.await();
+      start.release(threads);
+
+      CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
+    }
+
+    // Pool should still be bounded
+    soft.assertThat(IndexImpl.scratchPoolSize()).isLessThanOrEqualTo(IndexImpl.POOL_SIZE);
   }
 }
