@@ -90,6 +90,37 @@ class TestCliParsing(unittest.TestCase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["find"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["find", "my_table", "--type", "invalid-type"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["table"])  # missing subcommand
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(Exception) as cm_exc:
+            options = Parser.parse(
+                ["find", " ", "--catalog", "my_catalog"]
+            )  # empty identifier
+            Command.from_options(options)
+        self.assertIn("The search identifier cannot be empty", str(cm_exc.exception))
+
+        with self.assertRaises(Exception) as cm_missing:
+            options = Parser.parse(["tables", "list"])  # missing catalog/namespace
+            Command.from_options(options)
+        self.assertIn("Missing required argument", str(cm_missing.exception))
+
+        with self.assertRaises(Exception) as cm_exc:
+            options = Parser.parse(
+                ["tables", "get", " ", "--catalog", "my_catalog", "--namespace", "ns"]
+            )  # empty table name
+            Command.from_options(options)
+        self.assertIn("The table name cannot be empty", str(cm_exc.exception))
+
+        with self.assertRaises(SystemExit) as cm:
             Parser.parse(
                 [
                     "privileges",
@@ -249,6 +280,56 @@ class TestCliParsing(unittest.TestCase):
                 "--catalog-role",
                 "r",
                 "fake-privilege",
+            ]
+        )
+        Parser.parse(["find", "my_table"])
+        Parser.parse(["find", "my_table", "--catalog", "my_catalog"])
+        Parser.parse(["find", "my_table", "--catalog", "my_catalog", "--type", "table"])
+        Parser.parse(
+            ["tables", "list", "--catalog", "my_catalog", "--namespace", "ns1.ns2"]
+        )
+        Parser.parse(
+            [
+                "tables",
+                "get",
+                "my_table",
+                "--catalog",
+                "my_catalog",
+                "--namespace",
+                "ns1.ns2",
+            ]
+        )
+        Parser.parse(
+            [
+                "tables",
+                "summarize",
+                "my_table",
+                "--catalog",
+                "my_catalog",
+                "--namespace",
+                "ns1.ns2",
+            ]
+        )
+        Parser.parse(
+            [
+                "tables",
+                "delete",
+                "my_table",
+                "--catalog",
+                "my_catalog",
+                "--namespace",
+                "ns1.ns2",
+            ]
+        )
+        Parser.parse(
+            [
+                "tables",
+                "summarize",
+                "my_table",
+                "--catalog",
+                "my_catalog",
+                "--namespace",
+                "ns1.ns2",
             ]
         )
 

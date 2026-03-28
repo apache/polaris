@@ -64,6 +64,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added setup options to Polaris CLI.
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 - Added summarize subcommand to Polaris CLI.
+- Added find and tables options to Polaris CLI.
 
 ### Changes
 

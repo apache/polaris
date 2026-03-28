@@ -100,7 +100,7 @@ class NamespacesCommand(Command):
         print("Metadata")
         print(f"  {'Level:':<30} {len(self.namespace)}")
         if len(self.namespace) > 1:
-            print(f"  {'Parent:':<30} {UNIT_SEPARATOR.join(self.namespace[:-1])}")
+            print(f"  {'Parent:':<30} {'.'.join(self.namespace[:-1])}")
         sub_ns = (
             catalog_api.list_namespaces(prefix=self.catalog, parent=ns_str).namespaces
             or []
@@ -116,12 +116,13 @@ class NamespacesCommand(Command):
             or []
         )
         print(f"  {'Views:':<30} {len(views)}")
+
         # Effective policies
         policy_api = PolicyAPI(catalog_api.api_client)
         policies_resp = policy_api.get_applicable_policies(
             prefix=self.catalog, namespace=ns_str
         )
-        print("Effective Policies")
+        print("\nEffective Policies")
         applicable_policies = policies_resp.applicable_policies or []
         if applicable_policies:
             for policy in sorted(applicable_policies, key=lambda x: x.name):

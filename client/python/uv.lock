@@ -17,6 +17,7 @@ version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
+    { name = "prettytable" },
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "pyyaml" },
@@ -40,6 +41,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = "~=1.42.2" },
+    { name = "prettytable", specifier = ">=3.17.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },

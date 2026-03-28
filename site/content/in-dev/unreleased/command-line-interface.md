@@ -54,6 +54,8 @@ options:
 8. policies
 9. repair
 10. setup
+11. find
+12. tables
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -69,6 +71,8 @@ polaris profiles list
 polaris policies list --catalog some_catalog --namespace some.schema
 polaris repair
 polaris setup apply setup-config.yaml
+polaris find some_table
+polaris tables list --catalog my_catalog --namespace ns1
 ```
 
 ### Authentication
@@ -121,6 +125,8 @@ polaris catalogs --help
 polaris principals create --help
 polaris profiles --help
 polaris setup --help
+polaris find --help
+polaris tables --help
 ```
 
 ### catalogs
@@ -1569,6 +1575,113 @@ options:
 
 ```
 polaris setup export
+```
+
+### find
+
+The `find` command is used to searches for an identifier across global entities (principals, roles, catalogs)
+and catalog entities (namespaces, tables, views) using fuzzy matching.
+
+##### Examples
+
+```
+polaris find my_table
+polaris find ns1.ns2
+polaris find --catalog my_catalog my_table
+polaris find my_table --type table
+```
+
+### tables
+
+The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
+
+`tables` supports the following subcommands:
+
+1. list
+2. get
+3. summarize
+4. delete
+
+#### list
+
+The `list` subcommand is used to list tables within a namesace from a given catalog.
+
+```
+input: polaris tables list --help
+options:
+  list
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris tables list
+```
+
+#### get
+
+The `get` subcommand retrieves the table metadata for a specific table.
+
+```
+input: polaris tables get --help
+options:
+  get
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables get my_table --catalog my_catalog --namespace ns1
+```
+
+#### summarize
+
+The `summarize` subcommand provides a detail overview of a table.
+
+```
+input: polaris tables summarize --help
+options:
+  summarize
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables summarize my_table --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand de-registers a table from catalog (metadata-only deletion).
+
+```
+input: polaris tables delete --help
+options:
+  delete
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables delete my_table --catalog my_catalog --namesapce ns1
 ```
 
 ## Examples
