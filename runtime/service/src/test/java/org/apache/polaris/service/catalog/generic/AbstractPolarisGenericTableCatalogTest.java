@@ -217,8 +217,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             config -> java.util.Optional.empty(),
             storageCredentialCache,
             callContext.getRealmConfig());
-    when(storageIntegrationProvider.getStorageIntegration(
-            isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =

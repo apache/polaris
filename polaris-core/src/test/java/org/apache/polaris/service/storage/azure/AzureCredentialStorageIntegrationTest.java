@@ -349,27 +349,9 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
-    org.apache.polaris.core.entity.PolarisBaseEntity base =
-        new org.apache.polaris.core.entity.PolarisBaseEntity(
-            1,
-            2,
-            org.apache.polaris.core.entity.PolarisEntityType.CATALOG,
-            org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE,
-            0,
-            "test");
-    java.util.Map<String, String> internalProps = new java.util.HashMap<>();
-    internalProps.put(
-        org.apache.polaris.core.entity.PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-        azureConfig.serialize());
-    base =
-        new org.apache.polaris.core.entity.PolarisBaseEntity.Builder(base)
-            .internalPropertiesAsMap(internalProps)
-            .build();
-    org.apache.polaris.core.entity.PolarisEntity entity =
-        new org.apache.polaris.core.entity.PolarisEntity(base);
     return azureCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        entity,
+        azureConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),

@@ -538,8 +538,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegration(
-        polarisStorageConfigurationInfo);
+    return storageIntegrationProvider.getStorageIntegration(polarisStorageConfigurationInfo);
   }
 
   /** {@inheritDoc} */

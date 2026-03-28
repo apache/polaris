@@ -48,10 +48,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -100,7 +97,7 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
@@ -109,7 +106,7 @@ public class GcpCredentialsStorageIntegration
       @Nonnull CredentialVendingContext context) {
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        entity,
+        storageConfig.serialize(),
         allowList,
         readLocations,
         writeLocations,
@@ -119,12 +116,13 @@ public class GcpCredentialsStorageIntegration
   @Override
   public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
+    GcpStorageConfigurationInfo gcpStorageConfig = (GcpStorageConfigurationInfo) storageConfig;
     boolean allowListOperation = allowList;
     Set<String> allowedReadLocations = readLocations;
     Set<String> allowedWriteLocations = writeLocations;
@@ -135,13 +133,7 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    String storageConfigStr =
-        entity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    GcpStorageConfigurationInfo storageConfig =
-        (GcpStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
-    GoogleCredentials credentialsToDownscope = getBaseCredentials(storageConfig);
+    GoogleCredentials credentialsToDownscope = getBaseCredentials(gcpStorageConfig);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(
@@ -334,17 +326,16 @@ public class GcpCredentialsStorageIntegration
    */
   public static GcpStorageCredentialCacheKey buildStorageCredentialCacheKey(
       @Nonnull String realmId,
-      @Nonnull PolarisEntity entity,
+      @jakarta.annotation.Nullable String storageConfigSerializedStr,
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull CredentialVendingContext credentialVendingContext) {
     return GcpStorageCredentialCacheKey.of(
         realmId,
-        entity,
+        storageConfigSerializedStr,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,

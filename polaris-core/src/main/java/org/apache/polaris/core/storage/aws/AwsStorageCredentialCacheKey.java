@@ -21,8 +21,6 @@ package org.apache.polaris.core.storage.aws;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -39,25 +37,22 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String realmId();
 
   @Value.Parameter(order = 2)
-  long catalogId();
-
-  @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();
 
-  @Value.Parameter(order = 4)
+  @Value.Parameter(order = 3)
   boolean allowedListAction();
 
-  @Value.Parameter(order = 5)
+  @Value.Parameter(order = 4)
   Set<String> allowedReadLocations();
 
-  @Value.Parameter(order = 6)
+  @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
 
-  @Value.Parameter(order = 7)
+  @Value.Parameter(order = 6)
   Optional<String> refreshCredentialsEndpoint();
 
-  @Value.Parameter(order = 8)
+  @Value.Parameter(order = 7)
   Optional<String> principalName();
 
   /**
@@ -67,16 +62,16 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
    * tags are enabled, the principal name is needed for the {@code polaris:principal} tag and for
    * cache key differentiation, but should not appear in the role session name).
    */
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   boolean includePrincipalInRoleSessionName();
 
   /** Credential vending context for session tags. */
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 9)
   CredentialVendingContext credentialVendingContext();
 
   static AwsStorageCredentialCacheKey of(
       String realmId,
-      PolarisEntity entity,
+      @Nullable String storageConfigSerializedStr,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
@@ -84,13 +79,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Optional<String> principalName,
       boolean includePrincipalInRoleSessionName,
       CredentialVendingContext credentialVendingContext) {
-    String storageConfigSerializedStr =
-        entity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
-        entity.getCatalogId(),
         storageConfigSerializedStr,
         allowedListAction,
         allowedReadLocations,

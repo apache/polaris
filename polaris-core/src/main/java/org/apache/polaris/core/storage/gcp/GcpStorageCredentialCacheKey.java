@@ -21,8 +21,6 @@ package org.apache.polaris.core.storage.gcp;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -38,38 +36,30 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String realmId();
 
   @Value.Parameter(order = 2)
-  long catalogId();
-
-  @Value.Parameter(order = 3)
   @Nullable
   String storageConfigSerializedStr();
 
-  @Value.Parameter(order = 4)
+  @Value.Parameter(order = 3)
   boolean allowedListAction();
 
-  @Value.Parameter(order = 5)
+  @Value.Parameter(order = 4)
   Set<String> allowedReadLocations();
 
-  @Value.Parameter(order = 6)
+  @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
 
-  @Value.Parameter(order = 7)
+  @Value.Parameter(order = 6)
   Optional<String> refreshCredentialsEndpoint();
 
   static GcpStorageCredentialCacheKey of(
       String realmId,
-      PolarisEntity entity,
+      @Nullable String storageConfigSerializedStr,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
-    String storageConfigSerializedStr =
-        entity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
-        entity.getCatalogId(),
         storageConfigSerializedStr,
         allowedListAction,
         allowedReadLocations,

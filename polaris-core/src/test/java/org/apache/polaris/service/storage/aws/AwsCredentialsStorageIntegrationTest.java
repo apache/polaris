@@ -33,18 +33,13 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.aws.AwsStorageCredentialCacheKey;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.AwsStorageCredentialCacheKey;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
@@ -103,17 +98,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           .principalName(Optional.of(POLARIS_PRINCIPAL.getName()))
           .build();
 
-  private static PolarisEntity entityWithConfig(AwsStorageConfigurationInfo config) {
-    PolarisBaseEntity base =
-        new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "test");
-    Map<String, String> internalProps = new java.util.HashMap<>();
-    internalProps.put(
-        PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
-    base = new PolarisBaseEntity.Builder(base).internalPropertiesAsMap(internalProps).build();
-    return new PolarisEntity(base);
-  }
-
   @SafeVarargs
   private static RealmConfig enabledFeatures(FeatureConfiguration<Boolean>... enabledOptions) {
     return new RealmConfigImpl(
@@ -166,7 +150,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
-                entityWithConfig(config),
+                config,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -216,7 +200,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 PRINCIPAL_INCLUDER_REALM_CONFIG,
-                entityWithConfig(config),
+                config,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -359,7 +343,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
-                    entityWithConfig(config),
+                    config,
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
@@ -462,7 +446,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
-                entityWithConfig(config),
+                config,
                 false,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
@@ -576,7 +560,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
-                entityWithConfig(config),
+                config,
                 true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
@@ -662,7 +646,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
-                entityWithConfig(config),
+                config,
                 true,
                 Set.of(),
                 Set.of(),
@@ -707,7 +691,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
-                    entityWithConfig(config),
+                    config,
                     true,
                     Set.of(),
                     Set.of(),
@@ -750,7 +734,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
                     EMPTY_REALM_CONFIG,
-                    entityWithConfig(config),
+                    config,
                     true,
                     Set.of(),
                     Set.of(),
@@ -766,7 +750,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
                             EMPTY_REALM_CONFIG,
-                            entityWithConfig(config),
+                            config,
                             true,
                             Set.of(),
                             Set.of(),
@@ -815,7 +799,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configWithKmsUnavailable),
+            configWithKmsUnavailable,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -848,7 +832,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configWithKmsUnavailableReadOnly),
+            configWithKmsUnavailableReadOnly,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -907,7 +891,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configWithCurrentKmsKey),
+            configWithCurrentKmsKey,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -957,7 +941,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configWithAllowedKmsKeys),
+            configWithAllowedKmsKeys,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -995,7 +979,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configNoKmsReadOnly),
+            configNoKmsReadOnly,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -1030,7 +1014,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(configNoKmsWrite),
+            configNoKmsWrite,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -1069,7 +1053,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1107,7 +1091,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1145,7 +1129,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             PRINCIPAL_INCLUDER_REALM_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1203,7 +1187,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1276,7 +1260,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             sessionTagsAndTraceIdEnabledConfig,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1343,7 +1327,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1386,7 +1370,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1443,7 +1427,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1482,7 +1466,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             SESSION_TAGS_ENABLED_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1519,7 +1503,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             realmConfig,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1622,7 +1606,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 new AwsCredentialsStorageIntegration(stsClient)
                     .getSubscopedCreds(
                         SESSION_TAGS_ENABLED_CONFIG,
-                        entityWithConfig(config),
+                        config,
                         true,
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1636,15 +1620,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testBuildStorageCredentialCacheKeyExcludesPrincipalByDefault() {
-    PolarisEntity entity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     AwsStorageCredentialCacheKey key =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             EMPTY_REALM_CONFIG,
             true,
             Set.of("s3://bucket/read"),
@@ -1658,15 +1637,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testBuildStorageCredentialCacheKeyIncludesPrincipalWhenFlagSet() {
-    PolarisEntity entity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     AwsStorageCredentialCacheKey key =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             true,
             Set.of("s3://bucket/read"),
@@ -1681,11 +1655,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   @Test
   public void
       testBuildStorageCredentialCacheKeyIncludesPrincipalAndContextWhenSessionTagsFlagSet() {
-    PolarisEntity entity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     RealmConfig sessionTagsConfig =
         sessionTagFields("catalog", "namespace", "table", "principal", "roles");
 
@@ -1700,7 +1669,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AwsStorageCredentialCacheKey key =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             sessionTagsConfig,
             true,
             Set.of("s3://bucket/read"),
@@ -1716,11 +1685,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testBuildStorageCredentialCacheKeyDifferentPrincipalsProduceDifferentKeys() {
-    PolarisEntity entity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     CredentialVendingContext contextAlice =
         CredentialVendingContext.builder().principalName(Optional.of("alice")).build();
     CredentialVendingContext contextBob =
@@ -1729,7 +1693,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AwsStorageCredentialCacheKey key1 =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
@@ -1740,7 +1704,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AwsStorageCredentialCacheKey key2 =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             PRINCIPAL_INCLUDER_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
@@ -1755,11 +1719,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testBuildStorageCredentialCacheKeySamePrincipalsProduceSameKeysWhenFlagOff() {
-    PolarisEntity entity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     CredentialVendingContext ctxAlice =
         CredentialVendingContext.builder().principalName(Optional.of("alice")).build();
     CredentialVendingContext ctxBob =
@@ -1768,7 +1727,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AwsStorageCredentialCacheKey key1 =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             EMPTY_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
@@ -1779,7 +1738,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AwsStorageCredentialCacheKey key2 =
         AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
             "testRealm",
-            entity,
+            null,
             EMPTY_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
@@ -1824,7 +1783,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(stsClient)
         .getSubscopedCreds(
             EMPTY_REALM_CONFIG,
-            entityWithConfig(config),
+            config,
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),

@@ -1257,8 +1257,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegration(
-        polarisStorageConfigurationInfo);
+    return storageIntegrationProvider.getStorageIntegration(polarisStorageConfigurationInfo);
   }
 
   @Override

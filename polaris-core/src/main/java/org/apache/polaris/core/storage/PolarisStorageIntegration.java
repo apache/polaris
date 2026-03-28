@@ -24,9 +24,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 
 /**
  * Abstract of Polaris Storage Integration. Each subclass handles credential vending for a specific
@@ -70,7 +69,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * #getSubscopedCreds} for actual credential vending.
    */
   public StorageAccessConfig getOrLoadSubscopedCreds(
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
@@ -80,7 +79,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
     if (cache != null) {
       StorageCredentialCacheKey key =
           buildCacheKey(
-              entity,
+              storageConfig,
               realmConfig,
               allowList,
               readLocations,
@@ -93,7 +92,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
           () ->
               getSubscopedCreds(
                   realmConfig,
-                  entity,
+                  storageConfig,
                   allowList,
                   readLocations,
                   writeLocations,
@@ -101,15 +100,21 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
                   context));
     }
     return getSubscopedCreds(
-        realmConfig, entity, allowList, readLocations, writeLocations, refreshEndpoint, context);
+        realmConfig,
+        storageConfig,
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint,
+        context);
   }
 
   /**
    * Build a backend-specific cache key. Each subclass includes only the fields that affect the
-   * vended credentials for that backend. Realm ID is available via {@link #realmIdSupplier()}.
+   * vended credentials for that backend.
    */
   protected abstract StorageCredentialCacheKey buildCacheKey(
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
@@ -118,12 +123,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull CredentialVendingContext context);
 
   /**
-   * Subscope credentials for the given entity and locations. Subclasses implement the actual
-   * credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS generation).
+   * Subscope credentials for the given storage configuration and locations. Subclasses implement
+   * the actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
+   * generation).
    */
   public abstract StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,

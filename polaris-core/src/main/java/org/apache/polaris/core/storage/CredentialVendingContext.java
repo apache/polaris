@@ -67,11 +67,6 @@ public interface CredentialVendingContext {
   /** The name of the table being accessed. */
   Optional<String> tableName();
 
-  /**
-   * The activated roles for the principal, represented as a comma-separated sorted string. This is
-   * included in the context (rather than extracted from PolarisPrincipal) to ensure it is part of
-   * the cache key when session tags are enabled.
-   */
   /** The name of the principal requesting credentials. */
   Optional<String> principalName();
 

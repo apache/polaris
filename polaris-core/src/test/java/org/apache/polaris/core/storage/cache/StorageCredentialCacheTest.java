@@ -31,11 +31,6 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -60,7 +55,7 @@ public class StorageCredentialCacheTest {
   public void testBadResult() {
     StorageCredentialCacheKey key =
         buildKey(
-            getPolarisEntities().get(0),
+            "config1",
             true,
             Set.of("s3://bucket1/path"),
             Set.of("s3://bucket3/path"),
@@ -84,14 +79,9 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(3, /* expireSoon= */ false);
     AtomicInteger loadCount = new AtomicInteger();
 
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     StorageCredentialCacheKey key =
         buildKey(
-            polarisEntity,
+            "config1",
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -121,15 +111,10 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(2, /* expireSoon= */ false);
     AtomicInteger loadCount = new AtomicInteger();
 
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     // Key without principal — same key for different principals
     StorageCredentialCacheKey key =
         buildKey(
-            polarisEntity,
+            "config1",
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -152,16 +137,11 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(2, /* expireSoon= */ false);
     AtomicInteger loadCount = new AtomicInteger();
 
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     // Key with principal1 (using AWS parameters which include principalName)
     StorageCredentialCacheKey key1 =
         AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
-            polarisEntity,
+            null,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -174,7 +154,7 @@ public class StorageCredentialCacheTest {
     StorageCredentialCacheKey key2 =
         AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
-            polarisEntity,
+            null,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -200,14 +180,9 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(3, /* expireSoon= */ true);
     AtomicInteger loadCount = new AtomicInteger();
 
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
     StorageCredentialCacheKey cacheKey =
         buildKey(
-            polarisEntity,
+            "config1",
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket/path"),
@@ -232,14 +207,14 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(30, /* expireSoon= */ false);
     AtomicInteger loadCount = new AtomicInteger();
 
-    List<PolarisEntity> entityList = getPolarisEntities();
+    List<String> configList = getStorageConfigStrings();
     int cacheSize = 0;
 
-    // different catalogs will generate new cache entries
-    for (PolarisEntity entity : entityList) {
+    // different storage configs will generate new cache entries
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              entity,
+              configStr,
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
@@ -249,31 +224,28 @@ public class StorageCredentialCacheTest {
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
 
-    // update the entity's storage config — since StorageConfig changed, cache will generate new
-    // entry
-    for (PolarisEntity entity : entityList) {
-      Map<String, String> internalMap = entity.getPropertiesAsMap();
-      internalMap.put(
-          PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
-      PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
+    // changed storage config — cache will generate new entry
+    for (String ignored : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              PolarisEntity.of(updateEntity),
+              "newStorageConfig",
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
-      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
+      // only one new entry since "newStorageConfig" is the same each time
+      if (cacheSize < configList.size() + 1) {
+        Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
+      }
     }
 
     // allowedListAction changed to FALSE — will generate new entry
-    for (PolarisEntity entity : entityList) {
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              entity,
+              configStr,
               false,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
@@ -284,10 +256,10 @@ public class StorageCredentialCacheTest {
     }
 
     // different allowedWriteLocations — will generate new entry
-    for (PolarisEntity entity : entityList) {
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              entity,
+              configStr,
               false,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://differentbucket/path"),
@@ -298,15 +270,10 @@ public class StorageCredentialCacheTest {
     }
 
     // different allowedReadLocations — will generate new entry
-    for (PolarisEntity entity : entityList) {
-      Map<String, String> internalMap = entity.getPropertiesAsMap();
-      internalMap.put(
-          PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
-      PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              PolarisEntity.of(updateEntity),
+              configStr,
               false,
               Set.of("s3://differentbucket/path", "s3://bucket2/path"),
               Set.of("s3://bucket/path"),
@@ -322,11 +289,11 @@ public class StorageCredentialCacheTest {
     List<StorageAccessConfig> configs = getFakeAccessConfigs(20, /* expireSoon= */ false);
     AtomicInteger loadCount = new AtomicInteger();
 
-    List<PolarisEntity> entityList = getPolarisEntities();
-    for (PolarisEntity entity : entityList) {
+    List<String> configList = getStorageConfigStrings();
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              entity,
+              configStr,
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -334,62 +301,48 @@ public class StorageCredentialCacheTest {
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
     }
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(configList.size());
 
-    // entity ID does not affect the cache
-    for (PolarisEntity entity : entityList) {
+    // same config strings produce cache hits
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
+              configStr,
               true,
               Set.of("s3://bucket1/path", "s3://bucket2/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
-      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
-    }
-
-    // other property changes do not affect the cache
-    for (PolarisEntity entity : entityList) {
-      StorageCredentialCacheKey key =
-          buildKey(
-              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
-              true,
-              Set.of("s3://bucket1/path", "s3://bucket2/path"),
-              Set.of("s3://bucket3/path", "s3://bucket4/path"),
-              Optional.empty());
-      storageCredentialCache.getOrLoad(
-          key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
-      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(configList.size());
     }
 
     // order of the allowedReadLocations does not affect the cache
-    for (PolarisEntity entity : entityList) {
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
+              configStr,
               true,
               Set.of("s3://bucket2/path", "s3://bucket1/path"),
               Set.of("s3://bucket3/path", "s3://bucket4/path"),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
-      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(configList.size());
     }
 
     // order of the allowedWriteLocations does not affect the cache
-    for (PolarisEntity entity : entityList) {
+    for (String configStr : configList) {
       StorageCredentialCacheKey key =
           buildKey(
-              new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
+              configStr,
               true,
               Set.of("s3://bucket2/path", "s3://bucket1/path"),
               Set.of("s3://bucket4/path", "s3://bucket3/path"),
               Optional.empty());
       storageCredentialCache.getOrLoad(
           key, realmConfig, () -> configs.get(loadCount.getAndIncrement()));
-      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(configList.size());
     }
   }
 
@@ -402,11 +355,9 @@ public class StorageCredentialCacheTest {
             .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
             .build();
 
-    List<PolarisEntity> entityList = getPolarisEntities();
-
     StorageCredentialCacheKey key =
         buildKey(
-            entityList.get(0),
+            "config1",
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
@@ -421,14 +372,14 @@ public class StorageCredentialCacheTest {
   }
 
   private DefaultStorageCredentialCacheKey buildKey(
-      PolarisEntity entity,
+      String storageConfigSerializedStr,
       boolean allowListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
     return DefaultStorageCredentialCacheKey.of(
         realmContext.getRealmIdentifier(),
-        entity,
+        storageConfigSerializedStr,
         allowListAction,
         allowedReadLocations,
         allowedWriteLocations,
@@ -466,20 +417,7 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
-  private static List<PolarisEntity> getPolarisEntities() {
-    PolarisEntity polarisEntity1 =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-    PolarisEntity polarisEntity2 =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                2, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-    PolarisEntity polarisEntity3 =
-        new PolarisEntity(
-            new PolarisBaseEntity(
-                3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
-
-    return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
+  private static List<String> getStorageConfigStrings() {
+    return Arrays.asList("config1", "config2", "config3");
   }
 }

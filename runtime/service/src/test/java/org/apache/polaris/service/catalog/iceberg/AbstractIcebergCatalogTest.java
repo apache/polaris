@@ -330,8 +330,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             config -> Optional.empty(),
             storageCredentialCache,
             callContext.getRealmConfig());
-    when(storageIntegrationProvider.getStorageIntegration(
-            isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
@@ -1855,15 +1854,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    var integration =
-        storageIntegrationProvider.getStorageIntegration(
-            org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
-                diagServices, taskEntity));
+    var storageConfig =
+        org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
+            diagServices, taskEntity);
+    var integration = storageIntegrationProvider.getStorageIntegration(storageConfig);
     Map<String, String> credentials =
         integration
             .getSubscopedCreds(
                 callContext.getRealmConfig(),
-                taskEntity,
+                storageConfig,
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),

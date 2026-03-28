@@ -37,7 +37,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -147,12 +146,9 @@ public class StorageAccessConfigProvider {
     RealmConfig realmConfig = callContext.getRealmConfig();
 
     // Get the right integration for this storage type
-    String storageConfigStr =
-        storageInfoEntity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     PolarisStorageConfigurationInfo storageConfig =
-        PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
+        org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
+            diagnostics, storageInfoEntity);
     var integration = storageIntegrationProvider.getStorageIntegration(storageConfig);
     diagnostics.checkNotNull(
         integration,
@@ -164,7 +160,7 @@ public class StorageAccessConfigProvider {
     // Vend credentials (with caching handled by the integration)
     StorageAccessConfig accessConfig =
         integration.getOrLoadSubscopedCreds(
-            storageInfoEntity,
+            storageConfig,
             allowList,
             tableLocations,
             writeLocations,

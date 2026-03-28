@@ -70,27 +70,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private static final String REFRESH_ENDPOINT = "get/credentials";
 
-  private static org.apache.polaris.core.entity.PolarisEntity entityWithConfig(
-      org.apache.polaris.core.storage.PolarisStorageConfigurationInfo config) {
-    org.apache.polaris.core.entity.PolarisBaseEntity base =
-        new org.apache.polaris.core.entity.PolarisBaseEntity(
-            1,
-            2,
-            org.apache.polaris.core.entity.PolarisEntityType.CATALOG,
-            org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE,
-            0,
-            "test");
-    java.util.Map<String, String> internalProps = new java.util.HashMap<>();
-    internalProps.put(
-        org.apache.polaris.core.entity.PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-        config.serialize());
-    base =
-        new org.apache.polaris.core.entity.PolarisBaseEntity.Builder(base)
-            .internalPropertiesAsMap(internalProps)
-            .build();
-    return new org.apache.polaris.core.entity.PolarisEntity(base);
-  }
-
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testSubscope(boolean allowedListAction) throws Exception {
@@ -199,7 +178,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        entityWithConfig(gcpConfig),
+        gcpConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
@@ -378,7 +357,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     integration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
-        entityWithConfig(config),
+        config,
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),

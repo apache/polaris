@@ -34,8 +34,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -98,7 +96,7 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       @Nonnull RealmConfig realmConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
@@ -107,7 +105,7 @@ public class AwsCredentialsStorageIntegration
       @Nonnull CredentialVendingContext context) {
     return buildStorageCredentialCacheKey(
         context.realm().orElse(""),
-        entity,
+        storageConfig.serialize(),
         realmConfig,
         allowList,
         readLocations,
@@ -119,22 +117,17 @@ public class AwsCredentialsStorageIntegration
   @Override
   public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisEntity entity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
+    AwsStorageConfigurationInfo awsStorageConfig = (AwsStorageConfigurationInfo) storageConfig;
     String principalName = context.principalName().orElse("");
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
-    String storageConfigStr =
-        entity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    AwsStorageConfigurationInfo storageConfig =
-        (AwsStorageConfigurationInfo) PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
-    String region = storageConfig.getRegion();
+    String region = awsStorageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
     boolean allowListOperation = allowList;
@@ -148,15 +141,15 @@ public class AwsCredentialsStorageIntegration
             ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + principalName)
             : "PolarisAwsCredentialsStorageIntegration";
 
-    if (shouldUseSts(storageConfig)) {
+    if (shouldUseSts(awsStorageConfig)) {
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
-              .externalId(storageConfig.getExternalId())
-              .roleArn(storageConfig.getRoleARN())
+              .externalId(awsStorageConfig.getExternalId())
+              .roleArn(awsStorageConfig.getRoleARN())
               .roleSessionName(roleSessionName)
               .policy(
                   policyString(
-                          storageConfig,
+                          awsStorageConfig,
                           allowListOperation,
                           allowedReadLocations,
                           allowedWriteLocations,
@@ -183,13 +176,14 @@ public class AwsCredentialsStorageIntegration
       }
 
       credentialsResolver
-          .apply(storageConfig)
+          .apply(awsStorageConfig)
           .ifPresent(cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
-          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+          stsClientProvider.stsClient(
+              StsDestination.of(awsStorageConfig.getStsEndpointUri(), region));
 
       AssumeRoleResponse response = stsClient.assumeRole(request.build());
       accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
@@ -216,24 +210,25 @@ public class AwsCredentialsStorageIntegration
           accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
         });
 
-    URI endpointUri = storageConfig.getEndpointUri();
+    URI endpointUri = awsStorageConfig.getEndpointUri();
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
     }
-    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+    URI internalEndpointUri = awsStorageConfig.getInternalEndpointUri();
     if (internalEndpointUri != null) {
       accessConfig.putInternalProperty(
           StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
     }
 
-    if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
+    if (Boolean.TRUE.equals(awsStorageConfig.getPathStyleAccess())) {
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
+    if ("aws-us-gov".equals(awsStorageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
-              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+              "AWS region must be set when using partition %s",
+              awsStorageConfig.getAwsPartition()));
     }
 
     return accessConfig.build();
@@ -458,7 +453,7 @@ public class AwsCredentialsStorageIntegration
    */
   public static AwsStorageCredentialCacheKey buildStorageCredentialCacheKey(
       @Nonnull String realmId,
-      @Nonnull PolarisEntity entity,
+      @jakarta.annotation.Nullable String storageConfigSerializedStr,
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -476,7 +471,7 @@ public class AwsCredentialsStorageIntegration
         includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
     return AwsStorageCredentialCacheKey.of(
         realmId,
-        entity,
+        storageConfigSerializedStr,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,

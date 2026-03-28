@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -43,8 +42,8 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
@@ -160,7 +159,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     return new PolarisStorageIntegration<PolarisStorageConfigurationInfo>("file") {
       @Override
       protected StorageCredentialCacheKey buildCacheKey(
-          @Nonnull PolarisEntity entity,
+          @Nonnull PolarisStorageConfigurationInfo storageConfig,
           @Nonnull RealmConfig realmConfig,
           boolean allowList,
           @Nonnull Set<String> readLocations,
@@ -173,7 +172,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       @Override
       public StorageAccessConfig getSubscopedCreds(
           @Nonnull RealmConfig realmConfig,
-          @Nonnull PolarisEntity entity,
+          @Nonnull PolarisStorageConfigurationInfo storageConfig,
           boolean allowList,
           @Nonnull Set<String> readLocations,
           @Nonnull Set<String> writeLocations,
