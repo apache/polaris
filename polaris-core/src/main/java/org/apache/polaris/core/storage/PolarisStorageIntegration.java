@@ -19,61 +19,122 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 
 /**
- * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
- * service principle information
+ * Abstract of Polaris Storage Integration. Each subclass handles credential vending for a specific
+ * cloud storage backend (AWS, GCP, Azure).
+ *
+ * <p>Integrations are expected to be singletons — they do not hold per-entity storage
+ * configuration. Instead, configuration is passed as method parameters at call time. Per-request
+ * state (realm config, realm ID) is resolved via suppliers provided at construction time.
  *
  * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
  */
 public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigurationInfo> {
 
   private final String integrationIdentifierOrId;
-  private final T config;
+  @Nullable private final StorageCredentialCache cache;
+  private final RealmConfig realmConfig;
 
-  public PolarisStorageIntegration(T config, String identifierOrId) {
-    this.config = config;
-    this.integrationIdentifierOrId = identifierOrId;
+  /** Test-only constructor without cache or request-scoped config. */
+  public PolarisStorageIntegration(String identifierOrId) {
+    this(identifierOrId, null, null);
   }
 
-  protected T config() {
-    return config;
+  public PolarisStorageIntegration(
+      String identifierOrId, @Nullable StorageCredentialCache cache, RealmConfig realmConfig) {
+    this.integrationIdentifierOrId = identifierOrId;
+    this.cache = cache;
+    this.realmConfig = realmConfig;
   }
 
   public String getStorageIdentifierOrId() {
     return integrationIdentifierOrId;
   }
 
+  protected RealmConfig realmConfig() {
+    return realmConfig;
+  }
+
   /**
-   * Subscope the creds against the allowed read and write locations.
-   *
-   * @param realmConfig the call context
-   * @param allowListOperation whether to allow LIST on all the provided allowed read/write
-   *     locations
-   * @param allowedReadLocations a set of allowed to read locations
-   * @param allowedWriteLocations a set of allowed to write locations
-   * @param polarisPrincipal the principal requesting credentials
-   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
-   *     supported by the storage type it will be returned to the client in the appropriate
-   *     properties. The endpoint may be relative to the base URI and the client is responsible for
-   *     handling the relative path
-   * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
-   * @return An enum map including the scoped credentials
+   * Get subscoped credentials, using the cache if available. Resolves realm config and realm ID
+   * from suppliers. Delegates to {@link #buildCacheKey} for cache key construction and {@link
+   * #getSubscopedCreds} for actual credential vending.
+   */
+  public StorageAccessConfig getOrLoadSubscopedCreds(
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    RealmConfig realmConfig = this.realmConfig;
+    if (cache != null) {
+      StorageCredentialCacheKey key =
+          buildCacheKey(
+              storageConfig,
+              realmConfig,
+              allowList,
+              readLocations,
+              writeLocations,
+              refreshEndpoint,
+              context);
+      return cache.getOrLoad(
+          key,
+          realmConfig,
+          () ->
+              getSubscopedCreds(
+                  realmConfig,
+                  storageConfig,
+                  allowList,
+                  readLocations,
+                  writeLocations,
+                  refreshEndpoint,
+                  context));
+    }
+    return getSubscopedCreds(
+        realmConfig,
+        storageConfig,
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint,
+        context);
+  }
+
+  /**
+   * Build a backend-specific cache key. Each subclass includes only the fields that affect the
+   * vended credentials for that backend.
+   */
+  protected abstract StorageCredentialCacheKey buildCacheKey(
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context);
+
+  /**
+   * Subscope credentials for the given storage configuration and locations. Subclasses implement
+   * the actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
+   * generation).
    */
   public abstract StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context);
 
   /**
    * Validate access for the provided operation actions and locations.

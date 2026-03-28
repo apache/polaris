@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -41,22 +40,22 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
-  private final StsClientProvider stsClientProvider;
-  private final Optional<AwsCredentialsProvider> stsCredentials;
-  private final Supplier<GoogleCredentials> gcpCredsProvider;
-  private final StorageConfiguration storageConfiguration;
-  private final RealmConfig realmConfig;
+  private final AwsCredentialsStorageIntegration awsIntegration;
+  private volatile GcpCredentialsStorageIntegration gcpIntegration;
+  private volatile AzureCredentialsStorageIntegration azureIntegration;
+  private final PolarisStorageIntegration<?> fileIntegration;
+  private final Supplier<GcpCredentialsStorageIntegration> gcpIntegrationSupplier;
+  private final Supplier<AzureCredentialsStorageIntegration> azureIntegrationSupplier;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -64,101 +63,133 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StorageConfiguration storageConfiguration,
       StsClientProvider stsClientProvider,
       RealmConfig realmConfig,
-      Clock clock) {
-    this.storageConfiguration = storageConfiguration;
-    this.stsClientProvider = stsClientProvider;
-    this.stsCredentials = Optional.empty();
-    this.gcpCredsProvider = storageConfiguration.gcpCredentialsSupplier(clock);
-    this.realmConfig = realmConfig;
+      Clock clock,
+      StorageCredentialCache cache) {
+    this.awsIntegration =
+        new AwsCredentialsStorageIntegration(
+            stsClientProvider,
+            config -> {
+              if (realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+                return Optional.of(storageConfiguration.stsCredentials(config.getStorageName()));
+              }
+              return Optional.of(storageConfiguration.stsCredentials());
+            },
+            cache,
+            realmConfig);
+    Supplier<GoogleCredentials> gcpCredsProvider =
+        storageConfiguration.gcpCredentialsSupplier(clock);
+    this.gcpIntegrationSupplier =
+        () ->
+            new GcpCredentialsStorageIntegration(
+                gcpCredsProvider.get(),
+                ServiceOptions.getFromServiceLoader(
+                    HttpTransportFactory.class, NetHttpTransport::new),
+                cache,
+                realmConfig);
+    this.azureIntegrationSupplier =
+        () -> new AzureCredentialsStorageIntegration(cache, realmConfig);
+    this.fileIntegration = createFileIntegration();
   }
 
   public PolarisStorageIntegrationProviderImpl(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
-      Supplier<GoogleCredentials> gcpCredsProvider) {
-    this.stsClientProvider = stsClientProvider;
-    this.stsCredentials = stsCredentials;
-    this.gcpCredsProvider = gcpCredsProvider;
-    this.storageConfiguration = null;
-    this.realmConfig = null;
+      Supplier<GoogleCredentials> gcpCredsProvider,
+      StorageCredentialCache cache,
+      RealmConfig realmConfig) {
+    this.awsIntegration =
+        new AwsCredentialsStorageIntegration(
+            stsClientProvider, config -> stsCredentials, cache, realmConfig);
+    this.gcpIntegrationSupplier =
+        () ->
+            new GcpCredentialsStorageIntegration(
+                gcpCredsProvider.get(),
+                ServiceOptions.getFromServiceLoader(
+                    HttpTransportFactory.class, NetHttpTransport::new),
+                cache,
+                realmConfig);
+    this.azureIntegrationSupplier =
+        () -> new AzureCredentialsStorageIntegration(cache, realmConfig);
+    this.fileIntegration = createFileIntegration();
+  }
+
+  private GcpCredentialsStorageIntegration getGcpIntegration() {
+    if (gcpIntegration == null) {
+      synchronized (this) {
+        if (gcpIntegration == null) {
+          gcpIntegration = gcpIntegrationSupplier.get();
+        }
+      }
+    }
+    return gcpIntegration;
+  }
+
+  private AzureCredentialsStorageIntegration getAzureIntegration() {
+    if (azureIntegration == null) {
+      synchronized (this) {
+        if (azureIntegration == null) {
+          azureIntegration = azureIntegrationSupplier.get();
+        }
+      }
+    }
+    return azureIntegration;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+      @Nullable PolarisStorageIntegration<T> getStorageIntegration(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     if (polarisStorageConfigurationInfo == null) {
       return null;
     }
-    PolarisStorageIntegration<T> storageIntegration;
-    switch (polarisStorageConfigurationInfo.getStorageType()) {
-      case S3:
-        Optional<AwsCredentialsProvider> awsCreds = stsCredentials;
-        if (awsCreds.isEmpty() && storageConfiguration != null) {
-          if (realmConfig != null
-              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
-            awsCreds =
-                Optional.of(
-                    storageConfiguration.stsCredentials(
-                        polarisStorageConfigurationInfo.getStorageName()));
-          } else {
-            awsCreds = Optional.of(storageConfiguration.stsCredentials());
-          }
-        }
-        storageIntegration =
-            (PolarisStorageIntegration<T>)
-                new AwsCredentialsStorageIntegration(
-                    (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
-                    stsClientProvider,
-                    awsCreds);
-        break;
-      case GCS:
-        storageIntegration =
-            (PolarisStorageIntegration<T>)
-                new GcpCredentialsStorageIntegration(
-                    (GcpStorageConfigurationInfo) polarisStorageConfigurationInfo,
-                    gcpCredsProvider.get(),
-                    ServiceOptions.getFromServiceLoader(
-                        HttpTransportFactory.class, NetHttpTransport::new));
-        break;
-      case AZURE:
-        storageIntegration =
-            (PolarisStorageIntegration<T>)
-                new AzureCredentialsStorageIntegration(
-                    (AzureStorageConfigurationInfo) polarisStorageConfigurationInfo);
-        break;
-      case FILE:
-        storageIntegration =
-            new PolarisStorageIntegration<>((T) polarisStorageConfigurationInfo, "file") {
-              @Override
-              public StorageAccessConfig getSubscopedCreds(
-                  @Nonnull RealmConfig realmConfig,
-                  boolean allowListOperation,
-                  @Nonnull Set<String> allowedReadLocations,
-                  @Nonnull Set<String> allowedWriteLocations,
-                  @Nonnull PolarisPrincipal polarisPrincipal,
-                  Optional<String> refreshCredentialsEndpoint,
-                  @Nonnull CredentialVendingContext credentialVendingContext) {
-                // FILE storage does not support credential vending
-                return StorageAccessConfig.builder().supportsCredentialVending(false).build();
-              }
+    return (PolarisStorageIntegration<T>)
+        switch (polarisStorageConfigurationInfo.getStorageType()) {
+          case S3 -> awsIntegration;
+          case GCS -> getGcpIntegration();
+          case AZURE -> getAzureIntegration();
+          case FILE -> fileIntegration;
+          default ->
+              throw new IllegalArgumentException(
+                  "Unknown storage type " + polarisStorageConfigurationInfo.getStorageType());
+        };
+  }
 
-              @Override
-              public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
-                  validateAccessToLocations(
-                      @Nonnull RealmConfig realmConfig,
-                      @Nonnull T storageConfig,
-                      @Nonnull Set<PolarisStorageActions> actions,
-                      @Nonnull Set<String> locations) {
-                return Map.of();
-              }
-            };
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Unknown storage type " + polarisStorageConfigurationInfo.getStorageType());
-    }
-    return storageIntegration;
+  private static PolarisStorageIntegration<?> createFileIntegration() {
+    return new PolarisStorageIntegration<PolarisStorageConfigurationInfo>("file") {
+      @Override
+      protected StorageCredentialCacheKey buildCacheKey(
+          @Nonnull PolarisStorageConfigurationInfo storageConfig,
+          @Nonnull RealmConfig realmConfig,
+          boolean allowList,
+          @Nonnull Set<String> readLocations,
+          @Nonnull Set<String> writeLocations,
+          @Nonnull Optional<String> refreshEndpoint,
+          @Nonnull CredentialVendingContext context) {
+        return null; // FILE does not support credential vending
+      }
+
+      @Override
+      public StorageAccessConfig getSubscopedCreds(
+          @Nonnull RealmConfig realmConfig,
+          @Nonnull PolarisStorageConfigurationInfo storageConfig,
+          boolean allowList,
+          @Nonnull Set<String> readLocations,
+          @Nonnull Set<String> writeLocations,
+          @Nonnull Optional<String> refreshEndpoint,
+          @Nonnull CredentialVendingContext context) {
+        return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+      }
+
+      @Override
+      public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
+          validateAccessToLocations(
+              @Nonnull RealmConfig realmConfig,
+              @Nonnull PolarisStorageConfigurationInfo storageConfig,
+              @Nonnull Set<PolarisStorageActions> actions,
+              @Nonnull Set<String> locations) {
+        return Map.of();
+      }
+    };
   }
 }

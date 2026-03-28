@@ -48,14 +48,15 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,10 +78,16 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GcpStorageConfigurationInfo config,
+      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
+    this(sourceCredentials, transportFactory, null, null);
+  }
+
+  public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
-      HttpTransportFactory transportFactory) {
-    super(config, GcpCredentialsStorageIntegration.class.getName());
+      HttpTransportFactory transportFactory,
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      org.apache.polaris.core.config.RealmConfig realmConfig) {
+    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -89,23 +96,44 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
+  protected StorageCredentialCacheKey buildCacheKey(
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return GcpStorageCredentialCacheKey.of(
+        context.realm().orElse(""),
+        storageConfig.serialize(),
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint);
+  }
+
+  @Override
   public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    // Note: GCP downscoped credentials do not support session tags like AWS STS.
-    // The credentialVendingContext is accepted for interface compatibility but not used.
+      @Nonnull PolarisStorageConfigurationInfo storageConfig,
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    GcpStorageConfigurationInfo gcpStorageConfig = (GcpStorageConfigurationInfo) storageConfig;
+    boolean allowListOperation = allowList;
+    Set<String> allowedReadLocations = readLocations;
+    Set<String> allowedWriteLocations = writeLocations;
+
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    GoogleCredentials credentialsToDownscope = getBaseCredentials();
+    GoogleCredentials credentialsToDownscope = getBaseCredentials(gcpStorageConfig);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(
@@ -138,7 +166,7 @@ public class GcpCredentialsStorageIntegration
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
 
-    refreshCredentialsEndpoint.ifPresent(
+    refreshEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
         });
@@ -150,9 +178,9 @@ public class GcpCredentialsStorageIntegration
    * Returns the credential to be used as the source for downscoping. If a specific service account
    * is configured, it impersonates that account first.
    */
-  private GoogleCredentials getBaseCredentials() {
-    if (config().getGcpServiceAccount() != null) {
-      return createImpersonatedCredentials(sourceCredentials, config().getGcpServiceAccount());
+  private GoogleCredentials getBaseCredentials(GcpStorageConfigurationInfo storageConfig) {
+    if (storageConfig.getGcpServiceAccount() != null) {
+      return createImpersonatedCredentials(sourceCredentials, storageConfig.getGcpServiceAccount());
     }
     return sourceCredentials;
   }
@@ -290,5 +318,27 @@ public class GcpCredentialsStorageIntegration
 
   private static String bucketResource(String bucket) {
     return "//storage.googleapis.com/projects/_/buckets/" + bucket;
+  }
+
+  /**
+   * Builds storage access config parameters for GCP credentials. GCP downscoped credentials do not
+   * support session tags, so principal and credential vending context are never included.
+   */
+  public static GcpStorageCredentialCacheKey buildStorageCredentialCacheKey(
+      @Nonnull String realmId,
+      @jakarta.annotation.Nullable String storageConfigSerializedStr,
+      @Nonnull RealmConfig realmConfig,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
+    return GcpStorageCredentialCacheKey.of(
+        realmId,
+        storageConfigSerializedStr,
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        refreshCredentialsEndpoint);
   }
 }

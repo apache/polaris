@@ -45,13 +45,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
@@ -352,15 +348,15 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             .tenantId(tenantId)
             .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration(azureConfig);
+        new AzureCredentialsStorageIntegration();
     return azureCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
+        azureConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty(),
-        CredentialVendingContext.empty());
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private BlobContainerClient createContainerClient(

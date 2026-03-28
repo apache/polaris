@@ -48,12 +48,9 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
@@ -177,17 +174,16 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
-            gcpConfig,
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
+        gcpConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.of(REFRESH_ENDPOINT),
-        CredentialVendingContext.empty());
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
@@ -345,7 +341,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
-            config,
             mockCreds,
             ServiceOptions.getFromServiceLoader(
                 HttpTransportFactory.class, NetHttpTransport::new)) {
@@ -362,12 +357,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     integration.getSubscopedCreds(
         EMPTY_REALM_CONFIG,
+        config,
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty(),
-        CredentialVendingContext.empty());
+        org.apache.polaris.core.storage.CredentialVendingContext.empty());
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(

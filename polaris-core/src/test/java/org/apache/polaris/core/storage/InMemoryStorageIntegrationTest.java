@@ -23,9 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
@@ -34,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mockito;
 
 class InMemoryStorageIntegrationTest {
 
@@ -157,20 +154,30 @@ class InMemoryStorageIntegrationTest {
   private static final class MockInMemoryStorageIntegration
       extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
     public MockInMemoryStorageIntegration() {
-      super(
-          Mockito.mock(PolarisStorageConfigurationInfo.class),
-          MockInMemoryStorageIntegration.class.getName());
+      super(MockInMemoryStorageIntegration.class.getName());
     }
 
     @Override
     public StorageAccessConfig getSubscopedCreds(
         @Nonnull RealmConfig realmConfig,
-        boolean allowListOperation,
-        @Nonnull Set<String> allowedReadLocations,
-        @Nonnull Set<String> allowedWriteLocations,
-        @Nonnull PolarisPrincipal polarisPrincipal,
-        Optional<String> refreshCredentialsEndpoint,
-        @Nonnull CredentialVendingContext credentialVendingContext) {
+        @Nonnull PolarisStorageConfigurationInfo storageConfig,
+        boolean allowList,
+        @Nonnull Set<String> readLocations,
+        @Nonnull Set<String> writeLocations,
+        @Nonnull java.util.Optional<String> refreshEndpoint,
+        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
+      return null;
+    }
+
+    @Override
+    protected org.apache.polaris.core.storage.cache.StorageCredentialCacheKey buildCacheKey(
+        @Nonnull PolarisStorageConfigurationInfo storageConfig,
+        @Nonnull RealmConfig realmConfig,
+        boolean allowList,
+        @Nonnull Set<String> readLocations,
+        @Nonnull Set<String> writeLocations,
+        @Nonnull java.util.Optional<String> refreshEndpoint,
+        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
       return null;
     }
   }

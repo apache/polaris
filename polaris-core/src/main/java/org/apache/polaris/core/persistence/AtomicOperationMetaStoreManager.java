@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -70,17 +69,14 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1524,69 +1520,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @Nonnull PolarisEntityType entityType,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-
-    // get meta store session we should be using
-    BasePersistence ms = callCtx.getMetaStore();
-    getDiagnostics()
-        .check(
-            !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-            "allowed_locations_to_subscope_is_required");
-
-    // reload the entity, error out if not found
-    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // TODO: Consider whether this independent lookup is safe for the model already or whether
-    // we need better atomicity semantics between the base entity and the embedded storage
-    // integration.
-
-    // get storage integration
-    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
-
-    // cannot be null
-    getDiagnostics()
-        .checkNotNull(
-            storageIntegration,
-            "storage_integration_not_exists",
-            "catalogId={}, entityId={}",
-            catalogId,
-            entityId);
-
-    try {
-      StorageAccessConfig storageAccessConfig =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations,
-              polarisPrincipal,
-              refreshCredentialsEndpoint,
-              credentialVendingContext);
-      return new ScopedCredentialsResult(storageAccessConfig);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(
-          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
   }
 
   /** {@inheritDoc} */

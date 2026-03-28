@@ -64,7 +64,7 @@ class MetricsReportPersistenceTest {
         new PolarisStorageIntegrationProvider() {
           @Override
           public <T extends PolarisStorageConfigurationInfo>
-              PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+              PolarisStorageIntegration<T> getStorageIntegration(
                   PolarisStorageConfigurationInfo config) {
             return null;
           }

@@ -232,11 +232,11 @@ public abstract class AbstractPolicyCatalogTest {
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);

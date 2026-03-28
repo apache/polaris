@@ -326,11 +326,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+            (destination) -> stsClient,
+            config -> Optional.empty(),
+            storageCredentialCache,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
@@ -1854,20 +1854,20 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    var storageConfig =
+        org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
+            diagServices, taskEntity);
+    var integration = storageIntegrationProvider.getStorageIntegration(storageConfig);
     Map<String, String> credentials =
-        metaStoreManager
-            .getSubscopedCredsForEntity(
-                polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
+        integration
+            .getSubscopedCreds(
+                callContext.getRealmConfig(),
+                storageConfig,
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
-                authenticatedRoot,
                 Optional.empty(),
                 CredentialVendingContext.empty())
-            .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()

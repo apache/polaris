@@ -538,8 +538,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
+    return storageIntegrationProvider.getStorageIntegration(polarisStorageConfigurationInfo);
   }
 
   /** {@inheritDoc} */
@@ -549,7 +548,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(getDiagnostics(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return storageIntegrationProvider.getStorageIntegration(storageConfig);
   }
 
   @Override
