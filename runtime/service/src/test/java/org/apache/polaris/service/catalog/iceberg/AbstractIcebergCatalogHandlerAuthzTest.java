@@ -612,6 +612,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .createTests();
   }
 

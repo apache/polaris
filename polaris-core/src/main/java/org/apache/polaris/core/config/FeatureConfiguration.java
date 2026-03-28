@@ -64,18 +64,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(false)
               .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> OPTIMIZED_CREDENTIAL_VENDING =
-      PolarisConfiguration.<Boolean>builder()
-          .key("OPTIMIZED_CREDENTIAL_VENDING")
-          .catalogConfig("polaris.config.optimized-credential-vending")
-          .description(
-              "When enabled, the loadCredentials endpoint vends storage credentials using "
-                  + "location data from entity internal properties, avoiding a full table metadata "
-                  + "read from object storage. Falls back to the standard path if the entity lacks "
-                  + "the required properties.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
