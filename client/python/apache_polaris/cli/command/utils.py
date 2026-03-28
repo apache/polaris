@@ -18,6 +18,8 @@
 #
 import re
 
+import datetime
+
 from apache_polaris.sdk.catalog.api_client import ApiClient
 from apache_polaris.sdk.catalog.configuration import Configuration
 from apache_polaris.sdk.management import PolarisDefaultApi
@@ -50,3 +52,15 @@ def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:
                 catalog_client.set_default_header(header_name, header_value)
 
     return catalog_client
+
+
+def format_timestamp(ms_since_epoch: int) -> str:
+    """
+    Convert a timestamp in milliseconds since epoch to a human-readable string
+    """
+    if ms_since_epoch is None:
+        return "Unknown"
+    dt = datetime.datetime.fromtimestamp(
+        ms_since_epoch / 1000, tz=datetime.timezone.utc
+    )
+    return dt.strftime("%Y-%m-%d %H:%M:%S UTC")

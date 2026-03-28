@@ -117,6 +117,7 @@ class Subcommands:
     DETACH = "detach"
     APPLY = "apply"
     EXPORT = "export"
+    SUMMARIZE = "summarize"
 
 
 class Actions:

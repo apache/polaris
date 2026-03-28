@@ -34,18 +34,15 @@ final class DirectIndexElement<V> extends AbstractIndexElement<V> {
   }
 
   @Override
-  public IndexKey getKey() {
+  @Nonnull
+  public IndexKey key() {
     return key;
   }
 
   @Override
-  public V getValue() {
+  @Nullable
+  public V valueNullable() {
     return content;
-  }
-
-  @Override
-  public V setValue(V value) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

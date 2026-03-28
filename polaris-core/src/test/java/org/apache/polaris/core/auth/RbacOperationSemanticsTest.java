@@ -40,10 +40,17 @@ public class RbacOperationSemanticsTest {
   void nullSecondaryPrivilegesNormalizeToEmpty() {
     RbacOperationSemantics semantics =
         new RbacOperationSemantics(
-            EnumSet.of(PolarisPrivilege.TABLE_DROP), null, ResolvedPathRooting.ROOT, null);
+            EnumSet.of(PolarisPrivilege.TABLE_DROP), null, ResolvedPathRooting.ROOT);
 
     assertThat(semantics.secondaryPrivileges()).isEmpty();
-    assertThat(semantics.secondaryScope()).isNull();
+    assertThat(semantics.rooting()).isEqualTo(ResolvedPathRooting.ROOT);
+  }
+
+  @Test
+  void targetPrivilegesMustBeNonNull() {
+    assertThatThrownBy(() -> new RbacOperationSemantics(null, null, ResolvedPathRooting.ROOT))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("targetPrivileges must be non-null");
   }
 
   @Test
@@ -51,21 +58,16 @@ public class RbacOperationSemanticsTest {
     assertThatThrownBy(
             () ->
                 new RbacOperationSemantics(
-                    EnumSet.noneOf(PolarisPrivilege.class), null, ResolvedPathRooting.ROOT, null))
+                    EnumSet.noneOf(PolarisPrivilege.class), null, ResolvedPathRooting.ROOT))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("targetPrivileges must be non-empty");
+        .hasMessage("targetPrivileges must be non-empty");
   }
 
   @Test
-  void secondaryScopeIsRequiredWhenSecondaryPrivilegesArePresent() {
+  void rootingIsRequired() {
     assertThatThrownBy(
-            () ->
-                new RbacOperationSemantics(
-                    EnumSet.of(PolarisPrivilege.TABLE_DROP),
-                    EnumSet.of(PolarisPrivilege.TABLE_CREATE),
-                    ResolvedPathRooting.ROOT,
-                    null))
+            () -> new RbacOperationSemantics(EnumSet.of(PolarisPrivilege.TABLE_DROP), null, null))
         .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("secondaryScope must be non-null");
+        .hasMessage("rooting must be non-null");
   }
 }

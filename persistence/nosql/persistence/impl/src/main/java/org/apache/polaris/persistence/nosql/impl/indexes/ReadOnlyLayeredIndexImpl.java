@@ -71,7 +71,7 @@ final class ReadOnlyLayeredIndexImpl<V> extends AbstractLayeredIndexImpl<V> {
   }
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@Nonnull InternalIndexElement<V> element) {
     throw unsupported();
   }
 

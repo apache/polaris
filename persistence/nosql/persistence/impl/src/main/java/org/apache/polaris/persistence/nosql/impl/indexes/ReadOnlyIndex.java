@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Iterator;
-import java.util.Map;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 
@@ -50,14 +49,14 @@ final class ReadOnlyIndex<V> implements Index<V> {
 
   @Nonnull
   @Override
-  public Iterator<Map.Entry<IndexKey, V>> iterator(
+  public Iterator<Index.Element<V>> iterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return delegate.iterator(lower, higher, prefetch);
   }
 
   @Nonnull
   @Override
-  public Iterator<Map.Entry<IndexKey, V>> reverseIterator(
+  public Iterator<Index.Element<V>> reverseIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return delegate.reverseIterator(lower, higher, prefetch);
   }

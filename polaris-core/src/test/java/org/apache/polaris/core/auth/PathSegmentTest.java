@@ -16,15 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.impl.indexes;
+package org.apache.polaris.core.auth;
 
-import java.nio.ByteBuffer;
-import java.util.Map;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
-import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-interface IndexElement<V> extends Map.Entry<IndexKey, V> {
-  void serializeContent(IndexValueSerializer<V> ser, ByteBuffer target);
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.junit.jupiter.api.Test;
 
-  int contentSerializedSize(IndexValueSerializer<V> ser);
+public class PathSegmentTest {
+
+  @Test
+  void pathSegmentRejectsNullEntityType() {
+    assertThatThrownBy(() -> new PathSegment(null, "name"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("entityType must be non-null");
+  }
+
+  @Test
+  void pathSegmentRejectsNullName() {
+    assertThatThrownBy(() -> new PathSegment(PolarisEntityType.CATALOG, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("name must be non-null");
+  }
 }

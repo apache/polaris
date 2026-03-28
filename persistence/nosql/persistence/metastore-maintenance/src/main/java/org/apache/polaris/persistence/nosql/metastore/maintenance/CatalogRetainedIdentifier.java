@@ -153,7 +153,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                       .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
                       .forEach(
                           e -> {
-                            var policyMapping = e.getValue();
+                            var policyMapping = e.value();
                             policyMapping.externalMapping().ifPresent(collector::retainObject);
                           }));
         });
@@ -179,8 +179,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                 var allCatalogsIndex =
                     catalogs.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
                 for (var entry : allCatalogsIndex) {
-                  var catalogKey = entry.getKey();
-                  var catalogObjRef = entry.getValue();
+                  var catalogKey = entry.key();
+                  var catalogObjRef = entry.value();
                   currentCatalogs.putIfAbsent(catalogKey, catalogObjRef);
                 }
                 collector.indexRetain(catalogs.stableIdToName());

@@ -206,7 +206,7 @@ public interface RetainedCollector {
               indexToObjIdFromRetainedObj
                   .apply(obj)
                   .indexForRead(realmPersistence(), OBJ_REF_SERIALIZER)) {
-            ObjRef indexedObjRef = entry.getValue();
+            ObjRef indexedObjRef = entry.value();
             retainObject(indexedObjRef);
             // ^ is for persistence.fetch(principalEntry.getValue(), PrincipalObj.class);
             ++elem;

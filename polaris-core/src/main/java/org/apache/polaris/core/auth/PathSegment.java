@@ -18,7 +18,13 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-/** One segment in a fully qualified path. */
-public record PathSegment(PolarisEntityType entityType, String name) {}
+/** One segment in a fully qualified resource path. */
+public record PathSegment(PolarisEntityType entityType, String name) {
+  public PathSegment {
+    Preconditions.checkNotNull(entityType, "entityType must be non-null");
+    Preconditions.checkNotNull(name, "name must be non-null");
+  }
+}

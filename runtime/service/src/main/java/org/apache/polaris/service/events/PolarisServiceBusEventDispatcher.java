@@ -16,12 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events.listeners;
 
-import io.smallrye.common.annotation.Identifier;
+package org.apache.polaris.service.events;
+
+import io.quarkus.arc.DefaultBean;
+import io.vertx.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
-/** Event listener that does nothing. */
+/** An event dispatcher that publishes events to the Vert.x event bus. */
 @ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener implements PolarisEventListener {}
+@DefaultBean
+public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher {
+  /** The address of the event bus channel where Polaris service events are published. */
+  public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
+
+  @Inject EventBus eventBus;
+
+  /**
+   * Dispatches the given Polaris service event to the Vert.x event bus.
+   *
+   * @param event The Polaris service event to dispatch.
+   */
+  @Override
+  public void dispatch(PolarisEvent event) {
+    eventBus.publish(POLARIS_EVENT_CHANNEL, event);
+  }
+}

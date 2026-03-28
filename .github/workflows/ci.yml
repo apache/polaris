@@ -183,9 +183,40 @@ jobs:
           name: upload-${{ github.job }}-artifacts
           path: *test-archive-path
 
+  docker-image-build:
+    name: Polaris Docker Image Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with: *setup-java-vars
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Image build
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-server:assemble -Dquarkus.container-image.build=true
+      - name: Save image to tar
+        run: |
+          docker save apache/polaris:latest | zstd -T0 > polaris-image.tar.zst
+      - name: Upload image artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: polaris-image
+          path: polaris-image.tar.zst
+          retention-days: 1
+
   helm-tests:
     name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
     runs-on: ubuntu-latest
+    needs: 
+      - docker-image-build
     timeout-minutes: 60
     strategy:
       matrix:
@@ -201,19 +232,24 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-      - name: Set up JDK 21
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with: *setup-java-vars
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
-      - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Set up Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: ${{ matrix.helm-version }}
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        run: |
+          CT_VERSION=3.14.0
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64) ARCH=amd64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+          esac
+          curl -sSLo ct.tar.gz "https://github.com/helm/chart-testing/releases/download/v${CT_VERSION}/chart-testing_${CT_VERSION}_linux_${ARCH}.tar.gz"
+          sudo tar -xzf ct.tar.gz -C /usr/local/bin ct
+          mkdir -p .ct
+          tar -xzf ct.tar.gz --strip-components=1 -C .ct etc
+          rm ct.tar.gz
+          pip install yamllint yamale
       - name: Set up helm-docs
         run: |
           go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
@@ -240,18 +276,14 @@ jobs:
         uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
         with:
           kubernetes-version: ${{ matrix.kubernetes-version }}
-      - name: Print Docker info
+      - name: Download image artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: polaris-image
+      - name: Load image into Minikube
         run: |
-          docker -v
-          minikube docker-env
-      - name: Image build
-        env: *gradle_env_vars
-        run: |
-          eval $(minikube -p minikube docker-env)
-          ./gradlew \
-            :polaris-server:assemble \
-            :polaris-server:quarkusAppPartsBuild --rerun \
-            -Dquarkus.container-image.build=true
+          zstd -d -c polaris-image.tar.zst | minikube image load -
+          echo "Available images:"
           minikube image ls
       - name: Install fixtures
         run: |
@@ -335,6 +367,7 @@ jobs:
 
   markdown-link-check:
     name: "Markdown Link Check"
+    if: github.repository == 'apache/polaris'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -405,6 +438,7 @@ jobs:
       - runtime-service-int-tests
       - admin-tool-tests
       - integration-tests
+      - docker-image-build
       - helm-tests
       - python-client
       - regtest
