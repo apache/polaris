@@ -60,8 +60,13 @@ class TableCommand(Command):
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
-        if not self.table_name.strip():
-            raise Exception("The table name cannot be empty.")
+        if (
+            self.table_subcommand == Subcommands.GET
+            or self.table_subcommand == Subcommands.SUMMARIZE
+            or self.table_subcommand == Subcommands.DELETE
+        ):
+            if not self.table_name.strip():
+                raise Exception("The table name cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
