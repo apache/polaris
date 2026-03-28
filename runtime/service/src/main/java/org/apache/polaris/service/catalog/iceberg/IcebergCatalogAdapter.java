@@ -47,7 +47,6 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
@@ -512,21 +511,15 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    Optional<String> refreshEndpoint =
+        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> {
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(
-                  tableIdentifier,
-                  "all",
-                  Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
-          return Response.ok(
-                  ImmutableLoadCredentialsResponse.builder()
-                      .credentials(loadTableResponse.credentials())
-                      .build())
-              .build();
-        });
+        catalog ->
+            Response.ok(
+                    catalog.loadCredentialsFromEntityProperties(tableIdentifier, refreshEndpoint))
+                .build());
   }
 
   @Override

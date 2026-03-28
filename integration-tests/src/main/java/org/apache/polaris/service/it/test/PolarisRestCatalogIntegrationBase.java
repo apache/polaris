@@ -76,6 +76,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -803,6 +804,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
+    }
+  }
+
+  @Test
+  public void testLoadCredentialsEndpoint() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns1, "tbl1");
+      Table table = restCatalog.createTable(tableIdentifier, SCHEMA);
+      assertThat(table.location()).isNotNull();
+
+      LoadCredentialsResponse response =
+          catalogApi.loadCredentials(currentCatalogName, tableIdentifier);
+      assertThat(response).isNotNull();
+      assertThat(response.credentials()).isNotEmpty();
+      assertThat(response.credentials().get(0).prefix()).isEqualTo(table.location());
+      assertThat(response.credentials().get(0).config()).isNotEmpty();
+    } finally {
+      catalogApi.purge(currentCatalogName, ns1);
     }
   }
 

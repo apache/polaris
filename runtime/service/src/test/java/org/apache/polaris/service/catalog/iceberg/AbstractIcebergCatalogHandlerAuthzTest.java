@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -599,6 +600,61 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadCredentialsFromEntityPropertiesPrivileges() {
+    return authzTestsBuilder("loadCredentialsFromEntityProperties")
+        .action(
+            () -> newHandler().loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .createTests();
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesSkipsFileIO() throws Exception {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Wrap the real factory to spy on the catalog it creates
+    CallContextCatalogFactory spyFactory =
+        manifest -> Mockito.spy(callContextCatalogFactory.createCallContextCatalog(manifest));
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, spyFactory);
+
+    // Call the optimized credential vending path — authorizeLoadTable inside
+    // will trigger initializeCatalog() which sets baseCatalog via our spy factory
+    handler.loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty());
+
+    // Retrieve the spied baseCatalog and verify loadTable was never called
+    Field baseCatalogField = IcebergCatalogHandler.class.getDeclaredField("baseCatalog");
+    baseCatalogField.setAccessible(true);
+    Catalog spiedCatalog = (Catalog) baseCatalogField.get(handler);
+    Mockito.verify(spiedCatalog, Mockito.never()).loadTable(Mockito.any());
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesFallsBackForExternalCatalog() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Provide a factory that returns a non-IcebergCatalog to simulate an external catalog
+    Catalog mockExternalCatalog = Mockito.mock(Catalog.class);
+    CallContextCatalogFactory externalFactory = manifest -> mockExternalCatalog;
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, externalFactory);
+
+    // The optimized path should detect the non-IcebergCatalog and fall back,
+    // which calls baseCatalog.loadTable()
+    Assertions.assertThatThrownBy(
+            () -> handler.loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty()))
+        .isInstanceOf(Exception.class);
+
+    Mockito.verify(mockExternalCatalog).loadTable(TABLE_NS1A_2);
   }
 
   @TestFactory
