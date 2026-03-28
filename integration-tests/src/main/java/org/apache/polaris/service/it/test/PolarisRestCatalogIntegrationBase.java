@@ -807,19 +807,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @CatalogConfig(properties = {"polaris.config.optimized-credential-vending", "false"})
   @Test
   public void testLoadCredentialsEndpoint() {
-    doTestLoadCredentialsEndpoint();
-  }
-
-  @CatalogConfig(properties = {"polaris.config.optimized-credential-vending", "true"})
-  @Test
-  public void testLoadCredentialsEndpointWithOptimizedCredentialVending() {
-    doTestLoadCredentialsEndpoint();
-  }
-
-  private void doTestLoadCredentialsEndpoint() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     try {

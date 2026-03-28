@@ -58,9 +58,4 @@ public class PolarisRestCatalogFileIntegrationTest extends PolarisRestCatalogInt
   @Test
   @Override
   public void testLoadCredentialsEndpoint() {}
-
-  @Disabled("File storage does not support credential vending")
-  @Test
-  @Override
-  public void testLoadCredentialsEndpointWithOptimizedCredentialVending() {}
 }

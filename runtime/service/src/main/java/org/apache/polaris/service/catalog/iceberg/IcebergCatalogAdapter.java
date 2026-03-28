@@ -47,10 +47,8 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -518,21 +516,10 @@ public class IcebergCatalogAdapter
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> {
-          // Vend credentials directly from entity properties, avoiding a full table metadata read
-          if (realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_CREDENTIAL_VENDING)) {
-            return Response.ok(
+        catalog ->
+            Response.ok(
                     catalog.loadCredentialsFromEntityProperties(tableIdentifier, refreshEndpoint))
-                .build();
-          }
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all", refreshEndpoint);
-          return Response.ok(
-                  ImmutableLoadCredentialsResponse.builder()
-                      .credentials(loadTableResponse.credentials())
-                      .build())
-              .build();
-        });
+                .build());
   }
 
   @Override

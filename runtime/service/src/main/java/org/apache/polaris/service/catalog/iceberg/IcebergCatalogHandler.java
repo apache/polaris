@@ -746,6 +746,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public ImmutableLoadCredentialsResponse loadCredentialsFromEntityProperties(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
 
+    // Optimized credential vending is only supported for native Polaris catalogs.
+    // Federated/external catalogs are passthrough — writes happen directly on the
+    // remote catalog independently of Polaris, so there is no guarantee that entity
+    // internal properties (e.g. location) in the Polaris metastore are in sync with
+    // the remote catalog's actual table metadata.
+    if (!(baseCatalog instanceof IcebergCatalog)) {
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+    }
+
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(tableIdentifier, EnumSet.of(VENDED_CREDENTIALS));
 
