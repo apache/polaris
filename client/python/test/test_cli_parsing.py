@@ -113,6 +113,13 @@ class TestCliParsing(unittest.TestCase):
             Command.from_options(options)
         self.assertIn("Missing required argument", str(cm_missing.exception))
 
+        with self.assertRaises(Exception) as cm_exc:
+            options = Parser.parse(
+                ["tables", "get", " ", "--catalog", "my_catalog", "--namespace", "ns"]
+            )  # empty table name
+            Command.from_options(options)
+        self.assertIn("The table name cannot be empty", str(cm_exc.exception))
+
         with self.assertRaises(SystemExit) as cm:
             Parser.parse(
                 [

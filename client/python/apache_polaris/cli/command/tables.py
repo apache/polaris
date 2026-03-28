@@ -16,7 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import json
 from dataclasses import dataclass
 from typing import List
 
@@ -61,6 +60,8 @@ class TableCommand(Command):
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
+        if not self.table_name.strip():
+            raise Exception("The table name cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
@@ -71,14 +72,7 @@ class TableCommand(Command):
                     prefix=self.catalog_name, namespace=ns_str
                 )
                 for table_identifier in result.identifiers:
-                    print(
-                        json.dumps(
-                            {
-                                "namespace": ".".join(table_identifier.namespace),
-                                "name": table_identifier.name,
-                            }
-                        )
-                    )
+                    print(table_identifier.to_json())
             except Exception as e:
                 handle_api_exception(f"Table Listing ({'.'.join(self.namespace)})", e)
         elif self.table_subcommand == Subcommands.GET:
@@ -93,21 +87,23 @@ class TableCommand(Command):
             except Exception as e:
                 handle_api_exception(f"Table Load ({self.table_name})", e)
         elif self.table_subcommand == Subcommands.DELETE:
-            self._delete_table(catalog_api, ns_str)
+            print(
+                f"De-registering table {'.'.join(self.namespace)}.{self.table_name}..."
+            )
+            try:
+                catalog_api.drop_table(
+                    prefix=self.catalog_name,
+                    namespace=ns_str,
+                    table=self.table_name,
+                    purge_requested=False,
+                )
+            except Exception as e:
+                handle_api_exception(f"Table De-registration ({self.table_name})", e)
+            print(
+                f"De-registering table {'.'.join(self.namespace)}.{self.table_name} completed"
+            )
         elif self.table_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api, catalog_api, ns_str)
-
-    def _delete_table(self, catalog_api: IcebergCatalogAPI, ns_str: str) -> None:
-        print(f"De-registering table {'.'.join(self.namespace)}.{self.table_name}...")
-        try:
-            catalog_api.drop_table(
-                prefix=self.catalog_name,
-                namespace=ns_str,
-                table=self.table_name,
-                purge_requested=False,
-            )
-        except Exception as e:
-            handle_api_exception(f"Table De-registration ({self.table_name})", e)
 
     def _generate_summary(
         self, api: PolarisDefaultApi, catalog_api: IcebergCatalogAPI, ns_str: str
@@ -147,7 +143,9 @@ class TableCommand(Command):
                 print(
                     f"  {'Total Data Files:':<30} {stats.get('total-data-files', '0')}"
                 )
-                print(f"  {'Total Size:':<30} {stats.get('total-files-size', '0')}")
+                print(
+                    f"  {'Total Files Size:':<30} {stats.get('total-files-size', '0')}"
+                )
             else:
                 print("  Table is empty (no snapshots found)")
 

@@ -36,7 +36,7 @@ from apache_polaris.sdk.management import PolarisDefaultApi
 class FindCommand(Command):
     """
     A Command implemtation to represent `polaris find`. It searches for an identifier across global entities (principals, roles, catalogs)
-    and within catalog resources (namespaces, tables, views) using fuzzy matching.
+    and catalog entities (namespaces, tables, views) using fuzzy matching.
 
     Example commands:
         * ./polaris find my_table

@@ -1580,7 +1580,7 @@ polaris setup export
 ### find
 
 The `find` command is used to searches for an identifier across global entities (principals, roles, catalogs)
-and within catalog resources (namespaces, tables, views) using fuzzy matching.
+and catalog entities (namespaces, tables, views) using fuzzy matching.
 
 ##### Examples
 

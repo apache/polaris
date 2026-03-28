@@ -119,24 +119,30 @@ def format_iceberg_type(obj: Any) -> str:
     """
     Recursively format Iceberg type into a human-readble string.
     """
-    unwrapped = getattr(obj, "actual_instance", obj)
-    type_name = getattr(unwrapped, "type", None)
+
+    def get(o: Any, key: str, default: Any = None) -> Any:
+        if isinstance(o, dict):
+            return o.get(key, default)
+        return getattr(o, key, default)
+
+    unwrapped = get(obj, "actual_instance", obj)
+    type_name = get(unwrapped, "type")
     if type_name == "struct":
-        fields = getattr(unwrapped, "fields", [])
-        fields_str = []
+        fields = get(unwrapped, "fields", [])
+        parts = []
         for field in fields:
-            field_name = getattr(field, "name", "?")
-            field_type = format_iceberg_type(getattr(field, "type", "unknown"))
-            fields_str.append(f"{field_name}:{field_type}")
-        return f"struct<{', '.join(fields_str)}>"
+            name = get(field, "name", "unknown")
+            field_type = get(field, "type", "unknown")
+            parts.append(f"{name}:{format_iceberg_type(field_type)}")
+        return f"struct<{', '.join(parts)}>"
     elif type_name == "list":
-        element_type = format_iceberg_type(getattr(unwrapped, "element", "unknown"))
-        return f"list<{element_type}>"
+        element = get(unwrapped, "element", "unknown")
+        return f"list<{format_iceberg_type(element)}>"
     elif type_name == "map":
-        key_type = format_iceberg_type(getattr(unwrapped, "key", "unknown"))
-        val_type = format_iceberg_type(getattr(unwrapped, "value", "unknown"))
-        return f"map<{key_type}, {val_type}>"
-    return str(type_name) if type_name else str(unwrapped)
+        key = get(unwrapped, "key", "unknown")
+        value = get(unwrapped, "value", "unknown")
+        return f"map<{format_iceberg_type(key)}, {format_iceberg_type(value)}>"
+    return str(type_name) if isinstance(type_name, str) else str(unwrapped)
 
 
 def crawl_namespace(
