@@ -65,7 +65,7 @@ class SetupCommand(Command):
         * ./polaris setup apply setup-config.yaml
         * ./polaris setup export
     """
-    
+
     setup_subcommand: str
     setup_config: Optional[str] = None
     dry_run: bool = False
