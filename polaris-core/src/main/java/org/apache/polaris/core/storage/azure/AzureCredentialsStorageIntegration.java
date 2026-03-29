@@ -476,5 +476,4 @@ public class AzureCredentialsStorageIntegration
     }
     return false;
   }
-
 }

@@ -453,5 +453,4 @@ public class AwsCredentialsStorageIntegration
     }
     return path;
   }
-
 }
