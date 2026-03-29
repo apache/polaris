@@ -516,10 +516,7 @@ public class IcebergCatalogAdapter
     return withCatalog(
         securityContext,
         prefix,
-        catalog ->
-            Response.ok(
-                    catalog.loadCredentialsFromEntityProperties(tableIdentifier, refreshEndpoint))
-                .build());
+        catalog -> Response.ok(catalog.loadCredentials(tableIdentifier, refreshEndpoint)).build());
   }
 
   @Override

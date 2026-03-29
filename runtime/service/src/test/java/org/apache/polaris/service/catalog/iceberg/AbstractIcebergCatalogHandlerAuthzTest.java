@@ -607,9 +607,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @TestFactory
   Stream<DynamicNode> testLoadCredentialsFromEntityPropertiesPrivileges() {
-    return authzTestsBuilder("loadCredentialsFromEntityProperties")
-        .action(
-            () -> newHandler().loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty()))
+    return authzTestsBuilder("loadCredentials")
+        .action(() -> newHandler().loadCredentials(TABLE_NS1A_2, Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -631,7 +630,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Call the optimized credential vending path — authorizeLoadTable inside
     // will trigger initializeCatalog() which sets baseCatalog via our spy factory
-    handler.loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty());
+    handler.loadCredentials(TABLE_NS1A_2, Optional.empty());
 
     // Retrieve the spied baseCatalog and verify loadTable was never called
     Field baseCatalogField = IcebergCatalogHandler.class.getDeclaredField("baseCatalog");
@@ -653,8 +652,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // The optimized path should detect the non-IcebergCatalog and fall back,
     // which calls baseCatalog.loadTable()
-    Assertions.assertThatThrownBy(
-            () -> handler.loadCredentialsFromEntityProperties(TABLE_NS1A_2, Optional.empty()))
+    Assertions.assertThatThrownBy(() -> handler.loadCredentials(TABLE_NS1A_2, Optional.empty()))
         .isInstanceOf(Exception.class);
 
     Mockito.verify(mockExternalCatalog).loadTable(TABLE_NS1A_2);

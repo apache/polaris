@@ -66,6 +66,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
@@ -750,9 +751,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   /**
    * Vend credentials for a table using location data from entity internal properties, avoiding a
    * full table metadata read from object storage. Falls back to the standard
-   * loadTableWithAccessDelegation path if the entity lacks the required properties.
+   * loadTableWithAccessDelegation path if the entity lacks the required location properties.
    */
-  public ImmutableLoadCredentialsResponse loadCredentialsFromEntityProperties(
+  public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
@@ -771,13 +772,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     IcebergTableLikeEntity entity = getTableEntity(tableIdentifier);
     if (entity == null) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log(
-              "Entity not found in metastore (external catalog?), "
-                  + "falling back to full loadTable path");
-      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
     }
 
     Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
