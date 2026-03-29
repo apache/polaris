@@ -184,8 +184,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
         int currentSchemaVersion =
             JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
-        int requestedSchemaVersion =
-            JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
+        int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
         int effectiveSchemaVersion =
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
                 datasourceOperations.getDatabaseType(),
@@ -237,6 +236,16 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         BasePersistence session = createSession(datasourceOperations, realm, null);
 
         PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
+
+        // Verify the realm is bootstrapped before purging — a non-bootstrapped realm
+        // has no root principal, so purging it is a no-op that should be reported as failure.
+        Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(callContext);
+        if (rootPrincipal.isEmpty()) {
+          results.put(
+              realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "Not bootstrapped"));
+          continue;
+        }
+
         BaseResult result = metaStoreManager.purge(callContext);
         results.put(realm, result);
 
@@ -298,9 +307,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   /**
    * In this method we check if Service was bootstrapped for a given realm, i.e. that all the
-   * entities were created (root principal, root principal role, etc) If service was not bootstrapped
-   * we are throwing IllegalStateException exception That will cause service to crash and force user
-   * to run Bootstrap command and initialize MetaStore and create all the required entities
+   * entities were created (root principal, root principal role, etc) If service was not
+   * bootstrapped we are throwing IllegalStateException exception That will cause service to crash
+   * and force user to run Bootstrap command and initialize MetaStore and create all the required
+   * entities
    */
   private void checkPolarisServiceBootstrappedForRealm(
       RealmContext realmContext, DatasourceOperations datasourceOperations) {
