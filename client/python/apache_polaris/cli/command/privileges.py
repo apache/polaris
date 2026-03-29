@@ -42,9 +42,9 @@ from apache_polaris.sdk.management import (
 @dataclass
 class PrivilegesCommand(Command):
     """
-    A Command implementation to represent `polaris privileges`. Unlike other commands, `privileges` itself takes two
-    parameters -- catalog_name and catalog_role_name. The other instance attributes, besides `privileges_subcommand` and
-    `action`, represent parameters provided to either the `grant` or `revoke` action.
+    A Command implementation to represent `polaris privileges`. The instance attributes correspond to parameters
+    that can be provided to various subcommands, except `privileges_subcommand` which represents the subcommand
+    itself.
 
     Example commands:
         * ./polaris privileges table grant --catalog c --catalog-role cr --namespace n --table t PRIVILEGE_NAME

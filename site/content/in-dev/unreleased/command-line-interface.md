@@ -123,7 +123,7 @@ polaris profiles --help
 polaris setup --help
 ```
 
-### catalogs
+### Catalogs
 
 The `catalogs` command is used to create, discover, and otherwise manage catalogs within Polaris.
 
@@ -1236,7 +1236,7 @@ polaris privileges \
   VIEW_FULL_METADATA
 ```
 
-### profiles
+### Profiles
 
 The `profiles` command is used to manage stored authentication profiles in Polaris. Profiles allow authentication credentials to be saved and reused, eliminating the need to pass credentials with every command.
 
@@ -1522,11 +1522,11 @@ polaris policies update --catalog some_catalog --namespace some.schema --policy-
 polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json --policy-description "Updated policy description" my_policy
 ```
 
-### repair
+### Repair
 
 The `repair` command is a bash script wrapper used to regenerate Python client code and update necessary dependencies, ensuring the Polaris client remains up-to-date and functional. **Please note that this command does not support any options and its usage information is not available via a `--help` flag.**
 
-### setup
+### Setup
 
 The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment.
 
