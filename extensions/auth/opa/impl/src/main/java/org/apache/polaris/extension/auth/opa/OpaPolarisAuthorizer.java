@@ -50,7 +50,6 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
@@ -307,6 +306,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ResourceEntity buildResourceEntity(PolarisSecurable securable) {
+    // This is the target shape we want going forward where we derive the OPA payload from
+    // PolarisSecurable
+    // This will exclude RBAC-only concepts like ROOT container.
     PathSegment leaf = securable.getLeaf();
     var builder =
         ImmutableResourceEntity.builder().type(leaf.entityType().name()).name(leaf.name());
@@ -323,25 +325,28 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private ResourceEntity buildResourceEntity(PolarisResolvedPathWrapper path) {
+    // Currently, authorizeOrThrow still evaluate through resolved paths, including
+    // root-scoped operations that may surface a resolved ROOT leaf. Preserve that legacy
+    // behavior for compatibility until those callers migrate to the intent-based flow.
     ResolvedPolarisEntity resolvedLeaf = path.getResolvedLeafEntity();
     PathSegment leaf =
         new PathSegment(resolvedLeaf.getEntity().getType(), resolvedLeaf.getEntity().getName());
-    List<PathSegment> segments = new ArrayList<>();
+    List<ResourceEntity> parents = new ArrayList<>();
     List<ResolvedPolarisEntity> resolvedParents = path.getResolvedParentPath();
     if (resolvedParents != null) {
       for (ResolvedPolarisEntity resolvedParent : resolvedParents) {
-        if (resolvedParent.getEntity().getType() == PolarisEntityType.ROOT) {
-          continue;
-        }
-        segments.add(
-            new PathSegment(
-                resolvedParent.getEntity().getType(), resolvedParent.getEntity().getName()));
+        parents.add(
+            ImmutableResourceEntity.builder()
+                .type(resolvedParent.getEntity().getType().name())
+                .name(resolvedParent.getEntity().getName())
+                .build());
       }
     }
-    segments.add(leaf);
-    return buildResourceEntity(
-        PolarisSecurable.of(
-            segments.get(0), segments.subList(1, segments.size()).toArray(PathSegment[]::new)));
+    return ImmutableResourceEntity.builder()
+        .type(leaf.entityType().name())
+        .name(leaf.name())
+        .parents(parents)
+        .build();
   }
 
   @Nonnull

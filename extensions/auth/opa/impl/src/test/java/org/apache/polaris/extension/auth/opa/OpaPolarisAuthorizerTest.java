@@ -58,6 +58,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -716,7 +717,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void authorizeSkipsRootParentForCatalogTarget() throws Exception {
+  void authorizeIntentCatalogTargetOmitsRoot() throws Exception {
     final String[] capturedRequestBody = new String[1];
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
@@ -765,8 +766,128 @@ public class OpaPolarisAuthorizerTest {
     assertThat(parents.isMissingNode() || parents.isEmpty())
         .as("Catalog target should not include self-parent")
         .isTrue();
-    // OPA payload intentionally omits ROOT from parent chains.
+    // Intent-based PolarisSecurable paths never include ROOT.
     assertThat(root.path("input").path("resource").toString()).doesNotContain("\"type\":\"ROOT\"");
+  }
+
+  @Test
+  void authorizeResolvedCatalogTargetPreservesRootParent() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+
+      PolarisEntity rootEntity =
+          new PolarisEntity.Builder()
+              .setName(PolarisEntityConstants.getRootContainerName())
+              .setType(PolarisEntityType.ROOT)
+              .setId(0L)
+              .setCatalogId(0L)
+              .setParentId(0L)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+      PolarisEntity catalogEntity =
+          new PolarisEntity.Builder()
+              .setName("catalog-1")
+              .setType(PolarisEntityType.CATALOG)
+              .setId(100L)
+              .setCatalogId(100L)
+              .setParentId(0L)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      PolarisPrincipal.of("root", Map.of(), Set.of("service_admin")),
+                      Set.of(),
+                      PolarisAuthorizableOperation.GET_CATALOG,
+                      new PolarisResolvedPathWrapper(
+                          List.of(
+                              createResolvedEntity(rootEntity),
+                              createResolvedEntity(catalogEntity))),
+                      null));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      JsonNode target = root.path("input").path("resource").path("targets").get(0);
+      JsonNode expectedTarget =
+          mapper.readTree(
+              """
+              {
+                "type": "CATALOG",
+                "name": "catalog-1",
+                "parents": [
+                  {"type": "ROOT", "name": "root_container", "parents": []}
+                ]
+              }
+              """);
+      assertThat(target).isEqualTo(expectedTarget);
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void authorizeRootScopedOperationSerializesRootTarget() throws Exception {
+    // Test to verify that ROOT scoped operation still works
+    // After migrating to intent-based authorization, we will
+    // exclude ROOT container from the OPA request's target
+    // and this test should be updated to fail
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
+
+      PolarisEntity rootEntity =
+          new PolarisEntity.Builder()
+              .setName(PolarisEntityConstants.getRootContainerName())
+              .setType(PolarisEntityType.ROOT)
+              .setId(0L)
+              .setCatalogId(0L)
+              .setParentId(0L)
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      PolarisPrincipal.of("root", Map.of(), Set.of("service_admin")),
+                      Set.of(),
+                      PolarisAuthorizableOperation.LIST_CATALOGS,
+                      new PolarisResolvedPathWrapper(List.of(createResolvedEntity(rootEntity))),
+                      null));
+
+      ObjectMapper mapper = JsonMapper.builder().build();
+      JsonNode root = mapper.readTree(capturedRequestBody[0]);
+      JsonNode target = root.path("input").path("resource").path("targets").get(0);
+      JsonNode expectedTarget =
+          mapper.readTree(
+              """
+              {
+                "type": "ROOT",
+                "name": "root_container",
+                "parents": []
+              }
+              """);
+      assertThat(target).isEqualTo(expectedTarget);
+    } finally {
+      server.stop(0);
+    }
   }
 
   @Test
