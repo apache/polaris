@@ -1616,101 +1616,31 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .hasMessageContaining("sts:TagSession");
   }
 
-  // Tests for buildStorageCredentialCacheKey
+  // Tests for AwsStorageCredentialCacheKey equality
 
   @Test
-  public void testBuildStorageCredentialCacheKeyExcludesPrincipalByDefault() {
-    AwsStorageCredentialCacheKey key =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
+  public void testCacheKeyDifferentPrincipalsProduceDifferentKeys() {
+    AwsStorageCredentialCacheKey key1 =
+        AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            EMPTY_REALM_CONFIG,
             true,
-            Set.of("s3://bucket/read"),
-            Set.of("s3://bucket/write"),
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
             Optional.empty(),
+            Optional.of("alice"),
             CredentialVendingContext.empty());
 
-    assertThat(key.principalName()).isEmpty();
-    assertThat(key.credentialVendingContext()).isEqualTo(CredentialVendingContext.empty());
-  }
-
-  @Test
-  public void testBuildStorageCredentialCacheKeyIncludesPrincipalWhenFlagSet() {
-    AwsStorageCredentialCacheKey key =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
-            "testRealm",
-            null,
-            PRINCIPAL_INCLUDER_REALM_CONFIG,
-            true,
-            Set.of("s3://bucket/read"),
-            Set.of("s3://bucket/write"),
-            Optional.empty(),
-            CONTEXT_WITH_PRINCIPAL);
-
-    assertThat(key.principalName()).isPresent().hasValue("test-principal");
-    assertThat(key.credentialVendingContext()).isEqualTo(CredentialVendingContext.empty());
-  }
-
-  @Test
-  public void
-      testBuildStorageCredentialCacheKeyIncludesPrincipalAndContextWhenSessionTagsFlagSet() {
-    RealmConfig sessionTagsConfig =
-        sessionTagFields("catalog", "namespace", "table", "principal", "roles");
-
-    CredentialVendingContext context =
-        CredentialVendingContext.builder()
-            .principalName(Optional.of("test-principal"))
-            .catalogName(Optional.of("my-catalog"))
-            .namespace(Optional.of("my-ns"))
-            .tableName(Optional.of("my-table"))
-            .build();
-
-    AwsStorageCredentialCacheKey key =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
-            "testRealm",
-            null,
-            sessionTagsConfig,
-            true,
-            Set.of("s3://bucket/read"),
-            Set.of("s3://bucket/write"),
-            Optional.empty(),
-            context);
-
-    // Session tags flag implies principal is included
-    assertThat(key.principalName()).isPresent().hasValue("test-principal");
-    // Context is included when session tags are enabled
-    assertThat(key.credentialVendingContext()).isEqualTo(context);
-  }
-
-  @Test
-  public void testBuildStorageCredentialCacheKeyDifferentPrincipalsProduceDifferentKeys() {
-    CredentialVendingContext contextAlice =
-        CredentialVendingContext.builder().principalName(Optional.of("alice")).build();
-    CredentialVendingContext contextBob =
-        CredentialVendingContext.builder().principalName(Optional.of("bob")).build();
-
-    AwsStorageCredentialCacheKey key1 =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
-            "testRealm",
-            null,
-            PRINCIPAL_INCLUDER_REALM_CONFIG,
-            true,
-            Set.of("s3://bucket/path"),
-            Set.of("s3://bucket/path"),
-            Optional.empty(),
-            contextAlice);
-
     AwsStorageCredentialCacheKey key2 =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
+        AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            PRINCIPAL_INCLUDER_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
-            contextBob);
+            Optional.of("bob"),
+            CredentialVendingContext.empty());
 
     assertThat(key1).isNotEqualTo(key2);
     assertThat(key1.principalName()).hasValue("alice");
@@ -1718,36 +1648,68 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testBuildStorageCredentialCacheKeySamePrincipalsProduceSameKeysWhenFlagOff() {
-    CredentialVendingContext ctxAlice =
-        CredentialVendingContext.builder().principalName(Optional.of("alice")).build();
-    CredentialVendingContext ctxBob =
-        CredentialVendingContext.builder().principalName(Optional.of("bob")).build();
-
+  public void testCacheKeySameWhenPrincipalExcluded() {
     AwsStorageCredentialCacheKey key1 =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
+        AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            EMPTY_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
-            ctxAlice);
+            Optional.empty(),
+            CredentialVendingContext.empty());
 
     AwsStorageCredentialCacheKey key2 =
-        AwsCredentialsStorageIntegration.buildStorageCredentialCacheKey(
+        AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            EMPTY_REALM_CONFIG,
             true,
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
-            ctxBob);
+            Optional.empty(),
+            CredentialVendingContext.empty());
 
-    // With flags off, principal is excluded — keys are equal
     assertThat(key1).isEqualTo(key2);
+  }
+
+  @Test
+  public void testCacheKeyDifferentContextsProduceDifferentKeys() {
+    CredentialVendingContext context1 =
+        CredentialVendingContext.builder()
+            .principalName(Optional.of("alice"))
+            .catalogName(Optional.of("catalog1"))
+            .build();
+    CredentialVendingContext context2 =
+        CredentialVendingContext.builder()
+            .principalName(Optional.of("alice"))
+            .catalogName(Optional.of("catalog2"))
+            .build();
+
+    AwsStorageCredentialCacheKey key1 =
+        AwsStorageCredentialCacheKey.of(
+            "testRealm",
+            null,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            Optional.of("alice"),
+            context1);
+
+    AwsStorageCredentialCacheKey key2 =
+        AwsStorageCredentialCacheKey.of(
+            "testRealm",
+            null,
+            true,
+            Set.of("s3://bucket/path"),
+            Set.of("s3://bucket/path"),
+            Optional.empty(),
+            Optional.of("alice"),
+            context2);
+
+    assertThat(key1).isNotEqualTo(key2);
   }
 
   @Test

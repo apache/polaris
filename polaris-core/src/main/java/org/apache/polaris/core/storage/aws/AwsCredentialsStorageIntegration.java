@@ -103,15 +103,24 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    return buildStorageCredentialCacheKey(
+    boolean includePrincipalNameInSubscopedCredential =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+    List<String> sessionTagFields =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags = !sessionTagFields.isEmpty();
+    boolean includePrincipalInCacheKey =
+        includePrincipalNameInSubscopedCredential || includeSessionTags;
+    CredentialVendingContext contextForCacheKey =
+        includeSessionTags ? context : CredentialVendingContext.empty();
+    return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig.serialize(),
-        realmConfig,
         allowList,
         readLocations,
         writeLocations,
         refreshEndpoint,
-        context);
+        includePrincipalInCacheKey ? context.principalName() : Optional.empty(),
+        contextForCacheKey);
   }
 
   @Override
@@ -445,39 +454,4 @@ public class AwsCredentialsStorageIntegration
     return path;
   }
 
-  /**
-   * Builds storage access config parameters for AWS credentials. Includes principal name and
-   * credential vending context when the corresponding feature flags are enabled, since AWS STS
-   * AssumeRole embeds these in session tags and role session names which affect the vended
-   * credentials.
-   */
-  public static AwsStorageCredentialCacheKey buildStorageCredentialCacheKey(
-      @Nonnull String realmId,
-      @jakarta.annotation.Nullable String storageConfigSerializedStr,
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    List<String> sessionTagFields =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags = !sessionTagFields.isEmpty();
-    boolean includePrincipalInCacheKey =
-        includePrincipalNameInSubscopedCredential || includeSessionTags;
-    CredentialVendingContext contextForCacheKey =
-        includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
-    return AwsStorageCredentialCacheKey.of(
-        realmId,
-        storageConfigSerializedStr,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations,
-        refreshCredentialsEndpoint,
-        includePrincipalInCacheKey ? credentialVendingContext.principalName() : Optional.empty(),
-        includePrincipalNameInSubscopedCredential,
-        contextForCacheKey);
-  }
 }

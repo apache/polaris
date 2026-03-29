@@ -477,25 +477,4 @@ public class AzureCredentialsStorageIntegration
     return false;
   }
 
-  /**
-   * Builds storage access config parameters for Azure credentials. Azure SAS tokens do not support
-   * session tags, so principal and credential vending context are never included.
-   */
-  public static AzureStorageCredentialCacheKey buildStorageCredentialCacheKey(
-      @Nonnull String realmId,
-      @jakarta.annotation.Nullable String storageConfigSerializedStr,
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    return AzureStorageCredentialCacheKey.of(
-        realmId,
-        storageConfigSerializedStr,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations,
-        refreshCredentialsEndpoint);
-  }
 }

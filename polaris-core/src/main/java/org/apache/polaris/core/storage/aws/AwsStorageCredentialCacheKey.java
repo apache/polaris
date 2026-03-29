@@ -55,18 +55,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Parameter(order = 7)
   Optional<String> principalName();
 
-  /**
-   * Whether the principal name should be embedded in the AWS STS role session name. This is {@code
-   * true} only when {@code INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL} is enabled. Note that
-   * {@link #principalName()} may be present even when this is {@code false} (e.g. when only session
-   * tags are enabled, the principal name is needed for the {@code polaris:principal} tag and for
-   * cache key differentiation, but should not appear in the role session name).
-   */
-  @Value.Parameter(order = 8)
-  boolean includePrincipalInRoleSessionName();
-
   /** Credential vending context for session tags. */
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   CredentialVendingContext credentialVendingContext();
 
   static AwsStorageCredentialCacheKey of(
@@ -77,7 +67,6 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       Optional<String> principalName,
-      boolean includePrincipalInRoleSessionName,
       CredentialVendingContext credentialVendingContext) {
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
@@ -87,7 +76,6 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedWriteLocations,
         refreshCredentialsEndpoint,
         principalName,
-        includePrincipalInRoleSessionName,
         credentialVendingContext);
   }
 }

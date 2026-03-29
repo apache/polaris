@@ -147,7 +147,6 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),
             Optional.of("principal"),
-            true,
             CredentialVendingContext.empty());
 
     // Key with principal2
@@ -160,7 +159,6 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),
             Optional.of("anotherPrincipal"),
-            true,
             CredentialVendingContext.empty());
 
     storageCredentialCache.getOrLoad(

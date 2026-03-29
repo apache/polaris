@@ -319,26 +319,4 @@ public class GcpCredentialsStorageIntegration
   private static String bucketResource(String bucket) {
     return "//storage.googleapis.com/projects/_/buckets/" + bucket;
   }
-
-  /**
-   * Builds storage access config parameters for GCP credentials. GCP downscoped credentials do not
-   * support session tags, so principal and credential vending context are never included.
-   */
-  public static GcpStorageCredentialCacheKey buildStorageCredentialCacheKey(
-      @Nonnull String realmId,
-      @jakarta.annotation.Nullable String storageConfigSerializedStr,
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    return GcpStorageCredentialCacheKey.of(
-        realmId,
-        storageConfigSerializedStr,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations,
-        refreshCredentialsEndpoint);
-  }
 }
