@@ -44,14 +44,15 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.FullyQualifiedPath;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
 import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
 import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
@@ -121,10 +122,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
         buildOpaAuthorizationInput(
             request.getPrincipal(),
             request.getOperation(),
-            toResourceEntitiesFromSecurables(
-                request.getTargets(), request.getReferenceCatalogName()),
-            toResourceEntitiesFromSecurables(
-                request.getSecondaries(), request.getReferenceCatalogName())));
+            toResourceEntitiesFromSecurables(request.getTargets()),
+            toResourceEntitiesFromSecurables(request.getSecondaries())));
   }
 
   /**
@@ -307,12 +306,12 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 
-  private ResourceEntity buildResourceEntity(FullyQualifiedPath path) {
-    PathSegment leaf = path.leaf();
+  private ResourceEntity buildResourceEntity(PolarisSecurable securable) {
+    PathSegment leaf = securable.getLeaf();
     var builder =
         ImmutableResourceEntity.builder().type(leaf.entityType().name()).name(leaf.name());
     List<ResourceEntity> parents = new ArrayList<>();
-    for (PathSegment parent : path.parents()) {
+    for (PathSegment parent : securable.getParents()) {
       parents.add(
           ImmutableResourceEntity.builder()
               .type(parent.entityType().name())
@@ -321,6 +320,28 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     }
     builder.parents(parents);
     return builder.build();
+  }
+
+  private ResourceEntity buildResourceEntity(PolarisResolvedPathWrapper path) {
+    ResolvedPolarisEntity resolvedLeaf = path.getResolvedLeafEntity();
+    PathSegment leaf =
+        new PathSegment(resolvedLeaf.getEntity().getType(), resolvedLeaf.getEntity().getName());
+    List<PathSegment> segments = new ArrayList<>();
+    List<ResolvedPolarisEntity> resolvedParents = path.getResolvedParentPath();
+    if (resolvedParents != null) {
+      for (ResolvedPolarisEntity resolvedParent : resolvedParents) {
+        if (resolvedParent.getEntity().getType() == PolarisEntityType.ROOT) {
+          continue;
+        }
+        segments.add(
+            new PathSegment(
+                resolvedParent.getEntity().getType(), resolvedParent.getEntity().getName()));
+      }
+    }
+    segments.add(leaf);
+    return buildResourceEntity(
+        PolarisSecurable.of(
+            segments.get(0), segments.subList(1, segments.size()).toArray(PathSegment[]::new)));
   }
 
   @Nonnull
@@ -333,7 +354,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     List<ResourceEntity> entities = new ArrayList<>();
     for (PolarisResolvedPathWrapper path : paths) {
       if (path != null && path.getResolvedLeafEntity() != null) {
-        entities.add(buildResourceEntity(FullyQualifiedPath.of(path)));
+        entities.add(buildResourceEntity(path));
       }
     }
     return entities;
@@ -341,14 +362,14 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   @Nonnull
   private List<ResourceEntity> toResourceEntitiesFromSecurables(
-      @Nullable List<PolarisSecurable> securables, @Nullable String referenceCatalogName) {
+      @Nullable List<PolarisSecurable> securables) {
     if (securables == null || securables.isEmpty()) {
       return List.of();
     }
 
     List<ResourceEntity> entities = new ArrayList<>();
     for (PolarisSecurable securable : securables) {
-      entities.add(buildResourceEntity(FullyQualifiedPath.of(securable, referenceCatalogName)));
+      entities.add(buildResourceEntity(securable));
     }
     return entities;
   }
