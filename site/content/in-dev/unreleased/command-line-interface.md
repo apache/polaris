@@ -1577,7 +1577,7 @@ options:
 polaris setup export
 ```
 
-### find
+### Find
 
 The `find` command is used to searches for an identifier across global entities (principals, roles, catalogs)
 and catalog entities (namespaces, tables, views) using fuzzy matching.
@@ -1591,7 +1591,7 @@ polaris find --catalog my_catalog my_table
 polaris find my_table --type table
 ```
 
-### tables
+### Tables
 
 The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
 
