@@ -310,6 +310,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    *     exists
    * @return the registered table
    */
+  @Override
   public Table registerTable(
       TableIdentifier identifier, String metadataFileLocation, boolean overwrite) {
     Preconditions.checkArgument(
