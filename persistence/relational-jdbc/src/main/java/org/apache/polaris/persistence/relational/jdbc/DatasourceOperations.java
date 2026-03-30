@@ -68,7 +68,7 @@ public class DatasourceOperations {
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
 
-  private final Random random = new Random();
+  private static final Random random = new Random();
 
   public DatasourceOperations(
       DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration)
