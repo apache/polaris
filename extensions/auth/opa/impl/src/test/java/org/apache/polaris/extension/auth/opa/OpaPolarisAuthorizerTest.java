@@ -628,7 +628,8 @@ public class OpaPolarisAuthorizerTest {
               "parents": []
             }
             """);
-    assertThat(root.path("input").path("resource").path("targets").get(0)).isEqualTo(expectedTarget);
+    assertThat(root.path("input").path("resource").path("targets").get(0))
+        .isEqualTo(expectedTarget);
   }
 
   @Test
