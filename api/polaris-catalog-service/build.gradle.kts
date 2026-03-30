@@ -34,6 +34,16 @@ val genericTableModels =
     "StorageAccessConfig",
   )
 
+val directoryModels =
+  listOf(
+    "CreateDirectoryRequest",
+    "LoadDirectoryResponse",
+    "ListDirectoriesResponse",
+    "Directory",
+    "DirectoryFilter",
+    "ScanSchedule",
+  )
+
 val policyManagementModels =
   listOf(
     "CatalogIdentifier",
@@ -49,7 +59,7 @@ val policyManagementModels =
     "ListPoliciesResponse",
   )
 
-val models = (genericTableModels + policyManagementModels).joinToString(",")
+val models = (genericTableModels + directoryModels + policyManagementModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -101,7 +111,7 @@ openApiGenerate {
   ignoreFileOverride.set(provider { rootDir.file(".openapi-generator-ignore").asFile.absolutePath })
   removeOperationIdPrefix.set(true)
   templateDir.set(provider { templatesDir.asFile.absolutePath })
-  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("apis", "GenericTableApi,DirectoryApi,PolicyApi")
   globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
