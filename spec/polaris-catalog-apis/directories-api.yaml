@@ -1,0 +1,334 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+
+    get:
+      tags:
+        - Directory API
+      summary: List all directory identifiers underneath a given namespace
+      description: Return all directory identifiers under this namespace
+      operationId: listDirectories
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+      responses:
+        200:
+          $ref: '#/components/responses/ListDirectoriesResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    post:
+      tags:
+        - Directory API
+      summary: Create a directory under the given namespace
+      description:
+        Create a directory under the given namespace, and return the created directory information as a response.
+      operationId: createDirectory
+      parameters:
+        - $ref: '#/components/parameters/polaris-directory-data-access'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectoryRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreateDirectoryResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Conflict - The directory already exists under the given namespace
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableAlreadyExists:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/TableAlreadyExistsError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/directories/{directory}:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '#/components/parameters/directory'
+
+    get:
+      tags:
+        - Directory API
+      summary: Load a directory under the given namespace from the catalog
+      operationId: loadDirectory
+      description:
+        Load a directory from the catalog under the given namespace.
+
+        The response contains all directory information passed during create.
+
+      parameters:
+        - $ref: '#/components/parameters/polaris-directory-data-access'
+      responses:
+        200:
+          $ref: '#/components/responses/LoadDirectoryResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchTableError, directory to load does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToLoadDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Directory API
+      summary: Drop a directory under the given namespace from the catalog
+      operationId: dropDirectory
+      description: Remove a directory under the given namespace from the catalog
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchTableError, directory to drop does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                DirectoryToDeleteDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  parameters:
+    directory:
+      name: directory
+      in: path
+      description: A directory name
+      required: true
+      schema:
+        type: string
+      example: "product-images"
+
+    polaris-directory-data-access:
+      name: Polaris-Directory-Access-Delegation
+      in: header
+      description: >
+        Optional header indicating that the client supports delegated access
+        using a specific mechanism. If the header is present, the server must
+        either provide access using the requested mechanism or fail the request.
+        If `vended-credentials` is specified, the server must return scoped
+        storage credentials in the `storage-access-configs` field of the response.
+      required: false
+      schema:
+        type: string
+        enum:
+          - vended-credentials
+      style: simple
+      explode: false
+      example: "vended-credentials"
+
+  schemas:
+    DirectoryFilter:
+      type: object
+      description: >
+        Controls which objects are included in the directory table during a scan.
+        If no filter is set, all objects found under the directory base_location are included.
+      properties:
+        include:
+          type: array
+          items:
+            type: string
+          description: A list of regular expressions matched against the object URI. An object is included if it matches at least one pattern (or if `include` is omitted).
+        exclude:
+          type: array
+          items:
+            type: string
+          description: A list of regular expressions matched against the object URI. An object matching any pattern is excluded, even if it also matches an include pattern.
+
+    ScanSchedule:
+      type: object
+      description: >
+        Describes when an external scanning service should re-scan the directory.
+      properties:
+        cron:
+          type: string
+          description: Cron expression describing when scans should run (e.g. `0 * * * *` for the top of every hour).
+
+    CreateDirectoryRequest:
+      type: object
+      required:
+        - name
+        - base_location
+      properties:
+        name:
+          type: string
+          description: The name of the directory. It is used in REST endpoint paths and becomes the name of the corresponding Iceberg table.
+        base_location:
+          type: string
+          description: The base location to use as a root for scanning objects in the object store (e.g. s3://bucket/path/).
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
+        scan-schedule:
+          $ref: '#/components/schemas/ScanSchedule'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+
+    Directory:
+      type: object
+      description: >
+        Directory information.
+
+        - `name` (REQUIRED): name of the directory
+
+        - `base_location` (REQUIRED): root location of the directory on the object store
+
+        - `filter` (OPTIONAL): include and exclude patterns for object filtering
+
+        - `scan-schedule` (OPTIONAL): schedule describing when an external service should re-scan the directory
+
+        - `properties` (OPTIONAL): properties for the directory passed on creation
+      required:
+        - name
+        - base_location
+      properties:
+        name:
+          type: string
+        base_location:
+          type: string
+        filter:
+          $ref: '#/components/schemas/DirectoryFilter'
+        scan-schedule:
+          $ref: '#/components/schemas/ScanSchedule'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+
+    LoadDirectoryResponse:
+      description: Result used when a directory is successfully loaded.
+      type: object
+      required:
+        - directory
+      properties:
+        directory:
+          $ref: '#/components/schemas/Directory'
+        storage-access-configs:
+          type: array
+          description: |
+            Storage configurations required to access the directory, encompassing both credentials and other necessary
+            settings for storage access, such as the client region for S3.
+          items:
+            $ref: './generic-tables-api.yaml#/components/schemas/StorageAccessConfig'
+
+    ListDirectoriesResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableIdentifier'
+
+  responses:
+
+    LoadDirectoryResponse:
+      description: Directory result if successfully loaded a directory.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadDirectoryResponse'
+
+    CreateDirectoryResponse:
+      description: Directory result if successfully created a directory.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadDirectoryResponse'
+
+    ListDirectoriesResponse:
+      description: List of directory identifiers.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListDirectoriesResponse'

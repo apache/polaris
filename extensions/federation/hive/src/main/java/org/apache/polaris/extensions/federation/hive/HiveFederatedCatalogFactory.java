@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.catalog.DirectoryCatalog;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -85,5 +86,15 @@ public class HiveFederatedCatalogFactory implements FederatedCatalogFactory {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");
+  }
+
+  @Override
+  public DirectoryCatalog createDirectoryCatalog(
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
+    // TODO implement
+    throw new UnsupportedOperationException(
+        "Directory federation to this catalog is not supported.");
   }
 }
