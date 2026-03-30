@@ -26,6 +26,7 @@ import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.catalog.DirectoryCatalog;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -78,5 +79,15 @@ public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFacto
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");
+  }
+
+  @Override
+  public DirectoryCatalog createDirectoryCatalog(
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
+    // TODO implement
+    throw new UnsupportedOperationException(
+        "Directory federation to this catalog is not supported.");
   }
 }
