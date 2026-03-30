@@ -102,7 +102,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for phase-3 backward compatibility.
+   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
    *
    * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
    * resolve only the selections required by OPA authorization.
@@ -117,12 +117,16 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    return evaluateOpaDecision(
-        buildOpaAuthorizationInput(
-            request.getPrincipal(),
-            request.getOperation(),
-            toResourceEntitiesFromSecurables(request.getTargets()),
-            toResourceEntitiesFromSecurables(request.getSecondaries())));
+    boolean allowed =
+        queryOpa(
+            buildOpaAuthorizationInput(
+                request.getPrincipal(),
+                request.getOperation(),
+                toResourceEntitiesFromSecurables(request.getTargets()),
+                toResourceEntitiesFromSecurables(request.getSecondaries())));
+    return allowed
+        ? AuthorizationDecision.allow()
+        : AuthorizationDecision.deny("OPA denied authorization");
   }
 
   /**
@@ -171,24 +175,16 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    AuthorizationDecision decision =
-        evaluateOpaDecision(
+    boolean allowed =
+        queryOpa(
             buildOpaAuthorizationInput(
                 polarisPrincipal,
                 authzOp,
                 toResourceEntitiesFromResolvedPaths(targets),
                 toResourceEntitiesFromResolvedPaths(secondaries)));
-    if (!decision.isAllowed()) {
-      throw new ForbiddenException("%s", decision.getMessage().orElse("OPA denied authorization"));
+    if (!allowed) {
+      throw new ForbiddenException("%s", "OPA denied authorization");
     }
-  }
-
-  private AuthorizationDecision evaluateOpaDecision(ImmutableOpaAuthorizationInput input) {
-    boolean allowed = queryOpa(input);
-    if (allowed) {
-      return AuthorizationDecision.allow();
-    }
-    return AuthorizationDecision.deny("OPA denied authorization");
   }
 
   /**
@@ -307,8 +303,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   private ResourceEntity buildResourceEntity(PolarisSecurable securable) {
     // This is the target shape we want going forward where we derive the OPA payload from
-    // PolarisSecurable
-    // This will exclude RBAC-only concepts like ROOT container.
+    // PolarisSecurable. This will exclude RBAC-only concepts like ROOT container.
     PathSegment leaf = securable.getLeaf();
     var builder =
         ImmutableResourceEntity.builder().type(leaf.entityType().name()).name(leaf.name());

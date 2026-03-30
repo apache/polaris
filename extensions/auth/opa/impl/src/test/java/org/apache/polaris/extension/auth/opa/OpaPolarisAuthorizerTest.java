@@ -614,14 +614,21 @@ public class OpaPolarisAuthorizerTest {
         };
 
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
-    JsonNode root = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
     assertThat(decision.isAllowed()).isTrue();
     assertThat(root.path("input").path("action").asText()).isEqualTo("GET_CATALOG");
-    assertThat(root.path("input").path("resource").path("targets").get(0).path("type").asText())
-        .isEqualTo("CATALOG");
-    assertThat(root.path("input").path("resource").path("targets").get(0).path("name").asText())
-        .isEqualTo("catalog-1");
+    JsonNode expectedTarget =
+        mapper.readTree(
+            """
+            {
+              "type": "CATALOG",
+              "name": "catalog-1",
+              "parents": []
+            }
+            """);
+    assertThat(root.path("input").path("resource").path("targets").get(0)).isEqualTo(expectedTarget);
   }
 
   @Test
