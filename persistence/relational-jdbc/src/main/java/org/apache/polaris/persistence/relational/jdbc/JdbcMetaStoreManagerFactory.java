@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -83,11 +81,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   // Cached DatasourceOperations — created once, reused across all requests.
   private volatile DatasourceOperations cachedDatasourceOperations;
 
-  // Per-realm ReadWriteLock: read lock for request-path methods, write lock for purge.
-  // Fair mode ensures purge is not starved under heavy read traffic.
-  // Requests for different realms never contend; purge of one realm only blocks that realm.
-  private final ConcurrentHashMap<String, ReadWriteLock> realmLocks = new ConcurrentHashMap<>();
-
   @Inject Clock clock;
   @Inject PolarisDiagnostics diagnostics;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -96,10 +89,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject RealmConfig realmConfig;
 
   protected JdbcMetaStoreManagerFactory() {}
-
-  private ReadWriteLock realmLock(String realmId) {
-    return realmLocks.computeIfAbsent(realmId, k -> new ReentrantReadWriteLock(true));
-  }
 
   protected PrincipalSecretsGenerator secretsGenerator(
       String realmId, @Nullable RootCredentialsSet rootCredentialsSet) {
@@ -224,38 +213,33 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
+  public synchronized Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
     Map<String, BaseResult> results = new HashMap<>();
 
     for (String realm : realms) {
-      realmLock(realm).writeLock().lock();
-      try {
-        RealmContext realmContext = () -> realm;
-        PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-        DatasourceOperations datasourceOperations = getDatasourceOperations();
-        BasePersistence session = createSession(datasourceOperations, realm, null);
+      RealmContext realmContext = () -> realm;
+      PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+      DatasourceOperations datasourceOperations = getDatasourceOperations();
+      BasePersistence session = createSession(datasourceOperations, realm, null);
 
-        PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
 
-        // Verify the realm is bootstrapped before purging — a non-bootstrapped realm
-        // has no root principal, so purging it is a no-op that should be reported as failure.
-        Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(callContext);
-        if (rootPrincipal.isEmpty()) {
-          results.put(
-              realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "Not bootstrapped"));
-          continue;
-        }
-
-        BaseResult result = metaStoreManager.purge(callContext);
-        results.put(realm, result);
-
-        // Evict all cached state for this realm
-        entityCacheMap.remove(realm);
-        schemaVersionCache.remove(realm);
-        verifiedRealms.remove(realm);
-      } finally {
-        realmLock(realm).writeLock().unlock();
+      // Verify the realm is bootstrapped before purging — a non-bootstrapped realm
+      // has no root principal, so purging it is a no-op that should be reported as failure.
+      Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(callContext);
+      if (rootPrincipal.isEmpty()) {
+        results.put(
+            realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "Not bootstrapped"));
+        continue;
       }
+
+      BaseResult result = metaStoreManager.purge(callContext);
+      results.put(realm, result);
+
+      // Evict all cached state for this realm
+      entityCacheMap.remove(realm);
+      schemaVersionCache.remove(realm);
+      verifiedRealms.remove(realm);
     }
 
     return Map.copyOf(results);
@@ -270,39 +254,30 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
-    realmLock(realmId).readLock().lock();
-    try {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
+    DatasourceOperations datasourceOperations = getDatasourceOperations();
 
-      // Verify bootstrap once per realm lifetime; skip on subsequent calls.
-      // On cold start, multiple threads may verify concurrently — this is benign
-      // (idempotent DB query), trading a few redundant queries for simpler code.
-      if (!verifiedRealms.contains(realmId)) {
-        checkPolarisServiceBootstrappedForRealm(realmContext, datasourceOperations);
-      }
-
-      // Stateless — create a fresh instance on every call; schemaVersion is cached per realm
-      return createSession(datasourceOperations, realmId, null);
-    } finally {
-      realmLock(realmId).readLock().unlock();
+    // Verify bootstrap once per realm lifetime; skip on subsequent calls.
+    // On cold start, multiple threads may verify concurrently — this is benign
+    // (idempotent DB query), trading a few redundant queries for simpler code.
+    if (!verifiedRealms.contains(realmId)) {
+      checkPolarisServiceBootstrappedForRealm(realmContext, datasourceOperations);
     }
+
+    // Stateless — create a fresh instance on every call; schemaVersion is cached per realm
+    return createSession(datasourceOperations, realmId, null);
   }
 
   @Override
   public EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig) {
     String realmId = realmContext.getRealmIdentifier();
-    realmLock(realmId).readLock().lock();
-    try {
-      // EntityCache is stateful (Caffeine + ConcurrentHashMap) — must be shared across requests
-      return entityCacheMap.computeIfAbsent(
-          realmId,
-          k -> {
-            PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-            return new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager);
-          });
-    } finally {
-      realmLock(realmId).readLock().unlock();
-    }
+    // EntityCache is stateful (Caffeine + ConcurrentHashMap) — must be shared across requests.
+    // ConcurrentHashMap.computeIfAbsent is already atomic — no external lock needed.
+    return entityCacheMap.computeIfAbsent(
+        realmId,
+        k -> {
+          PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+          return new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager);
+        });
   }
 
   /**
