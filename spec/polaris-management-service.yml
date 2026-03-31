@@ -1069,6 +1069,7 @@ components:
             - GCS
             - AZURE
             - FILE
+            - S3_TABLES
           description: The cloud provider type this storage is built on. FILE is supported for testing purposes only
         allowedLocations:
           type: array
@@ -1087,6 +1088,7 @@ components:
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
+          S3_TABLES: "#/components/schemas/AwsS3TablesStorageConfigInfo"
 
     AwsStorageConfigInfo:
       type: object
@@ -1156,6 +1158,37 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+
+    AwsS3TablesStorageConfigInfo:
+      type: object
+      description: AWS S3 Tables storage configuration info
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+        - type: object
+          properties:
+            roleArn:
+              type: string
+              description: the AWS IAM role ARN used to assume credentials for S3 Tables access
+              example: "arn:aws:iam::123456789012:role/polaris-s3tables-role"
+            externalId:
+              type: string
+              description: an optional external ID for the STS AssumeRole trust policy
+            region:
+              type: string
+              description: the AWS region where the S3 Tables bucket resides
+              example: "us-east-1"
+            currentKmsKey:
+              type: string
+              description: the AWS KMS key ARN used to encrypt S3 Tables data
+              example: "arn:aws:kms::123456789012:key/01234578"
+            allowedKmsKeys:
+              type: array
+              description: The list of KMS keys that this catalog and its clients are allowed to use for reading S3 Tables data
+              items:
+                type: string
+              example: ["arn:aws:kms::123456789012:key/01234578"]
+          required:
+            - roleArn
 
     AzureStorageConfigInfo:
       type: object
