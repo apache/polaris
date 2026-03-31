@@ -512,8 +512,13 @@ done < "${temp_dir}/maven-local-files"
 # verify that the "main" and sources jars contain LICENSE + NOTICE files
 echo "Checking for mandatory jar file content..."
 while read -r fn ; do
-  [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] && \
-    log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
+  jar_entries=$(zipinfo -1 "${maven_repo_dir}/${fn}")
+  has_license=0
+  has_notice=0
+  echo "${jar_entries}" | grep --extended-regexp --quiet "^(META-INF/)?LICENSE$" && has_license=1
+  echo "${jar_entries}" | grep --extended-regexp --quiet "^(META-INF/)?NOTICE$" && has_notice=1
+  [[ ${has_license} -eq 0 ]] && log_fatal "${fn}: Mandatory LICENSE file not found in root or META-INF/"
+  [[ ${has_notice} -eq 0 ]] && log_fatal "${fn}: Mandatory NOTICE file not found in root or META-INF/"
 done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files")
 log_part_end
 
