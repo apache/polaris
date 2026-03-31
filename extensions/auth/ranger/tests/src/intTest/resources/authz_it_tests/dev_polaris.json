@@ -454,7 +454,7 @@
             { "type": "principal-create" },
             { "type": "principal-list" }
           ],
-          "users": [ "admin1" ]
+          "users": [ "admin1", "root" ]
         },
         {
           "accesses": [
@@ -617,6 +617,77 @@
             { "type": "policy-detach" }
           ],
           "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 8, "name": "policy:root_container/all_catalog",
+      "resources": {
+        "root":      { "values": [ "root_container" ] },
+        "catalog":   { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "namespace-create" },
+            { "type": "catalog-policy-attach" },
+            { "type": "catalog-policy-detach" },
+            { "type":  "catalog-drop" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 9, "name": "policy:root_container/all_catalog/all_namespace/table-operations",
+      "resources": {
+        "root":      { "values": [ "root_container" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-create" },
+            { "type": "namespace-drop" },
+            { "type": "policy-create" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 10, "name": "policy:root_container/all_catalog/all_namespace/all_tables/table-operations",
+      "resources": {
+        "root":      { "values": [ "root_container" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] },
+        "table":     { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-drop" }
+          ],
+          "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 11, "name": "policy:root_container/all_catalog/all_namespace/all_policy",
+      "resources": {
+        "root":      { "values": [ "root_container" ] },
+        "catalog":   { "values": [ "*" ] },
+        "namespace": { "values": [ "*" ] },
+        "policy":    { "values": [ "*" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "policy-read" },
+            { "type": "policy-drop" },
+            { "type": "policy-write" },
+            { "type": "policy-metadata-full" },
+            { "type": "policy-attach" },
+            { "type": "policy-detach" }
+          ],
+          "users": [ "root" ] }
       ]
     }
   ]

@@ -38,6 +38,9 @@ import org.apache.ranger.authz.model.RangerUserInfo;
 import org.apache.ranger.authz.util.RangerResourceNameParser;
 
 public class RangerUtils {
+
+  public static String DEFAULT_ROOT_CONTAINER = "root_container";
+
   public static String toResourceType(PolarisEntityType entityType) {
     return switch (entityType) {
       case ROOT -> "root";
@@ -79,6 +82,10 @@ public class RangerUtils {
       if (!isFirst) {
         sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP);
       } else {
+        if (entity.getEntity().getType() != PolarisEntityType.ROOT) {
+          sb.append(DEFAULT_ROOT_CONTAINER)
+              .append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP);
+        }
         isFirst = false;
       }
 
