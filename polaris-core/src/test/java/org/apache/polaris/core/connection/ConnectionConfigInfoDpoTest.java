@@ -250,4 +250,53 @@ public class ConnectionConfigInfoDpoTest {
         objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
         connectionConfigInfoApiModel);
   }
+
+  @Test
+  void testBigQueryMetastoreConnectionConfig() throws JsonProcessingException {
+    // Test deserialization and reserialization of the persistence JSON.
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 4,"
+            + "  \"uri\": \"https://bigquery.googleapis.com\","
+            + "  \"warehouse\": \"gs://gcs-bucket/warehouse\","
+            + "  \"gcpProjectId\": \"gcp-project\","
+            + "  \"gcpLocation\": \"us-central1\","
+            + "  \"impersonateServiceAccount\": \"sa@gcp-project.iam.gserviceaccount.com\","
+            + "  \"impersonateLifetimeSeconds\": 3600,"
+            + "  \"impersonateScopes\": [\"https://www.googleapis.com/auth/cloud-platform\"],"
+            + "  \"impersonateDelegates\": [\"delegate@gcp-project.iam.gserviceaccount.com\"],"
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 3"
+            + "  }"
+            + "}";
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
+    Assertions.assertNotNull(connectionConfigInfoDpo);
+    JsonNode tree1 = objectMapper.readTree(json);
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
+    Assertions.assertEquals(tree1, tree2);
+
+    // Test conversion into API model JSON.
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
+    String expectedApiModelJson =
+        ""
+            + "{"
+            + "  \"connectionType\": \"BIGQUERY\","
+            + "  \"uri\": \"https://bigquery.googleapis.com\","
+            + "  \"warehouse\": \"gs://gcs-bucket/warehouse\","
+            + "  \"gcpProjectId\": \"gcp-project\","
+            + "  \"gcpLocation\": \"us-central1\","
+            + "  \"impersonateServiceAccount\": \"sa@gcp-project.iam.gserviceaccount.com\","
+            + "  \"impersonateLifetimeSeconds\": 3600,"
+            + "  \"impersonateScopes\": [\"https://www.googleapis.com/auth/cloud-platform\"],"
+            + "  \"impersonateDelegates\": [\"delegate@gcp-project.iam.gserviceaccount.com\"],"
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationType\": \"IMPLICIT\""
+            + "  }"
+            + "}";
+    Assertions.assertEquals(
+        objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
+        connectionConfigInfoApiModel);
+  }
 }

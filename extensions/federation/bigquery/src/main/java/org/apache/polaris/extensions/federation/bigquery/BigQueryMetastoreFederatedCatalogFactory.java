@@ -51,8 +51,9 @@ public class BigQueryMetastoreFederatedCatalogFactory implements ExternalCatalog
     // IMPLICIT authentication.
     AuthenticationParametersDpo authenticationParametersDpo =
         connectionConfigInfoDpo.getAuthenticationParameters();
-    if (authenticationParametersDpo.getAuthenticationTypeCode()
-        != AuthenticationType.IMPLICIT.getCode()) {
+    if (authenticationParametersDpo != null
+        && authenticationParametersDpo.getAuthenticationTypeCode()
+            != AuthenticationType.IMPLICIT.getCode()) {
       throw new IllegalStateException(
           "BigQuery Metastore federation only supports IMPLICIT authentication.");
     }

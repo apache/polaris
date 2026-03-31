@@ -137,7 +137,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .add("gcpProjectId", gcpProjectId)
         .add("gcpLocation", gcpLocation)
         .add("listAllTables", listAllTables)
-        .add("authenticationParameters", getAuthenticationParameters().toString())
+        .add("authenticationParameters", getAuthenticationParameters())
         .toString();
   }
 
@@ -216,7 +216,9 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .setImpersonateScopes(impersonateScopes)
         .setImpersonateDelegates(impersonateDelegates)
         .setAuthenticationParameters(
-            getAuthenticationParameters().asAuthenticationParametersModel())
+            getAuthenticationParameters() != null
+                ? getAuthenticationParameters().asAuthenticationParametersModel()
+                : null)
         .setServiceIdentity(
             Optional.ofNullable(getServiceIdentity())
                 .map(
