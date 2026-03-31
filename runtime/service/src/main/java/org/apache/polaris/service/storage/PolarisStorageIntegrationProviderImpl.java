@@ -41,6 +41,8 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsS3TablesCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsS3TablesStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
@@ -154,6 +156,26 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 return Map.of();
               }
             };
+        break;
+      case S3_TABLES:
+        Optional<AwsCredentialsProvider> s3TablesCreds = stsCredentials;
+        if (s3TablesCreds.isEmpty() && storageConfiguration != null) {
+          if (realmConfig != null
+              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            s3TablesCreds =
+                Optional.of(
+                    storageConfiguration.stsCredentials(
+                        polarisStorageConfigurationInfo.getStorageName()));
+          } else {
+            s3TablesCreds = Optional.of(storageConfiguration.stsCredentials());
+          }
+        }
+        storageIntegration =
+            (PolarisStorageIntegration<T>)
+                new AwsS3TablesCredentialsStorageIntegration(
+                    (AwsS3TablesStorageConfigurationInfo) polarisStorageConfigurationInfo,
+                    stsClientProvider,
+                    s3TablesCreds);
         break;
       default:
         throw new IllegalArgumentException(

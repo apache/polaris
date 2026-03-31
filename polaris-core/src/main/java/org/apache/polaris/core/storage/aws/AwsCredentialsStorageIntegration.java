@@ -310,7 +310,7 @@ public class AwsCredentialsStorageIntegration
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
-  private static void addKmsKeyPolicy(
+  static void addKmsKeyPolicy(
       String kmsKeyArn,
       List<String> allowedKmsKeys,
       IamPolicy.Builder policyBuilder,

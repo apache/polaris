@@ -56,6 +56,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject CatalogHandlerUtils catalogHandlerUtils;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject CapturedConfigHolder capturedConfigHolder;
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
   @Inject Clock clock;
@@ -78,6 +79,7 @@ public class IcebergCatalogHandlerFactory {
         .catalogHandlerUtils(catalogHandlerUtils)
         .federatedCatalogFactories(federatedCatalogFactories)
         .storageAccessConfigProvider(storageAccessConfigProvider)
+        .capturedConfigHolder(capturedConfigHolder)
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
         .clock(clock)
