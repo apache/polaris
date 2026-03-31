@@ -39,10 +39,8 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.Util.asHex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.Util.randomObjId;
 import static org.assertj.core.groups.Tuple.tuple;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HexFormat;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
