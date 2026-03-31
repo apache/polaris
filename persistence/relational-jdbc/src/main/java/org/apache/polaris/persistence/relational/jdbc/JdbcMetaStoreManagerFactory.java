@@ -190,11 +190,20 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         try {
           // Run the set-up script to create the tables on all data sources.
           metastoreOps.executeScript(
-              metastoreOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
+              metastoreOps
+                  .getDatabaseType()
+                  .openInitScriptResource(
+                      effectiveSchemaVersion, DataSourceResolver.StoreType.METASTORE));
           metricsOps.executeScript(
-              metricsOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
+              metricsOps
+                  .getDatabaseType()
+                  .openInitScriptResource(
+                      effectiveSchemaVersion, DataSourceResolver.StoreType.METRICS));
           eventOps.executeScript(
-              eventOps.getDatabaseType().openInitScriptResource(effectiveSchemaVersion));
+              eventOps
+                  .getDatabaseType()
+                  .openInitScriptResource(
+                      effectiveSchemaVersion, DataSourceResolver.StoreType.EVENTS));
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
