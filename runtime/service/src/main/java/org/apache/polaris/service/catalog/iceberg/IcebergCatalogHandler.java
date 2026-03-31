@@ -105,7 +105,6 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -218,6 +217,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   @SuppressWarnings("immutables:incompat")
   private ViewCatalog viewCatalog = null;
 
+  // Indicates whether the catalog is a non-federated (Polaris-managed) catalog.
+  // Non-federated catalogs support additional capabilities such as pagination,
+  // location transformation, credential vending, and multi-table transactions.
+  private boolean isNonFederated = false;
+
   private static final String SNAPSHOTS_ALL = "all";
   private static final String SNAPSHOTS_REFS = "refs";
 
@@ -229,23 +233,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private boolean shouldDecodeToken() {
     return realmConfig().getConfig(LIST_PAGINATION_ENABLED, getResolvedCatalogEntity());
-  }
-
-  public ListNamespacesResponse listNamespaces(
-      Namespace parent, String pageToken, Integer pageSize) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
-    authorizeBasicNamespaceOperationOrThrow(op, parent);
-
-    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      Page<Namespace> results = polarisCatalog.listNamespaces(parent, pageRequest);
-      return ListNamespacesResponse.builder()
-          .addAll(results.items())
-          .nextPageToken(results.encodedResponseToken())
-          .build();
-    } else {
-      return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
-    }
   }
 
   @Override
@@ -286,9 +273,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // storage. In the future, we could leverage PolarisCredentialManager to inject storage
       // credentials for non-rest remote catalog
       this.baseCatalog = federatedCatalog;
+      this.isNonFederated = false;
     } else {
       LOGGER.debug("Initializing non-federated catalog");
       this.baseCatalog = localCatalogFactory().createCatalog(resolutionManifest);
+      this.isNonFederated = true;
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
@@ -302,6 +291,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent);
   }
 
+  public ListNamespacesResponse listNamespaces(
+      Namespace parent, String pageToken, Integer pageSize) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
+
+    if (isNonFederated) {
+      PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
+      var results = ((IcebergCatalog) baseCatalog).listNamespaces(parent, pageRequest);
+      return ListNamespacesResponse.builder()
+          .addAll(results.items())
+          .nextPageToken(results.encodedResponseToken())
+          .build();
+    } else {
+      return catalogHandlerUtils().listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
+    }
+  }
+
   public CreateNamespaceResponse createNamespace(CreateNamespaceRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_NAMESPACE;
 
@@ -312,7 +318,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
     authorizeCreateNamespaceUnderNamespaceOperationOrThrow(op, namespace);
 
-    if (namespaceCatalog instanceof IcebergCatalog) {
+    if (isNonFederated) {
       // Note: The CatalogHandlers' default implementation will non-atomically create the
       // namespace and then fetch its properties using loadNamespaceMetadata for the response.
       // However, the latest namespace metadata technically isn't the same authorized instance,
@@ -381,9 +387,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+    if (isNonFederated) {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      Page<TableIdentifier> results = polarisCatalog.listTables(namespace, pageRequest);
+      var results = ((IcebergCatalog) baseCatalog).listTables(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
@@ -514,7 +520,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (request.location() != null) {
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
-      if (baseCatalog instanceof IcebergCatalog) {
+      if (isNonFederated) {
         location =
             ((IcebergCatalog) baseCatalog).transformTableLikeLocation(ident, request.location());
       } else {
@@ -849,14 +855,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return responseBuilder;
     }
 
-    if (baseCatalog instanceof IcebergCatalog
+    if (isNonFederated
         || realmConfig()
             .getConfig(ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
 
       Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
 
-      // For non polaris' catalog, validate that table locations are within allowed locations
-      if (!(baseCatalog instanceof IcebergCatalog)) {
+      // For federated catalogs, validate that table locations are within allowed locations
+      if (!isNonFederated) {
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 
@@ -928,8 +934,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         request.updates().stream()
             .map(
                 update -> {
-                  if (baseCatalog instanceof IcebergCatalog
-                      && update instanceof MetadataUpdate.SetLocation setLocation) {
+                  if (isNonFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
                     String requestedLocation = setLocation.location();
                     String filteredLocation =
                         ((IcebergCatalog) baseCatalog)
@@ -1035,7 +1040,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
 
-    if (!(baseCatalog instanceof IcebergCatalog)) {
+    if (!isNonFederated) {
       throw new BadRequestException(
           "Unsupported operation: commitTransaction with baseCatalog type: %s",
           baseCatalog.getClass().getName());
@@ -1145,9 +1150,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
-    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+    if (isNonFederated) {
       PageToken pageRequest = PageToken.build(pageToken, pageSize, this::shouldDecodeToken);
-      Page<TableIdentifier> results = polarisCatalog.listViews(namespace, pageRequest);
+      var results = ((IcebergCatalog) baseCatalog).listViews(namespace, pageRequest);
       return ListTablesResponse.builder()
           .addAll(results.items())
           .nextPageToken(results.encodedResponseToken())
