@@ -39,8 +39,10 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.Util.asHex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.Util.randomObjId;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -886,27 +888,12 @@ public class TestIndexImpl {
 
     // Re-acquire from the same thread should return the same buffer, cleared
     var buf2 = IndexImpl.acquireScratchKeyBuffer();
-    soft.assertThat(buf2).isSameAs(buf);
-    soft.assertThat(buf2.position()).isEqualTo(0);
-    IndexImpl.releaseScratchKeyBuffer(buf2);
-  }
-
-  @Test
-  void scratchPoolBounded() {
-    IndexImpl.clearScratchPool();
-
-    // The striped pool has a fixed number of slots (POOL_SIZE), each holding at most one buffer.
-    // Releasing from different threads that hash to the same slot just overwrites.
-    soft.assertThat(IndexImpl.POOL_SIZE).isGreaterThan(0);
-
-    // After releasing buffers, pool size can never exceed POOL_SIZE
-    var buffers = new ArrayList<java.nio.ByteBuffer>();
-    for (var i = 0; i < IndexImpl.POOL_SIZE + 10; i++) {
-      buffers.add(IndexImpl.acquireScratchKeyBuffer());
+    try {
+      soft.assertThat(buf2).isSameAs(buf);
+      soft.assertThat(buf2.position()).isEqualTo(0);
+    } finally {
+      IndexImpl.releaseScratchKeyBuffer(buf2);
     }
-    buffers.forEach(IndexImpl::releaseScratchKeyBuffer);
-
-    soft.assertThat(IndexImpl.scratchPoolSize()).isLessThanOrEqualTo(IndexImpl.POOL_SIZE);
   }
 
   @Test
@@ -916,6 +903,7 @@ public class TestIndexImpl {
     // First acquire takes the buffer from the slot
     var outer = IndexImpl.acquireScratchKeyBuffer();
     // Second acquire from the same thread hits the same (now empty) slot, must allocate fresh
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(0);
     var inner = IndexImpl.acquireScratchKeyBuffer();
 
     soft.assertThat(inner).isNotSameAs(outer);
@@ -928,12 +916,19 @@ public class TestIndexImpl {
 
     // Release inner first, then outer — outer wins the slot (last-write-wins)
     IndexImpl.releaseScratchKeyBuffer(inner);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
     IndexImpl.releaseScratchKeyBuffer(outer);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
 
     // Re-acquire should get the outer buffer (last released to this slot)
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
     var reacquired = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(0);
     soft.assertThat(reacquired).isSameAs(outer);
     IndexImpl.releaseScratchKeyBuffer(reacquired);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+    IndexImpl.releaseScratchKeyBuffer(outer);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
   }
 
   @Test
