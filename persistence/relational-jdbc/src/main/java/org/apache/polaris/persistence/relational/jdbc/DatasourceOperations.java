@@ -71,8 +71,7 @@ public class DatasourceOperations {
   private static final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration)
-      throws SQLException {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     try (Connection connection = this.datasource.getConnection()) {
@@ -87,6 +86,8 @@ public class DatasourceOperations {
       this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
 
       LOGGER.info("Detected database type: {}", databaseType);
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to initialize DatasourceOperations", e);
     }
   }
 
