@@ -32,7 +32,6 @@ import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.IdempotencyStore.ReserveResult;
 import org.apache.polaris.core.persistence.IdempotencyStore.ReserveResultType;
 import org.apache.polaris.core.persistence.InMemoryIdempotencyStore;
-import org.apache.polaris.service.catalog.Profiles;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -42,7 +41,12 @@ class IdempotencyStoreWiringInMemoryTest {
   public static class InMemoryProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-      Map<String, String> cfg = new HashMap<>(new Profiles.DefaultProfile().getConfigOverrides());
+      Map<String, String> cfg = new HashMap<>();
+      cfg.put("polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"", "true");
+      cfg.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
+      cfg.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]");
+      cfg.put("polaris.event-listener.type", "test");
+      cfg.put("polaris.readiness.ignore-severe-issues", "true");
       cfg.put("polaris.realm-context.realms", "test");
       cfg.put("polaris.persistence.type", "in-memory");
       return cfg;
