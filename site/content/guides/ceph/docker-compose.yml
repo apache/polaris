@@ -137,7 +137,7 @@ services:
       start_period: 10s
 
   bucket-setup:
-    image: amazon/aws-cli:2.34.14
+    image: amazon/aws-cli:2.34.19
     depends_on:
       rgw1:
         condition: service_healthy

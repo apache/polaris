@@ -92,4 +92,46 @@ class PolarisObjectMapperUtilTest {
         PolarisObjectMapperUtil.parseTaskState(entity);
     Assertions.assertThat(state).isNull();
   }
+
+  @Test
+  public void testParseTaskStateWithInvalidLastAttemptStartTime() {
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .catalogId(0L)
+            .id(1L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("task")
+            .properties(
+                "{\"name\": \"my name\", \"lastAttemptExecutorId\": \"executor1\", "
+                    + "\"lastAttemptStartTime\": \"not-a-number\", \"attemptCount\": \"5\"}")
+            .build();
+
+    // Should return null and log warning instead of throwing NumberFormatException
+    PolarisObjectMapperUtil.TaskExecutionState state =
+        PolarisObjectMapperUtil.parseTaskState(entity);
+    Assertions.assertThat(state).isNull();
+  }
+
+  @Test
+  public void testParseTaskStateWithInvalidAttemptCount() {
+    PolarisBaseEntity entity =
+        new PolarisBaseEntity.Builder()
+            .catalogId(0L)
+            .id(1L)
+            .typeCode(PolarisEntityType.TASK.getCode())
+            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+            .parentId(0L)
+            .name("task")
+            .properties(
+                "{\"name\": \"my name\", \"lastAttemptExecutorId\": \"executor2\", "
+                    + "\"lastAttemptStartTime\": \"12345\", \"attemptCount\": \"invalid-count\"}")
+            .build();
+
+    // Should return null and log warning instead of throwing NumberFormatException
+    PolarisObjectMapperUtil.TaskExecutionState state =
+        PolarisObjectMapperUtil.parseTaskState(entity);
+    Assertions.assertThat(state).isNull();
+  }
 }
