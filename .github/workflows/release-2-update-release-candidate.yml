@@ -145,6 +145,12 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Set up helm-docs
+        if: env.rc_number == '0'
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
       - name: Update project versions
         if: env.rc_number == '0'
         run: |
@@ -167,6 +173,12 @@ jobs:
           Changelog patched successfully
           EOT
 
+      - name: Generate Helm documentation
+        if: env.rc_number == '0'
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+          exec_process make helm-doc-generate
+
       - name: Commit and push changes
         if: env.rc_number == '0'
         run: |
@@ -180,6 +192,7 @@ jobs:
             "$HELM_README_FILE" \
             "$HELM_VALUES_FILE" \
             "$HELM_VALUES_SCHEMA_FILE" \
+            "$HELM_REFERENCE_DOC_FILE" \
             "$CHANGELOG_FILE"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 
