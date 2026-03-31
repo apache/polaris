@@ -45,7 +45,6 @@ class IdempotencyStoreWiringInMemoryTest {
       cfg.put("polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"", "true");
       cfg.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
       cfg.put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]");
-      cfg.put("polaris.event-listener.type", "test");
       cfg.put("polaris.readiness.ignore-severe-issues", "true");
       cfg.put("polaris.realm-context.realms", "test");
       cfg.put("polaris.persistence.type", "in-memory");
