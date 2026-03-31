@@ -259,7 +259,7 @@ jobs:
       - name: Run Helm unit tests
         run: make helm-unittest
       - name: Run chart-testing (lint)
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris --validate-maintainers=false
+        run: ct lint --target-branch ${{ github.base_ref || github.event.repository.default_branch }} --debug --charts ./helm/polaris --validate-maintainers=false
       - name: Set up Minikube
         uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
         with:
@@ -271,6 +271,8 @@ jobs:
       - name: Load image into Minikube
         run: |
           zstd -d -c polaris-image.tar.zst | minikube image load -
+          APP_VERSION=$(grep '^appVersion:' helm/polaris/Chart.yaml | awk '{print $2}')
+          minikube image tag apache/polaris:latest apache/polaris:${APP_VERSION}
           echo "Available images:"
           minikube image ls
       - name: Install fixtures
@@ -279,7 +281,7 @@ jobs:
           kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures
       - name: Run chart-testing (install)
         run: |
-          ct install --target-branch ${{ github.event.repository.default_branch }} \
+          ct install --target-branch ${{ github.base_ref || github.event.repository.default_branch }} \
             --namespace polaris-ns \
             --debug --charts ./helm/polaris
 
