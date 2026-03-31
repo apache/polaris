@@ -39,7 +39,7 @@ val distributionElements by
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
-  runtimeOnly(project(":polaris-runtime-idempotency"))
+  runtimeOnly(project(":polaris-extensions-idempotency"))
 
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))

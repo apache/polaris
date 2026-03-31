@@ -232,8 +232,7 @@ public class ServiceProducers {
   @Produces
   @Singleton
   public IdempotencyStore idempotencyStore(
-      PersistenceConfiguration config,
-      @Any Instance<IdempotencyStore> idempotencyStores) {
+      PersistenceConfiguration config, @Any Instance<IdempotencyStore> idempotencyStores) {
     Instance<IdempotencyStore> selected =
         idempotencyStores.select(Identifier.Literal.of(config.type()));
     if (selected.isUnsatisfied()) {
