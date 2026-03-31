@@ -105,7 +105,7 @@ public class IcebergCatalogAdapterTest {
 
   @ParameterizedTest(name = "[{index}] initialPageToken={0}, pageSize={1}")
   @MethodSource("paginationTestCases")
-  void testPaginationForNonIcebergCatalog(String initialPageToken, Integer pageSize)
+  void testPaginationForFederatedCatalog(String initialPageToken, Integer pageSize)
       throws IOException {
 
     try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
@@ -208,6 +208,10 @@ public class IcebergCatalogAdapterTest {
                           field.setAccessible(true);
                           field.set(wrappedHandler, catalog);
                         }
+                        Field federatedField =
+                            IcebergCatalogHandler.class.getDeclaredField("isFederated");
+                        federatedField.setAccessible(true);
+                        federatedField.set(wrappedHandler, true);
                         return null;
                       })
                   .when(wrappedHandler)
