@@ -45,7 +45,9 @@ dependencies {
 }
 
 sourceSets.named("intTest") {
-  resources.srcDir(project(":polaris-extensions-auth-ranger").layout.projectDirectory.dir("src/test/resources"))
+  resources.srcDir(
+    project(":polaris-extensions-auth-ranger").layout.projectDirectory.dir("src/test/resources")
+  )
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
@@ -66,12 +68,11 @@ tasks.withType<Test> {
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
-
     }
   )
 
   doFirst {
-     logsDir.deleteRecursively()
-     project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+    logsDir.deleteRecursively()
+    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
   }
 }

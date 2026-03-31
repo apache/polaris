@@ -18,20 +18,19 @@
  */
 package org.apache.polaris.extension.auth.ranger.test;
 
+import static io.restassured.RestAssured.given;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import static io.restassured.RestAssured.given;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusTest
 @TestProfile(RangerTestProfiles.EmbeddedPolicy.class)
@@ -45,7 +44,7 @@ public class RangerPolicyCatalogHandlerIT extends RangerIntegrationTestBase {
   @BeforeEach
   void setupBaseCatalog(@TempDir Path tempDir) throws Exception {
     rootToken = getRootToken();
-    catalogName = "ranger-catalog-" + UUID.randomUUID().toString().replace("-", "") ;
+    catalogName = "ranger-catalog-" + UUID.randomUUID().toString().replace("-", "");
     namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
     Path warehouse = tempDir.resolve("warehouse");
     Files.createDirectory(warehouse);
@@ -58,7 +57,7 @@ public class RangerPolicyCatalogHandlerIT extends RangerIntegrationTestBase {
   void policyListAndAttachAuthorization() throws Exception {
     String rootToken = this.rootToken;
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
-    String policyName = "pol_" + UUID.randomUUID().toString().replace("-", "") ;
+    String policyName = "pol_" + UUID.randomUUID().toString().replace("-", "");
 
     Map<String, Object> createPolicyRequest =
         Map.of(
