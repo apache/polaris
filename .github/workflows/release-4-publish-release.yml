@@ -57,12 +57,15 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          STAGING_REPO_ID_INPUT: ${{ github.event.inputs.staging_repository_id }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
@@ -71,7 +74,7 @@ jobs:
           fi
 
           # Validate staging repository ID parameter
-          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          staging_repo_id="${STAGING_REPO_ID_INPUT}"
           if [[ -z "${staging_repo_id}" ]]; then
             echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
             exit 1
@@ -84,6 +87,8 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Auto-determine release parameters from branch and Git state
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -91,7 +96,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/heads/release/(.+)$ ]]; then
             # Running from a release branch
@@ -322,8 +327,11 @@ jobs:
 
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+          echo "${DOCKERHUB_TOKEN}" | docker login ghcr.io -u "${DOCKERHUB_USER}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |

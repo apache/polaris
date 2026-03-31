@@ -29,6 +29,9 @@ runs:
     - name: Prepare Gradle caches archive
       shell: bash
       if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      env:
+        INPUT_JOB_NAME: ${{ inputs.job-name }}
+        INPUT_JAVA_VERSION: ${{ inputs.java-version }}
       run: |
         if [[ -d ~/.gradle/caches/ ]] ; then
           echo "::group::Gradle caches / identify updated cache items"
@@ -57,8 +60,8 @@ runs:
           # Note: actions/upload-artifact takes care of compressing the artifact, no need to bug the CPU here
           echo "Creating artifact (if necessary)..."
           if [[ -s ~/ci-gradle-caches-diff ]] ; then
-            tar --create --ignore-failed-read --file ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar -T ~/ci-gradle-caches-diff
-            ls -al ~/ci-gradle-caches-${{ inputs.job-name }}-${{ inputs.java-version }}.tar
+            tar --create --ignore-failed-read --file ~/ci-gradle-caches-${INPUT_JOB_NAME}-${INPUT_JAVA_VERSION}.tar -T ~/ci-gradle-caches-diff
+            ls -al ~/ci-gradle-caches-${INPUT_JOB_NAME}-${INPUT_JAVA_VERSION}.tar
           fi
           echo "::endgroup::"
         fi

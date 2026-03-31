@@ -55,14 +55,19 @@ runs:
 
     - name: Prep env
       shell: bash
+      env:
+        INPUT_JAVA_VERSION: ${{ inputs.java-version }}
+        INPUT_JOB_ID: ${{ inputs.job-id }}
+        INPUT_NO_DAEMON: ${{ inputs.no-daemon }}
+        INPUT_JOB_INSTANCE: ${{ inputs.job-instance }}
       run: |
-        echo "GRADLE_BUILD_ACTION_CACHE_KEY_ENVIRONMENT=java-${{ inputs.java-version }}" >> ${GITHUB_ENV}
-        echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB=${{ inputs.job-id }}" >> ${GITHUB_ENV}
-        if [[ -n "${{ inputs.no-daemon }}" ]] ; then
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_ENVIRONMENT=java-${INPUT_JAVA_VERSION}" >> ${GITHUB_ENV}
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB=${INPUT_JOB_ID}" >> ${GITHUB_ENV}
+        if [[ -n "${INPUT_NO_DAEMON}" ]] ; then
           echo "G_DAEMON_FLAG=--no-daemon" >> ${GITHUB_ENV}
         fi
-        if [[ -n "${{ inputs.job-instance }}" ]] ; then
-          echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE=${{ inputs.job-instance }}" >> ${GITHUB_ENV}
+        if [[ -n "${INPUT_JOB_INSTANCE}" ]] ; then
+          echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE=${INPUT_JOB_INSTANCE}" >> ${GITHUB_ENV}
         fi
 
     - name: Gradle / Setup
@@ -85,12 +90,14 @@ runs:
 
     - name: Extract caches
       shell: bash
+      env:
+        INPUT_JAVA_VERSION: ${{ inputs.java-version }}
       run: |
         echo "::group::Gradle build cache / add incremental updates"
         mkdir -p ~/.gradle/caches/
 
         if [[ -d ~/downloaded-artifacts/ ]] ; then
-          find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${{ inputs.java-version }}.tar" | while read arch ; do
+          find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${INPUT_JAVA_VERSION}.tar" | while read arch ; do
             echo "Adding archive content from $arch ..."
             (cd ~/.gradle/caches/ ; tar xf $arch --atime-preserve)
           done
