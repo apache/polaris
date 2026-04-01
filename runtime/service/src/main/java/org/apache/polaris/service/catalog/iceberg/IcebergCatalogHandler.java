@@ -1330,13 +1330,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Resolves the access delegation mode by delegating to the configured {@link
    * AccessDelegationModeResolver}.
    *
-   * <p>Callers must ensure that {@code requestedModes} is not empty before invoking this method. If
-   * no delegation is needed, callers should skip resolution entirely rather than passing an empty
-   * set.
-   *
    * @param requestedModes The non-empty set of delegation modes requested by the client
-   * @return The resolved access delegation mode
-   * @throws IllegalArgumentException if {@code requestedModes} is empty
+   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
    */
   protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
       EnumSet<AccessDelegationMode> requestedModes) {
