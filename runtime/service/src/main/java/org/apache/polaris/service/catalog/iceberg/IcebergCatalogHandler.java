@@ -465,7 +465,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     request.validate();
 
@@ -592,7 +591,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -796,7 +794,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
-    checkAllowExternalCatalogAccessDelegation(resolvedMode);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1326,35 +1323,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       return actions;
     } else {
       return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
-    }
-  }
-
-  private void checkAllowExternalCatalogAccessDelegation(
-      Optional<AccessDelegationMode> resolvedMode) {
-
-    if (resolvedMode.isEmpty()) {
-      return;
-    }
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-
-    if (catalogEntity
-            .getCatalogType()
-            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !realmConfig()
-            .getConfig(
-                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
-
-      String modeDescription =
-          switch (resolvedMode.get()) {
-            case VENDED_CREDENTIALS -> "Credential vending";
-            case REMOTE_SIGNING -> "Remote signing";
-          };
-
-      throw new ForbiddenException(
-          "%s is not enabled for this external catalog. Please consult applicable "
-              + "documentation for the catalog config property '%s' to enable this feature",
-          modeDescription,
-          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
   }
 

@@ -21,12 +21,14 @@ package org.apache.polaris.service.catalog;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -68,7 +70,15 @@ class AccessDelegationModeResolverTest {
         .thenReturn(skipCredentialSubscoping);
   }
 
-  /** Helper to set up config mock for external catalog credential vending */
+  /** Helper to set up config mock for ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING */
+  private void mockAllowExternalCatalogCredentialVending(
+      CatalogEntity catalogEntity, boolean allow) {
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING), eq(catalogEntity)))
+        .thenReturn(allow);
+  }
+
+  /** Helper to set up config mock for ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING */
   private void mockAllowFederatedCatalogsCredentialVending(
       CatalogEntity catalogEntity, boolean allowCredentialVending) {
     when(realmConfig.getConfig(
@@ -197,6 +207,7 @@ class AccessDelegationModeResolverTest {
   void resolveBothModes_externalCatalog_withStsAvailable_returnsVendedCredentials() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, true);
     mockAllowFederatedCatalogsCredentialVending(catalogEntity, true);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
@@ -210,6 +221,7 @@ class AccessDelegationModeResolverTest {
   void resolveBothModes_externalCatalog_withStsUnavailable_returnsRemoteSigning() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(true);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, true);
     mockAllowFederatedCatalogsCredentialVending(catalogEntity, true);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
@@ -220,14 +232,49 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolveBothModes_externalCatalog_credentialVendingDisabled_returnsRemoteSigning() {
+  void resolveBothModes_externalCatalog_federatedVendingDisabled_returnsRemoteSigning() {
     mockSkipCredentialSubscopingConfig(false);
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, true);
     mockAllowFederatedCatalogsCredentialVending(catalogEntity, false);
 
     EnumSet<AccessDelegationMode> requestedModes = EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING);
 
     Optional<AccessDelegationMode> result = resolver.resolve(requestedModes, catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
+  }
+
+  @Test
+  void resolveSingleVendedCredentials_externalCatalog_credentialVendingDisabled_throwsForbidden() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, false);
+
+    assertThatThrownBy(() -> resolver.resolve(EnumSet.of(VENDED_CREDENTIALS), catalogEntity))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("is not enabled for this external catalog")
+        .hasMessageContaining(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+  }
+
+  @Test
+  void resolveSingleRemoteSigning_externalCatalog_credentialVendingDisabled_returnsRemoteSigning() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, false);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(REMOTE_SIGNING), catalogEntity);
+
+    assertThat(result).hasValue(REMOTE_SIGNING);
+  }
+
+  @Test
+  void resolveBothModes_externalCatalog_externalVendingDisabled_gracefullyReturnsRemoteSigning() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, false);
+
+    Optional<AccessDelegationMode> result =
+        resolver.resolve(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING), catalogEntity);
 
     assertThat(result).hasValue(REMOTE_SIGNING);
   }

@@ -27,6 +27,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.Optional;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -43,17 +44,28 @@ import org.slf4j.LoggerFactory;
  * <p>The resolution logic:
  *
  * <ol>
- *   <li>If no valid delegation mode is requested (empty or only UNKNOWN), throws {@link
- *       IllegalArgumentException}
- *   <li>If exactly one delegation mode is requested (excluding UNKNOWN), returns that mode
- *   <li>If both {@link AccessDelegationMode#VENDED_CREDENTIALS} and {@link
- *       AccessDelegationMode#REMOTE_SIGNING} are requested:
+ *   <li>If no delegation mode is requested, returns empty.
+ *   <li>If exactly one delegation mode is requested:
  *       <ul>
- *         <li>If STS is unavailable for the catalog's AWS storage, returns {@link
- *             AccessDelegationMode#REMOTE_SIGNING}
+ *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested but the catalog is
+ *             external and {@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}
+ *             is disabled, throws {@link org.apache.iceberg.exceptions.ForbiddenException}.
+ *         <li>Otherwise returns that mode as-is.
+ *       </ul>
+ *   <li>If both {@link AccessDelegationMode#VENDED_CREDENTIALS} and {@link
+ *       AccessDelegationMode#REMOTE_SIGNING} are requested, picks the best viable mode:
+ *       <ul>
+ *         <li>If the catalog is external and {@link
+ *             FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING} is disabled, returns
+ *             {@link AccessDelegationMode#REMOTE_SIGNING} (graceful degradation).
+ *         <li>If the catalog is external/federated and {@link
+ *             FeatureConfiguration#ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING} is disabled,
+ *             returns {@link AccessDelegationMode#REMOTE_SIGNING}.
  *         <li>If credential subscoping is skipped, returns {@link
- *             AccessDelegationMode#REMOTE_SIGNING}
- *         <li>Otherwise, returns {@link AccessDelegationMode#VENDED_CREDENTIALS}
+ *             AccessDelegationMode#REMOTE_SIGNING}.
+ *         <li>If STS is unavailable for the catalog's AWS storage, returns {@link
+ *             AccessDelegationMode#REMOTE_SIGNING}.
+ *         <li>Otherwise returns {@link AccessDelegationMode#VENDED_CREDENTIALS}.
  *       </ul>
  * </ol>
  */
@@ -83,6 +95,16 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // Case 2: Exactly one delegation mode requested
     if (requestedModes.size() == 1) {
       AccessDelegationMode mode = requestedModes.iterator().next();
+      // Credential vending is controlled by ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING for external
+      // catalogs. REMOTE_SIGNING does not involve Polaris vending credentials to the client, so it
+      // is not gated by this flag.
+      if (mode == VENDED_CREDENTIALS && isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
+        throw new ForbiddenException(
+            "Credential vending is not enabled for this external catalog. Please consult "
+                + "applicable documentation for the catalog config property '%s' to enable this"
+                + " feature",
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+      }
       LOGGER.debug("Single delegation mode requested: {}", mode);
       return Optional.of(mode);
     }
@@ -96,10 +118,22 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       return Optional.of(VENDED_CREDENTIALS);
     }
 
+    // Check ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING first — this is the broader gate that
+    // controls whether external catalogs may vend credentials at all. When both modes are
+    // requested and this gate is closed, gracefully fall back to REMOTE_SIGNING instead of
+    // throwing, because REMOTE_SIGNING is a viable alternative that does not require credential
+    // vending.
+    if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
+      LOGGER.debug(
+          "Credential vending not allowed for external catalog {}, selecting REMOTE_SIGNING",
+          catalogEntity.getName());
+      return Optional.of(REMOTE_SIGNING);
+    }
+
     // Check if credential vending is enabled for this catalog.
     // For internal catalogs, credential vending is always enabled.
     // For external/federated catalogs, check if ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING is
-    // enabled.
+    // enabled. Note: reaching here means ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING is true.
     boolean credentialVendingEnabled =
         !catalogEntity.isExternal()
             || realmConfig.getConfig(
@@ -137,6 +171,21 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
           catalogEntity.getName());
       return Optional.of(REMOTE_SIGNING);
     }
+  }
+
+  /**
+   * Returns true if the catalog is an external catalog and credential vending is disabled for it
+   * via {@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}.
+   *
+   * <p>Internal catalogs always allow credential vending, so this returns false for them.
+   */
+  private boolean isExternalCatalogCredentialVendingDisabled(
+      @Nullable CatalogEntity catalogEntity) {
+    if (catalogEntity == null || !catalogEntity.isExternal()) {
+      return false;
+    }
+    return !realmConfig.getConfig(
+        FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity);
   }
 
   /**
