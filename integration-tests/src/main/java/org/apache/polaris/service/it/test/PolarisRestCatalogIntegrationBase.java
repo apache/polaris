@@ -710,14 +710,57 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   /**
-   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
-   * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
-   * try to fetch vended credentials. Expect a ForbiddenException.
+   * Create an INTERNAL catalog. Register a table WITH access delegation and verify that the
+   * registerTable response contains vended credentials (when supported by the storage type).
    */
-  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
   @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
   @Test
-  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+  public void testRegisterTableWithAccessDelegation() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            catalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = catalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      try {
+        LoadTableResponse registerResponse =
+            catalogApi.registerTableWithAccessDelegation(
+                currentCatalogName, ns1, "my_table", fileLocation);
+
+        assertThat(registerResponse).isNotNull();
+        assertThat(registerResponse.tableMetadata()).isNotNull();
+        assertThat(registerResponse.tableMetadata().location()).isEqualTo(tableMetadata.location());
+        assertThat(registerResponse.metadataLocation()).isEqualTo(fileLocation);
+
+        if (getStorageConfigInfo().getStorageType() != StorageConfigInfo.StorageTypeEnum.FILE) {
+          assertThat(registerResponse.credentials())
+              .as("Cloud storage should vend credentials")
+              .isNotEmpty();
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog with credential vending enabled. Register a table WITH access
+   * delegation and verify that the registerTable response contains vended credentials (when
+   * supported by the storage type).
+   */
+  @CatalogConfig(
+      value = Catalog.TypeEnum.EXTERNAL,
+      properties = {"polaris.config.enable.credential.vending", "true"})
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableWithAccessDelegationForExternalCatalog() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
@@ -731,10 +774,52 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
-      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        LoadTableResponse registerResponse =
+            catalogApi.registerTableWithAccessDelegation(
+                currentCatalogName, ns1, "my_table", fileLocation);
+
+        assertThat(registerResponse).isNotNull();
+        assertThat(registerResponse.tableMetadata()).isNotNull();
+        assertThat(registerResponse.tableMetadata().location()).isEqualTo(tableMetadata.location());
+        assertThat(registerResponse.metadataLocation()).isEqualTo(fileLocation);
+
+        if (getStorageConfigInfo().getStorageType() != StorageConfigInfo.StorageTypeEnum.FILE) {
+          assertThat(registerResponse.credentials())
+              .as("Cloud storage should vend credentials")
+              .isNotEmpty();
+        }
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs, so try to register a table with the REST client configured to try to fetch
+   * vended credentials. Expect a ForbiddenException.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testRegisterTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       try {
         Assertions.assertThatThrownBy(
-                () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
+                () -> restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation))
             .isInstanceOf(ForbiddenException.class)
             .hasMessageContaining("Access Delegation is not enabled for this catalog")
             .hasMessageContaining(
