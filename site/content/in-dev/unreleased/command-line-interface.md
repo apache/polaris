@@ -1681,7 +1681,7 @@ options:
 ##### Examples
 
 ```
-polaris tables delete my_table --catalog my_catalog --namesapce ns1
+polaris tables delete my_table --catalog my_catalog --namespace ns1
 ```
 
 ## Examples

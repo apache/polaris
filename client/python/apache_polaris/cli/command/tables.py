@@ -102,11 +102,11 @@ class TableCommand(Command):
                     table=self.table_name,
                     purge_requested=False,
                 )
+                print(
+                    f"De-registering table {'.'.join(self.namespace)}.{self.table_name} completed"
+                )
             except Exception as e:
                 handle_api_exception(f"Table De-registration ({self.table_name})", e)
-            print(
-                f"De-registering table {'.'.join(self.namespace)}.{self.table_name} completed"
-            )
         elif self.table_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api, catalog_api, ns_str)
 
