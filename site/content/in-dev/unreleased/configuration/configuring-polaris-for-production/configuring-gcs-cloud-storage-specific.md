@@ -66,7 +66,7 @@ In addition to GCS IAM, users need Polaris catalog roles to access tables:
 This two-level permission model ensures both GCS access (via IAM) and Polaris access control (via catalog roles) are properly configured.
 
 ## Google Cloud Storage Configuration
-The preferred GCS configuration to have Hierarchical Namespaces disabled on the bucket and either Fine-grained ACLS for access control. 
+The preferred GCS configuration to have Hierarchical Namespaces disabled on the bucket and Fine-grained ACLS for access control. 
 
 ## Troubleshooting
 
