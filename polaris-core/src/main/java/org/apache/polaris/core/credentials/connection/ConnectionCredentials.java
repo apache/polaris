@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.core.credentials.connection;
 
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Encapsulates credentials and configuration needed to connect to external federated catalogs.
@@ -33,52 +32,39 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * other Iceberg REST catalogs).
  *
  * <p>Credentials may be temporary and include an expiration time.
- *
- * <p><b>Note:</b> This interface currently includes only {@code credentials} and {@code expiresAt}.
- * Additional fields like {@code extraProperties} and {@code internalProperties} (similar to {@link
- * StorageAccessConfig}) are not included for now but can be added later if needed for more complex
- * credential scenarios.
  */
-@PolarisImmutable
-public interface ConnectionCredentials {
-  /** Sensitive credential properties (e.g., access keys, tokens). */
-  Map<String, String> credentials();
+public record ConnectionCredentials(Map<String, String> credentials, Optional<Instant> expiresAt) {
 
-  /** Optional expiration time for the credentials. */
-  Optional<Instant> expiresAt();
-
-  /**
-   * Get a credential value by property key.
-   *
-   * @param key the credential property to retrieve
-   * @return the credential value, or null if not present
-   */
-  default String get(CatalogAccessProperty key) {
-    return credentials().get(key.getPropertyName());
+  public static Builder builder() {
+    return new Builder();
   }
 
-  static ConnectionCredentials.Builder builder() {
-    return ImmutableConnectionCredentials.builder();
-  }
+  public static final class Builder {
+    private final Map<String, String> credentials = new HashMap<>();
+    private Instant expiresAt;
 
-  interface Builder {
-    @CanIgnoreReturnValue
-    Builder putCredential(String key, String value);
+    public Builder putCredential(String key, String value) {
+      credentials.put(key, value);
+      return this;
+    }
 
-    @CanIgnoreReturnValue
-    Builder expiresAt(Instant expiresAt);
+    public Builder expiresAt(Instant expiresAt) {
+      this.expiresAt = expiresAt;
+      return this;
+    }
 
-    default Builder put(CatalogAccessProperty key, String value) {
+    public Builder put(CatalogAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {
         expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
       }
-
       if (key.isCredential()) {
         return putCredential(key.getPropertyName(), value);
       }
       return this;
     }
 
-    ConnectionCredentials build();
+    public ConnectionCredentials build() {
+      return new ConnectionCredentials(Map.copyOf(credentials), Optional.ofNullable(expiresAt));
+    }
   }
 }
