@@ -34,7 +34,8 @@ from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
 class NamespacesCommand(Command):
     """
     A Command implementation to represent `polaris namespaces`. The instance attributes correspond to parameters
-    that can be provided to various subcommands
+    that can be provided to various subcommands, except `namespaces_subcommand` which represents the subcommand
+    itself.
 
     Example commands:
         * ./polaris namespaces create --catalog my_schema my_namespace

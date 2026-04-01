@@ -288,7 +288,7 @@ public class TestStripedIndexImpl {
       lazyStripedIndex = lazyIndexSupplier.get();
       lazyStripedIndex.prefetchIfNecessary(singleton(refStripe.first()));
       soft.assertThat(lazyStripedIndex.getElement(refStripe.first()))
-          .extracting(IndexElement::getKey)
+          .extracting(InternalIndexElement::key)
           .isEqualTo(refStripe.first());
       soft.assertThat(bulkLoads).containsExactly(expectLoaded);
       soft.assertThat(individualLoads).containsOnly(false);
@@ -296,7 +296,7 @@ public class TestStripedIndexImpl {
       lazyStripedIndex = lazyIndexSupplier.get();
       lazyStripedIndex.prefetchIfNecessary(singleton(refStripe.last()));
       soft.assertThat(lazyStripedIndex.getElement(refStripe.last()))
-          .extracting(IndexElement::getKey)
+          .extracting(InternalIndexElement::key)
           .isEqualTo(refStripe.last());
       soft.assertThat(bulkLoads).containsExactly(expectLoaded);
       soft.assertThat(individualLoads).containsOnly(false);
@@ -502,7 +502,7 @@ public class TestStripedIndexImpl {
     var indexTestSet = basicIndexTestSet();
     var source = indexTestSet.keyIndex();
 
-    List<IndexElement<ObjRef>> elements = newArrayList(source.elementIterator());
+    List<InternalIndexElement<ObjRef>> elements = newArrayList(source.elementIterator());
 
     var indexEven = newStoreIndex(OBJ_REF_SERIALIZER);
     var indexOdd = newStoreIndex(OBJ_REF_SERIALIZER);

@@ -33,7 +33,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -45,6 +44,7 @@ import org.apache.polaris.persistence.nosql.api.StreamUtil;
 import org.apache.polaris.persistence.nosql.api.SystemPersistence;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.commit.Committer;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
@@ -94,14 +94,14 @@ class RealmStoreImpl implements RealmStore {
                         Streams.stream(entries),
                         bucket -> {
                           var objRefs =
-                              bucket.stream().map(Map.Entry::getValue).toArray(ObjRef[]::new);
+                              bucket.stream().map(Index.Element::value).toArray(ObjRef[]::new);
                           var objs = systemPersistence.fetchMany(RealmObj.class, objRefs);
                           var defs = new ArrayList<RealmDefinition>(bucket.size());
 
                           for (int i = 0; i < objs.length; i++) {
                             var obj = objs[i];
                             if (obj != null) {
-                              defs.add(objToDefinition(bucket.get(i).getKey().toString(), obj));
+                              defs.add(objToDefinition(bucket.get(i).key().toString(), obj));
                             }
                           }
                           return defs;

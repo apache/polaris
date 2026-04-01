@@ -27,7 +27,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -158,13 +157,13 @@ final class IndexedContainerAccessRoot<C extends ContainerObj> extends IndexedCo
 
     @Override
     @Nonnull
-    public Iterator<Map.Entry<IndexKey, T>> iterator() {
-      return Collections.singletonList(Map.entry(key, value())).iterator();
+    public Iterator<Index.Element<T>> iterator() {
+      return Collections.singletonList(Index.Element.of(key, value())).iterator();
     }
 
     @Nonnull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> iterator(
+    public Iterator<Index.Element<T>> iterator(
         @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
       // this is technically incorrect, but no need to implement this for now
       return iterator();
@@ -172,13 +171,13 @@ final class IndexedContainerAccessRoot<C extends ContainerObj> extends IndexedCo
 
     @Nonnull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> reverseIterator() {
+    public Iterator<Index.Element<T>> reverseIterator() {
       return iterator();
     }
 
     @Nonnull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> reverseIterator(
+    public Iterator<Index.Element<T>> reverseIterator(
         @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
       // this is technically incorrect, but no need to implement this for now
       return reverseIterator();

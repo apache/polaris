@@ -25,9 +25,7 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.indexElement;
 
 import java.util.Iterator;
-import java.util.Map;
 import org.apache.polaris.persistence.nosql.api.index.Index;
-import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.impl.indexes.KeyIndexTestSet.RealisticKeySet;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -136,7 +134,7 @@ public class RealisticKeyIndexImplBench {
   @Benchmark
   public void deserializeIterate250(BenchmarkParam param, Blackhole bh) {
     Index<ObjRef> deserialized = param.keyIndexTestSet.deserialize();
-    Iterator<Map.Entry<IndexKey, ObjRef>> iter = deserialized.iterator();
+    Iterator<Index.Element<ObjRef>> iter = deserialized.iterator();
     for (int i = 0; i < 250 && iter.hasNext(); i++) {
       bh.consume(iter.next());
     }

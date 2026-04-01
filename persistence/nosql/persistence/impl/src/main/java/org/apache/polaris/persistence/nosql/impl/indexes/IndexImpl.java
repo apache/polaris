@@ -49,7 +49,7 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
  * Implementation of {@link Index} that implements "version 1 serialization" of key-index-segments.
  *
  * <p>"Version 1" uses a diff-like encoding to compress keys and a custom var-int encoding. {@link
- * IndexElement}s are serialized in their natural order.
+ * InternalIndexElement}s are serialized in their natural order.
  *
  * <p>{@link IndexKey}s are serialized by serializing each element's UTF-8 representation with a
  * terminating {@code 0} byte, and the whole key terminated by a trailing {@code 0} byte. Empty key
@@ -82,9 +82,9 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
  * <ul>
  *   <li>Assumption (not true): Store serialized keys <em>separate</em> from other binary content,
  *       assuming that {@link IndexKey}s are compressible and the compression ratio of a set of keys
- *       is pretty good, unlike for example hash values, which are rather random and serialization
+ *       is pretty good unlike, for example, hash values, which are rather random and serialization
  *       likely does not benefit from compression.
- *       <p><em>RESULT</em> Experiment with >80000 words (each at least 10 chars long) for key
+ *       <p><em>RESULT</em> Experiment with > 80,000 words (each at least 10 chars long) for key
  *       elements: compression (gzip) of a key-to-commit-entry index (32 byte hashes) with
  *       interleaved key and value saves about 15% - the compressed ratio with keys first is only
  *       marginally better (approx 20%), so it is not worth the extra complexity.
@@ -114,8 +114,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
   private static final byte CURRENT_STORE_INDEX_VERSION = 1;
 
-  public static final Comparator<IndexElement<?>> KEY_COMPARATOR =
-      Comparator.comparing(IndexElement::getKey);
+  public static final Comparator<InternalIndexElement<?>> KEY_COMPARATOR =
+      Comparator.comparing(InternalIndexElement::key);
 
   /**
    * Serialized size of the index at the time when the {@link #IndexImpl(List, int,
@@ -127,7 +127,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   private final int originalSerializedSize;
 
   private int estimatedSerializedSizeDiff;
-  private final List<IndexElement<V>> elements;
+  private final List<InternalIndexElement<V>> elements;
   private final IndexValueSerializer<V> serializer;
 
   /**
@@ -242,7 +242,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
               maxAge = age;
             }
           }
-          // Intentionally remove (evict) the youngest one, as its more likely that old scratch
+          // Intentionally remove (evict) the youngest one, as it's more likely that old scratch
           // buffers are in an "old GC generation", which is more costly to garbage collect.
           SCRATCH_KEY_BUFFERS.remove(candidate);
         }
@@ -267,7 +267,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   private IndexImpl(
-      List<IndexElement<V>> elements,
+      List<InternalIndexElement<V>> elements,
       int originalSerializedSize,
       IndexValueSerializer<V> serializer,
       boolean modified) {
@@ -358,7 +358,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@Nonnull InternalIndexElement<V> element) {
     modified = true;
     var e = elements;
     var serializer = this.serializer;
@@ -386,8 +386,9 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return true;
   }
 
-  private static <V> int addElementDiff(IndexElement<V> element, int elementSerializedSize) {
-    return element.getKey().serializedSize() + ASSUMED_PER_ENTRY_OVERHEAD + elementSerializedSize;
+  private static <V> int addElementDiff(
+      InternalIndexElement<V> element, int elementSerializedSize) {
+    return element.key().serializedSize() + ASSUMED_PER_ENTRY_OVERHEAD + elementSerializedSize;
   }
 
   @Override
@@ -407,7 +408,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return true;
   }
 
-  private int removeSizeDiff(IndexElement<V> element) {
+  private int removeSizeDiff(InternalIndexElement<V> element) {
     return 2 + element.contentSerializedSize(serializer);
   }
 
@@ -420,11 +421,11 @@ final class IndexImpl<V> implements IndexSpi<V> {
   @Override
   public boolean contains(@Nonnull IndexKey key) {
     var el = getElement(key);
-    return el != null && el.getValue() != null;
+    return el != null && el.valueNullable() != null;
   }
 
   @Override
-  public @Nullable IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public @Nullable InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
     var e = elements;
     var idx = search(e, key);
     if (idx < 0) {
@@ -437,18 +438,18 @@ final class IndexImpl<V> implements IndexSpi<V> {
   @Override
   public IndexKey first() {
     var e = elements;
-    return e.isEmpty() ? null : e.getFirst().getKey();
+    return e.isEmpty() ? null : e.getFirst().key();
   }
 
   @Nullable
   @Override
   public IndexKey last() {
     var e = elements;
-    return e.isEmpty() ? null : e.getLast().getKey();
+    return e.isEmpty() ? null : e.getLast().key();
   }
 
   @Override
-  public @Nonnull Iterator<IndexElement<V>> elementIterator(
+  public @Nonnull Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -468,12 +469,12 @@ final class IndexImpl<V> implements IndexSpi<V> {
         ? new AbstractIterator<>() {
 
           @Override
-          protected IndexElement<V> computeNext() {
+          protected InternalIndexElement<V> computeNext() {
             if (!base.hasNext()) {
               return endOfData();
             }
             var v = base.next();
-            if (!v.getKey().startsWith(lower)) {
+            if (!v.key().startsWith(lower)) {
               return endOfData();
             }
             return v;
@@ -483,7 +484,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull Iterator<IndexElement<V>> reverseElementIterator(
+  public @Nonnull Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -546,7 +547,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return new AbstractList<>() {
       @Override
       public IndexKey get(int index) {
-        return elements.get(index).getKey();
+        return elements.get(index).key();
       }
 
       @Override
@@ -579,7 +580,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
       var scratchKeyBuffer = scratchKeyBuffer();
 
       boolean onlyLazy;
-      IndexElement<V> previous = null;
+      InternalIndexElement<V> previous = null;
       for (var el : elements) {
         ByteBuffer keyBuf = null;
         if (isLazyElementImpl(el)) {
@@ -612,7 +613,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
         if (!onlyLazy) {
           // Either 'el' is not a 'LazyStoreIndexElement' or the previous element of a
           // 'LazyStoreIndexElement' is not suitable (see above).
-          keyBuf = serializeIndexKeyString(el.getKey(), scratchKeyBuffer);
+          keyBuf = serializeIndexKeyString(el.key(), scratchKeyBuffer);
         }
 
         previousKey = serializeKey(keyBuf, previousKey, target);
@@ -631,7 +632,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   // IntelliJ warns "Condition 'el.getClass() == LazyStoreIndexElement.class' is always 'false'",
   // which is a false positive (see below as well).
   @SuppressWarnings("ConstantValue")
-  private boolean isLazyElementImpl(IndexElement<V> el) {
+  private boolean isLazyElementImpl(InternalIndexElement<V> el) {
     return el.getClass() == LazyIndexElement.class;
   }
 
@@ -667,7 +668,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     var version = serialized.get();
     checkArgument(version == 1, "Unsupported serialized representation of KeyIndexSegment");
 
-    var elements = new ArrayList<IndexElement<V>>(readVarInt(serialized));
+    var elements = new ArrayList<InternalIndexElement<V>>(readVarInt(serialized));
 
     var first = true;
     var previousKeyLen = 0;
@@ -878,7 +879,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    public IndexKey getKey() {
+    @Nonnull
+    public IndexKey key() {
       var k = key;
       if (k == null) {
         k = key = materializeKey();
@@ -887,7 +889,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    public V getValue() {
+    @Nullable
+    public V valueNullable() {
       var c = content;
       if (c == null) {
         if (!hasContent) {
@@ -899,11 +902,6 @@ final class IndexImpl<V> implements IndexSpi<V> {
         }
       }
       return c;
-    }
-
-    @Override
-    public V setValue(V value) {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -962,12 +960,12 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return requireNonNull(serialized).duplicate();
   }
 
-  private static <V> int search(List<IndexElement<V>> e, @Nonnull IndexKey key) {
+  private static <V> int search(List<InternalIndexElement<V>> e, @Nonnull IndexKey key) {
     // Need a StoreIndexElement for the sake of 'binarySearch()' (the content value isn't used)
     return search(e, indexElement(key, ""));
   }
 
-  private static <V> int search(List<IndexElement<V>> e, IndexElement<?> element) {
+  private static <V> int search(List<InternalIndexElement<V>> e, InternalIndexElement<?> element) {
     return binarySearch(e, element, KEY_COMPARATOR);
   }
 

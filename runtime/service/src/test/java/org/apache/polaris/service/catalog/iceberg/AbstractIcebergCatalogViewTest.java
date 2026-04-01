@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -60,6 +61,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -90,6 +92,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
           .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
           .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -107,7 +110,12 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
-  @Inject PolarisEventListener polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
@@ -207,7 +215,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             Mockito.mock(),
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener,
+            polarisEventDispatcher,
             eventMetadataFactory);
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()

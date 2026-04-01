@@ -42,7 +42,6 @@ import static org.assertj.core.groups.Tuple.tuple;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -53,6 +52,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.assertj.core.api.SoftAssertions;
@@ -696,7 +696,7 @@ public class TestIndexImpl {
           .toIterable()
           .describedAs("%s..%s", lower, higher)
           .hasSize(size)
-          .extracting(Map.Entry::getKey)
+          .extracting(Index.Element::key)
           .containsExactlyElementsOf(expected);
 
       if (!prefix) {
@@ -704,7 +704,7 @@ public class TestIndexImpl {
             .toIterable()
             .describedAs("reverse %s..%s", lower, higher)
             .hasSize(size)
-            .extracting(Map.Entry::getKey)
+            .extracting(Index.Element::key)
             .containsExactlyElementsOf(expected.reversed());
       } else {
         soft.assertThatIllegalArgumentException()
@@ -720,7 +720,7 @@ public class TestIndexImpl {
   public void updateAll() {
     var indexTestSet = basicIndexTestSet();
 
-    soft.assertThat(indexTestSet.keyIndex()).isNotEmpty().allMatch(el -> el.getValue().id() > 0);
+    soft.assertThat(indexTestSet.keyIndex()).isNotEmpty().allMatch(el -> el.value().id() > 0);
 
     var index = indexTestSet.keyIndex();
     for (var k : indexTestSet.keys()) {
@@ -730,11 +730,11 @@ public class TestIndexImpl {
 
     soft.assertThat(indexTestSet.keyIndex())
         .hasSize(indexTestSet.keys().size())
-        .allMatch(el -> el.getValue().id() < 0);
+        .allMatch(el -> el.value().id() < 0);
     soft.assertThatIterator(indexTestSet.keyIndex().elementIterator())
         .toIterable()
         .hasSize(indexTestSet.keys().size())
-        .allMatch(el -> el.getValue().id() < 0);
+        .allMatch(el -> el.value().id() < 0);
 
     indexTestSet.keys().forEach(index::remove);
 
@@ -791,6 +791,138 @@ public class TestIndexImpl {
     soft.assertThat(index.asMutableIndex()).isSameAs(index);
     soft.assertThat(index.isMutable()).isTrue();
     soft.assertThatCode(() -> index.divide(3)).doesNotThrowAnyException();
+  }
+
+  /**
+   * Verifies that an index containing null-valued elements (tombstones) can be serialized and
+   * deserialized without data corruption. This is a test for a potential bug where {@code
+   * IndexValueSerializer.serialize(null, target)} could write to a different buffer instead of
+   * {@code target}, causing the serialized byte stream to be shifted and subsequent deserialization
+   * to fail with a {@link java.nio.BufferUnderflowException}.
+   */
+  @Test
+  void serializeDeserializeWithNullValues() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var key1 = key("table1");
+    var key2 = key("table2");
+    var key3 = key("table3");
+    var key4 = key("table4");
+
+    var value1 = randomObjId();
+    var value3 = randomObjId();
+
+    index.add(indexElement(key1, value1));
+    index.add(indexElement(key2, (ObjRef) null)); // tombstone
+    index.add(indexElement(key3, value3));
+    index.add(indexElement(key4, (ObjRef) null)); // tombstone
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(deserialized.estimatedSerializedSize()).isEqualTo(serialized.remaining());
+
+    var el1 = deserialized.getElement(key1);
+    var el2 = deserialized.getElement(key2);
+    var el3 = deserialized.getElement(key3);
+    var el4 = deserialized.getElement(key4);
+
+    soft.assertThat(el1).isNotNull();
+    soft.assertThat(el1.key()).isEqualTo(key1);
+    soft.assertThat(el1.valueNullable()).isEqualTo(value1);
+
+    soft.assertThat(el2).isNotNull();
+    soft.assertThat(el2.key()).isEqualTo(key2);
+    soft.assertThat(el2.valueNullable()).isNull();
+
+    soft.assertThat(el3).isNotNull();
+    soft.assertThat(el3.key()).isEqualTo(key3);
+    soft.assertThat(el3.valueNullable()).isEqualTo(value3);
+
+    soft.assertThat(el4).isNotNull();
+    soft.assertThat(el4.key()).isEqualTo(key4);
+    soft.assertThat(el4.valueNullable()).isNull();
+
+    // Verify that the deserialized index can be re-serialized and deserialized again.
+    // Add an element to force re-serialization (modified flag).
+    var key5 = key("table5");
+    var value5 = randomObjId();
+    deserialized.add(indexElement(key5, value5));
+    var reserialized = deserialized.serialize();
+    var redeserialized = deserializeStoreIndex(reserialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(redeserialized.getElement(key1).valueNullable()).isEqualTo(value1);
+    soft.assertThat(redeserialized.getElement(key2).valueNullable()).isNull();
+    soft.assertThat(redeserialized.getElement(key3).valueNullable()).isEqualTo(value3);
+    soft.assertThat(redeserialized.getElement(key4).valueNullable()).isNull();
+  }
+
+  @Test
+  void serializeDeserializeWithNullValuesObjTest() {
+    var index = newStoreIndex(OBJ_TEST_SERIALIZER);
+    var key1 = key("a");
+    var key2 = key("b");
+    var key3 = key("c");
+
+    index.add(indexElement(key1, objTestValueFromString("cafe")));
+    index.add(indexElement(key2, (ObjTestValue) null)); // tombstone
+    index.add(indexElement(key3, objTestValueFromString("babe")));
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_TEST_SERIALIZER);
+
+    soft.assertThat(deserialized.getElement(key1).valueNullable())
+        .isEqualTo(objTestValueFromString("cafe"));
+    soft.assertThat(deserialized.getElement(key2).valueNullable()).isNull();
+    soft.assertThat(deserialized.getElement(key3).valueNullable())
+        .isEqualTo(objTestValueFromString("babe"));
+  }
+
+  /** Tests that replacing a non-null value with null (tombstone) round-trips correctly. */
+  @Test
+  void replaceValueWithNull() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var key1 = key("table1");
+    var key2 = key("table2");
+
+    var value1 = randomObjId();
+    var value2 = randomObjId();
+
+    index.add(indexElement(key1, value1));
+    index.add(indexElement(key2, value2));
+
+    // Serialize, deserialize, then replace key2 with null (tombstone)
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    deserialized.add(indexElement(key2, (ObjRef) null));
+
+    var reserialized = deserialized.serialize();
+    var final_ = deserializeStoreIndex(reserialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(final_.getElement(key1).valueNullable()).isEqualTo(value1);
+    soft.assertThat(final_.getElement(key2).valueNullable()).isNull();
+  }
+
+  /**
+   * Tests that an index with only null-valued elements (all tombstones) round-trips correctly. This
+   * is an edge case where every serialized value is the null marker.
+   */
+  @Test
+  void allNullValues() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+
+    for (var i = 0; i < 10; i++) {
+      index.add(indexElement(key("key" + i), (ObjRef) null));
+    }
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    for (var i = 0; i < 10; i++) {
+      var el = deserialized.getElement(key("key" + i));
+      soft.assertThat(el).describedAs("Element for key%d", i).isNotNull();
+      soft.assertThat(el.valueNullable()).describedAs("Value for key%d", i).isNull();
+    }
   }
 
   // The following multithreaded "tests" are only there to verify that no ByteBuffer related
