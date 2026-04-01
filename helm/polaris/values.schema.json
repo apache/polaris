@@ -1127,6 +1127,10 @@
                         "type": "string"
                     }
                 },
+                "requireHeader": {
+                    "description": "Whether to require the realm header in requests. When set to true, requests without the realm header will be rejected. When set to false, the default realm will be used instead. It is recommended to set this to true in production environments.",
+                    "type": "boolean"
+                },
                 "type": {
                     "description": "The type of realm context resolver to use. Two built-in types are supported: default and test; test is not recommended for production as it does not perform any realm validation.",
                     "type": "string"

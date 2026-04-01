@@ -855,6 +855,11 @@ realmContext:
   # @section -- Realm Context
   realms:
     - POLARIS
+  # -- Whether to require the realm header in requests. When set to true, requests without the
+  # realm header will be rejected. When set to false, the default realm will be used instead.
+  # It is recommended to set this to true in production environments.
+  # @section -- Realm Context
+  requireHeader: false
 
 # -- Features to enable or disable globally. If a feature is not present in the map, the default
 # built-in value is used. Refer to Polaris [Configuration reference](https://polaris.apache.org/in-dev/unreleased/configuration/configuration-reference)
