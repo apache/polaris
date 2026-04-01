@@ -35,5 +35,4 @@ public interface RelationalJdbcConfiguration {
    * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
    */
   Optional<String> databaseType();
-
 }

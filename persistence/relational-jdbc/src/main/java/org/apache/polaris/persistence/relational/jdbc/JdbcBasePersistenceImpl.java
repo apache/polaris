@@ -165,8 +165,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 // already been updated after the creation.
                 continue;
               }
-              persistEntity(
-                  callCtx, entity, originalEntity, connection, metastoreOps::execute);
+              persistEntity(callCtx, entity, originalEntity, connection, metastoreOps::execute);
             }
             return true;
           });
@@ -298,10 +297,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             QueryGenerator.generateInsertQuery(
                 ModelEvent.ALL_COLUMNS,
                 ModelEvent.TABLE_NAME,
-                ModelEvent.fromEvent(event)
-                    .toMap(eventOps.getDatabaseType())
-                    .values()
-                    .stream()
+                ModelEvent.fromEvent(event).toMap(eventOps.getDatabaseType()).values().stream()
                     .toList(),
                 realmId);
 
@@ -351,8 +347,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     try {
-      Map<String, Object> whereClause =
-          modelGrantRecord.toMap(metastoreOps.getDatabaseType());
+      Map<String, Object> whereClause = modelGrantRecord.toMap(metastoreOps.getDatabaseType());
       whereClause.put("realm_id", realmId);
       metastoreOps.executeUpdate(
           QueryGenerator.generateDeleteQuery(
@@ -404,6 +399,32 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
+            return true;
+          });
+
+      // Clear metrics store if isolated
+      metricsOps.runWithinTransaction(
+          connection -> {
+            metricsOps.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelScanMetricsReport.ALL_COLUMNS, ModelScanMetricsReport.TABLE_NAME, params));
+            metricsOps.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelCommitMetricsReport.ALL_COLUMNS,
+                    ModelCommitMetricsReport.TABLE_NAME,
+                    params));
+            return true;
+          });
+
+      // Clear events store if isolated
+      eventOps.runWithinTransaction(
+          connection -> {
+            eventOps.execute(
+                connection,
+                QueryGenerator.generateDeleteQuery(
+                    ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, params));
             return true;
           });
     } catch (SQLException e) {
@@ -754,12 +775,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  static int loadSchemaVersion(
-      DatasourceOperations metastoreOps, boolean fallbackOnDoesNotExist) {
+  static int loadSchemaVersion(DatasourceOperations metastoreOps, boolean fallbackOnDoesNotExist) {
     PreparedQuery query = QueryGenerator.generateVersionQuery();
     try {
-      List<SchemaVersion> schemaVersion =
-          metastoreOps.executeSelect(query, new SchemaVersion());
+      List<SchemaVersion> schemaVersion = metastoreOps.executeSelect(query, new SchemaVersion());
       if (schemaVersion == null || schemaVersion.size() != 1) {
         throw new RuntimeException("Failed to retrieve schema version");
       }
@@ -776,8 +795,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   static boolean entityTableExists(DatasourceOperations metastoreOps) {
     PreparedQuery query = QueryGenerator.generateEntityTableExistQuery();
     try {
-      List<PolarisBaseEntity> entities =
-          metastoreOps.executeSelect(query, new ModelEntity());
+      List<PolarisBaseEntity> entities = metastoreOps.executeSelect(query, new ModelEntity());
       return entities != null && !entities.isEmpty();
     } catch (SQLException e) {
       if (metastoreOps.isRelationDoesNotExist(e)) {
@@ -878,8 +896,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     // write new principal secrets
     try {
       List<Object> values =
-          lookupPrincipalSecrets.toMap(metastoreOps.getDatabaseType()).values().stream()
-              .toList();
+          lookupPrincipalSecrets.toMap(metastoreOps.getDatabaseType()).values().stream().toList();
       metastoreOps.executeUpdate(
           QueryGenerator.generateInsertQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
@@ -1032,10 +1049,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             ModelPolicyMappingRecord modelPolicyMappingRecord =
                 ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
             List<Object> values =
-                modelPolicyMappingRecord
-                    .toMap(metastoreOps.getDatabaseType())
-                    .values()
-                    .stream()
+                modelPolicyMappingRecord.toMap(metastoreOps.getDatabaseType()).values().stream()
                     .toList();
             PreparedQuery insertPolicyMappingQuery =
                 QueryGenerator.generateInsertQuery(
@@ -1096,10 +1110,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           QueryGenerator.generateUpdateQuery(
               ModelPolicyMappingRecord.ALL_COLUMNS,
               ModelPolicyMappingRecord.TABLE_NAME,
-              modelPolicyMappingRecord
-                  .toMap(metastoreOps.getDatabaseType())
-                  .values()
-                  .stream()
+              modelPolicyMappingRecord.toMap(metastoreOps.getDatabaseType()).values().stream()
                   .toList(),
               updateClause);
       metastoreOps.execute(connection, updateQuery);

@@ -31,8 +31,8 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.h2.jdbcx.JdbcConnectionPool;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.h2.jdbcx.JdbcConnectionPool;
 import org.mockito.Mockito;
 
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
