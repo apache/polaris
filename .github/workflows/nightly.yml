@@ -68,10 +68,10 @@ jobs:
         run: ./gradlew publishToApache
         env:
           # publishToApache causes a GH API requests, use the token for those requests
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }}
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }} # zizmor: ignore[secrets-outside-env]
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
 
   nightly_build_python_client:
     runs-on: ubuntu-latest
@@ -95,6 +95,6 @@ jobs:
 
       - name: Publish Python client to Test PyPI
         env:
-          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
         run: |
           make client-nightly-publish

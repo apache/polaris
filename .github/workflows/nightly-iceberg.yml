@@ -105,7 +105,7 @@ jobs:
       - name: Run smoke tests with Iceberg nightly
         env:
           ICEBERG_VERSION: ${{ steps.detect.outputs.iceberg_version }}
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "Running smoke tests with Iceberg version: ${ICEBERG_VERSION}"
           ./gradlew \

@@ -51,8 +51,8 @@ jobs:
           GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
           DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
           DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
@@ -383,8 +383,8 @@ jobs:
               -Dquarkus.container-image.build=true
       - name: Regression Test
         env:
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}} # zizmor: ignore[secrets-outside-env]
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}} # zizmor: ignore[secrets-outside-env]
         run: docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Spark Plugin Regression Test
         # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration

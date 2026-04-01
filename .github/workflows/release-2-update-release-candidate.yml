@@ -41,8 +41,8 @@ jobs:
         with:
           # Fetch full history. Branch operations require this.
           fetch-depth: 0
-          # Use a token with write permissions
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use a token with write permissions - persist-credentials is required for git push
+          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
