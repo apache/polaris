@@ -75,7 +75,7 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
     V value();
 
     static <V> Element<V> of(@Nonnull IndexKey key, @Nonnull V value) {
-      return new IndexElem<>(key, value);
+      return IndexElem.of(key, value);
     }
   }
 
