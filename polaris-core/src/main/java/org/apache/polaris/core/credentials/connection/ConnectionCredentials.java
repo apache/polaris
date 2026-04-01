@@ -35,36 +35,25 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
  */
 public record ConnectionCredentials(Map<String, String> credentials, Optional<Instant> expiresAt) {
 
-  public static Builder builder() {
-    return new Builder();
-  }
+  public static final ConnectionCredentials EMPTY =
+      new ConnectionCredentials(Map.of(), Optional.empty());
 
-  public static final class Builder {
-    private final Map<String, String> credentials = new HashMap<>();
-    private Instant expiresAt;
-
-    public Builder putCredential(String key, String value) {
-      credentials.put(key, value);
-      return this;
-    }
-
-    public Builder expiresAt(Instant expiresAt) {
-      this.expiresAt = expiresAt;
-      return this;
-    }
-
-    public Builder put(CatalogAccessProperty key, String value) {
+  /**
+   * Creates ConnectionCredentials from a map of catalog access properties. Expiration timestamps
+   * are extracted and stored separately; credential properties are stored in the credentials map.
+   */
+  public static ConnectionCredentials of(Map<CatalogAccessProperty, String> properties) {
+    Map<String, String> credentials = new HashMap<>();
+    Instant expiresAt = null;
+    for (var entry : properties.entrySet()) {
+      CatalogAccessProperty key = entry.getKey();
       if (key.isExpirationTimestamp()) {
-        expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
+        expiresAt = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
       }
       if (key.isCredential()) {
-        return putCredential(key.getPropertyName(), value);
+        credentials.put(key.getPropertyName(), entry.getValue());
       }
-      return this;
     }
-
-    public ConnectionCredentials build() {
-      return new ConnectionCredentials(Map.copyOf(credentials), Optional.ofNullable(expiresAt));
-    }
+    return new ConnectionCredentials(Map.copyOf(credentials), Optional.ofNullable(expiresAt));
   }
 }

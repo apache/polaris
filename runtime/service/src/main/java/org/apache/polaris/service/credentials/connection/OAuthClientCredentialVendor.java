@@ -24,6 +24,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
@@ -84,9 +85,11 @@ public class OAuthClientCredentialVendor implements ConnectionCredentialVendor {
     // OAuth credentials don't expire from Polaris's perspective - set expiration to Long.MAX_VALUE
     // to indicate infinite validity. If the credential expires, users need to update the catalog
     // entity to rotate the credential.
-    return ConnectionCredentials.builder()
-        .put(CatalogAccessProperty.OAUTH2_CREDENTIAL, credential)
-        .put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE))
-        .build();
+    return ConnectionCredentials.of(
+        Map.of(
+            CatalogAccessProperty.OAUTH2_CREDENTIAL,
+            credential,
+            CatalogAccessProperty.EXPIRES_AT_MS,
+            String.valueOf(Long.MAX_VALUE)));
   }
 }
