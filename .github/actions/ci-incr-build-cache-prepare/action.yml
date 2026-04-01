@@ -60,14 +60,14 @@ runs:
         INPUT_JOB_ID: ${{ inputs.job-id }}
         INPUT_NO_DAEMON: ${{ inputs.no-daemon }}
         INPUT_JOB_INSTANCE: ${{ inputs.job-instance }}
-      run: |
-        echo "GRADLE_BUILD_ACTION_CACHE_KEY_ENVIRONMENT=java-${INPUT_JAVA_VERSION}" >> ${GITHUB_ENV}
-        echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB=${INPUT_JOB_ID}" >> ${GITHUB_ENV}
+      run: | # zizmor: ignore[github-env]
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_ENVIRONMENT=java-$(echo "$INPUT_JAVA_VERSION" | tr -cd '[:alnum:]-')" >> ${GITHUB_ENV}
+        echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB=$(echo "$INPUT_JOB_ID" | tr -cd '[:alnum:]-')" >> ${GITHUB_ENV}
         if [[ -n "${INPUT_NO_DAEMON}" ]] ; then
           echo "G_DAEMON_FLAG=--no-daemon" >> ${GITHUB_ENV}
         fi
         if [[ -n "${INPUT_JOB_INSTANCE}" ]] ; then
-          echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE=${INPUT_JOB_INSTANCE}" >> ${GITHUB_ENV}
+          echo "GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE=$(echo "$INPUT_JOB_INSTANCE" | tr -cd '[:alnum:]-')" >> ${GITHUB_ENV}
         fi
 
     - name: Gradle / Setup
