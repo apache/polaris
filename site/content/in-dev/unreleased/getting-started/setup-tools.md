@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Managing Polaris
+Title: Setup Tools
 type: docs
 weight: 100
 ---
