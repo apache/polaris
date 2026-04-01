@@ -37,26 +37,6 @@ When creating a Polaris catalog with GCS storage, you need to specify:
 2. **Base Location**: The default GCS path for the catalog (e.g., `gs://your-bucket/catalogs/catalog-name`)
 3. **Allowed Locations**: GCS paths where the catalog can read/write data
 
-### Example Catalog Configuration
-
-```json
-{
-  "catalog": {
-    "type": "INTERNAL",
-    "name": "my_catalog",
-    "properties": {
-      "default-base-location": "gs://your-bucket/catalogs/my_catalog"
-    },
-    "storageConfigInfo": {
-      "storageType": "GCS",
-      "allowedLocations": [
-        "gs://your-bucket"
-      ]
-    }
-  }
-}
-```
-
 ## IAM Configuration
 
 ### Service Account Permissions
@@ -85,9 +65,8 @@ In addition to GCS IAM, users need Polaris catalog roles to access tables:
 
 This two-level permission model ensures both GCS access (via IAM) and Polaris access control (via catalog roles) are properly configured.
 
-## Google Cloud Storage Limitation
-
-Polaris does not support Hierarchical Namespaces (HNS) on the bucket.
+## Google Cloud Storage Configuration
+The preferred GCS configuration to have Hierarchical Namespaces disabled on the bucket and either Fine-grained ACLS for access control. 
 
 ## Troubleshooting
 
