@@ -47,9 +47,11 @@ import org.slf4j.LoggerFactory;
  *   <li>If no delegation mode is requested, returns empty.
  *   <li>If exactly one delegation mode is requested:
  *       <ul>
- *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested but the catalog is
- *             external and {@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}
- *             is disabled, throws {@link org.apache.iceberg.exceptions.ForbiddenException}.
+ *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested on an external
+ *             catalog where credential vending is disabled (via {@link
+ *             FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING} or {@link
+ *             FeatureConfiguration#ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING}), throws {@link
+ *             org.apache.iceberg.exceptions.ForbiddenException}.
  *         <li>Otherwise returns that mode as-is.
  *       </ul>
  *   <li>If both {@link AccessDelegationMode#VENDED_CREDENTIALS} and {@link
