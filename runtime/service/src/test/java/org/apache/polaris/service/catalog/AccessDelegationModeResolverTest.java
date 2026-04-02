@@ -253,7 +253,7 @@ class AccessDelegationModeResolverTest {
 
     assertThatThrownBy(() -> resolver.resolve(EnumSet.of(VENDED_CREDENTIALS), catalogEntity))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("is not enabled for this external catalog")
+        .hasMessageContaining("is not enabled for this federated catalog")
         .hasMessageContaining(
             FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig());
   }
