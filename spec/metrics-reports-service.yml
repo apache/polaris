@@ -221,29 +221,18 @@ components:
           items:
             $ref: '#/components/schemas/CommitMetricsReport'
 
-    ScanMetricsReport:
+    MetricsActor:
       type: object
-      required:
-        - reportId
-        - catalogId
-        - tableId
-        - timestampMs
+      description: Identity of the principal who triggered the operation
       properties:
-        reportId:
-          type: string
-        catalogId:
-          type: integer
-          format: int64
-        tableId:
-          type: integer
-          format: int64
-        timestampMs:
-          type: integer
-          format: int64
-          description: Server-side timestamp when the report was received (epoch milliseconds)
         principalName:
           type: string
           nullable: true
+
+    MetricsRequest:
+      type: object
+      description: Request context for correlation with logs and traces
+      properties:
         requestId:
           type: string
           nullable: true
@@ -255,10 +244,47 @@ components:
           type: string
           nullable: true
           description: OpenTelemetry span ID
+
+    ScanMetricsObject:
+      type: object
+      description: Resource identity for the scanned table and optional snapshot
+      required:
+        - catalogId
+        - tableId
+      properties:
+        catalogId:
+          type: integer
+          format: int64
+        tableId:
+          type: integer
+          format: int64
         snapshotId:
           type: integer
           format: int64
           nullable: true
+
+    CommitMetricsObject:
+      type: object
+      description: Resource identity for the committed table and snapshot
+      required:
+        - catalogId
+        - tableId
+        - snapshotId
+      properties:
+        catalogId:
+          type: integer
+          format: int64
+        tableId:
+          type: integer
+          format: int64
+        snapshotId:
+          type: integer
+          format: int64
+
+    ScanPayloadData:
+      type: object
+      description: Iceberg scan metrics data
+      properties:
         schemaId:
           type: integer
           nullable: true
@@ -322,43 +348,26 @@ components:
           type: integer
           format: int64
 
-    CommitMetricsReport:
+    ScanPayload:
       type: object
       required:
-        - reportId
-        - catalogId
-        - tableId
-        - timestampMs
-        - snapshotId
-        - operation
+        - type
+        - version
+        - data
       properties:
-        reportId:
+        type:
           type: string
-        catalogId:
+          enum: [iceberg.metrics.scan]
+        version:
           type: integer
-          format: int64
-        tableId:
-          type: integer
-          format: int64
-        timestampMs:
-          type: integer
-          format: int64
-          description: Server-side timestamp when the report was received (epoch milliseconds)
-        principalName:
-          type: string
-          nullable: true
-        requestId:
-          type: string
-          nullable: true
-        otelTraceId:
-          type: string
-          nullable: true
-        otelSpanId:
-          type: string
-          nullable: true
-        snapshotId:
-          type: integer
-          format: int64
+          enum: [1]
+        data:
+          $ref: '#/components/schemas/ScanPayloadData'
+
+    CommitPayloadData:
+      type: object
+      description: Iceberg commit metrics data
+      properties:
         sequenceNumber:
           type: integer
           format: int64
@@ -420,6 +429,76 @@ components:
           nullable: true
         attempts:
           type: integer
+
+    CommitPayload:
+      type: object
+      required:
+        - type
+        - version
+        - data
+      properties:
+        type:
+          type: string
+          enum: [iceberg.metrics.commit]
+        version:
+          type: integer
+          enum: [1]
+        data:
+          $ref: '#/components/schemas/CommitPayloadData'
+
+    ScanMetricsReport:
+      type: object
+      description: Stable envelope for a persisted Iceberg scan metrics report
+      required:
+        - id
+        - timestampMs
+        - object
+        - payload
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this report
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (epoch milliseconds)
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        object:
+          $ref: '#/components/schemas/ScanMetricsObject'
+        payload:
+          $ref: '#/components/schemas/ScanPayload'
+
+    CommitMetricsReport:
+      type: object
+      description: Stable envelope for a persisted Iceberg commit metrics report
+      required:
+        - id
+        - timestampMs
+        - object
+        - payload
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this report
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (epoch milliseconds)
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        object:
+          $ref: '#/components/schemas/CommitMetricsObject'
+        payload:
+          $ref: '#/components/schemas/CommitPayload'
 
     ErrorResponse:
       type: object

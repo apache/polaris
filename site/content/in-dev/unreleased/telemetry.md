@@ -224,6 +224,36 @@ Results are returned in descending timestamp order. The response includes a `nex
 pass its value as `pageToken` in the next request to retrieve the following page. A `null`
 `nextPageToken` indicates the last page.
 
+### Response envelope
+
+Each report follows a stable envelope structure that separates identity fields from type-specific
+metrics. This allows the payload schema to evolve independently without breaking clients that only
+need the envelope fields for pagination or correlation.
+
+```json
+{
+  "metricType": "scan",
+  "nextPageToken": null,
+  "reports": [{
+    "id": "report-uuid",
+    "timestampMs": 1709337612345,
+    "actor":   { "principalName": "alice" },
+    "request": { "requestId": "req-1", "otelTraceId": "abc123", "otelSpanId": "def456" },
+    "object":  { "catalogId": 100, "tableId": 200, "snapshotId": 99 },
+    "payload": {
+      "type": "iceberg.metrics.scan",
+      "version": 1,
+      "data": {
+        "resultDataFiles": 150,
+        "totalFileSizeBytes": 1073741824,
+        "totalPlanningDurationMs": 250,
+        "..."
+      }
+    }
+  }]
+}
+```
+
 See the [Metrics Reports API specification]({{% relref "polaris-api-specs/polaris-metrics-reports-api" %}})
 for the full schema reference.
 

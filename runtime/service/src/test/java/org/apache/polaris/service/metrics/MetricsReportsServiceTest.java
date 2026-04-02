@@ -401,6 +401,76 @@ class MetricsReportsServiceTest {
     assertThat(body.get("code")).isEqualTo(400);
   }
 
+  // ── envelope shape ───────────────────────────────────────────────────────
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void scanReportHasEnvelopeStructure() {
+    ScanMetricsRecord r = scanRecord("r-envelope");
+    when(persistence.listScanReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
+        .thenReturn(Page.fromItems(List.of(r)));
+
+    Response response =
+        service.listTableMetrics(
+            CATALOG, NAMESPACE, TABLE, "scan",
+            null, 10, null, null, null, null,
+            realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(200);
+    Map<String, Object> body = (Map<String, Object>) response.getEntity();
+    Map<String, Object> report = (Map<String, Object>) ((List<?>) body.get("reports")).get(0);
+
+    assertThat(report.get("id")).isEqualTo("r-envelope");
+    assertThat(report).containsKey("timestampMs");
+    assertThat(report.get("actor")).isInstanceOf(Map.class);
+    assertThat(((Map<String, Object>) report.get("actor")).get("principalName")).isEqualTo("alice");
+    assertThat(report.get("request")).isInstanceOf(Map.class);
+    assertThat(((Map<String, Object>) report.get("request")).get("requestId")).isEqualTo("req-1");
+    assertThat(report.get("object")).isInstanceOf(Map.class);
+    assertThat(report.get("payload")).isInstanceOf(Map.class);
+    Map<String, Object> payload = (Map<String, Object>) report.get("payload");
+    assertThat(payload.get("type")).isEqualTo("iceberg.metrics.scan");
+    assertThat(payload.get("version")).isEqualTo(1);
+    assertThat(payload.get("data")).isInstanceOf(Map.class);
+    // Flat fields must NOT appear at the top level
+    assertThat(report).doesNotContainKey("reportId");
+    assertThat(report).doesNotContainKey("principalName");
+    assertThat(report).doesNotContainKey("resultDataFiles");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void commitReportHasEnvelopeStructure() {
+    CommitMetricsRecord r = commitRecord("c-envelope");
+    when(persistence.listCommitReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
+        .thenReturn(Page.fromItems(List.of(r)));
+
+    Response response =
+        service.listTableMetrics(
+            CATALOG, NAMESPACE, TABLE, "commit",
+            null, 10, null, null, null, null,
+            realmContext, securityContext);
+
+    assertThat(response.getStatus()).isEqualTo(200);
+    Map<String, Object> body = (Map<String, Object>) response.getEntity();
+    Map<String, Object> report = (Map<String, Object>) ((List<?>) body.get("reports")).get(0);
+
+    assertThat(report.get("id")).isEqualTo("c-envelope");
+    assertThat(report.get("actor")).isInstanceOf(Map.class);
+    assertThat(report.get("request")).isInstanceOf(Map.class);
+    Map<String, Object> object = (Map<String, Object>) report.get("object");
+    assertThat(object.get("snapshotId")).isEqualTo(42L);
+    Map<String, Object> payload = (Map<String, Object>) report.get("payload");
+    assertThat(payload.get("type")).isEqualTo("iceberg.metrics.commit");
+    assertThat(payload.get("version")).isEqualTo(1);
+    Map<String, Object> data = (Map<String, Object>) payload.get("data");
+    assertThat(data.get("operation")).isEqualTo("append");
+    // Flat fields must NOT appear at the top level
+    assertThat(report).doesNotContainKey("reportId");
+    assertThat(report).doesNotContainKey("snapshotId");
+    assertThat(report).doesNotContainKey("operation");
+  }
+
   // ── authorization (403) ───────────────────────────────────────────────────
 
   @Test
