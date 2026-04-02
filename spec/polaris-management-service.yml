@@ -976,32 +976,15 @@ components:
       properties:
         warehouse:
           type: string
-          description: The GCS bucket path for the catalog (e.g., gs://bucket-name)
+          description: The warehouse location for the BigQuery Metastore Catalog
         gcpProjectId:
           type: string
           description: The GCP project ID
-        gcpLocation:
-          type: string
-          description: The GCP location (default = us)
-        listAllTables:
-          type: boolean
-          description: Whether to list all tables (default = true)
-        impersonateServiceAccount:
-          type: string
-          description: Service account email to impersonate
-        impersonateLifetimeSeconds:
-          type: integer
-          description: Token lifetime in seconds for impersonation (default = 3600)
-        impersonateScopes:
-          type: array
-          items:
+        properties:
+          type: object
+          additionalProperties:
             type: string
-          description: OAuth scopes for impersonation (default = cloud-platform)
-        impersonateDelegates:
-          type: array
-          items:
-            type: string
-          description: Delegation chain for impersonation
+            description: Additional catalog properties
       required:
         - warehouse
         - gcpProjectId

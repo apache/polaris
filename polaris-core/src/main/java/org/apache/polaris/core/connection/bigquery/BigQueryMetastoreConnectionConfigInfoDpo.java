@@ -24,7 +24,6 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
@@ -49,23 +48,10 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
 
   // BigQuery Metastore catalog property keys
   private static final String GCP_BIGQUERY_PROJECT_ID = "gcp.bigquery.project-id";
-  private static final String GCP_BIGQUERY_LOCATION = "gcp.bigquery.location";
-  private static final String GCP_BIGQUERY_LIST_ALL_TABLES = "gcp.bigquery.list-all-tables";
-  private static final String IMPERSONATE_SERVICE_ACCOUNT =
-      "gcp.bigquery.impersonate.service-account";
-  private static final String IMPERSONATE_LIFETIME_SECONDS =
-      "gcp.bigquery.impersonate.lifetime-seconds";
-  private static final String IMPERSONATE_SCOPES = "gcp.bigquery.impersonate.scopes";
-  private static final String IMPERSONATE_DELEGATES = "gcp.bigquery.impersonate.delegates";
 
   private final String warehouse;
   private final String gcpProjectId;
-  private final String gcpLocation;
-  private final Boolean listAllTables;
-  private final String impersonateServiceAccount;
-  private final Integer impersonateLifetimeSeconds;
-  private final List<String> impersonateScopes;
-  private final List<String> impersonateDelegates;
+  private final Map<String, String> properties;
 
   public BigQueryMetastoreConnectionConfigInfoDpo(
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
@@ -73,27 +59,14 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "warehouse", required = true) @Nonnull String warehouse,
       @JsonProperty(value = "gcpProjectId", required = true) @Nonnull String gcpProjectId,
-      @JsonProperty(value = "gcpLocation", required = false) @Nullable String gcpLocation,
-      @JsonProperty(value = "listAllTables", required = false) @Nullable Boolean listAllTables,
-      @JsonProperty(value = "impersonateServiceAccount", required = false) @Nullable
-          String impersonateServiceAccount,
-      @JsonProperty(value = "impersonateLifetimeSeconds", required = false) @Nullable
-          Integer impersonateLifetimeSeconds,
-      @JsonProperty(value = "impersonateScopes", required = false) @Nullable
-          List<String> impersonateScopes,
-      @JsonProperty(value = "impersonateDelegates", required = false) @Nullable
-          List<String> impersonateDelegates,
+      @JsonProperty(value = "properties", required = false) @Nullable
+          Map<String, String> properties,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentity) {
     super(ConnectionType.BIGQUERY.getCode(), uri, authenticationParameters, serviceIdentity);
     this.warehouse = warehouse;
     this.gcpProjectId = gcpProjectId;
-    this.gcpLocation = gcpLocation;
-    this.listAllTables = listAllTables;
-    this.impersonateServiceAccount = impersonateServiceAccount;
-    this.impersonateLifetimeSeconds = impersonateLifetimeSeconds;
-    this.impersonateScopes = impersonateScopes;
-    this.impersonateDelegates = impersonateDelegates;
+    this.properties = properties != null ? properties : Map.of();
   }
 
   public String getWarehouse() {
@@ -104,28 +77,8 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
     return gcpProjectId;
   }
 
-  public String getGcpLocation() {
-    return gcpLocation;
-  }
-
-  public Boolean getListAllTables() {
-    return listAllTables;
-  }
-
-  public String getImpersonateServiceAccount() {
-    return impersonateServiceAccount;
-  }
-
-  public Integer getImpersonateLifetimeSeconds() {
-    return impersonateLifetimeSeconds;
-  }
-
-  public List<String> getImpersonateScopes() {
-    return impersonateScopes;
-  }
-
-  public List<String> getImpersonateDelegates() {
-    return impersonateDelegates;
+  public Map<String, String> getProperties() {
+    return properties;
   }
 
   @Override
@@ -135,9 +88,11 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .add("uri", getUri())
         .add("warehouse", warehouse)
         .add("gcpProjectId", gcpProjectId)
-        .add("gcpLocation", gcpLocation)
-        .add("listAllTables", listAllTables)
-        .add("authenticationParameters", getAuthenticationParameters())
+        .add(
+            "authenticationParameters",
+            getAuthenticationParameters() != null
+                ? getAuthenticationParameters().toString()
+                : "null")
         .toString();
   }
 
@@ -150,27 +105,8 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
     properties.put(GCP_BIGQUERY_PROJECT_ID, gcpProjectId);
     properties.put(CatalogProperties.WAREHOUSE_LOCATION, warehouse);
 
-    // Optional properties
-    if (gcpLocation != null) {
-      properties.put(GCP_BIGQUERY_LOCATION, gcpLocation);
-    }
-    if (listAllTables != null) {
-      properties.put(GCP_BIGQUERY_LIST_ALL_TABLES, String.valueOf(listAllTables));
-    }
-
-    // Optional impersonation properties
-    if (impersonateServiceAccount != null) {
-      properties.put(IMPERSONATE_SERVICE_ACCOUNT, impersonateServiceAccount);
-    }
-    if (impersonateLifetimeSeconds != null) {
-      properties.put(IMPERSONATE_LIFETIME_SECONDS, String.valueOf(impersonateLifetimeSeconds));
-    }
-    if (impersonateScopes != null && !impersonateScopes.isEmpty()) {
-      properties.put(IMPERSONATE_SCOPES, String.join(",", impersonateScopes));
-    }
-    if (impersonateDelegates != null && !impersonateDelegates.isEmpty()) {
-      properties.put(IMPERSONATE_DELEGATES, String.join(",", impersonateDelegates));
-    }
+    // Add all user provided properties
+    properties.putAll(this.properties);
 
     if (getAuthenticationParameters() != null) {
       // Add authentication-specific metadata (non-credential properties)
@@ -192,12 +128,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         getAuthenticationParameters(),
         warehouse,
         gcpProjectId,
-        gcpLocation,
-        listAllTables,
-        impersonateServiceAccount,
-        impersonateLifetimeSeconds,
-        impersonateScopes,
-        impersonateDelegates,
+        properties,
         serviceIdentityInfo);
   }
 
@@ -209,12 +140,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .setUri(getUri())
         .setWarehouse(warehouse)
         .setGcpProjectId(gcpProjectId)
-        .setGcpLocation(gcpLocation)
-        .setListAllTables(listAllTables)
-        .setImpersonateServiceAccount(impersonateServiceAccount)
-        .setImpersonateLifetimeSeconds(impersonateLifetimeSeconds)
-        .setImpersonateScopes(impersonateScopes)
-        .setImpersonateDelegates(impersonateDelegates)
+        .setProperties(properties)
         .setAuthenticationParameters(
             getAuthenticationParameters() != null
                 ? getAuthenticationParameters().asAuthenticationParametersModel()
