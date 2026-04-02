@@ -269,6 +269,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    if (eventOps == null) {
+      LOGGER.debug("Skipping events write as no JDBC events store is configured");
+      return;
+    }
     if (events.isEmpty()) {
       return; // or throw if empty list is invalid
     }
@@ -403,30 +407,36 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           });
 
       // Clear metrics store if isolated
-      metricsOps.runWithinTransaction(
-          connection -> {
-            metricsOps.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelScanMetricsReport.ALL_COLUMNS, ModelScanMetricsReport.TABLE_NAME, params));
-            metricsOps.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelCommitMetricsReport.ALL_COLUMNS,
-                    ModelCommitMetricsReport.TABLE_NAME,
-                    params));
-            return true;
-          });
+      if (metricsOps.tableExists(ModelScanMetricsReport.TABLE_NAME)) {
+        metricsOps.runWithinTransaction(
+            connection -> {
+              metricsOps.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelScanMetricsReport.ALL_COLUMNS,
+                      ModelScanMetricsReport.TABLE_NAME,
+                      params));
+              metricsOps.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelCommitMetricsReport.ALL_COLUMNS,
+                      ModelCommitMetricsReport.TABLE_NAME,
+                      params));
+              return true;
+            });
+      }
 
       // Clear events store if isolated
-      eventOps.runWithinTransaction(
-          connection -> {
-            eventOps.execute(
-                connection,
-                QueryGenerator.generateDeleteQuery(
-                    ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, params));
-            return true;
-          });
+      if (eventOps.tableExists(ModelEvent.TABLE_NAME)) {
+        eventOps.runWithinTransaction(
+            connection -> {
+              eventOps.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelEvent.ALL_COLUMNS, ModelEvent.TABLE_NAME, params));
+              return true;
+            });
+      }
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to delete all due to %s", e.getMessage()), e);
@@ -1324,6 +1334,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   private void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
     DatasourceOperations metricsOpsToUse = getMetricsDatasource();
+    if (metricsOpsToUse == null) {
+      LOGGER.debug("Skipping scan metrics report write as no JDBC metrics store is configured");
+      return;
+    }
     try {
       PreparedQuery pq =
           QueryGenerator.generateInsertQuery(
@@ -1340,6 +1354,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   private void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
     DatasourceOperations metricsOpsToUse = getMetricsDatasource();
+    if (metricsOpsToUse == null) {
+      LOGGER.debug("Skipping commit metrics report write as no JDBC metrics store is configured");
+      return;
+    }
     try {
       PreparedQuery pq =
           QueryGenerator.generateInsertQuery(

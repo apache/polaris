@@ -58,7 +58,8 @@ public class JdbcBootstrapUtils {
           return 1;
         }
       } else {
-        // A truly fresh start. Default to latest version for this database type for auto-detection,
+        // A truly fresh start. Default to latest version for this database type for
+        // auto-detection,
         // otherwise use the specified version.
         return requiredSchemaVersion == -1 ? latestSchemaVersion : requiredSchemaVersion;
       }
@@ -66,7 +67,8 @@ public class JdbcBootstrapUtils {
 
     // Handle auto-detection on an existing installation (current version > 0).
     if (requiredSchemaVersion == -1) {
-      // Use the current version if realms already exist; otherwise, use latest version for the new
+      // Use the current version if realms already exist; otherwise, use latest
+      // version for the new
       // realm.
       return hasAlreadyBootstrappedRealms ? currentSchemaVersion : latestSchemaVersion;
     }

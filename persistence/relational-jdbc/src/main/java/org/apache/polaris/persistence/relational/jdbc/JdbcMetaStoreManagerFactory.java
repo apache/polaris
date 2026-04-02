@@ -134,14 +134,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   public DatasourceOperations getDatasourceOperations(
       RealmContext realmContext, DataSourceResolver.StoreType storeType) {
-    DatasourceOperations databaseOperations;
     try {
       DataSource resolvedDs = dataSourceResolver.resolve(realmContext, storeType);
-      databaseOperations = new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
+      if (resolvedDs == null) {
+        return null;
+      }
+      return new DatasourceOperations(resolvedDs, relationalJdbcConfiguration);
     } catch (SQLException sqlException) {
       throw new RuntimeException(sqlException);
     }
-    return databaseOperations;
   }
 
   @Override
