@@ -572,19 +572,6 @@ INSPECT THE CONTENTS OF THE ABOVE FILE _BEFORE_ REPORTING THE RELEASE CONTENTS A
 * Checksum mismatches MUST be treated as fatal.
 * Files being reported as missing MUST be treated as fatal.
 
-# The Polaris build is not yet fully reproducible.
-# A list of known reproducible build issues is maintained in https://github.com/apache/polaris/issues/2204.
-#
-# Pending on full support for reproducible builds in Quarkus:
-# * Jars containing generated code are not guaranteed to be reproducible. Affects the following jars:
-#   * */quarkus/generated-bytecode.jar
-#   * */quarkus/transformed-bytecode.jar
-#   * */quarkus/quarkus-application.jar
-# * Re-assembled jars are not guaranteed to be reproducible: Affects the following jars:
-#   * admin/app/polaris-admin-*.jar
-#   * server/app/polaris-server-*.jar
-# * Zips and tarballs containing any of the above are not guaranteed to be reproducible.
-
 !
   exit 1
 else
@@ -596,7 +583,6 @@ else
 None of the implemented automatic staged release checks reported a mismatch or failure.
 * The source tarball matches the contents at the referenced Git commit.
 * GPG signatures and checksums are valid and correct.
-# * The locally built release artifacts are binary equal to the staged release artifacts.
 
 The contents of all LICENSE and NOTICE files however MUST be verified manually.
 
