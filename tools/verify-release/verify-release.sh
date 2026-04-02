@@ -168,6 +168,8 @@ find_excludes=(
   # ignore Maven repository metadata
   '!' '-name' 'maven-metadata*.xml'
   '!' '-name' 'archetype-catalog.xml'
+  # vote email template files do not have signatures or checksums
+  '!' '-name' '*.vote-email-*.txt'
 )
 
 dist_url="${dist_url_prefix}${version}"
