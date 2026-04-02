@@ -85,7 +85,7 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
     } catch (UnsatisfiedResolutionException e) {
       // Silently ignore if no vendor found for this auth type for now to pass tests
       // TODO: add connection credential vendor for other auth types
-      return ConnectionCredentials.builder().build();
+      return ConnectionCredentials.EMPTY;
     } catch (ResolutionException e) {
       // No vendor found or ambiguous vendors
       // Multiple vendors found - need @Priority to disambiguate
