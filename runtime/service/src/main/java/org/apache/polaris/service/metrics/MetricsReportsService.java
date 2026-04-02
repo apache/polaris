@@ -25,10 +25,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
@@ -110,46 +108,24 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
 
     MetricsPersistence persistence = callContext.getPolarisCallContext().getMetaStore();
 
-    PageToken token;
-    try {
-      token = PageToken.build(pageToken, pageSize, () -> true);
-    } catch (IllegalArgumentException e) {
-      return errorResponse(400, e.getMessage());
-    }
+    PageToken token = PageToken.build(pageToken, pageSize, () -> true);
 
     return switch (metricType) {
       case "scan" -> {
-        Page<ScanMetricsRecord> page;
-        try {
-          page =
-              persistence.listScanReports(
-                  catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
-        } catch (IllegalArgumentException e) {
-          yield errorResponse(400, e.getMessage());
-        }
+        Page<ScanMetricsRecord> page =
+            persistence.listScanReports(
+                catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
         yield Response.ok(buildResponse("scan", page, MetricsReportsService::scanRecordToMap)).build();
       }
       case "commit" -> {
-        Page<CommitMetricsRecord> page;
-        try {
-          page =
-              persistence.listCommitReports(
-                  catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
-        } catch (IllegalArgumentException e) {
-          yield errorResponse(400, e.getMessage());
-        }
+        Page<CommitMetricsRecord> page =
+            persistence.listCommitReports(
+                catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
         yield Response.ok(buildResponse("commit", page, MetricsReportsService::commitRecordToMap)).build();
       }
-      default -> errorResponse(400, "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
+      default -> throw new IllegalArgumentException(
+          "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
     };
-  }
-
-  private static Response errorResponse(int code, String message) {
-    Map<String, Object> err = new LinkedHashMap<>();
-    err.put("message", message);
-    err.put("type", "BadRequestException");
-    err.put("code", code);
-    return Response.status(code).entity(err).build();
   }
 
   private PolarisResolvedPathWrapper resolveAndAuthorizeTableMetrics(
@@ -193,7 +169,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
 
   private static Namespace decodeNamespace(String encodedNamespace) {
     if (encodedNamespace == null || encodedNamespace.isEmpty()) {
-      throw new BadRequestException("namespace must not be empty");
+      throw new IllegalArgumentException("namespace must not be empty");
     }
     // Multi-level namespaces use unit separator (0x1F / %1F) between levels
     String[] levels = encodedNamespace.split("\u001F", -1);

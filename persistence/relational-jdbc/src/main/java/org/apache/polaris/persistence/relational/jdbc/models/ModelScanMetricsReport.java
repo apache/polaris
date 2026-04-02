@@ -349,7 +349,14 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
             : Arrays.stream(rawFieldIds.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
-                .map(Integer::parseInt)
+                .flatMap(
+                    s -> {
+                      try {
+                        return java.util.stream.Stream.of(Integer.parseInt(s));
+                      } catch (NumberFormatException e) {
+                        return java.util.stream.Stream.empty();
+                      }
+                    })
                 .collect(Collectors.toList());
     List<String> fieldNames =
         rawFieldNames == null || rawFieldNames.isEmpty()

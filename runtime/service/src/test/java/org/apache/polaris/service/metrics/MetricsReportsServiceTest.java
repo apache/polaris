@@ -29,7 +29,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -57,6 +56,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -227,43 +227,39 @@ class MetricsReportsServiceTest {
   // ── bad requests ──────────────────────────────────────────────────────────
 
   @Test
-  @SuppressWarnings("unchecked")
-  void invalidMetricTypeReturns400WithJsonBody() {
+  void invalidMetricTypeThrowsIllegalArgument() {
     // No persistence stub needed — invalid metricType is rejected before querying persistence.
-    Response response =
-        service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "bogus",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(400);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body).containsKey("message");
-    assertThat(body.get("code")).isEqualTo(400);
-    assertThat(body.get("message").toString()).contains("bogus");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                service.listTableMetrics(
+                    CATALOG, NAMESPACE, TABLE, "bogus",
+                    null, 10, null, null, null, null,
+                    realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("bogus");
   }
 
   @Test
-  void emptyNamespaceThrowsBadRequest() {
+  void emptyNamespaceThrowsIllegalArgument() {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
                     CATALOG, "", TABLE, "scan",
                     null, 10, null, null, null, null,
                     realmContext, securityContext))
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("namespace");
   }
 
   @Test
-  void nullNamespaceThrowsBadRequest() {
+  void nullNamespaceThrowsIllegalArgument() {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
                     CATALOG, null, TABLE, "scan",
                     null, 10, null, null, null, null,
                     realmContext, securityContext))
-        .isInstanceOf(BadRequestException.class);
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   // ── namespace decoding ─────────────────────────────────────────────────────
@@ -361,44 +357,40 @@ class MetricsReportsServiceTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void wrongPageTokenTypeScanReturns400() {
+  void wrongPageTokenTypeScanPropagatesIllegalArgument() {
     // Persistence throws IllegalArgumentException when the page token carries a cursor of the
     // wrong type (e.g. EntityIdToken recycled from a different list operation).
-    // The service must convert this into a structured 400 rather than a 500.
+    // IcebergExceptionMapper maps IllegalArgumentException to HTTP 400.
     when(persistence.listScanReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenThrow(
             new IllegalArgumentException(
                 "pageToken contains a cursor of an unexpected type; expected MetricsReportToken"));
 
-    Response response =
-        service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "scan",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(400);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body.get("code")).isEqualTo(400);
-    assertThat(body.get("message").toString()).contains("unexpected type");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                service.listTableMetrics(
+                    CATALOG, NAMESPACE, TABLE, "scan",
+                    null, 10, null, null, null, null,
+                    realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unexpected type");
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void wrongPageTokenTypeCommitReturns400() {
+  void wrongPageTokenTypeCommitPropagatesIllegalArgument() {
     when(persistence.listCommitReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenThrow(
             new IllegalArgumentException(
                 "pageToken contains a cursor of an unexpected type; expected MetricsReportToken"));
 
-    Response response =
-        service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "commit",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
-
-    assertThat(response.getStatus()).isEqualTo(400);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body.get("code")).isEqualTo(400);
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                service.listTableMetrics(
+                    CATALOG, NAMESPACE, TABLE, "commit",
+                    null, 10, null, null, null, null,
+                    realmContext, securityContext))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unexpected type");
   }
 
   // ── envelope shape ───────────────────────────────────────────────────────
@@ -529,6 +521,23 @@ class MetricsReportsServiceTest {
                     realmContext, securityContext))
         .isInstanceOf(org.apache.iceberg.exceptions.NotFoundException.class)
         .hasMessageContaining(CATALOG);
+  }
+
+  @Test
+  void namespaceOrTablePathNotFoundPropagatesNotFoundException() {
+    // PATH_COULD_NOT_BE_FULLY_RESOLVED — namespace or table segment not found.
+    ResolverPath failedPath =
+        new ResolverPath(List.of(NAMESPACE), PolarisEntityType.NAMESPACE);
+    when(manifest.resolveAll())
+        .thenReturn(new ResolverStatus(failedPath, 0));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                service.listTableMetrics(
+                    CATALOG, NAMESPACE, TABLE, "scan",
+                    null, 10, null, null, null, null,
+                    realmContext, securityContext))
+        .isInstanceOf(org.apache.iceberg.exceptions.NotFoundException.class);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
