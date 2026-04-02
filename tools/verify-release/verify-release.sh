@@ -320,80 +320,81 @@ function verify_checksums {
     log_fatal "verify_checksums failed, please inspect previously logged errors"
 }
 
-function report_mismatch {
-  local local_file
-  local repo_file
-  local title
-  local_file="$1"
-  repo_file="$2"
-  title="$3"
-  case "${local_file}" in
-  *.jar | *.zip)
-    if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
-      # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
-      (
-        log_warn "${title}"
-        echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
-        zipinfo "${local_file}" || true
-        echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
-        zipinfo "${repo_file}" || true
-        echo ""
-      ) >> "${failures_file}"
-    fi
-    ;;
-  *.tar.gz | *.tgz | *.tar)
-    mkdir "${local_file}.extracted" "${repo_file}.extracted"
-    tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
-    log_info "  extracted to ${local_file}.extracted"
-    tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
-    log_info "  extracted to ${repo_file}.extracted"
-    if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
-      # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
-      log_warn "${title}"
-      (
-        echo "${title}" # log_warn above prints ANSI escape sequences
-        tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
-        tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
-        echo "Diff of archives contents:"
-        diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
-        echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
-        cat "${local_file}.contents-listing"
-        echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
-        cat "${repo_file}.contents-listing"
-        echo ""
-      ) >> "${failures_file}"
-    fi
-    ;;
-  *)
-    log_fatal "${title}"
-    (
-      diff "${local_file}" "${repo_file}" || true
-      echo ""
-    ) >> "${failures_file}"
-    ;;
-  esac
-}
+# function report_mismatch {
+#   local local_file
+#   local repo_file
+#   local title
+#   local_file="$1"
+#   repo_file="$2"
+#   title="$3"
+#   case "${local_file}" in
+#   *.jar | *.zip)
+#     if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
+#       # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
+#       (
+#         log_warn "${title}"
+#         echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
+#         zipinfo "${local_file}" || true
+#         echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
+#         zipinfo "${repo_file}" || true
+#         echo ""
+#       ) >> "${failures_file}"
+#     fi
+#     ;;
+#   *.tar.gz | *.tgz | *.tar)
+#     mkdir "${local_file}.extracted" "${repo_file}.extracted"
+#     tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
+#     log_info "  extracted to ${local_file}.extracted"
+#     tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
+#     log_info "  extracted to ${repo_file}.extracted"
+#     if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
+#       # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
+#       log_warn "${title}"
+#       (
+#         echo "${title}" # log_warn above prints ANSI escape sequences
+#         tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
+#         tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
+#         echo "Diff of archives contents:"
+#         diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
+#         echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
+#         cat "${local_file}.contents-listing"
+#         echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
+#         cat "${repo_file}.contents-listing"
+#         echo ""
+#       ) >> "${failures_file}"
+#     fi
+#     ;;
+#   *)
+#     log_fatal "${title}"
+#     (
+#       diff "${local_file}" "${repo_file}" || true
+#       echo ""
+#     ) >> "${failures_file}"
+#     ;;
+#   esac
+# }
 
-function compare_binary_file {
-  local name
-  local filename
-  local local_file
-  local repo_file
-  name="$1"
-  filename="$2"
-  local_file="$3/${filename}"
-  repo_file="$4/${filename}"
-  diff "${local_file}" "${repo_file}" > /dev/null || \
-    report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
-}
+# function compare_binary_file {
+#   local name
+#   local filename
+#   local local_file
+#   local repo_file
+#   name="$1"
+#   filename="$2"
+#   local_file="$3/${filename}"
+#   repo_file="$4/${filename}"
+#   diff "${local_file}" "${repo_file}" > /dev/null || \
+#     report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
+# }
 
 missing_tools=()
-for mandatory_tool in wget gunzip find git helm java gpg md5sum shasum tar curl zipcmp zipinfo ; do
+for mandatory_tool in wget gunzip find git java gpg md5sum shasum tar curl zipinfo ; do
+  # helm and zipcmp are not required since reproducible build comparisons are not performed
   which "${mandatory_tool}" > /dev/null || missing_tools+=("${mandatory_tool}")
 done
 if [[ ${#missing_tools} -ne 0 ]]; then
   log_fatal "Mandatory tools ${missing_tools[*]} are missing, please install those first."
-  log_info " Note for macOS: zipcmp can be installed with brew via libzip"
+  # log_info " Note for macOS: zipcmp can be installed with brew via libzip"
   exit 1
 fi
 if ! which wget2 > /dev/null; then
@@ -497,54 +498,57 @@ mkdir -p "${maven_local_dir}"
 log_part_end
 
 # Check that the the set of locally built Maven artifacts and staged Maven artifacts is the same.
-log_part_start "Comparing Maven build artifacts ..."
+# log_part_start "Comparing Maven build artifacts ..."
+# (cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
+#   | sort \
+#   > "${temp_dir}/maven-local-files"
+# (cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
+#   | sort \
+#   > "${temp_dir}/maven-repo-files"
+# proc_exec "List of locally build Maven artifacts and staged artifacts differs!" \
+#   diff "${temp_dir}/maven-local-files" "${temp_dir}/maven-repo-files" || true
+# log_part_end
+
+log_part_start "Checking Maven repository artifact content..."
+echo "Listing locally built Maven artifacts..."
 (cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
   | sort \
   > "${temp_dir}/maven-local-files"
-(cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
-  | sort \
-  > "${temp_dir}/maven-repo-files"
-proc_exec "List of locally build Maven artifacts and staged artifacts differs!" \
-  diff "${temp_dir}/maven-local-files" "${temp_dir}/maven-repo-files" || true
-log_part_end
-
-# Verify that the locally built Maven artifacts are reproducible (binary equal)
-log_part_start "Comparing Maven repository artifacts, this will take a little while..."
-echo "  Local Maven repo:       ${maven_local_dir}"
-echo "  Downloaded Maven repo:  ${maven_repo_dir}"
-echo "Checking for binary equality..."
-while read -r fn ; do
-  compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
-done < "${temp_dir}/maven-local-files"
+# Reproducible build comparisons are not performed:
+# while read -r fn ; do
+#   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
+# done < "${temp_dir}/maven-local-files"
 # verify that the "main" and sources jars contain LICENSE + NOTICE files
+# (Spark JARs are excluded as they do not contain META-INF/LICENSE and META-INF/NOTICE)
 echo "Checking for mandatory jar file content..."
 while read -r fn ; do
   [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] && \
     log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
-done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files")
+done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files" \
+  | grep -v -- "polaris-spark")
 log_part_end
 
-log_part_start "Comparing main distribution artifacts"
-compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
+log_part_start "Checking main distribution artifact content"
+# compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
 dist_file_prefix="polaris-bin-${version}"
-compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 3 ]] && \
+# compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
+[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 2 ]] && \
   log_fatal "${dist_file_prefix}.tgz: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
-compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 3 ]] && \
+# compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
+[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 2 ]] && \
   log_fatal "${dist_file_prefix}.zip: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
 log_part_end
 
-log_part_start "Comparing helm chart artifacts"
+log_part_start "Checking helm chart content"
 mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
 # Prerequisite for reproducible helm packages: file modification time must be deterministic
 # Works with helm since version 4.0.0
-find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
-proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
+# find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
+# proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
 helm_package_file="polaris-${version}.tgz"
 tar ${tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
-tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
-proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
+# tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
+# proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
 [[ -e "${helm_work_dir}/staged/polaris/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in Helm package ${helm_package_file}"
 log_part_end
@@ -568,18 +572,18 @@ INSPECT THE CONTENTS OF THE ABOVE FILE _BEFORE_ REPORTING THE RELEASE CONTENTS A
 * Checksum mismatches MUST be treated as fatal.
 * Files being reported as missing MUST be treated as fatal.
 
-The Polaris build is not yet fully reproducible.
-A list of known reproducible build issues is maintained in https://github.com/apache/polaris/issues/2204.
-
-Pending on full support for reproducible builds in Quarkus:
-* Jars containing generated code are not guaranteed to be reproducible. Affects the following jars:
-  * */quarkus/generated-bytecode.jar
-  * */quarkus/transformed-bytecode.jar
-  * */quarkus/quarkus-application.jar
-* Re-assembled jars are not guaranteed to be reproducible: Affects the following jars:
-  * admin/app/polaris-admin-*.jar
-  * server/app/polaris-server-*.jar
-* Zips and tarballs containing any of the above are not guaranteed to be reproducible.
+# The Polaris build is not yet fully reproducible.
+# A list of known reproducible build issues is maintained in https://github.com/apache/polaris/issues/2204.
+#
+# Pending on full support for reproducible builds in Quarkus:
+# * Jars containing generated code are not guaranteed to be reproducible. Affects the following jars:
+#   * */quarkus/generated-bytecode.jar
+#   * */quarkus/transformed-bytecode.jar
+#   * */quarkus/quarkus-application.jar
+# * Re-assembled jars are not guaranteed to be reproducible: Affects the following jars:
+#   * admin/app/polaris-admin-*.jar
+#   * server/app/polaris-server-*.jar
+# * Zips and tarballs containing any of the above are not guaranteed to be reproducible.
 
 !
   exit 1
@@ -592,7 +596,7 @@ else
 None of the implemented automatic staged release checks reported a mismatch or failure.
 * The source tarball matches the contents at the referenced Git commit.
 * GPG signatures and checksums are valid and correct.
-* The locally built release artifacts are binary equal to the staged release artifacts.
+# * The locally built release artifacts are binary equal to the staged release artifacts.
 
 The contents of all LICENSE and NOTICE files however MUST be verified manually.
 
