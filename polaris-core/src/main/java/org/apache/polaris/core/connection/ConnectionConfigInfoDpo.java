@@ -229,12 +229,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 authenticationParameters,
                 bigqueryConfigModel.getWarehouse(),
                 bigqueryConfigModel.getGcpProjectId(),
-                bigqueryConfigModel.getGcpLocation(),
-                bigqueryConfigModel.getListAllTables(),
-                bigqueryConfigModel.getImpersonateServiceAccount(),
-                bigqueryConfigModel.getImpersonateLifetimeSeconds(),
-                bigqueryConfigModel.getImpersonateScopes(),
-                bigqueryConfigModel.getImpersonateDelegates(),
+                bigqueryConfigModel.getProperties(),
                 null /*Service Identity Info*/);
         break;
       default:
