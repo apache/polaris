@@ -196,8 +196,6 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     request.put("otelSpanId", r.otelSpanId());
 
     Map<String, Object> object = new LinkedHashMap<>();
-    object.put("catalogId", r.catalogId());
-    object.put("tableId", r.tableId());
     r.snapshotId().ifPresent(v -> object.put("snapshotId", v));
 
     Map<String, Object> data = new LinkedHashMap<>();
@@ -253,8 +251,6 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     request.put("otelSpanId", r.otelSpanId());
 
     Map<String, Object> object = new LinkedHashMap<>();
-    object.put("catalogId", r.catalogId());
-    object.put("tableId", r.tableId());
     object.put("snapshotId", r.snapshotId());
 
     Map<String, Object> data = new LinkedHashMap<>();

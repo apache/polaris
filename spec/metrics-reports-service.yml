@@ -247,17 +247,8 @@ components:
 
     ScanMetricsObject:
       type: object
-      description: Resource identity for the scanned table and optional snapshot
-      required:
-        - catalogId
-        - tableId
+      description: Resource context for the scanned table operation
       properties:
-        catalogId:
-          type: integer
-          format: int64
-        tableId:
-          type: integer
-          format: int64
         snapshotId:
           type: integer
           format: int64
@@ -265,18 +256,10 @@ components:
 
     CommitMetricsObject:
       type: object
-      description: Resource identity for the committed table and snapshot
+      description: Resource context for the committed table operation
       required:
-        - catalogId
-        - tableId
         - snapshotId
       properties:
-        catalogId:
-          type: integer
-          format: int64
-        tableId:
-          type: integer
-          format: int64
         snapshotId:
           type: integer
           format: int64
