@@ -20,80 +20,70 @@ package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.enterprise.context.ContextNotActiveException;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link RealmContextPropagator}. */
 class RealmContextPropagatorTest {
 
-  private RealmContextHolder holder;
-  private RealmContextPropagator propagator;
-
-  @BeforeEach
-  void setUp() {
-    holder = new RealmContextHolder();
-    propagator = new RealmContextPropagator(holder);
-  }
-
   @Test
-  void testCaptureWithRealmInHolderReturnsRealmContext() {
+  void testCaptureWithRealmInHolderReturnsAction() {
+    RealmContextHolder holder = new RealmContextHolder();
     RealmContext realmContext = () -> "test-realm";
     holder.set(realmContext);
 
-    Object state = propagator.capture();
-    assertThat(state).isSameAs(realmContext);
+    RealmContextPropagator propagator = new RealmContextPropagator(holder);
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
   }
 
   @Test
-  void testCaptureWithNullRealmInHolderReturnsNull() {
-    Object state = propagator.capture();
-    assertThat(state).isNull();
+  void testCaptureWithNullRealmInHolderReturnsNoop() {
+    RealmContextHolder holder = new RealmContextHolder();
+    RealmContextPropagator propagator = new RealmContextPropagator(holder);
+    assertThat(propagator.capture()).isSameAs(AsyncContextPropagator.RestoreAction.NOOP);
+  }
+
+  @Test
+  void testCaptureWhenScopeNotActiveReturnsNoop() {
+    RealmContextHolder mockHolder = mock(RealmContextHolder.class);
+    when(mockHolder.get()).thenThrow(new ContextNotActiveException());
+
+    RealmContextPropagator propagator = new RealmContextPropagator(mockHolder);
+    assertThat(propagator.capture()).isSameAs(AsyncContextPropagator.RestoreAction.NOOP);
   }
 
   @Test
   void testRestoreSetsRealmInHolder() throws Exception {
-    RealmContextHolder targetHolder = new RealmContextHolder();
-    RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
-
+    // Use a mock to simulate CDI proxy behavior: get() returns the realm on capture,
+    // set() succeeds on restore (as it would on a fresh request-scope holder).
     RealmContext realmContext = () -> "restored-realm";
-    try (AutoCloseable scope = targetPropagator.restore(realmContext)) {
-      assertThat(targetHolder.get()).isSameAs(realmContext);
-      assertThat(targetHolder.get().getRealmIdentifier()).isEqualTo("restored-realm");
-    }
-  }
-
-  @Test
-  void testRestoreNullStateDoesNotSetHolder() throws Exception {
-    RealmContextHolder targetHolder = new RealmContextHolder();
-    RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
-
-    try (AutoCloseable scope = targetPropagator.restore(null)) {
-      assertThat(scope).isNotNull();
-      assertThat(targetHolder.get()).isNull();
-    }
-  }
-
-  @Test
-  void testCaptureWhenScopeNotActiveReturnsNull() {
     RealmContextHolder mockHolder = mock(RealmContextHolder.class);
-    when(mockHolder.get()).thenThrow(new ContextNotActiveException());
+    when(mockHolder.get()).thenReturn(realmContext);
 
-    RealmContextPropagator p = new RealmContextPropagator(mockHolder);
-    assertThat(p.capture()).isNull();
+    RealmContextPropagator propagator = new RealmContextPropagator(mockHolder);
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
+
+    action.restore();
+    verify(mockHolder).set(realmContext);
   }
 
   @Test
-  void testRestoreReturnedCloseableIsNoOp() throws Exception {
-    RealmContextHolder targetHolder = new RealmContextHolder();
-    RealmContextPropagator targetPropagator = new RealmContextPropagator(targetHolder);
+  void testCloseIsNoOp() throws Exception {
+    RealmContext realmContext = () -> "realm";
+    RealmContextHolder mockHolder = mock(RealmContextHolder.class);
+    when(mockHolder.get()).thenReturn(realmContext);
 
-    AutoCloseable scope = targetPropagator.restore((RealmContext) () -> "realm");
-    assertThat(scope).isNotNull();
-    scope.close(); // no-op; should not throw
+    RealmContextPropagator propagator = new RealmContextPropagator(mockHolder);
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
+    action.restore();
+    action.close(); // no-op; should not throw
   }
 }

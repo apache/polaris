@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.inject.Inject;
@@ -38,8 +37,8 @@ import org.slf4j.LoggerFactory;
  * holder in the currently active request scope. On a normal HTTP request thread that scope holds
  * the realm set by the request filter. When an async task handler schedules a follow-up task (no
  * active JAX-RS request), {@code RealmContextHolder} in that task's scope already contains the
- * realm restored by this propagator's {@link #restore} path, so capture continues to work correctly
- * for nested task submission.
+ * realm restored by this propagator's {@link RestoreAction#restore()} path, so capture continues to
+ * work correctly for nested task submission.
  */
 @ApplicationScoped
 public class RealmContextPropagator implements AsyncContextPropagator {
@@ -58,27 +57,22 @@ public class RealmContextPropagator implements AsyncContextPropagator {
     this.realmContextHolder = realmContextHolder;
   }
 
-  @Nullable
   @Override
-  public Object capture() {
+  public RestoreAction capture() {
     RealmContext rc = null;
     try {
       rc = realmContextHolder.get();
     } catch (ContextNotActiveException e) {
-      // scope not active, return null
+      // scope not active
     }
     LOGGER.trace("capture realm={}", rc != null ? rc.getRealmIdentifier() : null);
-    return rc;
-  }
-
-  @Override
-  public AutoCloseable restore(@Nullable Object capturedState) {
-    LOGGER.trace(
-        "restore realm={}",
-        capturedState != null ? ((RealmContext) capturedState).getRealmIdentifier() : null);
-    if (capturedState != null) {
-      realmContextHolder.set((RealmContext) capturedState);
+    if (rc == null) {
+      return RestoreAction.NOOP;
     }
-    return () -> {};
+    RealmContext captured = rc;
+    return () -> {
+      LOGGER.trace("restore realm={}", captured.getRealmIdentifier());
+      realmContextHolder.set(captured);
+    };
   }
 }

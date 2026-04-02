@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.enterprise.inject.Instance;
@@ -56,29 +55,24 @@ public class PrincipalContextPropagator implements AsyncContextPropagator {
     this.polarisPrincipal = polarisPrincipal;
   }
 
-  @Nullable
   @Override
-  public Object capture() {
+  public RestoreAction capture() {
     PolarisPrincipal clone = null;
     try {
       // Clone to allow task thread get a stable snapshot regardless of the request scope
       // lifecycle.
       clone = ImmutablePolarisPrincipal.builder().from(polarisPrincipal.get()).build();
     } catch (ContextNotActiveException e) {
-      // scope not active, return null
+      // scope not active
     }
     LOGGER.trace("capture principal={}", clone != null ? clone.getName() : null);
-    return clone;
-  }
-
-  @Override
-  public AutoCloseable restore(@Nullable Object capturedState) {
-    LOGGER.trace(
-        "restore principal={}",
-        capturedState != null ? ((PolarisPrincipal) capturedState).getName() : null);
-    if (capturedState != null) {
-      polarisPrincipalHolder.set((PolarisPrincipal) capturedState);
+    if (clone == null) {
+      return RestoreAction.NOOP;
     }
-    return () -> {};
+    PolarisPrincipal captured = clone;
+    return () -> {
+      LOGGER.trace("restore principal={}", captured.getName());
+      polarisPrincipalHolder.set(captured);
+    };
   }
 }
