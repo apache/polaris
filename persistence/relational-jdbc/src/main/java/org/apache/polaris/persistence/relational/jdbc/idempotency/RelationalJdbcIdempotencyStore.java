@@ -19,6 +19,7 @@ package org.apache.polaris.persistence.relational.jdbc.idempotency;
 import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -300,7 +301,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
               Map.of(),
-              Map.of(ModelIdempotencyRecord.EXPIRES_AT, before),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(before)),
               Set.of(),
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
@@ -325,7 +326,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
                   ModelIdempotencyRecord.IDEMPOTENCY_KEY,
                   idempotencyKey),
               Map.of(),
-              Map.of(ModelIdempotencyRecord.EXPIRES_AT, expiresAt),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt)),
               Set.of(),
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       datasourceOperations.executeUpdate(delete);
