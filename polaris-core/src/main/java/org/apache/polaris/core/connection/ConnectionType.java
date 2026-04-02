@@ -85,7 +85,7 @@ public enum ConnectionType {
 
   /**
    * Get the factory identifier string used for CDI injection of the appropriate
-   * ExternalCatalogFactory.
+   * FederatedCatalogFactory.
    *
    * @return the factory identifier string
    */

@@ -89,7 +89,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -187,7 +187,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract PolarisCredentialManager credentialManager();
 
-  protected abstract Instance<ExternalCatalogFactory> externalCatalogFactories();
+  protected abstract Instance<FederatedCatalogFactory> federatedCatalogFactories();
 
   protected abstract CatalogPrefixParser prefixParser();
 
@@ -265,16 +265,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
-      // Use the unified factory pattern for all external catalog types
-      Instance<ExternalCatalogFactory> externalCatalogFactory =
-          externalCatalogFactories()
+      // Use the unified factory pattern for all federated catalog types
+      Instance<FederatedCatalogFactory> federatedCatalogFactory =
+          federatedCatalogFactories()
               .select(Identifier.Literal.of(connectionType.getFactoryIdentifier()));
-      if (externalCatalogFactory.isResolvable()) {
+      if (federatedCatalogFactory.isResolvable()) {
         // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
-        // to the external catalog factory for configuration of the underlying HTTP client
+        // to the federated catalog factory for configuration of the underlying HTTP client
         Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
         federatedCatalog =
-            externalCatalogFactory
+            federatedCatalogFactory
                 .get()
                 .createCatalog(connectionConfigInfoDpo, credentialManager(), catalogProperties);
       } else {

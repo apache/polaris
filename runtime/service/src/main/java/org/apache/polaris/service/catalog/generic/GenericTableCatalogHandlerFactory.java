@@ -24,7 +24,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -38,7 +38,7 @@ public class GenericTableCatalogHandlerFactory {
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisAuthorizer authorizer;
   @Inject PolarisCredentialManager credentialManager;
-  @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
+  @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
 
   public GenericTableCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableGenericTableCatalogHandler.builder()
@@ -49,7 +49,7 @@ public class GenericTableCatalogHandlerFactory {
         .metaStoreManager(metaStoreManager)
         .authorizer(authorizer)
         .credentialManager(credentialManager)
-        .externalCatalogFactories(externalCatalogFactories)
+        .federatedCatalogFactories(federatedCatalogFactories)
         .build();
   }
 }

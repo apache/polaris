@@ -38,7 +38,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
@@ -317,9 +317,9 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
       @SuppressWarnings("unchecked")
-      Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
-      Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
+      Instance<FederatedCatalogFactory> federatedCatalogFactory = Mockito.mock(Instance.class);
+      Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
+      Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
@@ -342,7 +342,7 @@ public record TestServices(
                   .authorizer(authorizer)
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
-                  .externalCatalogFactories(externalCatalogFactory)
+                  .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())

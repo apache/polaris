@@ -26,7 +26,7 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -53,7 +53,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject PolarisAuthorizer authorizer;
   @Inject ReservedProperties reservedProperties;
   @Inject CatalogHandlerUtils catalogHandlerUtils;
-  @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
+  @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
@@ -74,7 +74,7 @@ public class IcebergCatalogHandlerFactory {
         .authorizer(authorizer)
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
-        .externalCatalogFactories(externalCatalogFactories)
+        .federatedCatalogFactories(federatedCatalogFactories)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
