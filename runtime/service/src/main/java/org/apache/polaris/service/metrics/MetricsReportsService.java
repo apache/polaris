@@ -46,7 +46,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -211,74 +210,111 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     return response;
   }
 
-  private static Map<String, Object> baseRecordFields(MetricsRecordIdentity r) {
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("reportId", r.reportId());
-    m.put("catalogId", r.catalogId());
-    m.put("tableId", r.tableId());
-    m.put("timestampMs", r.timestamp().toEpochMilli());
-    m.put("principalName", r.principalName());
-    m.put("requestId", r.requestId());
-    m.put("otelTraceId", r.otelTraceId());
-    m.put("otelSpanId", r.otelSpanId());
-    return m;
-  }
-
   private static Map<String, Object> scanRecordToMap(ScanMetricsRecord r) {
-    Map<String, Object> m = baseRecordFields(r);
-    r.snapshotId().ifPresent(v -> m.put("snapshotId", v));
-    r.schemaId().ifPresent(v -> m.put("schemaId", v));
-    r.filterExpression().ifPresent(v -> m.put("filterExpression", v));
+    Map<String, Object> actor = new LinkedHashMap<>();
+    actor.put("principalName", r.principalName());
+
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("requestId", r.requestId());
+    request.put("otelTraceId", r.otelTraceId());
+    request.put("otelSpanId", r.otelSpanId());
+
+    Map<String, Object> object = new LinkedHashMap<>();
+    object.put("catalogId", r.catalogId());
+    object.put("tableId", r.tableId());
+    r.snapshotId().ifPresent(v -> object.put("snapshotId", v));
+
+    Map<String, Object> data = new LinkedHashMap<>();
+    r.schemaId().ifPresent(v -> data.put("schemaId", v));
+    r.filterExpression().ifPresent(v -> data.put("filterExpression", v));
     if (!r.projectedFieldIds().isEmpty()) {
-      m.put(
+      data.put(
           "projectedFieldIds",
           r.projectedFieldIds().stream().map(Object::toString).collect(Collectors.joining(",")));
     }
     if (!r.projectedFieldNames().isEmpty()) {
-      m.put("projectedFieldNames", String.join(",", r.projectedFieldNames()));
+      data.put("projectedFieldNames", String.join(",", r.projectedFieldNames()));
     }
-    m.put("resultDataFiles", r.resultDataFiles());
-    m.put("resultDeleteFiles", r.resultDeleteFiles());
-    m.put("totalFileSizeBytes", r.totalFileSizeBytes());
-    m.put("totalDataManifests", r.totalDataManifests());
-    m.put("totalDeleteManifests", r.totalDeleteManifests());
-    m.put("scannedDataManifests", r.scannedDataManifests());
-    m.put("scannedDeleteManifests", r.scannedDeleteManifests());
-    m.put("skippedDataManifests", r.skippedDataManifests());
-    m.put("skippedDeleteManifests", r.skippedDeleteManifests());
-    m.put("skippedDataFiles", r.skippedDataFiles());
-    m.put("skippedDeleteFiles", r.skippedDeleteFiles());
-    m.put("totalPlanningDurationMs", r.totalPlanningDurationMs());
-    m.put("equalityDeleteFiles", r.equalityDeleteFiles());
-    m.put("positionalDeleteFiles", r.positionalDeleteFiles());
-    m.put("indexedDeleteFiles", r.indexedDeleteFiles());
-    m.put("totalDeleteFileSizeBytes", r.totalDeleteFileSizeBytes());
+    data.put("resultDataFiles", r.resultDataFiles());
+    data.put("resultDeleteFiles", r.resultDeleteFiles());
+    data.put("totalFileSizeBytes", r.totalFileSizeBytes());
+    data.put("totalDataManifests", r.totalDataManifests());
+    data.put("totalDeleteManifests", r.totalDeleteManifests());
+    data.put("scannedDataManifests", r.scannedDataManifests());
+    data.put("scannedDeleteManifests", r.scannedDeleteManifests());
+    data.put("skippedDataManifests", r.skippedDataManifests());
+    data.put("skippedDeleteManifests", r.skippedDeleteManifests());
+    data.put("skippedDataFiles", r.skippedDataFiles());
+    data.put("skippedDeleteFiles", r.skippedDeleteFiles());
+    data.put("totalPlanningDurationMs", r.totalPlanningDurationMs());
+    data.put("equalityDeleteFiles", r.equalityDeleteFiles());
+    data.put("positionalDeleteFiles", r.positionalDeleteFiles());
+    data.put("indexedDeleteFiles", r.indexedDeleteFiles());
+    data.put("totalDeleteFileSizeBytes", r.totalDeleteFileSizeBytes());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.scan");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("id", r.reportId());
+    m.put("timestampMs", r.timestamp().toEpochMilli());
+    m.put("actor", actor);
+    m.put("request", request);
+    m.put("object", object);
+    m.put("payload", payload);
     return m;
   }
 
   private static Map<String, Object> commitRecordToMap(CommitMetricsRecord r) {
-    Map<String, Object> m = baseRecordFields(r);
-    m.put("snapshotId", r.snapshotId());
-    r.sequenceNumber().ifPresent(v -> m.put("sequenceNumber", v));
-    m.put("operation", r.operation());
-    m.put("addedDataFiles", r.addedDataFiles());
-    m.put("removedDataFiles", r.removedDataFiles());
-    m.put("totalDataFiles", r.totalDataFiles());
-    m.put("addedDeleteFiles", r.addedDeleteFiles());
-    m.put("removedDeleteFiles", r.removedDeleteFiles());
-    m.put("totalDeleteFiles", r.totalDeleteFiles());
-    m.put("addedEqualityDeleteFiles", r.addedEqualityDeleteFiles());
-    m.put("removedEqualityDeleteFiles", r.removedEqualityDeleteFiles());
-    m.put("addedPositionalDeleteFiles", r.addedPositionalDeleteFiles());
-    m.put("removedPositionalDeleteFiles", r.removedPositionalDeleteFiles());
-    m.put("addedRecords", r.addedRecords());
-    m.put("removedRecords", r.removedRecords());
-    m.put("totalRecords", r.totalRecords());
-    m.put("addedFileSizeBytes", r.addedFileSizeBytes());
-    m.put("removedFileSizeBytes", r.removedFileSizeBytes());
-    m.put("totalFileSizeBytes", r.totalFileSizeBytes());
-    r.totalDurationMs().ifPresent(v -> m.put("totalDurationMs", v));
-    m.put("attempts", r.attempts());
+    Map<String, Object> actor = new LinkedHashMap<>();
+    actor.put("principalName", r.principalName());
+
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("requestId", r.requestId());
+    request.put("otelTraceId", r.otelTraceId());
+    request.put("otelSpanId", r.otelSpanId());
+
+    Map<String, Object> object = new LinkedHashMap<>();
+    object.put("catalogId", r.catalogId());
+    object.put("tableId", r.tableId());
+    object.put("snapshotId", r.snapshotId());
+
+    Map<String, Object> data = new LinkedHashMap<>();
+    r.sequenceNumber().ifPresent(v -> data.put("sequenceNumber", v));
+    data.put("operation", r.operation());
+    data.put("addedDataFiles", r.addedDataFiles());
+    data.put("removedDataFiles", r.removedDataFiles());
+    data.put("totalDataFiles", r.totalDataFiles());
+    data.put("addedDeleteFiles", r.addedDeleteFiles());
+    data.put("removedDeleteFiles", r.removedDeleteFiles());
+    data.put("totalDeleteFiles", r.totalDeleteFiles());
+    data.put("addedEqualityDeleteFiles", r.addedEqualityDeleteFiles());
+    data.put("removedEqualityDeleteFiles", r.removedEqualityDeleteFiles());
+    data.put("addedPositionalDeleteFiles", r.addedPositionalDeleteFiles());
+    data.put("removedPositionalDeleteFiles", r.removedPositionalDeleteFiles());
+    data.put("addedRecords", r.addedRecords());
+    data.put("removedRecords", r.removedRecords());
+    data.put("totalRecords", r.totalRecords());
+    data.put("addedFileSizeBytes", r.addedFileSizeBytes());
+    data.put("removedFileSizeBytes", r.removedFileSizeBytes());
+    data.put("totalFileSizeBytes", r.totalFileSizeBytes());
+    r.totalDurationMs().ifPresent(v -> data.put("totalDurationMs", v));
+    data.put("attempts", r.attempts());
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("type", "iceberg.metrics.commit");
+    payload.put("version", 1);
+    payload.put("data", data);
+
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("id", r.reportId());
+    m.put("timestampMs", r.timestamp().toEpochMilli());
+    m.put("actor", actor);
+    m.put("request", request);
+    m.put("object", object);
+    m.put("payload", payload);
     return m;
   }
 }
