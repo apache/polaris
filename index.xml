@@ -4494,6 +4494,12 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;td&gt;&lt;code&gt;[&amp;quot;POLARIS&amp;quot;]&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;List of valid realms, for use with the default realm context resolver. The first realm in the list is the default realm. Realms not in this list will be rejected.&lt;/td&gt;
  &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;realmContext.requireHeader&lt;/td&gt;
+ &lt;td&gt;bool&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;false&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Whether to require the realm header in requests. When set to true, requests without the realm header will be rejected. When set to false, the default realm will be used instead. It is recommended to set this to true in production environments.&lt;/td&gt;
+ &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id="features" id="features"&gt;Features&lt;a class="heading-anchor" href="#features" aria-label="Anchor"&gt;🔗&lt;/a&gt;
