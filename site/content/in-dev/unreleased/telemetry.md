@@ -191,6 +191,42 @@ polaris.log.mdc.region=us-west-2
 
 MDC context is propagated across threads, including in `TaskExecutor` threads.
 
+## Iceberg Metrics Reports API
+
+Polaris can persist Iceberg scan and commit metrics reports submitted by clients to the database.
+To enable persistence, set the following property:
+
+```properties
+polaris.iceberg-metrics.reporting.type=persisting
+```
+
+Once enabled, persisted reports are queryable via the Metrics Reports API at
+`/api/metrics-reports/v1/catalogs/{catalogName}/namespaces/{namespace}/tables/{table}`.
+
+### Prerequisites
+
+The caller must hold the `TABLE_READ_METRICS` privilege on the target table (or a privilege that
+implies it, such as `TABLE_READ_DATA`, `TABLE_FULL_METADATA`, or `CATALOG_MANAGE_CONTENT`).
+
+### Query parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `metricType` | string (required) | Either `scan` or `commit`. |
+| `pageToken` | string | Pagination cursor from a previous response's `nextPageToken`. |
+| `pageSize` | integer | Number of records per page (default: 100). |
+| `snapshotId` | long | Filter to reports for a specific snapshot. |
+| `principalName` | string | Filter to reports submitted by a specific principal. |
+| `timestampFrom` | long (epoch ms) | Include only reports at or after this timestamp. |
+| `timestampTo` | long (epoch ms) | Include only reports before this timestamp. |
+
+Results are returned in descending timestamp order. The response includes a `nextPageToken` field;
+pass its value as `pageToken` in the next request to retrieve the following page. A `null`
+`nextPageToken` indicates the last page.
+
+See the [Metrics Reports API specification]({{% relref "polaris-api-specs/polaris-metrics-reports-api" %}})
+for the full schema reference.
+
 ## Links
 
 Visit [Using Polaris with telemetry tools]({{% relref "getting-started/using-polaris/telemetry-tools" %}}) to see sample Polaris config with Prometheus and Jaeger.
