@@ -97,7 +97,8 @@ runs:
         mkdir -p ~/.gradle/caches/
 
         if [[ -d ~/downloaded-artifacts/ ]] ; then
-          find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${INPUT_JAVA_VERSION}.tar" | while read arch ; do
+          SAFE_JAVA_VERSION=$(echo "$INPUT_JAVA_VERSION" | tr -cd '[:alnum:]-')
+          find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${SAFE_JAVA_VERSION}.tar" | while read arch ; do
             echo "Adding archive content from $arch ..."
             (cd ~/.gradle/caches/ ; tar xf $arch --atime-preserve)
           done

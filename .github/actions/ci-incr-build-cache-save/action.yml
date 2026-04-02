@@ -60,8 +60,10 @@ runs:
           # Note: actions/upload-artifact takes care of compressing the artifact, no need to bug the CPU here
           echo "Creating artifact (if necessary)..."
           if [[ -s ~/ci-gradle-caches-diff ]] ; then
-            tar --create --ignore-failed-read --file ~/ci-gradle-caches-${INPUT_JOB_NAME}-${INPUT_JAVA_VERSION}.tar -T ~/ci-gradle-caches-diff
-            ls -al ~/ci-gradle-caches-${INPUT_JOB_NAME}-${INPUT_JAVA_VERSION}.tar
+            SAFE_JOB_NAME=$(echo "$INPUT_JOB_NAME" | tr -cd '[:alnum:]-')
+            SAFE_JAVA_VERSION=$(echo "$INPUT_JAVA_VERSION" | tr -cd '[:alnum:]-')
+            tar --create --ignore-failed-read --file ~/ci-gradle-caches-${SAFE_JOB_NAME}-${SAFE_JAVA_VERSION}.tar -T ~/ci-gradle-caches-diff
+            ls -al ~/ci-gradle-caches-${SAFE_JOB_NAME}-${SAFE_JAVA_VERSION}.tar
           fi
           echo "::endgroup::"
         fi
