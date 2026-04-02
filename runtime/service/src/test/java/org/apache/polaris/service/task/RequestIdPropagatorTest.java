@@ -20,6 +20,9 @@ package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.apache.polaris.service.context.catalog.RequestIdHolder;
 import org.apache.polaris.service.tracing.RequestIdFilter;
@@ -31,13 +34,8 @@ import org.slf4j.MDC;
 /** Unit tests for {@link RequestIdPropagator}. */
 class RequestIdPropagatorTest {
 
-  private RequestIdHolder holder;
-  private RequestIdPropagator propagator;
-
   @BeforeEach
   void setUp() {
-    holder = new RequestIdHolder();
-    propagator = new RequestIdPropagator(holder);
     MDC.remove(RequestIdFilter.REQUEST_ID_KEY);
   }
 
@@ -48,11 +46,19 @@ class RequestIdPropagatorTest {
 
   @Test
   void testRestoreSetsHolderAndMdc() throws Exception {
-    try (AutoCloseable scope = propagator.restore("req-123")) {
-      assertThat(holder.get()).isEqualTo("req-123");
-      assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("req-123");
-    }
+    // Use a mock to simulate CDI proxy behavior across request scopes.
+    RequestIdHolder mockHolder = mock(RequestIdHolder.class);
+    when(mockHolder.get()).thenReturn("req-123");
 
+    RequestIdPropagator propagator = new RequestIdPropagator(mockHolder);
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
+
+    action.restore();
+    verify(mockHolder).set("req-123");
+    assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("req-123");
+
+    action.close();
     // After close, MDC should be cleared (no previous value).
     assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isNull();
   }
@@ -61,40 +67,39 @@ class RequestIdPropagatorTest {
   void testRestoreRestoresPreviousMdcValueOnClose() throws Exception {
     MDC.put(RequestIdFilter.REQUEST_ID_KEY, "previous-id");
 
-    try (AutoCloseable scope = propagator.restore("task-req-456")) {
-      assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("task-req-456");
-    }
+    RequestIdHolder mockHolder = mock(RequestIdHolder.class);
+    when(mockHolder.get()).thenReturn("task-req-456");
 
+    RequestIdPropagator propagator = new RequestIdPropagator(mockHolder);
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
+
+    action.restore();
+    assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("task-req-456");
+
+    action.close();
     // Previous MDC value should be restored.
     assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isEqualTo("previous-id");
-
-    MDC.remove(RequestIdFilter.REQUEST_ID_KEY);
   }
 
   @Test
-  void testRestoreNullRequestIdDoesNotSetMdc() throws Exception {
-    try (AutoCloseable scope = propagator.restore(null)) {
-      assertThat(holder.get()).isNull();
-      assertThat(MDC.get(RequestIdFilter.REQUEST_ID_KEY)).isNull();
-    }
+  void testCaptureWithNullRequestIdReturnsNoop() {
+    RequestIdHolder holder = new RequestIdHolder();
+    RequestIdPropagator propagator = new RequestIdPropagator(holder);
+    assertThat(propagator.capture()).isSameAs(AsyncContextPropagator.RestoreAction.NOOP);
   }
 
   @Test
-  void testCaptureUsesRestoredHolderValue() {
+  void testCaptureUsesHolderValue() {
+    RequestIdHolder holder = new RequestIdHolder();
     holder.set("nested-task-req");
-
-    Object state = propagator.capture();
-    assertThat(state).isEqualTo("nested-task-req");
-  }
-
-  @Test
-  void testCaptureWithEmptyHolderReturnsNull() {
-    Object state = propagator.capture();
-    assertThat(state).isNull();
+    RequestIdPropagator propagator = new RequestIdPropagator(holder);
+    assertThat(propagator.capture()).isNotNull();
   }
 
   @Test
   void testHolderDoubleSetThrowsIllegalStateException() {
+    RequestIdHolder holder = new RequestIdHolder();
     holder.set("first");
     assertThrows(IllegalStateException.class, () -> holder.set("second"));
   }

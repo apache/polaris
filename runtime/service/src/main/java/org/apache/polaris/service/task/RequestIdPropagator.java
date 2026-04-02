@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.inject.Inject;
@@ -32,15 +31,15 @@ import org.slf4j.MDC;
  * Propagates the request ID across the async task boundary.
  *
  * <p>At capture time the request ID is read from {@link RequestIdHolder}, which is populated by
- * {@code RequestIdFilter} on HTTP request threads and by this propagator's {@link #restore} path on
- * task threads (enabling nested task submission).
+ * {@code RequestIdFilter} on HTTP request threads and by this propagator's {@link
+ * RestoreAction#restore()} path on task threads (enabling nested task submission).
  *
  * <p>At restore time the ID is written to both the {@link RequestIdHolder} (so that {@code
  * RequestIdSupplier} works in task threads) and to the SLF4J MDC (so that log messages emitted by
  * the task carry the originating request ID).
  *
- * <p>MDC cleanup is performed by the returned {@link AutoCloseable} so that thread-pool threads are
- * left in a clean state after the task completes.
+ * <p>MDC cleanup is performed by the action's {@link RestoreAction#close()} so that thread-pool
+ * threads are left in a clean state after the task completes.
  */
 @ApplicationScoped
 public class RequestIdPropagator implements AsyncContextPropagator {
@@ -59,37 +58,37 @@ public class RequestIdPropagator implements AsyncContextPropagator {
     this.requestIdHolder = requestIdHolder;
   }
 
-  @Nullable
   @Override
-  public Object capture() {
+  public RestoreAction capture() {
     String id = null;
     try {
       id = requestIdHolder.get();
     } catch (ContextNotActiveException e) {
-      // scope not active, return null
+      // scope not active
     }
     LOGGER.trace("capture requestId={}", id);
-    return id;
-  }
-
-  @Override
-  public AutoCloseable restore(@Nullable Object capturedState) {
-    String requestId = (String) capturedState;
-    LOGGER.trace("restore requestId={}", requestId);
-    requestIdHolder.set(requestId);
-
-    if (requestId == null) {
-      return () -> {};
+    if (id == null) {
+      return RestoreAction.NOOP;
     }
+    String captured = id;
+    return new RestoreAction() {
+      private String previous;
 
-    String previous = MDC.get(RequestIdFilter.REQUEST_ID_KEY);
-    MDC.put(RequestIdFilter.REQUEST_ID_KEY, requestId);
-    return () -> {
-      // cleanup via auto-closeable
-      if (previous != null) {
-        MDC.put(RequestIdFilter.REQUEST_ID_KEY, previous);
-      } else {
-        MDC.remove(RequestIdFilter.REQUEST_ID_KEY);
+      @Override
+      public void restore() {
+        LOGGER.trace("restore requestId={}", captured);
+        requestIdHolder.set(captured);
+        previous = MDC.get(RequestIdFilter.REQUEST_ID_KEY);
+        MDC.put(RequestIdFilter.REQUEST_ID_KEY, captured);
+      }
+
+      @Override
+      public void close() {
+        if (previous != null) {
+          MDC.put(RequestIdFilter.REQUEST_ID_KEY, previous);
+        } else {
+          MDC.remove(RequestIdFilter.REQUEST_ID_KEY);
+        }
       }
     };
   }

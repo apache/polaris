@@ -19,7 +19,6 @@
 package org.apache.polaris.service.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +26,6 @@ import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.enterprise.inject.Instance;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +42,7 @@ class PrincipalContextPropagatorTest {
   }
 
   @Test
-  void testCaptureWhenPrincipalResolvableReturnsClonedPrincipal() {
+  void testCaptureWhenPrincipalResolvableReturnsAction() {
     PolarisPrincipal original = PolarisPrincipal.of("alice", Map.of(), Set.of());
 
     @SuppressWarnings("unchecked")
@@ -54,50 +52,39 @@ class PrincipalContextPropagatorTest {
     PrincipalContextPropagator propagator =
         new PrincipalContextPropagator(holder, principalInstance);
 
-    Object state = propagator.capture();
-    assertThat(state).isNotNull();
-    assertThat(state).isInstanceOf(ImmutablePolarisPrincipal.class);
-    assertThat(state).isNotSameAs(original);
-    assertThat(((PolarisPrincipal) state).getName()).isEqualTo("alice");
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
   }
 
   @Test
   void testRestoreSetsPrincipalInHolder() throws Exception {
-    PolarisPrincipal principal =
-        ImmutablePolarisPrincipal.builder()
-            .from(PolarisPrincipal.of("carol", Map.of(), Set.of()))
-            .build();
+    PolarisPrincipal original = PolarisPrincipal.of("carol", Map.of(), Set.of());
 
     @SuppressWarnings("unchecked")
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
+    when(principalInstance.get()).thenReturn(original);
+
     PrincipalContextPropagator propagator =
         new PrincipalContextPropagator(holder, principalInstance);
 
-    try (AutoCloseable scope = propagator.restore(principal)) {
-      assertThat(scope).isNotNull();
-    }
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
 
-    // Calling restore() a second time on a fresh holder must succeed.
+    action.restore();
+    action.close();
+
+    // Calling capture + restore on a fresh holder must succeed.
     PolarisPrincipalHolder freshHolder = new PolarisPrincipalHolder();
     PrincipalContextPropagator freshPropagator =
         new PrincipalContextPropagator(freshHolder, principalInstance);
-    freshPropagator.restore(principal).close();
+    AsyncContextPropagator.RestoreAction freshAction = freshPropagator.capture();
+    assertThat(freshAction).isNotNull();
+    freshAction.restore();
+    freshAction.close();
   }
 
   @Test
-  void testRestoreNullStateDoesNotThrow() throws Exception {
-    @SuppressWarnings("unchecked")
-    Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
-    PrincipalContextPropagator propagator =
-        new PrincipalContextPropagator(holder, principalInstance);
-
-    AutoCloseable scope = propagator.restore(null);
-    assertThat(scope).isNotNull();
-    scope.close();
-  }
-
-  @Test
-  void testCaptureWhenScopeNotActiveReturnsNull() {
+  void testCaptureWhenScopeNotActiveReturnsNoop() {
     @SuppressWarnings("unchecked")
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
     when(principalInstance.get()).thenThrow(new ContextNotActiveException());
@@ -105,23 +92,23 @@ class PrincipalContextPropagatorTest {
     PrincipalContextPropagator propagator =
         new PrincipalContextPropagator(holder, principalInstance);
 
-    assertThat(propagator.capture()).isNull();
+    assertThat(propagator.capture()).isSameAs(AsyncContextPropagator.RestoreAction.NOOP);
   }
 
   @Test
-  void testRestoreCalledTwiceOnSameHolderThrows() throws Exception {
-    PolarisPrincipal principal =
-        ImmutablePolarisPrincipal.builder()
-            .from(PolarisPrincipal.of("dave", Map.of(), Set.of()))
-            .build();
+  void testCloseIsNoOp() throws Exception {
+    PolarisPrincipal original = PolarisPrincipal.of("dave", Map.of(), Set.of());
 
     @SuppressWarnings("unchecked")
     Instance<PolarisPrincipal> principalInstance = mock(Instance.class);
+    when(principalInstance.get()).thenReturn(original);
+
     PrincipalContextPropagator propagator =
         new PrincipalContextPropagator(holder, principalInstance);
 
-    propagator.restore(principal).close();
-    // Second restore on the same holder must throw because set() uses compareAndSet.
-    assertThrows(IllegalStateException.class, () -> propagator.restore(principal));
+    AsyncContextPropagator.RestoreAction action = propagator.capture();
+    assertThat(action).isNotNull();
+    action.restore();
+    action.close(); // no-op; should not throw
   }
 }

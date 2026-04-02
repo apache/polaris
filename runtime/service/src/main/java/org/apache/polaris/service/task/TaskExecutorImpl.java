@@ -67,9 +67,6 @@ public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
 
-  /** Pairs an {@link AsyncContextPropagator} with the opaque state it captured. */
-  record CapturedPropagator(AsyncContextPropagator propagator, @Nullable Object state) {}
-
   private final Executor executor;
   private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -156,19 +153,19 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     // Capture request-scoped context for propagation into the task thread.
     // Each propagator independently snapshots its own piece of context.
-    List<CapturedPropagator> captured = new ArrayList<>();
+    List<AsyncContextPropagator.RestoreAction> actions = new ArrayList<>();
     for (AsyncContextPropagator propagator : contextPropagators) {
-      captured.add(new CapturedPropagator(propagator, propagator.capture()));
+      actions.add(propagator.capture());
     }
 
-    tryHandleTask(taskEntityId, clone, eventMetadata, captured, null, 1);
+    tryHandleTask(taskEntityId, clone, eventMetadata, actions, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,
-      List<CapturedPropagator> captured,
+      List<AsyncContextPropagator.RestoreAction> actions,
       Throwable previousError,
       int attempt) {
     if (attempt > 3) {
@@ -177,7 +174,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     return CompletableFuture.runAsync(
             () -> {
-              handleTaskWithTracing(taskEntityId, callContext, captured, eventMetadata, attempt);
+              handleTaskWithTracing(taskEntityId, callContext, actions, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
@@ -189,7 +186,7 @@ public class TaskExecutorImpl implements TaskExecutor {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
               return tryHandleTask(
-                  taskEntityId, callContext, eventMetadata, captured, t, attempt + 1);
+                  taskEntityId, callContext, eventMetadata, actions, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
@@ -261,7 +258,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   protected void handleTaskWithTracing(
       long taskEntityId,
       CallContext callContext,
-      List<CapturedPropagator> captured,
+      List<AsyncContextPropagator.RestoreAction> actions,
       PolarisEventMetadata eventMetadata,
       int attempt) {
     // Note: each call to this method runs in a new CDI request context.
@@ -269,11 +266,12 @@ public class TaskExecutorImpl implements TaskExecutor {
     // A restore failure is fatal: running a task without proper realm or principal context
     // risks wrong-tenant or wrong-identity execution, so we abort rather than continue.
     // The restore loop is inside the try block so the finally block cleans up any
-    // propagators that were already restored before the failure.
-    List<AutoCloseable> cleanups = new ArrayList<>();
+    // actions that were already restored before the failure.
+    int restored = 0;
     try {
-      for (CapturedPropagator entry : captured) {
-        cleanups.add(entry.propagator().restore(entry.state()));
+      for (AsyncContextPropagator.RestoreAction action : actions) {
+        action.restore();
+        restored++;
       }
 
       if (tracer == null) {
@@ -296,11 +294,11 @@ public class TaskExecutorImpl implements TaskExecutor {
         }
       }
     } finally {
-      // Close in reverse order (LIFO) so that later propagators clean up before
+      // Close in reverse order (LIFO) so that later actions clean up before
       // earlier ones, matching standard stacked-context conventions.
-      for (int i = cleanups.size() - 1; i >= 0; i--) {
+      for (int i = restored - 1; i >= 0; i--) {
         try {
-          cleanups.get(i).close();
+          actions.get(i).close();
         } catch (Exception e) {
           LOGGER.warn("Failed to close context propagator cleanup", e);
         }

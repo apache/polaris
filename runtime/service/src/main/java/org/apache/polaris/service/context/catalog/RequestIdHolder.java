@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.context.catalog;
 
-import io.quarkus.arc.Unremovable;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Produces;
@@ -53,7 +52,6 @@ public class RequestIdHolder {
    */
   @Produces
   @RequestScoped
-  @Unremovable
   public RequestIdSupplier getRequestIdSupplier() {
     return () -> requestId.get();
   }

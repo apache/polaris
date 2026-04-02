@@ -19,7 +19,6 @@
 package org.apache.polaris.service.task;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 
 /**
  * Extension point for propagating request-scoped context across the async task boundary.
@@ -34,12 +33,12 @@ import jakarta.annotation.Nullable;
  *
  * <ol>
  *   <li>{@link #capture()} is called on the request thread (active request scope). The
- *       implementation reads its relevant context and returns an opaque snapshot.
- *   <li>The snapshot is carried across the async boundary together with the propagator that created
- *       it.
- *   <li>{@link #restore(Object)} is called inside the task thread's new CDI request scope. The
- *       implementation re-establishes its context from the snapshot and returns an {@link
- *       AutoCloseable} for cleanup after the task finishes (e.g. MDC restoration).
+ *       implementation reads its relevant context and returns a {@link RestoreAction} that
+ *       encapsulates the captured state and knows how to restore it.
+ *   <li>The action is carried across the async boundary.
+ *   <li>{@link RestoreAction#restore()} is called inside the task thread's new CDI request scope.
+ *   <li>{@link RestoreAction#close()} is called after the task finishes, for optional cleanup (e.g.
+ *       MDC restoration). The default implementation is a no-op.
  * </ol>
  */
 public interface AsyncContextPropagator {
@@ -47,23 +46,33 @@ public interface AsyncContextPropagator {
   /**
    * Captures relevant context from the current request scope.
    *
-   * <p>The returned snapshot may be restored multiple times across retries and different threads.
-   * Implementations must ensure the captured state is <strong>immutable</strong> and
-   * <strong>thread-safe</strong>.
+   * <p>The returned action may be restored multiple times across retries and different threads.
+   * Implementations must ensure the captured state within the action is <strong>immutable</strong>
+   * and <strong>thread-safe</strong>.
    *
-   * @return an opaque snapshot that will be passed to {@link #restore(Object)} in the task thread,
-   *     or {@code null} if no context is available to capture.
-   */
-  @Nullable
-  Object capture();
-
-  /**
-   * Restores the captured context into the task thread's active request scope.
-   *
-   * @param capturedState the snapshot returned by {@link #capture()}, may be {@code null}.
-   * @return an {@link AutoCloseable} that is closed after the task finishes. Implementations that
-   *     need no cleanup must return a no-op ({@code () -> {}}). Must not return {@code null}.
+   * @return an action that can restore the captured context, or {@link RestoreAction#NOOP} if no
+   *     context is available to capture.
    */
   @Nonnull
-  AutoCloseable restore(@Nullable Object capturedState);
+  RestoreAction capture();
+
+  /**
+   * Encapsulates captured context and the logic to restore it on a task thread.
+   *
+   * <p>Implementations that need cleanup after task completion (e.g. MDC restoration) override
+   * {@link #close()}. The default {@code close()} is a no-op, so propagators with no cleanup
+   * requirement need not implement it.
+   */
+  interface RestoreAction extends AutoCloseable {
+
+    /** Shared no-op instance for propagators that have nothing to capture. */
+    RestoreAction NOOP = () -> {};
+
+    /** Restores the captured context into the task thread's active request scope. */
+    void restore();
+
+    /** Optional cleanup after the task finishes. Default is a no-op. */
+    @Override
+    default void close() throws Exception {}
+  }
 }
