@@ -19,13 +19,16 @@
 package org.apache.polaris.persistence.relational.jdbc.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -262,8 +265,6 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
 
   // === Static conversion methods (following ModelEntity pattern) ===
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   /**
    * Converts a ScanMetricsRecord (SPI) to ModelScanMetricsReport (JDBC).
    *
@@ -328,10 +329,67 @@ public interface ModelScanMetricsReport extends Converter<ModelScanMetricsReport
       return "{}";
     }
     try {
-      return OBJECT_MAPPER.writeValueAsString(map);
+      return MetricsModelUtils.OBJECT_MAPPER.writeValueAsString(map);
     } catch (JsonProcessingException e) {
       return "{}";
     }
+  }
+
+  /**
+   * Converts this JDBC model back to the backend-agnostic SPI record.
+   *
+   * @return a ScanMetricsRecord built from this model's fields
+   */
+  default ScanMetricsRecord toRecord() {
+    String rawFieldIds = getProjectedFieldIds();
+    String rawFieldNames = getProjectedFieldNames();
+    List<Integer> fieldIds =
+        rawFieldIds == null || rawFieldIds.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(rawFieldIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
+    List<String> fieldNames =
+        rawFieldNames == null || rawFieldNames.isEmpty()
+            ? Collections.emptyList()
+            : Arrays.stream(rawFieldNames.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    return ScanMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(MetricsModelUtils.parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(Optional.ofNullable(getSnapshotId()))
+        .schemaId(Optional.ofNullable(getSchemaId()))
+        .filterExpression(Optional.ofNullable(getFilterExpression()))
+        .projectedFieldIds(fieldIds)
+        .projectedFieldNames(fieldNames)
+        .resultDataFiles(getResultDataFiles())
+        .resultDeleteFiles(getResultDeleteFiles())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        .totalDataManifests(getTotalDataManifests())
+        .totalDeleteManifests(getTotalDeleteManifests())
+        .scannedDataManifests(getScannedDataManifests())
+        .scannedDeleteManifests(getScannedDeleteManifests())
+        .skippedDataManifests(getSkippedDataManifests())
+        .skippedDeleteManifests(getSkippedDeleteManifests())
+        .skippedDataFiles(getSkippedDataFiles())
+        .skippedDeleteFiles(getSkippedDeleteFiles())
+        .totalPlanningDurationMs(getTotalPlanningDurationMs())
+        .equalityDeleteFiles(getEqualityDeleteFiles())
+        .positionalDeleteFiles(getPositionalDeleteFiles())
+        .indexedDeleteFiles(getIndexedDeleteFiles())
+        .totalDeleteFileSizeBytes(getTotalDeleteFileSizeBytes())
+        .build();
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

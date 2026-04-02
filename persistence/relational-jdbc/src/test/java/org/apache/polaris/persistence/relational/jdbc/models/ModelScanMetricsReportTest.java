@@ -237,6 +237,133 @@ public class ModelScanMetricsReportTest {
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
+  @Test
+  public void testToRecordAllFieldsRoundTrip() {
+    // Build a model with ALL optional fields populated so every toRecord() branch is exercised.
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .schemaId(TEST_SCHEMA_ID)
+            .filterExpression(TEST_FILTER)
+            .projectedFieldIds(TEST_PROJECTED_IDS)
+            .projectedFieldNames(TEST_PROJECTED_NAMES)
+            .otelSpanId(TEST_OTEL_SPAN_ID)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(TEST_REPORT_ID, record.reportId());
+    assertEquals(TEST_CATALOG_ID, record.catalogId());
+    assertEquals(TEST_TABLE_ID, record.tableId());
+    assertEquals(TEST_TIMESTAMP_MS, record.timestamp().toEpochMilli());
+    assertEquals(TEST_PRINCIPAL, record.principalName());
+    assertEquals(TEST_REQUEST_ID, record.requestId());
+    assertEquals(TEST_OTEL_TRACE_ID, record.otelTraceId());
+    assertEquals(java.util.Optional.of(TEST_SNAPSHOT_ID), record.snapshotId());
+    assertEquals(java.util.Optional.of(TEST_SCHEMA_ID), record.schemaId());
+    assertEquals(java.util.Optional.of(TEST_FILTER), record.filterExpression());
+    assertEquals(java.util.List.of(1, 2, 3), record.projectedFieldIds());
+    assertEquals(java.util.List.of("id", "name", "value"), record.projectedFieldNames());
+    assertEquals(TEST_RESULT_DATA_FILES, record.resultDataFiles());
+    assertEquals(TEST_TOTAL_FILE_SIZE, record.totalFileSizeBytes());
+    assertEquals(TEST_PLANNING_DURATION, record.totalPlanningDurationMs());
+    assertEquals(TEST_EQUALITY_DELETE_FILES, record.equalityDeleteFiles());
+    assertEquals(TEST_POSITIONAL_DELETE_FILES, record.positionalDeleteFiles());
+    assertEquals(TEST_INDEXED_DELETE_FILES, record.indexedDeleteFiles());
+    assertEquals(TEST_DELETE_FILE_SIZE, record.totalDeleteFileSizeBytes());
+  }
+
+  @Test
+  public void testToRecordNullProjectedFields() {
+    // When projected_field_ids / projected_field_names are null, toRecord() returns empty lists.
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .projectedFieldIds(null)
+            .projectedFieldNames(null)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.List.of(), record.projectedFieldIds());
+    assertEquals(java.util.List.of(), record.projectedFieldNames());
+  }
+
+  @Test
+  public void testToRecordEmptyProjectedFields() {
+    // Empty-string projected fields also produce empty lists.
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .projectedFieldIds("")
+            .projectedFieldNames("")
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.List.of(), record.projectedFieldIds());
+    assertEquals(java.util.List.of(), record.projectedFieldNames());
+  }
+
+  @Test
+  public void testToRecordNullOptionalFields() {
+    // snapshotId, schemaId, filterExpression are all nullable — must come back as Optional.empty().
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .snapshotId(null)
+            .schemaId(null)
+            .filterExpression(null)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Optional.empty(), record.snapshotId());
+    assertEquals(java.util.Optional.empty(), record.schemaId());
+    assertEquals(java.util.Optional.empty(), record.filterExpression());
+  }
+
+  @Test
+  public void testToRecordMetadataDeserialized() {
+    // Metadata stored as JSON must be deserialized back to a Map on read.
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .metadata("{\"env\":\"prod\",\"region\":\"us-east-1\"}")
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals("prod", record.metadata().get("env"));
+    assertEquals("us-east-1", record.metadata().get("region"));
+  }
+
+  @Test
+  public void testToRecordEmptyMetadataReturnsEmptyMap() {
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .metadata("{}")
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Map.of(), record.metadata());
+  }
+
+  @Test
+  public void testToRecordNullMetadataReturnsEmptyMap() {
+    ModelScanMetricsReport model =
+        ImmutableModelScanMetricsReport.builder()
+            .from(createTestReport())
+            .metadata(null)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Map.of(), record.metadata());
+  }
+
   private ModelScanMetricsReport createTestReport() {
     return ImmutableModelScanMetricsReport.builder()
         .reportId(TEST_REPORT_ID)
