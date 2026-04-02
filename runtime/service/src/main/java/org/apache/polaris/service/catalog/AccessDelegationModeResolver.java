@@ -38,6 +38,10 @@ public interface AccessDelegationModeResolver {
    * @param catalogEntity The catalog entity, used to determine storage configuration and
    *     capabilities
    * @return The resolved access delegation mode, or empty if no suitable mode is available.
+   * @throws org.apache.iceberg.exceptions.ForbiddenException if the client requests a mode that is
+   *     explicitly disallowed for the catalog and no viable fallback mode exists (e.g., {@link
+   *     AccessDelegationMode#VENDED_CREDENTIALS} on an external catalog whose credential vending
+   *     feature is disabled).
    */
   @Nonnull
   Optional<AccessDelegationMode> resolve(

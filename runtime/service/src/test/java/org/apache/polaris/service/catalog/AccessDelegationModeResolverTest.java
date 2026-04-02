@@ -246,6 +246,19 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
+  void resolveSingleVendedCredentials_externalCatalog_federatedVendingDisabled_throwsForbidden() {
+    CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
+    mockAllowExternalCatalogCredentialVending(catalogEntity, true);
+    mockAllowFederatedCatalogsCredentialVending(catalogEntity, false);
+
+    assertThatThrownBy(() -> resolver.resolve(EnumSet.of(VENDED_CREDENTIALS), catalogEntity))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("is not enabled for this external catalog")
+        .hasMessageContaining(
+            FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig());
+  }
+
+  @Test
   void resolveSingleVendedCredentials_externalCatalog_credentialVendingDisabled_throwsForbidden() {
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
     mockAllowExternalCatalogCredentialVending(catalogEntity, false);

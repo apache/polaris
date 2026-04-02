@@ -95,15 +95,26 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     // Case 2: Exactly one delegation mode requested
     if (requestedModes.size() == 1) {
       AccessDelegationMode mode = requestedModes.iterator().next();
-      // Credential vending is controlled by ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING for external
-      // catalogs. REMOTE_SIGNING does not involve Polaris vending credentials to the client, so it
-      // is not gated by this flag.
-      if (mode == VENDED_CREDENTIALS && isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
-        throw new ForbiddenException(
-            "Credential vending is not enabled for this external catalog. Please consult "
-                + "applicable documentation for the catalog config property '%s' to enable this"
-                + " feature",
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+      // REMOTE_SIGNING does not involve Polaris vending credentials to the client, so the
+      // credential-vending feature flags below do not apply to it.
+      if (mode == VENDED_CREDENTIALS) {
+        if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
+          throw new ForbiddenException(
+              "Credential vending is not enabled for this external catalog. Please consult "
+                  + "applicable documentation for the catalog config property '%s' to enable"
+                  + " this feature",
+              FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+        }
+        if (catalogEntity != null
+            && catalogEntity.isExternal()
+            && !realmConfig.getConfig(
+                FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
+          throw new ForbiddenException(
+              "Credential vending is not enabled for this federated catalog. Please consult "
+                  + "applicable documentation for the catalog config property '%s' to enable"
+                  + " this feature",
+              FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig());
+        }
       }
       LOGGER.debug("Single delegation mode requested: {}", mode);
       return Optional.of(mode);
