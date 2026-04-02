@@ -239,7 +239,7 @@ need the envelope fields for pagination or correlation.
     "timestampMs": 1709337612345,
     "actor":   { "principalName": "alice" },
     "request": { "requestId": "req-1", "otelTraceId": "abc123", "otelSpanId": "def456" },
-    "object":  { "catalogId": 100, "tableId": 200, "snapshotId": 99 },
+    "object":  { "snapshotId": 99 },
     "payload": {
       "type": "iceberg.metrics.scan",
       "version": 1,
