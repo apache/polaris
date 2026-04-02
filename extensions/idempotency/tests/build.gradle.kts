@@ -42,9 +42,6 @@ dependencies {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.withType<Test> {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   systemProperty("java.security.manager", "allow")

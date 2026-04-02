@@ -29,11 +29,15 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -167,8 +171,11 @@ public class IdempotencyFilter {
 
     String realmId = realmContext.getRealmIdentifier();
     String operationType = scope == null ? normalizeOperationType(rc) : scope.operationType();
-    // Use path only to avoid accidental mismatches from query ordering/irrelevant parameters.
-    String resourceId = rc.getUriInfo().getPath();
+    // Bind to path + body hash so that different payloads on the same endpoint are detected
+    // as conflicts (422) rather than silently replaying an unrelated response.
+    String bodyHash = hashRequestBody(rc);
+    String resourceId =
+        bodyHash != null ? rc.getUriInfo().getPath() + "#" + bodyHash : rc.getUriInfo().getPath();
 
     Instant now = clock.instant();
     Instant expiresAt = now.plus(configuration.ttl()).plus(configuration.ttlGrace());
@@ -483,6 +490,26 @@ public class IdempotencyFilter {
       }
     }
     return null;
+  }
+
+  private static String hashRequestBody(ContainerRequestContext rc) {
+    try {
+      InputStream entityStream = rc.getEntityStream();
+      if (entityStream == null) {
+        return null;
+      }
+      byte[] body = entityStream.readAllBytes();
+      if (body.length == 0) {
+        return null;
+      }
+      rc.setEntityStream(new ByteArrayInputStream(body));
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(body);
+      return HexFormat.of().formatHex(hash);
+    } catch (Exception e) {
+      LOG.debug("Failed to hash request body for idempotency binding", e);
+      return null;
+    }
   }
 
   private static String normalizeOperationType(ContainerRequestContext rc) {

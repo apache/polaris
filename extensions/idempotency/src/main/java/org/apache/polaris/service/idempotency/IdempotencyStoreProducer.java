@@ -32,9 +32,11 @@ public class IdempotencyStoreProducer {
   @Produces
   @Singleton
   public IdempotencyStore idempotencyStore(
-      PersistenceConfiguration config, @Any Instance<IdempotencyStore> idempotencyStores) {
-    Instance<IdempotencyStore> selected =
-        idempotencyStores.select(Identifier.Literal.of(config.type()));
+      IdempotencyConfiguration idempotencyConfig,
+      PersistenceConfiguration persistenceConfig,
+      @Any Instance<IdempotencyStore> idempotencyStores) {
+    String type = idempotencyConfig.storeType().orElse(persistenceConfig.type());
+    Instance<IdempotencyStore> selected = idempotencyStores.select(Identifier.Literal.of(type));
     if (selected.isUnsatisfied()) {
       selected = idempotencyStores.select(Identifier.Literal.of("in-memory"));
     }

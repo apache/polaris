@@ -27,6 +27,9 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-runtime-service"))
 
+  // These are provided at runtime by the Quarkus application (runtime/server).
+  // Using compileOnly avoids pulling their transitive dependencies into the distribution
+  // license report (e.g. org.ow2.asm:asm from quarkus-bom).
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-rest-jackson")
   compileOnly("io.quarkus:quarkus-reactive-routes")

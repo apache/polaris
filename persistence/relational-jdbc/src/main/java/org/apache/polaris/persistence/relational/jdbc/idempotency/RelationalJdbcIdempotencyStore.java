@@ -99,7 +99,22 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
       if (datasourceOperations.isConstraintViolation(e)) {
-        return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
+        Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
+        if (existing.isPresent()) {
+          Instant exp = existing.get().expiresAt();
+          if (exp != null && exp.isBefore(now)) {
+            deleteExpired(realmId, idempotencyKey, exp);
+            return reserve(
+                realmId,
+                idempotencyKey,
+                operationType,
+                normalizedResourceId,
+                expiresAt,
+                executorId,
+                now);
+          }
+        }
+        return new ReserveResult(ReserveResultType.DUPLICATE, existing);
       }
       throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);
     }
@@ -285,12 +300,37 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
               ModelIdempotencyRecord.TABLE_NAME,
               Map.of(ModelIdempotencyRecord.REALM_ID, realmId),
               Map.of(),
-              Map.of(ModelIdempotencyRecord.EXPIRES_AT, new SqlLiteral("CURRENT_TIMESTAMP")),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, before),
               Set.of(),
               Set.of(ModelIdempotencyRecord.EXPIRES_AT));
       return datasourceOperations.executeUpdate(delete);
     } catch (SQLException e) {
       throw new IdempotencyPersistenceException("Failed to purge expired idempotency records", e);
+    }
+  }
+
+  /**
+   * Deletes a single expired record so that the key can be reused. The WHERE clause includes
+   * expires_at to avoid accidentally deleting a record that was concurrently replaced.
+   */
+  private void deleteExpired(String realmId, String idempotencyKey, Instant expiresAt) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey),
+              Map.of(),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, expiresAt),
+              Set.of(),
+              Set.of(ModelIdempotencyRecord.EXPIRES_AT));
+      datasourceOperations.executeUpdate(delete);
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException("Failed to delete expired idempotency record", e);
     }
   }
 }

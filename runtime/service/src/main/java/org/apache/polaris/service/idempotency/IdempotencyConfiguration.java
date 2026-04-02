@@ -24,6 +24,7 @@ import io.smallrye.config.WithName;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import org.hibernate.validator.constraints.time.DurationMin;
 
 /**
  * Idempotency configuration.
@@ -64,6 +65,13 @@ public interface IdempotencyConfiguration {
   @WithDefault("false")
   boolean enabled();
 
+  /**
+   * Idempotency store type to use (e.g. {@code in-memory}, {@code relational-jdbc}).
+   *
+   * <p>If not set, falls back to {@code polaris.persistence.type}.
+   */
+  Optional<String> storeType();
+
   /** Request header name containing the client-provided idempotency key. */
   @WithDefault("Idempotency-Key")
   String keyHeader();
@@ -75,6 +83,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("ttl-seconds")
   @WithDefault("PT5M")
+  @DurationMin(nanos = 1)
   Duration ttl();
 
   /**
@@ -88,6 +97,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("ttl-grace-seconds")
   @WithDefault("PT0S")
+  @DurationMin
   Duration ttlGrace();
 
   /**
@@ -106,6 +116,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("in-progress-wait-seconds")
   @WithDefault("PT30S")
+  @DurationMin(nanos = 1)
   Duration inProgressWait();
 
   /**
@@ -115,6 +126,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("poll-initial-delay")
   @WithDefault("PT0.2S")
+  @DurationMin(nanos = 1)
   Duration pollInitialDelay();
 
   /**
@@ -125,6 +137,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("poll-max-delay")
   @WithDefault("PT2S")
+  @DurationMin(nanos = 1)
   Duration pollMaxDelay();
 
   /**
@@ -135,6 +148,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("lease-ttl-seconds")
   @WithDefault("PT25S")
+  @DurationMin(nanos = 1)
   Duration leaseTtl();
 
   /**
@@ -173,6 +187,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("heartbeat-interval-seconds")
   @WithDefault("PT5S")
+  @DurationMin(nanos = 1)
   Duration heartbeatInterval();
 
   /**
@@ -198,6 +213,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("purge-interval-seconds")
   @WithDefault("PT1M")
+  @DurationMin(nanos = 1)
   Duration purgeInterval();
 
   /**
@@ -208,6 +224,7 @@ public interface IdempotencyConfiguration {
    */
   @WithName("purge-grace-seconds")
   @WithDefault("PT0S")
+  @DurationMin
   Duration purgeGrace();
 
   interface Scope {
