@@ -31,7 +31,6 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +75,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
-  private final Instance<AsyncContextPropagator> contextPropagators;
+  private final TaskContextPropagator taskContextPropagator;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
@@ -94,7 +93,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer,
-      Instance<AsyncContextPropagator> contextPropagators) {
+      TaskContextPropagator taskContextPropagator) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -102,7 +101,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
-    this.contextPropagators = contextPropagators;
+    this.taskContextPropagator = taskContextPropagator;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -152,20 +151,16 @@ public class TaskExecutorImpl implements TaskExecutor {
     PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
 
     // Capture request-scoped context for propagation into the task thread.
-    // Each propagator independently snapshots its own piece of context.
-    List<AsyncContextPropagator.RestoreAction> actions = new ArrayList<>();
-    for (AsyncContextPropagator propagator : contextPropagators) {
-      actions.add(propagator.capture());
-    }
+    TaskContextPropagator.CapturedTaskContext captured = taskContextPropagator.capture();
 
-    tryHandleTask(taskEntityId, clone, eventMetadata, actions, null, 1);
+    tryHandleTask(taskEntityId, clone, eventMetadata, captured, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,
-      List<AsyncContextPropagator.RestoreAction> actions,
+      TaskContextPropagator.CapturedTaskContext captured,
       Throwable previousError,
       int attempt) {
     if (attempt > 3) {
@@ -174,7 +169,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
     return CompletableFuture.runAsync(
             () -> {
-              handleTaskWithTracing(taskEntityId, callContext, actions, eventMetadata, attempt);
+              handleTaskWithTracing(taskEntityId, callContext, captured, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
@@ -186,7 +181,7 @@ public class TaskExecutorImpl implements TaskExecutor {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
               return tryHandleTask(
-                  taskEntityId, callContext, eventMetadata, actions, t, attempt + 1);
+                  taskEntityId, callContext, eventMetadata, captured, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
@@ -258,50 +253,30 @@ public class TaskExecutorImpl implements TaskExecutor {
   protected void handleTaskWithTracing(
       long taskEntityId,
       CallContext callContext,
-      List<AsyncContextPropagator.RestoreAction> actions,
+      TaskContextPropagator.CapturedTaskContext captured,
       PolarisEventMetadata eventMetadata,
       int attempt) {
-    // Note: each call to this method runs in a new CDI request context.
-    // Restore all propagated context into the fresh request scope.
-    // A restore failure is fatal: running a task without proper realm or principal context
-    // risks wrong-tenant or wrong-identity execution, so we abort rather than continue.
-    // The restore loop is inside the try block so the finally block cleans up any
-    // actions that were already restored before the failure.
-    int restored = 0;
-    try {
-      for (AsyncContextPropagator.RestoreAction action : actions) {
-        action.restore();
-        restored++;
-      }
+    // Each call to this method runs in a new CDI request context.
+    // Restore the captured context into the fresh request scope before executing the task.
+    taskContextPropagator.restore(captured);
 
-      if (tracer == null) {
+    if (tracer == null) {
+      handleTask(taskEntityId, callContext, eventMetadata, attempt);
+    } else {
+      Span span =
+          tracer
+              .spanBuilder("polaris.task")
+              .setParent(Context.current())
+              .setAttribute(
+                  TracingFilter.REALM_ID_ATTRIBUTE,
+                  callContext.getRealmContext().getRealmIdentifier())
+              .setAttribute("polaris.task.entity.id", taskEntityId)
+              .setAttribute("polaris.task.attempt", attempt)
+              .startSpan();
+      try (Scope ignored = span.makeCurrent()) {
         handleTask(taskEntityId, callContext, eventMetadata, attempt);
-      } else {
-        Span span =
-            tracer
-                .spanBuilder("polaris.task")
-                .setParent(Context.current())
-                .setAttribute(
-                    TracingFilter.REALM_ID_ATTRIBUTE,
-                    callContext.getRealmContext().getRealmIdentifier())
-                .setAttribute("polaris.task.entity.id", taskEntityId)
-                .setAttribute("polaris.task.attempt", attempt)
-                .startSpan();
-        try (Scope ignored = span.makeCurrent()) {
-          handleTask(taskEntityId, callContext, eventMetadata, attempt);
-        } finally {
-          span.end();
-        }
-      }
-    } finally {
-      // Close in reverse order (LIFO) so that later actions clean up before
-      // earlier ones, matching standard stacked-context conventions.
-      for (int i = restored - 1; i >= 0; i--) {
-        try {
-          actions.get(i).close();
-        } catch (Exception e) {
-          LOGGER.warn("Failed to close context propagator cleanup", e);
-        }
+      } finally {
+        span.end();
       }
     }
   }
