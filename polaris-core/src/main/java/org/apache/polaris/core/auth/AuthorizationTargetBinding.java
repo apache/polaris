@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -26,15 +25,15 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 public interface AuthorizationTargetBinding {
   static AuthorizationTargetBinding of(
-      @Nonnull PolarisSecurable target, @Nullable PolarisSecurable secondary) {
+      @Nullable PolarisSecurable target, @Nullable PolarisSecurable secondary) {
     return ImmutableAuthorizationTargetBinding.builder()
         .target(target)
         .secondary(secondary)
         .build();
   }
 
-  /** Returns the primary target securable for the binding. */
-  @Nonnull
+  /** Returns the primary target securable for the binding, if any. */
+  @Nullable
   PolarisSecurable getTarget();
 
   /**

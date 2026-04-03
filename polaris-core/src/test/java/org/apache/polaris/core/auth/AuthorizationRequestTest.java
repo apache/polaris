@@ -94,6 +94,34 @@ public class AuthorizationRequestTest {
   }
 
   @Test
+  void getTargetsSucceedsOnBindingsWithoutPrimaryTarget() {
+    PolarisSecurable principalRole =
+        PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin"));
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE,
+            List.of(AuthorizationTargetBinding.of(null, principalRole)));
+
+    assertThat(request.getTargets()).isEmpty();
+    assertThat(request.getSecondaries()).containsExactly(principalRole);
+    assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isTrue();
+  }
+
+  @Test
+  void allowsEmptyTargetBindings() {
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.LIST_CATALOGS,
+            List.of());
+
+    assertThat(request.getTargetBindings()).isEmpty();
+    assertThat(request.getTargets()).isEmpty();
+    assertThat(request.getSecondaries()).isEmpty();
+  }
+
+  @Test
   void throwsWhenSecurableDoesNotStartWithTopLevelEntity() {
     assertThatThrownBy(
             () -> PolarisSecurable.of(new PathSegment(PolarisEntityType.NAMESPACE, "ns")))

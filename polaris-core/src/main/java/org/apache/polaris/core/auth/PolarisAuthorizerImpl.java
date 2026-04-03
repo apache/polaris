@@ -762,16 +762,23 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
+      List<PolarisSecurable> targets = request.getTargets();
+      List<PolarisResolvedPathWrapper> resolvedTargets =
+          !targets.isEmpty()
+              ? getResolvedSecurables(resolutionManifest, targets, prependRootContainer)
+              : prependRootContainer
+                  ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
+                  : null;
+      List<PolarisSecurable> secondaries = request.getSecondaries();
       List<PolarisResolvedPathWrapper> resolvedSecondaries =
-          !semantics.hasSecondaryPrivileges() || request.getSecondaries().isEmpty()
+          !semantics.hasSecondaryPrivileges() || secondaries.isEmpty()
               ? null
-              : getResolvedSecurables(
-                  resolutionManifest, request.getSecondaries(), prependRootContainer);
+              : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
       authorizeOrThrow(
           request.getPrincipal(),
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           request.getOperation(),
-          getResolvedSecurables(resolutionManifest, request.getTargets(), prependRootContainer),
+          resolvedTargets,
           resolvedSecondaries);
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {
