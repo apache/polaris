@@ -18,10 +18,9 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
+import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
 
-import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -69,16 +68,6 @@ public class GenericTableCatalogAdapter
     PolarisPrincipal principal = validatePrincipal(securityContext);
     String catalogName = prefixParser.prefixToCatalogName(prefix);
     return handlerFactory.createHandler(catalogName, principal);
-  }
-
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    EnumSet<AccessDelegationMode> delegationModes =
-        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-    Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
-        "Unsupported access delegation mode: %s",
-        accessDelegationMode);
-    return delegationModes;
   }
 
   @Override
