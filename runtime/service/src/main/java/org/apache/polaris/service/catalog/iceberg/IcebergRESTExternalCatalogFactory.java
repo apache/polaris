@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
@@ -38,6 +39,13 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 @Identifier(ConnectionType.ICEBERG_REST_FACTORY_IDENTIFIER)
 public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory {
 
+  private final CapturedConfigHolder capturedConfigHolder;
+
+  @Inject
+  public IcebergRESTExternalCatalogFactory(CapturedConfigHolder capturedConfigHolder) {
+    this.capturedConfigHolder = capturedConfigHolder;
+  }
+
   @Override
   public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfig,
@@ -54,9 +62,11 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
         new RESTCatalog(
             context,
             (config) ->
-                HTTPClient.builder(config)
-                    .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                    .build());
+                new ConfigCapturingHTTPClient(
+                    HTTPClient.builder(config)
+                        .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                        .build(),
+                    capturedConfigHolder));
 
     // Merge properties with precedence: connection config properties override catalog properties
     // to ensure required settings like URI and authentication cannot be accidentally overwritten.

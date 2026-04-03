@@ -112,6 +112,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -200,6 +201,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract CatalogHandlerUtils catalogHandlerUtils();
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
+
+  protected abstract CapturedConfigHolder capturedConfigHolder();
 
   protected abstract EventAttributeMap eventAttributeMap();
 
@@ -487,7 +490,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              refreshCredentialsEndpoint)
+              refreshCredentialsEndpoint,
+              Optional.empty())
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -592,7 +596,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             metadata,
             delegationModes,
             Set.of(PolarisStorageActions.ALL),
-            refreshCredentialsEndpoint)
+            refreshCredentialsEndpoint,
+            Optional.empty())
         .build();
   }
 
@@ -812,6 +817,9 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
 
+    // Capture tableId from remote catalog response for S3 Tables ARN construction
+    Optional<String> capturedTableId = capturedConfigHolder().getTableId();
+
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
       LoadTableResponse response =
@@ -820,7 +828,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   tableMetadata,
                   delegationModes,
                   actionsRequested,
-                  refreshCredentialsEndpoint)
+                  refreshCredentialsEndpoint,
+                  capturedTableId)
               .build();
       return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
@@ -837,7 +846,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       TableMetadata tableMetadata,
       EnumSet<AccessDelegationMode> delegationModes,
       Set<PolarisStorageActions> actions,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> capturedTableId) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     PolarisResolvedPathWrapper resolvedStoragePath =
@@ -855,8 +865,35 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
 
-      // For non polaris' catalog, validate that table locations are within allowed locations
-      if (!(baseCatalog instanceof IcebergCatalog)) {
+      // For S3 Tables catalogs, replace s3:// table locations with the constructed table ARN.
+      // s3tables:* IAM actions require ARN resources, not s3:// paths.
+      CatalogEntity catalogEntity = CatalogEntity.of(getResolvedCatalogEntity());
+      boolean isS3Tables =
+          catalogEntity.getStorageConfigurationInfo() != null
+              && catalogEntity.getStorageConfigurationInfo().getStorageType()
+                  == PolarisStorageConfigurationInfo.StorageType.S3_TABLES;
+
+      if (isS3Tables && capturedTableId.isPresent()) {
+        String tableArn = constructS3TablesArn(catalogEntity, capturedTableId.get());
+        validateS3TablesArn(tableIdentifier, tableArn, catalogEntity);
+        tableLocations = Set.of(tableArn);
+        LOGGER
+            .atDebug()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableArn", tableArn)
+            .log("Replaced table locations with S3 Tables ARN for credential vending");
+      } else if (isS3Tables) {
+        LOGGER
+            .atWarn()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .log(
+                "S3 Tables catalog but no tableId captured from remote response; "
+                    + "credential vending will proceed without ARN-scoped permissions");
+      }
+
+      // For non polaris' catalog, validate that table locations are within allowed locations.
+      // Skip validation for S3 Tables — ARN locations won't match s3:// allowed locations.
+      if (!(baseCatalog instanceof IcebergCatalog) && !isS3Tables) {
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 
@@ -890,6 +927,38 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return responseBuilder;
+  }
+
+  /**
+   * Constructs an S3 Tables ARN from the catalog's default-base-location and a tableId. The
+   * default-base-location for S3 Tables catalogs is the table bucket ARN (e.g.,
+   * arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket). The resulting table ARN is
+   * bucket-arn/table/tableId.
+   */
+  private String constructS3TablesArn(CatalogEntity catalogEntity, String tableId) {
+    String baseLocation = catalogEntity.getBaseLocation();
+    return baseLocation + "/table/" + tableId;
+  }
+
+  /**
+   * Validates that a constructed S3 Tables ARN falls under one of the catalog's allowed locations.
+   * This prevents a malicious remote catalog from returning a tableId that would construct an ARN
+   * outside the catalog's authorized scope.
+   */
+  private void validateS3TablesArn(
+      TableIdentifier tableIdentifier, String tableArn, CatalogEntity catalogEntity) {
+    PolarisStorageConfigurationInfo storageConfig = catalogEntity.getStorageConfigurationInfo();
+    if (storageConfig == null) {
+      return;
+    }
+    List<String> allowedLocations = storageConfig.getAllowedLocations();
+    boolean isAllowed =
+        allowedLocations.stream().anyMatch(allowed -> tableArn.startsWith(allowed + "/"));
+    if (!isAllowed) {
+      throw new ForbiddenException(
+          "Table '%s' has ARN '%s' which is outside the catalog's allowed locations: %s",
+          tableIdentifier, tableArn, allowedLocations);
+    }
   }
 
   private void validateRemoteTableLocations(
