@@ -65,6 +65,8 @@ public class BigQueryMetastoreFederatedCatalogFactory implements ExternalCatalog
             catalogProperties != null ? catalogProperties : Map.of(),
             connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
 
+    // Credentials are resolved via Google Application Default Credentials (ADC).
+    // GCS storage operations use the same ADC credentials.
     BigQueryMetastoreCatalog bigQueryMetastoreCatalog = new BigQueryMetastoreCatalog();
     bigQueryMetastoreCatalog.initialize(warehouse, mergedProperties);
 
