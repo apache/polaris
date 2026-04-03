@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.generic;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -28,6 +29,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
@@ -84,7 +86,13 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .action(
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE1))
-                    .createGenericTable(newtable, "format", "file:///temp/", "doc", Map.of()))
+                    .createGenericTable(
+                        newtable,
+                        "format",
+                        "file:///temp/",
+                        "doc",
+                        Map.of(),
+                        EnumSet.noneOf(AccessDelegationMode.class)))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
@@ -96,7 +104,11 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   @TestFactory
   Stream<DynamicNode> testLoadGenericTablePrivileges() {
     return authzTestsBuilder("loadGenericTable")
-        .action(() -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC))
+        .action(
+            () ->
+                newWrapper()
+                    .loadGenericTable(
+                        TABLE_NS1_1_GENERIC, EnumSet.noneOf(AccessDelegationMode.class)))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
@@ -119,7 +131,12 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             () ->
                 newWrapper(Set.of(PRINCIPAL_ROLE2))
                     .createGenericTable(
-                        TABLE_NS1_1_GENERIC, "format", "file:///temp/", "doc", Map.of()))
+                        TABLE_NS1_1_GENERIC,
+                        "format",
+                        "file:///temp/",
+                        "doc",
+                        Map.of(),
+                        EnumSet.noneOf(AccessDelegationMode.class)))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
