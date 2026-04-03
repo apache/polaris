@@ -322,72 +322,72 @@ function verify_checksums {
     log_fatal "verify_checksums failed, please inspect previously logged errors"
 }
 
-# function report_mismatch {
-#   local local_file
-#   local repo_file
-#   local title
-#   local_file="$1"
-#   repo_file="$2"
-#   title="$3"
-#   case "${local_file}" in
-#   *.jar | *.zip)
-#     if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
-#       # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
-#       (
-#         log_warn "${title}"
-#         echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
-#         zipinfo "${local_file}" || true
-#         echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
-#         zipinfo "${repo_file}" || true
-#         echo ""
-#       ) >> "${failures_file}"
-#     fi
-#     ;;
-#   *.tar.gz | *.tgz | *.tar)
-#     mkdir "${local_file}.extracted" "${repo_file}.extracted"
-#     tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
-#     log_info "  extracted to ${local_file}.extracted"
-#     tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
-#     log_info "  extracted to ${repo_file}.extracted"
-#     if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
-#       # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
-#       log_warn "${title}"
-#       (
-#         echo "${title}" # log_warn above prints ANSI escape sequences
-#         tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
-#         tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
-#         echo "Diff of archives contents:"
-#         diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
-#         echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
-#         cat "${local_file}.contents-listing"
-#         echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
-#         cat "${repo_file}.contents-listing"
-#         echo ""
-#       ) >> "${failures_file}"
-#     fi
-#     ;;
-#   *)
-#     log_fatal "${title}"
-#     (
-#       diff "${local_file}" "${repo_file}" || true
-#       echo ""
-#     ) >> "${failures_file}"
-#     ;;
-#   esac
-# }
+function report_mismatch {
+  local local_file
+  local repo_file
+  local title
+  local_file="$1"
+  repo_file="$2"
+  title="$3"
+  case "${local_file}" in
+  *.jar | *.zip)
+   if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
+     # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
+     (
+       log_warn "${title}"
+       echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
+       zipinfo "${local_file}" || true
+       echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
+       zipinfo "${repo_file}" || true
+       echo ""
+     ) >> "${failures_file}"
+   fi
+   ;;
+  *.tar.gz | *.tgz | *.tar)
+   mkdir "${local_file}.extracted" "${repo_file}.extracted"
+   tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
+   log_info "  extracted to ${local_file}.extracted"
+   tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
+   log_info "  extracted to ${repo_file}.extracted"
+   if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
+     # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
+     log_warn "${title}"
+     (
+       echo "${title}" # log_warn above prints ANSI escape sequences
+       tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
+       tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
+       echo "Diff of archives contents:"
+       diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
+       echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
+       cat "${local_file}.contents-listing"
+       echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
+       cat "${repo_file}.contents-listing"
+       echo ""
+     ) >> "${failures_file}"
+   fi
+   ;;
+  *)
+   log_fatal "${title}"
+   (
+     diff "${local_file}" "${repo_file}" || true
+     echo ""
+   ) >> "${failures_file}"
+   ;;
+  esac
+}
 
-# function compare_binary_file {
-#   local name
-#   local filename
-#   local local_file
-#   local repo_file
-#   name="$1"
-#   filename="$2"
-#   local_file="$3/${filename}"
-#   repo_file="$4/${filename}"
-#   diff "${local_file}" "${repo_file}" > /dev/null || \
-#     report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
-# }
+function compare_binary_file {
+  local name
+  local filename
+  local local_file
+  local repo_file
+  name="$1"
+  filename="$2"
+  local_file="$3/${filename}"
+  repo_file="$4/${filename}"
+  diff "${local_file}" "${repo_file}" > /dev/null || \
+    report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
+}
 
 missing_tools=()
 for mandatory_tool in wget gunzip find git java gpg md5sum shasum tar curl zipinfo ; do
