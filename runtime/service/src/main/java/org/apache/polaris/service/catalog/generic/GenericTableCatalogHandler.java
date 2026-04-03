@@ -39,7 +39,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
@@ -47,6 +46,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
+import org.apache.polaris.service.types.StorageAccessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +136,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
 
-    List<org.apache.polaris.service.types.StorageAccessConfig> storageAccessConfigs =
+    List<StorageAccessConfig> storageAccessConfigs =
         isCredentialVendingEnabled()
             ? vendCredentials(
                 identifier,
@@ -178,7 +178,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(loadedEntity.getPropertiesAsMap())
             .build();
 
-    List<org.apache.polaris.service.types.StorageAccessConfig> storageAccessConfigs =
+    List<StorageAccessConfig> storageAccessConfigs =
         credentialVendingEnabled
             ? vendCredentials(identifier, loadedEntity, actionsRequested)
             : List.of();
@@ -196,7 +196,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             resolutionManifest.getResolvedCatalogEntity());
   }
 
-  private List<org.apache.polaris.service.types.StorageAccessConfig> vendCredentials(
+  private List<StorageAccessConfig> vendCredentials(
       TableIdentifier tableIdentifier,
       GenericTableEntity entity,
       Set<PolarisStorageActions> actions) {
@@ -218,7 +218,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     }
 
     Set<String> tableLocations = Set.of(baseLocation);
-    StorageAccessConfig storageAccessConfig =
+    org.apache.polaris.core.storage.StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider()
             .getStorageAccessConfig(
                 tableIdentifier, tableLocations, actions, Optional.empty(), resolvedStoragePath);
@@ -233,9 +233,6 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     allConfig.putAll(storageAccessConfig.extraProperties());
 
     return List.of(
-        org.apache.polaris.service.types.StorageAccessConfig.builder()
-            .setPrefix(baseLocation)
-            .setConfig(allConfig)
-            .build());
+        StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(allConfig).build());
   }
 }
