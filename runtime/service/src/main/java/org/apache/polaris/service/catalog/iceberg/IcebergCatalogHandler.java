@@ -90,6 +90,7 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -122,7 +123,6 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
@@ -193,7 +193,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract ResolverFactory resolverFactory();
 
-  protected abstract CallContextCatalogFactory catalogFactory();
+  protected abstract LocalCatalogFactory localCatalogFactory();
 
   protected abstract ReservedProperties reservedProperties();
 
@@ -288,7 +288,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.debug("Initializing non-federated catalog");
-      this.baseCatalog = catalogFactory().createCallContextCatalog(resolutionManifest);
+      this.baseCatalog = localCatalogFactory().createCatalog(resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;

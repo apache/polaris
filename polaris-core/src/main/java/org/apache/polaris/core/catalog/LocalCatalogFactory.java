@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context.catalog;
+package org.apache.polaris.core.catalog;
 
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-public interface CallContextCatalogFactory {
+public interface LocalCatalogFactory {
 
-  Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest);
+  Catalog createCatalog(PolarisResolutionManifest resolvedManifest);
 }
