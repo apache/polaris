@@ -56,6 +56,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SetupCommand(Command):
+    """
+    A Command implementation to represent `polaris setup`. The instance attributes correspond to parameters
+    that can be provided to various subcommands, except `setup_subcommand` which represents the subcommand
+    itself.
+
+    Example commands:
+        * ./polaris setup apply setup-config.yaml
+        * ./polaris setup export
+    """
+
     setup_subcommand: str
     setup_config: Optional[str] = None
     dry_run: bool = False

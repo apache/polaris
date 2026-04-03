@@ -247,6 +247,7 @@ weight: 900
 |-----|------|---------|-------------|
 | realmContext.type | string | `"default"` | The type of realm context resolver to use. Two built-in types are supported: default and test; test is not recommended for production as it does not perform any realm validation. |
 | realmContext.realms | list | `["POLARIS"]` | List of valid realms, for use with the default realm context resolver. The first realm in the list is the default realm. Realms not in this list will be rejected. |
+| realmContext.requireHeader | bool | `false` | Whether to require the realm header in requests. When set to true, requests without the realm header will be rejected. When set to false, the default realm will be used instead. It is recommended to set this to true in production environments. |
 
 ### Features
 

@@ -219,14 +219,21 @@ function log_info {
 #   Following arguments: process arguments
 function proc_exec {
   local err_msg
-  local output
+  local output_file
+  local exit_code
   err_msg=$1
   shift
-  output=()
-  IFS=$'\n' read -r -d '' -a output < <( "${@}" 2>&1 && printf '\0' ) || (
-    log_fatal "${err_msg}" "${output[@]}"
+  output_file=$(mktemp)
+  "${@}" > "${output_file}" 2>&1
+  exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    local output
+    output=$(cat "${output_file}")
+    rm -f "${output_file}"
+    log_fatal "${err_msg}" "${output}"
     return 1
-  )
+  fi
+  rm -f "${output_file}"
 }
 
 function mirror {

@@ -19,7 +19,7 @@
 #
 Title: Installing Dependencies
 type: docs
-weight: 100
+weight: 103
 ---
 
 This guide serves as an introduction to several key entities that can be managed with Apache Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.

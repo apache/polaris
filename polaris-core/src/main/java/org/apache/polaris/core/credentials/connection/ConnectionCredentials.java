@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.core.credentials.connection;
 
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Encapsulates credentials and configuration needed to connect to external federated catalogs.
@@ -33,52 +32,28 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * other Iceberg REST catalogs).
  *
  * <p>Credentials may be temporary and include an expiration time.
- *
- * <p><b>Note:</b> This interface currently includes only {@code credentials} and {@code expiresAt}.
- * Additional fields like {@code extraProperties} and {@code internalProperties} (similar to {@link
- * StorageAccessConfig}) are not included for now but can be added later if needed for more complex
- * credential scenarios.
  */
-@PolarisImmutable
-public interface ConnectionCredentials {
-  /** Sensitive credential properties (e.g., access keys, tokens). */
-  Map<String, String> credentials();
+public record ConnectionCredentials(Map<String, String> credentials, Optional<Instant> expiresAt) {
 
-  /** Optional expiration time for the credentials. */
-  Optional<Instant> expiresAt();
+  public static final ConnectionCredentials EMPTY =
+      new ConnectionCredentials(Map.of(), Optional.empty());
 
   /**
-   * Get a credential value by property key.
-   *
-   * @param key the credential property to retrieve
-   * @return the credential value, or null if not present
+   * Creates ConnectionCredentials from a map of catalog access properties. Expiration timestamps
+   * are extracted and stored separately; credential properties are stored in the credentials map.
    */
-  default String get(CatalogAccessProperty key) {
-    return credentials().get(key.getPropertyName());
-  }
-
-  static ConnectionCredentials.Builder builder() {
-    return ImmutableConnectionCredentials.builder();
-  }
-
-  interface Builder {
-    @CanIgnoreReturnValue
-    Builder putCredential(String key, String value);
-
-    @CanIgnoreReturnValue
-    Builder expiresAt(Instant expiresAt);
-
-    default Builder put(CatalogAccessProperty key, String value) {
+  public static ConnectionCredentials of(Map<CatalogAccessProperty, String> properties) {
+    Map<String, String> credentials = new HashMap<>();
+    Instant expiresAt = null;
+    for (var entry : properties.entrySet()) {
+      CatalogAccessProperty key = entry.getKey();
       if (key.isExpirationTimestamp()) {
-        expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
+        expiresAt = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
       }
-
       if (key.isCredential()) {
-        return putCredential(key.getPropertyName(), value);
+        credentials.put(key.getPropertyName(), entry.getValue());
       }
-      return this;
     }
-
-    ConnectionCredentials build();
+    return new ConnectionCredentials(Map.copyOf(credentials), Optional.ofNullable(expiresAt));
   }
 }
