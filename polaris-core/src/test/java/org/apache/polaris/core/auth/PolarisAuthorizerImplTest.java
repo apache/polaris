@@ -37,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -139,6 +140,55 @@ public class PolarisAuthorizerImplTest {
             eq(Set.of()),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
             eq(List.of(rootWrapper)),
+            eq(null));
+  }
+
+  @Test
+  void authorizeResolvesNamespaceTargetUsingCatalog() {
+    // Verify authorize call that includes Catalog name in the PolarisSecurable
+    // successfully resolves the correct namespace
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
+        .thenReturn(namespaceWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
+        .thenReturn(Set.<PolarisBaseEntity>of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            org.mockito.ArgumentMatchers.<Set<PolarisBaseEntity>>any(),
+            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
+            org.mockito.ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any(),
+            any());
+
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.LIST_NAMESPACES,
+            List.of(
+                AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
+                    null)));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(manifest)
+        .getResolvedPath(ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true);
+    verify(authorizer)
+        .authorizeOrThrow(
+            eq(request.getPrincipal()),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
+            eq(List.of(namespaceWrapper)),
             eq(null));
   }
 }
