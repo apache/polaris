@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,7 @@ import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -120,7 +124,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       String format,
       String baseLocation,
       String doc,
-      Map<String, String> properties) {
+      Map<String, String> properties,
+      EnumSet<AccessDelegationMode> delegationModes) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
@@ -137,7 +142,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     List<StorageAccessConfig> storageAccessConfigs =
-        isCredentialVendingEnabled()
+        shouldVendCredentials(delegationModes)
             ? vendCredentials(
                 identifier,
                 createdEntity,
@@ -160,13 +165,14 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     return this.genericTableCatalog.dropGenericTable(identifier);
   }
 
-  public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
+  public LoadGenericTableResponse loadGenericTable(
+      TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
     ensureResolutionManifestForTable(identifier);
-    boolean credentialVendingEnabled = isCredentialVendingEnabled();
+    boolean credentialVendingRequested = shouldVendCredentials(delegationModes);
 
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTableLike(
-            identifier, PolarisEntitySubType.GENERIC_TABLE, credentialVendingEnabled);
+            identifier, PolarisEntitySubType.GENERIC_TABLE, credentialVendingRequested);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
@@ -179,7 +185,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     List<StorageAccessConfig> storageAccessConfigs =
-        credentialVendingEnabled
+        credentialVendingRequested
             ? vendCredentials(identifier, loadedEntity, actionsRequested)
             : List.of();
 
@@ -189,11 +195,12 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
         .build();
   }
 
-  private boolean isCredentialVendingEnabled() {
-    return realmConfig()
-        .getConfig(
-            FeatureConfiguration.ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING,
-            resolutionManifest.getResolvedCatalogEntity());
+  private boolean shouldVendCredentials(EnumSet<AccessDelegationMode> delegationModes) {
+    return delegationModes.contains(VENDED_CREDENTIALS)
+        && realmConfig()
+            .getConfig(
+                FeatureConfiguration.ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING,
+                resolutionManifest.getResolvedCatalogEntity());
   }
 
   private List<StorageAccessConfig> vendCredentials(
