@@ -20,7 +20,6 @@ package org.apache.polaris.service.task;
 
 import static org.mockito.Mockito.mock;
 
-import jakarta.enterprise.inject.Instance;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -74,7 +73,7 @@ public class TaskExecutorImplTest {
             testServices.polarisEventDispatcher(),
             testServices.eventMetadataFactory(),
             null,
-            mock(Instance.class));
+            mock(TaskContextPropagator.class));
 
     executor.addTaskHandler(
         new TaskHandler() {
