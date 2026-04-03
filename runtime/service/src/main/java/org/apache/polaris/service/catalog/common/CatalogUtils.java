@@ -19,6 +19,12 @@
 
 package org.apache.polaris.service.catalog.common;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
+import com.google.common.base.Preconditions;
+import java.net.URLEncoder;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,9 +38,21 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
+
+  public static EnumSet<AccessDelegationMode> parseAccessDelegationModes(
+      String accessDelegationMode) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
+    Preconditions.checkArgument(
+        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        "Unsupported access delegation mode: %s",
+        accessDelegationMode);
+    return delegationModes;
+  }
 
   /**
    * Find the resolved entity path that may contain storage information
