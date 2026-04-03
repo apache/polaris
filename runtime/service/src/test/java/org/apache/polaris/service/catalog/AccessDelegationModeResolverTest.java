@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -246,25 +245,27 @@ class AccessDelegationModeResolverTest {
   }
 
   @Test
-  void resolveSingleVendedCredentials_externalCatalog_federatedVendingDisabled_throwsForbidden() {
+  void
+      resolveSingleVendedCredentials_externalCatalog_federatedVendingDisabled_throwsIllegalArgument() {
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
     mockAllowExternalCatalogCredentialVending(catalogEntity, true);
     mockAllowFederatedCatalogsCredentialVending(catalogEntity, false);
 
     assertThatThrownBy(() -> resolver.resolve(EnumSet.of(VENDED_CREDENTIALS), catalogEntity))
-        .isInstanceOf(ForbiddenException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("is not enabled for this federated catalog")
         .hasMessageContaining(
             FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig());
   }
 
   @Test
-  void resolveSingleVendedCredentials_externalCatalog_credentialVendingDisabled_throwsForbidden() {
+  void
+      resolveSingleVendedCredentials_externalCatalog_credentialVendingDisabled_throwsIllegalArgument() {
     CatalogEntity catalogEntity = createExternalCatalogWithAwsConfig(false);
     mockAllowExternalCatalogCredentialVending(catalogEntity, false);
 
     assertThatThrownBy(() -> resolver.resolve(EnumSet.of(VENDED_CREDENTIALS), catalogEntity))
-        .isInstanceOf(ForbiddenException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("is not enabled for this external catalog")
         .hasMessageContaining(
             FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());

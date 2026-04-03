@@ -27,7 +27,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.Optional;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -51,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *             catalog where credential vending is disabled (via {@link
  *             FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING} or {@link
  *             FeatureConfiguration#ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING}), throws {@link
- *             org.apache.iceberg.exceptions.ForbiddenException}.
+ *             IllegalArgumentException}.
  *         <li>Otherwise returns that mode as-is.
  *       </ul>
  *   <li>If both {@link AccessDelegationMode#VENDED_CREDENTIALS} and {@link
@@ -101,21 +100,21 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       // credential-vending feature flags below do not apply to it.
       if (mode == VENDED_CREDENTIALS) {
         if (isExternalCatalogCredentialVendingDisabled(catalogEntity)) {
-          throw new ForbiddenException(
+          throw new IllegalArgumentException(
               "Credential vending is not enabled for this external catalog. Please consult "
-                  + "applicable documentation for the catalog config property '%s' to enable"
-                  + " this feature",
-              FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+                  + "applicable documentation for the catalog config property '"
+                  + FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig()
+                  + "' to enable this feature");
         }
         if (catalogEntity != null
             && catalogEntity.isExternal()
             && !realmConfig.getConfig(
                 FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, catalogEntity)) {
-          throw new ForbiddenException(
+          throw new IllegalArgumentException(
               "Credential vending is not enabled for this federated catalog. Please consult "
-                  + "applicable documentation for the catalog config property '%s' to enable"
-                  + " this feature",
-              FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig());
+                  + "applicable documentation for the catalog config property '"
+                  + FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING.catalogConfig()
+                  + "' to enable this feature");
         }
       }
       LOGGER.debug("Single delegation mode requested: {}", mode);

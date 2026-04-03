@@ -708,7 +708,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /**
    * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
    * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
-   * try to fetch vended credentials. Expect a ForbiddenException.
+   * try to fetch vended credentials. Expect an IllegalArgumentException (HTTP 400 Bad Request).
    */
   @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
   @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
@@ -731,7 +731,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       try {
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
-            .isInstanceOf(ForbiddenException.class)
+            .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("is not enabled for this external catalog")
             .hasMessageContaining(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
