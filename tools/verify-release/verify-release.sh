@@ -331,48 +331,48 @@ function report_mismatch {
   title="$3"
   case "${local_file}" in
   *.jar | *.zip)
-   if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
-     # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
-     (
-       log_warn "${title}"
-       echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
-       zipinfo "${local_file}" || true
-       echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
-       zipinfo "${repo_file}" || true
-       echo ""
-     ) >> "${failures_file}"
-   fi
-   ;;
+    if proc_exec "${title}" zipcmp "${local_file}" "${repo_file}"; then
+      # Dump ZIP info only when the contents are equal (to inspect mtime and posix attributes)
+      (
+        log_warn "${title}"
+        echo ">>>>>>>>>>>>>>> zipinfo ${local_file}"
+        zipinfo "${local_file}" || true
+        echo ">>>>>>>>>>>>>>> zipinfo ${repo_file}"
+        zipinfo "${repo_file}" || true
+        echo ""
+      ) >> "${failures_file}"
+    fi
+    ;;
   *.tar.gz | *.tgz | *.tar)
-   mkdir "${local_file}.extracted" "${repo_file}.extracted"
-   tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
-   log_info "  extracted to ${local_file}.extracted"
-   tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
-   log_info "  extracted to ${repo_file}.extracted"
-   if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
-     # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
-     log_warn "${title}"
-     (
-       echo "${title}" # log_warn above prints ANSI escape sequences
-       tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
-       tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
-       echo "Diff of archives contents:"
-       diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
-       echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
-       cat "${local_file}.contents-listing"
-       echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
-       cat "${repo_file}.contents-listing"
-       echo ""
-     ) >> "${failures_file}"
-   fi
-   ;;
+    mkdir "${local_file}.extracted" "${repo_file}.extracted"
+    tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
+    log_info "  extracted to ${local_file}.extracted"
+    tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
+    log_info "  extracted to ${repo_file}.extracted"
+    if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
+      # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
+      log_warn "${title}"
+      (
+        echo "${title}" # log_warn above prints ANSI escape sequences
+        tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
+        tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
+        echo "Diff of archives contents:"
+        diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
+        echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
+        cat "${local_file}.contents-listing"
+        echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
+        cat "${repo_file}.contents-listing"
+        echo ""
+      ) >> "${failures_file}"
+    fi
+    ;;
   *)
-   log_fatal "${title}"
-   (
-     diff "${local_file}" "${repo_file}" || true
-     echo ""
-   ) >> "${failures_file}"
-   ;;
+    log_fatal "${title}"
+    (
+      diff "${local_file}" "${repo_file}" || true
+      echo ""
+    ) >> "${failures_file}"
+    ;;
   esac
 }
 
