@@ -24,12 +24,12 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 
 /**
- * Factory interface for creating external catalog handles based on connection configuration.
+ * Factory interface for creating federated catalog handles based on connection configuration.
  *
  * <p>Implementations should be annotated with CDI annotations and use the @Identifier annotation to
  * specify which connection type they support.
  */
-public interface ExternalCatalogFactory {
+public interface FederatedCatalogFactory {
 
   /**
    * Creates a catalog handle for the given connection configuration.
