@@ -86,8 +86,8 @@ Apache Polaris is organized into the following modules:
 In addition to modules, there are:
 - [API specifications](./spec/README.md) - The OpenAPI specifications
 - [Python client](./client/python/README.md) - The Python client
-- [codestyle](./codestyle/README.md) - The code style guidelines
-- [getting-started](./getting-started/README.md) - A collection of getting started examples
+- [codestyle](./codestyle) - The code style guidelines
+- [getting-started](https://polaris.apache.org/in-dev/unreleased/getting-started/) - A collection of getting started examples
 - [gradle](./gradle) - The Gradle wrapper and Gradle configuration files including banned dependencies
 - [helm](./helm) - The Helm charts for Polaris.
 - [Spark Plugin](./plugins/spark/README.md) - The Polaris Spark plugin
@@ -152,7 +152,8 @@ make build-server
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 The Polaris codebase contains some docker compose examples to quickly get started with Polaris,
-using different configurations. Check the `./getting-started` directory for more information.
+using different configurations. See the [Quickstart](https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/)
+for more information.
 
 #### Running in Kubernetes
 
@@ -161,7 +162,7 @@ using different configurations. Check the `./getting-started` directory for more
 #### Configuring Polaris
 
 Polaris Servers can be configured using a variety of ways.
-Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
+Please see the [Configuration Guide](https://polaris.apache.org/in-dev/unreleased/configuration/)
 for more information.
 
 Default configuration values can be found in `runtime/defaults/src/main/resources/application.properties`.
