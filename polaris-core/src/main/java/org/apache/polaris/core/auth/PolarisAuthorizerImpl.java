@@ -771,7 +771,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
                   : null;
       List<PolarisSecurable> secondaries = request.getSecondaries();
       List<PolarisResolvedPathWrapper> resolvedSecondaries =
-          !semantics.hasSecondaryPrivileges() || secondaries.isEmpty()
+          semantics.secondaryPrivileges().isEmpty() || secondaries.isEmpty()
               ? null
               : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
       authorizeOrThrow(
