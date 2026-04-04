@@ -46,6 +46,7 @@ Tasks that are automated:
 * `LICENSE` and `NOTICE` files are included.
 * main and sources jar artifacts (excluding Spark JARs) contain `META-INF/LICENSE` and `META-INF/NOTICE` files.
 * main distribution artifacts contain `LICENSE` and `NOTICE` files in the top-level directory.
+* *(Optional, with `--reproducible-builds`)* Built artifacts are [reproducible](#reproducible-builds).
 
 Tasks that need human attention:
 * Download links are valid. Check all links in the `[VOTE]` email for the release:
@@ -72,6 +73,11 @@ Other tests:
 
 **Imply good intent!**
 Although the release manager is responsible for producing a "proper" release, mistakes can and will happen.
+The Polaris project is committed to providing reproducible builds as an essential building block of
+_Apache trusted releases_.
+The project depends on frameworks which also strive to provide reproducible builds, but not all
+these frameworks can provide fully reproducible builds yet.
+Reproducible build verification is available as an optional check via `--reproducible-builds`; see [below](#reproducible-builds) for details.
 
 After you have completed the verification of the release candidate, respond to the release vote email,
 detailing the checks and tests you performed, and providing a summary of their outcomes.
@@ -106,6 +112,7 @@ bash <(curl \
 ```
 
 The tool is intended for Polaris versions 1.3 and newer.
+With `--reproducible-builds`, the tool may report known reproducible build issues; see [below](#reproducible-builds) for details.
 
 That script requires a couple of tools installed and will check that those are available
 and report those that need to be installed.
@@ -175,11 +182,52 @@ After that, release candidate verification starts immediately, performing the fo
 7. Build Polaris from the Git commit/tag
 8. Checks mandatory LICENSE/NOTICE content in Maven JARs (excluding Spark JARs) and distribution archives.
 9. Checks mandatory LICENSE/NOTICE content in the Helm chart.
+10. *(Optional, with `--reproducible-builds`)* Compares that the list of Maven artifacts produced by the build matches those in the Nexus staging repository.
+11. *(Optional, with `--reproducible-builds`)* Compares the individual Maven artifacts of the local build with the ones in the Nexus staging repository.
+12. *(Optional, with `--reproducible-builds`)* Compares the main binary distribution artifacts for Polaris server and Polaris admin tool.
+13. *(Optional, with `--reproducible-builds`)* Compares the locally built Helm chart with the one in the staging repository.
 
 Found issues are reported on the console in _red_.
+
+Details for each reported issue will be reported in the log file, depending on the issue and file type.
+The intent is to provide as much information as possible to eventually fix a reproducible build issue.
+* Text files: Output of `diff` of the local and staged files.
+* Zip/Jar files: output of `zipcmp`.
+  If `zipcmp` reports no difference, the output of `zipinfo` for both files is logged.
+* Tarballs: output of `diff --recursive` the extracted local and staged tarballs.
+  If `diff` reports no difference, the output of `tar tvf` for both files is logged.
+* Other files: Output of `diff` of the local and staged files.
 
 Note: GPG signatures are verified **only** against the project's `KEYS` file.
 
 If the script finds no issues, the temporary verification directory is deleted by default.
 You can keep it around by using the `--keep-temp-dir` (`-k`) option.
 Remember to delete it manually when you're done.
+
+# Reproducible builds
+
+> **Work in progress:** Reproducible build verification is available as an optional check and must be explicitly enabled with the `--reproducible-builds` flag. Full reproducibility is not yet achieved for artifacts.
+
+A build is reproducible if the built artifacts are identical for every build on every machine from the same source.
+
+The Apache Polaris build is currently _mostly_ reproducible, with some release-version specific exceptions.
+
+References:
+* [reproducible-builds.org](https://reproducible-builds.org/)
+* [Reproducible builds at the ASF](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds)
+* [Polaris tracking issue](https://github.com/apache/polaris/issues/2204)
+
+## Exceptions for all Apache Polaris versions
+
+Pending on full support for reproducible builds in Quarkus:
+* Jars containing generated code are not guaranteed to be reproducible. Affects the following jars:
+    * */quarkus/generated-bytecode.jar
+    * */quarkus/transformed-bytecode.jar
+    * */quarkus/quarkus-application.jar
+* Re-assembled jars are not guaranteed to be reproducible: Affects the following jars:
+    * admin/app/polaris-admin-*.jar
+    * server/app/polaris-server-*.jar
+* Zips and tarballs containing any of the above are not guaranteed to be reproducible.
+
+Helm packages are not binary reproducible yet.
+See helm-package notes on [this page](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds).
