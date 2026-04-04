@@ -26,6 +26,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -41,9 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @RequestScoped
-public class PolarisCallContextCatalogFactory implements CallContextCatalogFactory {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
+public class PolarisLocalCatalogFactory implements LocalCatalogFactory {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisLocalCatalogFactory.class);
 
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
@@ -57,7 +57,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisPrincipal principal;
 
   @Inject
-  public PolarisCallContextCatalogFactory(
+  public PolarisLocalCatalogFactory(
       PolarisDiagnostics diagnostics,
       ResolverFactory resolverFactory,
       TaskExecutor taskExecutor,
@@ -81,7 +81,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   }
 
   @Override
-  public Catalog createCallContextCatalog(final PolarisResolutionManifest resolvedManifest) {
+  public Catalog createCatalog(final PolarisResolutionManifest resolvedManifest) {
     CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
     String catalogName = catalog.getName();
 
