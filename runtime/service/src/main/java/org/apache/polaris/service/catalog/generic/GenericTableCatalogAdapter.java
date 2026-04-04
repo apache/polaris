@@ -42,6 +42,11 @@ import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
+/**
+ * Adapter between the generated {@link PolarisCatalogGenericTableApiService} REST interface and
+ * {@link GenericTableCatalogHandler}. Parses request-level concerns such as the access delegation
+ * header before delegating to the handler.
+ */
 @RequestScoped
 public class GenericTableCatalogAdapter
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {

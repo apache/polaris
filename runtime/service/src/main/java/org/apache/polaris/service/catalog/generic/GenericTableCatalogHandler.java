@@ -42,6 +42,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -195,6 +196,10 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
         .build();
   }
 
+  /**
+   * Credentials are vended only when the client explicitly requests {@code vended-credentials} via
+   * the access delegation header AND the server-side feature flag is enabled for the catalog.
+   */
   private boolean shouldVendCredentials(EnumSet<AccessDelegationMode> delegationModes) {
     return delegationModes.contains(VENDED_CREDENTIALS)
         && realmConfig()
@@ -203,6 +208,11 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
                 resolutionManifest.getResolvedCatalogEntity());
   }
 
+  /**
+   * Vends scoped storage credentials for the given generic table. Returns an empty list if the
+   * table has no base location, no resolved storage configuration, or if the underlying storage
+   * integration produces no credentials.
+   */
   private List<StorageAccessConfig> vendCredentials(
       TableIdentifier tableIdentifier,
       GenericTableEntity entity,
@@ -238,6 +248,13 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
     Map<String, String> allConfig = new java.util.HashMap<>(credentials);
     allConfig.putAll(storageAccessConfig.extraProperties());
+
+    // Remap Iceberg's "client.region" to the generic table API's "s3.client.region"
+    String clientRegionKey = StorageAccessProperty.CLIENT_REGION.getPropertyName();
+    String region = allConfig.remove(clientRegionKey);
+    if (region != null) {
+      allConfig.put("s3.client.region", region);
+    }
 
     return List.of(
         StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(allConfig).build());
