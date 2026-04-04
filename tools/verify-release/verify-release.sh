@@ -513,11 +513,12 @@ mkdir -p "${maven_local_dir}"
 log_part_end
 
 # Check that the the set of locally built Maven artifacts and staged Maven artifacts is the same.
+echo "Listing locally built Maven artifacts..."
+(cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
+  | sort \
+  > "${temp_dir}/maven-local-files"
 if [[ $reproducible_builds -eq 1 ]]; then
   log_part_start "Comparing Maven build artifacts ..."
-  (cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
-    | sort \
-    > "${temp_dir}/maven-local-files"
   (cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
     | sort \
     > "${temp_dir}/maven-repo-files"
@@ -527,10 +528,6 @@ if [[ $reproducible_builds -eq 1 ]]; then
 fi
 
 log_part_start "Checking Maven repository artifact content..."
-echo "Listing locally built Maven artifacts..."
-(cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
-  | sort \
-  > "${temp_dir}/maven-local-files"
 if [[ $reproducible_builds -eq 1 ]]; then
   echo "  Local Maven repo:       ${maven_local_dir}"
   echo "  Downloaded Maven repo:  ${maven_repo_dir}"
