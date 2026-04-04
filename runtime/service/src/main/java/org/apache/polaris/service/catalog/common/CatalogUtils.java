@@ -45,6 +45,17 @@ import org.apache.polaris.service.catalog.AccessDelegationMode;
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
 
+  /**
+   * Parses the access delegation mode header value into an {@link EnumSet} of {@link
+   * AccessDelegationMode}. Currently only {@code vended-credentials} is supported; any other
+   * non-empty value will result in an {@link IllegalArgumentException}.
+   *
+   * <p>This is shared by both Iceberg and Generic Table catalog adapters.
+   *
+   * @param accessDelegationMode the raw header value (comma-separated), may be {@code null}
+   * @return the parsed set of delegation modes, empty if the header was {@code null} or blank
+   * @throws IllegalArgumentException if an unsupported delegation mode is requested
+   */
   public static EnumSet<AccessDelegationMode> parseAccessDelegationModes(
       String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
