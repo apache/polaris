@@ -186,9 +186,21 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
         PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
-        PrincipalSecretsResult secretsResult =
-            createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
-        results.put(realm, secretsResult);
+        // Check if the realm is already bootstrapped by looking for the root principal in the
+        // database
+        Optional<PrincipalEntity> existingRootPrincipal =
+            metaStoreManager.findRootPrincipal(polarisContext);
+
+        if (existingRootPrincipal.isPresent()) {
+          // Realm is already bootstrapped, skip principal creation
+          LOGGER.info(
+              "Realm '{}' is already fully bootstrapped, skipping principal creation", realm);
+        } else {
+          // Realm needs bootstrap, create principals
+          PrincipalSecretsResult secretsResult =
+              createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
+          results.put(realm, secretsResult);
+        }
       }
     }
 
