@@ -89,13 +89,8 @@ def is_fuzzy_match(query: str, target: str, threshold: float = 0.85) -> bool:
     # Substring match: enabled for length > 1
     if query_len > 1 and q in t:
         return True
-    # Subsequence match: enabled for length > 2
+    # Similarity: enabled for length > 2
     if query_len > 2:
-        iterator = iter(t)
-        if all(char in iterator for char in q):
-            return True
-    # Similarity: enabled for length > 3
-    if query_len > 3:
         return SequenceMatcher(None, q, t).ratio() >= threshold
     return False
 
