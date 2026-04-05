@@ -37,6 +37,8 @@ options:
 &lt;li&gt;policies&lt;/li&gt;
 &lt;li&gt;repair&lt;/li&gt;
 &lt;li&gt;setup&lt;/li&gt;
+&lt;li&gt;find&lt;/li&gt;
+&lt;li&gt;tables&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;Each &lt;em&gt;command&lt;/em&gt; supports several &lt;em&gt;subcommands&lt;/em&gt;, and some &lt;em&gt;subcommands&lt;/em&gt; have &lt;em&gt;actions&lt;/em&gt; that come after the subcommand in turn. Finally, &lt;em&gt;arguments&lt;/em&gt; follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the &lt;em&gt;command&lt;/em&gt; refers to. Again, the ordering of this positional argument relative to named arguments is not important.&lt;/p&gt;</description></item><item><title>Realm</title><link>https://polaris.apache.org/in-dev/unreleased/realm/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/realm/</guid><description>&lt;p&gt;This page explains what a realm is and what it is used for in Polaris.&lt;/p&gt;
 &lt;h3 id="what-is-it" id="what-is-it"&gt;What is it?&lt;a class="heading-anchor" href="#what-is-it" aria-label="Anchor"&gt;🔗&lt;/a&gt;
