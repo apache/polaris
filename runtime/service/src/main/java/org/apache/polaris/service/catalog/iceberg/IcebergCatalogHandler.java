@@ -113,9 +113,13 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
+import java.util.Map;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.service.storage.StorageLocationPreparer;
+import org.apache.polaris.service.storage.StorageLocationPreparerFactory;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
@@ -202,6 +206,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract CatalogHandlerUtils catalogHandlerUtils();
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
+
+  protected abstract StorageLocationPreparerFactory storageLocationPreparerFactory();
 
   protected abstract EventAttributeMap eventAttributeMap();
 
@@ -412,6 +418,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
+   * Prepares the underlying storage for a table about to be created. Resolves the effective table
+   * location from the request or computes it as baseLocation/namespace/tableName (matching
+   * Iceberg's defaultWarehouseLocation for the common case). No-op if no storage configuration.
+   */
+  private void prepareStorageForTable(
+      CatalogEntity catalog,
+      TableIdentifier tableIdentifier,
+      @Nullable String requestLocation,
+      Map<String, String> tableProperties) {
+    PolarisStorageConfigurationInfo storageConfig = catalog.getStorageConfigurationInfo();
+    if (storageConfig == null) {
+      return;
+    }
+    String effectiveLocation;
+    if (requestLocation != null) {
+      effectiveLocation = requestLocation;
+    } else {
+      String baseLocation = catalog.getBaseLocation();
+      if (baseLocation == null) {
+        return;
+      }
+      String base = baseLocation.endsWith("/")
+          ? baseLocation.substring(0, baseLocation.length() - 1) : baseLocation;
+      String namespacePath = String.join("/", tableIdentifier.namespace().levels());
+      effectiveLocation = base + "/" + namespacePath + "/" + tableIdentifier.name();
+    }
+    StorageLocationPreparer preparer = storageLocationPreparerFactory().create(storageConfig);
+    preparer.prepareTableLocation(effectiveLocation, tableProperties != null ? tableProperties : Map.of());
+  }
+
+  /**
    * Create a table.
    *
    * @param namespace the namespace to create the table in
@@ -468,6 +505,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(getResolvedCatalogEntity(), tableIdentifier, request.location(), request.properties());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -592,6 +630,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(getResolvedCatalogEntity(), ident, request.location(), request.properties());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(

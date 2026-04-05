@@ -202,6 +202,7 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Set<String> allowedWriteLocations) {
     Map<String, List<String>> readConditionsMap = new HashMap<>();
     Map<String, List<String>> writeConditionsMap = new HashMap<>();
+    Map<String, List<String>> folderWriteConditionsMap = new HashMap<>();
 
     HashSet<String> readBuckets = new HashSet<>();
     HashSet<String> writeBuckets = new HashSet<>();
@@ -227,12 +228,13 @@ public class GcpCredentialsStorageIntegration
               }
               if (allowedWriteLocations.contains(location)) {
                 writeBuckets.add(bucket);
-                List<String> writeExpressions =
-                    writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-                writeExpressions.add(
-                    String.format(
-                        "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
-                        bucket, path));
+                writeConditionsMap
+                    .computeIfAbsent(bucket, key -> new ArrayList<>())
+                    .add(objectResourceCondition(bucket, path));
+                List<String> folderExpressions =
+                    folderWriteConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
+                folderExpressions.add(folderResourceCondition(bucket, path));
+                folderExpressions.add(managedFolderResourceCondition(bucket, path));
               }
             });
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -271,6 +273,28 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
           accessBoundaryBuilder.addRule(builder.build());
         });
+    // roles/storage.folderAdmin is the least-privileged predefined GCP role that grants
+    // storage.managedFolders.create, which HNS-enabled buckets require for explicit folder
+    // creation. It also includes setIamPolicy/getIamPolicy on managed folders, but the
+    // access boundary condition expression (resource.name.startsWith(...)) limits scope to
+    // the specific write paths. If GCP introduces a more restrictive predefined role in the
+    // future, it should be adopted here.
+    writeBuckets.forEach(
+        bucket -> {
+          List<String> folderConditions = folderWriteConditionsMap.get(bucket);
+          if (folderConditions == null || folderConditions.isEmpty()) {
+            return;
+          }
+          CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
+              CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
+          builder.setAvailableResource(bucketResource(bucket));
+          builder.setAvailabilityCondition(
+              CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
+                  .setExpression(String.join(" || ", folderConditions))
+                  .build());
+          builder.setAvailablePermissions(List.of("inRole:roles/storage.folderAdmin"));
+          accessBoundaryBuilder.addRule(builder.build());
+        });
     return accessBoundaryBuilder.build();
   }
 
@@ -290,5 +314,20 @@ public class GcpCredentialsStorageIntegration
 
   private static String bucketResource(String bucket) {
     return "//storage.googleapis.com/projects/_/buckets/" + bucket;
+  }
+
+  private static String objectResourceCondition(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/objects/%s')", bucket, path);
+  }
+
+  private static String folderResourceCondition(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/folders/%s')", bucket, path);
+  }
+
+  private static String managedFolderResourceCondition(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/managedFolders/%s')", bucket, path);
   }
 }
