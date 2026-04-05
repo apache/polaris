@@ -502,7 +502,18 @@ public class CatalogEntityTest {
         Arguments.of(b.setPathStyleAccess(true).build()),
         Arguments.of(b.setStorageName("my-storage").build()),
         Arguments.of(a.build()),
-        Arguments.of(a.setHierarchical(true).build()));
+        Arguments.of(a.setHierarchical(true).build()),
+        Arguments.of(
+            GcpStorageConfigInfo.builder()
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                .setAllowedLocations(List.of("gs://my-hns-bucket/path"))
+                .build()),
+        Arguments.of(
+            GcpStorageConfigInfo.builder()
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+                .setAllowedLocations(List.of("gs://my-hns-bucket/path"))
+                .setGcsServiceAccount("test@my-project.iam.gserviceaccount.com")
+                .build()));
   }
 
   @Test
