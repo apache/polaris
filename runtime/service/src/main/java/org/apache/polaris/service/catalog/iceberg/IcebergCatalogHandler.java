@@ -112,13 +112,10 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
-import java.util.Map;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.service.storage.StorageLocationPreparer;
-import org.apache.polaris.service.storage.StorageLocationPreparerFactory;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -132,6 +129,8 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.storage.StorageLocationPreparer;
+import org.apache.polaris.service.storage.StorageLocationPreparerFactory;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -428,13 +427,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       if (baseLocation == null) {
         return;
       }
-      String base = baseLocation.endsWith("/")
-          ? baseLocation.substring(0, baseLocation.length() - 1) : baseLocation;
+      String base =
+          baseLocation.endsWith("/")
+              ? baseLocation.substring(0, baseLocation.length() - 1)
+              : baseLocation;
       String namespacePath = String.join("/", tableIdentifier.namespace().levels());
       effectiveLocation = base + "/" + namespacePath + "/" + tableIdentifier.name();
     }
     StorageLocationPreparer preparer = storageLocationPreparerFactory().create(storageConfig);
-    preparer.prepareTableLocation(effectiveLocation, tableProperties != null ? tableProperties : Map.of());
+    preparer.prepareTableLocation(
+        effectiveLocation, tableProperties != null ? tableProperties : Map.of());
   }
 
   /**
@@ -496,7 +498,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
-    prepareStorageForTable(getResolvedCatalogEntity(), tableIdentifier, request.location(), request.properties());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), tableIdentifier, request.location(), request.properties());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -623,7 +626,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableStaged(namespace, request, delegationModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
-    prepareStorageForTable(getResolvedCatalogEntity(), ident, request.location(), request.properties());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), ident, request.location(), request.properties());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
