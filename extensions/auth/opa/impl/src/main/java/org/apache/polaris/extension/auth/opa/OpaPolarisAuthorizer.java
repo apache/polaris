@@ -183,7 +183,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
                 toResourceEntitiesFromResolvedPaths(targets),
                 toResourceEntitiesFromResolvedPaths(secondaries)));
     if (!allowed) {
-      throw new ForbiddenException("%s", "OPA denied authorization");
+      throw new ForbiddenException("OPA denied authorization");
     }
   }
 
