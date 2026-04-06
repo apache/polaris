@@ -796,7 +796,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         vendCredentials(
             tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
     if (storageAccessConfig == null) {
-      return ImmutableLoadCredentialsResponse.builder().build();
+      storageAccessConfig = StorageAccessConfig.builder().build();
     }
 
     Map<String, String> credentialConfig = storageAccessConfig.credentials();
