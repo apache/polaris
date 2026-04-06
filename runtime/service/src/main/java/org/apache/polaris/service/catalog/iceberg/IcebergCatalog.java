@@ -1835,11 +1835,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     String rawValue = properties.get(POLARIS_STORAGE_NAME_PROPERTY);
-    String storageName = StorageNameValidator.normalizeBlankToNull(rawValue);
+    String storageName = StorageNameValidator.normalizeAndValidate(rawValue);
     if (storageName == null) {
       return null; // Blank value means clear the override
     }
-    StorageNameValidator.validate(storageName);
 
     PolarisStorageConfigurationInfo baseConfig = deserializeStorageConfigFromEntityPath(parentPath);
     if (baseConfig == null) {
@@ -1876,7 +1875,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private void enforceStorageNameOverrideEnabledForTableCommit(
+  @VisibleForTesting
+  void enforceStorageNameOverrideEnabledForTableCommit(
       @Nullable TableMetadata base, TableMetadata metadata) {
     if (!metadata.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
       return;
@@ -1939,9 +1939,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     // Handle polaris.storage.name property for table-level storage override
     if (metadata.properties().containsKey(POLARIS_STORAGE_NAME_PROPERTY)) {
       String rawValue = metadata.properties().get(POLARIS_STORAGE_NAME_PROPERTY);
-      String storageName = StorageNameValidator.normalizeBlankToNull(rawValue);
+      String storageName = StorageNameValidator.normalizeAndValidate(rawValue);
       if (storageName != null) {
-        StorageNameValidator.validate(storageName);
         // Verify a base config exists in the parent path so we fail fast with a clear message.
         PolarisStorageConfigurationInfo baseConfig =
             deserializeStorageConfigFromEntityPath(parentPath == null ? List.of() : parentPath);

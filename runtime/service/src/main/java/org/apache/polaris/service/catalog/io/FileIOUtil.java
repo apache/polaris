@@ -102,13 +102,13 @@ public class FileIOUtil {
   }
 
   /**
-   * Deserializes and returns the effective storage configuration from the hierarchy, applying any
+   * Resolves and returns the effective storage configuration from the hierarchy, applying any
    * {@code storageNameOverride} found on descendant entities.
    *
    * @param entityPath a list of entities ordered root-to-leaf
    * @return the effective {@link PolarisStorageConfigurationInfo} or null if not found
    */
-  public static PolarisStorageConfigurationInfo deserializeStorageConfigFromEntityPath(
+  public static PolarisStorageConfigurationInfo resolveEffectiveStorageConfigFromEntityPath(
       List<PolarisEntity> entityPath) {
     return resolveEffectiveStorageConfig(entityPath).orElse(null);
   }

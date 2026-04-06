@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -139,7 +141,7 @@ class StorageNameOverrideTest {
 
     // Path: catalog -> namespace -> table; namespace override should win
     PolarisStorageConfigurationInfo result =
-        FileIOUtil.deserializeStorageConfigFromEntityPath(
+        FileIOUtil.resolveEffectiveStorageConfigFromEntityPath(
             List.of(catalogEntity, nsEntity, tableEntity));
 
     assertThat(result).isNotNull();
@@ -162,7 +164,7 @@ class StorageNameOverrideTest {
     PolarisEntity tableEntity = createEntityWithoutStorageConfig();
 
     PolarisStorageConfigurationInfo result =
-        FileIOUtil.deserializeStorageConfigFromEntityPath(
+        FileIOUtil.resolveEffectiveStorageConfigFromEntityPath(
             List.of(catalogEntity, nsEntity, tableEntity));
 
     assertThat(result).isNotNull();
@@ -197,7 +199,7 @@ class StorageNameOverrideTest {
             .build();
 
     PolarisStorageConfigurationInfo result =
-        FileIOUtil.deserializeStorageConfigFromEntityPath(
+        FileIOUtil.resolveEffectiveStorageConfigFromEntityPath(
             List.of(catalogEntity, nsEntity, tableEntity));
 
     assertThat(result).isNotNull();
@@ -207,7 +209,7 @@ class StorageNameOverrideTest {
   @Test
   void resolveStorageConfigFromHierarchy_emptyPath_returnsNull() {
     PolarisStorageConfigurationInfo result =
-        FileIOUtil.deserializeStorageConfigFromEntityPath(List.of());
+        FileIOUtil.resolveEffectiveStorageConfigFromEntityPath(List.of());
     assertThat(result).isNull();
   }
 
@@ -224,7 +226,7 @@ class StorageNameOverrideTest {
     PolarisEntity nsEntity = createEntityWithoutStorageConfig();
 
     PolarisStorageConfigurationInfo result =
-        FileIOUtil.deserializeStorageConfigFromEntityPath(List.of(catalogEntity, nsEntity));
+        FileIOUtil.resolveEffectiveStorageConfigFromEntityPath(List.of(catalogEntity, nsEntity));
 
     assertThat(result).isNotNull();
     assertThat(result.getStorageName()).isEqualTo("catalog-storage");
@@ -268,6 +270,23 @@ class StorageNameOverrideTest {
 
     catalog.enforceStorageNameOverrideEnabledIfRequested(
         Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, "ns-storage"));
+  }
+
+  @Test
+  void tableCommit_sameStorageNameWithFlagDisabled_doesNotThrow() {
+    IcebergCatalog catalog = createCatalogForStorageNameOverrideFeature(false);
+
+    String unchangedValue = "same-storage";
+    TableMetadata base = mock(TableMetadata.class);
+    when(base.properties())
+        .thenReturn(Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, unchangedValue));
+
+    TableMetadata metadata = mock(TableMetadata.class);
+    when(metadata.properties())
+        .thenReturn(Map.of(IcebergCatalog.POLARIS_STORAGE_NAME_PROPERTY, unchangedValue));
+
+    assertThatNoException()
+        .isThrownBy(() -> catalog.enforceStorageNameOverrideEnabledForTableCommit(base, metadata));
   }
 
   private static PolarisEntity createEntityWithStorageConfig(

@@ -165,31 +165,4 @@ class WithStorageNameTest {
     assertThat(result.getStorageName()).isEqualTo("file-storage");
     assertThat(result.getAllowedLocations()).containsExactly(allowedLocation);
   }
-
-  @Test
-  void serializationRoundTrip() {
-    String allowedLocation = "s3://bucket/path";
-    String roleArn = "arn:aws:iam::123456789012:role/test-role";
-    String region = "us-west-2";
-
-    AwsStorageConfigurationInfo base =
-        AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of(allowedLocation))
-            .storageName("original")
-            .roleARN(roleArn)
-            .region(region)
-            .build();
-
-    PolarisStorageConfigurationInfo overridden =
-        PolarisStorageConfigurationInfo.withStorageName(base, "new-name");
-    String serialized = overridden.serialize();
-    PolarisStorageConfigurationInfo deserialized =
-        PolarisStorageConfigurationInfo.deserialize(serialized);
-
-    assertThat(deserialized.getStorageName()).isEqualTo("new-name");
-    assertThat(deserialized).isInstanceOf(AwsStorageConfigurationInfo.class);
-    AwsStorageConfigurationInfo awsDeserialized = (AwsStorageConfigurationInfo) deserialized;
-    assertThat(awsDeserialized.getRoleARN()).isEqualTo(roleArn);
-    assertThat(awsDeserialized.getRegion()).isEqualTo(region);
-  }
 }

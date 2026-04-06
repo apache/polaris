@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.core.persistence;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthBootstrapUtil;
@@ -71,6 +74,8 @@ public interface PolarisMetaStoreManager
         PolarisPolicyMappingManager,
         PolarisEventManager,
         PolarisMetricsManager {
+
+  ObjectMapper STORAGE_CONFIG_COMPARISON_MAPPER = new ObjectMapper();
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
@@ -606,12 +611,31 @@ public interface PolarisMetaStoreManager
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     String resolvedJson = resolved.get().serialize();
-    if (resolvedJson.equals(catalogConfigJson)) {
+    if (isStructurallyEqualJson(resolvedJson, catalogConfigJson)) {
       return entity;
     }
 
     Map<String, String> resolvedProps = new HashMap<>(props);
     resolvedProps.put(PolarisEntityConstants.getStorageConfigInfoPropertyName(), resolvedJson);
     return new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(resolvedProps).build();
+  }
+
+  private static boolean isStructurallyEqualJson(
+      @Nullable String leftJson, @Nullable String rightJson) {
+    if (Objects.equals(leftJson, rightJson)) {
+      return true;
+    }
+    if (leftJson == null || rightJson == null) {
+      return false;
+    }
+
+    try {
+      JsonNode leftNode = STORAGE_CONFIG_COMPARISON_MAPPER.readTree(leftJson);
+      JsonNode rightNode = STORAGE_CONFIG_COMPARISON_MAPPER.readTree(rightJson);
+      return leftNode.equals(rightNode);
+    } catch (Exception e) {
+      // If either payload is malformed JSON, treat it as non-equal.
+      return false;
+    }
   }
 }

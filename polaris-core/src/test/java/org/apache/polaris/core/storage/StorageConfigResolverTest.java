@@ -32,6 +32,13 @@ import org.junit.jupiter.api.Test;
 
 class StorageConfigResolverTest {
 
+  private static final String CATALOG_STORAGE_NAME = "catalog-storage";
+  private static final String NAMESPACE_STORAGE_NAME = "ns-storage";
+  private static final String TABLE_STORAGE_NAME = "table-storage";
+  private static final String OVERRIDDEN_STORAGE_NAME = "overridden-storage";
+  private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
+  private static final String TEST_ALLOWED_LOCATION = "s3://bucket/path";
+
   @Test
   void emptyChain_returnsEmpty() {
     assertThat(StorageConfigResolver.resolve(List.of())).isEmpty();
@@ -39,73 +46,73 @@ class StorageConfigResolverTest {
 
   @Test
   void catalogOnly_returnsBaseConfig() {
-    PolarisBaseEntity catalog = catalogWithConfig("catalog-storage");
+    PolarisBaseEntity catalog = catalogWithConfig(CATALOG_STORAGE_NAME);
 
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("catalog-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(CATALOG_STORAGE_NAME);
   }
 
   @Test
   void entityWithOverride_appliesOverrideToCatalogConfig() {
-    PolarisBaseEntity table = entityWithOverride("table-storage", 3L, 2L);
+    PolarisBaseEntity table = entityWithOverride(TABLE_STORAGE_NAME, 3L, 2L);
     PolarisBaseEntity namespace = entityWithoutConfig(2L, 1L);
-    PolarisBaseEntity catalog = catalogWithConfig("catalog-storage");
+    PolarisBaseEntity catalog = catalogWithConfig(CATALOG_STORAGE_NAME);
 
     // leaf-to-root: table -> namespace -> catalog
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(table, namespace, catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("table-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(TABLE_STORAGE_NAME);
   }
 
   @Test
   void namespaceOverride_inheritedByTable() {
     PolarisBaseEntity table = entityWithoutConfig(3L, 2L);
-    PolarisBaseEntity namespace = entityWithOverride("ns-storage", 2L, 1L);
-    PolarisBaseEntity catalog = catalogWithConfig("catalog-storage");
+    PolarisBaseEntity namespace = entityWithOverride(NAMESPACE_STORAGE_NAME, 2L, 1L);
+    PolarisBaseEntity catalog = catalogWithConfig(CATALOG_STORAGE_NAME);
 
     // Table has no override; namespace does — table should inherit
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(table, namespace, catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("ns-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(NAMESPACE_STORAGE_NAME);
   }
 
   @Test
   void tableOverride_winsOverNamespace() {
-    PolarisBaseEntity table = entityWithOverride("table-storage", 3L, 2L);
-    PolarisBaseEntity namespace = entityWithOverride("ns-storage", 2L, 1L);
-    PolarisBaseEntity catalog = catalogWithConfig("catalog-storage");
+    PolarisBaseEntity table = entityWithOverride(TABLE_STORAGE_NAME, 3L, 2L);
+    PolarisBaseEntity namespace = entityWithOverride(NAMESPACE_STORAGE_NAME, 2L, 1L);
+    PolarisBaseEntity catalog = catalogWithConfig(CATALOG_STORAGE_NAME);
 
     // Both table and namespace have overrides — table (leaf) should win
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(table, namespace, catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("table-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(TABLE_STORAGE_NAME);
   }
 
   @Test
   void noOverride_returnsCatalogBaseConfig() {
     PolarisBaseEntity table = entityWithoutConfig(3L, 2L);
     PolarisBaseEntity namespace = entityWithoutConfig(2L, 1L);
-    PolarisBaseEntity catalog = catalogWithConfig("catalog-storage");
+    PolarisBaseEntity catalog = catalogWithConfig(CATALOG_STORAGE_NAME);
 
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(table, namespace, catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("catalog-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(CATALOG_STORAGE_NAME);
   }
 
   @Test
   void noBaseConfig_returnsEmpty() {
-    PolarisBaseEntity table = entityWithOverride("table-storage", 3L, 2L);
+    PolarisBaseEntity table = entityWithOverride(TABLE_STORAGE_NAME, 3L, 2L);
     PolarisBaseEntity namespace = entityWithoutConfig(2L, 1L);
 
     // No catalog with storageConfigInfo in the chain
@@ -117,29 +124,28 @@ class StorageConfigResolverTest {
 
   @Test
   void overridePreservesBaseConfigFields() {
-    PolarisBaseEntity table = entityWithOverride("overridden-storage", 3L, 2L);
-    String roleArn = "arn:aws:iam::123456789012:role/test-role";
-    PolarisBaseEntity catalog = catalogWithConfigAndRole("catalog-storage", roleArn);
+    PolarisBaseEntity table = entityWithOverride(OVERRIDDEN_STORAGE_NAME, 3L, 2L);
+    PolarisBaseEntity catalog = catalogWithConfigAndRole(CATALOG_STORAGE_NAME, TEST_ROLE_ARN);
 
     Optional<PolarisStorageConfigurationInfo> result =
         StorageConfigResolver.resolve(List.of(table, catalog));
 
     assertThat(result).isPresent();
-    assertThat(result.get().getStorageName()).isEqualTo("overridden-storage");
+    assertThat(result.get().getStorageName()).isEqualTo(OVERRIDDEN_STORAGE_NAME);
     assertThat(result.get()).isInstanceOf(AwsStorageConfigurationInfo.class);
-    assertThat(((AwsStorageConfigurationInfo) result.get()).getRoleARN()).isEqualTo(roleArn);
+    assertThat(((AwsStorageConfigurationInfo) result.get()).getRoleARN()).isEqualTo(TEST_ROLE_ARN);
   }
 
   // -- helpers --
 
   private static PolarisBaseEntity catalogWithConfig(String storageName) {
-    return catalogWithConfigAndRole(storageName, "arn:aws:iam::123456789012:role/test-role");
+    return catalogWithConfigAndRole(storageName, TEST_ROLE_ARN);
   }
 
   private static PolarisBaseEntity catalogWithConfigAndRole(String storageName, String roleArn) {
     AwsStorageConfigurationInfo config =
         AwsStorageConfigurationInfo.builder()
-            .allowedLocations(List.of("s3://bucket/path"))
+            .allowedLocations(List.of(TEST_ALLOWED_LOCATION))
             .roleARN(roleArn)
             .storageName(storageName)
             .build();

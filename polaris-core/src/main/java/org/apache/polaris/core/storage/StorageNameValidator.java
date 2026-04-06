@@ -38,41 +38,33 @@ public final class StorageNameValidator {
   private StorageNameValidator() {}
 
   /**
-   * Validates a storage name format.
-   *
-   * @param storageName the name to validate
-   * @throws IllegalArgumentException if the name is invalid
-   */
-  public static void validate(String storageName) {
-    if (storageName == null || storageName.isEmpty()) {
-      throw new IllegalArgumentException("Storage name must not be null or empty");
-    }
-    if (storageName.length() > MAX_LENGTH) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Storage name must not exceed %d characters, got %d",
-              MAX_LENGTH, storageName.length()));
-    }
-    if (!VALID_PATTERN.matcher(storageName).matches()) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Storage name '%s' contains invalid characters. "
-                  + "Only alphanumeric characters, hyphens, and underscores are allowed.",
-              storageName));
-    }
-  }
-
-  /**
-   * Normalizes a blank or empty string to {@code null}. Non-blank values are trimmed.
+   * Normalizes blank values to {@code null} and validates non-blank names.
    *
    * @param value the input value
-   * @return {@code null} if the input is null, empty, or blank; otherwise the trimmed value
+   * @return {@code null} if the input is null, empty, or blank; otherwise the trimmed and validated
+   *     value
+   * @throws IllegalArgumentException if the normalized non-blank value is invalid
    */
-  public static @Nullable String normalizeBlankToNull(@Nullable String value) {
+  public static @Nullable String normalizeAndValidate(@Nullable String value) {
     if (value == null) {
       return null;
     }
     String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    if (trimmed.length() > MAX_LENGTH) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage name must not exceed %d characters, got %d", MAX_LENGTH, trimmed.length()));
+    }
+    if (!VALID_PATTERN.matcher(trimmed).matches()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage name '%s' contains invalid characters. "
+                  + "Only alphanumeric characters, hyphens, and underscores are allowed.",
+              trimmed));
+    }
+    return trimmed;
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
@@ -32,21 +31,19 @@ class StorageNameValidatorTest {
   @ParameterizedTest
   @ValueSource(strings = {"my-storage", "storage_1", "S3-minio-prod", "a", "A1_b2-c3"})
   void validNames(String name) {
-    assertThatNoException().isThrownBy(() -> StorageNameValidator.validate(name));
+    assertThat(StorageNameValidator.normalizeAndValidate(name)).isEqualTo(name);
   }
 
   @ParameterizedTest
   @NullAndEmptySource
-  void nullAndEmptyNames(String name) {
-    assertThatThrownBy(() -> StorageNameValidator.validate(name))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("must not be null or empty");
+  void nullAndEmptyNamesNormalizeToNull(String name) {
+    assertThat(StorageNameValidator.normalizeAndValidate(name)).isNull();
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"has space", "has.dot", "has/slash", "has@symbol", "has:colon"})
   void invalidCharacters(String name) {
-    assertThatThrownBy(() -> StorageNameValidator.validate(name))
+    assertThatThrownBy(() -> StorageNameValidator.normalizeAndValidate(name))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("invalid characters");
   }
@@ -54,39 +51,39 @@ class StorageNameValidatorTest {
   @Test
   void maxLengthAccepted() {
     String name = "a".repeat(StorageNameValidator.MAX_LENGTH);
-    assertThatNoException().isThrownBy(() -> StorageNameValidator.validate(name));
+    assertThat(StorageNameValidator.normalizeAndValidate(name)).isEqualTo(name);
   }
 
   @Test
   void exceedsMaxLength() {
     String name = "a".repeat(StorageNameValidator.MAX_LENGTH + 1);
-    assertThatThrownBy(() -> StorageNameValidator.validate(name))
+    assertThatThrownBy(() -> StorageNameValidator.normalizeAndValidate(name))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("must not exceed");
   }
 
   @Test
-  void normalizeBlankToNull_null() {
-    assertThat(StorageNameValidator.normalizeBlankToNull(null)).isNull();
+  void normalizeAndValidate_null() {
+    assertThat(StorageNameValidator.normalizeAndValidate(null)).isNull();
   }
 
   @Test
-  void normalizeBlankToNull_empty() {
-    assertThat(StorageNameValidator.normalizeBlankToNull("")).isNull();
+  void normalizeAndValidate_empty() {
+    assertThat(StorageNameValidator.normalizeAndValidate("")).isNull();
   }
 
   @Test
-  void normalizeBlankToNull_blank() {
-    assertThat(StorageNameValidator.normalizeBlankToNull("   ")).isNull();
+  void normalizeAndValidate_blank() {
+    assertThat(StorageNameValidator.normalizeAndValidate("   ")).isNull();
   }
 
   @Test
-  void normalizeBlankToNull_trims() {
-    assertThat(StorageNameValidator.normalizeBlankToNull("  my-storage  ")).isEqualTo("my-storage");
+  void normalizeAndValidate_trims() {
+    assertThat(StorageNameValidator.normalizeAndValidate("  my-storage  ")).isEqualTo("my-storage");
   }
 
   @Test
-  void normalizeBlankToNull_nonBlank() {
-    assertThat(StorageNameValidator.normalizeBlankToNull("my-storage")).isEqualTo("my-storage");
+  void normalizeAndValidate_nonBlank() {
+    assertThat(StorageNameValidator.normalizeAndValidate("my-storage")).isEqualTo("my-storage");
   }
 }
