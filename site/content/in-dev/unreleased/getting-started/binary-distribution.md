@@ -19,7 +19,7 @@
 #
 Title: Binary Distribution
 type: docs
-weight: 100
+weight: 102
 ---
 Use this guide to quickly start running Polaris using the pre-built binary distribution.
 

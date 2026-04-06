@@ -79,7 +79,7 @@ services:
       test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   prometheus:
-    image: docker.io/prom/prometheus:v3.10.0
+    image: docker.io/prom/prometheus:v3.11.0
     ports:
       - "9093:9090"
     depends_on:
@@ -99,7 +99,7 @@ services:
 
   # Jaeger (OpenTelemetry traces collector)
   jaeger:
-    image: docker.io/jaegertracing/jaeger:2.16.0
+    image: docker.io/jaegertracing/jaeger:2.17.0
     ports:
       # Jaeger gRPC collector, used by Polaris
       - "4317:4317"

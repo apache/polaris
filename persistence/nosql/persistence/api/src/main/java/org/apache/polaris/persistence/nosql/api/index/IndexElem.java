@@ -19,37 +19,52 @@
 
 package org.apache.polaris.persistence.nosql.api.index;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.errorprone.annotations.Var;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.Objects;
 
 /**
- * Package-private implementation of {@link Index.Element} for {@link Index.Element#of(IndexKey,
- * Object)}.
+ * Base class for {@link Index.Element} implementations that provides coherent {@link
+ * #equals(Object)} and {@link #hashCode()} semantics.
  */
-record IndexElem<V>(IndexKey key, V value) implements Index.Element<V> {
+public abstract class IndexElem<V> implements Index.Element<V> {
 
-  IndexElem(@Nonnull IndexKey key, @Nonnull V value) {
-    this.key = key;
-    this.value = value;
+  public static <V> Index.Element<V> of(@Nonnull IndexKey key, @Nonnull V value) {
+    return new IndexElem<>() {
+      @Override
+      @Nonnull
+      public IndexKey key() {
+        return key;
+      }
+
+      @Override
+      @Nonnull
+      public V valueNullable() {
+        return value;
+      }
+    };
   }
+
+  @Nullable
+  protected abstract V valueNullable();
 
   @Override
   @Nonnull
-  public IndexKey key() {
-    return key;
-  }
-
-  @Override
-  @Nonnull
-  public V value() {
-    return value;
+  public final V value() {
+    return checkNotNull(valueNullable(), key());
   }
 
   @Override
   public int hashCode() {
     @Var var h = 5381;
     h += (h << 5) + key().hashCode();
-    h += (h << 5) + value().hashCode();
+    V value = valueNullable();
+    if (value != null) {
+      h += (h << 5) + value.hashCode();
+    }
     return h;
   }
 
@@ -58,8 +73,14 @@ record IndexElem<V>(IndexKey key, V value) implements Index.Element<V> {
     if (o == this) {
       return true;
     }
-    if (o instanceof Index.Element<?> other) {
-      return key.equals(other.key()) && value.equals(other.value());
+    // This equals method considers other implementations of Index.Element as "not equal"
+    // because it is impossible to guarantee that their hashCode() is equal to the hash
+    // code produced by this class (when equal() == true) without knowing the specific
+    // "other" implementation class. All Index.Element inside Polaris code are expected
+    // to extend this class.
+    if (o instanceof IndexElem<?> other) {
+      return Objects.equals(key(), other.key())
+          && Objects.equals(valueNullable(), other.valueNullable());
     }
     return false;
   }

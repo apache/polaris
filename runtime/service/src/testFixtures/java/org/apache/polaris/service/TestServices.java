@@ -38,7 +38,8 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
@@ -80,8 +81,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -299,8 +299,8 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventDispatcher polarisEventDispatcher = new InMemoryEventCollector();
-      CallContextCatalogFactory callContextFactory =
-          new PolarisCallContextCatalogFactory(
+      LocalCatalogFactory localCatalogFactory =
+          new PolarisLocalCatalogFactory(
               diagnostics,
               resolverFactory,
               taskExecutor,
@@ -317,9 +317,9 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
       @SuppressWarnings("unchecked")
-      Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
-      Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
+      Instance<FederatedCatalogFactory> federatedCatalogFactory = Mockito.mock(Instance.class);
+      Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
+      Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
@@ -338,11 +338,11 @@ public record TestServices(
                   .resolutionManifestFactory(resolutionManifestFactory)
                   .metaStoreManager(metaStoreManager)
                   .credentialManager(credentialManager)
-                  .catalogFactory(callContextFactory)
+                  .localCatalogFactory(localCatalogFactory)
                   .authorizer(authorizer)
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
-                  .externalCatalogFactories(externalCatalogFactory)
+                  .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
