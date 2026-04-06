@@ -1528,15 +1528,6 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles jettison.
-
-* Maven group:artifact IDs: org.codehaus.jettison:jettison
-
-Project URL: https://github.com/jettison-json/jettison
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles animal-sniffer-annotations.
 
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
@@ -2019,5 +2010,71 @@ This product bundles Agrona.
 
 Project URL: https://github.com/aeron-io/agrona
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles several Eclipse GlassFish HK2 project artifact.
+
+* Maven group:artifact IDs: org.glassfish.hk2:hk2-api
+* Maven group:artifact IDs: org.glassfish.hk2:hk2-utils
+* Maven group:artifact IDs: org.glassfish.hk2:hk2-locator
+* Maven group:artifact IDs: org.glassfish.hk2:osgi-resource-locator
+* Maven group:artifact IDs: org.glassfish.hk2.external:jakarta.inject
+* Maven group:artifact IDs: org.glassfish.hk2.external:aopalliance-repackaged
+
+Project URL: https://github.com/eclipse-ee4j/glassfish-hk2
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles several Jersey project artifacts.
+
+* Maven group:artifact IDs: org.glassfish.jersey.containers:jersey-container-servlet
+* Maven group:artifact IDs: org.glassfish.jersey.containers:jersey-container-servlet-core
+* Maven group:artifact IDs: org.glassfish.jersey.core:jersey-client
+* Maven group:artifact IDs: org.glassfish.jersey.core:jersey-common
+* Maven group:artifact IDs: org.glassfish.jersey.core:jersey-server
+* Maven group:artifact IDs: org.glassfish.jersey.inject:jersey-hk2
+
+Project URL: https://github.com/eclipse-ee4j/jersey
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles Istack Common Runtime.
+
+* Maven group:artifact IDs: com.sun.istack:istack-commons-runtime
+
+Project URL: https://github.com/eclipse-ee4j/jaxb-istack-commons
+License: BSD 3-Clause
+
+--------------------------------------------------------------------------------
+
+This product bundles Jakarta Server Pages API.
+
+* Maven group:artifact IDs: jakarta.servlet.jsp:jakarta.servlet.jsp-api
+
+Project URL: https://projects.eclipse.org/projects/ee4j.jsp
+License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
+
+--------------------------------------------------------------------------------
+
+This product bundles Angus Activation Registries.
+
+* Maven group:artifact IDs: org.eclipse.angus:angus-activation
+
+Project URL: https://github.com/eclipse-ee4j/angus-activation
+License: BSD 3-Clause
+
+--------------------------------------------------------------------------------
+
+This product bundles several Eclipse Implementation of JAXB project artifacts.
+
+* Maven group:artifact IDs: org.glassfish.jaxb:txw2
+* Maven group:artifact IDs: org.glassfish.jaxb:jaxb-core
+* Maven group:artifact IDs: org.glassfish.jaxb:jaxb-runtime
+
+Project URL: https://github.com/eclipse-ee4j/jaxb-ri
+License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
