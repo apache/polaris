@@ -43,7 +43,6 @@ import com.google.storage.control.v2.Folder;
 import com.google.storage.control.v2.StorageControlClient;
 import java.io.IOException;
 import java.time.Instant;
-
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,6 @@ import java.util.function.Supplier;
 import org.apache.iceberg.TableProperties;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -60,8 +58,7 @@ import org.mockito.Mockito;
 class GcsStorageLocationPreparerTest {
 
   private static final String TEST_BUCKET = "my-test-bucket";
-  private static final String TEST_TABLE_LOCATION =
-      "gs://" + TEST_BUCKET + "/warehouse/ns1/table1";
+  private static final String TEST_TABLE_LOCATION = "gs://" + TEST_BUCKET + "/warehouse/ns1/table1";
 
   private Supplier<GoogleCredentials> credentialsSupplier;
   private Bucket mockBucket;
@@ -85,7 +82,6 @@ class GcsStorageLocationPreparerTest {
     Mockito.doReturn(mockControlClient).when(preparer).createStorageControlClient();
   }
 
-
   // ── buildTableHierarchy Tests (Internal Helper) ───────────────────────────
 
   @Nested
@@ -106,7 +102,8 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void handlesNestedNamespacePath() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("warehouse/ns1/ns2/ns3/table1");
+      List<String> folders =
+          GcsStorageLocationPreparer.buildTableHierarchy("warehouse/ns1/ns2/ns3/table1");
 
       assertThat(folders)
           .containsExactly(
@@ -149,7 +146,8 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void collapsesRepeatedSlashesConsistently() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("warehouse//ns1///table1");
+      List<String> folders =
+          GcsStorageLocationPreparer.buildTableHierarchy("warehouse//ns1///table1");
 
       assertThat(folders)
           .containsExactly(
@@ -169,7 +167,8 @@ class GcsStorageLocationPreparerTest {
     @Test
     void producesFullHierarchyWithoutMetadataDataSubfolders() {
       List<String> folders =
-          GcsStorageLocationPreparer.buildPathHierarchy("cdr/polaris-test-metadata/dsp/table1/metadata");
+          GcsStorageLocationPreparer.buildPathHierarchy(
+              "cdr/polaris-test-metadata/dsp/table1/metadata");
 
       assertThat(folders)
           .containsExactly(
@@ -290,10 +289,10 @@ class GcsStorageLocationPreparerTest {
     @Test
     void gracefullyHandlesAlreadyExistingFolders() {
       AlreadyExistsException alreadyExists = createAlreadyExistsException();
-      when(mockControlClient.createFolder(any(CreateFolderRequest.class)))
-          .thenThrow(alreadyExists);
+      when(mockControlClient.createFolder(any(CreateFolderRequest.class))).thenThrow(alreadyExists);
 
-      assertThatNoException().isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+      assertThatNoException()
+          .isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
     }
 
     @Test
@@ -307,7 +306,8 @@ class GcsStorageLocationPreparerTest {
           .thenReturn(Folder.getDefaultInstance())
           .thenReturn(Folder.getDefaultInstance());
 
-      assertThatNoException().isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+      assertThatNoException()
+          .isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
       verify(mockControlClient, times(5)).createFolder(any(CreateFolderRequest.class));
     }
 
@@ -431,11 +431,14 @@ class GcsStorageLocationPreparerTest {
 
       // Mock HNS status: bucket-a=false, bucket-b=true, bucket-c=true
       Mockito.doReturn(createMockBucket("bucket-a", false))
-          .when(preparer).fetchBucketMetadata("bucket-a");
+          .when(preparer)
+          .fetchBucketMetadata("bucket-a");
       Mockito.doReturn(createMockBucket("bucket-b", true))
-          .when(preparer).fetchBucketMetadata("bucket-b");
+          .when(preparer)
+          .fetchBucketMetadata("bucket-b");
       Mockito.doReturn(createMockBucket("bucket-c", true))
-          .when(preparer).fetchBucketMetadata("bucket-c");
+          .when(preparer)
+          .fetchBucketMetadata("bucket-c");
 
       preparer.prepareTableLocation(tableLocation, tableProperties);
 
@@ -446,15 +449,29 @@ class GcsStorageLocationPreparerTest {
 
       // Should only create folders in HNS-enabled buckets (bucket-b and bucket-c)
       // Full hierarchy for custom metadata path in bucket-b
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("bucket-b") && req.getFolderId().equals("custom")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("bucket-b") && req.getFolderId().equals("custom/metadata")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("bucket-b") && req.getFolderId().equals("custom")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("bucket-b")
+                          && req.getFolderId().equals("custom/metadata")));
       // Full hierarchy for custom data path in bucket-c
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("bucket-c") && req.getFolderId().equals("custom")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("bucket-c") && req.getFolderId().equals("custom/data")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("bucket-c") && req.getFolderId().equals("custom")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("bucket-c")
+                          && req.getFolderId().equals("custom/data")));
     }
 
     @Test
@@ -468,26 +485,52 @@ class GcsStorageLocationPreparerTest {
 
       // Mock HNS status: hns-bucket=true, non-hns-bucket=false
       Mockito.doReturn(createMockBucket("hns-bucket", true))
-          .when(preparer).fetchBucketMetadata("hns-bucket");
+          .when(preparer)
+          .fetchBucketMetadata("hns-bucket");
       Mockito.doReturn(createMockBucket("non-hns-bucket", false))
-          .when(preparer).fetchBucketMetadata("non-hns-bucket");
+          .when(preparer)
+          .fetchBucketMetadata("non-hns-bucket");
 
       preparer.prepareTableLocation(tableLocation, tableProperties);
 
       // Should create table hierarchy in hns-bucket
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("warehouse")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("warehouse/ns")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("warehouse/ns/table")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("warehouse/ns/table/metadata")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("warehouse")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("warehouse/ns")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("warehouse/ns/table")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("warehouse/ns/table/metadata")));
       // Full hierarchy for custom data path
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("custom")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("hns-bucket") && req.getFolderId().equals("custom/data")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("custom")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("hns-bucket")
+                          && req.getFolderId().equals("custom/data")));
     }
 
     @Test
@@ -500,7 +543,8 @@ class GcsStorageLocationPreparerTest {
                   "gs://single-bucket/custom/data");
 
       Mockito.doReturn(createMockBucket("single-bucket", true))
-          .when(preparer).fetchBucketMetadata("single-bucket");
+          .when(preparer)
+          .fetchBucketMetadata("single-bucket");
 
       preparer.prepareTableLocation(tableLocation, tableProperties);
 
@@ -508,21 +552,49 @@ class GcsStorageLocationPreparerTest {
       verify(preparer, times(1)).fetchBucketMetadata("single-bucket");
 
       // Should create table hierarchy + full custom path hierarchies
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("warehouse")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("warehouse/ns")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("warehouse/ns/table")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("warehouse/ns/table/metadata")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("warehouse")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("warehouse/ns")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("warehouse/ns/table")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("warehouse/ns/table/metadata")));
       // "custom" parent created for both metadata and data paths (AlreadyExists handled gracefully)
-      verify(mockControlClient, times(2)).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("custom")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("custom/metadata")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("single-bucket") && req.getFolderId().equals("custom/data")));
+      verify(mockControlClient, times(2))
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("custom")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("custom/metadata")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("single-bucket")
+                          && req.getFolderId().equals("custom/data")));
     }
 
     @Test
@@ -535,19 +607,28 @@ class GcsStorageLocationPreparerTest {
                   "gs://valid-bucket/data");
 
       Mockito.doReturn(createMockBucket("valid-bucket", true))
-          .when(preparer).fetchBucketMetadata("valid-bucket");
+          .when(preparer)
+          .fetchBucketMetadata("valid-bucket");
 
       preparer.prepareTableLocation(tableLocation, tableProperties);
 
       // Should only check HNS for valid-bucket
       verify(preparer).fetchBucketMetadata("valid-bucket");
       verify(preparer, never()).fetchBucketMetadata("invalid-bucket");
-      
+
       // Should create table hierarchy + data folder
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("valid-bucket") && req.getFolderId().equals("warehouse")));
-      verify(mockControlClient).createFolder(argThat(req -> 
-          req.getParent().contains("valid-bucket") && req.getFolderId().equals("data")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("valid-bucket")
+                          && req.getFolderId().equals("warehouse")));
+      verify(mockControlClient)
+          .createFolder(
+              argThat(
+                  req ->
+                      req.getParent().contains("valid-bucket")
+                          && req.getFolderId().equals("data")));
     }
 
     @Test
@@ -565,11 +646,11 @@ class GcsStorageLocationPreparerTest {
     private Bucket createMockBucket(String bucketName, boolean hnsEnabled) {
       Bucket bucket = mock(Bucket.class);
       when(bucket.getName()).thenReturn(bucketName);
-      
+
       BucketInfo.HierarchicalNamespace hns = mock(BucketInfo.HierarchicalNamespace.class);
       when(hns.getEnabled()).thenReturn(hnsEnabled);
       when(bucket.getHierarchicalNamespace()).thenReturn(hns);
-      
+
       return bucket;
     }
   }
@@ -581,8 +662,7 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void noOpFactoryProducesNoOpPreparerForGcsConfig() {
-      var factory =
-          org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
+      var factory = org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
       var gcsConfig = mock(org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo.class);
 
       var result = factory.create(gcsConfig);
@@ -594,10 +674,8 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void noOpFactoryProducesNoOpPreparerForNonGcsConfig() {
-      var factory =
-          org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
-      var awsConfig =
-          mock(org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.class);
+      var factory = org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
+      var awsConfig = mock(org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.class);
 
       var result = factory.create(awsConfig);
 

@@ -657,9 +657,11 @@ License: BSD 3-Clause
 This product bundles Google Storage APIs.
 
 * Maven group:artifact IDs: com.google.api.grpc:gapic-google-cloud-storage-v2
+* Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-control-v2
 * Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-v2
 * Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-iamcredentials-v1
 * Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-monitoring-v3
+* Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-storage-control-v2
 * Maven group:artifact IDs: com.google.api.grpc:proto-google-cloud-storage-v2
 * Maven group:artifact IDs: com.google.apis:google-api-services-storage
 
@@ -733,6 +735,7 @@ This product bundles Google Cloud APIs for Java.
 * Maven group:artifact IDs: com.google.cloud:google-cloud-iamcredentials
 * Maven group:artifact IDs: com.google.cloud:google-cloud-monitoring
 * Maven group:artifact IDs: com.google.cloud:google-cloud-storage
+* Maven group:artifact IDs: com.google.cloud:google-cloud-storage-control
 
 Project URL: https://github.com/googleapis/google-cloud-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt

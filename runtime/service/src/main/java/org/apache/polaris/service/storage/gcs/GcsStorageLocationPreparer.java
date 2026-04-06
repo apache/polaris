@@ -126,8 +126,8 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
   }
 
   /**
-   * Resolves all storage paths: table location + metadata path + data path. Custom write paths
-   * from table properties take precedence over defaults.
+   * Resolves all storage paths: table location + metadata path + data path. Custom write paths from
+   * table properties take precedence over defaults.
    */
   private List<String> resolveAllPaths(String tableLocation, Map<String, String> tableProperties) {
     String metadataPath =
@@ -141,8 +141,7 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
 
     String dataPath =
         Optional.ofNullable(
-                tableProperties.get(
-                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+                tableProperties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
             .orElse(tableLocation + PATH_SEPARATOR + DEFAULT_DATA_FOLDER);
 
     return List.of(tableLocation, metadataPath, dataPath);
@@ -152,15 +151,14 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
    * Extracts all folders that need to be created for a given GCS path.
    *
    * @param gcsPath the GCS path to process
-   * @param includeHierarchy if true, creates full hierarchy; if false, creates just the path
-   *     itself
+   * @param includeHierarchy if true, creates full hierarchy; if false, creates just the path itself
    */
   private List<FolderToCreate> extractFoldersFromPath(String gcsPath, boolean includeHierarchy) {
     // Only process GCS paths
     if (!gcsPath.startsWith(GCS_SCHEME_PREFIX)) {
       return List.of();
     }
-    
+
     String bucketName = StorageUtil.getBucket(gcsPath);
     if (bucketName == null || bucketName.isEmpty()) {
       LOGGER
@@ -199,11 +197,8 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
         .orElse("");
   }
 
-  /**
-   * Creates folders for all paths in the bucket, but only if the bucket is HNS-enabled.
-   */
-  private void createFoldersForBucketIfHnsEnabled(
-      String bucketName, List<FolderToCreate> folders) {
+  /** Creates folders for all paths in the bucket, but only if the bucket is HNS-enabled. */
+  private void createFoldersForBucketIfHnsEnabled(String bucketName, List<FolderToCreate> folders) {
     boolean hnsEnabled = resolveHnsStatus(bucketName);
     LOGGER
         .atInfo()
@@ -217,13 +212,12 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
     }
   }
 
-  /**
-   * Creates all folders in a bucket using a single StorageControlClient instance.
-   */
+  /** Creates all folders in a bucket using a single StorageControlClient instance. */
   private void createFoldersInBucket(String bucketName, List<FolderToCreate> folders) {
     try (StorageControlClient controlClient = createStorageControlClient()) {
       String parent = BucketName.format(GCS_STORAGE_LAYOUT, bucketName);
-      folders.forEach(folder -> createFolderIfNotExists(controlClient, parent, folder.folderPath()));
+      folders.forEach(
+          folder -> createFolderIfNotExists(controlClient, parent, folder.folderPath()));
     } catch (IOException e) {
       throw new RuntimeException(
           String.format(
@@ -238,9 +232,12 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
             .addKeyValue("bucket", bucketName)
             .addKeyValue("folderCount", folders.size())
             .addKeyValue("error", e.getMessage())
-            .log("Failed to create HNS folders due to gRPC/networking configuration issue; table creation may fail if folders don't exist", e);
-        
-        // Don't throw - allow table creation to proceed and potentially fail later with a clearer error
+            .log(
+                "Failed to create HNS folders due to gRPC/networking configuration issue; table creation may fail if folders don't exist",
+                e);
+
+        // Don't throw - allow table creation to proceed and potentially fail later with a clearer
+        // error
         // This prevents blocking all table operations due to infrastructure issues
       } else {
         // Re-throw other runtime exceptions (like actual folder creation failures)
@@ -248,35 +245,30 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
       }
     }
   }
-  
+
   /**
-   * Checks if the exception is related to gRPC configuration issues that should be handled gracefully.
+   * Checks if the exception is related to gRPC configuration issues that should be handled
+   * gracefully.
    */
   private boolean isGrpcConfigurationError(RuntimeException e) {
     String message = e.getMessage();
     Throwable cause = e.getCause();
-    
+
     // Check for known gRPC configuration issues
-    return (message != null && (
-        message.contains("census") || 
-        message.contains("JNDI") ||
-        message.contains("grpc") ||
-        message.contains("Unable to apply census stats")
-    )) || (cause != null && (
-        cause instanceof ClassNotFoundException ||
-        cause instanceof javax.naming.NamingException
-    ));
+    return (message != null
+            && (message.contains("census")
+                || message.contains("JNDI")
+                || message.contains("grpc")
+                || message.contains("Unable to apply census stats")))
+        || (cause != null
+            && (cause instanceof ClassNotFoundException
+                || cause instanceof javax.naming.NamingException));
   }
 
-  /**
-   * Builds the complete hierarchy for a table location path.
-   * Package-private for testing.
-   */
+  /** Builds the complete hierarchy for a table location path. Package-private for testing. */
   static List<String> buildTableHierarchy(String objectPath) {
     String[] segments =
-        Arrays.stream(objectPath.split(PATH_SEPARATOR))
-            .filter(NOT_BLANK)
-            .toArray(String[]::new);
+        Arrays.stream(objectPath.split(PATH_SEPARATOR)).filter(NOT_BLANK).toArray(String[]::new);
 
     if (segments.length == 0) {
       return List.of();
@@ -300,15 +292,12 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
 
   /**
    * Builds the full parent hierarchy for a custom path (e.g., write.metadata.path or
-   * write.data.path) without appending default metadata/data subfolders. HNS buckets require
-   * every parent folder to exist before a child folder can be created.
-   * Package-private for testing.
+   * write.data.path) without appending default metadata/data subfolders. HNS buckets require every
+   * parent folder to exist before a child folder can be created. Package-private for testing.
    */
   static List<String> buildPathHierarchy(String objectPath) {
     String[] segments =
-        Arrays.stream(objectPath.split(PATH_SEPARATOR))
-            .filter(NOT_BLANK)
-            .toArray(String[]::new);
+        Arrays.stream(objectPath.split(PATH_SEPARATOR)).filter(NOT_BLANK).toArray(String[]::new);
 
     if (segments.length == 0) {
       return List.of();
@@ -337,10 +326,7 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
 
   Bucket fetchBucketMetadata(String bucketName) {
     Storage storage =
-        StorageOptions.newBuilder()
-            .setCredentials(credentialsSupplier.get())
-            .build()
-            .getService();
+        StorageOptions.newBuilder().setCredentials(credentialsSupplier.get()).build().getService();
 
     return Optional.ofNullable(
             storage.get(
@@ -355,7 +341,6 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
   }
 
   // ── HNS Folder Creation ────────────────────────────────────────────────────
-
 
   private void createFolderIfNotExists(
       StorageControlClient controlClient, String parent, String folderPath) {
@@ -379,5 +364,4 @@ public class GcsStorageLocationPreparer implements StorageLocationPreparer {
         StorageControlSettings.newBuilder().setCredentialsProvider(() -> credentials).build();
     return StorageControlClient.create(settings);
   }
-
 }
