@@ -31,7 +31,6 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -53,14 +52,12 @@ import org.mockito.quality.Strictness;
 class AccessDelegationModeResolverTest {
 
   @Mock private RealmConfig realmConfig;
-  @Mock private CallContext callContext;
 
   private AccessDelegationModeResolver resolver;
 
   @BeforeEach
   void setUp() {
-    when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    resolver = new DefaultAccessDelegationModeResolver(callContext);
+    resolver = new DefaultAccessDelegationModeResolver(realmConfig);
   }
 
   /** Helper to set up config mock for tests that need it */
