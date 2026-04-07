@@ -624,8 +624,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
 
     // Wrap the real factory to spy on the catalog it creates
-    CallContextCatalogFactory spyFactory =
-        manifest -> Mockito.spy(callContextCatalogFactory.createCallContextCatalog(manifest));
+    LocalCatalogFactory spyFactory =
+        manifest -> Mockito.spy(localCatalogFactory.createCatalog(manifest));
     IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, spyFactory);
 
     // Call the optimized credential vending path — authorizeLoadTable inside
@@ -647,7 +647,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     // Provide a factory that returns a non-IcebergCatalog to simulate an external catalog
     Catalog mockExternalCatalog = Mockito.mock(Catalog.class);
-    CallContextCatalogFactory externalFactory = manifest -> mockExternalCatalog;
+    LocalCatalogFactory externalFactory = manifest -> mockExternalCatalog;
     IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, externalFactory);
 
     // The optimized path should detect the non-IcebergCatalog and fall back,
