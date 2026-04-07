@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesMapping;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesRepository;
+import org.jspecify.annotations.NonNull;
 
 class PrivilegesTestRepository implements PrivilegesRepository {
   private final AtomicReference<PrivilegesMapping> current =
@@ -30,13 +30,13 @@ class PrivilegesTestRepository implements PrivilegesRepository {
 
   @Override
   public boolean updatePrivilegesMapping(
-      @Nonnull PrivilegesMapping expectedState, @Nonnull PrivilegesMapping newState) {
+      @NonNull PrivilegesMapping expectedState, @NonNull PrivilegesMapping newState) {
     var v = current.updateAndGet(curr -> curr.equals(expectedState) ? newState : curr);
     return v.equals(newState);
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public PrivilegesMapping fetchPrivilegesMapping() {
     return Optional.ofNullable(current.get()).orElse(PrivilegesMapping.EMPTY);
   }

@@ -24,12 +24,12 @@ import static org.apache.polaris.persistence.varint.VarInt.putVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMapping> {
   @Override
@@ -57,8 +57,8 @@ final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMappin
   }
 
   @Override
-  @Nonnull
-  public ByteBuffer serialize(@Nullable PolicyMapping value, @Nonnull ByteBuffer target) {
+  @NonNull
+  public ByteBuffer serialize(@Nullable PolicyMapping value, @NonNull ByteBuffer target) {
     if (value == null) {
       value = PolicyMapping.EMPTY;
     }
@@ -83,7 +83,7 @@ final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMappin
   }
 
   @Override
-  public PolicyMapping deserialize(@Nonnull ByteBuffer buffer) {
+  public PolicyMapping deserialize(@NonNull ByteBuffer buffer) {
     var builder = PolicyMapping.builder();
     var num = readVarInt(buffer);
     for (int i = 0; i < num; i++) {
@@ -100,7 +100,7 @@ final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMappin
   }
 
   @Override
-  public void skip(@Nonnull ByteBuffer buffer) {
+  public void skip(@NonNull ByteBuffer buffer) {
     var num = readVarInt(buffer);
     for (int i = 0; i < num; i++) {
       IndexKey.skip(buffer);

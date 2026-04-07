@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.impl.commits;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.Commits;
 import org.apache.polaris.persistence.nosql.api.commit.Committer;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 public final class CommitFactory {
   private CommitFactory() {}
@@ -49,10 +49,10 @@ public final class CommitFactory {
    * @param <RESULT> the commit result type, for successful commits including non-changing
    */
   public static <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> newCommitter(
-      @Nonnull Persistence persistence,
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType) {
+      @NonNull Persistence persistence,
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType) {
     return new CommitterImpl<>(persistence, refName, referencedObjType, resultType);
   }
 }

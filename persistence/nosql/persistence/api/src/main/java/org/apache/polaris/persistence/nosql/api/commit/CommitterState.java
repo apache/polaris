@@ -18,15 +18,15 @@
  */
 package org.apache.polaris.persistence.nosql.api.commit;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
+import org.jspecify.annotations.NonNull;
 
 public interface CommitterState<REF_OBJ extends BaseCommitObj, RESULT> extends UpdateState {
   <B extends BaseCommitObj.Builder<REF_OBJ, B>> Optional<REF_OBJ> commitResult(
-      @Nonnull RESULT result, @Nonnull B refObjBuilder, @Nonnull Optional<REF_OBJ> refObj);
+      @NonNull RESULT result, @NonNull B refObjBuilder, @NonNull Optional<REF_OBJ> refObj);
 
   Optional<REF_OBJ> noCommit();
 
-  Optional<REF_OBJ> noCommit(@Nonnull RESULT result);
+  Optional<REF_OBJ> noCommit(@NonNull RESULT result);
 }

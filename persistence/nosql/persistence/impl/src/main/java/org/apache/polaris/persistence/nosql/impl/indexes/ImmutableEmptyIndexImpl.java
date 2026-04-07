@@ -22,14 +22,14 @@ import static java.util.Collections.emptyIterator;
 import static java.util.Collections.emptyList;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.varint.VarInt;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
 
@@ -83,28 +83,28 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     throw unsupported();
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     throw unsupported();
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
+  public boolean contains(@NonNull IndexKey key) {
     return false;
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     return false;
   }
 
   @Nullable
   @Override
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     return null;
   }
 
@@ -125,7 +125,7 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
     return emptyList();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
@@ -143,7 +143,7 @@ final class ImmutableEmptyIndexImpl<V> implements IndexSpi<V> {
     return 2; // index-version byte + VarInt.varIntLen(0) --> 1+1
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ByteBuffer serialize() {
     var target = ByteBuffer.allocate(estimatedSerializedSize());

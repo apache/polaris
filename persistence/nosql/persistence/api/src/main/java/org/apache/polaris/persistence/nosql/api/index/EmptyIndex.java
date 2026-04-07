@@ -21,9 +21,9 @@ package org.apache.polaris.persistence.nosql.api.index;
 
 import static java.util.Collections.emptyIterator;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Iterator;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class EmptyIndex {
   private static final Index<?> EMPTY =
@@ -38,18 +38,18 @@ final class EmptyIndex {
 
         @Nullable
         @Override
-        public Object get(@Nonnull IndexKey key) {
+        public Object get(@NonNull IndexKey key) {
           return null;
         }
 
-        @Nonnull
+        @NonNull
         @Override
         public Iterator<Index.Element<Object>> iterator(
             @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
           return emptyIterator();
         }
 
-        @Nonnull
+        @NonNull
         @Override
         public Iterator<Index.Element<Object>> reverseIterator(
             @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {

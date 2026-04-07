@@ -18,17 +18,16 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.spi;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Abstraction of nodes persistence for the node management implementation. */
 public interface NodeStore {
   Optional<NodeState> fetch(int nodeId);
 
-  @Nonnull
-  NodeState[] fetchMany(@Nonnull int... nodeIds);
+  @NonNull NodeState[] fetchMany(@NonNull int... nodeIds);
 
-  @Nullable
-  NodeState persist(int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState);
+  @Nullable NodeState persist(
+      int nodeId, Optional<NodeState> expectedNodeState, @NonNull NodeState newState);
 }

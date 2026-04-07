@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.api;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Builder factory to generate "realm-scoped" {@link Persistence} instances.
@@ -35,7 +35,7 @@ public interface RealmPersistenceFactory {
   RealmPersistenceBuilder newBuilder();
 
   interface RealmPersistenceBuilder {
-    RealmPersistenceBuilder realmId(@Nonnull String realmId);
+    RealmPersistenceBuilder realmId(@NonNull String realmId);
 
     RealmPersistenceBuilder skipDecorators();
 

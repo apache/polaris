@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Represents an index that can be modifies using put and remove functions and that can be
@@ -39,12 +39,12 @@ public interface UpdatableIndex<V> extends ModifiableIndex<V> {
    * @return the updated {@link IndexContainer}
    */
   IndexContainer<V> toIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj);
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj);
 
   /**
    * Similar to {@link #toIndexed(String, BiConsumer)}, but returns an empty {@link Optional}, if
    * the index container is empty.
    */
   Optional<IndexContainer<V>> toOptionalIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj);
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj);
 }
