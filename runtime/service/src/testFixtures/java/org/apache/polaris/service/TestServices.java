@@ -349,7 +349,7 @@ public record TestServices(
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)
                   .accessDelegationModeResolver(
-                      new DefaultAccessDelegationModeResolver(callContext))
+                      new DefaultAccessDelegationModeResolver(realmConfig))
                   .build();
             }
           };
