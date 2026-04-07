@@ -23,13 +23,12 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.Optional;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -70,7 +69,7 @@ import org.slf4j.LoggerFactory;
  *       </ul>
  * </ol>
  */
-@RequestScoped
+@ApplicationScoped
 public class DefaultAccessDelegationModeResolver implements AccessDelegationModeResolver {
 
   private static final Logger LOGGER =
@@ -79,8 +78,8 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   private final RealmConfig realmConfig;
 
   @Inject
-  public DefaultAccessDelegationModeResolver(CallContext callContext) {
-    this.realmConfig = callContext.getRealmConfig();
+  public DefaultAccessDelegationModeResolver(RealmConfig realmConfig) {
+    this.realmConfig = realmConfig;
   }
 
   @Override
