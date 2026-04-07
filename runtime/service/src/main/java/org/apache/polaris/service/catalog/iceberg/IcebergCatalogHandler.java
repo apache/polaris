@@ -66,6 +66,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
@@ -82,6 +83,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
@@ -746,6 +748,76 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         refreshCredentialsEndpoint);
   }
 
+  /**
+   * Vend credentials for a table using location data from entity internal properties, avoiding a
+   * full table metadata read from object storage. Falls back to the standard
+   * loadTableWithAccessDelegation path if the entity lacks the required location properties.
+   */
+  public ImmutableLoadCredentialsResponse loadCredentials(
+      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTable(tableIdentifier, EnumSet.of(VENDED_CREDENTIALS));
+
+    // Optimized credential vending is only supported for native Polaris catalogs.
+    // Federated/external catalogs are passthrough — writes happen directly on the
+    // remote catalog independently of Polaris, so there is no guarantee that entity
+    // internal properties (e.g. location) in the Polaris metastore are in sync with
+    // the remote catalog's actual table metadata.
+    // Note: this check must come after authorizeLoadTable because baseCatalog is
+    // initialized lazily during authorization.
+    if (!(baseCatalog instanceof IcebergCatalog)) {
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+    }
+
+    IcebergTableLikeEntity entity = getTableEntity(tableIdentifier);
+    if (entity == null) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+    }
+
+    Map<String, String> internalProperties = entity.getInternalPropertiesAsMap();
+    String baseLocation = internalProperties.get(IcebergTableLikeEntity.LOCATION);
+
+    if (baseLocation == null) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log(
+              "Entity missing location in internal properties, requires backfill "
+                  + "as it was likely not updated with stored property changes. "
+                  + "Falling back to full loadTable path");
+      return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
+    }
+
+    Set<String> tableLocations =
+        StorageUtil.getLocationsUsedByTable(baseLocation, internalProperties);
+
+    StorageAccessConfig storageAccessConfig =
+        vendCredentials(
+            tableIdentifier, tableLocations, actionsRequested, refreshCredentialsEndpoint);
+    if (storageAccessConfig == null) {
+      storageAccessConfig = StorageAccessConfig.builder().build();
+    }
+
+    Map<String, String> credentialConfig = storageAccessConfig.credentials();
+    ImmutableLoadCredentialsResponse.Builder responseBuilder =
+        ImmutableLoadCredentialsResponse.builder();
+
+    if (!credentialConfig.isEmpty()) {
+      responseBuilder.addCredentials(
+          ImmutableCredential.builder().prefix(baseLocation).config(credentialConfig).build());
+    } else {
+      Boolean skipCredIndirection =
+          realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+      Preconditions.checkArgument(
+          !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
+          "Credential vending was requested for table %s, but no credentials are available",
+          tableIdentifier);
+    }
+
+    return responseBuilder.build();
+  }
+
   private Set<PolarisStorageActions> authorizeLoadTable(
       TableIdentifier tableIdentifier, EnumSet<AccessDelegationMode> delegationModes) {
     if (delegationModes.isEmpty()) {
@@ -1380,6 +1452,37 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                 .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig()))
                 .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig()))
                 .build())
+        .build();
+  }
+
+  private StorageAccessConfig vendCredentials(
+      TableIdentifier tableIdentifier,
+      Set<String> tableLocations,
+      Set<PolarisStorageActions> actionsRequested,
+      Optional<String> refreshCredentialsEndpoint) {
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
+    if (resolvedStoragePath == null) {
+      LOGGER.debug(
+          "Unable to find storage configuration information for table {}", tableIdentifier);
+      return null;
+    }
+
+    return storageAccessConfigProvider()
+        .getStorageAccessConfig(
+            tableIdentifier,
+            tableLocations,
+            actionsRequested,
+            refreshCredentialsEndpoint,
+            resolvedStoragePath);
+  }
+
+  private ImmutableLoadCredentialsResponse fallbackToFullLoadTable(
+      TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
+    LoadTableResponse loadTableResponse =
+        loadTableWithAccessDelegation(tableIdentifier, "all", refreshCredentialsEndpoint);
+    return ImmutableLoadCredentialsResponse.builder()
+        .credentials(loadTableResponse.credentials())
         .build();
   }
 }
