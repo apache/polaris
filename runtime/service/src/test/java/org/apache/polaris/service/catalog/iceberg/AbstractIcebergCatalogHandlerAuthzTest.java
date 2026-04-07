@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.List;
@@ -65,7 +64,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
@@ -78,8 +76,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
-import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -109,9 +105,6 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @Inject LocalCatalogFactory localCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
-  @Inject Instance<FederatedCatalogFactory> externalCatalogFactories;
-  @Inject CatalogPrefixParser prefixParser;
-  @Inject AccessDelegationModeResolver accessDelegationModeResolver;
 
   protected IcebergCatalogHandler newHandler() {
     return newHandler(Set.of());
