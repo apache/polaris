@@ -70,7 +70,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcMetaStoreManagerFactory.class);
 
   // Stateful per-realm cache — InMemoryEntityCache accumulates entries across requests
-  final Map<String, EntityCache> entityCacheMap = new ConcurrentHashMap<>();
+  private final Map<String, EntityCache> entityCacheMap = new ConcurrentHashMap<>();
 
   // Cached per-realm schema version — loaded from DB once, stable at runtime
   private final ConcurrentHashMap<String, Integer> schemaVersionCache = new ConcurrentHashMap<>();
@@ -89,7 +89,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Produces
   @ApplicationScoped
-  DatasourceOperations produceDatasourceOperations(
+  static DatasourceOperations produceDatasourceOperations(
       Instance<DataSource> dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     return new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
   }
@@ -108,20 +108,16 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   /** Loads and caches the schema version for the given realm (DB hit only on first call). */
-  private int getOrLoadSchemaVersion(String realmId) {
+  private int getOrLoadSchemaVersion(String realmId, boolean fallbackOnDne) {
     return schemaVersionCache.computeIfAbsent(
         realmId,
-        k ->
-            JdbcBasePersistenceImpl.loadSchemaVersion(
-                datasourceOperations,
-                realmConfig.getConfig(
-                    BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE)));
+        k -> JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, fallbackOnDne));
   }
 
   /** Creates a new stateless {@link JdbcBasePersistenceImpl} for the given realm. */
   private BasePersistence createSession(
-      String realmId, @Nullable RootCredentialsSet rootCredentialsSet) {
-    int schemaVersion = getOrLoadSchemaVersion(realmId);
+      String realmId, @Nullable RootCredentialsSet rootCredentialsSet, boolean fallbackOnDne) {
+    int schemaVersion = getOrLoadSchemaVersion(realmId, fallbackOnDne);
     return new JdbcBasePersistenceImpl(
         diagnostics,
         datasourceOperations,
@@ -181,7 +177,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         schemaVersionCache.put(realm, effectiveSchemaVersion);
 
         PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-        BasePersistence metaStore = createSession(realm, bootstrapOptions.rootCredentialsSet());
+        BasePersistence metaStore =
+            createSession(realm, bootstrapOptions.rootCredentialsSet(), true);
         PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
         PrincipalSecretsResult secretsResult =
@@ -201,7 +198,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-      BasePersistence session = createSession(realm, null);
+      BasePersistence session = createSession(realm, null, true);
 
       PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
 
@@ -235,16 +232,18 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
+    boolean fallbackOnDne =
+        realmConfig.getConfig(BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE);
 
     // Verify bootstrap once per realm lifetime; skip on subsequent calls.
     // On cold start, multiple threads may verify concurrently — this is benign
     // (idempotent DB query), trading a few redundant queries for simpler code.
     if (!verifiedRealms.contains(realmId)) {
-      checkPolarisServiceBootstrappedForRealm(realmContext);
+      checkPolarisServiceBootstrappedForRealm(realmContext, fallbackOnDne);
     }
 
     // Stateless — create a fresh instance on every call; schemaVersion is cached per realm
-    return createSession(realmId, null);
+    return createSession(realmId, null, fallbackOnDne);
   }
 
   @Override
@@ -267,10 +266,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
    * and force user to run Bootstrap command and initialize MetaStore and create all the required
    * entities
    */
-  private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
+  private void checkPolarisServiceBootstrappedForRealm(
+      RealmContext realmContext, boolean fallbackOnDne) {
     String realmId = realmContext.getRealmIdentifier();
     PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
-    BasePersistence metaStore = createSession(realmId, null);
+    BasePersistence metaStore = createSession(realmId, null, fallbackOnDne);
     PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
