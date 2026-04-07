@@ -28,6 +28,9 @@ on:
     # Beware: this workflow will be called with the `github` context from the 'versioned-docs' branch,
     # which means, for example, that the `github.ref` would be 'refs/heads/versioned-docs'.
 
+permissions:
+  contents: write
+
 # Ensure that no two site publications happen concurrently.
 # 1 job per reference can run concurrently, no cancellation
 concurrency:
@@ -50,10 +53,12 @@ jobs:
           # Must mention the branch to check out explicitly.
           # Otherwise the branch of the workflow-call (usually 'versioned-docs') would be checked out.
           ref: "main"
+          persist-credentials: false
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: "versioned-docs"
           path: site/content/releases
+          persist-credentials: false
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
 

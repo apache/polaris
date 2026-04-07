@@ -45,18 +45,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
 
       - name: Set up environment variables
         id: set-outputs
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "dry_run=1" >> $GITHUB_OUTPUT
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
@@ -68,6 +71,8 @@ jobs:
 
       - name: Validate release candidate tag
         id: validate-tag
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -75,7 +80,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
             # Running from a tag
@@ -131,6 +136,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -154,7 +160,7 @@ jobs:
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
-          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -171,8 +177,8 @@ jobs:
 
       - name: Stage artifacts to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -210,8 +216,8 @@ jobs:
       - name: Publish and close Apache Nexus staging repository
         id: publish-nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
@@ -264,6 +270,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -336,6 +343,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -358,7 +366,7 @@ jobs:
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
-          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -386,8 +394,8 @@ jobs:
 
       - name: Stage Helm chart to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -427,8 +435,8 @@ jobs:
 
       - name: Regenerate Helm index with archive versions
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -532,6 +540,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
