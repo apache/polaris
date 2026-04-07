@@ -867,11 +867,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       // For S3 Tables catalogs, replace s3:// table locations with the constructed table ARN.
       // s3tables:* IAM actions require ARN resources, not s3:// paths.
+      // Assumption: the federated catalog loadTable call has already succeeded at this point,
+      // and the CapturedConfigHolder contains the tableId from the remote response.
       CatalogEntity catalogEntity = CatalogEntity.of(getResolvedCatalogEntity());
-      boolean isS3Tables =
-          catalogEntity.getStorageConfigurationInfo() != null
-              && catalogEntity.getStorageConfigurationInfo().getStorageType()
-                  == PolarisStorageConfigurationInfo.StorageType.S3_TABLES;
+      boolean isS3Tables = isS3TablesCatalog(catalogEntity);
 
       if (isS3Tables && capturedTableId.isPresent()) {
         String tableArn = constructS3TablesArn(catalogEntity, capturedTableId.get());
@@ -883,12 +882,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             .addKeyValue("tableArn", tableArn)
             .log("Replaced table locations with S3 Tables ARN for credential vending");
       } else if (isS3Tables) {
-        LOGGER
-            .atWarn()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .log(
-                "S3 Tables catalog but no tableId captured from remote response; "
-                    + "credential vending will proceed without ARN-scoped permissions");
+        // Fail closed: S3 Tables catalogs require a tableId to construct the table ARN
+        // for scoped credential vending. Without it, we cannot generate a properly scoped
+        // IAM session policy.
+        throw new BadRequestException(
+            "Cannot vend credentials for S3 Tables table '%s': "
+                + "no tableId was captured from the remote catalog response. "
+                + "Ensure the remote S3 Tables endpoint returns tableId in the loadTable config.",
+            tableIdentifier);
       }
 
       // For non polaris' catalog, validate that table locations are within allowed locations.
@@ -927,6 +928,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     return responseBuilder;
+  }
+
+  /** Checks whether the resolved catalog entity is configured with S3_TABLES storage type. */
+  private boolean isS3TablesCatalog(CatalogEntity catalogEntity) {
+    PolarisStorageConfigurationInfo storageConfig = catalogEntity.getStorageConfigurationInfo();
+    return storageConfig != null
+        && storageConfig.getStorageType() == PolarisStorageConfigurationInfo.StorageType.S3_TABLES;
   }
 
   /**

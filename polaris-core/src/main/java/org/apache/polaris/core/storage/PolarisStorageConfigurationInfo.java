@@ -202,7 +202,7 @@ public abstract class PolarisStorageConfigurationInfo {
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
-    S3_TABLES("arn:"),
+    S3_TABLES("arn:aws:s3tables"),
     ;
 
     private final List<String> prefixes;
