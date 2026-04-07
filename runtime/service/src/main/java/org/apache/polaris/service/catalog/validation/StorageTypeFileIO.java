@@ -32,7 +32,7 @@ enum StorageTypeFileIO {
 
   FILE("org.apache.iceberg.hadoop.HadoopFileIO", false),
 
-  S3_TABLES("org.apache.iceberg.aws.s3.S3FileIO", true),
+  S3_TABLES("org.apache.iceberg.aws.s3.S3FileIO", true, false),
 
   // Iceberg tests
   IN_MEMORY("org.apache.iceberg.inmemory.InMemoryFileIO", false, false),
