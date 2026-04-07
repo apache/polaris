@@ -45,6 +45,9 @@ dependencies {
 
   implementation(project(":polaris-runtime-service"))
 
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  implementation(libs.slf4j.jboss.logmanager)
+
   testImplementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   )

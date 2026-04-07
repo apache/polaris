@@ -38,7 +38,12 @@ if (!project.extra.has("duplicated-project-sources")) {
     kotlinGradle {
       ktfmt().googleStyle()
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-      target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
+      target(
+        "*.gradle.kts",
+        "build-logic/*.gradle.kts",
+        "build-logic/src/**/*.kt*",
+        "gradle/*.gradle.kts",
+      )
     }
   }
 }

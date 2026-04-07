@@ -27,6 +27,8 @@ dependencies {
   // Quarkus platform
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-rest-jackson")
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  implementation(libs.rest.assured)
 
   // Add the OPA implementation as RUNTIME dependency to include in Quarkus app
   implementation(project(":polaris-extensions-auth-opa"))

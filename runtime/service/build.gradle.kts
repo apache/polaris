@@ -66,6 +66,8 @@ dependencies {
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+  // Needed for local Quarkus snapshot builds
+  implementation(platform(libs.opentelemetry.bom))
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
@@ -202,6 +204,12 @@ dependencies {
   // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
   // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
   intTestRuntimeOnly(libs.keycloak.admin.client)
+
+  // Needed for Quarkus snapshot and prereleases without the Quarkus platform bom
+  testImplementation(libs.rest.assured)
+  cloudTestImplementation(libs.rest.assured)
+  intTestImplementation(libs.rest.assured)
+  integrationTestImplementation(libs.rest.assured)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
