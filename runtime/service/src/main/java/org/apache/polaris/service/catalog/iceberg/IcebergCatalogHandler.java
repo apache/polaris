@@ -224,6 +224,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   // Federated catalogs have limited capabilities compared to Polaris-managed catalogs,
   // e.g., no pagination, location transformation, or multi-table transactions.
   private boolean isFederated = false;
+
   // Resolved access delegation mode, initialized via resolveAccessDelegationModes()
   @SuppressWarnings("immutables:incompat")
   private AccessDelegationMode resolvedAccessDelegationMode = null;
