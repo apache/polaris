@@ -52,8 +52,17 @@ public interface PolarisEventListenerConfiguration {
   interface ListenerConfiguration {
     /**
      * Comma separated list of enabled event types. This event listener will only receive events of
-     * the selected types.
+     * the selected types. If both the event types and event category configs are set, the listener
+     * will listen to both.
      */
-    Set<PolarisEventType> enabledEventTypes();
+    Optional<Set<PolarisEventType>> enabledEventTypes();
+
+    /**
+     * Comma separated list of enabled event type categories. Each category is a collection of
+     * related Polaris event types. This event listener will only receive events of the selected
+     * event category, for example, consume only catalog events. If both the event types and event
+     * category configs are set, the listener will listen to both.
+     */
+    Optional<Set<PolarisEventType.Category>> enabledEventCategories();
   }
 }
