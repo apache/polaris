@@ -383,7 +383,9 @@ class CatalogsCommand(Command):
             )
         return config
 
-    def _parse_labels(self, label_list: Optional[List[str]]) -> Optional[Dict[str, StrictStr]]:
+    def _parse_labels(
+        self, label_list: Optional[List[str]]
+    ) -> Optional[Dict[str, StrictStr]]:
         """Parse a list of 'key=value' label strings into a dict."""
         if not label_list:
             return None
@@ -557,7 +559,9 @@ class CatalogsCommand(Command):
         print(f"  {'Modified:':<30} {format_timestamp(catalog.last_update_timestamp)}")
         print(f"  {'Version:':<30} {catalog.entity_version}")
         if catalog.labels:
-            print(f"  {'Labels:':<30} {', '.join(f'{k}={v}' for k, v in sorted(catalog.labels.items()))}")
+            print(
+                f"  {'Labels:':<30} {', '.join(f'{k}={v}' for k, v in sorted(catalog.labels.items()))}"
+            )
         else:
             print(f"  {'Labels:':<30} (none)")
 

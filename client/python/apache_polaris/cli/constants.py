@@ -273,9 +273,7 @@ class Hints:
         "Filter results by label in the form key=value. Only entities matching ALL specified"
         " labels are returned. Multiple can be provided by specifying this option more than once."
     )
-    CLEAR_LABELS = (
-        "Remove all labels from the entity. Cannot be combined with --label."
-    )
+    CLEAR_LABELS = "Remove all labels from the entity. Cannot be combined with --label."
 
     class Setup:
         DRY_RUN = "If specified, the command will only print the actions to be taken without executing them."
