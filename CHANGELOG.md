@@ -47,6 +47,19 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added automatic Hierarchical Namespace (HNS) support for GCS buckets. Polaris now auto-detects whether
+  a bucket has HNS enabled by querying bucket metadata at table creation time — no manual configuration
+  flag is required. When HNS is detected, the full folder hierarchy (table location, metadata, and data
+  directories) is created automatically using the GCS Storage Control API.
+- Added `StorageLocationPreparer` interface and `GcsStorageLocationPreparer` implementation that handles
+  automatic HNS folder creation. The preparer queries bucket metadata to detect HNS, creates folder
+  hierarchies via the Storage Control API, and caches HNS status per bucket to avoid redundant lookups.
+- Added `StorageLocationPreparerFactory` to produce storage-specific location preparers, integrated into
+  `IcebergCatalogHandler` and `IcebergCatalogHandlerFactory` so that folder preparation runs before
+  `createTable` and `stageCreate` operations.
+- GCS credential vending now always includes `roles/storage.folderAdmin` permissions scoped to write paths
+  via access boundary conditions. This ensures HNS-enabled buckets get folder management permissions
+  automatically, while having no effect on non-HNS buckets.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
@@ -68,6 +81,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+- GCS HNS support is fully automatic. HNS detection is performed at runtime by querying bucket
+  metadata. Folder admin permissions are always included in GCS credential vending, scoped to
+  write paths (harmless for non-HNS buckets).
+- `IcebergCatalogHandler` now invokes `StorageLocationPreparer.prepareTableLocation()` before table creation
+  (`createTable`, `stageCreate`) to ensure GCS folder structures exist in HNS-enabled buckets.
 - The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 - Added KMS options to Polaris CLI.

@@ -384,6 +384,118 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
   }
 
+  @Test
+  public void testGenerateAccessBoundaryIncludesFolderRules() throws IOException {
+    // Folder admin rules are always included since HNS is auto-detected
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://bucket1/path/to/data"), Set.of("gs://bucket1/path/to/data"));
+    assertThat(credentialAccessBoundary).isNotNull();
+    // Should have 3 rules: read + write + folder admin
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(3);
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryHnsEnabled.json");
+    assertThat(parsedRules)
+        .usingRecursiveComparison(
+            RecursiveComparisonConfiguration.builder()
+                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
+                .build())
+        .isEqualTo(refRules);
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWithMultipleBucketsIncludesFolderRules()
+      throws IOException {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
+            Set.of("gs://bucket1/normal/path/to/data"));
+    assertThat(credentialAccessBoundary).isNotNull();
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules =
+        readResource(mapper, "gcp-testGenerateAccessBoundaryHnsWithMultipleBuckets.json");
+    assertThat(parsedRules)
+        .usingRecursiveComparison(
+            RecursiveComparisonConfiguration.builder()
+                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
+                .build())
+        .isEqualTo(refRules);
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWithoutWritesNoFolderRules() throws IOException {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://bucket1/path/to/data"), Set.of());
+    assertThat(credentialAccessBoundary).isNotNull();
+    // When there are no write locations, no folder rules are added
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryHnsWithoutWrites.json");
+    assertThat(parsedRules)
+        .usingRecursiveComparison(
+            RecursiveComparisonConfiguration.builder()
+                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
+                .build())
+        .isEqualTo(refRules);
+  }
+
+  @Test
+  public void testGenerateAccessBoundarySeparateMetadataAndData() throws IOException {
+    // Iceberg writes to both metadata and data locations — the ingestion job must update
+    // metadata (manifest lists, table metadata JSON) and write data files. When metadata
+    // and data reside in different buckets, both buckets need write + folderAdmin rules.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of("gs://metadata-bucket/ns/table/metadata/", "gs://data-bucket/ns/table/data/"),
+            Set.of("gs://metadata-bucket/ns/table/metadata/", "gs://data-bucket/ns/table/data/"));
+    assertThat(credentialAccessBoundary).isNotNull();
+    // Expect 6 rules: read on each bucket (2), write on each bucket (2),
+    // folderAdmin on each bucket (2)
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(6);
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules =
+        readResource(mapper, "gcp-testGenerateAccessBoundaryHnsSeparateMetadataAndData.json");
+    assertThat(parsedRules)
+        .usingRecursiveComparison(
+            RecursiveComparisonConfiguration.builder()
+                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
+                .build())
+        .isEqualTo(refRules);
+  }
+
+  @Test
+  public void testSameBucketSeparateMetadataAndDataPaths() {
+    // Metadata and data in the same bucket but different prefixes. Both are write locations
+    // because Iceberg must write metadata files (manifests, table metadata) alongside data.
+    // folderAdmin should scope to both the metadata and data paths.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true,
+            Set.of(
+                "gs://bucket1/warehouse/db/table/metadata/",
+                "gs://bucket1/warehouse/db/table/data/"),
+            Set.of(
+                "gs://bucket1/warehouse/db/table/metadata/",
+                "gs://bucket1/warehouse/db/table/data/"));
+    assertThat(credentialAccessBoundary).isNotNull();
+    // Same bucket → 1 read rule (both paths combined), 1 write rule (both paths),
+    // 1 folder rule (both paths) = 3 rules
+    assertThat(credentialAccessBoundary.getAccessBoundaryRules()).hasSize(3);
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    // Verify folderAdmin conditions reference both metadata and data paths
+    String folderRuleJson = parsedRules.toString();
+    assertThat(folderRuleJson).contains("managedFolders/warehouse/db/table/data/");
+    assertThat(folderRuleJson).contains("managedFolders/warehouse/db/table/metadata/");
+  }
+
   private boolean isNotNull(JsonNode node) {
     return node != null && !node.isNull();
   }
