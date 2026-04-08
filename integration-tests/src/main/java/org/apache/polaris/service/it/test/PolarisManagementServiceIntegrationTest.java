@@ -791,7 +791,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            differentAccountConfig);
+            differentAccountConfig,
+            null,
+            null);
 
     try (Response response =
         managementApi
@@ -841,7 +843,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            updatedConfig);
+            updatedConfig,
+            null,
+            null);
 
     try (Response response =
         managementApi
@@ -890,7 +894,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            configWithDifferentExternalId);
+            configWithDifferentExternalId,
+            null,
+            null);
 
     try (Response response =
         managementApi

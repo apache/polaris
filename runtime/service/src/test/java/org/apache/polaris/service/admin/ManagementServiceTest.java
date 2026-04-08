@@ -515,7 +515,9 @@ public class ManagementServiceTest {
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
-                .build());
+                .build(),
+            null,
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -570,7 +572,9 @@ public class ManagementServiceTest {
             Map.of("default-base-location", "s3://bucket/path/to/data"),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::123456789012:role/other-role")
-                .build());
+                .build(),
+            null,
+            null);
     try (Response response =
         services
             .catalogsApi()
@@ -661,7 +665,9 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null,
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -731,7 +737,9 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null,
+            null);
     try (Response response =
         flagEnabledServices
             .catalogsApi()
