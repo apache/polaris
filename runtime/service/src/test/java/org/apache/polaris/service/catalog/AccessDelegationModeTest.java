@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
-import static org.apache.polaris.service.catalog.AccessDelegationMode.UNKNOWN;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,16 +50,16 @@ class AccessDelegationModeTest {
 
   @Test
   void testUnknown() {
-    assertThat(fromProtocolValuesList("abc")).isEqualTo(EnumSet.of(UNKNOWN));
-    assertThat(fromProtocolValuesList("abc,def")).isEqualTo(EnumSet.of(UNKNOWN));
-    assertThat(fromProtocolValuesList("abc,remote-signing"))
-        .isEqualTo(EnumSet.of(REMOTE_SIGNING, UNKNOWN));
+    assertThat(fromProtocolValuesList("abc")).isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+    assertThat(fromProtocolValuesList("abc,def"))
+        .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+    assertThat(fromProtocolValuesList("abc,remote-signing")).isEqualTo(EnumSet.of(REMOTE_SIGNING));
   }
 
   @Test
   void testLegacy() {
     assertThat(fromProtocolValuesList("true")).isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
     assertThat(fromProtocolValuesList("true, vended-credentials"))
-        .isEqualTo(EnumSet.of(UNKNOWN, VENDED_CREDENTIALS));
+        .isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
   }
 }
