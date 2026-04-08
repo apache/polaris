@@ -17,6 +17,7 @@
 package org.apache.polaris.core.entity;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * Immutable snapshot of an idempotency reservation and its finalization status.
@@ -33,8 +34,7 @@ import java.time.Instant;
  *     in-progress.
  * @param errorSubtype Optional error subtype/code when the operation failed.
  * @param responseSummary Minimal serialized representation of the response body for replay.
- * @param responseHeaders Serialized representation of a small, whitelisted set of response headers
- *     for replay.
+ * @param responseHeaders Allowlisted response headers captured for replay.
  * @param finalizedAt Timestamp when the operation was finalized; {@code null} while in-progress.
  * @param createdAt Timestamp when the record was created.
  * @param updatedAt Timestamp when the record was last updated.
@@ -53,7 +53,7 @@ public record IdempotencyRecord(
     Integer httpStatus,
     String errorSubtype,
     String responseSummary,
-    String responseHeaders,
+    Map<String, String> responseHeaders,
     Instant createdAt,
     Instant updatedAt,
     Instant finalizedAt,
@@ -112,13 +112,12 @@ public record IdempotencyRecord(
   }
 
   /**
-   * Serialized representation of a small, whitelisted set of HTTP response headers.
+   * Allowlisted snapshot of HTTP response headers to replay for duplicates.
    *
-   * <p>Stored as a JSON string so that the HTTP layer can replay key headers (such as {@code
-   * Content-Type}) when serving a duplicate idempotent request.
+   * <p>How this map is persisted is store-specific.
    */
   @Override
-  public String responseHeaders() {
+  public Map<String, String> responseHeaders() {
     return responseHeaders;
   }
 

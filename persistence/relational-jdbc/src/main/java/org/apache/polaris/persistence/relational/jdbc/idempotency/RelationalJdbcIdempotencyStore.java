@@ -20,7 +20,9 @@ import jakarta.annotation.Nonnull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,10 +35,20 @@ import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
+import org.apache.polaris.persistence.relational.jdbc.QueryGenerator.SqlLiteral;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.apache.polaris.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.IdempotencyRecordSerde;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelIdempotencyRecord;
 
+/**
+ * JDBC-backed {@link IdempotencyStore}.
+ *
+ * <p>Every public method executes exactly one SQL statement, so the default JDBC auto-commit mode
+ * provides the correct transaction boundary (each statement is its own transaction). Explicit
+ * {@code BEGIN}/{@code COMMIT} calls are intentionally omitted because they would add overhead
+ * without changing semantics for single-statement operations.
+ */
 public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations datasourceOperations;
@@ -67,13 +79,17 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
       insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
       insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
-      insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
-      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, Timestamp.from(now));
+      insertMap.put(ModelIdempotencyRecord.CREATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+      insertMap.put(ModelIdempotencyRecord.UPDATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+      insertMap.put(ModelIdempotencyRecord.HEARTBEAT_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
       insertMap.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
-      insertMap.put(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt));
+      long ttlSeconds = Duration.between(now, expiresAt).getSeconds();
+      insertMap.put(
+          ModelIdempotencyRecord.EXPIRES_AT,
+          new SqlLiteral("CURRENT_TIMESTAMP + INTERVAL '" + ttlSeconds + "' SECOND"));
 
-      List<Object> values = insertMap.values().stream().toList();
+      // Stream#toList returns an unmodifiable list and rejects nulls; these columns are nullable.
+      List<Object> values = new ArrayList<>(insertMap.values());
       QueryGenerator.PreparedQuery insert =
           QueryGenerator.generateInsertQuery(
               ModelIdempotencyRecord.ALL_COLUMNS,
@@ -84,7 +100,22 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       return new ReserveResult(ReserveResultType.OWNED, Optional.empty());
     } catch (SQLException e) {
       if (datasourceOperations.isConstraintViolation(e)) {
-        return new ReserveResult(ReserveResultType.DUPLICATE, load(realmId, idempotencyKey));
+        Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
+        if (existing.isPresent()) {
+          Instant exp = existing.get().expiresAt();
+          if (exp != null && exp.isBefore(now)) {
+            deleteExpired(realmId, idempotencyKey, exp);
+            return reserve(
+                realmId,
+                idempotencyKey,
+                operationType,
+                normalizedResourceId,
+                expiresAt,
+                executorId,
+                now);
+          }
+        }
+        return new ReserveResult(ReserveResultType.DUPLICATE, existing);
       }
       throw new IdempotencyPersistenceException("Failed to reserve idempotency key", e);
     }
@@ -136,28 +167,17 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   @Override
   public HeartbeatResult updateHeartbeat(
       String realmId, String idempotencyKey, String executorId, Instant now) {
-    Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
-    if (existing.isEmpty()) {
-      return HeartbeatResult.NOT_FOUND;
-    }
-
-    IdempotencyRecord record = existing.get();
-    if (record.httpStatus() != null) {
-      return HeartbeatResult.FINALIZED;
-    }
-    if (record.executorId() == null || !record.executorId().equals(executorId)) {
-      return HeartbeatResult.LOST_OWNERSHIP;
-    }
-
+    // Single atomic UPDATE: the WHERE clause guards on executor_id and http_status IS NULL,
+    // so this only succeeds if the record exists, is still in-progress, and is owned by us.
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
             ModelIdempotencyRecord.ALL_COLUMNS,
             ModelIdempotencyRecord.TABLE_NAME,
             Map.of(
                 ModelIdempotencyRecord.HEARTBEAT_AT,
-                Timestamp.from(now),
+                new SqlLiteral("CURRENT_TIMESTAMP"),
                 ModelIdempotencyRecord.UPDATED_AT,
-                Timestamp.from(now)),
+                new SqlLiteral("CURRENT_TIMESTAMP")),
             Map.of(
                 ModelIdempotencyRecord.REALM_ID,
                 realmId,
@@ -179,7 +199,7 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       throw new IdempotencyPersistenceException("Failed to update idempotency heartbeat", e);
     }
 
-    // Raced with finalize/ownership loss; re-check to return a meaningful result.
+    // UPDATE matched 0 rows; determine the reason.
     Optional<IdempotencyRecord> after = load(realmId, idempotencyKey);
     if (after.isEmpty()) {
       return HeartbeatResult.NOT_FOUND;
@@ -191,26 +211,68 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
+  public boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey,
+                  ModelIdempotencyRecord.EXECUTOR_ID,
+                  executorId),
+              Map.of(),
+              Map.of(),
+              Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+              Set.of());
+      return datasourceOperations.executeUpdate(delete) > 0;
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException(
+          "Failed to cancel in-progress idempotency reservation", e);
+    }
+  }
+
+  @Override
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
+      Map<String, String> responseHeaders,
       Instant finalizedAt) {
-    // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
+    final String responseHeadersJson;
+    if (responseHeaders == null || responseHeaders.isEmpty()) {
+      responseHeadersJson = null;
+    } else {
+      try {
+        responseHeadersJson = IdempotencyRecordSerde.serializeResponseHeaders(responseHeaders);
+      } catch (Exception e) {
+        throw new IdempotencyPersistenceException(
+            "Failed to serialize idempotency response headers", e);
+      }
+    }
+
+    // Single atomic UPDATE: the WHERE clause guards on executor_id and http_status IS NULL.
+    // Row-level locking in the DB ensures that concurrent finalize attempts are serialized;
+    // at most one caller sees updated > 0.
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
-    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
-    setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
+    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeadersJson);
+    setClause.put(ModelIdempotencyRecord.FINALIZED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
+    setClause.put(ModelIdempotencyRecord.UPDATED_AT, new SqlLiteral("CURRENT_TIMESTAMP"));
 
     Map<String, Object> whereEquals = new HashMap<>();
     whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+    whereEquals.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(
@@ -245,6 +307,31 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       return datasourceOperations.executeUpdate(delete);
     } catch (SQLException e) {
       throw new IdempotencyPersistenceException("Failed to purge expired idempotency records", e);
+    }
+  }
+
+  /**
+   * Deletes a single expired record so that the key can be reused. The WHERE clause includes
+   * expires_at to avoid accidentally deleting a record that was concurrently replaced.
+   */
+  private void deleteExpired(String realmId, String idempotencyKey, Instant expiresAt) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey),
+              Map.of(),
+              Map.of(ModelIdempotencyRecord.EXPIRES_AT, Timestamp.from(expiresAt)),
+              Set.of(),
+              Set.of(ModelIdempotencyRecord.EXPIRES_AT));
+      datasourceOperations.executeUpdate(delete);
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException("Failed to delete expired idempotency record", e);
     }
   }
 }

@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+plugins {
+  id("org.kordamp.gradle.jandex")
+  id("polaris-server")
+}
+
+dependencies {
+  implementation(project(":polaris-core"))
+  implementation(project(":polaris-api-management-model"))
+  implementation(project(":polaris-runtime-service"))
+
+  // These are provided at runtime by the Quarkus application (runtime/server).
+  // Using compileOnly avoids pulling their transitive dependencies into the distribution
+  // license report (e.g. org.ow2.asm:asm from quarkus-bom).
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-rest-jackson")
+  compileOnly("io.quarkus:quarkus-reactive-routes")
+
+  compileOnly(platform(libs.iceberg.bom))
+  compileOnly("org.apache.iceberg:iceberg-core")
+
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.jakarta.ws.rs.api)
+
+  compileOnly(libs.smallrye.common.annotation)
+  compileOnly(libs.smallrye.config.core)
+  compileOnly(libs.slf4j.api)
+
+  compileOnly(platform(libs.jackson.bom))
+  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+}
