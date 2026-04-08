@@ -152,6 +152,74 @@ class TestCliParsing(unittest.TestCase):
             )
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["namespaces"])  # missing subcommand
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["namespaces", "create"])  # missing required namespace input
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["namespaces", "delete"])  # missing required namespace input
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["namespaces", "not-real-subcommand"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["namespaces", "get", "ns", "--fake-flag"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["profiles"])  # missing subcommand
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["profiles", "create"])  # missing required profile name
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["profiles", "not-real-subcommand"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["setup"])  # missing subcommand
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["setup", "apply"])  # missing required setup config
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["setup", "not-real-subcommand"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["policies"])  # missing subcommand
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["policies", "create"])  # missing required policy name
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(["policies", "not-real-subcommand"])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(Exception) as cm_exc:
+            options = Parser.parse(["namespaces", "list"])  # missing catalog
+            Command.from_options(options)
+        self.assertIn("Missing required argument", str(cm_exc.exception))
+
+        with self.assertRaises(Exception) as cm_exc:
+            options = Parser.parse(
+                ["namespaces", "create", "my_ns"]
+            )  # missing catalog
+            Command.from_options(options)
+        self.assertIn("Missing required argument", str(cm_exc.exception))
+
     def _check_usage_output(self, f: Callable[[], Any], needle: str = "usage:") -> None:
         with (
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
@@ -171,6 +239,15 @@ class TestCliParsing(unittest.TestCase):
         self._check_usage_output(
             lambda: Parser.parse(["catalogs", "create", "something", "--help"])
         )
+        self._check_usage_output(lambda: Parser.parse(["namespaces", "--help"]))
+        self._check_usage_output(
+            lambda: Parser.parse(["namespaces", "create", "--help"])
+        )
+        self._check_usage_output(lambda: Parser.parse(["profiles", "--help"]))
+        self._check_usage_output(lambda: Parser.parse(["setup", "--help"]))
+        self._check_usage_output(lambda: Parser.parse(["policies", "--help"]))
+        self._check_usage_output(lambda: Parser.parse(["tables", "--help"]))
+        self._check_usage_output(lambda: Parser.parse(["find", "--help"]))
 
     def test_extended_usage(self) -> None:
         self._check_usage_output(
@@ -205,11 +282,23 @@ class TestCliParsing(unittest.TestCase):
         Parser.parse(["catalogs", "create", "catalog_name", "--type", "INTERNAL"])
         Parser.parse(["catalogs", "list"])
         Parser.parse(["catalogs", "get", "catalog_name"])
+        Parser.parse(["catalogs", "summarize", "catalog_name"])
         Parser.parse(["principals", "list"])
         Parser.parse(["--host", "some-host", "catalogs", "list"])
         Parser.parse(
             ["--base-url", "https://customservice.com/subpath", "catalogs", "list"]
         )
+        Parser.parse(["--proxy", "http://proxy:8080", "catalogs", "list"])
+        Parser.parse(["--debug", "catalogs", "list"])
+        Parser.parse(["--port", "8182", "catalogs", "list"])
+        Parser.parse(
+            ["--client-id", "cid", "--client-secret", "csecret", "catalogs", "list"]
+        )
+        Parser.parse(["--access-token", "token", "catalogs", "list"])
+        Parser.parse(
+            ["--realm", "my_realm", "--header", "X-Custom", "catalogs", "list"]
+        )
+        Parser.parse(["--profile", "dev", "catalogs", "list"])
         Parser.parse(
             [
                 "privileges",
@@ -253,6 +342,34 @@ class TestCliParsing(unittest.TestCase):
                 "t",
                 "TABLE_READ_DATA",
             ]
+        )
+        Parser.parse(
+            [
+                "privileges",
+                "list",
+                "--catalog",
+                "foo",
+                "--catalog-role",
+                "bar",
+            ]
+        )
+        Parser.parse(["namespaces", "list", "--catalog", "my_catalog"])
+        Parser.parse(["namespaces", "create", "my_ns", "--catalog", "my_catalog"])
+        Parser.parse(["namespaces", "delete", "my_ns", "--catalog", "my_catalog"])
+        Parser.parse(["namespaces", "get", "my_ns", "--catalog", "my_catalog"])
+        Parser.parse(["namespaces", "summarize", "my_ns", "--catalog", "my_catalog"])
+        Parser.parse(["profiles", "create", "dev"])
+        Parser.parse(["profiles", "delete", "dev"])
+        Parser.parse(["profiles", "update", "dev"])
+        Parser.parse(["profiles", "get", "dev"])
+        Parser.parse(["profiles", "list"])
+        Parser.parse(["setup", "apply", "config.yaml"])
+        Parser.parse(["setup", "export"])
+        Parser.parse(
+            ["policies", "list", "--catalog", "c", "--namespace", "ns"]
+        )
+        Parser.parse(
+            ["policies", "get", "my_policy", "--catalog", "c", "--namespace", "ns"]
         )
 
     # These commands are valid for parsing, but may cause errors within the command itself
@@ -330,6 +447,194 @@ class TestCliParsing(unittest.TestCase):
                 "my_catalog",
                 "--namespace",
                 "ns1.ns2",
+            ]
+        )
+        Parser.parse(
+            [
+                "namespaces",
+                "create",
+                "inner_ns",
+                "--catalog",
+                "my_catalog",
+                "--location",
+                "s3://bucket/path",
+                "--property",
+                "key=value",
+            ]
+        )
+        Parser.parse(
+            [
+                "namespaces",
+                "list",
+                "--catalog",
+                "my_catalog",
+                "--parent",
+                "parent_ns",
+            ]
+        )
+        Parser.parse(["setup", "apply", "config.yaml", "--dry-run"])
+        Parser.parse(
+            [
+                "policies",
+                "create",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--policy-file",
+                "policy.json",
+                "--policy-type",
+                "system.data-compaction",
+                "--policy-description",
+                "my description",
+            ]
+        )
+        Parser.parse(
+            [
+                "policies",
+                "delete",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--detach-all",
+            ]
+        )
+        Parser.parse(
+            [
+                "policies",
+                "list",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--applicable",
+                "--target-name",
+                "my_table",
+                "--policy-type",
+                "system.data-compaction",
+            ]
+        )
+        Parser.parse(
+            [
+                "policies",
+                "update",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--policy-file",
+                "policy.json",
+                "--policy-description",
+                "updated desc",
+            ]
+        )
+        Parser.parse(
+            [
+                "policies",
+                "attach",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--attachment-type",
+                "table-like",
+                "--attachment-path",
+                "ns.t",
+                "--parameters",
+                "key=value",
+            ]
+        )
+        Parser.parse(
+            [
+                "policies",
+                "detach",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns",
+                "--attachment-type",
+                "catalog",
+            ]
+        )
+        Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--storage-type",
+                "azure",
+                "--default-base-location",
+                "abfss://container@account.dfs.core.windows.net",
+                "--tenant-id",
+                "tid",
+            ]
+        )
+        Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://bucket/path",
+                "--role-arn",
+                "ra",
+                "--endpoint",
+                "http://s3.local:9000",
+                "--sts-endpoint",
+                "http://sts.local:9000",
+                "--no-sts",
+                "--no-kms",
+                "--path-style-access",
+                "--current-kms-key",
+                "arn:aws:kms:key",
+                "--allowed-kms-key",
+                "k1",
+                "--allowed-kms-key",
+                "k2",
+            ]
+        )
+        Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--storage-type",
+                "file",
+                "--default-base-location",
+                "/tmp/warehouse",
+            ]
+        )
+        Parser.parse(
+            [
+                "catalogs",
+                "create",
+                "my-catalog",
+                "--type",
+                "external",
+                "--storage-type",
+                "s3",
+                "--default-base-location",
+                "s3://b/p",
+                "--role-arn",
+                "ra",
+                "--catalog-connection-type",
+                "iceberg-rest",
+                "--catalog-uri",
+                "u",
+                "--catalog-authentication-type",
+                "implicit",
+                "--catalog-service-identity-type",
+                "aws_iam",
+                "--catalog-service-identity-iam-arn",
+                "arn:aws:iam::12345:role/polaris",
             ]
         )
 
@@ -473,6 +778,96 @@ class TestCliParsing(unittest.TestCase):
                 ]
             ),
             "--hive-warehouse",
+        )
+        check_exception(
+            lambda: mock_execute(["namespaces", "list"]),
+            "--catalog",
+        )
+        check_exception(
+            lambda: mock_execute(["namespaces", "create", "my_ns"]),
+            "--catalog",
+        )
+        check_exception(
+            lambda: mock_execute(["namespaces", "delete", "my_ns"]),
+            "--catalog",
+        )
+        check_exception(
+            lambda: mock_execute(["policies", "create", "my_policy"]),
+            "--catalog",
+        )
+        check_exception(
+            lambda: mock_execute(
+                [
+                    "policies",
+                    "create",
+                    "my_policy",
+                    "--catalog",
+                    "c",
+                    "--namespace",
+                    "ns",
+                ]
+            ),
+            "--policy-file",
+        )
+        check_exception(
+            lambda: mock_execute(
+                ["policies", "attach", "my_policy", "--catalog", "c"]
+            ),
+            "--attachment-type",
+        )
+        check_exception(
+            lambda: mock_execute(["policies", "list", "--catalog", "c"]),
+            "--namespace",
+        )
+        check_exception(
+            lambda: mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "azure",
+                    "--default-base-location",
+                    "x",
+                ]
+            ),
+            "azure",
+        )
+        check_exception(
+            lambda: mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "s3",
+                    "--default-base-location",
+                    "x",
+                    "--role-arn",
+                    "ra",
+                    "--tenant-id",
+                    "tid",
+                ]
+            ),
+            "s3",
+        )
+        check_exception(
+            lambda: mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "x",
+                    "--catalog-service-identity-type",
+                    "aws_iam",
+                ]
+            ),
+            "--catalog-service-identity-iam-arn",
         )
 
         # Test various correct commands:
@@ -1451,6 +1846,199 @@ class TestCliParsing(unittest.TestCase):
                 (1, "client_secret"): "e469c048cf866dfae469c048cf866df1",
             },
         )
+        check_arguments(
+            mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "azure",
+                    "--default-base-location",
+                    "abfss://container@account.dfs.core.windows.net",
+                    "--tenant-id",
+                    "tid",
+                    "--multi-tenant-app-name",
+                    "my-app",
+                    "--consent-url",
+                    "https://consent.url",
+                ]
+            ),
+            "create_catalog",
+            {
+                (0, "catalog.name"): "my-catalog",
+                (0, "catalog.storage_config_info.storage_type"): "AZURE",
+                (0, "catalog.storage_config_info.tenant_id"): "tid",
+                (0, "catalog.storage_config_info.multi_tenant_app_name"): "my-app",
+                (0, "catalog.storage_config_info.consent_url"): "https://consent.url",
+                (
+                    0,
+                    "catalog.properties.default_base_location",
+                ): "abfss://container@account.dfs.core.windows.net",
+            },
+        )
+        check_arguments(
+            mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "azure",
+                    "--default-base-location",
+                    "abfss://c@a.dfs.core.windows.net",
+                    "--tenant-id",
+                    "tid",
+                    "--hierarchical",
+                ]
+            ),
+            "create_catalog",
+            {
+                (0, "catalog.name"): "my-catalog",
+                (0, "catalog.storage_config_info.storage_type"): "AZURE",
+                (0, "catalog.storage_config_info.tenant_id"): "tid",
+                (0, "catalog.storage_config_info.hierarchical"): True,
+            },
+        )
+        check_arguments(
+            mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "s3",
+                    "--default-base-location",
+                    "s3://bucket/path",
+                    "--role-arn",
+                    "ra",
+                    "--endpoint",
+                    "http://s3.local:9000",
+                    "--endpoint-internal",
+                    "http://s3.internal:9000",
+                    "--sts-endpoint",
+                    "http://sts.local:9000",
+                    "--no-sts",
+                    "--no-kms",
+                    "--path-style-access",
+                    "--current-kms-key",
+                    "arn:aws:kms:key",
+                    "--allowed-kms-key",
+                    "k1",
+                    "--allowed-kms-key",
+                    "k2",
+                ]
+            ),
+            "create_catalog",
+            {
+                (0, "catalog.name"): "my-catalog",
+                (0, "catalog.storage_config_info.storage_type"): "S3",
+                (0, "catalog.storage_config_info.role_arn"): "ra",
+                (0, "catalog.storage_config_info.endpoint"): "http://s3.local:9000",
+                (
+                    0,
+                    "catalog.storage_config_info.endpoint_internal",
+                ): "http://s3.internal:9000",
+                (
+                    0,
+                    "catalog.storage_config_info.sts_endpoint",
+                ): "http://sts.local:9000",
+                (0, "catalog.storage_config_info.sts_unavailable"): True,
+                (0, "catalog.storage_config_info.kms_unavailable"): True,
+                (0, "catalog.storage_config_info.path_style_access"): True,
+                (0, "catalog.storage_config_info.current_kms_key"): "arn:aws:kms:key",
+                (0, "catalog.storage_config_info.allowed_kms_keys"): ["k1", "k2"],
+                (0, "catalog.properties.default_base_location"): "s3://bucket/path",
+            },
+        )
+        check_arguments(
+            mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--storage-type",
+                    "file",
+                    "--default-base-location",
+                    "/tmp/warehouse",
+                ]
+            ),
+            "create_catalog",
+            {
+                (0, "catalog.name"): "my-catalog",
+                (0, "catalog.storage_config_info.storage_type"): "FILE",
+                (0, "catalog.properties.default_base_location"): "/tmp/warehouse",
+            },
+        )
+        check_arguments(
+            mock_execute(
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--storage-type",
+                    "s3",
+                    "--default-base-location",
+                    "s3://b/p",
+                    "--role-arn",
+                    "ra",
+                    "--catalog-connection-type",
+                    "iceberg-rest",
+                    "--iceberg-remote-catalog-name",
+                    "r",
+                    "--catalog-uri",
+                    "u",
+                    "--catalog-authentication-type",
+                    "implicit",
+                    "--catalog-service-identity-type",
+                    "aws_iam",
+                    "--catalog-service-identity-iam-arn",
+                    "arn:aws:iam::12345:role/polaris",
+                ]
+            ),
+            "create_catalog",
+            {
+                (0, "catalog.name"): "my-catalog",
+                (0, "catalog.type"): "EXTERNAL",
+                (
+                    0,
+                    "catalog.connection_config_info.service_identity.identity_type",
+                ): "AWS_IAM",
+                (
+                    0,
+                    "catalog.connection_config_info.service_identity.iam_arn",
+                ): "arn:aws:iam::12345:role/polaris",
+            },
+        )
+        check_arguments(
+            mock_execute(
+                [
+                    "privileges",
+                    "view",
+                    "revoke",
+                    "--namespace",
+                    "a.b",
+                    "--catalog",
+                    "foo",
+                    "--catalog-role",
+                    "bar",
+                    "--view",
+                    "v",
+                    "VIEW_FULL_METADATA",
+                ]
+            ),
+            "revoke_grant_from_catalog_role",
+            {
+                (0, None): "foo",
+                (1, None): "bar",
+                (2, None): False,
+                (3, "grant.privilege.value"): "VIEW_FULL_METADATA",
+                (3, "grant.namespace"): ["a", "b"],
+                (3, "grant.view_name"): "v",
+            },
+        )
 
     def test_policies_attach_parameters_parsed_to_dict(self) -> None:
         options = Parser.parse(
@@ -1470,6 +2058,134 @@ class TestCliParsing(unittest.TestCase):
         command = cast(PoliciesCommand, command)
         self.assertIsInstance(command.parameters, dict)
         self.assertEqual({"key": "value"}, command.parameters)
+
+    def test_policies_detach_parameters_parsed_to_dict(self) -> None:
+        options = Parser.parse(
+            [
+                "policies",
+                "detach",
+                "policy-name",
+                "--catalog",
+                "cat",
+                "--attachment-type",
+                "table-like",
+                "--attachment-path",
+                "ns.t",
+                "--parameters",
+                "key=value",
+            ]
+        )
+        command = Command.from_options(options)
+        command = cast(PoliciesCommand, command)
+        self.assertIsInstance(command.parameters, dict)
+        self.assertEqual({"key": "value"}, command.parameters)
+
+    def test_policies_command_from_options(self) -> None:
+        options = Parser.parse(
+            [
+                "policies",
+                "create",
+                "my_policy",
+                "--catalog",
+                "c",
+                "--namespace",
+                "ns1.ns2",
+                "--policy-file",
+                "policy.json",
+                "--policy-type",
+                "system.data-compaction",
+                "--policy-description",
+                "test description",
+            ]
+        )
+        command = Command.from_options(options)
+        command = cast(PoliciesCommand, command)
+        self.assertEqual("create", command.policies_subcommand)
+        self.assertEqual("c", command.catalog_name)
+        self.assertEqual("ns1.ns2", command.namespace)
+        self.assertEqual("my_policy", command.policy_name)
+        self.assertEqual("policy.json", command.policy_file)
+        self.assertEqual("system.data-compaction", command.policy_type)
+        self.assertEqual("test description", command.policy_description)
+
+    def test_namespaces_command_from_options(self) -> None:
+        options = Parser.parse(
+            [
+                "namespaces",
+                "create",
+                "inner_ns",
+                "--catalog",
+                "my_catalog",
+                "--location",
+                "s3://bucket/path",
+                "--property",
+                "key=value",
+            ]
+        )
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.namespaces import NamespacesCommand
+
+        command = cast(NamespacesCommand, command)
+        self.assertEqual("create", command.namespaces_subcommand)
+        self.assertEqual("my_catalog", command.catalog)
+        self.assertEqual(["inner_ns"], command.namespace)
+        self.assertEqual("s3://bucket/path", command.location)
+        self.assertEqual({"key": "value"}, command.properties)
+
+    def test_namespaces_list_with_parent(self) -> None:
+        options = Parser.parse(
+            [
+                "namespaces",
+                "list",
+                "--catalog",
+                "my_catalog",
+                "--parent",
+                "parent.ns",
+            ]
+        )
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.namespaces import NamespacesCommand
+
+        command = cast(NamespacesCommand, command)
+        self.assertEqual("list", command.namespaces_subcommand)
+        self.assertEqual("my_catalog", command.catalog)
+        self.assertEqual(["parent", "ns"], command.parent)
+
+    def test_setup_command_from_options(self) -> None:
+        options = Parser.parse(["setup", "apply", "config.yaml", "--dry-run"])
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.setup import SetupCommand
+
+        command = cast(SetupCommand, command)
+        self.assertEqual("apply", command.setup_subcommand)
+        self.assertEqual("config.yaml", command.setup_config)
+        self.assertTrue(command.dry_run)
+
+    def test_setup_export_from_options(self) -> None:
+        options = Parser.parse(["setup", "export"])
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.setup import SetupCommand
+
+        command = cast(SetupCommand, command)
+        self.assertEqual("export", command.setup_subcommand)
+
+    def test_profiles_command_from_options(self) -> None:
+        options = Parser.parse(["profiles", "create", "dev"])
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.profiles import ProfilesCommand
+
+        command = cast(ProfilesCommand, command)
+        self.assertEqual("create", command.profiles_subcommand)
+        self.assertEqual("dev", command.profile_name)
+
+    def test_profiles_list_from_options(self) -> None:
+        options = Parser.parse(["profiles", "list"])
+        command = Command.from_options(options)
+        from apache_polaris.cli.command.profiles import ProfilesCommand
+
+        command = cast(ProfilesCommand, command)
+        self.assertEqual("list", command.profiles_subcommand)
+        self.assertIsNone(command.profile_name)
 
 
 if __name__ == "__main__":
