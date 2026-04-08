@@ -64,8 +64,8 @@ Some example full invocations:
 ```
 polaris principals list
 polaris catalogs delete some_catalog_name
-polaris catalogs update --property foo=bar some_other_catalog
-polaris catalogs update another_catalog --property k=v
+polaris catalogs update --set-property foo=bar some_other_catalog
+polaris catalogs update another_catalog --set-property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
 polaris policies list --catalog some_catalog --namespace some.schema
@@ -314,7 +314,7 @@ options:
 ##### Examples
 
 ```
-polaris catalogs update --property tag=new_value my_catalog
+polaris catalogs update --set-property tag=new_value my_catalog
 
 polaris catalogs update --default-base-location s3://new-bucket/my_data my_catalog
 ```
