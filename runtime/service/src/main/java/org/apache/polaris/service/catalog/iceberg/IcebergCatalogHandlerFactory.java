@@ -20,14 +20,11 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.FederatedCatalogFactory;
-import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -37,6 +34,7 @@ import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.config.ResolvingFederatedCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 
@@ -54,7 +52,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject PolarisAuthorizer authorizer;
   @Inject ReservedProperties reservedProperties;
   @Inject CatalogHandlerUtils catalogHandlerUtils;
-  @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
+  @Inject @Any ResolvingFederatedCatalogFactory federatedCatalogFactory;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
@@ -76,7 +74,7 @@ public class IcebergCatalogHandlerFactory {
         .authorizer(authorizer)
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
-        .federatedCatalogFactories(federatedCatalogFactories)
+        .federatedCatalogFactory(federatedCatalogFactory)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
