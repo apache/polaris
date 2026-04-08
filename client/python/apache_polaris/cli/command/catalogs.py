@@ -31,6 +31,7 @@ from apache_polaris.cli.constants import (
 from apache_polaris.cli.options.option_tree import Argument
 
 from dataclasses import dataclass
+import click
 from pydantic import StrictStr, SecretStr
 from typing import Dict, List, Optional, Union, Tuple, Callable
 
@@ -116,6 +117,9 @@ class CatalogsCommand(Command):
     catalog_external_id: str
     catalog_signing_region: str
     catalog_signing_name: str
+    label: List[str]
+    label_filter: List[str]
+    clear_labels: bool = False
 
     def validate(self) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
@@ -379,10 +383,41 @@ class CatalogsCommand(Command):
             )
         return config
 
+    def _parse_labels(self, label_list: Optional[List[str]]) -> Optional[Dict[str, StrictStr]]:
+        """Parse a list of 'key=value' label strings into a dict."""
+        if not label_list:
+            return None
+        result = {}
+        for entry in label_list:
+            idx = entry.find("=")
+            if idx <= 0:
+                raise click.UsageError(
+                    f"Invalid label format '{entry}': must be 'key=value'"
+                )
+            result[entry[:idx].strip()] = entry[idx + 1 :]
+        return result
+
+    def _resolve_labels_for_update(
+        self,
+    ) -> tuple[Optional[Dict[str, StrictStr]], Optional[bool]]:
+        """Resolve the labels and clearLabels fields for an update request.
+
+        Returns (labels, clear_labels) where:
+          - clear_labels=True → clear all labels (mutually exclusive with labels)
+          - labels is a non-empty dict → replace labels
+          - both None → preserve existing labels (fields omitted from request)
+        """
+        if self.clear_labels and self.label:
+            raise click.UsageError("--clear-labels and --label are mutually exclusive")
+        if self.clear_labels:
+            return None, True
+        return self._parse_labels(self.label), None
+
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
             storage_config = self._build_storage_config_info()
             connection_config = self._build_connection_config_info()
+            labels = self._parse_labels(self.label)
             if self.catalog_type == CatalogType.EXTERNAL.value:
                 request = CreateCatalogRequest(
                     catalog=ExternalCatalog(
@@ -394,6 +429,7 @@ class CatalogsCommand(Command):
                             additional_properties=self.properties,
                         ),
                         connection_config_info=connection_config,
+                        labels=labels,
                     )
                 )
             else:
@@ -407,6 +443,7 @@ class CatalogsCommand(Command):
                             additional_properties=self.properties,
                         ),
                         connection_config_info=connection_config,
+                        labels=labels,
                     )
                 )
             api.create_catalog(request)
@@ -415,7 +452,8 @@ class CatalogsCommand(Command):
         elif self.catalogs_subcommand == Subcommands.GET:
             print(api.get_catalog(self.catalog_name).to_json())
         elif self.catalogs_subcommand == Subcommands.LIST:
-            for catalog in api.list_catalogs().catalogs:
+            label_filter = self.label_filter or []
+            for catalog in api.list_catalogs(label_filter=label_filter).catalogs:
                 print(catalog.to_json())
         elif self.catalogs_subcommand == Subcommands.UPDATE:
             catalog = api.get_catalog(self.catalog_name)
@@ -479,15 +517,21 @@ class CatalogsCommand(Command):
                         )
                     updated_storage_info.region = self.region
 
+                labels, clear_labels = self._resolve_labels_for_update()
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,
                     properties=catalog.properties.to_dict(),
                     storage_config_info=updated_storage_info,
+                    labels=labels,
+                    clear_labels=clear_labels,
                 )
             else:
+                labels, clear_labels = self._resolve_labels_for_update()
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,
                     properties=catalog.properties.to_dict(),
+                    labels=labels,
+                    clear_labels=clear_labels,
                 )
 
             api.update_catalog(self.catalog_name, request)
@@ -512,6 +556,10 @@ class CatalogsCommand(Command):
         print(f"  {'Created:':<30} {format_timestamp(catalog.create_timestamp)}")
         print(f"  {'Modified:':<30} {format_timestamp(catalog.last_update_timestamp)}")
         print(f"  {'Version:':<30} {catalog.entity_version}")
+        if catalog.labels:
+            print(f"  {'Labels:':<30} {', '.join(f'{k}={v}' for k, v in sorted(catalog.labels.items()))}")
+        else:
+            print(f"  {'Labels:':<30} (none)")
 
         # Inventory
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

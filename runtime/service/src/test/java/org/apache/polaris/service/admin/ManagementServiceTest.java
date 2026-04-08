@@ -212,7 +212,9 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "file:///tmp/path/to/data/"),
-            fileStorage);
+            fileStorage,
+            null,
+            null);
 
     // failure to update
     assertThatThrownBy(
@@ -234,7 +236,9 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
-                .build());
+                .build(),
+            null,
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -577,6 +581,44 @@ public class ManagementServiceTest {
   }
 
   @Test
+  public void testCreateCatalogWithLabels() {
+    AwsStorageConfigInfo awsConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/label-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://labels-bucket/"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("labels-catalog")
+            .setProperties(new CatalogProperties("s3://labels-bucket/data"))
+            .setStorageConfigInfo(awsConfig)
+            .setLabels(Map.of("env", "prod", "team", "platform"))
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog("labels-catalog", services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog fetched = (Catalog) response.getEntity();
+      assertThat(fetched.getLabels())
+          .containsEntry("env", "prod")
+          .containsEntry("team", "platform");
+    }
+  }
+
+  @Test
   public void testUpdateCatalogChangeExternalIdBlockedByDefault() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -700,6 +742,267 @@ public class ManagementServiceTest {
                 flagEnabledServices.securityContext())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
+  }
+
+  @Test
+  public void testUpdateCatalogLabelsPreservedWhenOmitted() {
+    AwsStorageConfigInfo awsConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/label-update-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://label-update-bucket/"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("label-update-catalog")
+            .setProperties(new CatalogProperties("s3://label-update-bucket/data"))
+            .setStorageConfigInfo(awsConfig)
+            .setLabels(Map.of("env", "staging"))
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetched;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(
+                "label-update-catalog", services.realmContext(), services.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+
+    // Update with labels omitted (null) — existing labels must be preserved
+    UpdateCatalogRequest updateNoLabels =
+        new UpdateCatalogRequest(fetched.getEntityVersion(), null, null, null, null);
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                "label-update-catalog",
+                updateNoLabels,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = (Catalog) response.getEntity();
+      assertThat(updated.getLabels()).containsEntry("env", "staging");
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogLabelsReplaced() {
+    AwsStorageConfigInfo awsConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/label-replace-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://label-replace-bucket/"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("label-replace-catalog")
+            .setProperties(new CatalogProperties("s3://label-replace-bucket/data"))
+            .setStorageConfigInfo(awsConfig)
+            .setLabels(Map.of("env", "dev", "old-key", "old-val"))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetched;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(
+                "label-replace-catalog", services.realmContext(), services.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+
+    // Update with explicit new labels — old labels are fully replaced
+    UpdateCatalogRequest updateWithLabels =
+        new UpdateCatalogRequest(
+            fetched.getEntityVersion(), null, null, Map.of("env", "prod"), null);
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                "label-replace-catalog",
+                updateWithLabels,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = (Catalog) response.getEntity();
+      assertThat(updated.getLabels()).containsEntry("env", "prod").doesNotContainKey("old-key");
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogLabelsClearedWithClearLabelsFlag() {
+    AwsStorageConfigInfo awsConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/label-clear-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://label-clear-bucket/"))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("label-clear-catalog")
+            .setProperties(new CatalogProperties("s3://label-clear-bucket/data"))
+            .setStorageConfigInfo(awsConfig)
+            .setLabels(Map.of("env", "prod", "team", "platform"))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetched;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(
+                "label-clear-catalog", services.realmContext(), services.securityContext())) {
+      fetched = (Catalog) response.getEntity();
+    }
+
+    // Clear labels with clearLabels=true
+    UpdateCatalogRequest clearRequest =
+        new UpdateCatalogRequest(fetched.getEntityVersion(), null, null, null, true);
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                "label-clear-catalog",
+                clearRequest,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = (Catalog) response.getEntity();
+      assertThat(updated.getLabels()).isEmpty();
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogClearLabelsAndLabelsMutuallyExclusive() {
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    AwsStorageConfigInfo awsConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/mutex-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://mutex-bucket/"))
+            .build();
+    polarisAdminService.createCatalog(
+        new CreateCatalogRequest(
+            PolarisCatalog.builder()
+                .setType(Catalog.TypeEnum.INTERNAL)
+                .setName("mutex-catalog")
+                .setProperties(new CatalogProperties("s3://mutex-bucket/data"))
+                .setStorageConfigInfo(awsConfig)
+                .setLabels(Map.of("env", "prod"))
+                .build()));
+
+    int version = polarisAdminService.getCatalog("mutex-catalog").getEntityVersion();
+    UpdateCatalogRequest conflictRequest =
+        new UpdateCatalogRequest(version, null, null, Map.of("env", "staging"), true);
+
+    assertThatThrownBy(() -> polarisAdminService.updateCatalog("mutex-catalog", conflictRequest))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("mutually exclusive");
+  }
+
+  @Test
+  public void testListCatalogsWithLabelFilter() {
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    AwsStorageConfigInfo prodConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/filter-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://prod-filter-bucket/"))
+            .build();
+
+    AwsStorageConfigInfo devConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/filter-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://dev-filter-bucket/"))
+            .build();
+
+    // Create catalog with prod label
+    Catalog prodCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("prod-catalog")
+            .setProperties(new CatalogProperties("s3://prod-filter-bucket/data"))
+            .setStorageConfigInfo(prodConfig)
+            .setLabels(Map.of("env", "prod"))
+            .build();
+    try (Response r =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(prodCatalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(r).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Create catalog with dev label
+    Catalog devCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("dev-catalog")
+            .setProperties(new CatalogProperties("s3://dev-filter-bucket/data"))
+            .setStorageConfigInfo(devConfig)
+            .setLabels(Map.of("env", "dev"))
+            .build();
+    try (Response r =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(devCatalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(r).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Filter by env=prod — should only return prod-catalog
+    List<Catalog> prodOnly = polarisAdminService.listCatalogs(Map.of("env", "prod"));
+    assertThat(prodOnly).extracting(Catalog::getName).containsExactly("prod-catalog");
+
+    // No filter — should return both
+    List<Catalog> all = polarisAdminService.listCatalogs(Map.of());
+    assertThat(all)
+        .extracting(Catalog::getName)
+        .containsExactlyInAnyOrder("prod-catalog", "dev-catalog");
   }
 
   @Test

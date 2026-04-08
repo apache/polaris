@@ -220,7 +220,9 @@ public class ManagementApi extends PolarisRestApi {
                     new UpdateCatalogRequest(
                         catalog.getEntityVersion(),
                         catalogProps,
-                        catalog.getStorageConfigInfo())))) {
+                        catalog.getStorageConfigInfo(),
+                        null,
+                        null)))) {
       assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
     }
   }

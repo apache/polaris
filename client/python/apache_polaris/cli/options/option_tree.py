@@ -290,6 +290,12 @@ class OptionTree:
                                 Hints.PROPERTY,
                                 allow_repeats=True,
                             ),
+                            Argument(
+                                Arguments.LABEL,
+                                str,
+                                Hints.LABEL,
+                                allow_repeats=True,
+                            ),
                         ]
                         + OptionTree._FEDERATION_ARGS,
                         input_name=Arguments.CATALOG,
@@ -303,7 +309,13 @@ class OptionTree:
                                 Arguments.PRINCIPAL_ROLE,
                                 str,
                                 Hints.PrincipalRoles.PRINCIPAL_ROLE,
-                            )
+                            ),
+                            Argument(
+                                Arguments.LABEL_FILTER,
+                                str,
+                                Hints.LABEL_FILTER,
+                                allow_repeats=True,
+                            ),
                         ],
                     ),
                     Option(
@@ -334,6 +346,17 @@ class OptionTree:
                                 str,
                                 Hints.REMOVE_PROPERTY,
                                 allow_repeats=True,
+                            ),
+                            Argument(
+                                Arguments.LABEL,
+                                str,
+                                Hints.LABEL,
+                                allow_repeats=True,
+                            ),
+                            Argument(
+                                Arguments.CLEAR_LABELS,
+                                bool,
+                                Hints.CLEAR_LABELS,
                             ),
                         ],
                         input_name=Arguments.CATALOG,

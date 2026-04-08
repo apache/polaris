@@ -172,6 +172,7 @@ options:
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+      --label  A key/value label such as: env=prod. Multiple can be provided by specifying this option more than once
       --catalog-connection-type  The type of external catalog in [ICEBERG-REST, HADOOP, HIVE].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
@@ -265,6 +266,7 @@ options:
   list
     Named arguments:
       --principal-role  The name of a principal role
+      --label-filter  A key/value label filter such as: env=prod. Only catalogs matching all specified filters are returned. Multiple can be provided by specifying this option more than once
 ```
 
 ##### Examples
@@ -307,6 +309,8 @@ options:
       --region  (Only for S3) The region to use when connecting to S3
       --set-property  A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
       --remove-property  A key to remove from a properties map. If the key already does not exist then no action is takn for the specified key. If properties are also being set in the same update command then the list of removals is applied last. Multiple can be provided by specifying this option more than once
+      --label  Replace all existing labels with the provided set. A key/value label such as: env=prod. Multiple can be provided by specifying this option more than once
+      --clear-labels  Remove all labels from the catalog. Mutually exclusive with --label
     Positional arguments:
       catalog
 ```

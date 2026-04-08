@@ -25,6 +25,7 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -133,13 +134,14 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   }
 
   @Override
-  public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
+  public Response listCatalogs(
+      List<String> labelFilter, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_CATALOGS,
             eventMetadataFactory.create(),
             new EventAttributeMap()));
-    Response resp = delegate.listCatalogs(realmContext, securityContext);
+    Response resp = delegate.listCatalogs(labelFilter, realmContext, securityContext);
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_CATALOGS,

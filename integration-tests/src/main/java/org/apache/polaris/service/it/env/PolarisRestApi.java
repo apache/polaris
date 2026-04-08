@@ -22,6 +22,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,5 +51,11 @@ public class PolarisRestApi extends RestApi {
   public Invocation.Builder request(
       String path, Map<String, String> templateValues, Map<String, String> queryParams) {
     return request(path, templateValues, queryParams, defaultHeaders());
+  }
+
+  @Override
+  public Invocation.Builder requestMultiParam(
+      String path, Map<String, String> templateValues, Map<String, List<String>> multiQueryParams) {
+    return requestMultiParam(path, templateValues, multiQueryParams, defaultHeaders());
   }
 }

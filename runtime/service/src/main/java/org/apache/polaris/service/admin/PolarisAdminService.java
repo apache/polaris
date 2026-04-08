@@ -30,6 +30,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -705,6 +706,11 @@ public class PolarisAdminService {
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
+    Map<String, String> labels = entity.getLabels();
+    if (!labels.isEmpty()) {
+      validateLabelsOrThrow(labels);
+    }
+
     if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
       throw new ValidationException(
           "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
@@ -831,6 +837,34 @@ public class PolarisAdminService {
    * Helper to validate business logic of what is allowed to be updated or throw a
    * BadRequestException.
    */
+  private static final int LABEL_MAX_KEY_LENGTH = 128;
+
+  private static final int LABEL_MAX_VALUE_LENGTH = 256;
+  private static final int LABEL_MAX_COUNT = 20;
+
+  private void validateLabelsOrThrow(@Nonnull Map<String, String> labels) {
+    if (labels.size() > LABEL_MAX_COUNT) {
+      throw new BadRequestException(
+          "Too many labels: %d provided, maximum is %d", labels.size(), LABEL_MAX_COUNT);
+    }
+    for (Map.Entry<String, String> entry : labels.entrySet()) {
+      String key = entry.getKey();
+      String value = entry.getValue();
+      if (key == null || key.isBlank()) {
+        throw new BadRequestException("Label key must not be blank");
+      }
+      if (key.length() > LABEL_MAX_KEY_LENGTH) {
+        throw new BadRequestException(
+            "Label key '%s' exceeds maximum length of %d characters", key, LABEL_MAX_KEY_LENGTH);
+      }
+      if (value != null && value.length() > LABEL_MAX_VALUE_LENGTH) {
+        throw new BadRequestException(
+            "Label value for key '%s' exceeds maximum length of %d characters",
+            key, LABEL_MAX_VALUE_LENGTH);
+      }
+    }
+  }
+
   private void validateUpdateCatalogDiffOrThrow(
       CatalogEntity currentEntity, CatalogEntity newEntity) {
     // TODO: Expand the set of validations if there are other fields for other cloud providers
@@ -922,6 +956,17 @@ public class PolarisAdminService {
       updateBuilder.setStorageConfigurationInfo(
           realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
     }
+    Boolean clearLabels = updateRequest.getClearLabels();
+    Map<String, String> labels = updateRequest.getLabels();
+    if (Boolean.TRUE.equals(clearLabels) && labels != null && !labels.isEmpty()) {
+      throw new BadRequestException("clearLabels and labels are mutually exclusive");
+    }
+    if (Boolean.TRUE.equals(clearLabels)) {
+      updateBuilder.setLabels(Collections.emptyMap());
+    } else if (labels != null && !labels.isEmpty()) {
+      validateLabelsOrThrow(labels);
+      updateBuilder.setLabels(labels);
+    }
     CatalogEntity updatedEntity = updateBuilder.build();
 
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
@@ -947,8 +992,22 @@ public class PolarisAdminService {
 
   /** List all catalogs after checking for permission. */
   public List<Catalog> listCatalogs() {
+    return listCatalogs(Map.of());
+  }
+
+  /**
+   * List all catalogs after checking for permission, filtered by the provided label map. Only
+   * catalogs whose labels contain all entries in {@code labelFilter} are returned. An empty filter
+   * matches all catalogs.
+   *
+   * <p>TODO: For large deployments, push label filtering into the persistence layer (e.g., JSON
+   * path predicate or a dedicated labels index) rather than fetching all catalogs and filtering in
+   * memory.
+   */
+  public List<Catalog> listCatalogs(@Nonnull Map<String, String> labelFilter) {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
     return listCatalogsUnsafe()
+        .filter(entity -> entity.matchesLabelFilter(labelFilter))
         .map(catalogEntity -> catalogEntity.asCatalog(getServiceIdentityProvider()))
         .toList();
   }
