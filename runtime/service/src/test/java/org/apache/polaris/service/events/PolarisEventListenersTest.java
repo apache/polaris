@@ -29,11 +29,11 @@ import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -55,8 +55,8 @@ public class PolarisEventListenersTest {
   private abstract static class FilteringEventListener implements PolarisEventListener {
     private final Predicate<PolarisEvent> predicate;
 
-    List<PolarisEvent> expectedEvents = new ArrayList<>();
-    List<PolarisEvent> unexpectedEvents = new ArrayList<>();
+    List<PolarisEvent> expectedEvents = new CopyOnWriteArrayList<>();
+    List<PolarisEvent> unexpectedEvents = new CopyOnWriteArrayList<>();
 
     FilteringEventListener(Predicate<PolarisEvent> predicate) {
       this.predicate = predicate;
@@ -92,7 +92,7 @@ public class PolarisEventListenersTest {
   @Singleton
   @Identifier("consume-all-listener")
   public static class ConsumeAllEventListener implements PolarisEventListener {
-    List<PolarisEvent> consumedEvents = new ArrayList<>();
+    List<PolarisEvent> consumedEvents = new CopyOnWriteArrayList<>();
 
     @Override
     public void onEvent(PolarisEvent event) {
