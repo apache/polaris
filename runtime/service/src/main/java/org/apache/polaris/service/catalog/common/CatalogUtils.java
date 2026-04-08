@@ -20,8 +20,11 @@
 package org.apache.polaris.service.catalog.common;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
+import com.google.common.base.Preconditions;
 import java.net.URLEncoder;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -37,9 +40,32 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
+
+  /**
+   * Parses the access delegation mode header value into an {@link EnumSet} of {@link
+   * AccessDelegationMode}. Currently only {@code vended-credentials} is supported; any other
+   * non-empty value will result in an {@link IllegalArgumentException}.
+   *
+   * <p>This is shared by both Iceberg and Generic Table catalog adapters.
+   *
+   * @param accessDelegationMode the raw header value (comma-separated), may be {@code null}
+   * @return the parsed set of delegation modes, empty if the header was {@code null} or blank
+   * @throws IllegalArgumentException if an unsupported delegation mode is requested
+   */
+  public static EnumSet<AccessDelegationMode> parseAccessDelegationModes(
+      String accessDelegationMode) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
+    Preconditions.checkArgument(
+        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        "Unsupported access delegation mode: %s",
+        accessDelegationMode);
+    return delegationModes;
+  }
 
   /**
    * Find the resolved entity path that may contain storage information
@@ -50,9 +76,25 @@ public class CatalogUtils {
    */
   public static PolarisResolvedPathWrapper findResolvedStorageEntity(
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
+    return findResolvedStorageEntity(
+        resolvedEntityView, tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+  }
+
+  /**
+   * Find the resolved entity path that may contain storage information for a given table-like
+   * subtype.
+   *
+   * @param resolvedEntityView The resolved entity view containing catalog entities.
+   * @param tableIdentifier The table identifier for which to find storage information.
+   * @param subType The entity subtype to resolve (e.g., ICEBERG_TABLE, GENERIC_TABLE).
+   * @return The resolved path wrapper that may contain storage information.
+   */
+  public static PolarisResolvedPathWrapper findResolvedStorageEntity(
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      TableIdentifier tableIdentifier,
+      PolarisEntitySubType subType) {
     PolarisResolvedPathWrapper resolvedTableEntities =
-        resolvedEntityView.getResolvedPath(
-            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofTableLike(tableIdentifier), subType);
     if (resolvedTableEntities != null) {
       return resolvedTableEntities;
     }

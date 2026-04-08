@@ -40,7 +40,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -820,36 +819,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private Set<PolarisStorageActions> authorizeLoadTable(
       TableIdentifier tableIdentifier, EnumSet<AccessDelegationMode> delegationModes) {
-    if (delegationModes.isEmpty()) {
-      authorizeBasicTableLikeOperationOrThrow(
-          PolarisAuthorizableOperation.LOAD_TABLE,
-          PolarisEntitySubType.ICEBERG_TABLE,
-          tableIdentifier);
-      return Set.of();
-    }
-
-    // Here we have a single method that falls through multiple candidate
-    // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
-    // and
-    // failing the authz check if grants aren't found, we find the first most-privileged authz match
-    // and respond according to that.
-    PolarisAuthorizableOperation read =
-        PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
-    PolarisAuthorizableOperation write =
-        PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
-
+    boolean requestCredentialVending = delegationModes.contains(VENDED_CREDENTIALS);
     Set<PolarisStorageActions> actionsRequested =
-        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-    try {
-      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
-      // easily.
-      authorizeBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-      actionsRequested.add(PolarisStorageActions.WRITE);
-    } catch (ForbiddenException e) {
-      authorizeBasicTableLikeOperationOrThrow(
-          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-    }
+        authorizeLoadTableLike(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, requestCredentialVending);
 
     checkAllowExternalCatalogCredentialVending(delegationModes);
 

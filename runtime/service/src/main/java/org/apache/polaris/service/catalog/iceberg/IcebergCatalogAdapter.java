@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
+import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -242,16 +241,6 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
-  }
-
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    EnumSet<AccessDelegationMode> delegationModes =
-        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-    Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
-        "Unsupported access delegation mode: %s",
-        accessDelegationMode);
-    return delegationModes;
   }
 
   @Override

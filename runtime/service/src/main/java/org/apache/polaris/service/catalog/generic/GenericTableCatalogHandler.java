@@ -18,10 +18,16 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -34,11 +40,18 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
+import org.apache.polaris.service.types.StorageAccessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +63,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
   protected abstract PolarisCredentialManager credentialManager();
 
   protected abstract Instance<FederatedCatalogFactory> federatedCatalogFactories();
+
+  protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
   private GenericTableCatalog genericTableCatalog;
 
@@ -110,7 +125,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       String format,
       String baseLocation,
       String doc,
-      Map<String, String> properties) {
+      Map<String, String> properties,
+      EnumSet<AccessDelegationMode> delegationModes) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
@@ -126,7 +142,21 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
 
-    return LoadGenericTableResponse.builder().setTable(createdTable).build();
+    List<StorageAccessConfig> storageAccessConfigs =
+        shouldVendCredentials(delegationModes)
+            ? vendCredentials(
+                identifier,
+                createdEntity,
+                Set.of(
+                    PolarisStorageActions.READ,
+                    PolarisStorageActions.WRITE,
+                    PolarisStorageActions.LIST))
+            : List.of();
+
+    return LoadGenericTableResponse.builder()
+        .setTable(createdTable)
+        .setStorageAccessConfigs(storageAccessConfigs)
+        .build();
   }
 
   public boolean dropGenericTable(TableIdentifier identifier) {
@@ -136,9 +166,14 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     return this.genericTableCatalog.dropGenericTable(identifier);
   }
 
-  public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
+  public LoadGenericTableResponse loadGenericTable(
+      TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
+    ensureResolutionManifestForTable(identifier);
+    boolean credentialVendingRequested = shouldVendCredentials(delegationModes);
+
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTableLike(
+            identifier, PolarisEntitySubType.GENERIC_TABLE, credentialVendingRequested);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
@@ -150,6 +185,78 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(loadedEntity.getPropertiesAsMap())
             .build();
 
-    return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+    List<StorageAccessConfig> storageAccessConfigs =
+        credentialVendingRequested
+            ? vendCredentials(identifier, loadedEntity, actionsRequested)
+            : List.of();
+
+    return LoadGenericTableResponse.builder()
+        .setTable(loadedTable)
+        .setStorageAccessConfigs(storageAccessConfigs)
+        .build();
+  }
+
+  /**
+   * Credentials are vended only when the client explicitly requests {@code vended-credentials} via
+   * the access delegation header AND the server-side feature flag is enabled for the catalog.
+   */
+  private boolean shouldVendCredentials(EnumSet<AccessDelegationMode> delegationModes) {
+    return delegationModes.contains(VENDED_CREDENTIALS)
+        && realmConfig()
+            .getConfig(
+                FeatureConfiguration.ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING,
+                resolutionManifest.getResolvedCatalogEntity());
+  }
+
+  /**
+   * Vends scoped storage credentials for the given generic table. Returns an empty list if the
+   * table has no base location, no resolved storage configuration, or if the underlying storage
+   * integration produces no credentials.
+   */
+  private List<StorageAccessConfig> vendCredentials(
+      TableIdentifier tableIdentifier,
+      GenericTableEntity entity,
+      Set<PolarisStorageActions> actions) {
+    String baseLocation = entity.getBaseLocation();
+    if (baseLocation == null || baseLocation.isEmpty()) {
+      LOGGER.debug(
+          "No base location set for generic table {}, skipping credential vending",
+          tableIdentifier);
+      return List.of();
+    }
+
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(
+            resolutionManifest, tableIdentifier, PolarisEntitySubType.GENERIC_TABLE);
+    if (resolvedStoragePath == null) {
+      LOGGER.debug(
+          "Unable to find storage configuration information for generic table {}", tableIdentifier);
+      return List.of();
+    }
+
+    Set<String> tableLocations = Set.of(baseLocation);
+    org.apache.polaris.core.storage.StorageAccessConfig storageAccessConfig =
+        storageAccessConfigProvider()
+            .getStorageAccessConfig(
+                tableIdentifier, tableLocations, actions, Optional.empty(), resolvedStoragePath);
+
+    Map<String, String> credentials = storageAccessConfig.credentials();
+    if (credentials.isEmpty()) {
+      LOGGER.debug("No credentials vended for generic table {}", tableIdentifier);
+      return List.of();
+    }
+
+    Map<String, String> allConfig = new java.util.HashMap<>(credentials);
+    allConfig.putAll(storageAccessConfig.extraProperties());
+
+    // Remap Iceberg's "client.region" to the generic table API's "s3.client.region"
+    String clientRegionKey = StorageAccessProperty.CLIENT_REGION.getPropertyName();
+    String region = allConfig.remove(clientRegionKey);
+    if (region != null) {
+      allConfig.put("s3.client.region", region);
+    }
+
+    return List.of(
+        StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(allConfig).build());
   }
 }
