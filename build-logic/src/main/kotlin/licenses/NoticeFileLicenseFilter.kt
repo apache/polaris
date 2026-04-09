@@ -28,12 +28,15 @@ import com.github.jk1.license.filter.DependencyFilter
  * artifact's own license.
  */
 class NoticeFileLicenseFilter : DependencyFilter {
+
+  private val noticeFilePattern = Regex("(?<=/|^)(?i)NOTICE(?![a-z])[^/]*$")
+
   override fun filter(data: ProjectData?): ProjectData {
     data!!
     data.allDependencies.forEach { mod ->
       mod.licenseFiles.forEach { licenseFileData ->
         licenseFileData.fileDetails.removeAll { detail ->
-          detail.file != null && detail.file.lowercase().contains("/notice")
+          detail.file != null && noticeFilePattern.containsMatchIn(detail.file)
         }
       }
     }
