@@ -217,9 +217,7 @@ class TestCliParsing(unittest.TestCase):
         self.assertIn("Missing required argument", str(cm_exc.exception))
 
         with self.assertRaises(Exception) as cm_exc:
-            options = Parser.parse(
-                ["namespaces", "create", "my_ns"]
-            )  # missing catalog
+            options = Parser.parse(["namespaces", "create", "my_ns"])  # missing catalog
             Command.from_options(options)
         self.assertIn("Missing required argument", str(cm_exc.exception))
 
@@ -368,9 +366,7 @@ class TestCliParsing(unittest.TestCase):
         Parser.parse(["profiles", "list"])
         Parser.parse(["setup", "apply", "config.yaml"])
         Parser.parse(["setup", "export"])
-        Parser.parse(
-            ["policies", "list", "--catalog", "c", "--namespace", "ns"]
-        )
+        Parser.parse(["policies", "list", "--catalog", "c", "--namespace", "ns"])
         Parser.parse(
             ["policies", "get", "my_policy", "--catalog", "c", "--namespace", "ns"]
         )
@@ -813,9 +809,7 @@ class TestCliParsing(unittest.TestCase):
             "--policy-file",
         )
         check_exception(
-            lambda: mock_execute(
-                ["policies", "attach", "my_policy", "--catalog", "c"]
-            ),
+            lambda: mock_execute(["policies", "attach", "my_policy", "--catalog", "c"]),
             "--attachment-type",
         )
         check_exception(
