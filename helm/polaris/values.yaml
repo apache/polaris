@@ -643,8 +643,7 @@ advancedConfig:
 # [EnvVar API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core)
 # This can be useful to get configuration values from Kubernetes secrets or config maps.
 # @section -- Advanced Configuration
-extraEnv:
-  []
+extraEnv: []
 #  - name: AWS_STORAGE_BUCKET
 #    value: s3://xxxxx/
 #  - name: AWS_ACCESS_KEY_ID
@@ -665,8 +664,7 @@ extraEnv:
 # as environment variables inside the Polaris container.
 # [EnvFrom API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envfromsource-v1-core)
 # @section -- Advanced Configuration
-envFrom:
-  []
+envFrom: []
 #  - secretRef:
 #      name: polaris-env-secret
 #  - configMapRef:
