@@ -2110,29 +2110,11 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Reload4j library.
-
-* Maven group:artifact IDs: ch.qos.reload4j:reload4j
-
-Home page: https://github.com/qos-ch/reload4j
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles High Performance Primitive Collections library.
 
 * Maven group:artifact IDs: com.carrotsearch:hppc
 
 Home page: https://github.com/carrotsearch/hppc
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Metrics Core library.
-
-* Maven group:artifact IDs: io.dropwizard.metrics:metrics-core
-
-Home page: https://github.com/dropwizard/metrics
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
@@ -2220,14 +2202,5 @@ This product bundles GraalVM libraries.
 
 Home page: https://github.com/oracle/graal/
 License: The GNU General Public License (GPL) - https://github.com/oracle/graal/blob/master/LICENSE
-
---------------------------------------------------------------------------------
-
-This product bundles SLF4J Reload4j Provider library.
-
-* Maven group:artifact IDs: org.slf4j:slf4j-reload4j
-
-Home page: https://github.com/qos-ch/slf4j/tree/master/slf4j-reload4j
-License: MIT License - https://mit-license.org/
 
 --------------------------------------------------------------------------------
