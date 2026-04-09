@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,8 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,13 +50,12 @@ public class PolarisEventListenersTest {
           .filter(e -> e.category() == PolarisEventType.Category.CATALOG)
           .collect(Collectors.toSet());
 
-  static final CountDownLatch latch = new CountDownLatch(5 + 3 * CATALOG_EVENTS.size());
-
   private abstract static class FilteringEventListener implements PolarisEventListener {
     private final Predicate<PolarisEvent> predicate;
 
     List<PolarisEvent> expectedEvents = new CopyOnWriteArrayList<>();
     List<PolarisEvent> unexpectedEvents = new CopyOnWriteArrayList<>();
+    AtomicInteger receivedEventCount = new AtomicInteger();
 
     FilteringEventListener(Predicate<PolarisEvent> predicate) {
       this.predicate = predicate;
@@ -69,12 +68,23 @@ public class PolarisEventListenersTest {
       } else {
         unexpectedEvents.add(event);
       }
-      latch.countDown();
+      receivedEventCount.incrementAndGet();
+    }
+  }
+
+  private abstract static class BaseConsumeAllEventListener implements PolarisEventListener {
+    List<PolarisEvent> consumedEvents = new CopyOnWriteArrayList<>();
+    AtomicInteger receivedEventCount = new AtomicInteger();
+
+    @Override
+    public void onEvent(PolarisEvent event) {
+      consumedEvents.add(event);
+      receivedEventCount.incrementAndGet();
     }
   }
 
   @Singleton
-  @Identifier("after-send-event-listener")
+  @Identifier("after-send-listener")
   public static class AfterSendEventListener extends FilteringEventListener {
     AfterSendEventListener() {
       super(event -> event.type() == PolarisEventType.AFTER_SEND_NOTIFICATION);
@@ -82,7 +92,7 @@ public class PolarisEventListenersTest {
   }
 
   @Singleton
-  @Identifier("before-send-event-listener")
+  @Identifier("before-send-listener")
   public static class BeforeSendEventListener extends FilteringEventListener {
     BeforeSendEventListener() {
       super(event -> event.type() == PolarisEventType.BEFORE_SEND_NOTIFICATION);
@@ -91,18 +101,14 @@ public class PolarisEventListenersTest {
 
   @Singleton
   @Identifier("consume-all-listener")
-  public static class ConsumeAllEventListener implements PolarisEventListener {
-    List<PolarisEvent> consumedEvents = new CopyOnWriteArrayList<>();
-
-    @Override
-    public void onEvent(PolarisEvent event) {
-      consumedEvents.add(event);
-      latch.countDown();
-    }
-  }
+  public static class ConsumeAllEventListener extends BaseConsumeAllEventListener {}
 
   @Singleton
-  @Identifier("consume-only-catalog-events-listener")
+  @Identifier("consume-all-listener-2")
+  public static class ConsumeAllEventListener2 extends BaseConsumeAllEventListener {}
+
+  @Singleton
+  @Identifier("consume-only-catalog-listener")
   public static class ConsumeOnlyCatalogEventsListener extends FilteringEventListener {
     ConsumeOnlyCatalogEventsListener() {
       super(event -> event.type().category() == PolarisEventType.Category.CATALOG);
@@ -110,7 +116,7 @@ public class PolarisEventListenersTest {
   }
 
   @Singleton
-  @Identifier("consume-catalog-and-after-notification-events-listener")
+  @Identifier("consume-catalog-and-after-notification-listener")
   public static class ConsumeCatalogAndNotificationEventsListener extends FilteringEventListener {
     ConsumeCatalogAndNotificationEventsListener() {
       super(
@@ -126,21 +132,21 @@ public class PolarisEventListenersTest {
       return ImmutableMap.<String, String>builder()
           .put(
               "polaris.event-listener.types",
-              "after-send-event-listener,before-send-event-listener,consume-all-listener,consume-only-catalog-events-listener,consume-catalog-and-after-notification-events-listener")
+              "after-send-listener,before-send-listener,consume-all-listener,consume-all-listener-2,consume-only-catalog-listener,consume-catalog-and-after-notification-listener")
           .put(
-              "polaris.event-listener.after-send-event-listener.enabled-event-types",
+              "polaris.event-listener.after-send-listener.enabled-event-types",
               "AFTER_SEND_NOTIFICATION")
           .put(
-              "polaris.event-listener.before-send-event-listener.enabled-event-types",
+              "polaris.event-listener.before-send-listener.enabled-event-types",
               "BEFORE_SEND_NOTIFICATION")
           .put(
-              "polaris.event-listener.consume-only-catalog-events-listener.enabled-event-categories",
+              "polaris.event-listener.consume-only-catalog-listener.enabled-event-categories",
               "CATALOG")
           .put(
-              "polaris.event-listener.consume-catalog-and-after-notification-events-listener.enabled-event-categories",
+              "polaris.event-listener.consume-catalog-and-after-notification-listener.enabled-event-categories",
               "CATALOG")
           .put(
-              "polaris.event-listener.consume-catalog-and-after-notification-events-listener.enabled-event-types",
+              "polaris.event-listener.consume-catalog-and-after-notification-listener.enabled-event-types",
               "AFTER_SEND_NOTIFICATION")
           .build();
     }
@@ -149,11 +155,11 @@ public class PolarisEventListenersTest {
   @Inject PolarisEventDispatcher eventDispatcher;
 
   @Inject
-  @Identifier("after-send-event-listener")
+  @Identifier("after-send-listener")
   PolarisEventListener afterSendEventListener;
 
   @Inject
-  @Identifier("before-send-event-listener")
+  @Identifier("before-send-listener")
   PolarisEventListener beforeSendEventListener;
 
   @Inject
@@ -161,23 +167,28 @@ public class PolarisEventListenersTest {
   PolarisEventListener consumeAllEventListener;
 
   @Inject
-  @Identifier("consume-only-catalog-events-listener")
+  @Identifier("consume-all-listener-2")
+  PolarisEventListener consumeAllEventListener2;
+
+  @Inject
+  @Identifier("consume-only-catalog-listener")
   PolarisEventListener consumeOnlyCatalogEventListener;
 
   @Inject
-  @Identifier("consume-catalog-and-after-notification-events-listener")
-  PolarisEventListener consumeCatalogAndNotificationEventsListener;
+  @Identifier("consume-catalog-and-after-notification-listener")
+  PolarisEventListener consumeCatalogAndNotificationEventListener;
 
   @Test
-  public void testEventListenersGetNotified() throws InterruptedException {
+  public void testEventListenersGetNotified() {
     var afterSendEventListener = (AfterSendEventListener) this.afterSendEventListener;
     var beforeSendEventListener = (BeforeSendEventListener) this.beforeSendEventListener;
     var consumeAllEventListener = (ConsumeAllEventListener) this.consumeAllEventListener;
+    var consumeAllEventListener2 = (ConsumeAllEventListener2) this.consumeAllEventListener2;
     var consumeOnlyCatalogEventListener =
         (ConsumeOnlyCatalogEventsListener) this.consumeOnlyCatalogEventListener;
-    var consumeCatalogAndNotificationEventSListener =
+    var consumeCatalogAndNotificationEventListener =
         (ConsumeCatalogAndNotificationEventsListener)
-            this.consumeCatalogAndNotificationEventsListener;
+            this.consumeCatalogAndNotificationEventListener;
 
     eventDispatcher.dispatch(new PolarisEvent(PolarisEventType.AFTER_SEND_NOTIFICATION, null));
     eventDispatcher.dispatch(new PolarisEvent(PolarisEventType.BEFORE_SEND_NOTIFICATION, null));
@@ -185,48 +196,62 @@ public class PolarisEventListenersTest {
       eventDispatcher.dispatch(new PolarisEvent(eventType, null));
     }
 
-    assertTrue(latch.await(5, TimeUnit.SECONDS));
-
     // Only after send notification event
+    await().until(() -> afterSendEventListener.receivedEventCount.get() == 1);
     assertEquals(1, afterSendEventListener.expectedEvents.size());
     assertEquals(
         PolarisEventType.AFTER_SEND_NOTIFICATION,
         afterSendEventListener.expectedEvents.getFirst().type());
 
     // Only before send notification event
+    await().until(() -> beforeSendEventListener.receivedEventCount.get() == 1);
     assertEquals(1, beforeSendEventListener.expectedEvents.size());
     assertEquals(
         PolarisEventType.BEFORE_SEND_NOTIFICATION,
         beforeSendEventListener.expectedEvents.getFirst().type());
 
-    // All events
-    assertEquals(2 + CATALOG_EVENTS.size(), consumeAllEventListener.consumedEvents.size());
-    expectEvents(
-        consumeAllEventListener.consumedEvents,
-        Stream.concat(
-                Stream.of(
-                    PolarisEventType.AFTER_SEND_NOTIFICATION,
-                    PolarisEventType.BEFORE_SEND_NOTIFICATION),
-                CATALOG_EVENTS.stream())
-            .collect(Collectors.toSet()));
+    // All events received by both consumeAllEventListener and consumeAllEventListener2
+    for (var listener :
+        new BaseConsumeAllEventListener[] {consumeAllEventListener, consumeAllEventListener2}) {
+      await().until(() -> listener.receivedEventCount.get() == 2 + CATALOG_EVENTS.size());
+      assertEquals(2 + CATALOG_EVENTS.size(), listener.consumedEvents.size());
+      expectEvents(
+          listener.consumedEvents,
+          Stream.concat(
+                  Stream.of(
+                      PolarisEventType.AFTER_SEND_NOTIFICATION,
+                      PolarisEventType.BEFORE_SEND_NOTIFICATION),
+                  CATALOG_EVENTS.stream())
+              .collect(Collectors.toSet()));
+    }
 
     // Only catalog events
+    await()
+        .until(
+            () ->
+                consumeOnlyCatalogEventListener.receivedEventCount.get() == CATALOG_EVENTS.size());
     assertEquals(CATALOG_EVENTS.size(), consumeOnlyCatalogEventListener.expectedEvents.size());
     expectEvents(consumeOnlyCatalogEventListener.expectedEvents, CATALOG_EVENTS);
 
     // Catalog and after send notification events
+    await()
+        .until(
+            () ->
+                consumeCatalogAndNotificationEventListener.receivedEventCount.get()
+                    == CATALOG_EVENTS.size() + 1);
     assertEquals(
         CATALOG_EVENTS.size() + 1,
-        consumeCatalogAndNotificationEventSListener.expectedEvents.size());
+        consumeCatalogAndNotificationEventListener.expectedEvents.size());
     expectEvents(
-        consumeCatalogAndNotificationEventSListener.expectedEvents,
+        consumeCatalogAndNotificationEventListener.expectedEvents,
         Stream.concat(Stream.of(PolarisEventType.AFTER_SEND_NOTIFICATION), CATALOG_EVENTS.stream())
             .collect(Collectors.toSet()));
 
+    // There are no unexpected events
     assertTrue(afterSendEventListener.unexpectedEvents.isEmpty());
     assertTrue(beforeSendEventListener.unexpectedEvents.isEmpty());
     assertTrue(consumeOnlyCatalogEventListener.unexpectedEvents.isEmpty());
-    assertTrue(consumeCatalogAndNotificationEventSListener.unexpectedEvents.isEmpty());
+    assertTrue(consumeCatalogAndNotificationEventListener.unexpectedEvents.isEmpty());
   }
 
   private void expectEvents(List<PolarisEvent> events, Set<PolarisEventType> expectedTypes) {
