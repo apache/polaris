@@ -27,6 +27,9 @@ dependencies {
 
   implementation(libs.ranger.authz.embedded) {
     exclude("org.apache.ranger", "ranger-audit-dest-hdfs")
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("io.dropwizard.metrics", "metrics-core")
   }
 
   implementation(libs.commons.lang3)
