@@ -59,6 +59,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -228,6 +229,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /** Get the base URI for the external catalog. */
   protected URI externalCatalogBaseLocation() {
     return externalCatalogBaseLocation;
+  }
+
+  protected boolean testNamespaceTableNameCollision() {
+    return false;
   }
 
   @BeforeAll
@@ -642,6 +647,23 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .isInstanceOf(BaseTable.class)
         .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
         .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
+  }
+
+  @Test
+  public void testCreateTableNameThatCollidesWithNamespace() {
+    Assumptions.assumeThat(testNamespaceTableNameCollision()).isTrue();
+
+    Namespace parentNamespace = Namespace.of("ns1");
+    restCatalog.createNamespace(parentNamespace);
+    restCatalog.createNamespace(Namespace.of("ns1", "clash"));
+
+    assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildTable(TableIdentifier.of(parentNamespace, "clash"), SCHEMA)
+                    .create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
   }
 
   @Test

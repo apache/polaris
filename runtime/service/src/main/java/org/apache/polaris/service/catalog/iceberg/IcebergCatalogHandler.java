@@ -612,8 +612,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
   }
@@ -754,7 +754,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
-
     Set<PolarisStorageActions> actionsRequested = authorizeLoadTable(tableIdentifier, true);
 
     // Optimized credential vending is only supported for native Polaris catalogs.
@@ -1245,8 +1244,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_VIEW;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {

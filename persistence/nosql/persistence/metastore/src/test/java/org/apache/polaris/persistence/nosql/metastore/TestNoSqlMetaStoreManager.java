@@ -44,6 +44,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.ids.api.MonotonicClock;
@@ -259,6 +260,43 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     var path = (List<PolarisEntityCore>) (List) catalogPath;
     return metaStore.createEntityIfNotExists(callContext, path, newEntity);
+  }
+
+  @Test
+  public void testNamespaceTableClash() {
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "collisionCatalog");
+    metaStore.createCatalog(callContext, catalog, List.of());
+
+    // Create a namespace
+    var nsResult =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "clashName",
+            Map.of());
+    assertThat(nsResult.isSuccess()).isTrue();
+
+    // Try to create a table with the same name
+    // This is expected to fail with the fix, but currently crashes NoSQL
+    var tableResult =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "clashName",
+            Map.of());
+
+    // In NoSQL, this should return ENTITY_ALREADY_EXISTS instead of crashing
+    assertThat(tableResult.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
   }
 
   @Override
