@@ -234,8 +234,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /**
    * Whether the namespace/table name collision regression is expected to fail for this backend.
    *
-   * <p>The clash reproduces the NoSQL metastore bug; file-backed catalogs already reject the
-   * create successfully and would fail this regression.
+   * <p>The clash reproduces the NoSQL metastore bug; file-backed catalogs already reject the create
+   * successfully and would fail this regression.
    */
   protected boolean testNamespaceTableNameCollision() {
     return false;
