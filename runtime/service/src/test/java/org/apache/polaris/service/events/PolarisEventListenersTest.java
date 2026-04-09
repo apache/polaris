@@ -30,6 +30,7 @@ import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,7 +45,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PolarisEventListenersTest.PolarisEventListenersTestProfile.class)
 public class PolarisEventListenersTest {
-  static final Set<PolarisEventType> CATALOG_EVENTS =
+  static final Set<PolarisEventType> CATALOG_EVENT_TYPES =
       PolarisEventType.typesOfCategory(PolarisEventType.Category.CATALOG);
 
   private abstract static class FilteringEventListener implements PolarisEventListener {
@@ -189,7 +190,7 @@ public class PolarisEventListenersTest {
 
     eventDispatcher.dispatch(new PolarisEvent(PolarisEventType.AFTER_SEND_NOTIFICATION, null));
     eventDispatcher.dispatch(new PolarisEvent(PolarisEventType.BEFORE_SEND_NOTIFICATION, null));
-    for (var eventType : CATALOG_EVENTS) {
+    for (var eventType : CATALOG_EVENT_TYPES) {
       eventDispatcher.dispatch(new PolarisEvent(eventType, null));
     }
 
@@ -207,41 +208,40 @@ public class PolarisEventListenersTest {
         PolarisEventType.BEFORE_SEND_NOTIFICATION,
         beforeSendEventListener.expectedEvents.getFirst().type());
 
+    Set<PolarisEventType> allEventsTypes = new HashSet<>(CATALOG_EVENT_TYPES);
+    allEventsTypes.add(PolarisEventType.AFTER_SEND_NOTIFICATION);
+    allEventsTypes.add(PolarisEventType.BEFORE_SEND_NOTIFICATION);
+
     // All events received by both consumeAllEventListener and consumeAllEventListener2
     for (var listener :
         new BaseConsumeAllEventListener[] {consumeAllEventListener, consumeAllEventListener2}) {
-      await().until(() -> listener.receivedEventCount.get() == 2 + CATALOG_EVENTS.size());
-      assertEquals(2 + CATALOG_EVENTS.size(), listener.consumedEvents.size());
-      expectEvents(
-          listener.consumedEvents,
-          Stream.concat(
-                  Stream.of(
-                      PolarisEventType.AFTER_SEND_NOTIFICATION,
-                      PolarisEventType.BEFORE_SEND_NOTIFICATION),
-                  CATALOG_EVENTS.stream())
-              .collect(Collectors.toSet()));
+      await().until(() -> listener.receivedEventCount.get() == 2 + CATALOG_EVENT_TYPES.size());
+      assertEquals(2 + CATALOG_EVENT_TYPES.size(), listener.consumedEvents.size());
+      expectEventTypes(listener.consumedEvents, allEventsTypes);
     }
 
     // Only catalog events
     await()
         .until(
             () ->
-                consumeOnlyCatalogEventListener.receivedEventCount.get() == CATALOG_EVENTS.size());
-    assertEquals(CATALOG_EVENTS.size(), consumeOnlyCatalogEventListener.expectedEvents.size());
-    expectEvents(consumeOnlyCatalogEventListener.expectedEvents, CATALOG_EVENTS);
+                consumeOnlyCatalogEventListener.receivedEventCount.get()
+                    == CATALOG_EVENT_TYPES.size());
+    assertEquals(CATALOG_EVENT_TYPES.size(), consumeOnlyCatalogEventListener.expectedEvents.size());
+    expectEventTypes(consumeOnlyCatalogEventListener.expectedEvents, CATALOG_EVENT_TYPES);
 
     // Catalog and after send notification events
     await()
         .until(
             () ->
                 consumeCatalogAndNotificationEventListener.receivedEventCount.get()
-                    == CATALOG_EVENTS.size() + 1);
+                    == CATALOG_EVENT_TYPES.size() + 1);
     assertEquals(
-        CATALOG_EVENTS.size() + 1,
+        CATALOG_EVENT_TYPES.size() + 1,
         consumeCatalogAndNotificationEventListener.expectedEvents.size());
-    expectEvents(
+    expectEventTypes(
         consumeCatalogAndNotificationEventListener.expectedEvents,
-        Stream.concat(Stream.of(PolarisEventType.AFTER_SEND_NOTIFICATION), CATALOG_EVENTS.stream())
+        Stream.concat(
+                Stream.of(PolarisEventType.AFTER_SEND_NOTIFICATION), CATALOG_EVENT_TYPES.stream())
             .collect(Collectors.toSet()));
 
     // There are no unexpected events
@@ -251,9 +251,10 @@ public class PolarisEventListenersTest {
     assertTrue(consumeCatalogAndNotificationEventListener.unexpectedEvents.isEmpty());
   }
 
-  private void expectEvents(List<PolarisEvent> events, Set<PolarisEventType> expectedTypes) {
-    for (var event : expectedTypes) {
-      assertEquals(1, events.stream().filter(polarisEvent -> polarisEvent.type() == event).count());
+  private void expectEventTypes(List<PolarisEvent> events, Set<PolarisEventType> expectedTypes) {
+    for (var eventTypes : expectedTypes) {
+      assertEquals(
+          1, events.stream().filter(polarisEvent -> polarisEvent.type() == eventTypes).count());
     }
   }
 }
