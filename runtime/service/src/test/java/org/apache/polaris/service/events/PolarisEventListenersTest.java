@@ -30,7 +30,6 @@ import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,9 +45,7 @@ import org.junit.jupiter.api.Test;
 @TestProfile(PolarisEventListenersTest.PolarisEventListenersTestProfile.class)
 public class PolarisEventListenersTest {
   static final Set<PolarisEventType> CATALOG_EVENTS =
-      Arrays.stream(PolarisEventType.values())
-          .filter(e -> e.category() == PolarisEventType.Category.CATALOG)
-          .collect(Collectors.toSet());
+      PolarisEventType.typesOfCategory(PolarisEventType.Category.CATALOG);
 
   private abstract static class FilteringEventListener implements PolarisEventListener {
     private final Predicate<PolarisEvent> predicate;
