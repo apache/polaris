@@ -24,7 +24,10 @@ from typing import List, Any, Callable, Dict, cast
 from unittest.mock import patch, MagicMock
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.command.namespaces import NamespacesCommand
 from apache_polaris.cli.command.policies import PoliciesCommand
+from apache_polaris.cli.command.profiles import ProfilesCommand
+from apache_polaris.cli.command.setup import SetupCommand
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -2123,8 +2126,6 @@ class TestCliParsing(unittest.TestCase):
             ]
         )
         command = Command.from_options(options)
-        from apache_polaris.cli.command.namespaces import NamespacesCommand
-
         command = cast(NamespacesCommand, command)
         self.assertEqual("create", command.namespaces_subcommand)
         self.assertEqual("my_catalog", command.catalog)
@@ -2144,8 +2145,6 @@ class TestCliParsing(unittest.TestCase):
             ]
         )
         command = Command.from_options(options)
-        from apache_polaris.cli.command.namespaces import NamespacesCommand
-
         command = cast(NamespacesCommand, command)
         self.assertEqual("list", command.namespaces_subcommand)
         self.assertEqual("my_catalog", command.catalog)
@@ -2154,8 +2153,6 @@ class TestCliParsing(unittest.TestCase):
     def test_setup_command_from_options(self) -> None:
         options = Parser.parse(["setup", "apply", "config.yaml", "--dry-run"])
         command = Command.from_options(options)
-        from apache_polaris.cli.command.setup import SetupCommand
-
         command = cast(SetupCommand, command)
         self.assertEqual("apply", command.setup_subcommand)
         self.assertEqual("config.yaml", command.setup_config)
@@ -2164,16 +2161,12 @@ class TestCliParsing(unittest.TestCase):
     def test_setup_export_from_options(self) -> None:
         options = Parser.parse(["setup", "export"])
         command = Command.from_options(options)
-        from apache_polaris.cli.command.setup import SetupCommand
-
         command = cast(SetupCommand, command)
         self.assertEqual("export", command.setup_subcommand)
 
     def test_profiles_command_from_options(self) -> None:
         options = Parser.parse(["profiles", "create", "dev"])
         command = Command.from_options(options)
-        from apache_polaris.cli.command.profiles import ProfilesCommand
-
         command = cast(ProfilesCommand, command)
         self.assertEqual("create", command.profiles_subcommand)
         self.assertEqual("dev", command.profile_name)
@@ -2181,8 +2174,6 @@ class TestCliParsing(unittest.TestCase):
     def test_profiles_list_from_options(self) -> None:
         options = Parser.parse(["profiles", "list"])
         command = Command.from_options(options)
-        from apache_polaris.cli.command.profiles import ProfilesCommand
-
         command = cast(ProfilesCommand, command)
         self.assertEqual("list", command.profiles_subcommand)
         self.assertIsNone(command.profile_name)
