@@ -36,6 +36,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
@@ -140,18 +141,22 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public PolarisAuthorizerFactory polarisAuthorizerFactory(
-      AuthorizationConfiguration authorizationConfig,
-      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
-    PolarisAuthorizerFactory factory =
-        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
-    return factory;
+  @Identifier("internal")
+  public PolarisAuthorizerFactory defaultPolarisAuthorizerFactory() {
+    return new DefaultPolarisAuthorizerFactory();
   }
 
   @Produces
   @RequestScoped
   public PolarisAuthorizer polarisAuthorizer(
-      PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
+      RealmContext realmContext,
+      AuthorizationConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories,
+      RealmConfig realmConfig) {
+    PolarisAuthorizerFactory factory =
+        authorizerFactories
+            .select(Identifier.Literal.of(authorizationConfig.forRealm(realmContext).type()))
+            .get();
     return factory.create(realmConfig);
   }
 

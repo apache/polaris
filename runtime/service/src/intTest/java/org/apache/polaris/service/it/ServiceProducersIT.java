@@ -23,10 +23,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.service.config.AuthorizationConfiguration;
+import org.apache.polaris.service.config.ServiceProducers;
 import org.junit.jupiter.api.Test;
 
 public class ServiceProducersIT {
@@ -49,6 +69,110 @@ public class ServiceProducersIT {
     @Test
     void testInternalPolarisAuthorizerProduced() {
       assertThat(polarisAuthorizer).isNotNull();
+    }
+  }
+
+  public static class PerRealmAuthorizationConfig implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      Map<String, String> config = new HashMap<>();
+      config.put("polaris.authorization.type", "internal");
+      config.put("polaris.authorization.realm1.type", "test-authorizer");
+      return config;
+    }
+  }
+
+  @QuarkusTest
+  @TestProfile(ServiceProducersIT.PerRealmAuthorizationConfig.class)
+  public static class PerRealmAuthorizationTest {
+
+    @Inject ServiceProducers serviceProducers;
+    @Inject AuthorizationConfiguration authorizationConfiguration;
+    @Inject @Any Instance<PolarisAuthorizerFactory> authorizerFactories;
+
+    @Test
+    void testPerRealmAuthorizerSelection() {
+      PolarisAuthorizer realmAuthorizer =
+          serviceProducers.polarisAuthorizer(
+              () -> "realm1",
+              authorizationConfiguration,
+              authorizerFactories,
+              new NoopRealmConfig());
+      assertThat(realmAuthorizer).isInstanceOf(TestPolarisAuthorizer.class);
+
+      PolarisAuthorizer defaultAuthorizer =
+          serviceProducers.polarisAuthorizer(
+              () -> "other",
+              authorizationConfiguration,
+              authorizerFactories,
+              new NoopRealmConfig());
+      assertThat(defaultAuthorizer).isInstanceOf(PolarisAuthorizerImpl.class);
+    }
+  }
+
+  @ApplicationScoped
+  @Identifier("test-authorizer")
+  public static class TestPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
+    @Override
+    public PolarisAuthorizer create(RealmConfig realmConfig) {
+      return new TestPolarisAuthorizer();
+    }
+  }
+
+  public static class TestPolarisAuthorizer implements PolarisAuthorizer {
+    @Override
+    public void resolveAuthorizationInputs(
+        AuthorizationState authzState, AuthorizationRequest request) {}
+
+    @Override
+    public AuthorizationDecision authorize(
+        AuthorizationState authzState, AuthorizationRequest request) {
+      return AuthorizationDecision.allow();
+    }
+
+    @Override
+    public void authorizeOrThrow(
+        PolarisPrincipal polarisPrincipal,
+        Set<PolarisBaseEntity> activatedEntities,
+        PolarisAuthorizableOperation authzOp,
+        PolarisResolvedPathWrapper target,
+        PolarisResolvedPathWrapper secondary) {}
+
+    @Override
+    public void authorizeOrThrow(
+        PolarisPrincipal polarisPrincipal,
+        Set<PolarisBaseEntity> activatedEntities,
+        PolarisAuthorizableOperation authzOp,
+        List<PolarisResolvedPathWrapper> targets,
+        List<PolarisResolvedPathWrapper> secondaries) {}
+  }
+
+  private static class NoopRealmConfig implements RealmConfig {
+    @SuppressWarnings("removal")
+    @Override
+    public <T> T getConfig(String configName) {
+      return null;
+    }
+
+    @SuppressWarnings("removal")
+    @Override
+    public <T> T getConfig(String configName, T defaultValue) {
+      return defaultValue;
+    }
+
+    @Override
+    public <T> T getConfig(PolarisConfiguration<T> config) {
+      return config.defaultValue();
+    }
+
+    @Override
+    public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
+      return getConfig(config);
+    }
+
+    @Override
+    public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+      return getConfig(config);
     }
   }
 }
