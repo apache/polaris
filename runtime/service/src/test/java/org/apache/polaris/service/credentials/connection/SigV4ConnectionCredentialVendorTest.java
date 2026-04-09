@@ -201,9 +201,7 @@ public class SigV4ConnectionCredentialVendorTest {
     vendor.getConnectionCredentials(connectionConfig);
 
     // Verify the STS client was created with the correct region from sigV4 params
-    Assertions.assertThat(capturedDestination.get().region())
-        .isPresent()
-        .hasValue("eu-west-1");
+    Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("eu-west-1");
     Assertions.assertThat(capturedDestination.get().endpoint()).isEmpty();
   }
 
@@ -215,11 +213,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     SigV4AuthenticationParametersDpo authParams =
         new SigV4AuthenticationParametersDpo(
-            "arn:aws:iam::123456789012:role/customer-role",
-            null,
-            null,
-            "ap-southeast-1",
-            null);
+            "arn:aws:iam::123456789012:role/customer-role", null, null, "ap-southeast-1", null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
         new IcebergRestConnectionConfigInfoDpo(
