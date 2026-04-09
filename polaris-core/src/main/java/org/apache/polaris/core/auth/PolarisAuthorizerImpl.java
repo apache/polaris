@@ -811,6 +811,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       PolarisSecurable securable,
       boolean prependRootContainer) {
     if (securable.getLeaf().entityType().isTopLevel()) {
+      // Ignore prependRootContainer for top-level entities.
       return resolutionManifest.getResolvedTopLevelEntity(
           securable.getLeaf().name(), securable.getLeaf().entityType());
     }
