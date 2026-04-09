@@ -19,11 +19,31 @@
 package org.apache.polaris.service.config;
 
 import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithDefaults;
+import io.smallrye.config.WithParentName;
+import io.smallrye.config.WithUnnamedKey;
+import java.util.Map;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.docs.ConfigDocs;
 
 @ConfigMapping(prefix = "polaris.authorization")
 public interface AuthorizationConfiguration {
 
-  @WithDefault("internal")
-  String type();
+  String DEFAULT_REALM_KEY = "<default>";
+
+  @WithParentName
+  @WithUnnamedKey(DEFAULT_REALM_KEY)
+  @WithDefaults
+  @ConfigDocs.ConfigPropertyName("realm")
+  Map<String, AuthorizationRealmConfiguration> realms();
+
+  default AuthorizationRealmConfiguration forRealm(RealmContext realmContext) {
+    return forRealm(realmContext.getRealmIdentifier());
+  }
+
+  default AuthorizationRealmConfiguration forRealm(String realmIdentifier) {
+    return realms().containsKey(realmIdentifier)
+        ? realms().get(realmIdentifier)
+        : realms().get(DEFAULT_REALM_KEY);
+  }
 }
