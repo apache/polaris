@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -417,6 +418,19 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory);
+  }
+
+  private IcebergCatalog newConfiguredIcebergCatalog(
+      String catalogName, FileIOFactory fileIOFactory, Map<String, String> additionalProperties) {
+    IcebergCatalog icebergCatalog = newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory);
+    icebergCatalog.setCatalogFileIo(new InMemoryFileIO());
+    ImmutableMap.Builder<String, String> propertiesBuilder =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
+            .putAll(additionalProperties);
+    icebergCatalog.initialize(catalogName, propertiesBuilder.buildKeepingLast());
+    return icebergCatalog;
   }
 
   @Test
@@ -982,6 +996,91 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
+  }
+
+  @Test
+  public void testDirectCreatePassesTableDefaultPropertiesToFileIO() {
+    Namespace namespace = Namespace.of("fileio-defaults-create");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    AtomicReference<Map<String, String>> capturedProperties = new AtomicReference<>();
+    FileIOFactory capturingFileIOFactory = spy(this.fileIOFactory);
+    doAnswer(
+            invocation -> {
+              capturedProperties.set(Map.copyOf(invocation.getArgument(2)));
+              return invocation.callRealMethod();
+            })
+        .when(capturingFileIOFactory)
+        .loadFileIO(any(), any(), any());
+
+    IcebergCatalog catalog =
+        newConfiguredIcebergCatalog(
+            CATALOG_NAME,
+            capturingFileIOFactory,
+            Map.of(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "http://minio.local",
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access",
+                "true"));
+
+    try {
+      catalog.createNamespace(namespace);
+      catalog.buildTable(table, SCHEMA).create();
+
+      assertThat(capturedProperties.get())
+          .containsEntry("s3.endpoint", "http://minio.local")
+          .containsEntry("s3.path-style-access", "true");
+    } finally {
+      if (catalog.tableExists(table)) {
+        catalog.dropTable(table, true);
+      }
+    }
+  }
+
+  @Test
+  public void testSparseCreateCommitPassesTableDefaultPropertiesToFileIO() {
+    Namespace namespace = Namespace.of("fileio-defaults-commit");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    AtomicReference<Map<String, String>> capturedProperties = new AtomicReference<>();
+    FileIOFactory capturingFileIOFactory = spy(this.fileIOFactory);
+    doAnswer(
+            invocation -> {
+              capturedProperties.set(Map.copyOf(invocation.getArgument(2)));
+              return invocation.callRealMethod();
+            })
+        .when(capturingFileIOFactory)
+        .loadFileIO(any(), any(), any());
+
+    IcebergCatalog catalog =
+        newConfiguredIcebergCatalog(
+            CATALOG_NAME,
+            capturingFileIOFactory,
+            Map.of(
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
+                "http://minio.local",
+                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access",
+                "true"));
+
+    try {
+      catalog.createNamespace(namespace);
+
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA,
+              PartitionSpec.unpartitioned(),
+              SortOrder.unsorted(),
+              catalog.transformTableLikeLocation(table, baseTableLocation(table)),
+              Map.of("created-at", "now"));
+
+      catalog.newTableOps(table, false).commit(null, metadata);
+
+      assertThat(capturedProperties.get())
+          .containsEntry("s3.endpoint", "http://minio.local")
+          .containsEntry("s3.path-style-access", "true");
+    } finally {
+      if (catalog.tableExists(table)) {
+        catalog.dropTable(table, true);
+      }
+    }
   }
 
   @Test
