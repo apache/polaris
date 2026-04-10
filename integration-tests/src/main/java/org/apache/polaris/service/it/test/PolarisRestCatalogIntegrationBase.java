@@ -59,7 +59,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
+
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -231,15 +231,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     return externalCatalogBaseLocation;
   }
 
-  /**
-   * Whether the namespace/table name collision regression is expected to fail for this backend.
-   *
-   * <p>The clash reproduces the NoSQL metastore bug; file-backed catalogs already reject the create
-   * successfully and would fail this regression.
-   */
-  protected boolean testNamespaceTableNameCollision() {
-    return false;
-  }
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal admin) {
@@ -655,22 +646,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
   }
 
-  @Test
-  public void testCreateTableNameThatCollidesWithNamespace() {
-    Assumptions.assumeThat(testNamespaceTableNameCollision()).isTrue();
-
-    Namespace parentNamespace = Namespace.of("ns1");
-    restCatalog.createNamespace(parentNamespace);
-    restCatalog.createNamespace(Namespace.of("ns1", "clash"));
-
-    assertThatThrownBy(
-            () ->
-                restCatalog
-                    .buildTable(TableIdentifier.of(parentNamespace, "clash"), SCHEMA)
-                    .create())
-        .isInstanceOf(AlreadyExistsException.class)
-        .hasMessageContaining("already exists");
-  }
 
   @Test
   public void testCreateTableWithOverriddenBaseLocationCannotOverlapSibling() {

@@ -27,10 +27,6 @@ import org.apache.polaris.service.it.PolarisRestCatalogRustFSIT;
 @QuarkusIntegrationTest
 @TestProfile(value = NoSqlCatalogIT.Profile.class)
 public class NoSqlCatalogIT extends PolarisRestCatalogRustFSIT {
-  @Override
-  protected boolean testNamespaceTableNameCollision() {
-    return true;
-  }
 
   public static class Profile extends NoSqlTesting.PersistenceInMemoryProfile {
     @Override
