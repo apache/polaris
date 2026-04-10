@@ -92,3 +92,15 @@ class TestFindCommand(CLITestBase):
         with self.assertRaises(SystemExit) as cm:
             Parser.parse(["find", "my-entity", "--type", "invalid-type"])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+    def test_find_summary(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_principal = MagicMock()
+        mock_principal.name = "my-entity"
+        mock_client.list_principals.return_value.principals = [mock_principal]
+        mock_client.list_principal_roles.return_values.roles = []
+        mock_client.list_catalogs.return_value.catalogs = []
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(mock_client, ["find", "my-entity"])
+            output = mock_stdout.getvalue()
+            self.assertIn("Found 1 matches (1 Principal).", output)

@@ -122,3 +122,25 @@ class TestPrincipalRolesCommand(CLITestBase):
         call_args = mock_client.revoke_principal_role.call_args[0]
         self.assertEqual(call_args[0], "foo")
         self.assertEqual(call_args[1], "bar")
+
+    def test_principal_role_list_catalog_role(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_principal_roles.return_value.roles = []
+        self.mock_execute(
+            mock_client, ["principal-roles", "list", "--catalog-role", "bar"]
+        )
+        mock_client.list_principal_roles.assert_called_with("bar")
+
+    def test_principal_role_summarize(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_principal_role.return_value = PrincipalRole(
+            name="foo",
+            entity_version=1,
+        )
+        mock_client.list_assignee_principals_for_principal_role.return_values.principals = []
+        mock_client.list_catalogs.return_value.catalogs = []
+        self.mock_execute(mock_client, ["principal-roles", "summarize", "foo"])
+        mock_client.get_principal_role.assert_called_with("foo")
+        mock_client.list_assignee_principals_for_principal_role.assert_called_with(
+            "foo"
+        )

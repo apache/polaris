@@ -156,3 +156,17 @@ class TestCatalogRolessCommand(CLITestBase):
         self.assertEqual(call_args[0], "foo")
         self.assertEqual(call_args[1], "bar")
         self.assertEqual(call_args[2], "baz")
+
+    def test_catalog_roles_summarize(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_grants_for_catalog_role.return_value.grants = []
+        mock_client.get_catalog_role.return_value = CatalogRole(
+            name="foo",
+            entity_version=1,
+        )
+        mock_client.list_assignee_principal_roles_for_catalog_role.return_value.roles = []
+        self.mock_execute(
+            mock_client, ["catalog-roles", "summarize", "foo", "--catalog", "bar"]
+        )
+        mock_client.get_catalog_role.assert_called_with("bar", "foo")
+        mock_client.list_grants_for_catalog_role.assert_called_with("bar", "foo")

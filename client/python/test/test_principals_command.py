@@ -152,3 +152,25 @@ class TestPrincipalsCommand(CLITestBase):
         self.assertEqual(call_args[0], "test")
         self.assertEqual(call_args[1].client_id, None)
         self.assertEqual(call_args[1].client_secret, "e469c048cf866dfae469c048cf866df1")
+
+    def test_principal_access(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_principal.return_value = Principal(
+            name="foo", type="SERVICE", properties={"key": "value"}, entity_version=1
+        )
+        mock_client.list_principal_roles_assigned.return_values.roles = []
+        mock_client.list_catalogs.return_values.catalogs = []
+        self.mock_execute(mock_client, ["principals", "access", "foo"])
+        mock_client.get_principal.assert_called_with("foo")
+        mock_client.list_principal_roles_assigned.assert_called_with("foo")
+
+    def test_principal_summarize(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_principal.return_value = Principal(
+            name="foo", type="SERVICE", properties={"key": "value"}, entity_version=1
+        )
+        mock_client.list_principal_roles_assigned.return_values.roles = []
+        mock_client.list_catalogs.return_values.catalogs = []
+        self.mock_execute(mock_client, ["principals", "summarize", "foo"])
+        mock_client.get_principal.assert_called_with("foo")
+        mock_client.list_principal_roles_assigned.assert_called_with("foo")

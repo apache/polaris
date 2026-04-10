@@ -158,3 +158,12 @@ class TestPrivilegesCommand(CLITestBase):
         self.assertEqual(call_args[3].grant.privilege.value, "TABLE_READ_DATA")
         self.assertEqual(call_args[3].grant.namespace, ["a", "b", "c"])
         self.assertEqual(call_args[3].grant.table_name, "t")
+
+    def test_privilege_list(self) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.list_grants_for_catalog_role.return_value.grants = []
+        self.mock_execute(
+            mock_client,
+            ["privileges", "list", "--catalog", "foo", "--catalog-role", "bar"],
+        )
+        mock_client.list_grants_for_catalog_role.assert_called_with("foo", "bar")

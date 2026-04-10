@@ -17,6 +17,7 @@
 # under the License.
 #
 
+from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.sdk.management import (
     PolarisCatalog,
@@ -94,6 +95,46 @@ class TestCatalogsCommand(CLITestBase):
                 ],
             ),
             "--hive-warehouse",
+        )
+        # Authentication type 'OAUTH' requires additional fields
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--catalog-connection-type",
+                    "iceberg-rest",
+                    "--catalog-authentication-type",
+                    "oauth",
+                    "--catalog-uri",
+                    "u",
+                ],
+            ),
+            "Authentication type 'OAUTH' requires",
+        )
+        # Authentication type 'BEARER' requires bearer token
+        self.check_exception(
+            lambda: self.mock_execute(
+                mock_client,
+                [
+                    "catalogs",
+                    "create",
+                    "my-catalog",
+                    "--type",
+                    "external",
+                    "--catalog-connection-type",
+                    "iceberg-rest",
+                    "--catalog-authentication-type",
+                    "bearer",
+                    "--catalog-uri",
+                    "u",
+                ],
+            ),
+            "Missing required argument for authentication type 'BEARER'",
         )
 
     def test_catalog_create_s3_options(self) -> None:
@@ -663,3 +704,30 @@ class TestCatalogsCommand(CLITestBase):
             call_args.catalog.connection_config_info.authentication_parameters.signing_name,
             "g",
         )
+
+    @patch("apache_polaris.cli.command.catalogs.IcebergCatalogAPI")
+    @patch("apache_polaris.cli.command.catalogs.PolicyAPI")
+    def test_catalog_summarize(
+        self, mock_policy_api_class: MagicMock, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_client.get_catalog.return_value = PolarisCatalog(
+            type="INTERNAL",
+            name="foo",
+            entity_version=1,
+            properties=CatalogProperties(
+                default_base_location="s3://bucket/path", additional_properties={}
+            ),
+            storage_config_info=AwsStorageConfigInfo(
+                storage_type="S3", allowed_locations=[]
+            ),
+        )
+        mock_client.list_catalog_roles.return_value.roles = []
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api_class.list_namespaces.return_value.namespaces = []
+        mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
+        self.mock_execute(mock_client, ["catalogs", "summarize", "foo"])
+        mock_client.get_catalog.assert_called_with("foo")
+        mock_iceberg_api.list_namespaces.assert_called_with(prefix="foo", parent=None)
+        mock_policy_api.get_applicable_policies.assert_called_with(prefix="foo")
