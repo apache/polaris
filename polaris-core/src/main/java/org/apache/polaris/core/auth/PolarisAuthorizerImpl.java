@@ -763,12 +763,15 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
       List<PolarisSecurable> targets = request.getTargets();
-      List<PolarisResolvedPathWrapper> resolvedTargets =
-          !targets.isEmpty()
-              ? getResolvedSecurables(resolutionManifest, targets, prependRootContainer)
-              : prependRootContainer
-                  ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
-                  : null;
+      List<PolarisResolvedPathWrapper> resolvedTargets;
+      if (targets.isEmpty()) {
+        resolvedTargets =
+            prependRootContainer
+                ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
+                : null;
+      } else {
+        resolvedTargets = getResolvedSecurables(resolutionManifest, targets, prependRootContainer);
+      }
       List<PolarisSecurable> secondaries = request.getSecondaries();
       List<PolarisResolvedPathWrapper> resolvedSecondaries =
           semantics.secondaryPrivileges().isEmpty() || secondaries.isEmpty()
@@ -782,6 +785,13 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           resolvedSecondaries);
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {
+      LOGGER.debug(
+          "Authorization denied for principalName {} operation {} targets {} secondaries {}",
+          request.getPrincipal().getName(),
+          request.getOperation(),
+          request.getTargets(),
+          request.getSecondaries(),
+          e);
       return AuthorizationDecision.deny(e.getMessage());
     }
   }

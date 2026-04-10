@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** A resource binding containing a primary target and optional secondary. */
 @PolarisImmutable
@@ -52,4 +54,11 @@ public interface AuthorizationTargetBinding {
    */
   @Nullable
   PolarisSecurable getSecondary();
+
+  @Value.Check
+  default void validate() {
+    Preconditions.checkState(
+        getTarget() != null || getSecondary() != null,
+        "AuthorizationTargetBinding must contain a target or secondary");
+  }
 }

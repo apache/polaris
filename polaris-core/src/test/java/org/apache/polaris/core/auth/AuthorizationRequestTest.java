@@ -107,6 +107,13 @@ public class AuthorizationRequestTest {
   }
 
   @Test
+  void throwsWhenTargetBindingHasNoTargetOrSecondary() {
+    assertThatThrownBy(() -> AuthorizationTargetBinding.of(null, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must contain a target or secondary");
+  }
+
+  @Test
   void throwsWhenSecurableDoesNotStartWithTopLevelEntity() {
     assertThatThrownBy(
             () -> PolarisSecurable.of(new PathSegment(PolarisEntityType.NAMESPACE, "ns")))

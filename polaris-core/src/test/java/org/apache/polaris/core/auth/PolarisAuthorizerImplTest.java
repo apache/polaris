@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -41,6 +40,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentMatchers;
 
 public class PolarisAuthorizerImplTest {
 
@@ -70,16 +70,15 @@ public class PolarisAuthorizerImplTest {
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
     when(manifest.getResolvedTopLevelEntity("analytics-admin", PolarisEntityType.PRINCIPAL_ROLE))
         .thenReturn(principalRoleWrapper);
-    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
-        .thenReturn(Set.<PolarisBaseEntity>of());
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     doNothing()
         .when(authorizer)
         .authorizeOrThrow(
             any(PolarisPrincipal.class),
-            org.mockito.ArgumentMatchers.<Set<PolarisBaseEntity>>any(),
+            ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
-            org.mockito.ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any(),
-            org.mockito.ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
@@ -114,16 +113,15 @@ public class PolarisAuthorizerImplTest {
 
     authzState.setResolutionManifest(manifest);
     when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
-    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
-        .thenReturn(Set.<PolarisBaseEntity>of());
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     doNothing()
         .when(authorizer)
         .authorizeOrThrow(
             any(PolarisPrincipal.class),
-            org.mockito.ArgumentMatchers.<Set<PolarisBaseEntity>>any(),
+            ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_CATALOGS),
-            org.mockito.ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any(),
-            any());
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
@@ -156,16 +154,15 @@ public class PolarisAuthorizerImplTest {
     when(manifest.getResolvedPath(
             ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
         .thenReturn(namespaceWrapper);
-    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles())
-        .thenReturn(Set.<PolarisBaseEntity>of());
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     doNothing()
         .when(authorizer)
         .authorizeOrThrow(
             any(PolarisPrincipal.class),
-            org.mockito.ArgumentMatchers.<Set<PolarisBaseEntity>>any(),
+            ArgumentMatchers.any(),
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
-            org.mockito.ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any(),
-            any());
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
