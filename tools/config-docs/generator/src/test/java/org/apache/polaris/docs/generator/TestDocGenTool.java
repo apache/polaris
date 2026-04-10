@@ -143,10 +143,13 @@ public class TestDocGenTool {
                     | `my.types.float-prim` |  | `float` |  |
                     | `my.types.bool-boxed` |  | `boolean` |  |
                     | `my.types.bool-prim` |  | `boolean` |  |
-                    | `my.types.enum-thing` |  | `ONE, TWO, THREE` |  |
-                    | `my.types.optional-enum` |  | `ONE, TWO, THREE` |  |
-                    | `my.types.list-of-enum` |  | `list of ONE, TWO, THREE` |  |
-                    | `my.types.map-to-enum.`_`<name>`_ |  | `ONE, TWO, THREE` |  |
+                    | `my.types.enum-thing` |  | `enum (ONE, TWO, THREE)` |  |
+                    | `my.types.optional-enum` |  | `enum (ONE, TWO, THREE)` |  |
+                    | `my.types.list-of-enum` |  | `list of enum (ONE, TWO, THREE)` |  |
+                    | `my.types.map-to-enum.`_`<name>`_ |  | `enum (ONE, TWO, THREE)` |  |
+                    | `my.types.large-enum` |  | <span title="ONE, TWO, THREE, FOUR"><code>enum (ONE, TWO, THREE, ...)</code></span> |  |
+                    | `my.types.optional-large-enum` |  | <span title="ONE, TWO, THREE, FOUR"><code>enum (ONE, TWO, THREE, ...)</code></span> |  |
+                    | `my.types.list-of-large-enum` |  | <span title="ONE, TWO, THREE, FOUR"><code>list of enum (ONE, TWO, THREE, ...)</code></span> |  |
                     | `my.types.optional-bool` |  | `boolean` |  |
                     | `my.types.mapped-a.some-weird-name` | `some-default` | `string` | Something that configures something.  |
                     | `my.types.mapped-a.some-duration` |  | `duration` | A duration of something.  |

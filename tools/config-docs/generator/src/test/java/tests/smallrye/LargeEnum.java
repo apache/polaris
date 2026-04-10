@@ -13,28 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.polaris.docs.generator;
+package tests.smallrye;
 
-import com.sun.source.doctree.DocCommentTree;
-import java.util.Optional;
-import javax.lang.model.element.Element;
-
-public interface PropertyInfo {
-  Element propertyElement();
-
-  String propertyName();
-
-  String propertySuffix();
-
-  String simplifiedTypeName();
-
-  String defaultValue();
-
-  DocCommentTree doc();
-
-  Optional<Class<?>> groupType();
-
-  default String enumTooltipText() {
-    return null;
-  }
+public enum LargeEnum {
+  ONE,
+  TWO,
+  THREE,
+  FOUR
 }
