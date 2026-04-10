@@ -26,7 +26,7 @@ set -e
 MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
 MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
 MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-MINIO_BUCKET=${MINIO_BUCKET:-polaris-test-bucket}
+MINIO_BUCKET=${AWS_STORAGE_BUCKET:-polaris-test-bucket}
 
 echo "Setting up MinIO at ${MINIO_ENDPOINT}"
 

@@ -82,15 +82,14 @@ fi
 if [ "${MINIO_TEST_ENABLED}" == "true" ]; then
   loginfo "Setting up MinIO for tests"
   ${REGTEST_HOME}/minio-setup.sh
-
-  # MinIO doesn't vend credentials, so don't clear access keys
-  loginfo "MinIO mode: using static credentials"
+  loginfo "MinIO mode enabled"
 else
-  # AWS mode: clear credentials (tests will use vended credentials)
-  export AWS_ACCESS_KEY_ID=''
-  export AWS_SECRET_ACCESS_KEY=''
-  loginfo "AWS mode: cleared static credentials (will use vended credentials)"
+  loginfo "AWS mode enabled"
 fi
+
+# Clear static credentials so tests use vended credentials from the catalog
+export AWS_ACCESS_KEY_ID=''
+export AWS_SECRET_ACCESS_KEY=''
 
 # Allow bearer token to be provided if desired
 if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then

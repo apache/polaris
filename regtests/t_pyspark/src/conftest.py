@@ -70,12 +70,7 @@ def polaris_catalog_url(polaris_url_scheme, polaris_host, polaris_port, polaris_
 
 @pytest.fixture
 def test_bucket():
-  """Get the appropriate bucket based on storage mode."""
-  minio_enabled = os.getenv('MINIO_TEST_ENABLED', 'false').lower() == 'true'
-  if minio_enabled:
-      return os.getenv('MINIO_BUCKET', 'polaris-test-bucket')
-  else:
-      return os.getenv('AWS_STORAGE_BUCKET')
+  return os.getenv('AWS_STORAGE_BUCKET')
 
 @pytest.fixture
 def aws_role_arn():
@@ -114,8 +109,6 @@ def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aw
   if minio_enabled:
     # MinIO mode: use MinIO's STS endpoint for credential vending
     minio_endpoint = os.getenv('MINIO_ENDPOINT', 'http://minio:9000')
-    minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
-    minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'minioadmin')
 
     storage_conf = AwsStorageConfigInfo(
         storage_type="S3",
@@ -323,125 +316,5 @@ def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucke
     yield from _create_catalog_with_storage(
       root_client, catalog_client, catalog_name, storage_config, base_location
     )
-
-
-@pytest.fixture
-def minio_enabled():
-    """Check if MinIO mode is enabled."""
-    return os.getenv('MINIO_TEST_ENABLED', 'false').lower() == 'true'
-
-
-@pytest.fixture
-def minio_endpoint():
-    """Get MinIO endpoint."""
-    return os.getenv('MINIO_ENDPOINT', 'http://minio:9000')
-
-
-@pytest.fixture
-def minio_access_key():
-    """Get MinIO access key."""
-    return os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
-
-
-@pytest.fixture
-def minio_secret_key():
-    """Get MinIO secret key."""
-    return os.getenv('MINIO_SECRET_KEY', 'minioadmin')
-
-
-@pytest.fixture
-def minio_bucket():
-    """Get MinIO bucket name."""
-    return os.getenv('MINIO_BUCKET', 'polaris-test-bucket')
-
-
-@pytest.fixture
-def storage_mode():
-    """Determine if using AWS or MinIO storage."""
-    minio_enabled = os.getenv('MINIO_TEST_ENABLED', 'false').lower() == 'true'
-    aws_enabled = os.getenv('AWS_TEST_ENABLED', 'false').lower() == 'true'
-
-    if minio_enabled:
-        return 'minio'
-    elif aws_enabled:
-        return 'aws'
-    else:
-        return 'file'
-
-
-@pytest.fixture
-def minio_catalog(root_client, catalog_client, minio_endpoint, minio_access_key,
-                  minio_secret_key, minio_bucket, aws_bucket_base_location_prefix):
-    """
-    Catalog configured for MinIO storage.
-    Only available when MINIO_TEST_ENABLED=true.
-    """
-    catalog_name = f'minio_catalog_{str(uuid.uuid4())[-10:]}'
-
-    # Based on RestCatalogMinIOSpecialIT.java pattern
-    storage_conf = AwsStorageConfigInfo(
-        storage_type="S3",
-        allowed_locations=[f"s3://{minio_bucket}/{aws_bucket_base_location_prefix}/"],
-        endpoint=minio_endpoint,
-        endpoint_internal=minio_endpoint,
-        sts_endpoint=minio_endpoint,
-        path_style_access=True,
-        sts_unavailable=False,
-        kms_unavailable=True,
-        role_arn="arn:aws:iam::000000000000:role/minio-test",
-        region="us-west-2"
-    )
-
-    # When STS is unavailable, provide static credentials via table properties
-    catalog = Catalog(
-        name=catalog_name,
-        type='INTERNAL',
-        properties=CatalogProperties.from_dict({
-            "default-base-location": f"s3://{minio_bucket}/{aws_bucket_base_location_prefix}/minio_catalog",
-            "polaris.config.drop-with-purge.enabled": "true",
-            "s3.endpoint": minio_endpoint,
-            "s3.path-style-access": "true",
-        }),
-        storage_config_info=storage_conf
-    )
-
-    try:
-        root_client.create_catalog(create_catalog_request=CreateCatalogRequest(catalog=catalog))
-        resp = root_client.get_catalog(catalog_name=catalog.name)
-
-        root_client.assign_catalog_role_to_principal_role(
-            principal_role_name='service_admin',
-            catalog_name=catalog_name,
-            grant_catalog_role_request=GrantCatalogRoleRequest(
-                catalog_role=CatalogRole(name='catalog_admin')
-            )
-        )
-
-        writer_catalog_role = create_catalog_role(root_client, resp, 'admin_writer')
-        root_client.add_grant_to_catalog_role(
-            catalog_name, writer_catalog_role.name,
-            AddGrantRequest(grant=CatalogGrant(
-                catalog_name=catalog_name,
-                type='catalog',
-                privilege=CatalogPrivilege.CATALOG_MANAGE_CONTENT
-            ))
-        )
-
-        root_client.assign_catalog_role_to_principal_role(
-            principal_role_name='service_admin',
-            catalog_name=catalog_name,
-            grant_catalog_role_request=GrantCatalogRoleRequest(catalog_role=writer_catalog_role)
-        )
-
-        yield resp
-    finally:
-        namespaces = catalog_client.list_namespaces(catalog_name)
-        for n in namespaces.namespaces:
-            clear_namespace(catalog_name, catalog_client, n)
-        catalog_roles = root_client.list_catalog_roles(catalog_name)
-        for r in catalog_roles.roles:
-            if r.name != 'catalog_admin':
-                root_client.delete_catalog_role(catalog_name, r.name)
-        root_client.delete_catalog(catalog_name=catalog_name)
 
 

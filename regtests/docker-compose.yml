@@ -55,12 +55,6 @@ services:
       polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION": "true"
       polaris.features."ENABLE_CATALOG_FEDERATION": "true"
       polaris.readiness.ignore-severe-issues: "true"
-      MINIO_ENABLED: ${MINIO_ENABLED:-false}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      polaris.storage.aws.access-key: ${MINIO_ACCESS_KEY:-}
-      polaris.storage.aws.secret-key: ${MINIO_SECRET_KEY:-}
     volumes:
       - ./credentials:/tmp/credentials/
     healthcheck:
@@ -102,7 +96,7 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-polaris-test-bucket}
+
       MINIO_TEST_BASE: ${MINIO_TEST_BASE:-s3://polaris-test-bucket/polaris_test}
     volumes:
       - ./output:/tmp/polaris-regtests/

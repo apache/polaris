@@ -163,7 +163,6 @@ MINIO_TEST_ENABLED=true
 MINIO_ENDPOINT=http://minio:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=polaris-test-bucket
 ```
 
 Or export it as an environment variable:
@@ -186,15 +185,14 @@ MinIO settings can be customized in the `.env` file:
 - `MINIO_ENDPOINT` - MinIO server endpoint (default: `http://minio:9000`)
 - `MINIO_ACCESS_KEY` - Access key (default: `minioadmin`)
 - `MINIO_SECRET_KEY` - Secret key (default: `minioadmin`)
-- `MINIO_BUCKET` - Bucket name (default: `polaris-test-bucket`)
 
 ### Limitations
 
 MinIO mode has some differences from AWS mode:
-- **No STS support**: MinIO doesn't support AWS STS AssumeRole, so tests use static credentials instead of vended credentials. This means the credential vending path is not tested in MinIO mode.
+- **No KMS support**: MinIO doesn't support AWS KMS, so the catalog is configured with `kmsUnavailable=true`.
 - **Path-style access**: MinIO uses path-style S3 access (`http://endpoint/bucket/key`) instead of virtual-hosted style.
 
-Despite these limitations, MinIO provides a fast and convenient way to develop and test S3 integration locally without requiring AWS credentials or incurring cloud costs.
+MinIO does support STS AssumeRole on the same port as S3, so the full credential vending flow (vended credentials with session tokens) works identically to AWS.
 
 ## Fixing a failed test due to incorrect expected output
 
