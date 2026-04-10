@@ -65,8 +65,32 @@ export PYTHONDONTWRITEBYTECODE=1
 NUM_FAILURES=0
 NUM_SUCCESSES=0
 
-export AWS_ACCESS_KEY_ID=''
-export AWS_SECRET_ACCESS_KEY=''
+# Detect test mode: AWS or MinIO
+if [ -z "${MINIO_TEST_ENABLED}" ]; then
+  # Auto-detect: use MinIO if AWS credentials not available
+  if [ -z "${AWS_ACCESS_KEY_ID}" ] && [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+    export MINIO_TEST_ENABLED=true
+    export AWS_TEST_ENABLED=false
+    loginfo "AWS credentials not found, enabling MinIO mode"
+  else
+    export MINIO_TEST_ENABLED=false
+    loginfo "AWS credentials found, using AWS mode"
+  fi
+fi
+
+# Run MinIO setup if in MinIO mode
+if [ "${MINIO_TEST_ENABLED}" == "true" ]; then
+  loginfo "Setting up MinIO for tests"
+  ${REGTEST_HOME}/minio-setup.sh
+
+  # MinIO doesn't vend credentials, so don't clear access keys
+  loginfo "MinIO mode: using static credentials"
+else
+  # AWS mode: clear credentials (tests will use vended credentials)
+  export AWS_ACCESS_KEY_ID=''
+  export AWS_SECRET_ACCESS_KEY=''
+  loginfo "AWS mode: cleared static credentials (will use vended credentials)"
+fi
 
 # Allow bearer token to be provided if desired
 if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
