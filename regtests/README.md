@@ -189,7 +189,7 @@ MinIO settings can be customized in the `.env` file:
 ### Limitations
 
 MinIO mode has some differences from AWS mode:
-- **No KMS support**: MinIO doesn't support AWS KMS, so the catalog is configured with `kmsUnavailable=true`.
+- **KMS policy limitation**: MinIO supports KMS for server-side encryption, but its STS policy evaluator does not support KMS ARNs as resource identifiers in IAM policies. Polaris includes KMS key resources when subscoping credentials via STS AssumeRole, which MinIO rejects. The catalog is therefore configured with `kmsUnavailable=true` to omit KMS resources from the inline policy.
 - **Path-style access**: MinIO uses path-style S3 access (`http://endpoint/bucket/key`) instead of virtual-hosted style.
 
 MinIO does support STS AssumeRole on the same port as S3, so the full credential vending flow (vended credentials with session tokens) works identically to AWS.
