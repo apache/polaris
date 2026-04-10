@@ -29,6 +29,8 @@ client/python/uv.lock
 client/python/.openapi-generator/
 client/python/docs/
 client/python/apache_polaris/sdk/
+!client/python/test/cli_test_utils.py
+!client/python/test/test_*.py
 
 # Polaris CLI profile
 .polaris.json
