@@ -106,9 +106,9 @@ def catalog_client(polaris_catalog_url):
 def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
   minio_test_enabled_raw = os.getenv('MINIO_TEST_ENABLED', '')
   if minio_test_enabled_raw == '':
-    # Auto-detect based on AWS credentials
-    has_aws_creds = os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY')
-    minio_enabled = not has_aws_creds
+    # Auto-detect based on whether AWS tests are enabled
+    aws_test_enabled = os.getenv('AWS_TEST_ENABLED', 'false').lower() == 'true'
+    minio_enabled = not aws_test_enabled
   else:
     minio_enabled = minio_test_enabled_raw.lower() == 'true'
 

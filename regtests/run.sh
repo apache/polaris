@@ -67,14 +67,14 @@ NUM_SUCCESSES=0
 
 # Detect test mode: AWS or MinIO
 if [ -z "${MINIO_TEST_ENABLED}" ]; then
-  # Auto-detect: use MinIO if AWS credentials not available
-  if [ -z "${AWS_ACCESS_KEY_ID}" ] && [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+  # Auto-detect: use MinIO if AWS tests not enabled
+  if [ "${AWS_TEST_ENABLED}" == "true" ]; then
+    export MINIO_TEST_ENABLED=false
+    loginfo "AWS tests enabled, using AWS mode"
+  else
     export MINIO_TEST_ENABLED=true
     export AWS_TEST_ENABLED=false
-    loginfo "AWS credentials not found, enabling MinIO mode"
-  else
-    export MINIO_TEST_ENABLED=false
-    loginfo "AWS credentials found, using AWS mode"
+    loginfo "AWS tests not enabled, enabling MinIO mode"
   fi
 fi
 
