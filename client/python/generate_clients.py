@@ -45,7 +45,19 @@ PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
 # Cleanup
 KEEP_TEST_FILES = [
-    Path("test/test_cli_parsing.py"),
+    Path("test/cli_test_utils.py"),
+    Path("test/test_catalog_roles_command.py"),
+    Path("test/test_catalogs_command.py"),
+    Path("test/test_find_command.py"),
+    Path("test/test_namespaces_command.py"),
+    Path("test/test_parser_basic.py"),
+    Path("test/test_policies_command.py"),
+    Path("test/test_principal_roles_command.py"),
+    Path("test/test_principals_command.py"),
+    Path("test/test_privileges_command.py"),
+    Path("test/test_profiles_command.py"),
+    Path("test/test_setup_command.py"),
+    Path("test/test_tables_command.py"),
 ]
 EXCLUDE_PATHS = [
     Path(".gitignore"),
