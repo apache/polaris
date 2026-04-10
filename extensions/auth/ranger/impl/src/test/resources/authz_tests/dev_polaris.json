@@ -443,8 +443,8 @@
   },
   "policies": [
     {
-      "id": 1, "name": "root:root_container",
-      "resources": { "root": { "values": [ "root_container" ] } },
+      "id": 1, "name": "root:POLARIS",
+      "resources": { "root": { "values": [ "POLARIS" ] } },
       "policyItems": [
         {
           "accesses": [
@@ -465,9 +465,9 @@
       ]
     },
     {
-      "id": 2, "name": "catalog:root_container/catalog1", "version": 1,
+      "id": 2, "name": "catalog:POLARIS/catalog1", "version": 1,
       "resources": {
-        "root":    { "values": [ "root_container" ] },
+        "root":    { "values": [ "POLARIS" ] },
         "catalog": { "values": [ "catalog1" ] }
       },
       "policyItems": [
@@ -486,9 +486,9 @@
       ]
     },
     {
-      "id": 3, "name": "principal:root_container/principal1", "version": 1,
+      "id": 3, "name": "principal:POLARIS/principal1", "version": 1,
       "resources": {
-        "root":      { "values": [ "root_container" ] },
+        "root":      { "values": [ "POLARIS" ] },
         "principal": { "values": [ "principal1" ] }
       },
       "policyItems": [
@@ -506,9 +506,9 @@
       ]
     },
     {
-      "id": 4, "name": "namespace:root_container/catalog1/namespace1",
+      "id": 4, "name": "namespace:POLARIS/catalog1/namespace1",
       "resources": {
-        "root":      { "values": [ "root_container" ] },
+        "root":      { "values": [ "POLARIS" ] },
         "catalog":   { "values": [ "catalog1" ] },
         "namespace": { "values": [ "namespace1" ] }
       },
@@ -539,9 +539,9 @@
       ]
     },
     {
-      "id": 5, "name": "table:root_container/catalog1/namespace1/table1",
+      "id": 5, "name": "table:POLARIS/catalog1/namespace1/table1",
       "resources": {
-        "root":      { "values": [ "root_container" ] },
+        "root":      { "values": [ "POLARIS" ] },
         "catalog":   { "values": [ "catalog1" ] },
         "namespace": { "values": [ "namespace1" ] },
         "table":     { "values": [ "table1" ] }
@@ -580,9 +580,9 @@
       ]
     },
     {
-      "id": 6, "name": "table:root_container/catalog1/namespace1/view1",
+      "id": 6, "name": "table:POLARIS/catalog1/namespace1/view1",
       "resources": {
-        "root":      { "values": [ "root_container" ] },
+        "root":      { "values": [ "POLARIS" ] },
         "catalog":   { "values": [ "catalog1" ] },
         "namespace": { "values": [ "namespace1" ] },
         "table":     { "values": [ "view1" ] }
@@ -599,9 +599,9 @@
       ]
     },
     {
-      "id": 7, "name": "policy:root_container/catalog1/namespace1/policy1",
+      "id": 7, "name": "policy:POLARIS/catalog1/namespace1/policy1",
       "resources": {
-        "root":      { "values": [ "root_container" ] },
+        "root":      { "values": [ "POLARIS" ] },
         "catalog":   { "values": [ "catalog1" ] },
         "namespace": { "values": [ "namespace1" ] },
         "policy":    { "values": [ "policy1" ] }

@@ -27,6 +27,7 @@ import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   private final RangerPolarisAuthorizerConfig config;
   private RangerEmbeddedAuthorizer authorizer;
   private String serviceName;
+  @Inject private RealmContext realmContext;
 
   @Inject
   RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
@@ -83,6 +85,12 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       throw new IllegalStateException(ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED);
     }
 
-    return new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
+    RangerPolarisAuthorizer polarisAuthorizer = new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig) ;
+
+    if (realmContext != null) {
+      polarisAuthorizer.setRealmContext(realmContext);
+    }
+
+    return  polarisAuthorizer;
   }
 }

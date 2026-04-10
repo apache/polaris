@@ -22,6 +22,7 @@ package org.apache.polaris.extension.auth.ranger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
+import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmContext;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -66,7 +67,9 @@ public class RangerPolarisAuthorizerTest {
 
     factory.initialize();
 
-    authorizer = factory.create(createRealmConfig());
+    RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(createRealmConfig()) ;
+    rangerPolarisAuthorizer.setRealmContext(createRealmContext());
+    this.authorizer = rangerPolarisAuthorizer;
 
     assertNotNull(authorizer);
   }

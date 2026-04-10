@@ -39,8 +39,6 @@ import org.apache.ranger.authz.util.RangerResourceNameParser;
 
 public class RangerUtils {
 
-  public static String DEFAULT_ROOT_CONTAINER = "root_container";
-
   public static String toResourceType(PolarisEntityType entityType) {
     return switch (entityType) {
       case ROOT -> "root";
@@ -61,15 +59,21 @@ public class RangerUtils {
   public static RangerAccessInfo toAccessInfo(
       PolarisResolvedPathWrapper entity,
       PolarisAuthorizableOperation authzOp,
-      Set<String> privileges) {
-    return new RangerAccessInfo(RangerUtils.toResourceInfo(entity), authzOp.name(), privileges);
+      Set<String> privileges,
+      String realmContextId) {
+    return new RangerAccessInfo(
+        RangerUtils.toResourceInfo(entity, realmContextId), authzOp.name(), privileges);
   }
 
-  public static String toResourcePath(List<PolarisResolvedPathWrapper> resolvedPaths) {
-    return resolvedPaths.stream().map(RangerUtils::toResourcePath).collect(Collectors.joining(","));
+  public static String toResourcePath(
+      List<PolarisResolvedPathWrapper> resolvedPaths, String realmContextId) {
+    return resolvedPaths.stream()
+        .map(s -> RangerUtils.toResourcePath(s, realmContextId))
+        .collect(Collectors.joining(","));
   }
 
-  public static String toResourcePath(PolarisResolvedPathWrapper resolvedPath) {
+  public static String toResourcePath(
+      PolarisResolvedPathWrapper resolvedPath, String realmContextId) {
     StringBuilder sb = new StringBuilder();
     String resourceType =
         toResourceType(resolvedPath.getResolvedLeafEntity().getEntity().getType());
@@ -77,28 +81,27 @@ public class RangerUtils {
     sb.append(resourceType).append(RangerResourceNameParser.RRN_RESOURCE_TYPE_SEP);
 
     boolean isFirst = true;
-
     for (ResolvedPolarisEntity entity : resolvedPath.getResolvedFullPath()) {
-      if (!isFirst) {
-        sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP);
-      } else {
-        if (entity.getEntity().getType() != PolarisEntityType.ROOT) {
-          sb.append(DEFAULT_ROOT_CONTAINER)
-              .append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP);
-        }
+      if (isFirst) {
+        sb.append(realmContextId);
         isFirst = false;
+        if (entity.getEntity().getType() != PolarisEntityType.ROOT) {
+          sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP)
+              .append(entity.getEntity().getName());
+        }
+      } else {
+        sb.append(RangerResourceNameParser.DEFAULT_RRN_RESOURCE_SEP)
+            .append(entity.getEntity().getName());
       }
-
-      sb.append(entity.getEntity().getName());
     }
-
     return sb.toString();
   }
 
-  private static RangerResourceInfo toResourceInfo(PolarisResolvedPathWrapper resourcePath) {
+  private static RangerResourceInfo toResourceInfo(
+      PolarisResolvedPathWrapper resourcePath, String realmContextId) {
     RangerResourceInfo ret = new RangerResourceInfo();
 
-    ret.setName(toResourcePath(resourcePath));
+    ret.setName(toResourcePath(resourcePath, realmContextId));
     ret.setAttributes(getResourceAttributes(resourcePath));
 
     return ret;

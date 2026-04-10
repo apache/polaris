@@ -1,95 +1,95 @@
 {
   "tests": [
     {
-      "request": { "authzOp": "CREATE_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "DROP_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "DROP_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "LIST_NAMESPACES", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "LIST_NAMESPACES", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "NAMESPACE_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "NAMESPACE_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "LOAD_NAMESPACE_METADATA", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "LOAD_NAMESPACE_METADATA", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "GET_APPLICABLE_POLICIES_ON_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "GET_APPLICABLE_POLICIES_ON_NAMESPACE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "UPDATE_NAMESPACE_PROPERTIES", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "UPDATE_NAMESPACE_PROPERTIES", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "CREATE_TABLE_DIRECT", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_TABLE_DIRECT", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "CREATE_TABLE_STAGED", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_TABLE_STAGED", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "REGISTER_TABLE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "REGISTER_TABLE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "UPDATE_TABLE_FOR_STAGED_CREATE", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "UPDATE_TABLE_FOR_STAGED_CREATE", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "LIST_TABLES", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "LIST_TABLES", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "TABLE_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "TABLE_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "COMMIT_TRANSACTION", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "COMMIT_TRANSACTION", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "SEND_NOTIFICATIONS", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "SEND_NOTIFICATIONS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "CREATE_VIEW", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_VIEW", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "LIST_VIEWS", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "LIST_VIEWS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "VIEW_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "VIEW_EXISTS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "CREATE_POLICY", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "CREATE_POLICY", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "LIST_POLICY", "principal": { "name": "admin1" }, "target": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "LIST_POLICY", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "ATTACH_POLICY_TO_NAMESPACE", "principal": { "name": "admin1" }, "target": "POLICY:root_container/catalog1/namespace1/policy1", "secondary": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "ATTACH_POLICY_TO_NAMESPACE", "principal": { "name": "admin1" }, "target": "POLICY:POLARIS/catalog1/namespace1/policy1", "secondary": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
     {
-      "request": { "authzOp": "DETACH_POLICY_FROM_NAMESPACE", "principal": { "name": "admin1" }, "target": "POLICY:root_container/catalog1/namespace1/policy1", "secondary": "NAMESPACE:root_container/catalog1/namespace1" },
+      "request": { "authzOp": "DETACH_POLICY_FROM_NAMESPACE", "principal": { "name": "admin1" }, "target": "POLICY:POLARIS/catalog1/namespace1/policy1", "secondary": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     }
   ]

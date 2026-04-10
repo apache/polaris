@@ -24,9 +24,13 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 public class RangerTestUtils {
+
+  private static final String REALM_CONTEXT_NAME = "POLARIS" ;
+
   public static RangerPolarisAuthorizerConfig createConfig() {
     Map<String, String> properties = new HashMap<>();
 
@@ -84,4 +88,15 @@ public class RangerTestUtils {
       }
     };
   }
+
+
+  public static RealmContext createRealmContext() {
+    return new RealmContext() {
+      @Override
+      public String getRealmIdentifier() {
+        return REALM_CONTEXT_NAME ;
+      }
+    } ;
+  }
+
 }

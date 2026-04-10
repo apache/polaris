@@ -21,6 +21,7 @@ package org.apache.polaris.extension.auth.ranger;
 
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
+import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmContext;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -35,8 +36,10 @@ public class RangerPolarisAuthorizerFactoryTest {
     factory.initialize();
 
     RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
-
     assertNotNull(authorizer);
+
+    authorizer.setRealmContext(createRealmContext());
+
   }
 
   @Test
