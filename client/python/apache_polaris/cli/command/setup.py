@@ -907,71 +907,61 @@ class SetupCommand(Command):
                         ),
                         catalog_name=command_args.get("catalog_name", ""),
                         catalog_type=command_args.get("catalog_type", "INTERNAL"),
-                        default_base_location=command_args.get(
-                            "default_base_location", ""
-                        ),
-                        storage_type=command_args.get("storage_type", ""),
-                        allowed_locations=command_args.get("allowed_locations") or [],
+                        default_base_location=command_args.get("default_base_location"),
+                        storage_type=command_args.get("storage_type"),
+                        allowed_locations=command_args.get("allowed_locations"),
                         properties=command_args.get("properties") or {},
                         set_properties=command_args.get("set_properties") or {},
                         remove_properties=command_args.get("remove_properties") or [],
-                        role_arn=command_args.get("role_arn", ""),
-                        external_id=command_args.get("external_id", ""),
-                        user_arn=command_args.get("user_arn", ""),
-                        region=command_args.get("region", ""),
-                        tenant_id=command_args.get("tenant_id", ""),
-                        multi_tenant_app_name=command_args.get(
-                            "multi_tenant_app_name", ""
-                        ),
-                        consent_url=command_args.get("consent_url", ""),
-                        service_account=command_args.get("service_account", ""),
+                        role_arn=command_args.get("role_arn"),
+                        external_id=command_args.get("external_id"),
+                        user_arn=command_args.get("user_arn"),
+                        region=command_args.get("region"),
+                        tenant_id=command_args.get("tenant_id"),
+                        multi_tenant_app_name=command_args.get("multi_tenant_app_name"),
+                        consent_url=command_args.get("consent_url"),
+                        service_account=command_args.get("service_account"),
                         hierarchical=command_args.get("hierarchical", False),
-                        endpoint=command_args.get("endpoint", ""),
-                        endpoint_internal=command_args.get("endpoint_internal", ""),
-                        sts_endpoint=command_args.get("sts_endpoint", ""),
+                        endpoint=command_args.get("endpoint"),
+                        endpoint_internal=command_args.get("endpoint_internal"),
+                        sts_endpoint=command_args.get("sts_endpoint"),
                         sts_unavailable=command_args.get("sts_unavailable", False),
                         kms_unavailable=command_args.get("kms_unavailable", False),
                         path_style_access=command_args.get("path_style_access", False),
-                        current_kms_key=command_args.get("current_kms_key", ""),
-                        allowed_kms_keys=command_args.get("allowed_kms_keys") or [],
+                        current_kms_key=command_args.get("current_kms_key"),
+                        allowed_kms_keys=command_args.get("allowed_kms_keys"),
                         catalog_connection_type=command_args.get(
-                            "catalog_connection_type", ""
+                            "catalog_connection_type"
                         ),
-                        catalog_uri=command_args.get("catalog_uri", ""),
-                        hadoop_warehouse=command_args.get("hadoop_warehouse", ""),
-                        hive_warehouse=command_args.get("hive_warehouse", ""),
+                        catalog_uri=command_args.get("catalog_uri"),
+                        hadoop_warehouse=command_args.get("hadoop_warehouse"),
+                        hive_warehouse=command_args.get("hive_warehouse"),
                         iceberg_remote_catalog_name=command_args.get(
-                            "iceberg_remote_catalog_name", ""
+                            "iceberg_remote_catalog_name"
                         ),
                         catalog_authentication_type=command_args.get(
-                            "catalog_authentication_type", ""
+                            "catalog_authentication_type"
                         ),
-                        catalog_token_uri=command_args.get("catalog_token_uri", ""),
-                        catalog_client_id=command_args.get("catalog_client_id", ""),
-                        catalog_client_secret=command_args.get(
-                            "catalog_client_secret", ""
-                        ),
+                        catalog_token_uri=command_args.get("catalog_token_uri"),
+                        catalog_client_id=command_args.get("catalog_client_id"),
+                        catalog_client_secret=command_args.get("catalog_client_secret"),
                         catalog_client_scopes=command_args.get("catalog_client_scopes")
                         or [],
-                        catalog_bearer_token=command_args.get(
-                            "catalog_bearer_token", ""
-                        ),
-                        catalog_role_arn=command_args.get("catalog_role_arn", ""),
+                        catalog_bearer_token=command_args.get("catalog_bearer_token"),
+                        catalog_role_arn=command_args.get("catalog_role_arn"),
                         catalog_role_session_name=command_args.get(
-                            "catalog_role_session_name", ""
+                            "catalog_role_session_name"
                         ),
-                        catalog_external_id=command_args.get("catalog_external_id", ""),
+                        catalog_external_id=command_args.get("catalog_external_id"),
                         catalog_signing_region=command_args.get(
-                            "catalog_signing_region", ""
+                            "catalog_signing_region"
                         ),
-                        catalog_signing_name=command_args.get(
-                            "catalog_signing_name", ""
-                        ),
+                        catalog_signing_name=command_args.get("catalog_signing_name"),
                         catalog_service_identity_type=command_args.get(
-                            "catalog_service_identity_type", ""
+                            "catalog_service_identity_type"
                         ),
                         catalog_service_identity_iam_arn=command_args.get(
-                            "catalog_service_identity_iam_arn", ""
+                            "catalog_service_identity_iam_arn"
                         ),
                     )
                     cmd.validate()
