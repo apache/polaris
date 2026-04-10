@@ -61,6 +61,7 @@ import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
+import org.apache.polaris.core.persistence.pagination.MetricsReportToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -1335,5 +1336,142 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
     }
+  }
+
+  @Override
+  public Page<ScanMetricsRecord> listScanReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long snapshotId,
+      @Nullable String principalName,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo,
+      @Nonnull PageToken pageToken) {
+    try {
+      PreparedQuery query =
+          buildMetricsQuery(
+              ModelScanMetricsReport.TABLE_NAME,
+              catalogId,
+              tableId,
+              snapshotId,
+              principalName,
+              timestampFrom,
+              timestampTo,
+              pageToken);
+      List<ModelScanMetricsReport> rows =
+          datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
+      return Page.mapped(
+          pageToken,
+          rows.stream().map(ModelScanMetricsReport::toRecord),
+          Function.identity(),
+          MetricsReportToken::fromRecord);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to list scan metrics reports: %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public Page<CommitMetricsRecord> listCommitReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long snapshotId,
+      @Nullable String principalName,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo,
+      @Nonnull PageToken pageToken) {
+    try {
+      PreparedQuery query =
+          buildMetricsQuery(
+              ModelCommitMetricsReport.TABLE_NAME,
+              catalogId,
+              tableId,
+              snapshotId,
+              principalName,
+              timestampFrom,
+              timestampTo,
+              pageToken);
+      List<ModelCommitMetricsReport> rows =
+          datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
+      return Page.mapped(
+          pageToken,
+          rows.stream().map(ModelCommitMetricsReport::toRecord),
+          Function.identity(),
+          MetricsReportToken::fromRecord);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to list commit metrics reports: %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Builds a parameterized SELECT query for a metrics report table using keyset pagination.
+   *
+   * <p>Rows are ordered by {@code (timestamp_ms DESC, report_id DESC)}. The cursor from {@link
+   * MetricsReportToken} drives the keyset predicate: {@code (timestamp_ms < cursorTs) OR
+   * (timestamp_ms = cursorTs AND report_id < cursorId)}.
+   */
+  private PreparedQuery buildMetricsQuery(
+      String tableName,
+      long catalogId,
+      long tableId,
+      @Nullable Long snapshotId,
+      @Nullable String principalName,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo,
+      PageToken pageToken) {
+    StringBuilder sql = new StringBuilder("SELECT * FROM ");
+    sql.append(QueryGenerator.getFullyQualifiedTableName(tableName));
+    sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id = ?");
+
+    List<Object> params = new ArrayList<>();
+    params.add(realmId);
+    params.add(catalogId);
+    params.add(tableId);
+
+    if (snapshotId != null) {
+      sql.append(" AND snapshot_id = ?");
+      params.add(snapshotId);
+    }
+    if (principalName != null) {
+      sql.append(" AND principal_name = ?");
+      params.add(principalName);
+    }
+    if (timestampFrom != null) {
+      sql.append(" AND timestamp_ms >= ?");
+      params.add(timestampFrom);
+    }
+    if (timestampTo != null) {
+      sql.append(" AND timestamp_ms < ?");
+      params.add(timestampTo);
+    }
+
+    if (pageToken.paginationRequested()) {
+      // If a token value is present it must be a MetricsReportToken; any other type indicates a
+      // caller bug (e.g. recycling a token from a different list operation).
+      if (pageToken.value().isPresent() && pageToken.valueAs(MetricsReportToken.class).isEmpty()) {
+        throw new IllegalArgumentException(
+            "pageToken contains a cursor of an unexpected type; expected MetricsReportToken");
+      }
+      pageToken
+          .valueAs(MetricsReportToken.class)
+          .ifPresent(
+              cursor -> {
+                sql.append(" AND (timestamp_ms < ? OR (timestamp_ms = ? AND report_id < ?))");
+                params.add(cursor.timestampMs());
+                params.add(cursor.timestampMs());
+                params.add(cursor.reportId());
+              });
+    }
+
+    sql.append(" ORDER BY timestamp_ms DESC, report_id DESC");
+
+    // Fetch one extra row so Page.mapped() can determine whether a next page exists.
+    // Always apply a LIMIT: use the requested pageSize, or default to 100 if absent.
+    int limit = pageToken.pageSize().orElse(100);
+    sql.append(" LIMIT ?");
+    params.add(limit + 1);
+
+    return new PreparedQuery(sql.toString(), params);
   }
 }

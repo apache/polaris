@@ -20,6 +20,10 @@ package org.apache.polaris.core.persistence.metrics;
 
 import com.google.common.annotations.Beta;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.List;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * Service Provider Interface (SPI) for persisting Iceberg metrics reports.
@@ -72,5 +76,57 @@ public interface MetricsPersistence {
    */
   default void writeCommitReport(@Nonnull CommitMetricsRecord record) {
     // No-op by default - backends that don't support metrics silently ignore
+  }
+
+  /**
+   * Lists scan metrics reports for a given table, ordered by timestamp descending.
+   *
+   * <p>Default implementation returns an empty page. Override in implementations that support
+   * metrics reads.
+   *
+   * @param catalogId the internal catalog ID
+   * @param tableId the internal table entity ID
+   * @param snapshotId optional filter by snapshot ID
+   * @param principalName optional filter by principal name
+   * @param timestampFrom optional inclusive lower bound on timestamp (epoch ms)
+   * @param timestampTo optional exclusive upper bound on timestamp (epoch ms)
+   * @param pageToken pagination token
+   * @return a page of scan metrics records
+   */
+  default Page<ScanMetricsRecord> listScanReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long snapshotId,
+      @Nullable String principalName,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo,
+      @Nonnull PageToken pageToken) {
+    return Page.fromItems(List.of());
+  }
+
+  /**
+   * Lists commit metrics reports for a given table, ordered by timestamp descending.
+   *
+   * <p>Default implementation returns an empty page. Override in implementations that support
+   * metrics reads.
+   *
+   * @param catalogId the internal catalog ID
+   * @param tableId the internal table entity ID
+   * @param snapshotId optional filter by snapshot ID
+   * @param principalName optional filter by principal name
+   * @param timestampFrom optional inclusive lower bound on timestamp (epoch ms)
+   * @param timestampTo optional exclusive upper bound on timestamp (epoch ms)
+   * @param pageToken pagination token
+   * @return a page of commit metrics records
+   */
+  default Page<CommitMetricsRecord> listCommitReports(
+      long catalogId,
+      long tableId,
+      @Nullable Long snapshotId,
+      @Nullable String principalName,
+      @Nullable Long timestampFrom,
+      @Nullable Long timestampTo,
+      @Nonnull PageToken pageToken) {
+    return Page.fromItems(List.of());
   }
 }

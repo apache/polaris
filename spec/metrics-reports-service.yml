@@ -1,0 +1,494 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+openapi: 3.0.3
+info:
+  title: Apache Polaris Metrics Reports API
+  description: >
+    Read-only API for querying persisted Iceberg table metrics (scan and commit reports)
+    from Apache Polaris. Requires TABLE_READ_METRICS privilege on the target table.
+  version: 0.1.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: "{scheme}://{host}/api/metrics-reports/v1"
+    variables:
+      scheme:
+        default: https
+      host:
+        default: localhost
+
+security:
+  - OAuth2: []
+  - BearerAuth: []
+
+paths:
+  /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}:
+    parameters:
+      - $ref: '#/components/parameters/catalogName'
+      - $ref: '#/components/parameters/namespace'
+      - $ref: '#/components/parameters/table'
+    get:
+      operationId: listTableMetrics
+      summary: List metrics reports for a table
+      description: >
+        Returns persisted metrics reports for the specified table. The required `metricType`
+        parameter selects between scan reports (produced during table reads) and commit reports
+        (produced during table writes). Results are ordered by timestamp descending.
+        Requires TABLE_READ_METRICS privilege on the target table.
+      tags:
+        - Metrics
+      parameters:
+        - name: metricType
+          in: query
+          required: true
+          description: Type of metrics to retrieve
+          schema:
+            type: string
+            enum: [scan, commit]
+        - name: pageToken
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Opaque cursor from a previous response's nextPageToken field
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+            description: Maximum number of results to return per page
+        - name: snapshotId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            description: Filter results to a specific snapshot ID
+        - name: principalName
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Filter results to a specific principal (e.g. service account name)
+        - name: timestampFrom
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            description: Inclusive lower bound on report timestamp (epoch milliseconds)
+        - name: timestampTo
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            description: Exclusive upper bound on report timestamp (epoch milliseconds)
+      responses:
+        '200':
+          description: Paginated list of metrics reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetricsResponse'
+        '400':
+          description: Bad request (missing or invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient privileges (TABLE_READ_METRICS required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Catalog, namespace, or table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://example.com/oauth/tokens
+          scopes: {}
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    catalogName:
+      name: catalogName
+      in: path
+      required: true
+      schema:
+        type: string
+    namespace:
+      name: namespace
+      in: path
+      required: true
+      description: >
+        Namespace path. Multi-level namespaces are encoded with unit separator (0x1F) between
+        levels, then URL-encoded as %1F.
+      schema:
+        type: string
+    table:
+      name: table
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    ListMetricsResponse:
+      description: >
+        Polymorphic response for metrics queries. The concrete type is determined by the
+        metricType discriminator field, which echoes the requested metricType query parameter.
+      oneOf:
+        - $ref: '#/components/schemas/ListScanMetricsResponse'
+        - $ref: '#/components/schemas/ListCommitMetricsResponse'
+      discriminator:
+        propertyName: metricType
+        mapping:
+          scan: '#/components/schemas/ListScanMetricsResponse'
+          commit: '#/components/schemas/ListCommitMetricsResponse'
+
+    ListScanMetricsResponse:
+      type: object
+      required:
+        - metricType
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          nullable: true
+          description: >
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+        metricType:
+          type: string
+          enum: [scan]
+          description: Discriminator — always "scan" for this response type
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanMetricsReport'
+
+    ListCommitMetricsResponse:
+      type: object
+      required:
+        - metricType
+        - reports
+      properties:
+        nextPageToken:
+          type: string
+          nullable: true
+          description: >
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist.
+        metricType:
+          type: string
+          enum: [commit]
+          description: Discriminator — always "commit" for this response type
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommitMetricsReport'
+
+    MetricsActor:
+      type: object
+      description: Identity of the principal who triggered the operation
+      properties:
+        principalName:
+          type: string
+          nullable: true
+
+    MetricsRequest:
+      type: object
+      description: Request context for correlation with logs and traces
+      properties:
+        requestId:
+          type: string
+          nullable: true
+        otelTraceId:
+          type: string
+          nullable: true
+          description: OpenTelemetry trace ID
+        otelSpanId:
+          type: string
+          nullable: true
+          description: OpenTelemetry span ID
+
+    ScanMetricsObject:
+      type: object
+      description: Resource context for the scanned table operation
+      properties:
+        snapshotId:
+          type: integer
+          format: int64
+          nullable: true
+
+    CommitMetricsObject:
+      type: object
+      description: Resource context for the committed table operation
+      required:
+        - snapshotId
+      properties:
+        snapshotId:
+          type: integer
+          format: int64
+
+    ScanPayloadData:
+      type: object
+      description: Iceberg scan metrics data
+      properties:
+        schemaId:
+          type: integer
+          nullable: true
+        filterExpression:
+          type: string
+          nullable: true
+        projectedFieldIds:
+          type: string
+          nullable: true
+          description: Comma-separated projected field IDs
+        projectedFieldNames:
+          type: string
+          nullable: true
+          description: Comma-separated projected field names
+        resultDataFiles:
+          type: integer
+          format: int64
+        resultDeleteFiles:
+          type: integer
+          format: int64
+        totalFileSizeBytes:
+          type: integer
+          format: int64
+        totalDataManifests:
+          type: integer
+          format: int64
+        totalDeleteManifests:
+          type: integer
+          format: int64
+        scannedDataManifests:
+          type: integer
+          format: int64
+        scannedDeleteManifests:
+          type: integer
+          format: int64
+        skippedDataManifests:
+          type: integer
+          format: int64
+        skippedDeleteManifests:
+          type: integer
+          format: int64
+        skippedDataFiles:
+          type: integer
+          format: int64
+        skippedDeleteFiles:
+          type: integer
+          format: int64
+        totalPlanningDurationMs:
+          type: integer
+          format: int64
+        equalityDeleteFiles:
+          type: integer
+          format: int64
+        positionalDeleteFiles:
+          type: integer
+          format: int64
+        indexedDeleteFiles:
+          type: integer
+          format: int64
+        totalDeleteFileSizeBytes:
+          type: integer
+          format: int64
+
+    ScanPayload:
+      type: object
+      required:
+        - type
+        - version
+        - data
+      properties:
+        type:
+          type: string
+          enum: [iceberg.metrics.scan]
+        version:
+          type: integer
+          enum: [1]
+        data:
+          $ref: '#/components/schemas/ScanPayloadData'
+
+    CommitPayloadData:
+      type: object
+      description: Iceberg commit metrics data
+      properties:
+        sequenceNumber:
+          type: integer
+          format: int64
+          nullable: true
+        operation:
+          type: string
+          description: Commit operation (append, overwrite, delete, replace)
+        addedDataFiles:
+          type: integer
+          format: int64
+        removedDataFiles:
+          type: integer
+          format: int64
+        totalDataFiles:
+          type: integer
+          format: int64
+        addedDeleteFiles:
+          type: integer
+          format: int64
+        removedDeleteFiles:
+          type: integer
+          format: int64
+        totalDeleteFiles:
+          type: integer
+          format: int64
+        addedEqualityDeleteFiles:
+          type: integer
+          format: int64
+        removedEqualityDeleteFiles:
+          type: integer
+          format: int64
+        addedPositionalDeleteFiles:
+          type: integer
+          format: int64
+        removedPositionalDeleteFiles:
+          type: integer
+          format: int64
+        addedRecords:
+          type: integer
+          format: int64
+        removedRecords:
+          type: integer
+          format: int64
+        totalRecords:
+          type: integer
+          format: int64
+        addedFileSizeBytes:
+          type: integer
+          format: int64
+        removedFileSizeBytes:
+          type: integer
+          format: int64
+        totalFileSizeBytes:
+          type: integer
+          format: int64
+        totalDurationMs:
+          type: integer
+          format: int64
+          nullable: true
+        attempts:
+          type: integer
+
+    CommitPayload:
+      type: object
+      required:
+        - type
+        - version
+        - data
+      properties:
+        type:
+          type: string
+          enum: [iceberg.metrics.commit]
+        version:
+          type: integer
+          enum: [1]
+        data:
+          $ref: '#/components/schemas/CommitPayloadData'
+
+    ScanMetricsReport:
+      type: object
+      description: Stable envelope for a persisted Iceberg scan metrics report
+      required:
+        - id
+        - timestampMs
+        - object
+        - payload
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this report
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (epoch milliseconds)
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        object:
+          $ref: '#/components/schemas/ScanMetricsObject'
+        payload:
+          $ref: '#/components/schemas/ScanPayload'
+
+    CommitMetricsReport:
+      type: object
+      description: Stable envelope for a persisted Iceberg commit metrics report
+      required:
+        - id
+        - timestampMs
+        - object
+        - payload
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this report
+        timestampMs:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (epoch milliseconds)
+        actor:
+          $ref: '#/components/schemas/MetricsActor'
+          nullable: true
+        request:
+          $ref: '#/components/schemas/MetricsRequest'
+          nullable: true
+        object:
+          $ref: '#/components/schemas/CommitMetricsObject'
+        payload:
+          $ref: '#/components/schemas/CommitPayload'
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        type:
+          type: string
+        code:
+          type: integer

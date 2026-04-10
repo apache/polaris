@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,6 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris Metrics Reports Service OpenAPI Specification'
+linkTitle: 'Metrics Reports API ↗'
+weight: 300
+params:
+  show_page_toc: false
+---
 
-org.apache.polaris.core.persistence.pagination.EntityIdToken$EntityIdTokenType
-org.apache.polaris.core.persistence.pagination.MetricsReportToken$MetricsReportTokenType
+{{< redoc-polaris "metrics-reports-service.yml" >}}
