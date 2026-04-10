@@ -67,9 +67,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private final boolean enforceCredentialRotationRequiredState;
 
   public RangerPolarisAuthorizer(
-      RangerEmbeddedAuthorizer authorizer,
-      String serviceName,
-      RealmConfig realmConfig) {
+      RangerEmbeddedAuthorizer authorizer, String serviceName, RealmConfig realmConfig) {
     this.authorizer = authorizer;
     this.serviceName = serviceName;
     this.enforceCredentialRotationRequiredState =
@@ -78,7 +76,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   public void setRealmContext(RealmContext aRealmContext) {
-    this.realmContext = aRealmContext ;
+    this.realmContext = aRealmContext;
     this.realmConextIdentifier = aRealmContext.getRealmIdentifier();
   }
 

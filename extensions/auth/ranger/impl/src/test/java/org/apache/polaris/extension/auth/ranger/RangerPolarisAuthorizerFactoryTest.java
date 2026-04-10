@@ -39,7 +39,6 @@ public class RangerPolarisAuthorizerFactoryTest {
     assertNotNull(authorizer);
 
     authorizer.setRealmContext(createRealmContext());
-
   }
 
   @Test

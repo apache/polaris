@@ -85,12 +85,13 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       throw new IllegalStateException(ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED);
     }
 
-    RangerPolarisAuthorizer polarisAuthorizer = new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig) ;
+    RangerPolarisAuthorizer polarisAuthorizer =
+        new RangerPolarisAuthorizer(authorizer, serviceName, realmConfig);
 
     if (realmContext != null) {
       polarisAuthorizer.setRealmContext(realmContext);
     }
 
-    return  polarisAuthorizer;
+    return polarisAuthorizer;
   }
 }

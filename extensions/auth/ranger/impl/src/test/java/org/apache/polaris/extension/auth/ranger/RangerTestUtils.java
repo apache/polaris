@@ -29,7 +29,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 
 public class RangerTestUtils {
 
-  private static final String REALM_CONTEXT_NAME = "POLARIS" ;
+  private static final String REALM_CONTEXT_NAME = "POLARIS";
 
   public static RangerPolarisAuthorizerConfig createConfig() {
     Map<String, String> properties = new HashMap<>();
@@ -89,14 +89,12 @@ public class RangerTestUtils {
     };
   }
 
-
   public static RealmContext createRealmContext() {
     return new RealmContext() {
       @Override
       public String getRealmIdentifier() {
-        return REALM_CONTEXT_NAME ;
+        return REALM_CONTEXT_NAME;
       }
-    } ;
+    };
   }
-
 }
