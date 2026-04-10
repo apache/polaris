@@ -18,17 +18,17 @@
  */
 package org.apache.polaris.service.metrics;
 
+import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -115,16 +115,19 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
         Page<ScanMetricsRecord> page =
             persistence.listScanReports(
                 catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
-        yield Response.ok(buildResponse("scan", page, MetricsReportsService::scanRecordToMap)).build();
+        yield Response.ok(buildResponse("scan", page, MetricsReportsService::scanRecordToMap))
+            .build();
       }
       case "commit" -> {
         Page<CommitMetricsRecord> page =
             persistence.listCommitReports(
                 catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
-        yield Response.ok(buildResponse("commit", page, MetricsReportsService::commitRecordToMap)).build();
+        yield Response.ok(buildResponse("commit", page, MetricsReportsService::commitRecordToMap))
+            .build();
       }
-      default -> throw new IllegalArgumentException(
-          "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
+      default ->
+          throw new IllegalArgumentException(
+              "Invalid metricType: " + metricType + "; must be 'scan' or 'commit'");
     };
   }
 

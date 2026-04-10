@@ -38,8 +38,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -92,23 +92,27 @@ class MetricsReportsServiceTest {
     org.apache.polaris.core.persistence.BasePersistence basePersistence =
         mock(org.apache.polaris.core.persistence.BasePersistence.class);
     // Delegate MetricsPersistence calls to the persistence mock.
-    when(basePersistence.listScanReports(
-            anyLong(), anyLong(), any(), any(), any(), any(), any()))
+    when(basePersistence.listScanReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenAnswer(
             inv ->
                 persistence.listScanReports(
-                    inv.getArgument(0), inv.getArgument(1),
-                    inv.getArgument(2), inv.getArgument(3),
-                    inv.getArgument(4), inv.getArgument(5),
+                    inv.getArgument(0),
+                    inv.getArgument(1),
+                    inv.getArgument(2),
+                    inv.getArgument(3),
+                    inv.getArgument(4),
+                    inv.getArgument(5),
                     inv.getArgument(6)));
-    when(basePersistence.listCommitReports(
-            anyLong(), anyLong(), any(), any(), any(), any(), any()))
+    when(basePersistence.listCommitReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenAnswer(
             inv ->
                 persistence.listCommitReports(
-                    inv.getArgument(0), inv.getArgument(1),
-                    inv.getArgument(2), inv.getArgument(3),
-                    inv.getArgument(4), inv.getArgument(5),
+                    inv.getArgument(0),
+                    inv.getArgument(1),
+                    inv.getArgument(2),
+                    inv.getArgument(3),
+                    inv.getArgument(4),
+                    inv.getArgument(5),
                     inv.getArgument(6)));
 
     PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
@@ -141,9 +145,9 @@ class MetricsReportsServiceTest {
     when(tableWrapper.getResolvedLeafEntity()).thenReturn(resolvedLeaf);
 
     manifest = mock(PolarisResolutionManifest.class);
-    when(manifest.resolveAll())
-        .thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
-    when(manifest.getResolvedPath(any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
+    when(manifest.resolveAll()).thenReturn(new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS));
+    when(manifest.getResolvedPath(
+            any(ResolvedPathKey.class), eq(PolarisEntitySubType.ANY_SUBTYPE), eq(true)))
         .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
 
@@ -162,16 +166,29 @@ class MetricsReportsServiceTest {
   void listScanMetricsReturns200WithReports() {
     ScanMetricsRecord r = scanRecord("r-1");
     when(persistence.listScanReports(
-            eq(CATALOG_ID), eq(TABLE_ID),
-            isNull(), isNull(), isNull(), isNull(),
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
             any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of(r)));
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "scan",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "scan",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
     Map<String, Object> body = (Map<String, Object>) response.getEntity();
@@ -183,16 +200,29 @@ class MetricsReportsServiceTest {
   @SuppressWarnings("unchecked")
   void listScanMetricsPaginationTokenPropagated() {
     when(persistence.listScanReports(
-            eq(CATALOG_ID), eq(TABLE_ID),
-            isNull(), isNull(), isNull(), isNull(),
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
             any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of()));
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "scan",
-            null, null, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "scan",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
     Map<String, Object> body = (Map<String, Object>) response.getEntity();
@@ -207,16 +237,29 @@ class MetricsReportsServiceTest {
   void listCommitMetricsReturns200WithReports() {
     CommitMetricsRecord r = commitRecord("c-1");
     when(persistence.listCommitReports(
-            eq(CATALOG_ID), eq(TABLE_ID),
-            isNull(), isNull(), isNull(), isNull(),
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
             any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of(r)));
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "commit",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "commit",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
     Map<String, Object> body = (Map<String, Object>) response.getEntity();
@@ -232,9 +275,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "bogus",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "bogus",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("bogus");
   }
@@ -244,9 +296,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, "", TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    "",
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("namespace");
   }
@@ -256,9 +317,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, null, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    null,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -273,9 +343,18 @@ class MetricsReportsServiceTest {
     // Single-level namespace — no unit separator.
     Response response =
         service.listTableMetrics(
-            CATALOG, "mydb", TABLE, "scan",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            "mydb",
+            TABLE,
+            "scan",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     // Reaches persistence → namespace was decoded correctly.
     assertThat(response.getStatus()).isEqualTo(200);
@@ -290,9 +369,18 @@ class MetricsReportsServiceTest {
     // Two-level namespace separated by unit separator (0x1F), same as NAMESPACE constant.
     Response response =
         service.listTableMetrics(
-            CATALOG, "level1\u001Flevel2", TABLE, "scan",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            "level1\u001Flevel2",
+            TABLE,
+            "scan",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
   }
@@ -308,22 +396,40 @@ class MetricsReportsServiceTest {
     String principal = "alice";
 
     when(persistence.listScanReports(
-            eq(CATALOG_ID), eq(TABLE_ID),
-            eq(snapshotId), eq(principal), eq(tsFrom), eq(tsTo),
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            eq(snapshotId),
+            eq(principal),
+            eq(tsFrom),
+            eq(tsTo),
             any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of()));
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "scan",
-            null, 10, snapshotId, principal, tsFrom, tsTo,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "scan",
+            null,
+            10,
+            snapshotId,
+            principal,
+            tsFrom,
+            tsTo,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    verify(persistence).listScanReports(
-        eq(CATALOG_ID), eq(TABLE_ID),
-        eq(snapshotId), eq(principal), eq(tsFrom), eq(tsTo),
-        any(PageToken.class));
+    verify(persistence)
+        .listScanReports(
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            eq(snapshotId),
+            eq(principal),
+            eq(tsFrom),
+            eq(tsTo),
+            any(PageToken.class));
   }
 
   @Test
@@ -335,22 +441,40 @@ class MetricsReportsServiceTest {
     String principal = "bob";
 
     when(persistence.listCommitReports(
-            eq(CATALOG_ID), eq(TABLE_ID),
-            eq(snapshotId), eq(principal), eq(tsFrom), eq(tsTo),
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            eq(snapshotId),
+            eq(principal),
+            eq(tsFrom),
+            eq(tsTo),
             any(PageToken.class)))
         .thenReturn(Page.fromItems(List.of()));
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "commit",
-            null, 10, snapshotId, principal, tsFrom, tsTo,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "commit",
+            null,
+            10,
+            snapshotId,
+            principal,
+            tsFrom,
+            tsTo,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    verify(persistence).listCommitReports(
-        eq(CATALOG_ID), eq(TABLE_ID),
-        eq(snapshotId), eq(principal), eq(tsFrom), eq(tsTo),
-        any(PageToken.class));
+    verify(persistence)
+        .listCommitReports(
+            eq(CATALOG_ID),
+            eq(TABLE_ID),
+            eq(snapshotId),
+            eq(principal),
+            eq(tsFrom),
+            eq(tsTo),
+            any(PageToken.class));
   }
 
   // ── wrong token type → 400 ────────────────────────────────────────────────
@@ -369,9 +493,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unexpected type");
   }
@@ -386,9 +519,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "commit",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "commit",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("unexpected type");
   }
@@ -404,9 +546,18 @@ class MetricsReportsServiceTest {
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "scan",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "scan",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
     Map<String, Object> body = (Map<String, Object>) response.getEntity();
@@ -439,9 +590,18 @@ class MetricsReportsServiceTest {
 
     Response response =
         service.listTableMetrics(
-            CATALOG, NAMESPACE, TABLE, "commit",
-            null, 10, null, null, null, null,
-            realmContext, securityContext);
+            CATALOG,
+            NAMESPACE,
+            TABLE,
+            "commit",
+            null,
+            10,
+            null,
+            null,
+            null,
+            null,
+            realmContext,
+            securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
     Map<String, Object> body = (Map<String, Object>) response.getEntity();
@@ -482,9 +642,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(ForbiddenException.class);
   }
 
@@ -500,9 +669,18 @@ class MetricsReportsServiceTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(org.apache.iceberg.exceptions.NotFoundException.class)
         .hasMessageContaining(TABLE);
   }
@@ -510,15 +688,23 @@ class MetricsReportsServiceTest {
   @Test
   void catalogNotFoundPropagatesNotFoundException() {
     // Top-level entity (catalog) could not be resolved.
-    when(manifest.resolveAll())
-        .thenReturn(new ResolverStatus(PolarisEntityType.CATALOG, CATALOG));
+    when(manifest.resolveAll()).thenReturn(new ResolverStatus(PolarisEntityType.CATALOG, CATALOG));
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(org.apache.iceberg.exceptions.NotFoundException.class)
         .hasMessageContaining(CATALOG);
   }
@@ -526,17 +712,24 @@ class MetricsReportsServiceTest {
   @Test
   void namespaceOrTablePathNotFoundPropagatesNotFoundException() {
     // PATH_COULD_NOT_BE_FULLY_RESOLVED — namespace or table segment not found.
-    ResolverPath failedPath =
-        new ResolverPath(List.of(NAMESPACE), PolarisEntityType.NAMESPACE);
-    when(manifest.resolveAll())
-        .thenReturn(new ResolverStatus(failedPath, 0));
+    ResolverPath failedPath = new ResolverPath(List.of(NAMESPACE), PolarisEntityType.NAMESPACE);
+    when(manifest.resolveAll()).thenReturn(new ResolverStatus(failedPath, 0));
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 service.listTableMetrics(
-                    CATALOG, NAMESPACE, TABLE, "scan",
-                    null, 10, null, null, null, null,
-                    realmContext, securityContext))
+                    CATALOG,
+                    NAMESPACE,
+                    TABLE,
+                    "scan",
+                    null,
+                    10,
+                    null,
+                    null,
+                    null,
+                    null,
+                    realmContext,
+                    securityContext))
         .isInstanceOf(org.apache.iceberg.exceptions.NotFoundException.class);
   }
 
