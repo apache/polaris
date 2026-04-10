@@ -341,10 +341,7 @@ public class ModelScanMetricsReportTest {
   @Test
   public void testToRecordEmptyMetadataReturnsEmptyMap() {
     ModelScanMetricsReport model =
-        ImmutableModelScanMetricsReport.builder()
-            .from(createTestReport())
-            .metadata("{}")
-            .build();
+        ImmutableModelScanMetricsReport.builder().from(createTestReport()).metadata("{}").build();
 
     org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
 
@@ -354,10 +351,7 @@ public class ModelScanMetricsReportTest {
   @Test
   public void testToRecordNullMetadataReturnsEmptyMap() {
     ModelScanMetricsReport model =
-        ImmutableModelScanMetricsReport.builder()
-            .from(createTestReport())
-            .metadata(null)
-            .build();
+        ImmutableModelScanMetricsReport.builder().from(createTestReport()).metadata(null).build();
 
     org.apache.polaris.core.persistence.metrics.ScanMetricsRecord record = model.toRecord();
 

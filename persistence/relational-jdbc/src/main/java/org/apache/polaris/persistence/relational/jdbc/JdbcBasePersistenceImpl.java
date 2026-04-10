@@ -1513,8 +1513,7 @@ public class JdbcBasePersistenceImpl
           .valueAs(MetricsReportToken.class)
           .ifPresent(
               cursor -> {
-                sql.append(
-                    " AND (timestamp_ms < ? OR (timestamp_ms = ? AND report_id < ?))");
+                sql.append(" AND (timestamp_ms < ? OR (timestamp_ms = ? AND report_id < ?))");
                 params.add(cursor.timestampMs());
                 params.add(cursor.timestampMs());
                 params.add(cursor.reportId());

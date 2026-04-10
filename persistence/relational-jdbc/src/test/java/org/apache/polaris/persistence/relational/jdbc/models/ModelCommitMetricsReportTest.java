@@ -313,10 +313,7 @@ public class ModelCommitMetricsReportTest {
   @Test
   public void testToRecordEmptyMetadataReturnsEmptyMap() {
     ModelCommitMetricsReport model =
-        ImmutableModelCommitMetricsReport.builder()
-            .from(createTestReport())
-            .metadata("{}")
-            .build();
+        ImmutableModelCommitMetricsReport.builder().from(createTestReport()).metadata("{}").build();
 
     org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
 
@@ -326,10 +323,7 @@ public class ModelCommitMetricsReportTest {
   @Test
   public void testToRecordNullMetadataReturnsEmptyMap() {
     ModelCommitMetricsReport model =
-        ImmutableModelCommitMetricsReport.builder()
-            .from(createTestReport())
-            .metadata(null)
-            .build();
+        ImmutableModelCommitMetricsReport.builder().from(createTestReport()).metadata(null).build();
 
     org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
 

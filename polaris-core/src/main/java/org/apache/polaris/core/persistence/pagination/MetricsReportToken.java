@@ -29,9 +29,9 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * Pagination {@linkplain Token token} for metrics reports, backed by {@code (timestamp_ms,
  * report_id)}.
  *
- * <p>Metrics reports are sorted by {@code (timestamp_ms DESC, report_id DESC)}. The cursor
- * encodes the last-seen {@code (timestamp_ms, report_id)} pair, enabling stable keyset pagination
- * that remains correct under concurrent inserts.
+ * <p>Metrics reports are sorted by {@code (timestamp_ms DESC, report_id DESC)}. The cursor encodes
+ * the last-seen {@code (timestamp_ms, report_id)} pair, enabling stable keyset pagination that
+ * remains correct under concurrent inserts.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableMetricsReportToken.class)

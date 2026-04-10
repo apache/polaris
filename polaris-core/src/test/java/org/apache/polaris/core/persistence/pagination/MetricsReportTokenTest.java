@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.OptionalInt;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
@@ -41,7 +40,8 @@ class MetricsReportTokenTest {
   @Test
   void tokenTypeRegistration() {
     // TokenType must be reachable via ServiceLoader for deserialization to work.
-    MetricsReportToken.MetricsReportTokenType type = new MetricsReportToken.MetricsReportTokenType();
+    MetricsReportToken.MetricsReportTokenType type =
+        new MetricsReportToken.MetricsReportTokenType();
     assertThat(type.id()).isEqualTo(MetricsReportToken.ID);
     assertThat(type.javaType()).isEqualTo(MetricsReportToken.class);
   }
@@ -72,10 +72,7 @@ class MetricsReportTokenTest {
     PageToken firstPage = PageToken.fromLimit(1);
     Page<String> page =
         Page.mapped(
-            firstPage,
-            Stream.of("item-a", "item-b"),
-            Function.identity(),
-            ignored -> cursor);
+            firstPage, Stream.of("item-a", "item-b"), Function.identity(), ignored -> cursor);
 
     String encoded = page.encodedResponseToken();
     assertThat(encoded).isNotNull();
