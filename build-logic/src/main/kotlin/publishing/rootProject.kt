@@ -90,7 +90,10 @@ internal fun configureOnRootProject(project: Project) =
         val e = project.extensions.getByType(PublishingHelperExtension::class.java)
         val asfName = e.asfProjectId.get()
 
-        val gitCommitId = GitInfo.memoized(rootProject).gitHead
+        val gitInfo = GitInfo.memoized(rootProject)
+        val gitCommitId = gitInfo.gitHead
+        val gitTag = gitInfo.gitDescribe
+        val rcNumber = Regex("-rc(\\d+)$").find(gitTag)?.groupValues?.get(1) ?: "<RC_NUMBER>"
 
         val repos = project.extensions.getByType(NexusPublishExtension::class.java).repositories
         val repo = repos.iterator().next()
@@ -101,7 +104,7 @@ internal fun configureOnRootProject(project: Project) =
           >(
             "stagingRepositoryUrlRegistry"
           )
-        val staginRepoUrl =
+        val stagingRepoUrl =
           if (stagingRepositoryUrlRegistryRegistration.isPresent) {
             val stagingRepositoryUrlRegistryBuildServiceRegistration =
               stagingRepositoryUrlRegistryRegistration.get()
@@ -127,48 +130,49 @@ internal fun configureOnRootProject(project: Project) =
         val asfProjectName =
           e.overrideName.orElse(project.provider { "Apache ${asfProject.name}" }).get()
 
-        val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
+        val emailTemplatesDir = project.layout.buildDirectory.dir("email-templates").get().asFile
+        emailTemplatesDir.mkdirs()
+        val subjectFile = emailTemplatesDir.resolve("${e.baseName.get()}.vote-email-subject.txt")
+        val bodyFile = emailTemplatesDir.resolve("${e.baseName.get()}.vote-email-body.txt")
 
-        val subjectFile = e.distributionFile("vote-email-subject.txt").relativeTo(projectDir)
-        val bodyFile = e.distributionFile("vote-email-body.txt").relativeTo(projectDir)
-
-        val emailSubject = "[VOTE] Release $asfProjectName $version"
+        val emailSubject = "[VOTE] Release $asfProjectName $version (rc$rcNumber)"
         subjectFile.writeText(emailSubject)
 
         val emailBody =
           """
               Hi everyone,
 
-              I propose that we release the following RC as the official
-              $asfProjectName $versionNoRc release.
+              I propose that we release the following RC as the official $asfProjectName $version release.
 
-              * This corresponds to the tag: apache-$asfName-$version
-              * https://github.com/apache/$asfName/commits/apache-$asfName-$version
+              This corresponds to the tag: $gitTag
+              * https://github.com/apache/$asfName/commits/$gitTag
               * https://github.com/apache/$asfName/tree/$gitCommitId
 
               The release tarball, signature, and checksums are here:
-              * https://dist.apache.org/repos/dist/dev/$asfName/apache-$asfName-$version
+              * https://dist.apache.org/repos/dist/dev/$asfName/$version
+
+              Helm charts are available on:
+              * https://dist.apache.org/repos/dist/dev/$asfName/helm-chart/$version
+
+              NB: you have to build the Docker images locally in order to test Helm charts.
 
               You can find the KEYS file here:
               * https://downloads.apache.org/$asfName/KEYS
 
               Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
-              * $staginRepoUrl
+              * $stagingRepoUrl
 
-              Please download, verify, and test.
+              Please download, verify, and test according to the release verification guide, which can be found at:
+              * https://polaris.apache.org/community/release-guides/release-verification-guide/
 
               Please vote in the next 72 hours.
 
-              [ ] +1 Release this as Apache $asfName $version
+              [ ] +1 Release this as Apache Polaris $version
               [ ] +0
               [ ] -1 Do not release this because...
 
-              Only PMC members have binding votes, but other community members are
-              encouraged to cast non-binding votes. This vote will pass if there are
-              3 binding +1 votes and more binding +1 votes than -1 votes.
-
-              Thanks
-              Regards
+              Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+              This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
             """
 
         logger.lifecycle(
@@ -178,7 +182,7 @@ internal fun configureOnRootProject(project: Project) =
               The email for your release vote mail:
               -------------------------------------
 
-              Suggested subject: (also in file $subjectFile) 
+              Suggested subject: (also in file $subjectFile)
 
               $emailSubject
 
