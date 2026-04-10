@@ -86,13 +86,21 @@ internal fun configureOnRootProject(project: Project) =
 
       mustRunAfter("initializeApacheStagingRepository")
 
+      // Capture project-derived values at configuration time to avoid
+      // Task.getProject() at execution time (deprecated in Gradle 10).
+      val publishingHelperExt = project.extensions.getByType(PublishingHelperExtension::class.java)
+      val nexusPublishExt = project.extensions.getByType(NexusPublishExtension::class.java)
+      val rootProject = project.rootProject
+      val gradle = project.gradle
+      val projectVersion = project.version
+      val projectDir = project.projectDir
+
       doFirst {
-        val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        val asfName = e.asfProjectId.get()
+        val asfName = publishingHelperExt.asfProjectId.get()
 
         val gitCommitId = GitInfo.memoized(rootProject).gitHead
 
-        val repos = project.extensions.getByType(NexusPublishExtension::class.java).repositories
+        val repos = nexusPublishExt.repositories
         val repo = repos.iterator().next()
 
         val stagingRepositoryUrlRegistryRegistration =
@@ -123,16 +131,18 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val asfProject = AsfProject.memoized(project, asfName)
+        val asfProject = AsfProject.memoized(rootProject, asfName)
         val asfProjectName =
-          e.overrideName.orElse(project.provider { "Apache ${asfProject.name}" }).get()
+          publishingHelperExt.overrideName.orElse("Apache ${asfProject.name}").get()
 
-        val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
+        val versionNoRc = projectVersion.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
-        val subjectFile = e.distributionFile("vote-email-subject.txt").relativeTo(projectDir)
-        val bodyFile = e.distributionFile("vote-email-body.txt").relativeTo(projectDir)
+        val subjectFile =
+          publishingHelperExt.distributionFile("vote-email-subject.txt").relativeTo(projectDir)
+        val bodyFile =
+          publishingHelperExt.distributionFile("vote-email-body.txt").relativeTo(projectDir)
 
-        val emailSubject = "[VOTE] Release $asfProjectName $version"
+        val emailSubject = "[VOTE] Release $asfProjectName $projectVersion"
         subjectFile.writeText(emailSubject)
 
         val emailBody =
@@ -142,12 +152,12 @@ internal fun configureOnRootProject(project: Project) =
               I propose that we release the following RC as the official
               $asfProjectName $versionNoRc release.
 
-              * This corresponds to the tag: apache-$asfName-$version
-              * https://github.com/apache/$asfName/commits/apache-$asfName-$version
+              * This corresponds to the tag: apache-$asfName-$projectVersion
+              * https://github.com/apache/$asfName/commits/apache-$asfName-$projectVersion
               * https://github.com/apache/$asfName/tree/$gitCommitId
 
               The release tarball, signature, and checksums are here:
-              * https://dist.apache.org/repos/dist/dev/$asfName/apache-$asfName-$version
+              * https://dist.apache.org/repos/dist/dev/$asfName/apache-$asfName-$projectVersion
 
               You can find the KEYS file here:
               * https://downloads.apache.org/$asfName/KEYS
@@ -159,7 +169,7 @@ internal fun configureOnRootProject(project: Project) =
 
               Please vote in the next 72 hours.
 
-              [ ] +1 Release this as Apache $asfName $version
+              [ ] +1 Release this as Apache $asfName $projectVersion
               [ ] +0
               [ ] -1 Do not release this because...
 
@@ -178,7 +188,7 @@ internal fun configureOnRootProject(project: Project) =
               The email for your release vote mail:
               -------------------------------------
 
-              Suggested subject: (also in file $subjectFile) 
+              Suggested subject: (also in file $subjectFile)
 
               $emailSubject
 
