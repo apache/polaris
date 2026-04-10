@@ -27,7 +27,6 @@ import org.apache.polaris.service.it.PolarisRestCatalogRustFSIT;
 @QuarkusIntegrationTest
 @TestProfile(value = NoSqlCatalogIT.Profile.class)
 public class NoSqlCatalogIT extends PolarisRestCatalogRustFSIT {
-
   public static class Profile extends NoSqlTesting.PersistenceInMemoryProfile {
     @Override
     public Map<String, String> getConfigOverrides() {

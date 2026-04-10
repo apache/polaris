@@ -59,7 +59,6 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
-
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -230,7 +229,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   protected URI externalCatalogBaseLocation() {
     return externalCatalogBaseLocation;
   }
-
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal admin) {
@@ -645,7 +643,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
         .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
   }
-
 
   @Test
   public void testCreateTableWithOverriddenBaseLocationCannotOverlapSibling() {
