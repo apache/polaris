@@ -908,6 +908,12 @@ For general information on persistence in Polaris, see the &lt;a href="https://p
  &lt;td&gt;Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: &lt;a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core"&gt;EnvVar API&lt;/a&gt; This can be useful to get configuration values from Kubernetes secrets or config maps.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;tr&gt;
+ &lt;td&gt;envFrom&lt;/td&gt;
+ &lt;td&gt;list&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;[]&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Bulk import environment variables from Secrets or ConfigMaps. Defines sources to populate environment variables using Kubernetes &lt;code&gt;envFrom&lt;/code&gt;. Each referenced Secret or ConfigMap will expose all its key-value pairs as environment variables inside the Polaris container. &lt;a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envfromsource-v1-core"&gt;EnvFrom API&lt;/a&gt;&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
  &lt;td&gt;extraVolumes&lt;/td&gt;
  &lt;td&gt;list&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;[]&lt;/code&gt;&lt;/td&gt;
