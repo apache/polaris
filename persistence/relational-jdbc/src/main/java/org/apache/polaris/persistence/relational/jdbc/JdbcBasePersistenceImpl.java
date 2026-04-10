@@ -1351,7 +1351,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query =
           buildMetricsQuery(
               ModelScanMetricsReport.TABLE_NAME,
-              ModelScanMetricsReport.ALL_COLUMNS,
               catalogId,
               tableId,
               snapshotId,
@@ -1359,18 +1358,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               timestampFrom,
               timestampTo,
               pageToken);
-      AtomicReference<Page<ScanMetricsRecord>> result = new AtomicReference<>();
-      datasourceOperations.executeSelectOverStream(
-          query,
-          ModelScanMetricsReport.CONVERTER,
-          stream ->
-              result.set(
-                  Page.mapped(
-                      pageToken,
-                      stream.map(ModelScanMetricsReport::toRecord),
-                      Function.identity(),
-                      MetricsReportToken::fromRecord)));
-      return result.get();
+      List<ModelScanMetricsReport> rows =
+          datasourceOperations.executeSelect(query, ModelScanMetricsReport.CONVERTER);
+      return Page.mapped(
+          pageToken,
+          rows.stream().map(ModelScanMetricsReport::toRecord),
+          Function.identity(),
+          MetricsReportToken::fromRecord);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to list scan metrics reports: %s", e.getMessage()), e);
@@ -1390,7 +1384,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query =
           buildMetricsQuery(
               ModelCommitMetricsReport.TABLE_NAME,
-              ModelCommitMetricsReport.ALL_COLUMNS,
               catalogId,
               tableId,
               snapshotId,
@@ -1398,18 +1391,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               timestampFrom,
               timestampTo,
               pageToken);
-      AtomicReference<Page<CommitMetricsRecord>> result = new AtomicReference<>();
-      datasourceOperations.executeSelectOverStream(
-          query,
-          ModelCommitMetricsReport.CONVERTER,
-          stream ->
-              result.set(
-                  Page.mapped(
-                      pageToken,
-                      stream.map(ModelCommitMetricsReport::toRecord),
-                      Function.identity(),
-                      MetricsReportToken::fromRecord)));
-      return result.get();
+      List<ModelCommitMetricsReport> rows =
+          datasourceOperations.executeSelect(query, ModelCommitMetricsReport.CONVERTER);
+      return Page.mapped(
+          pageToken,
+          rows.stream().map(ModelCommitMetricsReport::toRecord),
+          Function.identity(),
+          MetricsReportToken::fromRecord);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to list commit metrics reports: %s", e.getMessage()), e);
@@ -1425,7 +1413,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    */
   private PreparedQuery buildMetricsQuery(
       String tableName,
-      List<String> columns,
       long catalogId,
       long tableId,
       @Nullable Long snapshotId,
@@ -1433,9 +1420,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
       PageToken pageToken) {
-    StringBuilder sql = new StringBuilder("SELECT ");
-    sql.append(String.join(", ", columns));
-    sql.append(" FROM ").append(QueryGenerator.getFullyQualifiedTableName(tableName));
+    StringBuilder sql = new StringBuilder("SELECT * FROM ");
+    sql.append(QueryGenerator.getFullyQualifiedTableName(tableName));
     sql.append(" WHERE realm_id = ? AND catalog_id = ? AND table_id = ?");
 
     List<Object> params = new ArrayList<>();
