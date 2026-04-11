@@ -19,8 +19,8 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -64,7 +64,10 @@ public interface AuthorizationRequest {
   @Nonnull
   @Value.Derived
   default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream().map(AuthorizationTargetBinding::getTarget).toList();
+    return getTargetBindings().stream()
+        .map(AuthorizationTargetBinding::getTarget)
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   /**
@@ -75,18 +78,15 @@ public interface AuthorizationRequest {
   @Nonnull
   @Value.Derived
   default List<PolarisSecurable> getSecondaries() {
-    List<PolarisSecurable> secondaries = new ArrayList<>();
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getSecondary() != null) {
-        secondaries.add(targetBinding.getSecondary());
-      }
-    }
-    return secondaries;
+    return getTargetBindings().stream()
+        .map(AuthorizationTargetBinding::getSecondary)
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   default boolean hasSecurableType(PolarisEntityType... types) {
     for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (containsType(targetBinding.getTarget(), types)) {
+      if (targetBinding.getTarget() != null && containsType(targetBinding.getTarget(), types)) {
         return true;
       }
       if (targetBinding.getSecondary() != null

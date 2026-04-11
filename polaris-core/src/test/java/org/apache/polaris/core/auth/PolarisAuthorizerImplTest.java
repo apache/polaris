@@ -19,12 +19,28 @@
 package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentMatchers;
 
 public class PolarisAuthorizerImplTest {
 
@@ -38,5 +54,138 @@ public class PolarisAuthorizerImplTest {
             ? PolarisAuthorizerImpl.SUPER_PRIVILEGES.get(privilege)
             : EnumSet.of(privilege);
     assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  void authorizeUsesRootTargetForRootGrantRequestWithoutPrimaryTarget() {
+    // Verify that new authorize SPI call without primary target uses root_container
+    // for resolution and authorization
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisResolvedPathWrapper principalRoleWrapper = mock(PolarisResolvedPathWrapper.class);
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
+    when(manifest.getResolvedTopLevelEntity("analytics-admin", PolarisEntityType.PRINCIPAL_ROLE))
+        .thenReturn(principalRoleWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE,
+            List.of(
+                AuthorizationTargetBinding.of(
+                    null,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")))));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(authorizer)
+        .authorizeOrThrow(
+            eq(request.getPrincipal()),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE),
+            eq(List.of(rootWrapper)),
+            eq(null));
+  }
+
+  @Test
+  void authorizeUsesRootTargetForListCatalogsRequestWithoutPrimaryTarget() {
+    // Verify that new authorize SPI call without primary target uses root_container
+    // for resolution and authorization
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper rootWrapper = mock(PolarisResolvedPathWrapper.class);
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedRootContainerEntityAsPath()).thenReturn(rootWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.LIST_CATALOGS),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.LIST_CATALOGS,
+            List.of());
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(authorizer)
+        .authorizeOrThrow(
+            eq(request.getPrincipal()),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.LIST_CATALOGS),
+            eq(List.of(rootWrapper)),
+            eq(null));
+  }
+
+  @Test
+  void authorizeResolvesNamespaceTargetUsingCatalog() {
+    // Verify authorize call that includes Catalog name in the PolarisSecurable
+    // successfully resolves the correct namespace
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
+        .thenReturn(namespaceWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.LIST_NAMESPACES,
+            List.of(
+                AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
+                    null)));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(manifest)
+        .getResolvedPath(ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true);
+    verify(authorizer)
+        .authorizeOrThrow(
+            eq(request.getPrincipal()),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
+            eq(List.of(namespaceWrapper)),
+            eq(null));
   }
 }
