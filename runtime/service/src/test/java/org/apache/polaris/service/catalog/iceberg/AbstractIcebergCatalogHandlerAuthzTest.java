@@ -58,6 +58,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -499,6 +500,45 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
+  }
+
+  @Test
+  void testCreateTableStagedIncludesTableDefaultProperties() throws Exception {
+    CreateTableRequest createStagedRequest =
+        CreateTableRequest.builder()
+            .withName("staged-defaults")
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    LocalCatalogFactory defaultPropertiesFactory =
+        resolvedManifest -> {
+          Catalog catalog = localCatalogFactory.createCatalog(resolvedManifest);
+          catalog.initialize(
+              CATALOG_NAME,
+              ImmutableMap.of(
+                  CatalogProperties.FILE_IO_IMPL,
+                  "org.apache.iceberg.inmemory.InMemoryFileIO",
+                  CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
+                  "catalog-default-key1",
+                  CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
+                  "catalog-default-key2"));
+          return catalog;
+        };
+
+    IcebergCatalogHandler rootHandler =
+        icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedRoot);
+    try (IcebergCatalogHandler handler =
+        ImmutableIcebergCatalogHandler.builder()
+            .from(rootHandler)
+            .localCatalogFactory(defaultPropertiesFactory)
+            .build()) {
+      LoadTableResponse response = handler.createTableStaged(NS2, createStagedRequest);
+
+      Assertions.assertThat(response.tableMetadata().properties())
+          .containsEntry("default-key1", "catalog-default-key1")
+          .containsEntry("default-key2", "catalog-default-key2");
+    }
   }
 
   @TestFactory

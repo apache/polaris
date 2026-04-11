@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SnapshotRef;
@@ -89,6 +90,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -517,6 +519,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      properties.putAll(
+          PropertyUtil.propertiesWithPrefix(
+              polarisCatalog.properties(), CatalogProperties.TABLE_DEFAULT_PREFIX));
+    }
     properties.putAll(reservedProperties().removeReservedProperties(request.properties()));
 
     String location;
