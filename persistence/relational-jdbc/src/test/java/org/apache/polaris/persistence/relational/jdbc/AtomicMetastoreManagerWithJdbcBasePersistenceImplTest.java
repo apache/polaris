@@ -31,6 +31,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.mockito.Mockito;
 
@@ -69,8 +70,10 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
         new JdbcBasePersistenceImpl(
             diagServices,
             datasourceOperations,
+            datasourceOperations,
+            datasourceOperations,
             RANDOM_SECRETS,
-            Mockito.mock(),
+            Mockito.mock(PolarisStorageIntegrationProvider.class),
             realmContext.getRealmIdentifier(),
             schemaVersion());
     AtomicOperationMetaStoreManager metaStoreManager =

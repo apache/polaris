@@ -74,6 +74,8 @@ class MetricsReportPersistenceTest {
         new JdbcBasePersistenceImpl(
             diagnostics,
             datasourceOperations,
+            datasourceOperations,
+            datasourceOperations,
             PrincipalSecretsGenerator.RANDOM_SECRETS,
             storageProvider,
             "TEST_REALM",

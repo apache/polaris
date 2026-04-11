@@ -19,7 +19,13 @@
 package org.apache.polaris.quarkus.common.config.jdbc;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 
 @ConfigMapping(prefix = "polaris.persistence.relational.jdbc")
-public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {}
+public interface QuarkusRelationalJdbcConfiguration extends RelationalJdbcConfiguration {
+  @WithName("datasource-resolver.type")
+  @WithDefault("default")
+  String dataSourceResolverType();
+}

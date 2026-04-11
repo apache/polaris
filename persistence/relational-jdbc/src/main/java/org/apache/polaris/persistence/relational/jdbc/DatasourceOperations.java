@@ -95,6 +95,33 @@ public class DatasourceOperations {
   }
 
   /**
+   * Checks if a table exists in the database.
+   *
+   * @param tableName The name of the table to check for.
+   * @return true if the table exists, false otherwise.
+   * @throws SQLException if a database access error occurs.
+   */
+  public boolean tableExists(String tableName) throws SQLException {
+    try (Connection connection = borrowConnection()) {
+      var metaData = connection.getMetaData();
+      // Try uppercase first (Standard/H2)
+      try (ResultSet resultSet =
+          metaData.getTables(
+              null, null, tableName.toUpperCase(Locale.ROOT), new String[] {"TABLE"})) {
+        if (resultSet.next()) {
+          return true;
+        }
+      }
+      // Try lowercase (Postgres/CockroachDB)
+      try (ResultSet resultSet =
+          metaData.getTables(
+              null, null, tableName.toLowerCase(Locale.ROOT), new String[] {"TABLE"})) {
+        return resultSet.next();
+      }
+    }
+  }
+
+  /**
    * Execute SQL script and close the associated input stream
    *
    * @param scriptInputStream : Input stream containing the SQL script.
@@ -326,7 +353,8 @@ public class DatasourceOperations {
         || e.getMessage().toLowerCase(Locale.ROOT).contains("connection reset");
   }
 
-  // TODO: consider refactoring to use a retry library, inorder to have fair retries
+  // TODO: consider refactoring to use a retry library, inorder to have fair
+  // retries
   // and more knobs for tuning retry pattern.
   @VisibleForTesting
   <T> T withRetries(Operation<T> operation) throws SQLException {
@@ -347,7 +375,8 @@ public class DatasourceOperations {
       } catch (SQLException | RuntimeException e) {
         SQLException sqlException;
         if (e instanceof RuntimeException) {
-          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE, ignore RTE from
+          // Handle Exceptions from ResultSet Iterator consumer, as it throws a RTE,
+          // ignore RTE from
           // the transactions.
           if (e.getCause() instanceof SQLException
               && !(e instanceof EntityAlreadyExistsException)) {
