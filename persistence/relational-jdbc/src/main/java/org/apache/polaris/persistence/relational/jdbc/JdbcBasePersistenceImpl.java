@@ -51,7 +51,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
@@ -1257,7 +1256,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegration(polarisStorageConfigurationInfo);
+    // No-op in OSS: the storage integration is resolved at credential-vending time via
+    // PolarisStorageIntegrationProvider.getStorageIntegration(resolvedEntityPath). This hook
+    // remains available for custom deployments that need to allocate/lease external state
+    // atomically with the catalog-creation transaction.
+    return null;
   }
 
   @Override
@@ -1265,16 +1268,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration) {}
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegration(storageConfig);
-  }
 
   @FunctionalInterface
   private interface QueryAction {

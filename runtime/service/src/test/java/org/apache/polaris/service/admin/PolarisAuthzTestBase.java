@@ -217,7 +217,8 @@ public abstract class PolarisAuthzTestBase {
             Optional.empty(),
             () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
             null,
-            null);
+            null,
+            new org.apache.polaris.core.PolarisDefaultDiagServiceImpl());
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 

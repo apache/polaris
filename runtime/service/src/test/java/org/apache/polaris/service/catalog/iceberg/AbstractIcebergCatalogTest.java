@@ -324,13 +324,18 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(
             (destination) -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
+            mockAwsConfig,
             callContext.getRealmConfig());
-    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
@@ -1854,15 +1859,10 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    var storageConfig =
-        org.apache.polaris.core.persistence.BaseMetaStoreManager.extractStorageConfiguration(
-            diagServices, taskEntity);
-    var integration = storageIntegrationProvider.getStorageIntegration(storageConfig);
+    var integration = storageIntegrationProvider.getStorageIntegration(List.of(taskEntity));
     Map<String, String> credentials =
         integration
             .getSubscopedCreds(
-                callContext.getRealmConfig(),
-                storageConfig,
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),

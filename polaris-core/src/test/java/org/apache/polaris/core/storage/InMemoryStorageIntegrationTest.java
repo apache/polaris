@@ -159,8 +159,6 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public StorageAccessConfig getSubscopedCreds(
-        @Nonnull RealmConfig realmConfig,
-        @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowList,
         @Nonnull Set<String> readLocations,
         @Nonnull Set<String> writeLocations,
@@ -171,8 +169,6 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     protected org.apache.polaris.core.storage.cache.StorageCredentialCacheKey buildCacheKey(
-        @Nonnull PolarisStorageConfigurationInfo storageConfig,
-        @Nonnull RealmConfig realmConfig,
         boolean allowList,
         @Nonnull Set<String> readLocations,
         @Nonnull Set<String> writeLocations,

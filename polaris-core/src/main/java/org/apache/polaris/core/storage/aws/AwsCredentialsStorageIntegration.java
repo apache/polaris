@@ -36,7 +36,6 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -66,21 +65,27 @@ public class AwsCredentialsStorageIntegration
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
   /** Test constructor — no cache, no request-scoped suppliers. */
-  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
-    this((destination) -> fixedClient, config -> Optional.empty());
+  public AwsCredentialsStorageIntegration(
+      StsClient fixedClient, AwsStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
+    this((destination) -> fixedClient, config -> Optional.empty(), storageConfig, realmConfig);
   }
 
   /** Test constructor with credentials. */
   public AwsCredentialsStorageIntegration(
-      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
-    this(stsClientProvider, config -> credentialsProvider);
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> credentialsProvider,
+      AwsStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    this(stsClientProvider, config -> credentialsProvider, storageConfig, realmConfig);
   }
 
   /** Constructor with credentials resolver (no cache). */
   public AwsCredentialsStorageIntegration(
       StsClientProvider stsClientProvider,
-      Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver) {
-    this(stsClientProvider, credentialsResolver, null, null);
+      Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
+      AwsStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    this(stsClientProvider, credentialsResolver, null, storageConfig, realmConfig);
   }
 
   /** Production constructor with cache and realm config. */
@@ -88,21 +93,21 @@ public class AwsCredentialsStorageIntegration
       StsClientProvider stsClientProvider,
       Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      org.apache.polaris.core.config.RealmConfig realmConfig) {
-    super(AwsCredentialsStorageIntegration.class.getName(), cache, realmConfig);
+      AwsStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    super(AwsCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
     this.stsClientProvider = stsClientProvider;
     this.credentialsResolver = credentialsResolver;
   }
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull PolarisStorageConfigurationInfo storageConfig,
-      @Nonnull RealmConfig realmConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
+    RealmConfig realmConfig = realmConfig();
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
     List<String> sessionTagFields =
@@ -114,7 +119,7 @@ public class AwsCredentialsStorageIntegration
         includeSessionTags ? context : CredentialVendingContext.empty();
     return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        storageConfig.serialize(),
+        storageConfig().serialize(),
         allowList,
         readLocations,
         writeLocations,
@@ -125,14 +130,13 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    AwsStorageConfigurationInfo awsStorageConfig = (AwsStorageConfigurationInfo) storageConfig;
+    RealmConfig realmConfig = realmConfig();
+    AwsStorageConfigurationInfo awsStorageConfig = storageConfig();
     String principalName = context.principalName().orElse("");
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);

@@ -93,7 +93,6 @@ import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvid
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
-import org.apache.polaris.service.storage.PolarisCredentialVendorImpl;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
@@ -211,7 +210,8 @@ public record TestServices(
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
               storageCredentialCache,
-              realmConfig);
+              realmConfig,
+              diagnostics);
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider);
@@ -293,11 +293,9 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      PolarisCredentialVendorImpl credentialVendor =
-          new PolarisCredentialVendorImpl(
-              callContext, principal, realmContext, storageIntegrationProvider, diagnostics);
       StorageAccessConfigProvider storageAccessConfigProvider =
-          new StorageAccessConfigProvider(credentialVendor);
+          new StorageAccessConfigProvider(
+              callContext, principal, realmContext, storageIntegrationProvider);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);

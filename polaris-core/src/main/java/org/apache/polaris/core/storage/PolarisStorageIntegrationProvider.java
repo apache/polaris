@@ -18,14 +18,27 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.List;
+import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
- * Factory interface that knows how to return a {@link PolarisStorageIntegration} for a given {@link
- * PolarisStorageConfigurationInfo}.
+ * SPI that returns a {@link PolarisStorageIntegration} for a resolved entity path.
+ *
+ * <p>This is the single entry point used on the credential-vending path. The default implementation
+ * walks the resolved hierarchy to find the entity carrying storage configuration and returns the
+ * corresponding integration. Custom implementations may instead consult deployment-specific state
+ * (e.g. an entity-linked credential lease) to return a different integration per entity.
  */
 public interface PolarisStorageIntegrationProvider {
-  <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegration(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+
+  /**
+   * Return the {@link PolarisStorageIntegration} to use for vending credentials against the given
+   * resolved entity path. Implementations are free to walk the path to locate storage
+   * configuration, resolve overrides, or consult persistence-side state.
+   */
+  @Nullable
+  PolarisStorageIntegration<?> getStorageIntegration(
+      @Nonnull List<PolarisEntity> resolvedEntityPath);
 }

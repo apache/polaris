@@ -51,7 +51,6 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -78,16 +77,20 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    this(sourceCredentials, transportFactory, null, null);
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    this(sourceCredentials, transportFactory, null, storageConfig, realmConfig);
   }
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      org.apache.polaris.core.config.RealmConfig realmConfig) {
-    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfig);
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -97,8 +100,6 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull PolarisStorageConfigurationInfo storageConfig,
-      @Nonnull RealmConfig realmConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
@@ -106,7 +107,7 @@ public class GcpCredentialsStorageIntegration
       @Nonnull CredentialVendingContext context) {
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        storageConfig.serialize(),
+        storageConfig().serialize(),
         allowList,
         readLocations,
         writeLocations,
@@ -115,14 +116,12 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisStorageConfigurationInfo storageConfig,
       boolean allowList,
       @Nonnull Set<String> readLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
-    GcpStorageConfigurationInfo gcpStorageConfig = (GcpStorageConfigurationInfo) storageConfig;
+    GcpStorageConfigurationInfo gcpStorageConfig = storageConfig();
     boolean allowListOperation = allowList;
     Set<String> allowedReadLocations = readLocations;
     Set<String> allowedWriteLocations = writeLocations;

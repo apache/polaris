@@ -230,13 +230,18 @@ public abstract class AbstractPolicyCatalogTest {
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(
             (destination) -> stsClient,
             config -> java.util.Optional.empty(),
             storageCredentialCache,
+            mockAwsConfig,
             callContext.getRealmConfig());
-    when(storageIntegrationProvider.getStorageIntegration(isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);

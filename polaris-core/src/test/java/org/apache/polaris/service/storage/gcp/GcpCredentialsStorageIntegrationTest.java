@@ -175,10 +175,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
             GoogleCredentials.getApplicationDefault(),
-            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            gcpConfig,
+            EMPTY_REALM_CONFIG);
     return gcpCredsIntegration.getSubscopedCreds(
-        EMPTY_REALM_CONFIG,
-        gcpConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
@@ -342,8 +342,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
             mockCreds,
-            ServiceOptions.getFromServiceLoader(
-                HttpTransportFactory.class, NetHttpTransport::new)) {
+            ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
+            config,
+            EMPTY_REALM_CONFIG) {
           @Override
           protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
             return mockIamClient;
@@ -356,8 +357,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         };
 
     integration.getSubscopedCreds(
-        EMPTY_REALM_CONFIG,
-        config,
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),

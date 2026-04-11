@@ -48,8 +48,9 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
   protected InMemoryStorageIntegration(
       String identifierOrId,
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      org.apache.polaris.core.config.RealmConfig realmConfig) {
-    super(identifierOrId, cache, realmConfig);
+      org.apache.polaris.core.config.RealmConfig realmConfig,
+      T storageConfig) {
+    super(identifierOrId, cache, realmConfig, storageConfig);
   }
 
   /**
