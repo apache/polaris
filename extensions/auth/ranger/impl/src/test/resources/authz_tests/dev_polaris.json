@@ -1,0 +1,623 @@
+{
+  "serviceId": 1, "serviceName": "dev_polaris", "policyVersion": 15,
+  "serviceDef": {
+    "name":        "polaris",
+    "displayName": "Polaris (draft)",
+    "label":       "Apache Polaris",
+    "description": "Apache Polaris",
+    "guid":        "ca1b484b-e397-4ab4-b6e3-36a154662d7d",
+    "resources": [
+      {
+        "itemId":      1,
+        "name":        "root",
+        "label":       "Root",
+        "description": "Root",
+        "parent":      "",
+        "level":       10,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "service-access-manage",
+          "catalog-create",
+          "catalog-list",
+          "principal-create",
+          "principal-list"
+        ]
+      },
+      {
+        "itemId":      2,
+        "name":        "catalog",
+        "label":       "Catalog",
+        "description": "Catalog",
+        "parent":      "root",
+        "level":       20,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "catalog-drop",
+          "catalog-properties-read",
+          "catalog-properties-write",
+          "catalog-metadata-full",
+          "catalog-metadata-manage",
+          "catalog-content-manage",
+          "catalog-policy-attach",
+          "catalog-policy-detach"
+        ]
+      },
+      {
+        "itemId":      3,
+        "name":        "principal",
+        "label":       "Principal",
+        "description": "Principal",
+        "parent":      "root",
+        "level":       20,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "principal-drop",
+          "principal-properties-read",
+          "principal-properties-write",
+          "principal-metadata-full",
+          "principal-credentials-rotate",
+          "principal-credentials-reset"
+        ]
+      },
+      {
+        "itemId":      4,
+        "name":        "namespace",
+        "label":       "Namespace",
+        "description": "Namespace",
+        "parent":      "catalog",
+        "level":       30,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "namespace-create",
+          "namespace-drop",
+          "namespace-list",
+          "namespace-properties-read",
+          "namespace-properties-write",
+          "namespace-metadata-full",
+          "namespace-policy-attach",
+          "namespace-policy-detach",
+          "table-create",
+          "table-list",
+          "view-create",
+          "view-list",
+          "policy-create",
+          "policy-list"
+        ]
+      },
+      {
+        "itemId":      5,
+        "name":        "table",
+        "label":       "Table",
+        "description": "Table",
+        "parent":      "namespace",
+        "level":       40,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "table-drop",
+          "table-data-read",
+          "table-data-write",
+          "table-properties-read",
+          "table-properties-write",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-metadata-full",
+          "table-policy-attach",
+          "table-policy-detach",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-structure-manage",
+          "view-drop",
+          "view-properties-read",
+          "view-properties-write",
+          "view-metadata-full"
+        ]
+      },
+      {
+        "itemId":      6,
+        "name":        "policy",
+        "label":       "Policy",
+        "description": "Policy",
+        "parent":      "namespace",
+        "level":       40,
+        "isValidLeaf": true,
+        "accessTypeRestrictions": [
+          "policy-read",
+          "policy-drop",
+          "policy-write",
+          "policy-metadata-full",
+          "policy-attach",
+          "policy-detach"
+        ]
+      }
+    ],
+    "accessTypes": [
+      { "itemId": 1, "name": "service-access-manage", "label": "Service Manage Access", "category": "MANAGE",
+        "impliedGrants": [
+          "catalog-create",
+          "catalog-drop",
+          "catalog-list",
+          "catalog-properties-read",
+          "catalog-properties-write",
+          "catalog-metadata-full",
+          "principal-create",
+          "principal-drop",
+          "principal-list",
+          "principal-properties-read",
+          "principal-properties-write",
+          "principal-metadata-full",
+          "principal-credentials-reset"
+        ]
+      },
+
+      { "itemId": 2, "name": "catalog-create",         "label": "Catalog Create",         "category": "CREATE", "impliedGrants": [ "catalog-list" ] },
+      { "itemId": 3, "name": "catalog-drop",           "label": "Catalog Drop",           "category": "DELETE" },
+      { "itemId": 4, "name": "catalog-list",           "label": "Catalog List",           "category": "READ" },
+      { "itemId": 5, "name": "catalog-content-manage", "label": "Catalog Manage Content", "category": "MANAGE",
+        "impliedGrants": [
+          "catalog-list",
+          "catalog-metadata-manage",
+          "catalog-properties-read",
+          "catalog-properties-write",
+          "catalog-policy-attach",
+          "catalog-policy-detach",
+          "namespace-create",
+          "namespace-drop",
+          "namespace-list",
+          "namespace-metadata-full",
+          "namespace-properties-read",
+          "namespace-properties-write",
+          "namespace-policy-attach",
+          "namespace-policy-detach",
+          "table-create",
+          "table-drop",
+          "table-list",
+          "table-data-read",
+          "table-data-write",
+          "table-metadata-full",
+          "table-properties-read",
+          "table-properties-write",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-policy-attach",
+          "table-policy-detach",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-structure-manage",
+          "view-create",
+          "view-drop",
+          "view-list",
+          "view-metadata-full",
+          "view-properties-read",
+          "view-properties-write",
+          "policy-create",
+          "policy-drop",
+          "policy-list",
+          "policy-read",
+          "policy-write",
+          "policy-attach",
+          "policy-detach"
+        ]
+      },
+      { "itemId": 6, "name": "catalog-metadata-full",   "label": "Catalog Metadata Full",   "category": "MANAGE", "impliedGrants": [ "catalog-create", "catalog-drop", "catalog-list", "catalog-properties-read", "catalog-properties-write" ] },
+      { "itemId": 7, "name": "catalog-metadata-manage", "label": "Catalog Metadata Manage", "category": "MANAGE",
+        "impliedGrants": [
+          "catalog-list",
+          "catalog-properties-read",
+          "catalog-properties-write",
+          "catalog-policy-attach",
+          "catalog-policy-detach",
+          "namespace-create",
+          "namespace-drop",
+          "namespace-list",
+          "namespace-properties-read",
+          "namespace-properties-write",
+          "namespace-metadata-full",
+          "namespace-policy-attach",
+          "namespace-policy-detach",
+          "table-create",
+          "table-drop",
+          "table-list",
+          "table-properties-read",
+          "table-properties-write",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-metadata-full",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-policy-attach",
+          "table-policy-detach",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-structure-manage",
+          "view-create",
+          "view-drop",
+          "view-list",
+          "view-properties-read",
+          "view-properties-write",
+          "view-metadata-full",
+          "policy-create",
+          "policy-drop",
+          "policy-list",
+          "policy-read",
+          "policy-write",
+          "policy-attach",
+          "policy-detach"
+        ]
+      },
+      { "itemId":  8, "name": "catalog-policy-attach",    "label": "Catalog Policy Attach",    "category": "MANAGE" },
+      { "itemId":  9, "name": "catalog-policy-detach",    "label": "Catalog Policy Detach",    "category": "MANAGE" },
+      { "itemId": 10, "name": "catalog-properties-read",  "label": "Catalog Properties Read",  "category": "READ",   "impliedGrants": [ "catalog-list" ] },
+      { "itemId": 11, "name": "catalog-properties-write", "label": "Catalog Properties Write", "category": "UPDATE", "impliedGrants": [ "catalog-list", "catalog-properties-read" ] },
+
+      { "itemId": 12, "name": "principal-create",                    "label": "Principal Create",                    "category": "CREATE", "impliedGrants": [ "principal-list" ] },
+      { "itemId": 13, "name": "principal-drop",                      "label": "Principal Drop",                      "category": "DELETE" },
+      { "itemId": 14, "name": "principal-list",                      "label": "Principal List",                      "category": "READ" },
+      { "itemId": 15, "name": "principal-credentials-reset",         "label": "Principal Credentials Reset",         "category": "MANAGE" },
+      { "itemId": 16, "name": "principal-credentials-rotate",        "label": "Principal Credentials Rotate",        "category": "MANAGE" },
+      { "itemId": 17, "name": "principal-metadata-full",             "label": "Principal Metadata Full",             "category": "MANAGE", "impliedGrants": [ "principal-create", "principal-drop", "principal-list", "principal-properties-read", "principal-properties-write" ] },
+      { "itemId": 18, "name": "principal-properties-read",           "label": "Principal Properties Read",           "category": "READ",   "impliedGrants": [ "principal-list" ] },
+      { "itemId": 19, "name": "principal-properties-write",          "label": "Principal Properties Write",          "category": "UPDATE", "impliedGrants": [ "principal-list", "principal-properties-read" ] },
+
+      { "itemId": 20, "name": "namespace-create",           "label": "Namespace Create",           "category": "CREATE", "impliedGrants": [ "namespace-list" ] },
+      { "itemId": 21, "name": "namespace-drop",             "label": "Namespace Drop",             "category": "DELETE" },
+      { "itemId": 22, "name": "namespace-list",             "label": "Namespace List",             "category": "READ" },
+      { "itemId": 23, "name": "namespace-metadata-full",    "label": "Namespace Metadata Full",    "category": "MANAGE", "impliedGrants": [ "namespace-create", "namespace-drop", "namespace-list", "namespace-properties-read", "namespace-properties-write" ] },
+      { "itemId": 24, "name": "namespace-policy-attach",    "label": "Namespace Policy Attach",    "category": "MANAGE" },
+      { "itemId": 25, "name": "namespace-policy-detach",    "label": "Namespace Policy Detach",    "category": "MANAGE" },
+      { "itemId": 26, "name": "namespace-properties-read",  "label": "Namespace Properties Read",  "category": "READ", "impliedGrants": [ "namespace-list" ] },
+      { "itemId": 27, "name": "namespace-properties-write", "label": "Namespace Properties Write", "category": "UPDATE", "impliedGrants": [ "namespace-list", "namespace-properties-read" ] },
+
+      { "itemId": 28, "name": "table-create",     "label": "Table Create",     "category": "CREATE", "impliedGrants": [ "table-list" ] },
+      { "itemId": 29, "name": "table-drop",       "label": "Table Drop",       "category": "DELETE" },
+      { "itemId": 30, "name": "table-list",       "label": "Table List",       "category": "READ" },
+      { "itemId": 31, "name": "table-data-read",  "label": "Table Data Read",  "category": "READ",   "impliedGrants": [ "table-list", "table-properties-read" ] },
+      { "itemId": 32, "name": "table-data-write", "label": "Table Data Write", "category": "UPDATE",
+        "impliedGrants": [
+          "table-list",
+          "table-data-read",
+          "table-properties-read",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-structure-manage"
+        ]
+      },
+      { "itemId": 33, "name": "table-metadata-full", "label": "Table Metadata Full", "category": "MANAGE",
+        "impliedGrants": [
+          "table-create",
+          "table-drop",
+          "table-list",
+          "table-properties-read",
+          "table-properties-write",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-structure-manage"
+        ]
+      },
+      { "itemId": 34, "name": "table-policy-attach",    "label": "Table Policy Attach",    "category": "MANAGE" },
+      { "itemId": 35, "name": "table-policy-detach",    "label": "Table Policy Detach",    "category": "MANAGE" },
+      { "itemId": 36, "name": "table-properties-read",  "label": "Table Properties Read",  "category": "READ", "impliedGrants": [ "table-list" ] },
+      { "itemId": 37, "name": "table-properties-write", "label": "Table Properties Write", "category": "UPDATE",
+        "impliedGrants": [
+          "table-list",
+          "table-properties-read",
+          "table-properties-set",
+          "table-properties-remove",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshot-add",
+          "table-snapshots-remove",
+          "table-snapshot-ref-set",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove",
+          "table-structure-manage"
+        ]
+      },
+      { "itemId": 38, "name": "table-properties-set",         "label": "Table Properties Set",         "category": "UPDATE" },
+      { "itemId": 39, "name": "table-properties-remove",      "label": "Table Properties Remove",      "category": "UPDATE" },
+      { "itemId": 40, "name": "table-uuid-assign",            "label": "Table UUID Assign",            "category": "UPDATE" },
+      { "itemId": 41, "name": "table-format-version-upgrade", "label": "Table Format Version Upgrade", "category": "UPDATE" },
+      { "itemId": 42, "name": "table-schema-add",             "label": "Table Schema Add",             "category": "UPDATE" },
+      { "itemId": 43, "name": "table-schema-set-current",     "label": "Table Schema Set Current",     "category": "UPDATE" },
+      { "itemId": 44, "name": "table-partition-spec-add",     "label": "Table Partition Spec Add",     "category": "UPDATE" },
+      { "itemId": 45, "name": "table-partition-specs-remove", "label": "Table Partition Specs Remove", "category": "UPDATE" },
+      { "itemId": 46, "name": "table-sort-order-add",         "label": "Table Sort Order Add",         "category": "UPDATE" },
+      { "itemId": 47, "name": "table-sort-order-set-default", "label": "Table Sort Order Set Default", "category": "UPDATE" },
+      { "itemId": 48, "name": "table-snapshot-add",           "label": "Table Snapshot Add",           "category": "UPDATE" },
+      { "itemId": 49, "name": "table-snapshots-remove",       "label": "Table Snapshots Remove",       "category": "UPDATE" },
+      { "itemId": 50, "name": "table-snapshot-ref-set",       "label": "Table Snapshot-ref Set",       "category": "UPDATE" },
+      { "itemId": 51, "name": "table-snapshot-ref-remove",    "label": "Table Snapshot-ref Remove",    "category": "UPDATE" },
+      { "itemId": 52, "name": "table-location-set",           "label": "Table Location Set",           "category": "UPDATE" },
+      { "itemId": 53, "name": "table-statistics-set",         "label": "Table Statistics Set",         "category": "UPDATE" },
+      { "itemId": 54, "name": "table-statistics-remove",      "label": "Table Statistics Remove",      "category": "UPDATE" },
+      { "itemId": 55, "name": "table-structure-manage",       "label": "Table Structure Manage",       "category": "UPDATE",
+        "impliedGrants": [
+          "table-properties-set",
+          "table-properties-remove",
+          "table-uuid-assign",
+          "table-format-version-upgrade",
+          "table-schema-add",
+          "table-schema-set-current",
+          "table-partition-spec-add",
+          "table-partition-specs-remove",
+          "table-sort-order-add",
+          "table-sort-order-set-default",
+          "table-snapshots-remove",
+          "table-snapshot-ref-remove",
+          "table-location-set",
+          "table-statistics-set",
+          "table-statistics-remove"
+        ]
+      },
+
+      { "itemId": 56,  "name": "view-create",           "label": "View Create",           "category": "CREATE", "impliedGrants": [ "view-list" ] },
+      { "itemId": 57,  "name": "view-drop",             "label": "View Drop",             "category": "DELETE" },
+      { "itemId": 58,  "name": "view-list",             "label": "View List",             "category": "READ" },
+      { "itemId": 59, "name": "view-metadata-full",    "label": "View Metadata Full",    "category": "MANAGE", "impliedGrants": [ "view-create", "view-drop", "view-list", "view-properties-read", "view-properties-write" ] },
+      { "itemId": 60, "name": "view-properties-read",  "label": "View Properties Read",  "category": "READ",   "impliedGrants": [ "view-list" ] },
+      { "itemId": 61, "name": "view-properties-write", "label": "View Properties Write", "category": "UPDATE", "impliedGrants": [ "view-list", "view-properties-read" ] },
+
+      { "itemId": 62, "name": "policy-create",        "label": "Policy Create",        "category": "CREATE", "impliedGrants": [ "policy-list" ] },
+      { "itemId": 63, "name": "policy-drop",          "label": "Policy Drop",          "category": "DELETE" },
+      { "itemId": 64, "name": "policy-list",          "label": "Policy List",          "category": "READ" },
+      { "itemId": 65, "name": "policy-read",          "label": "Policy Read",          "category": "READ",   "impliedGrants": [ "policy-list" ] },
+      { "itemId": 66, "name": "policy-write",         "label": "Policy Write",         "category": "UPDATE", "impliedGrants": [ "policy-list", "policy-read" ] },
+      { "itemId": 67, "name": "policy-attach",        "label": "Policy Attach",        "category": "MANAGE" },
+      { "itemId": 68, "name": "policy-detach",        "label": "Policy Detach",        "category": "MANAGE" },
+      { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] }
+    ]
+  },
+  "policies": [
+    {
+      "id": 1, "name": "root:POLARIS",
+      "resources": { "root": { "values": [ "POLARIS" ] } },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "service-access-manage" },
+            { "type": "catalog-create" },
+            { "type": "catalog-list" },
+            { "type": "principal-create" },
+            { "type": "principal-list" }
+          ],
+          "users": [ "admin1", "root" ]
+        },
+        {
+          "accesses": [
+            { "type": "catalog-list" },
+            { "type": "principal-list" }
+          ],
+          "users": [ "user1" ] }
+      ]
+    },
+    {
+      "id": 2, "name": "catalog:POLARIS/catalog1", "version": 1,
+      "resources": {
+        "root":    { "values": [ "POLARIS" ] },
+        "catalog": { "values": [ "catalog1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "catalog-drop" },
+            { "type": "catalog-properties-read" },
+            { "type": "catalog-properties-write" },
+            { "type": "catalog-metadata-full" },
+            { "type": "catalog-metadata-manage" },
+            { "type": "catalog-content-manage" },
+            { "type": "catalog-policy-attach" },
+            { "type": "catalog-policy-detach" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 3, "name": "principal:POLARIS/principal1", "version": 1,
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "principal": { "values": [ "principal1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "principal-drop" },
+            { "type": "principal-properties-read" },
+            { "type": "principal-properties-write" },
+            { "type": "principal-metadata-full" },
+            { "type": "principal-credentials-rotate" },
+            { "type": "principal-credentials-reset" }
+          ],
+          "users": [ "admin1" ]
+        }
+      ]
+    },
+    {
+      "id": 4, "name": "namespace:POLARIS/catalog1/namespace1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type":  "namespace-create" },
+            { "type":  "namespace-drop" },
+            { "type":  "namespace-list" },
+            { "type":  "namespace-properties-read" },
+            { "type":  "namespace-properties-write" },
+            { "type":  "namespace-metadata-full" },
+            { "type":  "namespace-policy-attach" },
+            { "type":  "namespace-policy-detach" },
+            { "type":  "table-create" },
+            { "type":  "table-drop" },
+            { "type":  "table-list" },
+            { "type":  "table-data-write" },
+            { "type":  "table-properties-write" },
+            { "type":  "view-create" },
+            { "type":  "view-drop" },
+            { "type":  "view-list" },
+            { "type":  "policy-create" },
+            { "type":  "policy-list" }
+          ],
+          "users": [ "admin1" ]
+        }
+      ]
+    },
+    {
+      "id": 5, "name": "table:POLARIS/catalog1/namespace1/table1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "table1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "table-drop" },
+            { "type": "table-properties-read" },
+            { "type": "table-properties-write" },
+            { "type": "table-properties-set" },
+            { "type": "table-properties-remove" },
+            { "type": "table-data-read" },
+            { "type": "table-data-write" },
+            { "type": "table-metadata-full" },
+            { "type": "table-policy-attach" },
+            { "type": "table-policy-detach" },
+            { "type": "table-uuid-assign" },
+            { "type": "table-format-version-upgrade" },
+            { "type": "table-schema-add" },
+            { "type": "table-schema-set-current" },
+            { "type": "table-partition-spec-add" },
+            { "type": "table-partition-specs-remove" },
+            { "type": "table-sort-order-add" },
+            { "type": "table-sort-order-set-default" },
+            { "type": "table-snapshot-add" },
+            { "type": "table-snapshots-remove" },
+            { "type": "table-snapshot-ref-set" },
+            { "type": "table-snapshot-ref-remove" },
+            { "type": "table-location-set" },
+            { "type": "table-statistics-set" },
+            { "type": "table-statistics-remove" },
+            { "type": "table-structure-manage" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 6, "name": "table:POLARIS/catalog1/namespace1/view1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "table":     { "values": [ "view1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "view-drop" },
+            { "type": "view-properties-read" },
+            { "type": "view-properties-write" },
+            { "type": "view-metadata-full" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    },
+    {
+      "id": 7, "name": "policy:POLARIS/catalog1/namespace1/policy1",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] },
+        "catalog":   { "values": [ "catalog1" ] },
+        "namespace": { "values": [ "namespace1" ] },
+        "policy":    { "values": [ "policy1" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            { "type": "policy-read" },
+            { "type": "policy-drop" },
+            { "type": "policy-write" },
+            { "type": "policy-metadata-full" },
+            { "type": "policy-attach" },
+            { "type": "policy-detach" }
+          ],
+          "users": [ "admin1" ] }
+      ]
+    }
+  ]
+}
