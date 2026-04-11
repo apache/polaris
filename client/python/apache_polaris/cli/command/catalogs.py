@@ -74,48 +74,48 @@ class CatalogsCommand(Command):
 
     catalogs_subcommand: str
     catalog_type: str
-    default_base_location: str
-    storage_type: str
-    allowed_locations: List[str]
-    role_arn: str
-    external_id: str
-    user_arn: str
-    region: str
-    tenant_id: str
-    multi_tenant_app_name: str
+    default_base_location: Optional[str]
+    storage_type: Optional[str]
+    allowed_locations: Optional[List[str]]
+    role_arn: Optional[str]
+    external_id: Optional[str]
+    user_arn: Optional[str]
+    region: Optional[str]
+    tenant_id: Optional[str]
+    multi_tenant_app_name: Optional[str]
     hierarchical: bool
-    consent_url: str
-    service_account: str
+    consent_url: Optional[str]
+    service_account: Optional[str]
     catalog_name: str
     properties: Dict[str, StrictStr]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
-    hadoop_warehouse: str
-    hive_warehouse: str
-    iceberg_remote_catalog_name: str
-    endpoint: str
-    endpoint_internal: str
-    sts_endpoint: str
+    hadoop_warehouse: Optional[str]
+    hive_warehouse: Optional[str]
+    iceberg_remote_catalog_name: Optional[str]
+    endpoint: Optional[str]
+    endpoint_internal: Optional[str]
+    sts_endpoint: Optional[str]
     sts_unavailable: bool
     kms_unavailable: bool
     path_style_access: bool
-    current_kms_key: str
-    allowed_kms_keys: List[str]
-    catalog_connection_type: str
-    catalog_authentication_type: str
-    catalog_service_identity_type: str
-    catalog_service_identity_iam_arn: str
-    catalog_uri: str
-    catalog_token_uri: str
-    catalog_client_id: str
-    catalog_client_secret: str
+    current_kms_key: Optional[str]
+    allowed_kms_keys: Optional[List[str]]
+    catalog_connection_type: Optional[str]
+    catalog_authentication_type: Optional[str]
+    catalog_service_identity_type: Optional[str]
+    catalog_service_identity_iam_arn: Optional[str]
+    catalog_uri: Optional[str]
+    catalog_token_uri: Optional[str]
+    catalog_client_id: Optional[str]
+    catalog_client_secret: Optional[str]
     catalog_client_scopes: List[str]
-    catalog_bearer_token: str
-    catalog_role_arn: str
-    catalog_role_session_name: str
-    catalog_external_id: str
-    catalog_signing_region: str
-    catalog_signing_name: str
+    catalog_bearer_token: Optional[str]
+    catalog_role_arn: Optional[str]
+    catalog_role_session_name: Optional[str]
+    catalog_external_id: Optional[str]
+    catalog_signing_region: Optional[str]
+    catalog_signing_name: Optional[str]
 
     def validate(self) -> None:
         if self.catalogs_subcommand == Subcommands.CREATE:
