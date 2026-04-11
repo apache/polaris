@@ -203,15 +203,11 @@ public class IcebergCatalogAdapterTest {
               Mockito.doAnswer(
                       innerInvocation -> {
                         for (String fieldName :
-                            List.of("baseCatalog", "namespaceCatalog", "viewCatalog")) {
+                            List.of("federatedCatalog", "namespaceCatalog", "viewCatalog")) {
                           Field field = IcebergCatalogHandler.class.getDeclaredField(fieldName);
                           field.setAccessible(true);
                           field.set(wrappedHandler, catalog);
                         }
-                        Field federatedField =
-                            IcebergCatalogHandler.class.getDeclaredField("isFederated");
-                        federatedField.setAccessible(true);
-                        federatedField.set(wrappedHandler, true);
                         return null;
                       })
                   .when(wrappedHandler)
