@@ -238,9 +238,6 @@ class Arguments:
     REALM = "realm"
     HEADER = "header"
     IDENTIFIER = "identifier"
-    LABEL = "label"
-    LABEL_FILTER = "label_filter"
-    CLEAR_LABELS = "clear_labels"
 
 
 class Hints:
@@ -265,15 +262,6 @@ class Hints:
         " the same update command then the list of removals is applied last. Multiple"
         " can be provided by specifying this option more than once"
     )
-    LABEL = (
-        "A key/value label in the form key=value. Labels are metadata used for organizing and"
-        " filtering entities. Multiple can be provided by specifying this option more than once."
-    )
-    LABEL_FILTER = (
-        "Filter results by label in the form key=value. Only entities matching ALL specified"
-        " labels are returned. Multiple can be provided by specifying this option more than once."
-    )
-    CLEAR_LABELS = "Remove all labels from the entity. Cannot be combined with --label."
 
     class Setup:
         DRY_RUN = "If specified, the command will only print the actions to be taken without executing them."

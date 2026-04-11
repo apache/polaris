@@ -106,9 +106,6 @@ class Command(ABC):
                 catalog_external_id=options_get(Arguments.CATALOG_EXTERNAL_ID),
                 catalog_signing_region=options_get(Arguments.CATALOG_SIGNING_REGION),
                 catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME),
-                label=options_get(Arguments.LABEL) or [],
-                label_filter=options_get(Arguments.LABEL_FILTER) or [],
-                clear_labels=options_get(Arguments.CLEAR_LABELS) or False,
             )
         elif options.command == Commands.PRINCIPALS:
             from apache_polaris.cli.command.principals import PrincipalsCommand

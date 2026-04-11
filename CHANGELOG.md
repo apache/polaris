@@ -66,7 +66,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 - Added summarize subcommand to Polaris CLI.
 - Added find and tables options to Polaris CLI.
-- Added key-value label support to Catalog entities for organizing and filtering catalogs via the management REST API and CLI (`--label`, `--label-filter`, `--clear-labels`).
+- Added key-value label support to Catalog entities for organizing and filtering catalogs via the management REST API.
 
 ### Changes
 

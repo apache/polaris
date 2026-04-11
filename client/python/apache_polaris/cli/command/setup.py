@@ -973,8 +973,6 @@ class SetupCommand(Command):
                         catalog_service_identity_iam_arn=command_args.get(
                             "catalog_service_identity_iam_arn", ""
                         ),
-                        label=command_args.get("label") or [],
-                        label_filter=command_args.get("label_filter") or [],
                     )
                     cmd.validate()
                     cmd.execute(api)
