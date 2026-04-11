@@ -50,7 +50,7 @@ public class RestApi {
 
   /**
    * Builds a request with multi-value query parameters. Each key may map to multiple values,
-   * resulting in repeated query params (e.g. {@code ?labelFilter=k1=v1&labelFilter=k2=v2}).
+   * resulting in repeated query params (e.g. {@code ?label=k1:v1&label=k2:v2}).
    */
   public Invocation.Builder requestMultiParam(
       String path, Map<String, String> templateValues, Map<String, List<String>> multiQueryParams) {

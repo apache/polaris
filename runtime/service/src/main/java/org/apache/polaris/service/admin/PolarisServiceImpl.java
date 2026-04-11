@@ -258,8 +258,8 @@ public class PolarisServiceImpl
   /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogs(
-      List<String> labelFilter, RealmContext realmContext, SecurityContext securityContext) {
-    Map<String, String> parsedFilter = parseLabelFilter(labelFilter);
+      List<String> label, RealmContext realmContext, SecurityContext securityContext) {
+    Map<String, String> parsedFilter = parseLabelFilter(label);
     List<Catalog> catalogList = adminService.listCatalogs(parsedFilter);
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
@@ -267,25 +267,25 @@ public class PolarisServiceImpl
   }
 
   /**
-   * Parses a list of {@code "key=value"} label-filter strings into a map. Throws {@link
+   * Parses a list of {@code "key:value"} label-filter strings into a map. Throws {@link
    * BadRequestException} for malformed entries.
    */
-  private static Map<String, String> parseLabelFilter(List<String> labelFilter) {
-    if (labelFilter == null || labelFilter.isEmpty()) {
+  private static Map<String, String> parseLabelFilter(List<String> label) {
+    if (label == null || label.isEmpty()) {
       return Collections.emptyMap();
     }
-    Map<String, String> result = new HashMap<>(labelFilter.size());
-    for (String entry : labelFilter) {
-      int idx = entry.indexOf('=');
+    Map<String, String> result = new HashMap<>(label.size());
+    for (String entry : label) {
+      int idx = entry.indexOf(':');
       if (idx <= 0) {
         throw new BadRequestException(
-            "Invalid labelFilter value '%s': must be in 'key=value' format", entry);
+            "Invalid label value '%s': must be in 'key:value' format", entry);
       }
       String key = entry.substring(0, idx).trim();
       String value = entry.substring(idx + 1);
       if (key.isEmpty()) {
         throw new BadRequestException(
-            "Invalid labelFilter value '%s': label key must not be empty", entry);
+            "Invalid label value '%s': label key must not be empty", entry);
       }
       result.put(key, value);
     }

@@ -134,6 +134,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         "%s catalog needs ServiceIdentityProvider to resolve service identities",
         Catalog.TypeEnum.EXTERNAL);
     Map<String, String> entityLabels = getLabels();
+    Map<String, String> labelsOrNull = entityLabels.isEmpty() ? null : entityLabels;
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -144,7 +145,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
             .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
-            .setLabels(entityLabels)
+            .setLabels(labelsOrNull)
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -154,7 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setLabels(entityLabels)
+            .setLabels(labelsOrNull)
             .build();
   }
 

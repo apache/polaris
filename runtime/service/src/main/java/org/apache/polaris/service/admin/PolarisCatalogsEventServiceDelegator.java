@@ -135,13 +135,13 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
 
   @Override
   public Response listCatalogs(
-      List<String> labelFilter, RealmContext realmContext, SecurityContext securityContext) {
+      List<String> label, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_CATALOGS,
             eventMetadataFactory.create(),
             new EventAttributeMap()));
-    Response resp = delegate.listCatalogs(labelFilter, realmContext, securityContext);
+    Response resp = delegate.listCatalogs(label, realmContext, securityContext);
     polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_CATALOGS,

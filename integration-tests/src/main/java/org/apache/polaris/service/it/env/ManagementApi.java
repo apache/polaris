@@ -273,6 +273,16 @@ public class ManagementApi extends PolarisRestApi {
     }
   }
 
+  public Response listCatalogsByLabel(List<String> labels) {
+    return requestMultiParam("v1/catalogs", Map.of(), Map.of("label", labels)).get();
+  }
+
+  public Response updateCatalogLabels(
+      String catalogName, int entityVersion, Map<String, String> labels, Boolean clearLabels) {
+    return request("v1/catalogs/{name}", Map.of("name", catalogName))
+        .put(Entity.json(new UpdateCatalogRequest(entityVersion, null, null, labels, clearLabels)));
+  }
+
   public void deleteCatalogRole(String catalogName, CatalogRole role) {
     deleteCatalogRole(catalogName, role.getName());
   }

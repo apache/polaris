@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the entity-label helpers on {@link PolarisBaseEntity}: {@code getLabels()}, {@code
- * matchesLabelFilter()}, and {@code BaseBuilder.setLabels()}.
+ * containsAllLabels()}, and {@code BaseBuilder.setLabels()}.
  */
 class PolarisEntityLabelsTest {
 
@@ -72,34 +72,34 @@ class PolarisEntityLabelsTest {
   }
 
   @Test
-  void testMatchesLabelFilter_emptyFilter_alwaysTrue() {
+  void testContainsAllLabels_emptyFilter_alwaysTrue() {
     PolarisEntity entity = entityWithLabels(Map.of("env", "prod"));
-    assertThat(entity.matchesLabelFilter(Map.of())).isTrue();
+    assertThat(entity.containsAllLabels(Map.of())).isTrue();
   }
 
   @Test
-  void testMatchesLabelFilter_exactMatch_returnsTrue() {
+  void testContainsAllLabels_exactMatch_returnsTrue() {
     PolarisEntity entity = entityWithLabels(Map.of("env", "prod", "team", "data"));
-    assertThat(entity.matchesLabelFilter(Map.of("env", "prod"))).isTrue();
+    assertThat(entity.containsAllLabels(Map.of("env", "prod"))).isTrue();
   }
 
   @Test
-  void testMatchesLabelFilter_wrongValue_returnsFalse() {
+  void testContainsAllLabels_wrongValue_returnsFalse() {
     PolarisEntity entity = entityWithLabels(Map.of("env", "prod"));
-    assertThat(entity.matchesLabelFilter(Map.of("env", "dev"))).isFalse();
+    assertThat(entity.containsAllLabels(Map.of("env", "dev"))).isFalse();
   }
 
   @Test
-  void testMatchesLabelFilter_missingKey_returnsFalse() {
+  void testContainsAllLabels_missingKey_returnsFalse() {
     PolarisEntity entity = entityWithLabels(Map.of("env", "prod"));
-    assertThat(entity.matchesLabelFilter(Map.of("team", "data"))).isFalse();
+    assertThat(entity.containsAllLabels(Map.of("team", "data"))).isFalse();
   }
 
   @Test
-  void testMatchesLabelFilter_multipleFilters_allMustMatch() {
+  void testContainsAllLabels_multipleFilters_allMustMatch() {
     PolarisEntity entity = entityWithLabels(Map.of("env", "prod", "team", "data"));
-    assertThat(entity.matchesLabelFilter(Map.of("env", "prod", "team", "data"))).isTrue();
-    assertThat(entity.matchesLabelFilter(Map.of("env", "prod", "team", "wrong"))).isFalse();
+    assertThat(entity.containsAllLabels(Map.of("env", "prod", "team", "data"))).isTrue();
+    assertThat(entity.containsAllLabels(Map.of("env", "prod", "team", "wrong"))).isFalse();
   }
 
   @Test

@@ -1007,7 +1007,7 @@ public class PolarisAdminService {
   public List<Catalog> listCatalogs(@Nonnull Map<String, String> labelFilter) {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
     return listCatalogsUnsafe()
-        .filter(entity -> entity.matchesLabelFilter(labelFilter))
+        .filter(entity -> entity.containsAllLabels(labelFilter))
         .map(catalogEntity -> catalogEntity.asCatalog(getServiceIdentityProvider()))
         .toList();
   }

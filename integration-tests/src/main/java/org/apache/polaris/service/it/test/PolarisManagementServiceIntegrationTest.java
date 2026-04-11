@@ -2557,16 +2557,7 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Update with labels omitted (null) — existing labels must be preserved
     try (Response response =
-        managementApi
-            .request("v1/catalogs/{name}", Map.of("name", catalogName))
-            .put(
-                Entity.json(
-                    new UpdateCatalogRequest(
-                        fetched.getEntityVersion(),
-                        fetched.getProperties().toMap(),
-                        null,
-                        null,
-                        null)))) {
+        managementApi.updateCatalogLabels(catalogName, fetched.getEntityVersion(), null, null)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog updated = response.readEntity(Catalog.class);
       assertThat(updated.getLabels()).containsEntry("env", "staging");
@@ -2600,12 +2591,8 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Update with explicit new labels — fully replaces old labels
     try (Response response =
-        managementApi
-            .request("v1/catalogs/{name}", Map.of("name", catalogName))
-            .put(
-                Entity.json(
-                    new UpdateCatalogRequest(
-                        fetched.getEntityVersion(), null, null, Map.of("env", "prod"), null)))) {
+        managementApi.updateCatalogLabels(
+            catalogName, fetched.getEntityVersion(), Map.of("env", "prod"), null)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog updated = response.readEntity(Catalog.class);
       assertThat(updated.getLabels()).containsEntry("env", "prod").doesNotContainKey("old-key");
@@ -2638,12 +2625,7 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Clear all labels using clearLabels=true
     try (Response response =
-        managementApi
-            .request("v1/catalogs/{name}", Map.of("name", catalogName))
-            .put(
-                Entity.json(
-                    new UpdateCatalogRequest(
-                        fetched.getEntityVersion(), null, null, null, true)))) {
+        managementApi.updateCatalogLabels(catalogName, fetched.getEntityVersion(), null, true)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog updated = response.readEntity(Catalog.class);
       assertThat(updated.getLabels()).isEmpty();
@@ -2682,9 +2664,8 @@ public class PolarisManagementServiceIntegrationTest {
             .setLabels(Map.of("env", "dev"))
             .build());
 
-    // Filter by env=prod — only prodCatalog should match
-    try (Response response =
-        managementApi.request("v1/catalogs", Map.of(), Map.of("labelFilter", "env=prod")).get()) {
+    // Filter by env:prod — only prodCatalog should match
+    try (Response response = managementApi.listCatalogsByLabel(List.of("env:prod"))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       List<String> names =
           response.readEntity(Catalogs.class).getCatalogs().stream()
@@ -2707,10 +2688,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testListCatalogsWithInvalidLabelFilter() {
-    try (Response response =
-        managementApi
-            .request("v1/catalogs", Map.of(), Map.of("labelFilter", "notKeyValue"))
-            .get()) {
+    try (Response response = managementApi.listCatalogsByLabel(List.of("notKeyValue"))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
     }
@@ -2750,14 +2728,9 @@ public class PolarisManagementServiceIntegrationTest {
             .setLabels(Map.of("env", "prod"))
             .build());
 
-    // AND filter: env=prod AND team=platform — only bothLabelsCatalog should match
+    // AND filter: env:prod AND team:platform — only bothLabelsCatalog should match
     try (Response response =
-        managementApi
-            .requestMultiParam(
-                "v1/catalogs",
-                Map.of(),
-                Map.of("labelFilter", List.of("env=prod", "team=platform")))
-            .get()) {
+        managementApi.listCatalogsByLabel(List.of("env:prod", "team:platform"))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       List<String> names =
           response.readEntity(Catalogs.class).getCatalogs().stream()

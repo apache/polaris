@@ -42,9 +42,9 @@ paths:
       operationId: listCatalogs
       description: List all catalogs in this polaris service
       parameters:
-        - name: labelFilter
+        - name: label
           in: query
-          description: Filter catalogs by labels. Each value must be in the form `key=value`. Only catalogs matching ALL specified labels are returned.
+          description: Filter catalogs by labels. Each value must be in the form `key:value`. Only catalogs matching ALL specified labels are returned.
           required: false
           schema:
             type: array
@@ -891,7 +891,6 @@ components:
           $ref: "#/components/schemas/StorageConfigInfo"
         labels:
           type: object
-          x-extra-annotation: "@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)"
           description: Key-value labels for organizing and filtering catalogs. Labels are metadata only and have no access-control semantics.
           additionalProperties:
             type: string

@@ -34,7 +34,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   public static final String EMPTY_MAP_STRING = "{}";
 
   /** Internal-property key under which entity labels are stored as a serialized JSON map. */
-  public static final String LABELS_INTERNAL_KEY = "polaris.entity.labels";
+  protected static final String LABELS_INTERNAL_KEY = "polaris.entity.labels";
 
   // the type of the entity when it was resolved
   protected final int subTypeCode;
@@ -139,11 +139,11 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   }
 
   /**
-   * Returns {@code true} if this entity matches all entries in {@code labelFilter}. An empty filter
-   * matches every entity.
+   * Returns {@code true} if this entity's labels contain all entries in {@code labelFilter}. An
+   * empty filter matches every entity.
    */
   @JsonIgnore
-  public boolean matchesLabelFilter(@Nonnull Map<String, String> labelFilter) {
+  public boolean containsAllLabels(@Nonnull Map<String, String> labelFilter) {
     if (labelFilter.isEmpty()) {
       return true;
     }
