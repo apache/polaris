@@ -77,7 +77,9 @@ public class CatalogSerializationTest {
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
-                + "}}");
+                + "},"
+                + "\"labels\":{}"
+                + "}");
   }
 
   @Test
@@ -106,7 +108,9 @@ public class CatalogSerializationTest {
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
-                + "}}");
+                + "},"
+                + "\"labels\":{}"
+                + "}");
   }
 
   @Test
