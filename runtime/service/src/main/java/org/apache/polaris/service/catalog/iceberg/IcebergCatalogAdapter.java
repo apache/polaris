@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
@@ -337,7 +338,19 @@ public class IcebergCatalogAdapter
             return Response.notModified().build();
           }
 
-          return tryInsertETagHeader(Response.ok(response.get()), response.get(), namespace, table)
+          // Enrich response with labels from entity internal properties
+          Map<String, String> tableLabels = catalog.getLabelsForTable(tableIdentifier);
+          Object responseEntity;
+          if (tableLabels.isEmpty()) {
+            responseEntity = response.get();
+          } else {
+            responseEntity =
+                new LoadTableResponseWithLabels(
+                    response.get(), new LoadTableResponseWithLabels.Labels(tableLabels));
+          }
+
+          return tryInsertETagHeader(
+                  Response.ok(responseEntity), response.get(), namespace, table)
               .build();
         });
   }
