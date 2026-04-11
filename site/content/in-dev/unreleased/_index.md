@@ -151,10 +151,9 @@ To secure interactions with service connections, Polaris vends temporary storage
 execution. These credentials allow the query engine to run the query without requiring access to your cloud storage for
 Iceberg tables. This process is called credential vending.
 
-As of now, the following limitation is known regarding Apache Iceberg support:
+The following applies to Apache Iceberg with Apache Spark:
 
-- **remove_orphan_files:** Apache Spark can't use credential vending
-  for this due to a known issue. See [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914) for details.
+- **remove_orphan_files**: By default this procedure lists storage through Spark's Hadoop layer, not Iceberg, so Polaris vended credentials may not apply to that step. From **Iceberg 1.10**, use **`prefix_listing => true`** in `CALL ... remove_orphan_files(...)` (or **`.usePrefixListing(true)`** on `SparkActions.deleteOrphanFiles`) so listing uses Iceberg's file client and vended credentials apply. See [apache/iceberg#12254](https://github.com/apache/iceberg/pull/12254). Note: Listing runs on the driver for this mode and can be slow for very large file sets.
 
 ### Identity and access management (IAM)
 
