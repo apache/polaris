@@ -152,14 +152,27 @@ public class ServiceProducers {
       AuthorizationConfiguration authorizationConfig,
       @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
     PolarisAuthorizerFactory factory =
-        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+        authorizerFactories
+            .select(
+                Identifier.Literal.of(
+                    authorizationConfig
+                        .forRealm(AuthorizationConfiguration.DEFAULT_REALM_KEY)
+                        .type()))
+            .get();
     return factory;
   }
 
   @Produces
   @RequestScoped
   public PolarisAuthorizer polarisAuthorizer(
-      PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
+      RealmContext realmContext,
+      AuthorizationConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories,
+      RealmConfig realmConfig) {
+    PolarisAuthorizerFactory factory =
+        authorizerFactories
+            .select(Identifier.Literal.of(authorizationConfig.forRealm(realmContext).type()))
+            .get();
     return factory.create(realmConfig);
   }
 
