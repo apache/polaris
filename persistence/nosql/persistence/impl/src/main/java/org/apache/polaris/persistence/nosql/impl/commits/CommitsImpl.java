@@ -32,12 +32,14 @@ import java.util.OptionalLong;
 import org.agrona.collections.LongArrayList;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.Commits;
+import org.apache.polaris.persistence.nosql.api.exceptions.CommitOffsetTraversalLimitExceededException;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 
 final class CommitsImpl implements Commits {
   private final Persistence persistence;
   private static final int REVERSE_COMMIT_FETCH_SIZE = 20;
+  private static final long UNLIMITED_TRAVERSAL = 0L;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -55,13 +57,12 @@ final class CommitsImpl implements Commits {
 
     var head = headOpt.get();
     var type = head.type().id();
+    var maxTraversal = persistence.params().commitOffsetLookupMaxTraversal();
 
     // find commit with Obj.id() == offset, memoize visited commits
 
     // Contains the seen IDs, without the 'offset', in _natural_ order (most recent commit ID first)
     var visited = new LongArrayList();
-
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
 
     // Only walk, if the most recent commit ID is != offset
     if (head.id() == offset) {
@@ -69,12 +70,17 @@ final class CommitsImpl implements Commits {
     }
 
     visited.add(head.id());
+    var traversed = 0L;
     var tail = head.tail();
     outer:
     while (tail.length != 0) {
       for (var tailId : tail) {
         if (tailId == offset) {
           break outer;
+        }
+        if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
+          throw new CommitOffsetTraversalLimitExceededException(
+              refName, offset, traversed, maxTraversal);
         }
         visited.add(tailId);
       }
@@ -146,8 +152,7 @@ final class CommitsImpl implements Commits {
 
     var head = headOpt.get();
     var type = head.type().id();
-
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
+    var maxTraversal = persistence.params().commitOffsetLookupMaxTraversal();
 
     if (offset.isPresent()) {
       var off = offset.getAsLong();
@@ -157,6 +162,7 @@ final class CommitsImpl implements Commits {
         return singletonList(head).iterator();
       }
 
+      var traversed = 0L;
       var tail = head.tail();
       outer:
       while (tail.length != 0) {
@@ -167,6 +173,10 @@ final class CommitsImpl implements Commits {
             break outer;
           }
           lastId = tailId;
+          if (maxTraversal != UNLIMITED_TRAVERSAL && ++traversed > maxTraversal) {
+            throw new CommitOffsetTraversalLimitExceededException(
+                refName, off, traversed, maxTraversal);
+          }
         }
 
         var id = objRef(type, lastId, 1);
