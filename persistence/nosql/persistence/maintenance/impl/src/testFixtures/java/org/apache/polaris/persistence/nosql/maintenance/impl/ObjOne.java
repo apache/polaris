@@ -20,11 +20,11 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableObjOne.class)
@@ -38,8 +38,7 @@ public interface ObjOne extends Obj {
     return TYPE;
   }
 
-  @Nullable
-  String text();
+  @Nullable String text();
 
   static ImmutableObjOne.Builder builder() {
     return ImmutableObjOne.builder();

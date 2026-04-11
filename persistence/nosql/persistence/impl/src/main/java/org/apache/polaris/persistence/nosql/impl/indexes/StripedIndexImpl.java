@@ -23,14 +23,14 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.binarySearch;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class StripedIndexImpl<V> implements IndexSpi<V> {
 
@@ -39,8 +39,8 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
   private final IndexLoader<V> indexLoader;
 
   StripedIndexImpl(
-      @Nonnull IndexSpi<V>[] stripes,
-      @Nonnull IndexKey[] firstLastKeys,
+      @NonNull IndexSpi<V>[] stripes,
+      @NonNull IndexKey[] firstLastKeys,
       IndexLoader<V> indexLoader) {
     checkArgument(stripes.length > 1);
     checkArgument(
@@ -179,7 +179,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
+  public boolean contains(@NonNull IndexKey key) {
     var i = stripeForExistingKey(key);
     if (i == -1) {
       return false;
@@ -188,7 +188,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     var i = stripeForExistingKey(key);
     if (i == -1) {
       return false;
@@ -198,7 +198,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
 
   @Nullable
   @Override
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     var i = stripeForExistingKey(key);
     if (i == -1) {
       return null;
@@ -226,7 +226,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     return r;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
@@ -271,7 +271,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     };
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
@@ -315,19 +315,19 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
     };
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ByteBuffer serialize() {
     throw unsupported();
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     return mutableStripeForKey(element.key()).add(element);
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     return mutableStripeForKey(key).remove(key);
   }
 

@@ -50,8 +50,6 @@ import static org.apache.polaris.persistence.nosql.metastore.mutation.EntityUpda
 import static org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType.updateKeyForCatalogAndEntityType;
 
 import com.google.common.collect.Streams;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -139,6 +137,8 @@ import org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatal
 import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableAndGrantee;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,11 +164,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   <REF_OBJ extends ContainerObj, RESULT> RESULT performChange(
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType,
+      @NonNull PolarisEntityType entityType,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType,
       long catalogStableId,
-      @Nonnull ChangeCommitter<REF_OBJ, RESULT> changeCommitter) {
+      @NonNull ChangeCommitter<REF_OBJ, RESULT> changeCommitter) {
     try {
       var committer =
           persistence
@@ -300,7 +300,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   CatalogRoleObj createCatalogRoleIdempotent(
-      @Nonnull CatalogObj catalogObj, long catalogRoleStableId, @Nonnull String roleName) {
+      @NonNull CatalogObj catalogObj, long catalogRoleStableId, @NonNull String roleName) {
     return performChange(
         PolarisEntityType.CATALOG_ROLE,
         CatalogRolesObj.class,
@@ -699,8 +699,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
             });
   }
 
-  @Nullable
-  PolarisBaseEntity lookupEntity(long catalogId, long entityId, int entityTypeCode) {
+  @Nullable PolarisBaseEntity lookupEntity(long catalogId, long entityId, int entityTypeCode) {
     if (entityTypeCode == PolarisEntityType.ROOT.getCode()) {
       return (PolarisEntityConstants.getNullId() == catalogId
               && entityId == PolarisEntityConstants.getRootEntityId())
@@ -973,11 +972,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   PolicyAttachmentResult attachDetachPolicyOnEntity(
       long policyCatalogId,
       long policyId,
-      @Nonnull PolicyType policyType,
+      @NonNull PolicyType policyType,
       long targetCatalogId,
       long targetId,
       boolean doAttach,
-      @Nonnull Map<String, String> parameters) {
+      @NonNull Map<String, String> parameters) {
     return new PolicyMutation(
             persistence,
             memoizedIndexedAccess,
@@ -1294,7 +1293,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
   <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisBaseEntity entity) {
+          @NonNull PolarisBaseEntity entity) {
     var storageConfig = BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
@@ -1319,7 +1318,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         .apply();
   }
 
-  PolarisPrincipalSecrets loadPrincipalSecrets(@Nonnull String clientId) {
+  PolarisPrincipalSecrets loadPrincipalSecrets(@NonNull String clientId) {
     LOGGER.debug("loadPrincipalSecrets clientId: {}", clientId);
 
     var key = IndexKey.key(clientId);

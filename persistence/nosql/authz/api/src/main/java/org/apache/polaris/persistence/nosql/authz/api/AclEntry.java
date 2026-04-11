@@ -23,10 +23,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
 /**
  * An {@link Acl ACL} entry holds the {@linkplain PrivilegeSet sets} of <em>granted</em> and
@@ -60,52 +60,52 @@ public interface AclEntry {
 
   interface AclEntryBuilder {
     @CanIgnoreReturnValue
-    AclEntryBuilder grant(@Nonnull Collection<? extends Privilege> privileges);
+    AclEntryBuilder grant(@NonNull Collection<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder grant(@Nonnull Privilege... privileges);
+    AclEntryBuilder grant(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder grant(@Nonnull Privilege privilege);
+    AclEntryBuilder grant(@NonNull Privilege privilege);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder grant(@Nonnull PrivilegeSet privileges);
+    AclEntryBuilder grant(@NonNull PrivilegeSet privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder revoke(@Nonnull Collection<? extends Privilege> privileges);
+    AclEntryBuilder revoke(@NonNull Collection<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder revoke(@Nonnull Privilege... privileges);
+    AclEntryBuilder revoke(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder revoke(@Nonnull Privilege privilege);
+    AclEntryBuilder revoke(@NonNull Privilege privilege);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder revoke(@Nonnull PrivilegeSet privileges);
+    AclEntryBuilder revoke(@NonNull PrivilegeSet privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder restrict(@Nonnull Collection<? extends Privilege> privileges);
+    AclEntryBuilder restrict(@NonNull Collection<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder restrict(@Nonnull Privilege... privileges);
+    AclEntryBuilder restrict(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder restrict(@Nonnull Privilege privilege);
+    AclEntryBuilder restrict(@NonNull Privilege privilege);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder restrict(@Nonnull PrivilegeSet privileges);
+    AclEntryBuilder restrict(@NonNull PrivilegeSet privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder unrestrict(@Nonnull Collection<? extends Privilege> privileges);
+    AclEntryBuilder unrestrict(@NonNull Collection<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder unrestrict(@Nonnull Privilege... privileges);
+    AclEntryBuilder unrestrict(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder unrestrict(@Nonnull Privilege privilege);
+    AclEntryBuilder unrestrict(@NonNull Privilege privilege);
 
     @CanIgnoreReturnValue
-    AclEntryBuilder unrestrict(@Nonnull PrivilegeSet privileges);
+    AclEntryBuilder unrestrict(@NonNull PrivilegeSet privileges);
 
     AclEntry build();
   }

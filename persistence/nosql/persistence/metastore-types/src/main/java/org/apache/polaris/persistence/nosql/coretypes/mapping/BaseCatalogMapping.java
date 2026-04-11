@@ -21,30 +21,30 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
 import static java.lang.String.format;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogBaseObj;
+import org.jspecify.annotations.NonNull;
 
 /** Base class for mapping objects contained in a catalog. */
 abstract class BaseCatalogMapping<O extends CatalogBaseObj, B extends CatalogBaseObj.Builder<O, B>>
     extends BaseMapping<O, B> {
   BaseCatalogMapping(
-      @Nonnull ObjType objType,
-      @Nonnull ObjType containerObjType,
-      @Nonnull String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull ObjType objType,
+      @NonNull ObjType containerObjType,
+      @NonNull String refName,
+      @NonNull PolarisEntityType entityType) {
     super(objType, containerObjType, refName, entityType);
   }
 
   BaseCatalogMapping(
-      @Nonnull Class<? extends CatalogBaseObj> baseObjTypeClass,
-      @Nonnull Map<PolarisEntitySubType, ObjType> subTypes,
-      @Nonnull ObjType containerObjType,
-      @Nonnull String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull Class<? extends CatalogBaseObj> baseObjTypeClass,
+      @NonNull Map<PolarisEntitySubType, ObjType> subTypes,
+      @NonNull ObjType containerObjType,
+      @NonNull String refName,
+      @NonNull PolarisEntityType entityType) {
     super(baseObjTypeClass, subTypes, containerObjType, refName, entityType);
   }
 
@@ -54,7 +54,7 @@ abstract class BaseCatalogMapping<O extends CatalogBaseObj, B extends CatalogBas
   }
 
   @Override
-  public @Nonnull String refNameForCatalog(long catalogId) {
+  public @NonNull String refNameForCatalog(long catalogId) {
     checkCatalogId(catalogId);
     return format(refName, catalogId);
   }

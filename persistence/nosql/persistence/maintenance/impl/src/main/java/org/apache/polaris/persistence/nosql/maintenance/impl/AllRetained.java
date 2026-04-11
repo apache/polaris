@@ -22,7 +22,6 @@ import static java.util.Map.entry;
 
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.PrimitiveSink;
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.function.Predicate;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
@@ -44,8 +43,6 @@ final class AllRetained {
    */
   private final int salt;
 
-  // @NonNull is the jspecify variant, which allows type-usage.
-  // Jakarta's @Nonnull does not allow type-usage.
   private final BloomFilter<Map.@NonNull Entry<String, String>> refsFilter;
   private final BloomFilter<Map.@NonNull Entry<String, Long>> objsFilter;
   private long refAdds;
@@ -57,13 +54,13 @@ final class AllRetained {
     this.objsFilter = BloomFilter.create(this::objFunnel, expectedObjCount, fpp);
   }
 
-  private void refFunnel(Map.Entry<String, String> realmRef, @Nonnull PrimitiveSink primitiveSink) {
+  private void refFunnel(Map.Entry<String, String> realmRef, @NonNull PrimitiveSink primitiveSink) {
     primitiveSink.putInt(salt);
     primitiveSink.putUnencodedChars(realmRef.getKey());
     primitiveSink.putUnencodedChars(realmRef.getValue());
   }
 
-  private void objFunnel(Map.Entry<String, Long> realmObj, @Nonnull PrimitiveSink primitiveSink) {
+  private void objFunnel(Map.Entry<String, Long> realmObj, @NonNull PrimitiveSink primitiveSink) {
     primitiveSink.putInt(salt);
     primitiveSink.putUnencodedChars(realmObj.getKey());
     var id = realmObj.getValue();

@@ -47,6 +47,7 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -65,6 +66,7 @@ dependencies {
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-core")
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 
+  testFixturesCompileOnly(libs.jspecify)
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)
 
@@ -80,6 +82,7 @@ dependencies {
   testImplementation(libs.junit.pioneer)
 
   testImplementation(project(":polaris-idgen-impl"))
+  testCompileOnly(libs.jspecify)
 
   testCompileOnly(libs.jakarta.annotation.api)
   testCompileOnly(libs.jakarta.validation.api)

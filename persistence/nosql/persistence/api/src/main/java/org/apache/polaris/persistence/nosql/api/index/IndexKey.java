@@ -30,11 +30,11 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a key in an {@link Index}.
@@ -82,8 +82,8 @@ public final class IndexKey implements Comparable<IndexKey> {
         }
 
         @Override
-        @Nonnull
-        public ByteBuffer serialize(@Nullable IndexKey value, @Nonnull ByteBuffer target) {
+        @NonNull
+        public ByteBuffer serialize(@Nullable IndexKey value, @NonNull ByteBuffer target) {
           if (value != null) {
             return value.serialize(target);
           }
@@ -91,12 +91,12 @@ public final class IndexKey implements Comparable<IndexKey> {
         }
 
         @Override
-        public IndexKey deserialize(@Nonnull ByteBuffer buffer) {
+        public IndexKey deserialize(@NonNull ByteBuffer buffer) {
           return deserializeKey(buffer);
         }
 
         @Override
-        public void skip(@Nonnull ByteBuffer buffer) {
+        public void skip(@NonNull ByteBuffer buffer) {
           IndexKey.skip(buffer);
         }
       };
@@ -293,7 +293,7 @@ public final class IndexKey implements Comparable<IndexKey> {
     return sb.toString();
   }
 
-  public boolean startsWith(@Nonnull IndexKey prefix) {
+  public boolean startsWith(@NonNull IndexKey prefix) {
     var preKey = prefix.key;
     var preLen = preKey.length;
     checkArgument(preLen > 0, "prefix must not be empty");

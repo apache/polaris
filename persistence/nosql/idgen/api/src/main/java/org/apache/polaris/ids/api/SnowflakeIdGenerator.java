@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.ids.api;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
 
 public interface SnowflakeIdGenerator extends IdGenerator {
   /** Offset of the snowflake ID generator since the 1970-01-01T00:00:00Z epoch instant. */
@@ -50,7 +50,7 @@ public interface SnowflakeIdGenerator extends IdGenerator {
 
   String idToString(long id);
 
-  long timeUuidToId(@Nonnull UUID uuid);
+  long timeUuidToId(@NonNull UUID uuid);
 
   int timestampBits();
 

@@ -23,8 +23,6 @@ import static org.apache.polaris.persistence.nosql.api.cache.CacheBackend.NON_EX
 import static org.apache.polaris.persistence.nosql.api.cache.CacheBackend.NOT_FOUND_OBJ_SENTINEL;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.lang.reflect.Array;
 import java.util.Optional;
 import java.util.Set;
@@ -47,6 +45,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.impl.commits.CommitFactory;
 import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 class CachingPersistenceImpl implements Persistence {
 
@@ -62,7 +62,7 @@ class CachingPersistenceImpl implements Persistence {
 
   @Nullable
   @Override
-  public <T extends Obj> T getImmediate(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T getImmediate(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     var numParts = id.numParts();
     checkArgument(numParts >= 0, "partNum of %s must not be negative", id);
     @SuppressWarnings("unchecked")
@@ -75,7 +75,7 @@ class CachingPersistenceImpl implements Persistence {
 
   @Nullable
   @Override
-  public <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     var numParts = id.numParts();
     checkArgument(numParts >= 0, "partNum of %s must not be negative", id);
     var o = backend.get(realmId, id);
@@ -95,9 +95,9 @@ class CachingPersistenceImpl implements Persistence {
     return f;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] fetchMany(@Nonnull Class<T> clazz, @Nonnull ObjRef... ids) {
+  public <T extends Obj> T[] fetchMany(@NonNull Class<T> clazz, @NonNull ObjRef... ids) {
     @SuppressWarnings("unchecked")
     var r = (T[]) Array.newInstance(clazz, ids.length);
 
@@ -167,18 +167,18 @@ class CachingPersistenceImpl implements Persistence {
     return r;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T write(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T write(@NonNull T obj, @NonNull Class<T> clazz) {
     obj = delegate.write(obj, clazz);
     backend.put(realmId, obj);
     return obj;
   }
 
   @SafeVarargs
-  @Nonnull
+  @NonNull
   @Override
-  public final <T extends Obj> T[] writeMany(@Nonnull Class<T> clazz, @Nonnull T... objs) {
+  public final <T extends Obj> T[] writeMany(@NonNull Class<T> clazz, @NonNull T... objs) {
     var written = delegate.writeMany(clazz, objs);
     for (var w : written) {
       if (w != null) {
@@ -189,7 +189,7 @@ class CachingPersistenceImpl implements Persistence {
   }
 
   @Override
-  public void delete(@Nonnull ObjRef id) {
+  public void delete(@NonNull ObjRef id) {
     try {
       delegate.delete(id);
     } finally {
@@ -198,7 +198,7 @@ class CachingPersistenceImpl implements Persistence {
   }
 
   @Override
-  public void deleteMany(@Nonnull ObjRef... ids) {
+  public void deleteMany(@NonNull ObjRef... ids) {
     try {
       delegate.deleteMany(ids);
     } finally {
@@ -212,7 +212,7 @@ class CachingPersistenceImpl implements Persistence {
 
   @Nullable
   @Override
-  public <T extends Obj> T conditionalInsert(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T conditionalInsert(@NonNull T obj, @NonNull Class<T> clazz) {
     var r = delegate.conditionalInsert(obj, clazz);
     if (r != null) {
       backend.put(realmId, obj);
@@ -225,7 +225,7 @@ class CachingPersistenceImpl implements Persistence {
   @Nullable
   @Override
   public <T extends Obj> T conditionalUpdate(
-      @Nonnull T expected, @Nonnull T update, @Nonnull Class<T> clazz) {
+      @NonNull T expected, @NonNull T update, @NonNull Class<T> clazz) {
     var r = delegate.conditionalUpdate(expected, update, clazz);
     if (r != null) {
       backend.put(realmId, r);
@@ -236,7 +236,7 @@ class CachingPersistenceImpl implements Persistence {
   }
 
   @Override
-  public <T extends Obj> boolean conditionalDelete(@Nonnull T expected, Class<T> clazz) {
+  public <T extends Obj> boolean conditionalDelete(@NonNull T expected, Class<T> clazz) {
     try {
       return delegate.conditionalDelete(expected, clazz);
     } finally {
@@ -273,31 +273,31 @@ class CachingPersistenceImpl implements Persistence {
 
   @Override
   public <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> createCommitter(
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType) {
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType) {
     return CommitFactory.newCommitter(this, refName, referencedObjType, resultType);
   }
 
   @Override
   public <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return IndexesProvider.buildReadIndex(indexContainer, this, indexValueSerializer);
   }
 
   @Override
   public <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return IndexesProvider.buildWriteIndex(indexContainer, this, indexValueSerializer);
   }
 
   // References
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference createReference(@Nonnull String name, @Nonnull Optional<ObjRef> pointer) {
+  public Reference createReference(@NonNull String name, @NonNull Optional<ObjRef> pointer) {
     Reference r = null;
     try {
       return r = delegate.createReference(name, pointer);
@@ -317,9 +317,9 @@ class CachingPersistenceImpl implements Persistence {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Optional<Reference> updateReferencePointer(
-      @Nonnull Reference reference, @Nonnull ObjRef newPointer) {
+      @NonNull Reference reference, @NonNull ObjRef newPointer) {
     Optional<Reference> r = Optional.empty();
     try {
       r = delegate.updateReferencePointer(reference, newPointer);
@@ -334,18 +334,18 @@ class CachingPersistenceImpl implements Persistence {
   }
 
   @Override
-  @Nonnull
-  public Reference fetchReference(@Nonnull String name) {
+  @NonNull
+  public Reference fetchReference(@NonNull String name) {
     return fetchReferenceInternal(name, false);
   }
 
   @Override
-  @Nonnull
-  public Reference fetchReferenceForUpdate(@Nonnull String name) {
+  @NonNull
+  public Reference fetchReferenceForUpdate(@NonNull String name) {
     return fetchReferenceInternal(name, true);
   }
 
-  private Reference fetchReferenceInternal(@Nonnull String name, boolean bypassCache) {
+  private Reference fetchReferenceInternal(@NonNull String name, boolean bypassCache) {
     Reference r = null;
     if (!bypassCache) {
       r = backend.getReference(realmId, name);

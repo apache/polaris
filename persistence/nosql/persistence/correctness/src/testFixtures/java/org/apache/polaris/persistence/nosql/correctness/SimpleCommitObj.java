@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.correctness;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
@@ -30,6 +29,7 @@ import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableSimpleCommitObj.class)
@@ -52,8 +52,7 @@ public interface SimpleCommitObj extends BaseCommitObj {
   int thread();
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  @Nullable
-  IndexContainer<ObjRef> index();
+  @Nullable IndexContainer<ObjRef> index();
 
   final class SimpleCommitObjType extends AbstractObjType<SimpleCommitObj> {
     public SimpleCommitObjType() {

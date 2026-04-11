@@ -67,7 +67,6 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.UpdateResult;
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -93,6 +92,7 @@ import org.apache.polaris.persistence.nosql.impl.PersistenceImplementation;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Binary;
+import org.jspecify.annotations.NonNull;
 
 final class MongoDbBackend implements Backend {
 
@@ -116,13 +116,11 @@ final class MongoDbBackend implements Backend {
     this.client = config.client();
   }
 
-  @Nonnull
-  MongoCollection<Document> refs() {
+  @NonNull MongoCollection<Document> refs() {
     return refs;
   }
 
-  @Nonnull
-  MongoCollection<Document> objs() {
+  @NonNull MongoCollection<Document> objs() {
     return objs;
   }
 
@@ -138,7 +136,7 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public String type() {
     return MongoDbBackendFactory.NAME;
   }
@@ -155,11 +153,11 @@ final class MongoDbBackend implements Backend {
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Persistence newPersistence(
       Function<Backend, Backend> backendWrapper,
-      @Nonnull PersistenceParams persistenceParams,
+      @NonNull PersistenceParams persistenceParams,
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator) {
@@ -261,7 +259,7 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public void scanBackend(
-      @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer) {
+      @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer) {
     try (var cursor =
         refs.find()
             .batchSize(50)
@@ -302,7 +300,7 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  public boolean createReference(@Nonnull String realmId, @Nonnull Reference newRef) {
+  public boolean createReference(@NonNull String realmId, @NonNull Reference newRef) {
     var doc = newReferenceDoc(realmId, newRef);
     try {
       refs().insertOne(doc);
@@ -317,7 +315,7 @@ final class MongoDbBackend implements Backend {
     return true;
   }
 
-  private Document newReferenceDoc(@Nonnull String realmId, @Nonnull Reference newRef) {
+  private Document newReferenceDoc(@NonNull String realmId, @NonNull Reference newRef) {
     var doc = new Document();
     doc.put(ID_PROPERTY_NAME, idRefDoc(realmId, newRef));
     doc.put(COL_REF_POINTER, serialize(newRef.pointer()));
@@ -330,7 +328,7 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  public void createReferences(@Nonnull String realmId, @Nonnull List<Reference> newRefs) {
+  public void createReferences(@NonNull String realmId, @NonNull List<Reference> newRefs) {
     if (newRefs.isEmpty()) {
       return;
     }
@@ -348,9 +346,9 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public boolean updateReference(
-      @Nonnull String realmId,
-      @Nonnull Reference updatedRef,
-      @Nonnull Optional<ObjRef> expectedPointer) {
+      @NonNull String realmId,
+      @NonNull Reference updatedRef,
+      @NonNull Optional<ObjRef> expectedPointer) {
     var updates = new ArrayList<Bson>();
     updates.add(set(COL_REF_POINTER, serialize(updatedRef.pointer())));
     var previous = serialize(updatedRef.previousPointers());
@@ -385,8 +383,8 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  @Nonnull
-  public Reference fetchReference(@Nonnull String realmId, @Nonnull String name) {
+  @NonNull
+  public Reference fetchReference(@NonNull String realmId, @NonNull String name) {
     FindIterable<Document> result;
     try {
       result = refs().find(eq(ID_PROPERTY_NAME, idRefDoc(realmId, name)));
@@ -411,8 +409,8 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  @Nonnull
-  public Map<PersistId, FetchedObj> fetch(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+  @NonNull
+  public Map<PersistId, FetchedObj> fetch(@NonNull String realmId, @NonNull Set<PersistId> ids) {
     var list = ids.stream().map(id -> idObjDoc(realmId, id)).toList();
 
     var r = Maps.<PersistId, FetchedObj>newHashMapWithExpectedSize(ids.size());
@@ -435,7 +433,7 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  public void write(@Nonnull String realmId, @Nonnull List<WriteObj> writes) {
+  public void write(@NonNull String realmId, @NonNull List<WriteObj> writes) {
     var docs = new ArrayList<WriteModel<Document>>(writes.size());
     for (WriteObj write : writes) {
       var idDoc = idFetchedDoc(realmId, write);
@@ -467,7 +465,7 @@ final class MongoDbBackend implements Backend {
   }
 
   @Override
-  public void delete(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+  public void delete(@NonNull String realmId, @NonNull Set<PersistId> ids) {
     var list = ids.stream().map(id -> idObjDoc(realmId, id)).collect(toList());
     if (list.isEmpty()) {
       return;
@@ -481,12 +479,12 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public boolean conditionalInsert(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String versionToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String versionToken,
+      @NonNull byte[] serializedValue) {
     try {
       var idDoc = idObjDoc(realmId, persistId);
       var doc = objToDoc(idDoc, objTypeId, serializedValue, createdAtMicros, versionToken, 1);
@@ -504,13 +502,13 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public boolean conditionalUpdate(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String updateToken,
-      @Nonnull String expectedToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String updateToken,
+      @NonNull String expectedToken,
+      @NonNull byte[] serializedValue) {
     var idDoc = idObjDoc(realmId, persistId);
     var doc = objToDoc(idDoc, objTypeId, serializedValue, createdAtMicros, updateToken, 1);
 
@@ -530,7 +528,7 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public boolean conditionalDelete(
-      @Nonnull String realmId, @Nonnull PersistId persistId, @Nonnull String expectedToken) {
+      @NonNull String realmId, @NonNull PersistId persistId, @NonNull String expectedToken) {
     var idDoc = idObjDoc(realmId, persistId);
 
     try {
@@ -593,9 +591,9 @@ final class MongoDbBackend implements Backend {
   }
 
   private Document objToDoc(
-      @Nonnull Document idDoc,
-      @Nonnull String objTypeId,
-      @Nonnull byte[] serialized,
+      @NonNull Document idDoc,
+      @NonNull String objTypeId,
+      @NonNull byte[] serialized,
       long createdAtMicros,
       String versionToken,
       int partNum) {
