@@ -1,0 +1,84 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.extensions.federation.bigquery;
+
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Map;
+import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog;
+import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.GenericTableCatalog;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.AuthenticationType;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.connection.bigquery.BigQueryMetastoreConnectionConfigInfoDpo;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+
+/**
+ * Factory class for creating a BigQuery Metastore catalog handle based on connection configuration.
+ */
+@ApplicationScoped
+@Identifier(ConnectionType.BIGQUERY_FACTORY_IDENTIFIER)
+public class BigQueryMetastoreFederatedCatalogFactory implements ExternalCatalogFactory {
+
+  @Override
+  public Catalog createCatalog(
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
+
+    // Currently, Polaris supports BigQuery Metastore federation only via IMPLICIT authentication.
+    // Hence, prior to initializing the configuration, ensure that the catalog uses
+    // IMPLICIT authentication.
+    AuthenticationParametersDpo authenticationParametersDpo =
+        connectionConfigInfoDpo.getAuthenticationParameters();
+    if (authenticationParametersDpo != null
+        && authenticationParametersDpo.getAuthenticationTypeCode()
+            != AuthenticationType.IMPLICIT.getCode()) {
+      throw new IllegalStateException(
+          "BigQuery Metastore federation only supports IMPLICIT authentication.");
+    }
+
+    String warehouse =
+        ((BigQueryMetastoreConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
+    Map<String, String> mergedProperties =
+        RESTUtil.merge(
+            catalogProperties != null ? catalogProperties : Map.of(),
+            connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+
+    // Credentials are resolved via Google Application Default Credentials (ADC).
+    // GCS storage operations use the same ADC credentials.
+    BigQueryMetastoreCatalog bigQueryMetastoreCatalog = new BigQueryMetastoreCatalog();
+    bigQueryMetastoreCatalog.initialize(warehouse, mergedProperties);
+
+    return bigQueryMetastoreCatalog;
+  }
+
+  @Override
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
+    throw new UnsupportedOperationException(
+        "Generic table federation to BigQuery Metastore is not supported.");
+  }
+}

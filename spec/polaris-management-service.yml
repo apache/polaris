@@ -917,6 +917,7 @@ components:
             - ICEBERG_REST
             - HADOOP
             - HIVE
+            - BIGQUERY
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -933,6 +934,7 @@ components:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
           HIVE: "#/components/schemas/HiveConnectionConfigInfo"
+          BIGQUERY: "#/components/schemas/BigQueryMetastoreConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -965,6 +967,27 @@ components:
         warehouse:
           type: string
           description: The warehouse location for the hive catalog.
+    
+    BigQueryMetastoreConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to a BigQuery Metastore Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        warehouse:
+          type: string
+          description: The warehouse location for the BigQuery Metastore Catalog
+        gcpProjectId:
+          type: string
+          description: The GCP project ID
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+            description: Additional catalog properties
+      required:
+        - warehouse
+        - gcpProjectId
 
     AuthenticationParameters:
       type: object
