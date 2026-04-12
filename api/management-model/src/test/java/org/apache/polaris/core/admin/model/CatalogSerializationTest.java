@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,9 @@ public class CatalogSerializationTest {
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
-                + "}}");
+                + "},"
+                + "\"labels\":{}"
+                + "}");
   }
 
   @Test
@@ -105,7 +108,33 @@ public class CatalogSerializationTest {
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
-                + "}}");
+                + "},"
+                + "\"labels\":{}"
+                + "}");
+  }
+
+  @Test
+  public void testJsonFormatWithLabels() throws JsonProcessingException {
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            null,
+            null,
+            null,
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn(TEST_ROLE_ARN)
+                .build(),
+            Map.of("env", "prod", "team", "data"));
+
+    String json = mapper.writeValueAsString(catalog);
+    assertThat(json).contains("\"labels\":{");
+    assertThat(json).contains("\"env\":\"prod\"");
+    assertThat(json).contains("\"team\":\"data\"");
+
+    Catalog deserialized = mapper.readValue(json, Catalog.class);
+    assertThat(deserialized.getLabels()).containsEntry("env", "prod").containsEntry("team", "data");
   }
 
   private static Stream<Arguments> catalogTestCases() {

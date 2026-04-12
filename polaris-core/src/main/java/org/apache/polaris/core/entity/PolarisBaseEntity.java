@@ -19,6 +19,8 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.annotation.Nonnull;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
@@ -30,6 +32,9 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 public class PolarisBaseEntity extends PolarisEntityCore {
 
   public static final String EMPTY_MAP_STRING = "{}";
+
+  /** Internal-property key under which entity labels are stored as a serialized JSON map. */
+  protected static final String LABELS_INTERNAL_KEY = "polaris.entity.labels";
 
   // the type of the entity when it was resolved
   protected final int subTypeCode;
@@ -118,6 +123,33 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   @JsonIgnore
   public Map<String, String> getInternalPropertiesAsMap() {
     return PolarisObjectMapperUtil.deserializeProperties(getInternalProperties());
+  }
+
+  /**
+   * Returns the labels attached to this entity. Labels are stored in internal properties under
+   * {@link #LABELS_INTERNAL_KEY} and are never empty — an absent key means no labels.
+   */
+  @JsonIgnore
+  public Map<String, String> getLabels() {
+    String raw = getInternalPropertiesAsMap().get(LABELS_INTERNAL_KEY);
+    if (raw == null || raw.isBlank()) {
+      return Collections.emptyMap();
+    }
+    return PolarisObjectMapperUtil.deserializeProperties(raw);
+  }
+
+  /**
+   * Returns {@code true} if this entity's labels contain all entries in {@code labelFilter}. An
+   * empty filter matches every entity.
+   */
+  @JsonIgnore
+  public boolean containsAllLabels(@Nonnull Map<String, String> labelFilter) {
+    if (labelFilter.isEmpty()) {
+      return true;
+    }
+    Map<String, String> labels = getLabels();
+    return labelFilter.entrySet().stream()
+        .allMatch(e -> e.getValue().equals(labels.get(e.getKey())));
   }
 
   public int getGrantRecordsVersion() {

@@ -163,7 +163,7 @@ public class CommitTransactionEventTest {
             .build();
     Catalog catalogObject =
         new Catalog(
-            Catalog.TypeEnum.INTERNAL, catalog, propertiesBuilder.build(), 0L, 0L, 1, config);
+            Catalog.TypeEnum.INTERNAL, catalog, propertiesBuilder.build(), 0L, 0L, 1, config, null);
     try (Response response =
         services
             .catalogsApi()

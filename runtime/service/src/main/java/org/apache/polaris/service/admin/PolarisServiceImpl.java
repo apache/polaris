@@ -23,11 +23,14 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -254,11 +257,39 @@ public class PolarisServiceImpl
 
   /** From PolarisCatalogsApiService */
   @Override
-  public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    List<Catalog> catalogList = adminService.listCatalogs();
+  public Response listCatalogs(
+      List<String> label, RealmContext realmContext, SecurityContext securityContext) {
+    Map<String, String> parsedFilter = parseLabelFilter(label);
+    List<Catalog> catalogList = adminService.listCatalogs(parsedFilter);
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
     return Response.ok(catalogs).build();
+  }
+
+  /**
+   * Parses a list of {@code "key:value"} label-filter strings into a map. Throws {@link
+   * BadRequestException} for malformed entries.
+   */
+  private static Map<String, String> parseLabelFilter(List<String> label) {
+    if (label == null || label.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, String> result = new HashMap<>(label.size());
+    for (String entry : label) {
+      int idx = entry.indexOf(':');
+      if (idx <= 0) {
+        throw new BadRequestException(
+            "Invalid label value '%s': must be in 'key:value' format", entry);
+      }
+      String key = entry.substring(0, idx).trim();
+      String value = entry.substring(idx + 1);
+      if (key.isEmpty()) {
+        throw new BadRequestException(
+            "Invalid label value '%s': label key must not be empty", entry);
+      }
+      result.put(key, value);
+    }
+    return result;
   }
 
   /** From PolarisPrincipalsApiService */

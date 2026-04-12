@@ -106,6 +106,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
         realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+    if (catalog.getLabels() != null && !catalog.getLabels().isEmpty()) {
+      builder.setLabels(catalog.getLabels());
+    }
     return builder.build();
   }
 
@@ -130,6 +133,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityProvider != null,
         "%s catalog needs ServiceIdentityProvider to resolve service identities",
         Catalog.TypeEnum.EXTERNAL);
+    Map<String, String> entityLabels = getLabels();
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -140,6 +144,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
             .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
+            .setLabels(entityLabels)
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -149,6 +154,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setLabels(entityLabels)
             .build();
   }
 

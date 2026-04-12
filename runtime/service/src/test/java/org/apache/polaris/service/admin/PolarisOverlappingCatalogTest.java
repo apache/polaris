@@ -90,7 +90,8 @@ public class PolarisOverlappingCatalogTest {
             System.currentTimeMillis(),
             System.currentTimeMillis(),
             1,
-            config);
+            config,
+            null);
     return services
         .catalogsApi()
         .createCatalog(
