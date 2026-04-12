@@ -323,13 +323,4 @@ public interface TransactionalPersistence
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * See {@link
-   * org.apache.polaris.core.persistence.IntegrationPersistence#loadPolarisStorageIntegration}
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 }

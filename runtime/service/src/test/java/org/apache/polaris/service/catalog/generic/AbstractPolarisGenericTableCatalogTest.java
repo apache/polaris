@@ -211,13 +211,18 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
+    AwsStorageConfigurationInfo mockAwsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/mock")
+            .build();
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (AwsStorageConfigurationInfo)
-                CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
-            stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+            (destination) -> stsClient,
+            config -> java.util.Optional.empty(),
+            storageCredentialCache,
+            mockAwsConfig,
+            callContext.getRealmConfig());
+    when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =

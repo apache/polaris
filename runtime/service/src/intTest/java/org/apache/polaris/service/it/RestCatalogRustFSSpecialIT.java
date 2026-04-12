@@ -383,7 +383,6 @@ public class RestCatalogRustFSSpecialIT {
                     id,
                     "ALL",
                     Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
         .hasMessageContaining("Status Code: 400");
   }
 

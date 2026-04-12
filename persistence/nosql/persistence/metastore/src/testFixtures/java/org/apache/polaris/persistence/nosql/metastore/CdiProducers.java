@@ -25,7 +25,6 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfigurationSource;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
@@ -35,9 +34,8 @@ public class CdiProducers {
   PolarisStorageIntegrationProvider producePolarisStorageIntegrationProvider() {
     return new PolarisStorageIntegrationProvider() {
       @Override
-      public @Nullable <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-              PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+      public @Nullable PolarisStorageIntegration<?> getStorageIntegration(
+          java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
         throw new UnsupportedOperationException();
       }
     };

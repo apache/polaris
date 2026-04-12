@@ -554,16 +554,6 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
                 callCtx, entity, storageIntegration));
   }
 
-  /** {@inheritDoc} */
-  @Override
-  @Nullable
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return runInReadTransaction(
-        callCtx, () -> this.loadPolarisStorageIntegrationInCurrentTxn(callCtx, entity));
-  }
-
   //
   // Implementations of the in-transaction versions for basic write/delete/lookup using the
   // slice-based model supported by this class.

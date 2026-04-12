@@ -55,12 +55,12 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -75,24 +75,50 @@ public class AzureCredentialsStorageIntegration
 
   final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration(AzureStorageConfigurationInfo config) {
-    super(config, AzureCredentialsStorageIntegration.class.getName());
+  public AzureCredentialsStorageIntegration(
+      AzureStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
+    this(null, storageConfig, realmConfig);
+  }
+
+  public AzureCredentialsStorageIntegration(
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      AzureStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    super(AzureCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
   }
 
   @Override
+  protected StorageCredentialCacheKey buildCacheKey(
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return AzureStorageCredentialCacheKey.of(
+        context.realm().orElse(""),
+        storageConfig().serialize(),
+        allowList,
+        readLocations,
+        writeLocations,
+        refreshEndpoint);
+  }
+
+  @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
-    // Note: Azure SAS tokens do not support session tags like AWS STS.
-    // The credentialVendingContext is accepted for interface compatibility but not used.
+      boolean allowList,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> writeLocations,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    RealmConfig realmConfig = realmConfig();
+    boolean allowListOperation = allowList;
+    Set<String> allowedReadLocations = readLocations;
+    Set<String> allowedWriteLocations = writeLocations;
+    Optional<String> refreshCredentialsEndpoint = refreshEndpoint;
+
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -134,7 +160,8 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(realmConfig, config().getTenantId());
+    AzureStorageConfigurationInfo azureStorageConfig = storageConfig();
+    AccessToken accessToken = getAccessToken(realmConfig, azureStorageConfig.getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
@@ -172,7 +199,7 @@ public class AzureCredentialsStorageIntegration
               Mono.just(accessToken));
     } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
       String path = null;
-      if (Boolean.TRUE.equals(config().isHierarchical())) {
+      if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
         Preconditions.checkArgument(
             allowedReadLocations.size() <= 1,
             "Allowed read locations must not have more that one entry");

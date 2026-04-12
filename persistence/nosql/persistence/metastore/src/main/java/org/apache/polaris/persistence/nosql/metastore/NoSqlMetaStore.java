@@ -77,7 +77,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -94,8 +93,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -1290,13 +1287,6 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
     return new GrantsMutation(persistence, memoizedIndexedAccess, privileges, doGrant, grants)
         .apply();
-  }
-
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisBaseEntity entity) {
-    var storageConfig = BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
   CreatePrincipalResult createPrincipal(
