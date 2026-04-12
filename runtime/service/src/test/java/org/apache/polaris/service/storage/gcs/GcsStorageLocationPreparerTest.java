@@ -45,10 +45,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
-import org.apache.iceberg.TableProperties;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.service.storage.AbstractStorageLocationPreparer;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -82,83 +80,6 @@ class GcsStorageLocationPreparerTest {
     Mockito.doReturn(mockControlClient).when(preparer).createStorageControlClient();
   }
 
-  // ── buildTableHierarchy Tests (Internal Helper) ───────────────────────────
-
-  @Nested
-  class BuildTableHierarchyTests {
-
-    @Test
-    void producesCorrectHierarchyForTypicalTablePath() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("warehouse/ns1/table1");
-
-      assertThat(folders)
-          .containsExactly(
-              "warehouse",
-              "warehouse/ns1",
-              "warehouse/ns1/table1",
-              "warehouse/ns1/table1/metadata",
-              "warehouse/ns1/table1/data");
-    }
-
-    @Test
-    void handlesNestedNamespacePath() {
-      List<String> folders =
-          GcsStorageLocationPreparer.buildTableHierarchy("warehouse/ns1/ns2/ns3/table1");
-
-      assertThat(folders)
-          .containsExactly(
-              "warehouse",
-              "warehouse/ns1",
-              "warehouse/ns1/ns2",
-              "warehouse/ns1/ns2/ns3",
-              "warehouse/ns1/ns2/ns3/table1",
-              "warehouse/ns1/ns2/ns3/table1/metadata",
-              "warehouse/ns1/ns2/ns3/table1/data");
-    }
-
-    @Test
-    void handlesSingleSegmentPath() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("table1");
-
-      assertThat(folders).containsExactly("table1", "table1/metadata", "table1/data");
-    }
-
-    @Test
-    void stripsTrailingSlashes() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("warehouse/table1///");
-
-      assertThat(folders)
-          .containsExactly(
-              "warehouse",
-              "warehouse/table1",
-              "warehouse/table1/metadata",
-              "warehouse/table1/data");
-    }
-
-    @Test
-    void alwaysIncludesMetadataAndDataLeafFolders() {
-      List<String> folders = GcsStorageLocationPreparer.buildTableHierarchy("a/b/c");
-
-      assertThat(folders)
-          .filteredOn(f -> f.endsWith("/metadata") || f.endsWith("/data"))
-          .containsExactly("a/b/c/metadata", "a/b/c/data");
-    }
-
-    @Test
-    void collapsesRepeatedSlashesConsistently() {
-      List<String> folders =
-          GcsStorageLocationPreparer.buildTableHierarchy("warehouse//ns1///table1");
-
-      assertThat(folders)
-          .containsExactly(
-              "warehouse",
-              "warehouse/ns1",
-              "warehouse/ns1/table1",
-              "warehouse/ns1/table1/metadata",
-              "warehouse/ns1/table1/data");
-    }
-  }
-
   // ── buildPathHierarchy Tests (Internal Helper) ─────────────────────────────
 
   @Nested
@@ -167,7 +88,7 @@ class GcsStorageLocationPreparerTest {
     @Test
     void producesFullHierarchyWithoutMetadataDataSubfolders() {
       List<String> folders =
-          GcsStorageLocationPreparer.buildPathHierarchy(
+          AbstractStorageLocationPreparer.buildPathHierarchy(
               "cdr/polaris-test-metadata/dsp/table1/metadata");
 
       assertThat(folders)
@@ -181,51 +102,63 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void handlesSingleSegmentPath() {
-      List<String> folders = GcsStorageLocationPreparer.buildPathHierarchy("data");
+      List<String> folders = AbstractStorageLocationPreparer.buildPathHierarchy("data");
 
       assertThat(folders).containsExactly("data");
     }
 
     @Test
     void handlesTwoSegmentPath() {
-      List<String> folders = GcsStorageLocationPreparer.buildPathHierarchy("custom/metadata");
+      List<String> folders = AbstractStorageLocationPreparer.buildPathHierarchy("custom/metadata");
 
       assertThat(folders).containsExactly("custom", "custom/metadata");
     }
 
     @Test
     void returnsEmptyForEmptyPath() {
-      List<String> folders = GcsStorageLocationPreparer.buildPathHierarchy("");
+      List<String> folders = AbstractStorageLocationPreparer.buildPathHierarchy("");
 
       assertThat(folders).isEmpty();
     }
 
     @Test
     void collapsesRepeatedSlashes() {
-      List<String> folders = GcsStorageLocationPreparer.buildPathHierarchy("a//b///c");
+      List<String> folders = AbstractStorageLocationPreparer.buildPathHierarchy("a//b///c");
 
       assertThat(folders).containsExactly("a", "a/b", "a/b/c");
     }
 
     @Test
-    void doesNotAppendMetadataOrDataSubfolders() {
-      List<String> folders = GcsStorageLocationPreparer.buildPathHierarchy("warehouse/ns/table");
+    void producesCorrectHierarchyForTypicalTablePath() {
+      List<String> folders =
+          AbstractStorageLocationPreparer.buildPathHierarchy("warehouse/ns1/table1");
+
+      assertThat(folders).containsExactly("warehouse", "warehouse/ns1", "warehouse/ns1/table1");
+    }
+
+    @Test
+    void handlesNestedNamespacePath() {
+      List<String> folders =
+          AbstractStorageLocationPreparer.buildPathHierarchy("warehouse/ns1/ns2/ns3/table1");
 
       assertThat(folders)
-          .containsExactly("warehouse", "warehouse/ns", "warehouse/ns/table")
-          .noneMatch(f -> f.endsWith("/metadata") && !f.equals("warehouse/ns/table"))
-          .noneMatch(f -> f.endsWith("/data"));
+          .containsExactly(
+              "warehouse",
+              "warehouse/ns1",
+              "warehouse/ns1/ns2",
+              "warehouse/ns1/ns2/ns3",
+              "warehouse/ns1/ns2/ns3/table1");
     }
   }
 
-  // ── prepareTableLocation: No-Op Scenarios ─────────────────────────────────
+  // ── prepareLocations: No-Op Scenarios ─────────────────────────────────────
 
   @Nested
   class NoOpScenarioTests {
 
     @Test
-    void skipsNullLocation() throws IOException {
-      preparer.prepareTableLocation(null, Map.of());
+    void skipsEmptyLocationsList() throws IOException {
+      preparer.prepareLocations(List.of());
 
       verify(preparer, never()).fetchBucketMetadata(anyString());
       verify(preparer, never()).createStorageControlClient();
@@ -233,21 +166,21 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void skipsNonGcsLocation() throws IOException {
-      preparer.prepareTableLocation("s3://my-bucket/warehouse/table1", Map.of());
+      preparer.prepareLocations(List.of("s3://my-bucket/warehouse/table1"));
 
       verify(preparer, never()).fetchBucketMetadata(anyString());
     }
 
     @Test
     void skipsEmptyLocation() throws IOException {
-      preparer.prepareTableLocation("", Map.of());
+      preparer.prepareLocations(List.of(""));
 
       verify(preparer, never()).fetchBucketMetadata(anyString());
     }
 
     @Test
     void skipsBucketOnlyLocationWithNoObjectPath() throws IOException {
-      preparer.prepareTableLocation("gs://" + TEST_BUCKET, Map.of());
+      preparer.prepareLocations(List.of("gs://" + TEST_BUCKET));
 
       verify(preparer, never()).fetchBucketMetadata(anyString());
       verify(preparer, never()).createStorageControlClient();
@@ -255,14 +188,14 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void skipsBucketWithRootSlashOnly() throws IOException {
-      preparer.prepareTableLocation("gs://" + TEST_BUCKET + "/", Map.of());
+      preparer.prepareLocations(List.of("gs://" + TEST_BUCKET + "/"));
 
       verify(preparer, never()).fetchBucketMetadata(anyString());
       verify(preparer, never()).createStorageControlClient();
     }
   }
 
-  // ── prepareTableLocation: HNS Enabled ─────────────────────────────────────
+  // ── prepareLocations: HNS Enabled ─────────────────────────────────────────
 
   @Nested
   class HnsEnabledTests {
@@ -279,10 +212,14 @@ class GcsStorageLocationPreparerTest {
       when(mockControlClient.createFolder(any(CreateFolderRequest.class)))
           .thenReturn(Folder.getDefaultInstance());
 
-      preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of());
+      preparer.prepareLocations(
+          List.of(
+              TEST_TABLE_LOCATION,
+              TEST_TABLE_LOCATION + "/metadata",
+              TEST_TABLE_LOCATION + "/data"));
 
       verify(preparer).createStorageControlClient();
-      // warehouse, warehouse/ns1, warehouse/ns1/table1, metadata, data = 5 folders
+      // warehouse, warehouse/ns1, warehouse/ns1/table1, metadata, data = 5 unique folders
       verify(mockControlClient, times(5)).createFolder(any(CreateFolderRequest.class));
     }
 
@@ -292,7 +229,13 @@ class GcsStorageLocationPreparerTest {
       when(mockControlClient.createFolder(any(CreateFolderRequest.class))).thenThrow(alreadyExists);
 
       assertThatNoException()
-          .isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+          .isThrownBy(
+              () ->
+                  preparer.prepareLocations(
+                      List.of(
+                          TEST_TABLE_LOCATION,
+                          TEST_TABLE_LOCATION + "/metadata",
+                          TEST_TABLE_LOCATION + "/data")));
     }
 
     @Test
@@ -307,7 +250,13 @@ class GcsStorageLocationPreparerTest {
           .thenReturn(Folder.getDefaultInstance());
 
       assertThatNoException()
-          .isThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+          .isThrownBy(
+              () ->
+                  preparer.prepareLocations(
+                      List.of(
+                          TEST_TABLE_LOCATION,
+                          TEST_TABLE_LOCATION + "/metadata",
+                          TEST_TABLE_LOCATION + "/data")));
       verify(mockControlClient, times(5)).createFolder(any(CreateFolderRequest.class));
     }
 
@@ -316,13 +265,19 @@ class GcsStorageLocationPreparerTest {
       when(mockControlClient.createFolder(any(CreateFolderRequest.class)))
           .thenThrow(new RuntimeException("gRPC transport failure"));
 
-      assertThatThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()))
+      assertThatThrownBy(
+              () ->
+                  preparer.prepareLocations(
+                      List.of(
+                          TEST_TABLE_LOCATION,
+                          TEST_TABLE_LOCATION + "/metadata",
+                          TEST_TABLE_LOCATION + "/data")))
           .isInstanceOf(RuntimeException.class)
           .hasMessageContaining("Failed to create HNS folder");
     }
   }
 
-  // ── prepareTableLocation: Flat Namespace ──────────────────────────────────
+  // ── prepareLocations: Flat Namespace ──────────────────────────────────────
 
   @Nested
   class FlatNamespaceTests {
@@ -334,7 +289,7 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void doesNotCreateFoldersForFlatNamespaceBucket() throws IOException {
-      preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of());
+      preparer.prepareLocations(List.of(TEST_TABLE_LOCATION));
 
       verify(preparer).fetchBucketMetadata(eq(TEST_BUCKET));
       verify(preparer, never()).createStorageControlClient();
@@ -346,7 +301,7 @@ class GcsStorageLocationPreparerTest {
       when(hns.getEnabled()).thenReturn(false);
       when(mockBucket.getHierarchicalNamespace()).thenReturn(hns);
 
-      preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of());
+      preparer.prepareLocations(List.of(TEST_TABLE_LOCATION));
 
       verify(preparer, never()).createStorageControlClient();
     }
@@ -357,7 +312,7 @@ class GcsStorageLocationPreparerTest {
       when(hns.getEnabled()).thenReturn(null);
       when(mockBucket.getHierarchicalNamespace()).thenReturn(hns);
 
-      preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of());
+      preparer.prepareLocations(List.of(TEST_TABLE_LOCATION));
 
       verify(preparer, never()).createStorageControlClient();
     }
@@ -372,8 +327,8 @@ class GcsStorageLocationPreparerTest {
     void queriesDifferentBucketsSeparately() {
       when(mockBucket.getHierarchicalNamespace()).thenReturn(null);
 
-      preparer.prepareTableLocation("gs://bucket-a/warehouse/table1", Map.of());
-      preparer.prepareTableLocation("gs://bucket-b/warehouse/table2", Map.of());
+      preparer.prepareLocations(List.of("gs://bucket-a/warehouse/table1"));
+      preparer.prepareLocations(List.of("gs://bucket-b/warehouse/table2"));
 
       verify(preparer).fetchBucketMetadata(eq("bucket-a"));
       verify(preparer).fetchBucketMetadata(eq("bucket-b"));
@@ -391,7 +346,7 @@ class GcsStorageLocationPreparerTest {
           .when(preparer)
           .fetchBucketMetadata(anyString());
 
-      assertThatThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()))
+      assertThatThrownBy(() -> preparer.prepareLocations(List.of(TEST_TABLE_LOCATION)))
           .isInstanceOf(RuntimeException.class)
           .hasMessageContaining("Failed to check HNS status")
           .hasMessageContaining(TEST_BUCKET);
@@ -407,7 +362,7 @@ class GcsStorageLocationPreparerTest {
           .when(preparer)
           .createStorageControlClient();
 
-      assertThatThrownBy(() -> preparer.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()))
+      assertThatThrownBy(() -> preparer.prepareLocations(List.of(TEST_TABLE_LOCATION)))
           .isInstanceOf(RuntimeException.class)
           .hasMessageContaining("Failed to initialize StorageControlClient")
           .hasMessageContaining(TEST_BUCKET);
@@ -422,14 +377,6 @@ class GcsStorageLocationPreparerTest {
     @Test
     void checksHnsForEachUniqueBucket() {
       // Table in bucket-a, metadata in bucket-b, data in bucket-c
-      String tableLocation = "gs://bucket-a/warehouse/ns/table";
-      Map<String, String> tableProperties =
-          Map.of(
-              TableProperties.WRITE_METADATA_LOCATION, "gs://bucket-b/custom/metadata",
-              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                  "gs://bucket-c/custom/data");
-
-      // Mock HNS status: bucket-a=false, bucket-b=true, bucket-c=true
       Mockito.doReturn(createMockBucket("bucket-a", false))
           .when(preparer)
           .fetchBucketMetadata("bucket-a");
@@ -440,7 +387,11 @@ class GcsStorageLocationPreparerTest {
           .when(preparer)
           .fetchBucketMetadata("bucket-c");
 
-      preparer.prepareTableLocation(tableLocation, tableProperties);
+      preparer.prepareLocations(
+          List.of(
+              "gs://bucket-a/warehouse/ns/table",
+              "gs://bucket-b/custom/metadata",
+              "gs://bucket-c/custom/data"));
 
       // Should check HNS for all three buckets
       verify(preparer).fetchBucketMetadata("bucket-a");
@@ -448,7 +399,6 @@ class GcsStorageLocationPreparerTest {
       verify(preparer).fetchBucketMetadata("bucket-c");
 
       // Should only create folders in HNS-enabled buckets (bucket-b and bucket-c)
-      // Full hierarchy for custom metadata path in bucket-b
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -460,7 +410,6 @@ class GcsStorageLocationPreparerTest {
                   req ->
                       req.getParent().contains("bucket-b")
                           && req.getFolderId().equals("custom/metadata")));
-      // Full hierarchy for custom data path in bucket-c
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -476,14 +425,6 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void createsFoldersOnlyInHnsEnabledBuckets() {
-      String tableLocation = "gs://hns-bucket/warehouse/ns/table";
-      Map<String, String> tableProperties =
-          Map.of(
-              TableProperties.WRITE_METADATA_LOCATION, "gs://non-hns-bucket/metadata",
-              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                  "gs://hns-bucket/custom/data");
-
-      // Mock HNS status: hns-bucket=true, non-hns-bucket=false
       Mockito.doReturn(createMockBucket("hns-bucket", true))
           .when(preparer)
           .fetchBucketMetadata("hns-bucket");
@@ -491,7 +432,11 @@ class GcsStorageLocationPreparerTest {
           .when(preparer)
           .fetchBucketMetadata("non-hns-bucket");
 
-      preparer.prepareTableLocation(tableLocation, tableProperties);
+      preparer.prepareLocations(
+          List.of(
+              "gs://hns-bucket/warehouse/ns/table",
+              "gs://non-hns-bucket/metadata",
+              "gs://hns-bucket/custom/data"));
 
       // Should create table hierarchy in hns-bucket
       verify(mockControlClient)
@@ -512,13 +457,7 @@ class GcsStorageLocationPreparerTest {
                   req ->
                       req.getParent().contains("hns-bucket")
                           && req.getFolderId().equals("warehouse/ns/table")));
-      verify(mockControlClient)
-          .createFolder(
-              argThat(
-                  req ->
-                      req.getParent().contains("hns-bucket")
-                          && req.getFolderId().equals("warehouse/ns/table/metadata")));
-      // Full hierarchy for custom data path
+      // Custom data path hierarchy in hns-bucket
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -535,23 +474,20 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void handlesAllPathsInSameBucket() {
-      String tableLocation = "gs://single-bucket/warehouse/ns/table";
-      Map<String, String> tableProperties =
-          Map.of(
-              TableProperties.WRITE_METADATA_LOCATION, "gs://single-bucket/custom/metadata",
-              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                  "gs://single-bucket/custom/data");
-
       Mockito.doReturn(createMockBucket("single-bucket", true))
           .when(preparer)
           .fetchBucketMetadata("single-bucket");
 
-      preparer.prepareTableLocation(tableLocation, tableProperties);
+      preparer.prepareLocations(
+          List.of(
+              "gs://single-bucket/warehouse/ns/table",
+              "gs://single-bucket/custom/metadata",
+              "gs://single-bucket/custom/data"));
 
       // Should check HNS only once for the single bucket
       verify(preparer, times(1)).fetchBucketMetadata("single-bucket");
 
-      // Should create table hierarchy + full custom path hierarchies
+      // Table hierarchy: warehouse, warehouse/ns, warehouse/ns/table
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -570,14 +506,8 @@ class GcsStorageLocationPreparerTest {
                   req ->
                       req.getParent().contains("single-bucket")
                           && req.getFolderId().equals("warehouse/ns/table")));
+      // Custom metadata: custom, custom/metadata
       verify(mockControlClient)
-          .createFolder(
-              argThat(
-                  req ->
-                      req.getParent().contains("single-bucket")
-                          && req.getFolderId().equals("warehouse/ns/table/metadata")));
-      // "custom" parent created for both metadata and data paths (AlreadyExists handled gracefully)
-      verify(mockControlClient, times(2))
           .createFolder(
               argThat(
                   req ->
@@ -589,6 +519,7 @@ class GcsStorageLocationPreparerTest {
                   req ->
                       req.getParent().contains("single-bucket")
                           && req.getFolderId().equals("custom/metadata")));
+      // Custom data: custom/data (custom already deduplicated)
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -599,24 +530,20 @@ class GcsStorageLocationPreparerTest {
 
     @Test
     void skipsInvalidGcsLocations() {
-      String tableLocation = "gs://valid-bucket/warehouse/ns/table";
-      Map<String, String> tableProperties =
-          Map.of(
-              TableProperties.WRITE_METADATA_LOCATION, "s3://invalid-bucket/metadata", // Not GCS
-              IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
-                  "gs://valid-bucket/data");
-
       Mockito.doReturn(createMockBucket("valid-bucket", true))
           .when(preparer)
           .fetchBucketMetadata("valid-bucket");
 
-      preparer.prepareTableLocation(tableLocation, tableProperties);
+      // s3 location should be filtered out
+      preparer.prepareLocations(
+          List.of(
+              "gs://valid-bucket/warehouse/ns/table",
+              "s3://invalid-bucket/metadata",
+              "gs://valid-bucket/data"));
 
-      // Should only check HNS for valid-bucket
       verify(preparer).fetchBucketMetadata("valid-bucket");
       verify(preparer, never()).fetchBucketMetadata("invalid-bucket");
 
-      // Should create table hierarchy + data folder
       verify(mockControlClient)
           .createFolder(
               argThat(
@@ -634,11 +561,9 @@ class GcsStorageLocationPreparerTest {
     @Test
     void handlesEmptyBucketNames() {
       String tableLocation = "gs:///invalid/path"; // Empty bucket name
-      Map<String, String> tableProperties = Map.of();
 
-      preparer.prepareTableLocation(tableLocation, tableProperties);
+      preparer.prepareLocations(List.of(tableLocation));
 
-      // Should not attempt any storage operations
       verify(preparer, never()).fetchBucketMetadata(anyString());
       verify(mockControlClient, never()).createFolder(any());
     }
@@ -664,23 +589,29 @@ class GcsStorageLocationPreparerTest {
     void noOpFactoryProducesNoOpPreparerForGcsConfig() {
       var factory = org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
       var gcsConfig = mock(org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo.class);
+      when(gcsConfig.getStorageType())
+          .thenReturn(
+              org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType.GCS);
 
       var result = factory.create(gcsConfig);
 
       // Should not throw and should do nothing (no-op)
       Assertions.assertThatNoException()
-          .isThrownBy(() -> result.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+          .isThrownBy(() -> result.prepareLocations(List.of(TEST_TABLE_LOCATION)));
     }
 
     @Test
     void noOpFactoryProducesNoOpPreparerForNonGcsConfig() {
       var factory = org.apache.polaris.service.storage.StorageLocationPreparerFactory.noOp();
       var awsConfig = mock(org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.class);
+      when(awsConfig.getStorageType())
+          .thenReturn(
+              org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType.S3);
 
       var result = factory.create(awsConfig);
 
       Assertions.assertThatNoException()
-          .isThrownBy(() -> result.prepareTableLocation(TEST_TABLE_LOCATION, Map.of()));
+          .isThrownBy(() -> result.prepareLocations(List.of(TEST_TABLE_LOCATION)));
     }
   }
 

@@ -18,40 +18,39 @@
  */
 package org.apache.polaris.service.storage;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.time.Clock;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.apache.polaris.service.storage.gcs.GcsStorageLocationPreparer;
 
 @ApplicationScoped
 public class StorageLocationPreparerFactory {
 
-  private static final StorageLocationPreparer NO_OP = (tableLocation, tableProperties) -> {};
+  private static final StorageLocationPreparer NO_OP = storageLocations -> {};
   private static final StorageLocationPreparerFactory NO_OP_FACTORY =
       new StorageLocationPreparerFactory();
 
-  private final StorageConfiguration storageConfiguration;
-  private final Clock clock;
+  private final Instance<StorageLocationPreparer> preparers;
 
   @Inject
-  public StorageLocationPreparerFactory(StorageConfiguration storageConfiguration, Clock clock) {
-    this.storageConfiguration = storageConfiguration;
-    this.clock = clock;
+  public StorageLocationPreparerFactory(@Any Instance<StorageLocationPreparer> preparers) {
+    this.preparers = preparers;
   }
 
   private StorageLocationPreparerFactory() {
-    this.storageConfiguration = null;
-    this.clock = Clock.systemUTC();
+    this.preparers = null;
   }
 
   public StorageLocationPreparer create(@Nonnull PolarisStorageConfigurationInfo storageConfig) {
-    if (storageConfig instanceof GcpStorageConfigurationInfo && storageConfiguration != null) {
-      return new GcsStorageLocationPreparer(storageConfiguration.gcpCredentialsSupplier(clock));
+    if (preparers == null) {
+      return NO_OP;
     }
-    return NO_OP;
+    String key = storageConfig.getStorageType().name();
+    Instance<StorageLocationPreparer> selected = preparers.select(Identifier.Literal.of(key));
+    return selected.isResolvable() ? selected.get() : NO_OP;
   }
 
   public static StorageLocationPreparerFactory noOp() {

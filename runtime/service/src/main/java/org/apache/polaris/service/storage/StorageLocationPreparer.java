@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.storage;
 
-import java.util.Map;
+import java.util.List;
 
 public interface StorageLocationPreparer {
-  void prepareTableLocation(String tableLocation, Map<String, String> tableProperties);
+  void prepareLocations(List<String> storageLocations);
 }

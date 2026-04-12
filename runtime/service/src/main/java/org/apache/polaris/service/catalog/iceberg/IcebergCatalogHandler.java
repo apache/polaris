@@ -56,6 +56,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -445,9 +446,34 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       String namespacePath = String.join("/", tableIdentifier.namespace().levels());
       effectiveLocation = base + "/" + namespacePath + "/" + tableIdentifier.name();
     }
+    List<String> locations =
+        resolveStorageLocations(
+            effectiveLocation, tableProperties != null ? tableProperties : Map.of());
     StorageLocationPreparer preparer = storageLocationPreparerFactory().create(storageConfig);
-    preparer.prepareTableLocation(
-        effectiveLocation, tableProperties != null ? tableProperties : Map.of());
+    preparer.prepareLocations(locations);
+  }
+
+  /**
+   * Resolves the full set of storage locations needed for a table: the table location itself plus
+   * metadata and data paths (from table properties or defaults).
+   */
+  private List<String> resolveStorageLocations(
+      String tableLocation, Map<String, String> tableProperties) {
+    String metadataPath =
+        Optional.ofNullable(tableProperties.get(TableProperties.WRITE_METADATA_LOCATION))
+            .or(
+                () ->
+                    Optional.ofNullable(
+                        tableProperties.get(
+                            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)))
+            .orElse(tableLocation + "/metadata");
+
+    String dataPath =
+        Optional.ofNullable(
+                tableProperties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+            .orElse(tableLocation + "/data");
+
+    return List.of(tableLocation, metadataPath, dataPath);
   }
 
   /**
