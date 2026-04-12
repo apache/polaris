@@ -19,17 +19,39 @@
 
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
-from apache_polaris.cli.constants import UNIT_SEPARATOR
+from apache_polaris.cli.command.namespaces import NamespacesCommand
+from apache_polaris.cli.constants import UNIT_SEPARATOR, Subcommands
 
 
 class TestNamespacesCommand(CLITestBase):
     def test_namespace_validation(self) -> None:
         mock_client = self.build_mock_client()
-        # Missing catalog
+        # Missing --catalog flag
         self.check_exception(
             lambda: self.mock_execute(mock_client, ["namespaces", "list"]),
-            "Missing required argument",
+            "Missing required argument: --catalog",
         )
+        # Missing positional namespace
+        for sub in ["create", "delete", "get", "summarize"]:
+            with self.subTest(subcommand=sub):
+                with self.assertRaises(SystemExit):
+                    self.mock_execute(
+                        mock_client, ["namespaces", sub, "--catalog", "my_catalog"]
+                    )
+
+    def test_namespace_input_normalization(self) -> None:
+        cmd = NamespacesCommand(
+            namespaces_subcommand=Subcommands.LIST,
+            catalog="my_cat",
+            namespace=None,
+            parent=None,
+            properties=None,
+        )
+        # __post_init__ should not normalized these
+        self.assertIsNone(cmd.namespace)
+        self.assertIsNone(cmd.parent)
+        # __post_init__ should normalized these
+        self.assertEqual(cmd.properties, {})
 
     @patch("apache_polaris.cli.command.namespaces.IcebergCatalogAPI")
     def test_namespace_create(self, mock_iceberg_api_class: MagicMock) -> None:

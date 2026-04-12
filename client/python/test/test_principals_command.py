@@ -19,6 +19,8 @@
 
 
 from cli_test_utils import CLITestBase
+from apache_polaris.cli.command.principals import PrincipalsCommand
+from apache_polaris.cli.constants import Subcommands
 from apache_polaris.sdk.management import (
     Principal,
     PrincipalWithCredentials,
@@ -28,6 +30,19 @@ from pydantic import SecretStr
 
 
 class TestPrincipalsCommand(CLITestBase):
+    def test_principal_input_normalization(self) -> None:
+        cmd = PrincipalsCommand(
+            principals_subcommand=Subcommands.CREATE,
+            properties=None,
+            set_properties=None,
+            principal_role=None,
+        )
+        # __post_init__ should not normalized these
+        self.assertIsNone(cmd.principal_role)
+        # __post_init__ should normalized these
+        self.assertEqual(cmd.properties, {})
+        self.assertEqual(cmd.set_properties, {})
+
     def test_principal_create(self) -> None:
         mock_client = self.build_mock_client()
         mock_client.create_principal.return_value = PrincipalWithCredentials(

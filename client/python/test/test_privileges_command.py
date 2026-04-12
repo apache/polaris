@@ -23,6 +23,48 @@ from cli_test_utils import CLITestBase
 class TestPrivilegesCommand(CLITestBase):
     def test_privilege_commands_validation(self) -> None:
         mock_client = self.build_mock_client()
+        # # Missing --catalog flag
+        for sub in ["catalog", "namespace", "table", "view", "list"]:
+            args = (
+                ["privileges", sub, "grant", "PRIV"]
+                if sub != "list"
+                else ["privileges", "list"]
+            )
+            with self.subTest(subcommand=sub, error="missing catalog"):
+                self.check_exception(
+                    lambda: self.mock_execute(
+                        mock_client, args + ["--catalog-role", "r"]
+                    ),
+                    "--catalog",
+                )
+        # Missing --catalog-role flag
+        for sub in ["catalog", "namespace", "table", "view", "list"]:
+            args = (
+                ["privileges", sub, "grant", "PRIV"]
+                if sub != "list"
+                else ["privileges", "list"]
+            )
+            with self.subTest(subcommand=sub, error="missing role"):
+                self.check_exception(
+                    lambda: self.mock_execute(mock_client, args + ["--catalog", "c"]),
+                    "--catalog-role",
+                )
+        # Missing positional privilege
+        for sub in ["catalog", "namespace", "table", "view"]:
+            with self.subTest(subcommand=sub, error="missing positional"):
+                with self.assertRaises(SystemExit):
+                    self.mock_execute(
+                        mock_client,
+                        [
+                            "privileges",
+                            sub,
+                            "grant",
+                            "--catalog",
+                            "c",
+                            "--catalog-role",
+                            "r",
+                        ],
+                    )
         # Invalid privilege
         self.check_exception(
             lambda: self.mock_execute(
