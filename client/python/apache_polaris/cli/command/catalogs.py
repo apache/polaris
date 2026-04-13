@@ -538,7 +538,7 @@ class CatalogsCommand(Command):
         print(f"  {'Storage Type:':<30} {storage_info.storage_type}")
         print(f"  {'Base Location:':<30} {catalog.properties.default_base_location}")
         print(
-            f"  {'Allowed Locations:':<30} {', '.join(storage_info.allowed_locations)}"
+            f"  {'Allowed Locations:':<30} {', '.join(storage_info.allowed_locations or [])}"
         )
         print(f"  {'Created:':<30} {format_timestamp(catalog.create_timestamp)}")
         print(f"  {'Modified:':<30} {format_timestamp(catalog.last_update_timestamp)}")
