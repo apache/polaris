@@ -54,6 +54,7 @@ dependencies {
     exclude(group = "org.glassfish.hk2")
     exclude(group = "org.glassfish.hk2.external")
     exclude(group = "org.glassfish.jaxb")
+    exclude(group = "org.eclipse.jetty")
   }
 
   implementation(libs.auth0.jwt)
