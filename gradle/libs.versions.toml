@@ -89,7 +89,7 @@ picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "pico
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.10" }
 quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
-s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.12.4" }
+s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "5.0.0" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.17" }
