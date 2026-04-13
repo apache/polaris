@@ -755,14 +755,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, EnumSet.of(VENDED_CREDENTIALS));
+        authorizeLoadTableLike(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, EnumSet.of(VENDED_CREDENTIALS));
 
     // Optimized credential vending is only supported for native Polaris catalogs.
     // Federated/external catalogs are passthrough — writes happen directly on the
     // remote catalog independently of Polaris, so there is no guarantee that entity
     // internal properties (e.g. location) in the Polaris metastore are in sync with
     // the remote catalog's actual table metadata.
-    // Note: this check must come after authorizeLoadTable because baseCatalog is
+    // Note: this check must come after authorizeLoadTableLike because baseCatalog is
     // initialized lazily during authorization.
     if (!(baseCatalog instanceof IcebergCatalog)) {
       return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
@@ -816,16 +817,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return responseBuilder.build();
   }
 
-  private Set<PolarisStorageActions> authorizeLoadTable(
-      TableIdentifier tableIdentifier, EnumSet<AccessDelegationMode> delegationModes) {
-    boolean requestCredentialVending = delegationModes.contains(VENDED_CREDENTIALS);
-    Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTableLike(
-            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, requestCredentialVending);
-
-    return actionsRequested;
-  }
-
   public Optional<LoadTableResponse> loadTable(
       TableIdentifier tableIdentifier,
       String snapshots,
@@ -834,7 +825,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, delegationModes);
+        authorizeLoadTableLike(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, delegationModes);
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     if (ifNoneMatch != null) {

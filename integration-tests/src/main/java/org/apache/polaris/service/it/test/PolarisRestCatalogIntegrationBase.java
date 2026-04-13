@@ -1667,8 +1667,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @CatalogConfig(
-      properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
+  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testCreateGenericTableWithCredentialVending() {
     Namespace namespace = Namespace.of("ns1");
@@ -1694,8 +1693,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @CatalogConfig(
-      properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
+  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testLoadGenericTableWithCredentialVending() {
     Namespace namespace = Namespace.of("ns1");
@@ -1711,8 +1709,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           Map.of());
 
       LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableWithAccessDelegation(
-              currentCatalogName, tableIdentifier);
+          genericTableApi.loadGenericTableWithAccessDelegation(currentCatalogName, tableIdentifier);
       assertThat(loadResponse.getTable()).isNotNull();
       assertThat(loadResponse.getTable().getFormat()).isEqualTo("delta");
       assertThat(loadResponse.getStorageAccessConfigs()).isNotEmpty();
@@ -1733,18 +1730,23 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     try {
       genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "delta", Map.of());
 
-      LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableWithAccessDelegation(
-              currentCatalogName, tableIdentifier);
-      assertThat(loadResponse.getTable()).isNotNull();
-      assertThat(loadResponse.getStorageAccessConfigs()).isEmpty();
+      String ns = RESTUtil.encodeNamespace(namespace);
+      try (Response res =
+          genericTableApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                  Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns),
+                  Map.of(),
+                  new HashMap<>(genericTableApi.defaultHeadersWithDelegation()))
+              .get()) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
+      }
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
   }
 
-  @CatalogConfig(
-      properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
+  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testLoadGenericTableWithoutCredentialVendingWhenNoHeaderSent() {
     Namespace namespace = Namespace.of("ns1");
@@ -1763,8 +1765,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
-  @CatalogConfig(
-      properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
+  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testLoadGenericTableWithoutBaseLocationReturnsNoCredentials() {
     Namespace namespace = Namespace.of("ns1");
@@ -1772,12 +1773,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_no_loc");
 
     try {
-      genericTableApi.createGenericTable(
-          currentCatalogName, tableIdentifier, "delta", Map.of());
+      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "delta", Map.of());
 
       LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableWithAccessDelegation(
-              currentCatalogName, tableIdentifier);
+          genericTableApi.loadGenericTableWithAccessDelegation(currentCatalogName, tableIdentifier);
       assertThat(loadResponse.getTable()).isNotNull();
       assertThat(loadResponse.getStorageAccessConfigs()).isEmpty();
     } finally {

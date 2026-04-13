@@ -49,6 +49,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.immutables.value.Value;
 
@@ -268,22 +269,21 @@ public abstract class CatalogHandler {
   }
 
   /**
-   * Authorizes a load-table-like operation with optional credential vending delegation. When
-   * credential vending is requested, this method attempts write delegation authorization first,
-   * falling back to read delegation. The returned set of storage actions reflects the granted
-   * access level.
+   * Authorizes a load-table-like operation with optional credential vending delegation. When {@code
+   * vended-credentials} is present in the delegation modes, this method attempts write delegation
+   * authorization first, falling back to read delegation. The returned set of storage actions
+   * reflects the granted access level.
    *
    * @param tableIdentifier the table to authorize access for
    * @param subType the entity subtype (e.g., ICEBERG_TABLE, GENERIC_TABLE)
-   * @param requestCredentialVending if true, attempt delegation-based authorization with credential
-   *     vending; if false, perform a simple LOAD_TABLE authorization
+   * @param delegationModes the set of access delegation modes requested by the client
    * @return the set of storage actions granted; empty if credential vending was not requested
    */
   protected Set<PolarisStorageActions> authorizeLoadTableLike(
       TableIdentifier tableIdentifier,
       PolarisEntitySubType subType,
-      boolean requestCredentialVending) {
-    if (!requestCredentialVending) {
+      EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.isEmpty()) {
       authorizeBasicTableLikeOperationOrThrow(
           PolarisAuthorizableOperation.LOAD_TABLE, subType, tableIdentifier);
       return Set.of();
