@@ -40,7 +40,7 @@ public interface PolarisEventListenerConfiguration {
   Optional<String> type();
 
   /**
-   * Comma separated list of event listers, each item must be a registered {@link
+   * Comma separated list of event listeners, each item must be a registered {@link
    * PolarisEventListener} identifier.
    */
   Optional<Set<String>> types();
