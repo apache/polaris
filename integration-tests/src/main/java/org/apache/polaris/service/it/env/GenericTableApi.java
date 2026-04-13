@@ -83,6 +83,35 @@ public class GenericTableApi extends PolarisRestApi {
     }
   }
 
+  public LoadGenericTableResponse loadGenericTableWithAccessDelegation(
+      String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    Map<String, String> headers = new java.util.HashMap<>(defaultHeaders());
+    headers.put("Polaris-Generic-Table-Access-Delegation", "vended-credentials");
+    try (Response res =
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                Map.of("cat", catalog, "table", id.name(), "ns", ns),
+                Map.of(),
+                headers)
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(LoadGenericTableResponse.class);
+    }
+  }
+
+  public LoadGenericTableResponse loadGenericTableRaw(String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
+                Map.of("cat", catalog, "table", id.name(), "ns", ns))
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(LoadGenericTableResponse.class);
+    }
+  }
+
   public GenericTable createGenericTable(
       String catalog, TableIdentifier id, String format, Map<String, String> properties) {
     String ns =
@@ -99,6 +128,34 @@ public class GenericTableApi extends PolarisRestApi {
                         .setDoc("doc")
                         .setProperties(properties)))) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();
+    }
+  }
+
+  public LoadGenericTableResponse createGenericTableWithAccessDelegation(
+      String catalog,
+      TableIdentifier id,
+      String format,
+      String baseLocation,
+      Map<String, String> properties) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    Map<String, String> headers = new java.util.HashMap<>(defaultHeaders());
+    headers.put("Polaris-Generic-Table-Access-Delegation", "vended-credentials");
+    try (Response res =
+        request(
+                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
+                Map.of("cat", catalog, "ns", ns),
+                Map.of(),
+                headers)
+            .post(
+                Entity.json(
+                    CreateGenericTableRequest.builder()
+                        .setName(id.name())
+                        .setFormat(format)
+                        .setBaseLocation(baseLocation)
+                        .setDoc("doc")
+                        .setProperties(properties)))) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(LoadGenericTableResponse.class);
     }
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -34,8 +35,18 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
-@TestProfile(PolarisAuthzTestBase.Profile.class)
+@TestProfile(PolarisGenericTableCatalogHandlerAuthzTest.CredentialVendingProfile.class)
 public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+
+  public static class CredentialVendingProfile extends PolarisAuthzTestBase.Profile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return ImmutableMap.<String, String>builder()
+          .putAll(super.getConfigOverrides())
+          .put("polaris.features.\"ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING\"", "true")
+          .build();
+    }
+  }
 
   @Inject GenericTableCatalogHandlerFactory genericTableCatalogHandlerFactory;
 
@@ -102,6 +113,36 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   }
 
   @TestFactory
+  Stream<DynamicNode> testCreateGenericTableWithCredentialVendingPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable_cv");
+
+    return authzTestsBuilder("createGenericTableWithCredentialVending")
+        .action(
+            () ->
+                newWrapper(Set.of(PRINCIPAL_ROLE1))
+                    .createGenericTable(
+                        newtable,
+                        "format",
+                        "file:///temp/",
+                        "doc",
+                        Map.of(),
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
+        .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .createTests();
+  }
+
+  @TestFactory
   Stream<DynamicNode> testLoadGenericTablePrivileges() {
     return authzTestsBuilder("loadGenericTable")
         .action(
@@ -116,6 +157,36 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadGenericTableWithReadAccessDelegationPrivileges() {
+    return authzTestsBuilder("loadGenericTableWithAccessDelegation")
+        .action(
+            () ->
+                newWrapper()
+                    .loadGenericTable(
+                        TABLE_NS1_1_GENERIC,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadGenericTableWithWriteAccessDelegationPrivileges() {
+    return authzTestsBuilder("loadGenericTableWithAccessDelegation (write)")
+        .action(
+            () ->
+                newWrapper()
+                    .loadGenericTable(
+                        TABLE_NS1_1_GENERIC,
+                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
