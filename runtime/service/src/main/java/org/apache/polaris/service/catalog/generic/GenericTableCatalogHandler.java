@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.generic;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
+import com.google.common.base.Preconditions;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
 import java.util.EnumSet;
@@ -30,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
@@ -142,8 +144,10 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
 
+    validateDelegationModes(delegationModes);
+
     List<StorageAccessConfig> storageAccessConfigs =
-        shouldVendCredentials(delegationModes)
+        delegationModes.contains(VENDED_CREDENTIALS)
             ? vendCredentials(
                 identifier,
                 createdEntity,
@@ -169,11 +173,10 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
   public LoadGenericTableResponse loadGenericTable(
       TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
     ensureResolutionManifestForTable(identifier);
-    boolean credentialVendingRequested = shouldVendCredentials(delegationModes);
+    validateDelegationModes(delegationModes);
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTableLike(
-            identifier, PolarisEntitySubType.GENERIC_TABLE, credentialVendingRequested);
+        authorizeLoadTableLike(identifier, PolarisEntitySubType.GENERIC_TABLE, delegationModes);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
@@ -186,7 +189,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     List<StorageAccessConfig> storageAccessConfigs =
-        credentialVendingRequested
+        delegationModes.contains(VENDED_CREDENTIALS)
             ? vendCredentials(identifier, loadedEntity, actionsRequested)
             : List.of();
 
@@ -197,15 +200,19 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
   }
 
   /**
-   * Credentials are vended only when the client explicitly requests {@code vended-credentials} via
-   * the access delegation header AND the server-side feature flag is enabled for the catalog.
+   * Validates that the requested delegation modes are allowed for this catalog. Throws a {@link
+   * ForbiddenException} if the client requests {@code vended-credentials} but the server-side
+   * feature flag is not enabled for this catalog.
    */
-  private boolean shouldVendCredentials(EnumSet<AccessDelegationMode> delegationModes) {
-    return delegationModes.contains(VENDED_CREDENTIALS)
-        && realmConfig()
+  private void validateDelegationModes(EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.contains(VENDED_CREDENTIALS)
+        && !realmConfig()
             .getConfig(
                 FeatureConfiguration.ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING,
-                resolutionManifest.getResolvedCatalogEntity());
+                resolutionManifest.getResolvedCatalogEntity())) {
+      throw new ForbiddenException(
+          "Credential vending is not enabled for generic tables in this catalog");
+    }
   }
 
   /**
@@ -242,7 +249,12 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
     Map<String, String> credentials = storageAccessConfig.credentials();
     if (credentials.isEmpty()) {
-      LOGGER.debug("No credentials vended for generic table {}", tableIdentifier);
+      Boolean skipCredIndirection =
+          realmConfig().getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+      Preconditions.checkArgument(
+          !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
+          "Credential vending was requested for generic table %s, but no credentials are available",
+          tableIdentifier);
       return List.of();
     }
 

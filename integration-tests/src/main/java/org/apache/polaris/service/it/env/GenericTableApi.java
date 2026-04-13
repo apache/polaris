@@ -45,6 +45,12 @@ public class GenericTableApi extends PolarisRestApi {
     super(client, endpoints, authToken, uri);
   }
 
+  public Map<String, String> defaultHeadersWithDelegation() {
+    Map<String, String> headers = new java.util.HashMap<>(defaultHeaders());
+    headers.put("Polaris-Generic-Table-Access-Delegation", "vended-credentials");
+    return headers;
+  }
+
   public void purge(String catalog, Namespace ns) {
     listGenericTables(catalog, ns).forEach(t -> dropGenericTable(catalog, t));
   }

@@ -167,8 +167,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             () ->
                 newWrapper()
                     .loadGenericTable(
-                        TABLE_NS1_1_GENERIC,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
+                        TABLE_NS1_1_GENERIC, EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -182,8 +181,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
             () ->
                 newWrapper()
                     .loadGenericTable(
-                        TABLE_NS1_1_GENERIC,
-                        EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
+                        TABLE_NS1_1_GENERIC, EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
