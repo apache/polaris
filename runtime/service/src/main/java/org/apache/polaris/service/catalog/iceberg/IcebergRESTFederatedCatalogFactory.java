@@ -26,7 +26,7 @@ import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -36,7 +36,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 /** Factory class for creating an Iceberg REST catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier(ConnectionType.ICEBERG_REST_FACTORY_IDENTIFIER)
-public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory {
+public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFactory {
 
   @Override
   public Catalog createCatalog(

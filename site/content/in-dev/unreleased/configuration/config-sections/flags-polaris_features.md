@@ -157,6 +157,15 @@ If set to true, allow one table's location to reside within another table's loca
 
 ---
 
+##### `polaris.features."ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES"`
+
+If set to true, allows unrestricted changes to storage configuration role properties when updating a catalog, including changing the AWS account ID, role ARN, external ID, or Azure tenant ID. When false (default), these changes are restricted: new values can be set when none were previously configured, but existing values cannot be changed to different ones.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ALLOW_UNSTRUCTURED_TABLE_LOCATION"`
 
 If set to true, allows unstructured table locations.

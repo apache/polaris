@@ -507,18 +507,20 @@ class CatalogsCommand(Command):
         print(f"  {'Storage Type:':<30} {storage_info.storage_type}")
         print(f"  {'Base Location:':<30} {catalog.properties.default_base_location}")
         print(
-            f"  {'Allowed Locations:':<30} {','.join(storage_info.allowed_locations or [])}"
+            f"  {'Allowed Locations:':<30} {', '.join(storage_info.allowed_locations or [])}"
         )
         print(f"  {'Created:':<30} {format_timestamp(catalog.create_timestamp)}")
         print(f"  {'Modified:':<30} {format_timestamp(catalog.last_update_timestamp)}")
         print(f"  {'Version:':<30} {catalog.entity_version}")
+
         # Inventory
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
         total_ns, total_tables, total_views = self._get_sub_entities_count(catalog_api)
-        print("Inventory")
+        print("\nInventory")
         print(f"  {'Namespaces:':<30} {total_ns}")
         print(f"  {'Tables:':<30} {total_tables}")
         print(f"  {'Views:':<30} {total_views}")
+
         # Access Control
         catalog_roles = api.list_catalog_roles(self.catalog_name).roles or []
         principal_roles_names = set()
@@ -529,13 +531,14 @@ class CatalogsCommand(Command):
             roles = pr_resp.roles or []
             for pr in roles:
                 principal_roles_names.add(pr.name)
-        print("Access Control")
+        print("\nAccess Control")
         print(f"  {'Catalog Roles:':<30} {len(catalog_roles)}")
         print(f"  {'Assigned Principal Roles:':<30} {len(principal_roles_names)}")
+
         # Policies
         policy_api = PolicyAPI(catalog_api.api_client)
         policies_resp = policy_api.get_applicable_policies(prefix=self.catalog_name)
-        print("Applicable Policies")
+        print("\nApplicable Policies")
         applicable_policies = policies_resp.applicable_policies or []
         if applicable_policies:
             for policy in sorted(applicable_policies, key=lambda x: x.name):

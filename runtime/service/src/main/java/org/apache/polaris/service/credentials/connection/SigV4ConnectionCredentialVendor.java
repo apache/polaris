@@ -24,6 +24,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -92,7 +94,7 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     Optional<ServiceIdentityCredential> serviceCredentialOpt =
         serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
     if (serviceCredentialOpt.isEmpty()) {
-      return ConnectionCredentials.builder().build();
+      return ConnectionCredentials.EMPTY;
     }
 
     // Validate and cast service identity credential
@@ -124,19 +126,19 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     AssumeRoleResponse response = stsClient.assumeRole(requestBuilder.build());
 
     // Build connection credentials from AWS temporary credentials
-    ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
-    builder.put(CatalogAccessProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
-    builder.put(
+    Map<CatalogAccessProperty, String> props = new HashMap<>();
+    props.put(CatalogAccessProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
+    props.put(
         CatalogAccessProperty.AWS_SECRET_ACCESS_KEY, response.credentials().secretAccessKey());
-    builder.put(CatalogAccessProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
+    props.put(CatalogAccessProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
             expiration ->
-                builder.put(
+                props.put(
                     CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                     String.valueOf(expiration.toEpochMilli())));
 
-    return builder.build();
+    return ConnectionCredentials.of(props);
   }
 
   @VisibleForTesting

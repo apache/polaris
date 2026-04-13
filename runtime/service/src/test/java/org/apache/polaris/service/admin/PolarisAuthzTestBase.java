@@ -82,7 +82,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -104,7 +104,7 @@ public abstract class PolarisAuthzTestBase {
 
     @Override
     public Set<Class<?>> getEnabledAlternatives() {
-      return Set.of(TestPolarisCallContextCatalogFactory.class);
+      return Set.of(TestPolarisLocalCatalogFactory.class);
     }
 
     @Override
@@ -500,16 +500,15 @@ public abstract class PolarisAuthzTestBase {
 
   @Alternative
   @RequestScoped
-  public static class TestPolarisCallContextCatalogFactory
-      extends PolarisCallContextCatalogFactory {
+  public static class TestPolarisLocalCatalogFactory extends PolarisLocalCatalogFactory {
 
     @SuppressWarnings("unused") // Required by CDI
-    protected TestPolarisCallContextCatalogFactory() {
+    protected TestPolarisLocalCatalogFactory() {
       this(null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
-    public TestPolarisCallContextCatalogFactory(
+    public TestPolarisLocalCatalogFactory(
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
         TaskExecutor taskExecutor,
@@ -534,10 +533,10 @@ public abstract class PolarisAuthzTestBase {
     }
 
     @Override
-    public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
+    public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(resolvedManifest);
+      Catalog catalog = super.createCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
