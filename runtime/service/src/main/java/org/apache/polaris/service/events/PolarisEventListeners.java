@@ -31,7 +31,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.HashSet;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -46,7 +45,7 @@ public class PolarisEventListeners {
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
-  private final BitSet eventsByType = new BitSet(PolarisEventType.values().length);
+  private final EnumSet<PolarisEventType> eventsByType = EnumSet.allOf(PolarisEventType.class);
 
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
@@ -54,6 +53,8 @@ public class PolarisEventListeners {
       var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
       var supportedTypes =
           listenerConfiguration == null
+                  || (listenerConfiguration.enabledEventCategories().isEmpty()
+                      && listenerConfiguration.enabledEventTypes().isEmpty())
               ? EnumSet.allOf(PolarisEventType.class)
               : EnumSet.noneOf(PolarisEventType.class);
       if (listenerConfiguration != null) {
@@ -70,7 +71,7 @@ public class PolarisEventListeners {
       Handler<Message<PolarisEvent>> handler =
           message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
-        eventsByType.set(polarisEventType.ordinal());
+        eventsByType.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
       }
     }
@@ -93,6 +94,6 @@ public class PolarisEventListeners {
   }
 
   public boolean hasListeners(PolarisEventType polarisEventType) {
-    return eventsByType.get(polarisEventType.ordinal());
+    return eventsByType.contains(polarisEventType);
   }
 }
