@@ -25,6 +25,8 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogIntegrationBase test on the local filesystem. */
@@ -51,4 +53,9 @@ public class PolarisRestCatalogFileIntegrationTest extends PolarisRestCatalogInt
         ? uri.substring(0, uri.length() - 1)
         : uri;
   }
+
+  @Disabled("File storage does not support credential vending")
+  @Test
+  @Override
+  public void testLoadCredentialsEndpoint() {}
 }

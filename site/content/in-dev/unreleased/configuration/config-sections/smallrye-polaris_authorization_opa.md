@@ -30,7 +30,7 @@ Beta Feature: OPA authorization is currently in Beta and is not a stable  releas
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
 | `polaris.authorization.opa.policy-uri` |  | `uri` |  |
-| `polaris.authorization.opa.auth.type` | `none` | `NONE, BEARER` | Type of authentication  |
+| `polaris.authorization.opa.auth.type` | `none` | `enum (NONE, BEARER)` | Type of authentication  |
 | `polaris.authorization.opa.auth.bearer.static-token.value` |  | `string` | Static bearer token value  |
 | `polaris.authorization.opa.auth.bearer.file-based.path` |  | `path` | Path to file containing bearer token  |
 | `polaris.authorization.opa.auth.bearer.file-based.refresh-interval` |  | `duration` | How often to refresh file-based bearer tokens (defaults to 5 minutes if not specified)  |

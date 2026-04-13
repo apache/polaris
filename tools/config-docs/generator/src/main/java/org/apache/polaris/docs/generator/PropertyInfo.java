@@ -33,4 +33,8 @@ public interface PropertyInfo {
   DocCommentTree doc();
 
   Optional<Class<?>> groupType();
+
+  default String enumTooltipText() {
+    return null;
+  }
 }

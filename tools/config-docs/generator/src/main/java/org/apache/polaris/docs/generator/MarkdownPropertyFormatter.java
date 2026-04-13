@@ -33,6 +33,14 @@ public class MarkdownPropertyFormatter extends MarkdownFormatter {
   }
 
   public String propertyType() {
+    String tooltip = propertyInfo.enumTooltipText();
+    if (tooltip != null) {
+      return "<span title=\""
+          + tooltip
+          + "\"><code>"
+          + propertyInfo.simplifiedTypeName()
+          + "</code></span>";
+    }
     return '`' + propertyInfo.simplifiedTypeName() + '`';
   }
 }

@@ -18,12 +18,10 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -47,7 +45,6 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
@@ -246,13 +243,9 @@ public class IcebergCatalogAdapter
   }
 
   private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    EnumSet<AccessDelegationMode> delegationModes =
-        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-    Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
-        "Unsupported access delegation mode: %s",
-        accessDelegationMode);
-    return delegationModes;
+    // Parse the access delegation modes - validation will happen after mode resolution
+    // in IcebergCatalogHandler.resolveAccessDelegationModes()
+    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
   }
 
   @Override
@@ -512,21 +505,12 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    Optional<String> refreshEndpoint =
+        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> {
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(
-                  tableIdentifier,
-                  "all",
-                  Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
-          return Response.ok(
-                  ImmutableLoadCredentialsResponse.builder()
-                      .credentials(loadTableResponse.credentials())
-                      .build())
-              .build();
-        });
+        catalog -> Response.ok(catalog.loadCredentials(tableIdentifier, refreshEndpoint)).build());
   }
 
   @Override

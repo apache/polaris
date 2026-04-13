@@ -849,28 +849,30 @@ public class PolarisAdminService {
           currentStorageConfig, newStorageConfig);
     }
 
+    boolean allowUnrestrictedRoleChanges =
+        realmConfig.getConfig(FeatureConfiguration.ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES);
+
     if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
-        throw new BadRequestException(
-            "Cannot modify Role ARN in storage config from %s to %s",
-            currentStorageConfig, newStorageConfig);
-      }
+      if (!allowUnrestrictedRoleChanges) {
+        if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
+          throw new BadRequestException(
+              "Cannot modify AWS account ID in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
 
-      if ((currentAwsConfig.getExternalId() != null
-              && !currentAwsConfig.getExternalId().equals(newAwsConfig.getExternalId()))
-          || (newAwsConfig.getExternalId() != null
-              && !newAwsConfig.getExternalId().equals(currentAwsConfig.getExternalId()))) {
-        throw new BadRequestException(
-            "Cannot modify ExternalId in storage config from %s to %s",
-            currentStorageConfig, newStorageConfig);
+        if (!Objects.equals(currentAwsConfig.getExternalId(), newAwsConfig.getExternalId())) {
+          throw new BadRequestException(
+              "Cannot modify ExternalId in storage config from %s to %s",
+              currentStorageConfig, newStorageConfig);
+        }
       }
     } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
         && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
-      if (!currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId())
-          || !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId())) {
+      if (!allowUnrestrictedRoleChanges
+          && !Objects.equals(currentAzureConfig.getTenantId(), newAzureConfig.getTenantId())) {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);

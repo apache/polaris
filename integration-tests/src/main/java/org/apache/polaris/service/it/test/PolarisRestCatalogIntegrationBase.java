@@ -76,6 +76,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -708,7 +709,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /**
    * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
    * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
-   * try to fetch vended credentials. Expect a ForbiddenException.
+   * try to fetch vended credentials. Expect an IllegalArgumentException (HTTP 400 Bad Request).
    */
   @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
   @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
@@ -731,8 +732,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       try {
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining("Access Delegation is not enabled for this catalog")
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("is not enabled for this external catalog")
             .hasMessageContaining(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
       } finally {
@@ -803,6 +804,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
+    }
+  }
+
+  @Test
+  public void testLoadCredentialsEndpoint() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns1, "tbl1");
+      Table table = restCatalog.createTable(tableIdentifier, SCHEMA);
+      assertThat(table.location()).isNotNull();
+
+      LoadCredentialsResponse response =
+          catalogApi.loadCredentials(currentCatalogName, tableIdentifier);
+      assertThat(response).isNotNull();
+      assertThat(response.credentials()).isNotEmpty();
+      assertThat(response.credentials().get(0).prefix()).isEqualTo(table.location());
+      assertThat(response.credentials().get(0).config()).isNotEmpty();
+    } finally {
+      catalogApi.purge(currentCatalogName, ns1);
     }
   }
 
