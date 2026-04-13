@@ -41,7 +41,9 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
    */
   @Override
   public void dispatch(PolarisEvent event) {
-    eventBus.publish(POLARIS_EVENT_CHANNEL + "." + event.type(), event);
+    if (hasListeners(event.type())) {
+      eventBus.publish(POLARIS_EVENT_CHANNEL + "." + event.type(), event);
+    }
   }
 
   @Override
