@@ -754,7 +754,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
 
-    Set<PolarisStorageActions> actionsRequested = authorizeLoadTable(tableIdentifier, true);
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTable(tableIdentifier, EnumSet.of(VENDED_CREDENTIALS));
 
     // Optimized credential vending is only supported for native Polaris catalogs.
     // Federated/external catalogs are passthrough — writes happen directly on the
@@ -833,7 +834,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTable(tableIdentifier, delegationModes);
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     if (ifNoneMatch != null) {
