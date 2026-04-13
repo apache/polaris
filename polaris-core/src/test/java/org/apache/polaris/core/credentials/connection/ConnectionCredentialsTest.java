@@ -53,7 +53,9 @@ public class ConnectionCredentialsTest {
 
     assertThatThrownBy(() -> ConnectionCredentials.of(properties))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Multiple distinct expiration timestamps");
+        .hasMessageContaining("Multiple distinct expiration timestamps")
+        .hasMessageContaining("rest.session-token-expires-at-ms")
+        .hasMessageContaining("rest.expires-at-ms");
   }
 
   @Test

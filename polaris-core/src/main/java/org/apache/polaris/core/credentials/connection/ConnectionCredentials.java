@@ -49,17 +49,23 @@ public record ConnectionCredentials(Map<String, String> credentials, Optional<In
   public static ConnectionCredentials of(Map<CatalogAccessProperty, String> properties) {
     Map<String, String> credentials = new HashMap<>();
     Instant expiresAt = null;
+    CatalogAccessProperty expiresAtKey = null;
     for (var entry : properties.entrySet()) {
       CatalogAccessProperty key = entry.getKey();
       if (key.isExpirationTimestamp()) {
         Instant current = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
         if (expiresAt == null) {
           expiresAt = current;
+          expiresAtKey = key;
         } else if (!current.equals(expiresAt)) {
           throw new IllegalArgumentException(
               "Multiple distinct expiration timestamps found while building ConnectionCredentials: "
+                  + expiresAtKey.getPropertyName()
+                  + "="
                   + expiresAt.toEpochMilli()
                   + " and "
+                  + key.getPropertyName()
+                  + "="
                   + current.toEpochMilli());
         }
       }
