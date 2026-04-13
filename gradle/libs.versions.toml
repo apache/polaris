@@ -42,7 +42,7 @@ apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5",
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.7" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.1" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.42.28" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.42.33" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.3.6" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.3" }
 cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.6.0" }
@@ -50,8 +50,8 @@ checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checks
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.49.0" } # required by the polaris-java plugin
-google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.88.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.64.1" }
+google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.90.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.66.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
@@ -78,7 +78,7 @@ junit-bom = { module = "org.junit:junit-bom", version = "6.0.3" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.8" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.32" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.4" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.5" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.23.0" }

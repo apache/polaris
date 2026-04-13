@@ -94,6 +94,10 @@ spec:
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 -}}
             {{- end -}}
           {{- end }}
+          {{- if .Values.envFrom }}
+          envFrom:
+            {{- tpl (toYaml .Values.envFrom) . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: config-volume
               mountPath: {{ trimSuffix "/" .Values.image.configDir }}

@@ -300,7 +300,7 @@ Next, you have to close the staging repository:
 
 The last step for a release candidate is to create a VOTE thread on the dev mailing list.
 
-A generated email template is available in the `build/distribution` folder.
+A generated email template is available in the `build/email-templates` folder.
 
 Example title subject:
 
@@ -313,10 +313,9 @@ Example content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official
-Apache Polaris x.y.z release.
+I propose that we release the following RC as the official Apache Polaris x.y.z release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
+This corresponds to the tag: apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/tree/<SHA1>
 
@@ -324,28 +323,27 @@ The release tarball, signature, and checksums are here:
 * https://dist.apache.org/repos/dist/dev/polaris/x.y.z
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/polaris/helm-chart
+* https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z
+
 NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
 * https://downloads.apache.org/polaris/KEYS
 
-Convenience binary artifacts are staged on Nexus. The Maven
-repositories URLs are:
+Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.
+Please download, verify, and test according to the release verification guide, which can be found at:
+* https://polaris.apache.org/community/release-guides/release-verification-guide/
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache Polaris x.y.z
 [ ] +0
 [ ] -1 Do not release this because...
 
-Only PMC members have binding votes, but other community
-members are encouraged to cast non-binding votes.
-This vote will pass if there are 3 binding +1 votes and
-more binding +1 votes than -1 votes.
+Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
 ```
 
 When a candidate is passed or rejected, reply with the vote result:
