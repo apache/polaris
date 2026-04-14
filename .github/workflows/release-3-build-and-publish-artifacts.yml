@@ -195,7 +195,6 @@ jobs:
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
-          exec_process rm -f "${version_dir}/*vote-email{-subject,-body}.txt"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
@@ -576,7 +575,7 @@ jobs:
           You can find the KEYS file here:
           * https://downloads.apache.org/polaris/KEYS
 
-          Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
+          Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
           * https://repository.apache.org/content/repositories/${staging_repository_id}/
 
           Please download, verify, and test according to the release verification guide, which can be found at:
@@ -584,7 +583,7 @@ jobs:
 
           Please vote in the next 72 hours.
 
-          [ ] +1 Release this as Apache polaris ${version_without_rc}
+          [ ] +1 Release this as Apache Polaris ${version_without_rc}
           [ ] +0
           [ ] -1 Do not release this because...
 
