@@ -56,9 +56,6 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   @PostConstruct
   public void initialize() {
     LOG.info("Initializing RangerAuthorizer");
-
-    config.validate();
-
     try {
       Properties properties = config.toRangerProperties();
       RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(properties);
@@ -66,7 +63,7 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       authorizer.init();
 
       this.authorizer = authorizer;
-      this.serviceName = config.serviceName().orElseThrow();
+      this.serviceName = config.serviceName();
     } catch (RangerAuthzException t) {
       throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }

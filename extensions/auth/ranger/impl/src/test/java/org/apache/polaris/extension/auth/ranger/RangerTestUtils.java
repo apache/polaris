@@ -21,7 +21,6 @@ package org.apache.polaris.extension.auth.ranger;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -46,8 +45,8 @@ public class RangerTestUtils {
       String serviceName, Map<String, String> properties) {
     return new RangerPolarisAuthorizerConfig() {
       @Override
-      public Optional<String> serviceName() {
-        return serviceName == null ? Optional.empty() : Optional.of(serviceName);
+      public String serviceName() {
+        return serviceName;
       }
 
       @Override
