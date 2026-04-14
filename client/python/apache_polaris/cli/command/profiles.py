@@ -22,7 +22,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import (
@@ -53,7 +53,7 @@ class ProfilesCommand(Command):
     """
 
     profiles_subcommand: str
-    profile_name: str
+    profile_name: Optional[str] = None
 
     def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(CONFIG_FILE):
@@ -145,24 +145,32 @@ class ProfilesCommand(Command):
             sys.exit(1)
 
     def validate(self) -> None:
-        pass
+        if self.profiles_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.UPDATE,
+            Subcommands.GET,
+        }:
+            if not self.profile_name:
+                raise Exception("Missing required argument: profile_name")
 
     def execute(self, api: Optional[PolarisDefaultApi] = None) -> None:
         if self.profiles_subcommand == Subcommands.CREATE:
-            self._create_profile(self.profile_name)
+            self._create_profile(cast(str, self.profile_name))
             print(f"Polaris profile {self.profile_name} created successfully.")
         elif self.profiles_subcommand == Subcommands.DELETE:
-            self._delete_profile(self.profile_name)
+            self._delete_profile(cast(str, self.profile_name))
             print(f"Polaris profile {self.profile_name} deleted successfully.")
         elif self.profiles_subcommand == Subcommands.UPDATE:
-            self._update_profile(self.profile_name)
+            self._update_profile(cast(str, self.profile_name))
             print(f"Polaris profile {self.profile_name} updated successfully.")
         elif self.profiles_subcommand == Subcommands.GET:
-            profile = self._get_profile(self.profile_name)
+            profile_name = cast(str, self.profile_name)
+            profile = self._get_profile(profile_name)
             if profile:
-                print(f"Polaris profile {self.profile_name}: {profile}")
+                print(f"Polaris profile {profile_name}: {profile}")
             else:
-                print(f"Polaris profile {self.profile_name} not found.")
+                print(f"Polaris profile {profile_name} not found.")
         elif self.profiles_subcommand == Subcommands.LIST:
             profiles = self._list_profiles()
             print("Polaris profiles:")

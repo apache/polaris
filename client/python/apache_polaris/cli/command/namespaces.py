@@ -17,9 +17,9 @@
 # under the License.
 #
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pydantic import StrictStr
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
@@ -44,48 +44,69 @@ class NamespacesCommand(Command):
     """
 
     namespaces_subcommand: str
-    catalog: str
-    namespace: List[StrictStr]
-    parent: List[StrictStr]
-    location: str
-    properties: Optional[Dict[str, StrictStr]]
+    catalog: Optional[str] = None
+    namespace: Optional[List[StrictStr]] = None
+    parent: Optional[List[StrictStr]] = None
+    location: Optional[str] = None
+    properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.properties is None:
+            self.properties = {}
 
     def validate(self) -> None:
         if not self.catalog:
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
+        if self.namespaces_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.GET,
+            Subcommands.SUMMARIZE,
+        }:
+            if not self.namespace:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
+                )
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api_client = get_catalog_api_client(api)
         catalog_api = IcebergCatalogAPI(catalog_api_client)
+
+        catalog_name = cast(str, self.catalog)
+        namespace = cast(List[str], self.namespace)
+
         if self.namespaces_subcommand == Subcommands.CREATE:
             req_properties = self.properties or {}
             if self.location:
                 req_properties = {**req_properties, Arguments.LOCATION: self.location}
             request = CreateNamespaceRequest(
-                namespace=self.namespace, properties=req_properties
+                namespace=namespace,
+                properties=req_properties,
             )
             catalog_api.create_namespace(
-                prefix=self.catalog, create_namespace_request=request
+                prefix=catalog_name, create_namespace_request=request
             )
         elif self.namespaces_subcommand == Subcommands.LIST:
-            if self.parent is not None:
+            if self.parent:
                 result = catalog_api.list_namespaces(
-                    prefix=self.catalog, parent=UNIT_SEPARATOR.join(self.parent)
+                    prefix=catalog_name, parent=UNIT_SEPARATOR.join(self.parent)
                 )
             else:
-                result = catalog_api.list_namespaces(prefix=self.catalog)
-            for namespace in result.namespaces:
-                print(json.dumps({"namespace": ".".join(namespace)}))
+                result = catalog_api.list_namespaces(prefix=catalog_name)
+            for namespace_item in result.namespaces:
+                print(json.dumps({"namespace": ".".join(namespace_item)}))
         elif self.namespaces_subcommand == Subcommands.DELETE:
             catalog_api.drop_namespace(
-                prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
+                prefix=catalog_name,
+                namespace=UNIT_SEPARATOR.join(namespace),
             )
         elif self.namespaces_subcommand == Subcommands.GET:
             print(
                 catalog_api.load_namespace_metadata(
-                    prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace)
+                    prefix=catalog_name,
+                    namespace=UNIT_SEPARATOR.join(namespace),
                 ).to_json()
             )
         elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
@@ -94,26 +115,29 @@ class NamespacesCommand(Command):
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, catalog_api: IcebergCatalogAPI) -> None:
-        ns_str = UNIT_SEPARATOR.join(self.namespace)
-        print(f"Namespace: {'.'.join(self.namespace)}")
+        catalog_name = cast(str, self.catalog)
+        namespace = cast(List[str], self.namespace)
+        ns_str = UNIT_SEPARATOR.join(namespace)
+
+        print(f"Namespace: {'.'.join(namespace)}")
         print("-" * 80)
         # Metadata
         print("Metadata")
-        print(f"  {'Level:':<30} {len(self.namespace)}")
-        if len(self.namespace) > 1:
-            print(f"  {'Parent:':<30} {'.'.join(self.namespace[:-1])}")
+        print(f"  {'Level:':<30} {len(namespace)}")
+        if len(namespace) > 1:
+            print(f"  {'Parent:':<30} {'.'.join(namespace[:-1])}")
         sub_ns = (
-            catalog_api.list_namespaces(prefix=self.catalog, parent=ns_str).namespaces
+            catalog_api.list_namespaces(prefix=catalog_name, parent=ns_str).namespaces
             or []
         )
         print(f"  {'Sub-namespaces:':<30} {len(sub_ns)}")
         tables = (
-            catalog_api.list_tables(prefix=self.catalog, namespace=ns_str).identifiers
+            catalog_api.list_tables(prefix=catalog_name, namespace=ns_str).identifiers
             or []
         )
         print(f"  {'Tables:':<30} {len(tables)}")
         views = (
-            catalog_api.list_views(prefix=self.catalog, namespace=ns_str).identifiers
+            catalog_api.list_views(prefix=catalog_name, namespace=ns_str).identifiers
             or []
         )
         print(f"  {'Views:':<30} {len(views)}")
@@ -121,7 +145,7 @@ class NamespacesCommand(Command):
         # Effective policies
         policy_api = PolicyAPI(catalog_api.api_client)
         policies_resp = policy_api.get_applicable_policies(
-            prefix=self.catalog, namespace=ns_str
+            prefix=catalog_name, namespace=ns_str
         )
         print("\nEffective Policies")
         applicable_policies = policies_resp.applicable_policies or []
