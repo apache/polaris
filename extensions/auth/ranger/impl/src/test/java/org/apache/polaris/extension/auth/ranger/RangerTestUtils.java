@@ -35,9 +35,9 @@ public class RangerTestUtils {
     Map<String, String> properties = new HashMap<>();
 
     properties.put(
-        "ranger.authz.default.policy.source.impl",
+        "authz.default.policy.source.impl",
         "org.apache.ranger.admin.client.EmbeddedResourcePolicySource");
-    properties.put("ranger.authz.default.policy.source.embedded_resource.path", "/authz_tests");
+    properties.put("authz.default.policy.source.embedded_resource.path", "/authz_tests");
 
     return createConfig("dev_polaris", properties);
   }
