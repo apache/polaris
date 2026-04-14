@@ -20,28 +20,56 @@ package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 /**
  * Authorization request inputs for pre-authorization and core authorization.
  *
- * <p>This wrapper keeps authorization inputs together and conveys the intent to be authorized via
- * {@link AuthorizationTargetBinding} target bindings.
+ * <p>This request contains the principal, operation, and two lists of resources:
+ * <ul>
+ *   <li><b>Targets:</b> Resources where target privileges will be checked
+ *       (as defined by {@code RbacOperationSemantics.targetPrivileges()})
+ *   <li><b>Secondaries:</b> Resources where secondary privileges will be checked
+ *       (as defined by {@code RbacOperationSemantics.secondaryPrivileges()})
+ * </ul>
+ *
+ * <p>The operation type determines which privileges are checked on each list.
+ *
+ * <p><b>Examples:</b>
+ * <ul>
+ *   <li>{@code ATTACH_POLICY_TO_TABLE}: targets=[policy], secondaries=[table1, table2, ...]
+ *       <br>Checks POLICY_ATTACH on policy, TABLE_ATTACH_POLICY on each table
+ *   <li>{@code RENAME_TABLE}: targets=[sourceTable], secondaries=[destNamespace]
+ *       <br>Checks TABLE_DROP on source, TABLE_LIST+TABLE_CREATE on destination
+ *   <li>{@code DROP_TABLE}: targets=[table1, table2, ...], secondaries=[]
+ *       <br>Checks TABLE_DROP on each table
+ * </ul>
  */
 @PolarisImmutable
 public interface AuthorizationRequest {
+  /**
+   * Creates an authorization request with target and secondary resource lists.
+   *
+   * <p>This is the preferred factory method. Resource lists are interpreted based on the
+   * operation's RBAC semantics (see {@code RbacOperationSemantics}).
+   *
+   * @param principal the principal requesting authorization
+   * @param operation the operation to authorize
+   * @param targets resources where target privileges will be checked (may be empty)
+   * @param secondaries resources where secondary privileges will be checked (may be empty)
+   */
   static AuthorizationRequest of(
       @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull List<AuthorizationTargetBinding> targetBindings) {
+      @Nonnull List<PolarisSecurable> targets,
+      @Nonnull List<PolarisSecurable> secondaries) {
     return ImmutableAuthorizationRequest.builder()
         .principal(principal)
         .operation(operation)
-        .targetBindings(targetBindings)
+        .targets(targets)
+        .secondaries(secondaries)
         .build();
   }
 
@@ -53,37 +81,23 @@ public interface AuthorizationRequest {
   @Nonnull
   PolarisAuthorizableOperation getOperation();
 
-  /** Returns the target/secondary target bindings. */
-  @Nonnull
-  List<AuthorizationTargetBinding> getTargetBindings();
-
   /**
-   * Returns the primary target securables, if any.
+   * Returns resources where target privileges will be checked.
    *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
+   * <p>The specific privileges checked are defined by
+   * {@code RbacOperationSemantics.forOperation(getOperation()).targetPrivileges()}.
    */
   @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getTarget)
-        .filter(Objects::nonNull)
-        .toList();
-  }
+  List<PolarisSecurable> getTargets();
 
   /**
-   * Returns secondary securables, if any.
+   * Returns resources where secondary privileges will be checked.
    *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
+   * <p>The specific privileges checked are defined by
+   * {@code RbacOperationSemantics.forOperation(getOperation()).secondaryPrivileges()}.
    */
   @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getSecondaries() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getSecondary)
-        .filter(Objects::nonNull)
-        .toList();
-  }
+  List<PolarisSecurable> getSecondaries();
 
   /**
    * Returns a stable debug string for authorization messages.
@@ -107,12 +121,13 @@ public interface AuthorizationRequest {
   }
 
   default boolean hasSecurableType(PolarisEntityType... types) {
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getTarget() != null && containsType(targetBinding.getTarget(), types)) {
+    for (PolarisSecurable target : getTargets()) {
+      if (containsType(target, types)) {
         return true;
       }
-      if (targetBinding.getSecondary() != null
-          && containsType(targetBinding.getSecondary(), types)) {
+    }
+    for (PolarisSecurable secondary : getSecondaries()) {
+      if (containsType(secondary, types)) {
         return true;
       }
     }

@@ -296,9 +296,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   private ImmutableResource buildResource(
       List<ResourceEntity> targets, List<ResourceEntity> secondaries) {
-    // Backward compatibility: keep the existing OPA input shape with separate target and
-    // secondary lists. Future work can align this with AuthorizationTargetBinding semantics
-    // using binding tuples like [(target, secondary), ...].
+    // Keep the existing OPA input shape with separate target and secondary lists.
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 
