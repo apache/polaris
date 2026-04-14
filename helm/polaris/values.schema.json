@@ -134,6 +134,13 @@
                 "type": "string"
             }
         },
+        "containerLifecycle": {
+            "description": "Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/). Use this to configure a preStop hook for graceful shutdown, e.g.: containerLifecycle: preStop: exec: command: [\"/bin/sh\", \"-c\", \"sleep 30\"]",
+            "type": [
+                "object",
+                "null"
+            ]
+        },
         "containerSecurityContext": {
             "description": "Security context for the polaris container. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).",
             "type": "object"
@@ -1351,6 +1358,14 @@
                     "type": "integer"
                 }
             }
+        },
+        "terminationGracePeriodSeconds": {
+            "description": "Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination). When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1
         },
         "tolerations": {
             "description": "A list of tolerations to apply to polaris pods. See [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/).",

@@ -72,11 +72,18 @@ spec:
       initContainers:
         {{- tpl (toYaml .Values.extraInitContainers) . | nindent 8 }}
       {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- if .Values.containerSecurityContext }}
           securityContext:
             {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.containerLifecycle }}
+          lifecycle:
+            {{- tpl (toYaml .Values.containerLifecycle) . | nindent 12 }}
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}

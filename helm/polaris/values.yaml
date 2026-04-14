@@ -141,6 +141,24 @@ containerSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
+# @schema type: [object, "null"]
+# -- Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/).
+# Use this to configure a preStop hook for graceful shutdown, e.g.:
+# containerLifecycle:
+#   preStop:
+#     exec:
+#       command: ["/bin/sh", "-c", "sleep 30"]
+# @section -- Pod Configuration
+containerLifecycle: {}
+
+# @schema type: [integer, "null"]
+# @schema minimum: 1
+# -- Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration.
+# See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
+# When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.
+# @section -- Pod Configuration
+terminationGracePeriodSeconds: ~
+
 # Polaris main service settings.
 service:
   # @schema enum: [ExternalName, ClusterIP, NodePort, LoadBalancer]
