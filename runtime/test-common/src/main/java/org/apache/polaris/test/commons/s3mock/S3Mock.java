@@ -23,26 +23,37 @@ import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import java.util.Map;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
 
-public class S3Mock extends S3MockContainer {
+public class S3Mock {
 
   private static final String DEFAULT_BUCKETS = "my-bucket,my-old-bucket";
   private static final String DEFAULT_ACCESS_KEY = "ap1";
   private static final String DEFAULT_SECRET_KEY = "s3cr3t";
+
+  private final S3MockContainer s3Mock;
 
   public S3Mock() {
     this(DEFAULT_BUCKETS);
   }
 
   public S3Mock(String initialBuckets) {
-    super(
-        ContainerSpecHelper.containerSpecHelper("s3mock", S3Mock.class)
-            .dockerImageName(null)
-            .asCompatibleSubstituteFor("adobe/s3mock"));
-    this.withInitialBuckets(initialBuckets);
+    this.s3Mock =
+        new S3MockContainer(
+            ContainerSpecHelper.containerSpecHelper("s3mock", S3Mock.class)
+                .dockerImageName(null)
+                .asCompatibleSubstituteFor("adobe/s3mock"));
+    this.s3Mock.withInitialBuckets(initialBuckets);
+  }
+
+  public void start() {
+    s3Mock.start();
+  }
+
+  public void stop() {
+    s3Mock.stop();
   }
 
   public Map<String, String> getS3ConfigProperties() {
-    String endpoint = this.getHttpEndpoint();
+    String endpoint = this.s3Mock.getHttpEndpoint();
     return Map.of(
         "table-default.s3.endpoint", endpoint,
         "table-default.s3.path-style-access", "true",
