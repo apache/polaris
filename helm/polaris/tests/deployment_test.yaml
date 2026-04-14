@@ -188,7 +188,7 @@ tests:
     asserts:
       - exists:
           path: spec.template.metadata.annotations.checksum/config
-      - matchRegex: 
+      - matchRegex:
           path: spec.template.metadata.annotations.checksum/config
           pattern: "^[a-f0-9]{64}$"
   - it: should set pod annotations
@@ -1124,11 +1124,37 @@ tests:
                 name: polaris-storage-secret
                 key: awsAccessKeyId
 
+  - it: should set envFrom
+    template: deployment.yaml
+    set:
+      envFrom:
+        - secretRef:
+            name: polaris-env-secret
+        - configMapRef:
+            name: polaris-env-configmap
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: polaris-env-secret
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: polaris-env-configmap
+
   - it: should not set any environment variables by default
     template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
+
+  - it: should not set envFrom by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
 
   - it: should configure config volume
     template: deployment.yaml

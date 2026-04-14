@@ -24,6 +24,7 @@ import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.XmlReportRenderer
 import com.github.jk1.license.task.ReportTask
 import licenses.LicenseFileValidation
+import licenses.NoticeFileLicenseFilter
 
 plugins { id("com.github.jk1.dependency-license-report") }
 
@@ -35,6 +36,7 @@ afterEvaluate {
           "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
           false,
         ),
+        NoticeFileLicenseFilter(),
         LicenseFileValidation(),
       )
     allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")

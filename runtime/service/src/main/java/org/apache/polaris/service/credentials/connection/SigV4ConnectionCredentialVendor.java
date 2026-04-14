@@ -146,7 +146,8 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     // Get STS client from the provider (potentially pooled)
     // The Polaris service identity credentials are set on the AssumeRole request via
     // overrideConfiguration, not on the STS client itself
-    // TODO: Configure proper StsDestination with region/endpoint from sigv4Params
-    return stsClientProvider.stsClient(StsClientProvider.StsDestination.of(null, null));
+    // TODO: Configure proper StsDestination with endpoint from sigv4Params
+    return stsClientProvider.stsClient(
+        StsClientProvider.StsDestination.of(null, sigv4Params.getSigningRegion()));
   }
 }
