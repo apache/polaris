@@ -373,6 +373,14 @@ tests:
       - equal:
           path: spec.template.spec.terminationGracePeriodSeconds
           value: 90
+  - it: should set terminationGracePeriodSeconds to zero
+    template: deployment.yaml
+    set:
+      terminationGracePeriodSeconds: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 0
 
   # spec.template.spec.containers[0].image
   - it: should set container image
