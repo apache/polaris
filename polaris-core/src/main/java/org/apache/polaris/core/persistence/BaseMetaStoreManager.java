@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -28,12 +27,13 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
+      @NonNull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
     Map<String, String> propMap = reloadedEntity.getInternalPropertiesAsMap();
     String storageConfigInfoStr =
         propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
@@ -66,9 +66,9 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @param entity entity we need a new persisted record for
    */
   protected PolarisBaseEntity prepareToPersistNewEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull BasePersistence ms,
-      @Nonnull PolarisBaseEntity entity) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
@@ -123,12 +123,12 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @param originalEntity the original state of the entity before changes
    * @return the entity with its version and lastUpdateTimestamp updated
    */
-  protected @Nonnull PolarisBaseEntity prepareToPersistEntityAfterChange(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull BasePersistence ms,
-      @Nonnull PolarisBaseEntity entity,
+  protected @NonNull PolarisBaseEntity prepareToPersistEntityAfterChange(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
-      @Nonnull PolarisBaseEntity originalEntity) {
+      @NonNull PolarisBaseEntity originalEntity) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
@@ -166,7 +166,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
+  public @NonNull GenerateEntityIdResult generateNewEntityId(@NonNull PolarisCallContext callCtx) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 

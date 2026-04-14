@@ -22,7 +22,6 @@ import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCI
 import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -39,6 +38,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -1141,7 +1141,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             CredentialVendingContext.empty());
   }
 
-  private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
+  private static @NonNull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
     if (keyPrefix == null) {
       return bucketArn;
@@ -1149,7 +1149,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return bucketArn + "/" + keyPrefix + "/*";
   }
 
-  private static @Nonnull String s3Path(String bucket, String keyPrefix) {
+  private static @NonNull String s3Path(String bucket, String keyPrefix) {
     return "s3://" + bucket + "/" + keyPrefix;
   }
 

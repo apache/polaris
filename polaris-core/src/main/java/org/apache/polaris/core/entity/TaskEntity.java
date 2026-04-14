@@ -19,8 +19,8 @@
 package org.apache.polaris.core.entity;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents an asynchronous task entity in the persistence layer. A task executor is responsible

@@ -20,7 +20,7 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /** Types of entities with their id */
 public enum PolarisEntityType {

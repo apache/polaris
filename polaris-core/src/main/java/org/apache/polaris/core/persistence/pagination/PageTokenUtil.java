@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
@@ -41,6 +40,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.function.BooleanSupplier;
+import org.jspecify.annotations.Nullable;
 
 final class PageTokenUtil {
 

@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -30,6 +29,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -164,13 +164,13 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public StorageAccessConfig getSubscopedCreds(
-        @Nonnull RealmConfig realmConfig,
+        @NonNull RealmConfig realmConfig,
         boolean allowListOperation,
-        @Nonnull Set<String> allowedReadLocations,
-        @Nonnull Set<String> allowedWriteLocations,
-        @Nonnull PolarisPrincipal polarisPrincipal,
+        @NonNull Set<String> allowedReadLocations,
+        @NonNull Set<String> allowedWriteLocations,
+        @NonNull PolarisPrincipal polarisPrincipal,
         Optional<String> refreshCredentialsEndpoint,
-        @Nonnull CredentialVendingContext credentialVendingContext) {
+        @NonNull CredentialVendingContext credentialVendingContext) {
       return null;
     }
   }

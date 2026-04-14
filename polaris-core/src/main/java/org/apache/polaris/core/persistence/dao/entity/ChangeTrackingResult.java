@@ -20,10 +20,10 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Result of a loadEntitiesChangeTracking call */
 public class ChangeTrackingResult extends BaseResult {
@@ -37,7 +37,7 @@ public class ChangeTrackingResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public ChangeTrackingResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public ChangeTrackingResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.changeTrackingVersions = null;
   }
@@ -47,14 +47,14 @@ public class ChangeTrackingResult extends BaseResult {
    *
    * @param changeTrackingVersions change tracking versions
    */
-  public ChangeTrackingResult(@Nonnull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
+  public ChangeTrackingResult(@NonNull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
     super(ReturnStatus.SUCCESS);
     this.changeTrackingVersions = changeTrackingVersions;
   }
 
   @JsonCreator
   private ChangeTrackingResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("changeTrackingVersions")
           List<PolarisChangeTrackingVersions> changeTrackingVersions) {

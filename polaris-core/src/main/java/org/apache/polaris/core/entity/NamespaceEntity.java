@@ -20,9 +20,9 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Namespace-specific subclass of the {@link PolarisEntity} that provides accessors interacting with

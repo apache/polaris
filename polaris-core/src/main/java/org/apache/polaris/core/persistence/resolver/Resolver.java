@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.resolver;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,6 +46,8 @@ import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * REST request resolver, allows to resolve all entities referenced directly or indirectly by in
@@ -56,19 +56,19 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 public class Resolver {
 
   // we stash the Polaris call context here
-  private final @Nonnull PolarisCallContext polarisCallContext;
+  private final @NonNull PolarisCallContext polarisCallContext;
 
   // the diagnostic services
-  private final @Nonnull PolarisDiagnostics diagnostics;
+  private final @NonNull PolarisDiagnostics diagnostics;
 
   // the polaris metastore manager
-  private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
+  private final @NonNull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
   @Nullable private final EntityCache cache;
 
   // the id of the principal making the call or 0 if unknown
-  private final @Nonnull PolarisPrincipal polarisPrincipal;
+  private final @NonNull PolarisPrincipal polarisPrincipal;
 
   // reference catalog name for name resolution
   private final String referenceCatalogName;
@@ -126,10 +126,10 @@ public class Resolver {
    *     service admin should use null for that parameter.
    */
   public Resolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisCallContext polarisCallContext,
-      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
-      @Nonnull PolarisPrincipal principal,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisCallContext polarisCallContext,
+      @NonNull PolarisMetaStoreManager polarisMetaStoreManager,
+      @NonNull PolarisPrincipal principal,
       @Nullable EntityCache cache,
       @Nullable String referenceCatalogName) {
     this.polarisCallContext = polarisCallContext;
@@ -180,7 +180,7 @@ public class Resolver {
    *     catalog role.
    * @param entityName the name of the entity
    */
-  public void addEntityByName(@Nonnull PolarisEntityType entityType, @Nonnull String entityName) {
+  public void addEntityByName(@NonNull PolarisEntityType entityType, @NonNull String entityName) {
     diagnostics.checkNotNull(entityType, "entity_type_is_null");
     diagnostics.checkNotNull(entityName, "entity_name_is_null");
     // can only be called if the resolver has not yet been called
@@ -199,7 +199,7 @@ public class Resolver {
    * @param entityName the name of the entity
    */
   public void addOptionalEntityByName(
-      @Nonnull PolarisEntityType entityType, @Nonnull String entityName) {
+      @NonNull PolarisEntityType entityType, @NonNull String entityName) {
     diagnostics.checkNotNull(entityType, "entity_type_is_null");
     diagnostics.checkNotNull(entityName, "entity_name_is_null");
     // can only be called if the resolver has not yet been called
@@ -212,7 +212,7 @@ public class Resolver {
    *
    * @param path path to resolve
    */
-  public void addPath(@Nonnull ResolverPath path) {
+  public void addPath(@NonNull ResolverPath path) {
     // can only be called if the resolver has not yet been called
     this.diagnostics.check(resolverStatus == null, "resolver_called");
     diagnostics.checkNotNull(path, "unexpected_null_entity_path");
@@ -248,7 +248,7 @@ public class Resolver {
    * @return the status of the resolver. If success, the requested entities have been resolved and
    *     the corresponding getResolvedXYZ() methods can be called.
    */
-  public ResolverStatus resolveSelections(@Nonnull Set<Resolvable> selections) {
+  public ResolverStatus resolveSelections(@NonNull Set<Resolvable> selections) {
     diagnostics.checkNotNull(selections, "resolver_selections_is_null");
     diagnostics.check(!selections.isEmpty(), "resolver_selections_is_empty");
     return resolveWithPlan(
@@ -286,7 +286,7 @@ public class Resolver {
   /**
    * @return the principal we resolved
    */
-  public @Nonnull ResolvedPolarisEntity getResolvedCallerPrincipal() {
+  public @NonNull ResolvedPolarisEntity getResolvedCallerPrincipal() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -300,7 +300,7 @@ public class Resolver {
   /**
    * @return all principal roles which were activated. The list can be empty
    */
-  public @Nonnull List<ResolvedPolarisEntity> getResolvedCallerPrincipalRoles() {
+  public @NonNull List<ResolvedPolarisEntity> getResolvedCallerPrincipalRoles() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -346,7 +346,7 @@ public class Resolver {
    *
    * @return single resolved path
    */
-  public @Nonnull List<ResolvedPolarisEntity> getResolvedPath() {
+  public @NonNull List<ResolvedPolarisEntity> getResolvedPath() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -362,7 +362,7 @@ public class Resolver {
    *
    * @return list of resolved path
    */
-  public @Nonnull List<List<ResolvedPolarisEntity>> getResolvedPaths() {
+  public @NonNull List<List<ResolvedPolarisEntity>> getResolvedPaths() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -383,7 +383,7 @@ public class Resolver {
    * @return the entity which has been resolved or null if that entity does not exist
    */
   public @Nullable ResolvedPolarisEntity getResolvedEntity(
-      @Nonnull PolarisEntityType entityType, @Nonnull String entityName) {
+      @NonNull PolarisEntityType entityType, @NonNull String entityName) {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -852,8 +852,8 @@ public class Resolver {
    * @return the status of resolution
    */
   private ResolverStatus resolveReferenceCatalog(
-      @Nonnull List<ResolvedPolarisEntity> toValidate,
-      @Nonnull String referenceCatalogName,
+      @NonNull List<ResolvedPolarisEntity> toValidate,
+      @NonNull String referenceCatalogName,
       boolean resolveCallerCatalogRoles) {
     // resolve the catalog
     this.resolvedReferenceCatalog =
@@ -986,7 +986,7 @@ public class Resolver {
    * @param optional if true, the entity is optional
    */
   private void addEntityByName(
-      @Nonnull PolarisEntityType entityType, @Nonnull String entityName, boolean optional) {
+      @NonNull PolarisEntityType entityType, @NonNull String entityName, boolean optional) {
 
     // can only be called if the resolver has not yet been called
     this.diagnostics.check(resolverStatus == null, "resolver_called");
@@ -1039,11 +1039,11 @@ public class Resolver {
    *     that this entity is up-to-date
    */
   private ResolvedPolarisEntity resolveByName(
-      @Nonnull List<ResolvedPolarisEntity> toValidate,
+      @NonNull List<ResolvedPolarisEntity> toValidate,
       long catalogId,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       long parentId,
-      @Nonnull String entityName) {
+      @NonNull String entityName) {
 
     // key for that entity
     EntityCacheByNameKey nameKey =
@@ -1122,8 +1122,8 @@ public class Resolver {
    *     that this entity is up-to-date
    */
   private ResolvedPolarisEntity resolveById(
-      @Nonnull List<ResolvedPolarisEntity> toValidate,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull List<ResolvedPolarisEntity> toValidate,
+      @NonNull PolarisEntityType entityType,
       long catalogId,
       long entityId) {
     if (this.cache != null) {

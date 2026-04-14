@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.jspecify.annotations.NonNull;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -51,16 +51,16 @@ public interface PolarisCredentialVendor {
    *     CredentialVendingContext)} instead. This method will be removed in a future release.
    */
   @Deprecated(forRemoval = true)
-  @Nonnull
+  @NonNull
   default ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     return getSubscopedCredsForEntity(
         callCtx,
@@ -96,16 +96,15 @@ public interface PolarisCredentialVendor {
    *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
    */
-  @Nonnull
-  ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull ScopedCredentialsResult getSubscopedCredsForEntity(
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
+      @NonNull CredentialVendingContext credentialVendingContext);
 }

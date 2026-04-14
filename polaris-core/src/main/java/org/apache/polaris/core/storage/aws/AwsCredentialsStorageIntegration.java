@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
-import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -40,6 +39,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -84,13 +84,13 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
+      @NonNull RealmConfig realmConfig,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -397,13 +397,13 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
-  private static @Nonnull String parseS3Path(URI uri) {
+  private static @NonNull String parseS3Path(URI uri) {
     String bucket = StorageUtil.getBucket(uri);
     String path = trimLeadingSlash(uri.getPath());
     return String.join("/", bucket, path);
   }
 
-  private static @Nonnull String trimLeadingSlash(String path) {
+  private static @NonNull String trimLeadingSlash(String path) {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }

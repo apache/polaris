@@ -19,8 +19,8 @@
 package org.apache.polaris.core.entity;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.CatalogRole;
+import org.jspecify.annotations.Nullable;
 
 /** Wrapper for translating between the REST CatalogRole object and the base PolarisEntity type. */
 public class CatalogRoleEntity extends PolarisEntity {

@@ -21,13 +21,13 @@ package org.apache.polaris.core.persistence.dao.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Result of a load grants call */
 public class LoadGrantsResult extends BaseResult {
@@ -46,7 +46,7 @@ public class LoadGrantsResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public LoadGrantsResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public LoadGrantsResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.grantsVersion = 0;
     this.grantRecords = null;
@@ -61,7 +61,7 @@ public class LoadGrantsResult extends BaseResult {
    */
   public LoadGrantsResult(
       int grantsVersion,
-      @Nonnull List<PolarisGrantRecord> grantRecords,
+      @NonNull List<PolarisGrantRecord> grantRecords,
       List<PolarisBaseEntity> entities) {
     super(ReturnStatus.SUCCESS);
     this.grantsVersion = grantsVersion;
@@ -71,7 +71,7 @@ public class LoadGrantsResult extends BaseResult {
 
   @JsonCreator
   private LoadGrantsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("grantsVersion") int grantsVersion,
       @JsonProperty("grantRecords") List<PolarisGrantRecord> grantRecords,

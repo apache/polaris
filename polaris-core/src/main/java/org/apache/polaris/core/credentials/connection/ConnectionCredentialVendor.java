@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.credentials.connection;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Vendor for generating connection credentials for remote catalog or storage access.
@@ -61,6 +61,6 @@ public interface ConnectionCredentialVendor {
    * @return Connection credentials object containing credentials, properties, and optional
    *     expiration
    */
-  @Nonnull
-  ConnectionCredentials getConnectionCredentials(@Nonnull ConnectionConfigInfoDpo connectionConfig);
+  @NonNull ConnectionCredentials getConnectionCredentials(
+      @NonNull ConnectionConfigInfoDpo connectionConfig);
 }
