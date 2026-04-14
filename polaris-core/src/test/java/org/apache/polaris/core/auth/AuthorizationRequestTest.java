@@ -94,6 +94,26 @@ public class AuthorizationRequestTest {
   }
 
   @Test
+  void allowsEmptyTargetBindings() {
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.LIST_CATALOGS,
+            List.of());
+
+    assertThat(request.getTargetBindings()).isEmpty();
+    assertThat(request.getTargets()).isEmpty();
+    assertThat(request.getSecondaries()).isEmpty();
+  }
+
+  @Test
+  void throwsWhenTargetBindingHasNoTargetOrSecondary() {
+    assertThatThrownBy(() -> AuthorizationTargetBinding.of(null, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must contain a target or secondary");
+  }
+
+  @Test
   void throwsWhenSecurableDoesNotStartWithTopLevelEntity() {
     assertThatThrownBy(
             () -> PolarisSecurable.of(new PathSegment(PolarisEntityType.NAMESPACE, "ns")))
