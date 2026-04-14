@@ -57,7 +57,7 @@ dev = [
     { name = "pip-licenses-cli", specifier = "==4.0.0" },
     { name = "pre-commit", specifier = "==4.5.1" },
     { name = "pyiceberg", specifier = "==0.11.1" },
-    { name = "pytest", specifier = ">=7.2.1" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=2.8.1" },
     { name = "types-python-dateutil", specifier = ">=2.8.19.14" },
 ]
