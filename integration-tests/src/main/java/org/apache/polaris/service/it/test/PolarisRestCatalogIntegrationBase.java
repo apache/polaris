@@ -1671,6 +1671,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testCreateGenericTableWithCredentialVending() {
+    Assumptions.assumeThat(getStorageConfigInfo().getStorageType())
+        .as("File storage does not support credential vending")
+        .isNotEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
+
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_cv");
@@ -1697,6 +1701,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
   @Test
   public void testLoadGenericTableWithCredentialVending() {
+    Assumptions.assumeThat(getStorageConfigInfo().getStorageType())
+        .as("File storage does not support credential vending")
+        .isNotEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
+
     Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_cv");
