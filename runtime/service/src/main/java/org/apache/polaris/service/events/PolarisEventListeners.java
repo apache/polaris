@@ -45,7 +45,7 @@ public class PolarisEventListeners {
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
-  private final EnumSet<PolarisEventType> eventsByType = EnumSet.allOf(PolarisEventType.class);
+  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
 
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
@@ -71,7 +71,7 @@ public class PolarisEventListeners {
       Handler<Message<PolarisEvent>> handler =
           message -> deliverEvent(message.body(), enabledEventListener, listener);
       for (var polarisEventType : supportedTypes) {
-        eventsByType.add(polarisEventType);
+        enabledEventTypes.add(polarisEventType);
         eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
       }
     }
@@ -94,6 +94,6 @@ public class PolarisEventListeners {
   }
 
   public boolean hasListeners(PolarisEventType polarisEventType) {
-    return eventsByType.contains(polarisEventType);
+    return enabledEventTypes.contains(polarisEventType);
   }
 }
