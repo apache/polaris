@@ -678,6 +678,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(
           "Cannot create namespace %s. Parent namespace does not exist.", namespace);
     }
+
+    String namespaceName = namespace.level(namespace.length() - 1);
+    Optional<PolarisEntitySubType> conflictingSubType =
+        conflictingTableLikeSubtype(resolvedParent.getRawFullPath(), namespaceName);
+    if (conflictingSubType.isPresent()) {
+      TableIdentifier tableLikeIdentifier = TableIdentifier.of(parentNamespace, namespaceName);
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          tableLikeIdentifier, conflictingSubType.get());
+    }
+
     createNamespaceInternal(namespace, metadata, resolvedParent);
   }
 
@@ -824,8 +834,30 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private boolean namespaceWithSameNameExists(TableIdentifier identifier) {
-    return listNamespaces(identifier.namespace()).stream()
-        .anyMatch(namespace -> namespace.level(namespace.length() - 1).equals(identifier.name()));
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    if (resolvedEntities == null) {
+      return false;
+    }
+
+    List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    EntityResult lookupResult =
+        getMetaStoreManager()
+            .readEntityByName(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.NAMESPACE,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                identifier.name());
+    if (lookupResult.isSuccess()) {
+      return true;
+    }
+    if (lookupResult.getReturnStatus() != BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+      throw new ServiceFailureException(
+          "Failed to check existing namespace for '%s'. Status: %s ExtraInfo: %s",
+          identifier.name(), lookupResult.getReturnStatus(), lookupResult.getExtraInformation());
+    }
+    return false;
   }
 
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
@@ -3299,6 +3331,31 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     return listResult
         .getPage()
         .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
+  }
+
+  private Optional<PolarisEntitySubType> conflictingTableLikeSubtype(
+      List<PolarisEntity> catalogPath, String entityName) {
+    // Use a single ANY_SUBTYPE lookup to avoid multiple backend reads (one per subtype).
+    // The returned entity's subtype tells us exactly what kind of conflict exists.
+    EntityResult lookupResult =
+        getMetaStoreManager()
+            .readEntityByName(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ANY_SUBTYPE,
+                entityName);
+    if (lookupResult.isSuccess()) {
+      PolarisEntitySubType subType =
+          PolarisEntitySubType.fromCode(lookupResult.getEntity().getSubTypeCode());
+      return Optional.ofNullable(subType);
+    }
+    if (lookupResult.getReturnStatus() != BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+      throw new ServiceFailureException(
+          "Failed to check existing table-like entities for '%s'. Status: %s ExtraInfo: %s",
+          entityName, lookupResult.getReturnStatus(), lookupResult.getExtraInformation());
+    }
+    return Optional.empty();
   }
 
   private int getMaxMetadataRefreshRetries() {
