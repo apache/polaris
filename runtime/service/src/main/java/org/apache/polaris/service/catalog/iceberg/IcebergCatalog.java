@@ -513,6 +513,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedParent) {
     String baseLocation = resolveNamespaceLocation(namespace, metadata);
 
+    // Prevent namespace creation when a table or view with the same name already exists.
+    Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
+    String namespaceName = namespace.level(namespace.length() - 1);
+    Optional<PolarisEntitySubType> conflictingSubType =
+        Stream.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.ICEBERG_VIEW)
+            .filter(
+                subType ->
+                    listTableLike(subType, parentNamespace, PageToken.readEverything())
+                        .items()
+                        .stream()
+                        .anyMatch(identifier -> identifier.name().equals(namespaceName)))
+            .findFirst();
+    if (conflictingSubType.isPresent()) {
+      TableIdentifier tableLikeIdentifier = TableIdentifier.of(parentNamespace, namespaceName);
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          tableLikeIdentifier, conflictingSubType.get());
+    }
+
     // Set / suffix
     boolean requireTrailingSlash =
         realmConfig.getConfig(FeatureConfiguration.ADD_TRAILING_SLASH_TO_LOCATION);
@@ -628,6 +646,18 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       return location;
     }
+  }
+
+  private static Namespace tableLikeIdentifierAsNamespace(TableIdentifier identifier) {
+    String[] namespaceLevels =
+        Arrays.copyOf(identifier.namespace().levels(), identifier.namespace().length() + 1);
+    namespaceLevels[identifier.namespace().length()] = identifier.name();
+    return Namespace.of(namespaceLevels);
+  }
+
+  private boolean namespaceWithSameNameExists(TableIdentifier identifier) {
+    return listNamespaces(identifier.namespace()).stream()
+        .anyMatch(namespace -> namespace.level(namespace.length() - 1).equals(identifier.name()));
   }
 
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
@@ -1517,6 +1547,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, tableIdentifier.namespace());
       }
 
+      if (base == null && namespaceWithSameNameExists(tableIdentifier)) {
+        throw new AlreadyExistsException(
+            "Cannot create table '%s'. Namespace already exists: '%s'",
+            tableIdentifier, tableLikeIdentifierAsNamespace(tableIdentifier));
+      }
+
       PolarisResolvedPathWrapper resolvedTableEntities =
           resolvedEntityView.getPassthroughResolvedPath(
               ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ICEBERG_TABLE);
@@ -1940,6 +1976,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         throw new NoSuchNamespaceException(
             "Cannot create view '%s'. Namespace does not exist: '%s'",
             identifier, identifier.namespace());
+      }
+
+      if (base == null && namespaceWithSameNameExists(identifier)) {
+        throw new AlreadyExistsException(
+            "Cannot create view '%s'. Namespace already exists: '%s'",
+            identifier, tableLikeIdentifierAsNamespace(identifier));
       }
 
       PolarisResolvedPathWrapper resolvedTable =
