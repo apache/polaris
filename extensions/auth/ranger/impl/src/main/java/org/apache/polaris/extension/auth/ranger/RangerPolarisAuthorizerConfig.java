@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.extension.auth.ranger;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithParentName;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 @ConfigMapping(prefix = "polaris.authorization.ranger")
@@ -29,7 +32,7 @@ public interface RangerPolarisAuthorizerConfig {
   static final String RANGER_KEY_PREFIX = "ranger.";
   static final String XASECURE_KEY_PREFIX = "xasecure.";
 
-  String serviceName();
+  Optional<String> serviceName();
 
   @WithParentName
   Map<String, String> properties();
@@ -44,5 +47,9 @@ public interface RangerPolarisAuthorizerConfig {
       }
     }
     return props;
+  }
+
+  default void validate() {
+    checkState(serviceName().isPresent(), "serviceName is not defined for ranger authorizer");
   }
 }
