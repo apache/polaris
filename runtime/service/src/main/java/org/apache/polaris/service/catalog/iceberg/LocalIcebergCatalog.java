@@ -816,6 +816,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  private static Namespace tableLikeIdentifierAsNamespace(TableIdentifier identifier) {
+    String[] namespaceLevels =
+        Arrays.copyOf(identifier.namespace().levels(), identifier.namespace().length() + 1);
+    namespaceLevels[identifier.namespace().length()] = identifier.name();
+    return Namespace.of(namespaceLevels);
+  }
+
+  private boolean namespaceWithSameNameExists(TableIdentifier identifier) {
+    return listNamespaces(identifier.namespace()).stream()
+        .anyMatch(namespace -> namespace.level(namespace.length() - 1).equals(identifier.name()));
+  }
+
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
     Namespace parentNamespace =
         Namespace.of(Arrays.copyOf(namespace.levels(), namespace.length() - 1));
@@ -1969,6 +1981,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, tableIdentifier.namespace());
       }
 
+      if (base == null && namespaceWithSameNameExists(tableIdentifier)) {
+        throw new AlreadyExistsException(
+            "Cannot create table '%s'. Namespace already exists: '%s'",
+            tableIdentifier, tableLikeIdentifierAsNamespace(tableIdentifier));
+      }
+
       // Resolve the table entity once for the whole commit attempt: same-name conflict check,
       // storage validation, and the pre-write conflict check below all share this resolution.
       PolarisResolvedPathWrapper resolvedPath =
@@ -2435,6 +2453,12 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw new NoSuchNamespaceException(
             "Cannot create view '%s'. Namespace does not exist: '%s'",
             identifier, identifier.namespace());
+      }
+
+      if (base == null && namespaceWithSameNameExists(identifier)) {
+        throw new AlreadyExistsException(
+            "Cannot create view '%s'. Namespace already exists: '%s'",
+            identifier, tableLikeIdentifierAsNamespace(identifier));
       }
 
       PolarisResolvedPathWrapper resolvedTable =
