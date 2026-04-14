@@ -504,6 +504,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(
           "Cannot create namespace %s. Parent namespace does not exist.", namespace);
     }
+
+    String namespaceName = namespace.level(namespace.length() - 1);
+    Optional<PolarisEntitySubType> conflictingSubType =
+        conflictingTableLikeSubtype(resolvedParent.getRawFullPath(), namespaceName);
+    if (conflictingSubType.isPresent()) {
+      TableIdentifier tableLikeIdentifier = TableIdentifier.of(parentNamespace, namespaceName);
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          tableLikeIdentifier, conflictingSubType.get());
+    }
+
     createNamespaceInternal(namespace, metadata, resolvedParent);
   }
 
@@ -512,24 +522,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> metadata,
       PolarisResolvedPathWrapper resolvedParent) {
     String baseLocation = resolveNamespaceLocation(namespace, metadata);
-
-    // Prevent namespace creation when a table or view with the same name already exists.
-    Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
-    String namespaceName = namespace.level(namespace.length() - 1);
-    Optional<PolarisEntitySubType> conflictingSubType =
-        Stream.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.ICEBERG_VIEW)
-            .filter(
-                subType ->
-                    listTableLike(subType, parentNamespace, PageToken.readEverything())
-                        .items()
-                        .stream()
-                        .anyMatch(identifier -> identifier.name().equals(namespaceName)))
-            .findFirst();
-    if (conflictingSubType.isPresent()) {
-      TableIdentifier tableLikeIdentifier = TableIdentifier.of(parentNamespace, namespaceName);
-      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
-          tableLikeIdentifier, conflictingSubType.get());
-    }
 
     // Set / suffix
     boolean requireTrailingSlash =
@@ -2740,6 +2732,30 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listResult
         .getPage()
         .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
+  }
+
+  private Optional<PolarisEntitySubType> conflictingTableLikeSubtype(
+      List<PolarisEntity> catalogPath, String entityName) {
+    for (PolarisEntitySubType subType :
+        List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.ICEBERG_VIEW)) {
+      EntityResult lookupResult =
+          getMetaStoreManager()
+              .readEntityByName(
+                  getCurrentPolarisContext(),
+                  PolarisEntity.toCoreList(catalogPath),
+                  PolarisEntityType.TABLE_LIKE,
+                  subType,
+                  entityName);
+      if (lookupResult.isSuccess()) {
+        return Optional.of(subType);
+      }
+      if (lookupResult.getReturnStatus() != BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+        throw new ServiceFailureException(
+            "Failed to check existing table-like entities for '%s'. Status: %s ExtraInfo: %s",
+            entityName, lookupResult.getReturnStatus(), lookupResult.getExtraInformation());
+      }
+    }
+    return Optional.empty();
   }
 
   private int getMaxMetadataRefreshRetries() {
