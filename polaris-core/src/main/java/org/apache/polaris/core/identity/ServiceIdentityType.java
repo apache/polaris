@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.identity;
 
-import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to ServiceIdentityTypeInfo.ServiceIdentityTypeEnum
@@ -67,7 +67,7 @@ public enum ServiceIdentityType {
    * @param identityTypeCode code associated to the service identity type
    * @return ServiceIdentityType corresponding to that code or null if mapping not found
    */
-  public static @Nonnull ServiceIdentityType fromCode(int identityTypeCode) {
+  public static @NonNull ServiceIdentityType fromCode(int identityTypeCode) {
     // ensure it is within bounds
     if (identityTypeCode < 0 || identityTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return NULL_TYPE;

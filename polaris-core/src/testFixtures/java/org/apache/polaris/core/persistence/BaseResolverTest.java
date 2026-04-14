@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -45,6 +43,8 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -410,7 +410,7 @@ public abstract class BaseResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @Nonnull
+  @NonNull
   private Resolver allocateResolver(
       @Nullable InMemoryEntityCache cache,
       Set<String> principalRolesScope,

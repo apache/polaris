@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,7 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key for the given realm, or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+  default <T> @Nullable T getConfiguration(@NonNull RealmContext realmContext, String configName) {
     return null;
   }
 
@@ -60,8 +60,8 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   @SuppressWarnings("removal")
-  default <T> @Nonnull T getConfiguration(
-      @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
+  default <T> @NonNull T getConfiguration(
+      @NonNull RealmContext realmContext, String configName, @NonNull T defaultValue) {
     return asRealmConfig(realmContext).getConfig(configName, defaultValue);
   }
 
@@ -73,8 +73,8 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull T getConfiguration(
-      @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
+  default <T> @NonNull T getConfiguration(
+      @NonNull RealmContext realmContext, PolarisConfiguration<T> config) {
     return asRealmConfig(realmContext).getConfig(config);
   }
 
@@ -92,9 +92,9 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull T getConfiguration(
-      @Nonnull RealmContext realmContext,
-      @Nonnull CatalogEntity catalogEntity,
+  default <T> @NonNull T getConfiguration(
+      @NonNull RealmContext realmContext,
+      @NonNull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
     return getConfiguration(realmContext, catalogEntity.getPropertiesAsMap(), config);
   }
@@ -109,9 +109,9 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @Nonnull T getConfiguration(
-      @Nonnull RealmContext realmContext,
-      @Nonnull Map<String, String> catalogProperties,
+  default <T> @NonNull T getConfiguration(
+      @NonNull RealmContext realmContext,
+      @NonNull Map<String, String> catalogProperties,
       PolarisConfiguration<T> config) {
     return asRealmConfig(realmContext).getConfig(config, catalogProperties);
   }

@@ -22,7 +22,6 @@ import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCI
 import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,6 +47,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -658,7 +658,7 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
-  @Nonnull
+  @NonNull
   private static List<PolarisEntity> getPolarisEntities() {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(
