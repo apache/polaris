@@ -32,9 +32,6 @@ public class RangerPolarisAuthorizerFactoryTest {
   @Test
   public void testAuthorizerInstantiation() {
     RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
-
-    factory.initialize();
-
     RangerPolarisAuthorizer authorizer = factory.create(createRealmConfig());
     assertNotNull(authorizer);
 
@@ -43,9 +40,7 @@ public class RangerPolarisAuthorizerFactoryTest {
 
   @Test
   public void testAuthorizerInitMissingServiceName() {
-    RangerPolarisAuthorizerFactory factory =
-        new RangerPolarisAuthorizerFactory(createConfig(null, Collections.emptyMap()));
-
-    assertThrows(IllegalStateException.class, () -> factory.initialize());
+    RangerPolarisAuthorizerConfig config = createConfig(null, Collections.emptyMap());
+    assertThrows(IllegalStateException.class, config::serviceName);
   }
 }

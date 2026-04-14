@@ -46,6 +46,9 @@ public class RangerTestUtils {
     return new RangerPolarisAuthorizerConfig() {
       @Override
       public String serviceName() {
+        if (serviceName == null) {
+          throw new IllegalStateException("serviceName is null");
+        }
         return serviceName;
       }
 

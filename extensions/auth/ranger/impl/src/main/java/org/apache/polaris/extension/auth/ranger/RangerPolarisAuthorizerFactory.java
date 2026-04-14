@@ -19,8 +19,6 @@
 package org.apache.polaris.extension.auth.ranger;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Properties;
@@ -49,30 +47,19 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   @Inject
   RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
     this.config = config;
-
-    LOG.debug("RangerPolarisAuthorizerFactory has been activated.");
-  }
-
-  @PostConstruct
-  public void initialize() {
     LOG.info("Initializing RangerAuthorizer");
     try {
       Properties properties = config.toRangerProperties();
       RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(properties);
-
       authorizer.init();
-
       this.authorizer = authorizer;
       this.serviceName = config.serviceName();
     } catch (RangerAuthzException t) {
       throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }
-
     LOG.info("RangerAuthorizer initialized successfully");
+    LOG.debug("RangerPolarisAuthorizerFactory has been activated.");
   }
-
-  @PreDestroy
-  public void cleanup() {}
 
   @Override
   public RangerPolarisAuthorizer create(RealmConfig realmConfig) {

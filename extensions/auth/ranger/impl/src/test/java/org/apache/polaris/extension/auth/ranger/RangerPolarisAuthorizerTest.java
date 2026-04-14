@@ -64,9 +64,6 @@ public class RangerPolarisAuthorizerTest {
 
   public RangerPolarisAuthorizerTest() {
     RangerPolarisAuthorizerFactory factory = new RangerPolarisAuthorizerFactory(createConfig());
-
-    factory.initialize();
-
     RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(createRealmConfig());
     rangerPolarisAuthorizer.setRealmContext(createRealmContext());
     this.authorizer = rangerPolarisAuthorizer;
