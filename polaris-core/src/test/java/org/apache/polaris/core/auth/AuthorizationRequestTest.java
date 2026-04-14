@@ -92,7 +92,7 @@ public class AuthorizationRequestTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LIST_CATALOGS,
-            List.of(),  // empty targets
+            List.of(), // empty targets
             List.of()); // empty secondaries
 
     assertThat(request.getTargets()).isEmpty();

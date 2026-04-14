@@ -28,23 +28,23 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * Authorization request inputs for pre-authorization and core authorization.
  *
  * <p>This request contains the principal, operation, and two lists of resources:
+ *
  * <ul>
- *   <li><b>Targets:</b> Resources where target privileges will be checked
- *       (as defined by {@code RbacOperationSemantics.targetPrivileges()})
- *   <li><b>Secondaries:</b> Resources where secondary privileges will be checked
- *       (as defined by {@code RbacOperationSemantics.secondaryPrivileges()})
+ *   <li><b>Targets:</b> Resources where target privileges will be checked (as defined by {@code
+ *       RbacOperationSemantics.targetPrivileges()})
+ *   <li><b>Secondaries:</b> Resources where secondary privileges will be checked (as defined by
+ *       {@code RbacOperationSemantics.secondaryPrivileges()})
  * </ul>
  *
  * <p>The operation type determines which privileges are checked on each list.
  *
  * <p><b>Examples:</b>
+ *
  * <ul>
- *   <li>{@code ATTACH_POLICY_TO_TABLE}: targets=[policy], secondaries=[table1, table2, ...]
- *       <br>Checks POLICY_ATTACH on policy, TABLE_ATTACH_POLICY on each table
- *   <li>{@code RENAME_TABLE}: targets=[sourceTable], secondaries=[destNamespace]
- *       <br>Checks TABLE_DROP on source, TABLE_LIST+TABLE_CREATE on destination
- *   <li>{@code DROP_TABLE}: targets=[table1, table2, ...], secondaries=[]
- *       <br>Checks TABLE_DROP on each table
+ *   <li>{@code RENAME_TABLE}: targets=[sourceTable], secondaries=[destNamespace] <br>
+ *       Checks TABLE_DROP on source, TABLE_LIST+TABLE_CREATE on destination
+ *   <li>{@code DROP_TABLE}: targets=[table1, table2, ...], secondaries=[] <br>
+ *       Checks TABLE_DROP on each table
  * </ul>
  */
 @PolarisImmutable
@@ -84,8 +84,8 @@ public interface AuthorizationRequest {
   /**
    * Returns resources where target privileges will be checked.
    *
-   * <p>The specific privileges checked are defined by
-   * {@code RbacOperationSemantics.forOperation(getOperation()).targetPrivileges()}.
+   * <p>The specific privileges checked are defined by {@code
+   * RbacOperationSemantics.forOperation(getOperation()).targetPrivileges()}.
    */
   @Nonnull
   List<PolarisSecurable> getTargets();
@@ -93,8 +93,8 @@ public interface AuthorizationRequest {
   /**
    * Returns resources where secondary privileges will be checked.
    *
-   * <p>The specific privileges checked are defined by
-   * {@code RbacOperationSemantics.forOperation(getOperation()).secondaryPrivileges()}.
+   * <p>The specific privileges checked are defined by {@code
+   * RbacOperationSemantics.forOperation(getOperation()).secondaryPrivileges()}.
    */
   @Nonnull
   List<PolarisSecurable> getSecondaries();
