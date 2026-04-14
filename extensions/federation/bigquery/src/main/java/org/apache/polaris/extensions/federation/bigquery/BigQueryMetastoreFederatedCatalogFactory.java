@@ -24,7 +24,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -38,7 +38,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
  */
 @ApplicationScoped
 @Identifier(ConnectionType.BIGQUERY_FACTORY_IDENTIFIER)
-public class BigQueryMetastoreFederatedCatalogFactory implements ExternalCatalogFactory {
+public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalogFactory {
 
   @Override
   public Catalog createCatalog(
