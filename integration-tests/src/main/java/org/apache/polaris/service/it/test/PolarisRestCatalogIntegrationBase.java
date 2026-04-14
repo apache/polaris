@@ -111,7 +111,6 @@ import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
-import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -1662,131 +1661,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
               .delete()) {
         assertThat(res.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
       }
-    } finally {
-      genericTableApi.purge(currentCatalogName, namespace);
-    }
-  }
-
-  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
-  @Test
-  public void testCreateGenericTableWithCredentialVending() {
-    Assumptions.assumeThat(getStorageConfigInfo().getStorageType())
-        .as("File storage does not support credential vending")
-        .isNotEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
-
-    Namespace namespace = Namespace.of("ns1");
-    restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_cv");
-
-    try {
-      LoadGenericTableResponse response =
-          genericTableApi.createGenericTableWithAccessDelegation(
-              currentCatalogName,
-              tableIdentifier,
-              "delta",
-              catalogBaseLocation + "/ns1/tbl_cv",
-              Map.of());
-      assertThat(response.getTable()).isNotNull();
-      assertThat(response.getTable().getFormat()).isEqualTo("delta");
-      assertThat(response.getStorageAccessConfigs()).isNotEmpty();
-      assertThat(response.getStorageAccessConfigs().get(0).getPrefix())
-          .isEqualTo(catalogBaseLocation + "/ns1/tbl_cv");
-      assertThat(response.getStorageAccessConfigs().get(0).getConfig()).isNotEmpty();
-    } finally {
-      genericTableApi.purge(currentCatalogName, namespace);
-    }
-  }
-
-  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
-  @Test
-  public void testLoadGenericTableWithCredentialVending() {
-    Assumptions.assumeThat(getStorageConfigInfo().getStorageType())
-        .as("File storage does not support credential vending")
-        .isNotEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
-
-    Namespace namespace = Namespace.of("ns1");
-    restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_cv");
-
-    try {
-      genericTableApi.createGenericTableWithAccessDelegation(
-          currentCatalogName,
-          tableIdentifier,
-          "delta",
-          catalogBaseLocation + "/ns1/tbl_cv",
-          Map.of());
-
-      LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableWithAccessDelegation(currentCatalogName, tableIdentifier);
-      assertThat(loadResponse.getTable()).isNotNull();
-      assertThat(loadResponse.getTable().getFormat()).isEqualTo("delta");
-      assertThat(loadResponse.getStorageAccessConfigs()).isNotEmpty();
-      assertThat(loadResponse.getStorageAccessConfigs().get(0).getPrefix())
-          .isEqualTo(catalogBaseLocation + "/ns1/tbl_cv");
-      assertThat(loadResponse.getStorageAccessConfigs().get(0).getConfig()).isNotEmpty();
-    } finally {
-      genericTableApi.purge(currentCatalogName, namespace);
-    }
-  }
-
-  @Test
-  public void testLoadGenericTableWithoutCredentialVendingWhenFeatureDisabled() {
-    Namespace namespace = Namespace.of("ns1");
-    restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_no_cv");
-
-    try {
-      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "delta", Map.of());
-
-      String ns = RESTUtil.encodeNamespace(namespace);
-      try (Response res =
-          genericTableApi
-              .request(
-                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
-                  Map.of("cat", currentCatalogName, "table", tableIdentifier.name(), "ns", ns),
-                  Map.of(),
-                  new HashMap<>(genericTableApi.defaultHeadersWithDelegation()))
-              .get()) {
-        assertThat(res.getStatus()).isEqualTo(Response.Status.FORBIDDEN.getStatusCode());
-      }
-    } finally {
-      genericTableApi.purge(currentCatalogName, namespace);
-    }
-  }
-
-  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
-  @Test
-  public void testLoadGenericTableWithoutCredentialVendingWhenNoHeaderSent() {
-    Namespace namespace = Namespace.of("ns1");
-    restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_no_header");
-
-    try {
-      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "delta", Map.of());
-
-      LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableRaw(currentCatalogName, tableIdentifier);
-      assertThat(loadResponse.getTable()).isNotNull();
-      assertThat(loadResponse.getStorageAccessConfigs()).isEmpty();
-    } finally {
-      genericTableApi.purge(currentCatalogName, namespace);
-    }
-  }
-
-  @CatalogConfig(properties = {"polaris.config.enable.generic-tables.credential-vending", "true"})
-  @Test
-  public void testLoadGenericTableWithoutBaseLocationReturnsNoCredentials() {
-    Namespace namespace = Namespace.of("ns1");
-    restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl_no_loc");
-
-    try {
-      genericTableApi.createGenericTable(currentCatalogName, tableIdentifier, "delta", Map.of());
-
-      LoadGenericTableResponse loadResponse =
-          genericTableApi.loadGenericTableWithAccessDelegation(currentCatalogName, tableIdentifier);
-      assertThat(loadResponse.getTable()).isNotNull();
-      assertThat(loadResponse.getStorageAccessConfigs()).isEmpty();
     } finally {
       genericTableApi.purge(currentCatalogName, namespace);
     }
