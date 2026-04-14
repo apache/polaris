@@ -177,7 +177,7 @@ jobs:
         if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
-          exec_process make helm-doc-generate
+          exec_process make helm-schema-generate helm-doc-generate
 
       - name: Commit and push changes
         if: env.rc_number == '0'
