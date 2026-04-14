@@ -926,6 +926,11 @@ components:
           $ref: "#/components/schemas/AuthenticationParameters"
         serviceIdentity:
           $ref: '#/components/schemas/ServiceIdentityInfo'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional connection properties
       required:
         - connectionType
       discriminator:
@@ -980,11 +985,6 @@ components:
         gcpProjectId:
           type: string
           description: The GCP project ID
-        properties:
-          type: object
-          additionalProperties:
-            type: string
-            description: Additional catalog properties
       required:
         - warehouse
         - gcpProjectId

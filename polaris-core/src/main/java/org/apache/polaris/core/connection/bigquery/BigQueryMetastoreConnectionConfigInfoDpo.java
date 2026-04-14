@@ -51,7 +51,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
 
   private final String warehouse;
   private final String gcpProjectId;
-  private final Map<String, String> properties;
 
   public BigQueryMetastoreConnectionConfigInfoDpo(
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
@@ -63,10 +62,14 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
           Map<String, String> properties,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentity) {
-    super(ConnectionType.BIGQUERY.getCode(), uri, authenticationParameters, serviceIdentity);
+    super(
+        ConnectionType.BIGQUERY.getCode(),
+        uri,
+        authenticationParameters,
+        serviceIdentity,
+        properties);
     this.warehouse = warehouse;
     this.gcpProjectId = gcpProjectId;
-    this.properties = properties != null ? properties : Map.of();
   }
 
   public String getWarehouse() {
@@ -75,10 +78,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
 
   public String getGcpProjectId() {
     return gcpProjectId;
-  }
-
-  public Map<String, String> getProperties() {
-    return properties;
   }
 
   @Override
@@ -106,7 +105,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
     properties.put(CatalogProperties.WAREHOUSE_LOCATION, warehouse);
 
     // Add all user provided properties
-    properties.putAll(this.properties);
+    properties.putAll(getProperties());
 
     if (getAuthenticationParameters() != null) {
       // Add authentication-specific metadata (non-credential properties)
@@ -128,7 +127,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         getAuthenticationParameters(),
         warehouse,
         gcpProjectId,
-        properties,
+        getProperties(),
         serviceIdentityInfo);
   }
 
@@ -140,7 +139,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         .setUri(getUri())
         .setWarehouse(warehouse)
         .setGcpProjectId(gcpProjectId)
-        .setProperties(properties)
+        .setProperties(getProperties())
         .setAuthenticationParameters(
             getAuthenticationParameters() != null
                 ? getAuthenticationParameters().asAuthenticationParametersModel()

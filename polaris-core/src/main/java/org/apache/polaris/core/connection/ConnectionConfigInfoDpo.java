@@ -74,14 +74,19 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The Polaris service identity info of the connection
   private final ServiceIdentityInfoDpo serviceIdentity;
 
+  // Additional connection properties
+  private final Map<String, String> properties;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nullable
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity) {
-    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
+          ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false) @Nullable
+          Map<String, String> properties) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, properties, true);
   }
 
   protected ConnectionConfigInfoDpo(
@@ -89,11 +94,13 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       @Nonnull String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @Nullable Map<String, String> properties,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
     this.serviceIdentity = serviceIdentity;
+    this.properties = properties != null ? properties : Map.of();
     if (validateUri) {
       validateUri(uri);
     }
@@ -118,6 +125,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public @Nullable ServiceIdentityInfoDpo getServiceIdentity() {
     return serviceIdentity;
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
+  public Map<String, String> getProperties() {
+    return properties;
   }
 
   private static final ObjectMapper DEFAULT_MAPPER;
