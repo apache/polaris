@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -54,6 +56,27 @@ public class PolarisAuthorizerImplTest {
             ? PolarisAuthorizerImpl.SUPER_PRIVILEGES.get(privilege)
             : EnumSet.of(privilege);
     assertThat(actual).isEqualTo(expected);
+  }
+
+  @Test
+  void resolveAuthorizationInputsResolvesAll() {
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(mock(RealmConfig.class));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.GET_CATALOG,
+            List.of(
+                AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
+                    null)));
+
+    authzState.setResolutionManifest(manifest);
+
+    authorizer.resolveAuthorizationInputs(authzState, request);
+
+    verify(manifest).resolveAll();
   }
 
   @Test
@@ -187,5 +210,40 @@ public class PolarisAuthorizerImplTest {
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
             eq(List.of(namespaceWrapper)),
             eq(null));
+  }
+
+  @Test
+  void authorizeReturnsDenyDecision() {
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedTopLevelEntity("catalog", PolarisEntityType.CATALOG))
+        .thenReturn(catalogWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doThrow(new ForbiddenException("missing privilege"))
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.GET_CATALOG),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            PolarisAuthorizableOperation.GET_CATALOG,
+            List.of(
+                AuthorizationTargetBinding.of(
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
+                    null)));
+
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+    assertThat(decision.isAllowed()).isFalse();
+    assertThat(decision.getMessage()).hasValue("missing privilege");
   }
 }

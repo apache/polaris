@@ -21,6 +21,7 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -82,6 +83,27 @@ public interface AuthorizationRequest {
         .map(AuthorizationTargetBinding::getSecondary)
         .filter(Objects::nonNull)
         .toList();
+  }
+
+  /**
+   * Returns a stable debug string for authorization messages.
+   *
+   * <p>Includes the operation, principal name, formatted targets, and formatted secondaries.
+   */
+  @Nonnull
+  default String formatForAuthorizationMessage() {
+    return String.format(
+        "operation=%s principal=%s targets=%s secondaries=%s",
+        getOperation(),
+        getPrincipal().getName(),
+        formatSecurables(getTargets()),
+        formatSecurables(getSecondaries()));
+  }
+
+  private static String formatSecurables(List<PolarisSecurable> securables) {
+    return securables.stream()
+        .map(PolarisSecurable::formatForAuthorizationMessage)
+        .collect(Collectors.joining(", ", "[", "]"));
   }
 
   default boolean hasSecurableType(PolarisEntityType... types) {

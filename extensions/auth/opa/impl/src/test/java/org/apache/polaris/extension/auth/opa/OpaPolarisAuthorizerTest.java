@@ -662,7 +662,15 @@ public class OpaPolarisAuthorizerTest {
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
     assertThat(decision.isAllowed()).isFalse();
-    assertThat(decision.getMessage()).hasValue("OPA denied authorization");
+    assertThat(decision.getMessage())
+        .hasValueSatisfying(
+            message ->
+                assertThat(message)
+                    .contains("OPA denied authorization")
+                    .contains("operation=GET_CATALOG")
+                    .contains("principal=alice")
+                    .contains("targets=[CATALOG:catalog-1]")
+                    .contains("secondaries=[]"));
   }
 
   @Test

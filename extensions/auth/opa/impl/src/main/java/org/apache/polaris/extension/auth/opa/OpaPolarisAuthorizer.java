@@ -126,7 +126,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
                 toResourceEntitiesFromSecurables(request.getSecondaries())));
     return allowed
         ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny("OPA denied authorization");
+        : AuthorizationDecision.deny(
+            "OPA denied authorization for " + request.formatForAuthorizationMessage());
   }
 
   /**
@@ -183,7 +184,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
                 toResourceEntitiesFromResolvedPaths(targets),
                 toResourceEntitiesFromResolvedPaths(secondaries)));
     if (!allowed) {
-      throw new ForbiddenException("OPA denied authorization");
+      throw new ForbiddenException(
+          "OPA denied authorization for operation=%s principal=%s targets=%s secondaries=%s",
+          authzOp, polarisPrincipal.getName(), targets, secondaries);
     }
   }
 
