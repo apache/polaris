@@ -623,6 +623,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
         .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .createTests();
@@ -1803,6 +1804,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .shouldFailWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
         .createTests();
   }
