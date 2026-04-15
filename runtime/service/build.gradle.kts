@@ -58,6 +58,7 @@ dependencies {
   implementation("io.quarkus:quarkus-reactive-routes")
   implementation("io.quarkus:quarkus-hibernate-validator")
   implementation("io.quarkus:quarkus-smallrye-health")
+  implementation("io.quarkus:quarkus-smallrye-openapi")
   implementation("io.quarkus:quarkus-micrometer")
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
   implementation("io.quarkus:quarkus-oidc")
