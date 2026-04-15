@@ -28,62 +28,50 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Provides temporary, scoped credentials for accessing table data in object storage (S3, GCS, Azure
- * Blob Storage).
- *
- * <p>This provider decouples credential vending from catalog implementations, and should be the
- * primary entrypoint to get sub-scoped credentials for accessing table data.
+ * Request-scoped entry point for vending scoped storage credentials. Resolves the storage
+ * integration for the given entity path via {@link PolarisStorageIntegrationProvider}, builds a
+ * {@link CredentialVendingContext} from request-scoped state, and delegates credential vending to
+ * the integration.
  */
 @RequestScoped
 public class StorageAccessConfigProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
-  private final StorageCredentialCache storageCredentialCache;
-  private final StorageCredentialsVendor storageCredentialsVendor;
+  private final CallContext callContext;
   private final PolarisPrincipal polarisPrincipal;
   private final RealmContext realmContext;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   @Inject
   public StorageAccessConfigProvider(
-      StorageCredentialCache storageCredentialCache,
-      StorageCredentialsVendor storageCredentialsVendor,
+      CallContext callContext,
       PolarisPrincipal polarisPrincipal,
-      RealmContext realmContext) {
-    this.storageCredentialCache = storageCredentialCache;
-    this.storageCredentialsVendor = storageCredentialsVendor;
+      RealmContext realmContext,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.callContext = callContext;
     this.polarisPrincipal = polarisPrincipal;
     this.realmContext = realmContext;
+    this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
-  /**
-   * Vends credentials for accessing table storage at explicit locations.
-   *
-   * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
-   * @param tableLocations set of storage location URIs to scope credentials to
-   * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
-   *     to
-   * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
-   * @param resolvedPath the entity hierarchy to search for storage configuration
-   * @return {@link StorageAccessConfig} with scoped credentials and metadata; empty if no storage
-   *     config found
-   */
   public StorageAccessConfig getStorageAccessConfig(
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
@@ -95,52 +83,13 @@ public class StorageAccessConfigProvider {
         .addKeyValue("tableIdentifier", tableIdentifier)
         .addKeyValue("tableLocation", tableLocations)
         .log("Fetching client credentials for table");
-    Optional<PolarisEntity> storageInfo = FileIOUtil.findStorageInfoFromHierarchy(resolvedPath);
-    if (storageInfo.isEmpty()) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Table entity has no storage configuration in its hierarchy");
-      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
-    }
-    PolarisEntity storageInfoEntity = storageInfo.get();
-
-    boolean skipCredentialSubscopingIndirection =
-        storageCredentialsVendor
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
-    if (skipCredentialSubscopingIndirection) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Skipping generation of subscoped creds for table");
-      return StorageAccessConfig.builder().build();
-    }
-
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? tableLocations
-            : Set.of();
-
-    // Build credential vending context for session tags
-    CredentialVendingContext credentialVendingContext =
-        buildCredentialVendingContext(tableIdentifier, resolvedPath);
 
     StorageAccessConfig accessConfig =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            storageCredentialsVendor,
-            storageInfoEntity,
-            allowList,
+        getStorageAccessConfig(
+            resolvedPath.getRawFullPath(),
             tableLocations,
-            writeLocations,
-            polarisPrincipal,
-            refreshCredentialsEndpoint,
-            credentialVendingContext);
+            storageActions,
+            refreshCredentialsEndpoint);
 
     LOGGER
         .atDebug()
@@ -154,56 +103,83 @@ public class StorageAccessConfigProvider {
     return accessConfig;
   }
 
-  /**
-   * Builds a credential vending context from the table identifier and resolved path. This context
-   * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
-   *
-   * <p>The activated roles are included in this context (rather than extracted from
-   * PolarisPrincipal during session tag generation) to ensure they are part of the cache key when
-   * session tags are enabled. This prevents false positive cache hits when a principal's roles
-   * change.
-   *
-   * @param tableIdentifier the table identifier containing namespace and table name
-   * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, table, and activated roles
-   */
+  private StorageAccessConfig getStorageAccessConfig(
+      @Nonnull List<PolarisEntity> resolvedEntityPath,
+      @Nonnull Set<String> locations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull Optional<String> refreshCredentialsEndpoint) {
+
+    boolean skipCredentialSubscopingIndirection =
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+    if (skipCredentialSubscopingIndirection) {
+      return StorageAccessConfig.builder().build();
+    }
+
+    PolarisStorageIntegration<?> integration =
+        storageIntegrationProvider.getStorageIntegration(resolvedEntityPath);
+    if (integration == null) {
+      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+    }
+
+    boolean allowList =
+        storageActions.contains(PolarisStorageActions.LIST)
+            || storageActions.contains(PolarisStorageActions.ALL);
+    Set<String> writeLocations =
+        storageActions.contains(PolarisStorageActions.WRITE)
+                || storageActions.contains(PolarisStorageActions.DELETE)
+                || storageActions.contains(PolarisStorageActions.ALL)
+            ? locations
+            : Set.of();
+
+    CredentialVendingContext credentialVendingContext =
+        buildCredentialVendingContext(resolvedEntityPath);
+
+    return integration.getOrLoadSubscopedCreds(
+        allowList, locations, writeLocations, refreshCredentialsEndpoint, credentialVendingContext);
+  }
+
   private CredentialVendingContext buildCredentialVendingContext(
-      TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
+      List<PolarisEntity> resolvedEntityPath) {
     CredentialVendingContext.Builder builder = CredentialVendingContext.builder();
 
     List<String> sessionTagFields =
-        storageCredentialsVendor
+        callContext
             .getRealmConfig()
             .getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
 
-    // Realm identifier
     builder.realm(Optional.of(realmContext.getRealmIdentifier()));
 
-    // Extract catalog name from the first entity in the resolved path
-    List<PolarisEntity> fullPath = resolvedPath.getRawFullPath();
-    if (fullPath != null && !fullPath.isEmpty()) {
-      builder.catalogName(Optional.of(fullPath.get(0).getName()));
+    if (!resolvedEntityPath.isEmpty()) {
+      // First entity is the catalog
+      builder.catalogName(Optional.of(resolvedEntityPath.get(0).getName()));
+
+      // Last entity is the table/view
+      PolarisEntity leaf = resolvedEntityPath.get(resolvedEntityPath.size() - 1);
+      if (leaf.getType() == PolarisEntityType.TABLE_LIKE
+          || leaf.getType() == PolarisEntityType.TASK) {
+        builder.tableName(Optional.of(leaf.getName()));
+      }
+
+      // Namespace entities are between catalog and leaf
+      if (resolvedEntityPath.size() > 2) {
+        String namespace =
+            resolvedEntityPath.subList(1, resolvedEntityPath.size() - 1).stream()
+                .map(PolarisEntity::getName)
+                .collect(Collectors.joining("."));
+        builder.namespace(Optional.of(namespace));
+      }
     }
 
-    // Extract namespace from table identifier
-    Namespace namespace = tableIdentifier.namespace();
-    if (namespace != null && namespace.length() > 0) {
-      builder.namespace(Optional.of(String.join(".", namespace.levels())));
-    }
+    builder.principalName(Optional.of(polarisPrincipal.getName()));
 
-    // Extract table name from table identifier
-    builder.tableName(Optional.of(tableIdentifier.name()));
-
-    // Extract activated roles from principal - included in context to be part of cache key
     Set<String> roles = polarisPrincipal.getRoles();
     if (roles != null && !roles.isEmpty()) {
       String rolesString = roles.stream().sorted().collect(Collectors.joining(","));
       builder.activatedRoles(Optional.of(rolesString));
     }
 
-    // Only include trace ID when "trace_id" is in the configured session tag fields.
-    // When included, trace IDs become part of the credential cache key (since they affect
-    // the vended credentials), which disables effective credential caching.
     if (sessionTagFields.contains(FeatureConfiguration.SESSION_TAG_FIELD_TRACE_ID)) {
       builder.traceId(getCurrentTraceId());
     }
@@ -211,11 +187,6 @@ public class StorageAccessConfigProvider {
     return builder.build();
   }
 
-  /**
-   * Extracts the current OpenTelemetry trace ID from the active span context.
-   *
-   * @return the trace ID if a valid span context exists, empty otherwise
-   */
   private Optional<String> getCurrentTraceId() {
     SpanContext spanContext = Span.current().getSpanContext();
     if (spanContext.isValid()) {

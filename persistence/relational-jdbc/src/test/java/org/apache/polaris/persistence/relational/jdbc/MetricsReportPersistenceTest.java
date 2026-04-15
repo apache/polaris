@@ -29,7 +29,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -63,9 +62,8 @@ class MetricsReportPersistenceTest {
     PolarisStorageIntegrationProvider storageProvider =
         new PolarisStorageIntegrationProvider() {
           @Override
-          public <T extends PolarisStorageConfigurationInfo>
-              PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-                  PolarisStorageConfigurationInfo config) {
+          public PolarisStorageIntegration<?> getStorageIntegration(
+              java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
             return null;
           }
         };

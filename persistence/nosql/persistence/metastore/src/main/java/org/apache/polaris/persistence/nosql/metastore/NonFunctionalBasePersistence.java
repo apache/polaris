@@ -288,14 +288,6 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
     throw unimplemented();
   }
 
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    throw useMetaStoreManager("getSubscopedCredsForEntity");
-  }
-
   @Override
   public void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {

@@ -32,7 +32,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
@@ -67,9 +66,9 @@ public class AdminToolProducers {
     return new PolarisStorageIntegrationProvider() {
       @Override
       @Nullable
-      public <T extends PolarisStorageConfigurationInfo>
-          PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-              PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+      public PolarisStorageIntegration<?> getStorageIntegration(
+          @jakarta.annotation.Nonnull
+              java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
         return null;
       }
     };

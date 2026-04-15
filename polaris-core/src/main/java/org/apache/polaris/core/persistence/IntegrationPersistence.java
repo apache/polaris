@@ -26,6 +26,11 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
+// NOTE: createStorageIntegration / persistStorageIntegrationIfNeeded are retained as hooks on
+// this interface so custom deployments can intercept the catalog-creation flow (e.g. to lease an
+// external credential and commit a reference to it atomically with the entity write). All OSS
+// implementations return null / do nothing; the result is not used by OSS.
+
 /**
  * Interface for the necessary "peripheral integration" objects that are logically attached to core
  * persistence entities but which typically involve additional separate external integrations
@@ -137,16 +142,4 @@ public interface IntegrationPersistence {
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * Load the polaris storage integration for a polaris entity (Catalog,Namespace,Table,View)
-   *
-   * @param callContext the polaris call context
-   * @param entity the polaris entity
-   * @return a polaris storage integration
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 }
