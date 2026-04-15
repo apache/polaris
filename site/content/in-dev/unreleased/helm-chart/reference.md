@@ -63,7 +63,7 @@ weight: 900
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/). |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsNonRoot":true,"runAsUser":10000,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris container. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/). |
 | containerLifecycle | object | `{}` | Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/). Use this to configure a preStop hook for graceful shutdown, e.g.: containerLifecycle:   preStop:     exec:       command: ["/bin/sh", "-c", "sleep 30"] |
-| terminationGracePeriodSeconds | string | `nil` | Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination). When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time. |
+| terminationGracePeriodSeconds | int | `nil` | Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination). When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time. |
 
 ### Service
 

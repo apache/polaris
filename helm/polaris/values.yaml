@@ -153,7 +153,7 @@ containerLifecycle: {}
 
 # @schema type: [integer, "null"]
 # @schema minimum: 0
-# -- Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration.
+# -- (int) Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration.
 # See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
 # When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.
 # @section -- Pod Configuration
