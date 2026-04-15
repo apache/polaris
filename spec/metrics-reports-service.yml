@@ -36,10 +36,6 @@ servers:
       host:
         default: localhost
 
-security:
-  - OAuth2: []
-  - BearerAuth: []
-
 paths:
   /catalogs/{catalogName}/namespaces/{namespace}/tables/{table}:
     parameters:
@@ -76,7 +72,6 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 1000
             default: 100
             description: Maximum number of results to return per page
         - name: snapshotId
@@ -98,14 +93,14 @@ paths:
           schema:
             type: integer
             format: int64
-            description: Inclusive lower bound on report timestamp (epoch milliseconds)
+            description: Inclusive lower bound on report timestamp (Unix epoch milliseconds)
         - name: timestampTo
           in: query
           required: false
           schema:
             type: integer
             format: int64
-            description: Exclusive upper bound on report timestamp (epoch milliseconds)
+            description: Exclusive upper bound on report timestamp (Unix epoch milliseconds)
       responses:
         '200':
           description: Paginated list of metrics reports
@@ -133,17 +128,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
-  securitySchemes:
-    OAuth2:
-      type: oauth2
-      flows:
-        clientCredentials:
-          tokenUrl: https://example.com/oauth/tokens
-          scopes: {}
-    BearerAuth:
-      type: http
-      scheme: bearer
-
   parameters:
     catalogName:
       name: catalogName
@@ -156,8 +140,8 @@ components:
       in: path
       required: true
       description: >
-        Namespace path. Multi-level namespaces are encoded with unit separator (0x1F) between
-        levels, then URL-encoded as %1F.
+        Namespace path encoded using the same convention as the Polaris Iceberg REST API:
+        multi-level namespaces use the unit separator (0x1F) between levels, URL-encoded as %1F.
       schema:
         type: string
     table:
@@ -444,7 +428,7 @@ components:
         timestampMs:
           type: integer
           format: int64
-          description: Server-side timestamp when the report was received (epoch milliseconds)
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
         actor:
           $ref: '#/components/schemas/MetricsActor'
           nullable: true
@@ -471,7 +455,7 @@ components:
         timestampMs:
           type: integer
           format: int64
-          description: Server-side timestamp when the report was received (epoch milliseconds)
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
         actor:
           $ref: '#/components/schemas/MetricsActor'
           nullable: true

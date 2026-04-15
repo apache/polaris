@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
+package org.apache.polaris.persistence.relational.jdbc.pagination;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
+import org.apache.polaris.core.persistence.pagination.Token;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**

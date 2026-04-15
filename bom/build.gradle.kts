@@ -107,6 +107,7 @@ dependencies {
       api(project(":polaris-spark-3.5_2.13"))
       api(project(":polaris-spark-4.0_2.13"))
     }
+    api(project(":polaris-extensions-metrics-reports"))
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))
