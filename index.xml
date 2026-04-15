@@ -3594,6 +3594,18 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;td&gt;&lt;code&gt;{&amp;quot;allowPrivilegeEscalation&amp;quot;:false,&amp;quot;capabilities&amp;quot;:{&amp;quot;drop&amp;quot;:[&amp;quot;ALL&amp;quot;]},&amp;quot;runAsNonRoot&amp;quot;:true,&amp;quot;runAsUser&amp;quot;:10000,&amp;quot;seccompProfile&amp;quot;:{&amp;quot;type&amp;quot;:&amp;quot;RuntimeDefault&amp;quot;}}&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;Security context for the polaris container. See &lt;a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/"&gt;Security Context&lt;/a&gt;.&lt;/td&gt;
  &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;containerLifecycle&lt;/td&gt;
+ &lt;td&gt;object&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Lifecycle hooks for the polaris container. See &lt;a href="https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/"&gt;Container Lifecycle Hooks&lt;/a&gt;. Use this to configure a preStop hook for graceful shutdown, e.g.: containerLifecycle: preStop: exec: command: [&amp;quot;/bin/sh&amp;quot;, &amp;ldquo;-c&amp;rdquo;, &amp;ldquo;sleep 30&amp;rdquo;]&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
+ &lt;td&gt;terminationGracePeriodSeconds&lt;/td&gt;
+ &lt;td&gt;int&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;nil&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See &lt;a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination"&gt;Termination of Pods&lt;/a&gt;. When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.&lt;/td&gt;
+ &lt;/tr&gt;
  &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id="service" id="service"&gt;Service&lt;a class="heading-anchor" href="#service" aria-label="Anchor"&gt;🔗&lt;/a&gt;
