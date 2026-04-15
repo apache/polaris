@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -35,18 +34,8 @@ import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
-@TestProfile(PolarisGenericTableCatalogHandlerAuthzTest.CredentialVendingProfile.class)
+@TestProfile(PolarisAuthzTestBase.Profile.class)
 public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
-
-  public static class CredentialVendingProfile extends PolarisAuthzTestBase.Profile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.features.\"ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING\"", "true")
-          .build();
-    }
-  }
 
   @Inject GenericTableCatalogHandlerFactory genericTableCatalogHandlerFactory;
 

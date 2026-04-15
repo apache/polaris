@@ -298,16 +298,6 @@ If true, the generic-tables endpoints are enabled
 
 ---
 
-##### `polaris.features."ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING"`
-
-If set to true, credential vending is enabled for generic tables. When a generic table has a base location, scoped storage credentials will be returned in the load and create responses.
-
-- **Type:** `Boolean`
-- **Default:** `false`
-- **Catalog Config:** `polaris.config.enable.generic-tables.credential-vending`
-
----
-
 ##### `polaris.features."ENABLE_POLICY_STORE"`
 
 If true, the policy-store endpoints are enabled

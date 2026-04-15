@@ -31,12 +31,14 @@ import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -218,6 +220,20 @@ public abstract class CatalogHandler {
             null /* secondary */);
 
     initializeCatalog();
+  }
+
+  protected void authorizeCreateTableDirect(
+      TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
+    PolarisAuthorizableOperation op =
+        delegationModes.isEmpty()
+            ? PolarisAuthorizableOperation.CREATE_TABLE_DIRECT
+            : PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+
+    CatalogEntity catalog = resolutionManifest.getResolvedCatalogEntity();
+    if (catalog != null && catalog.isStaticFacade()) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
+    }
   }
 
   /**

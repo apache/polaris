@@ -437,31 +437,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
   }
 
-  public void authorizeCreateTableDirect(
-      Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
-    if (delegationRequested) {
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
-          TableIdentifier.of(namespace, request.name()));
-    } else {
-      TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT, identifier);
-    }
-
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
-  }
-
   public LoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableDirect(TableIdentifier.of(namespace, request.name()), delegationModes);
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     request.validate();
