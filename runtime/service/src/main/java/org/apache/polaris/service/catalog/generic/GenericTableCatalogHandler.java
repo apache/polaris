@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
@@ -129,8 +128,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       String doc,
       Map<String, String> properties,
       EnumSet<AccessDelegationMode> delegationModes) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    authorizeCreateTableDirect(identifier, delegationModes);
 
     GenericTableEntity createdEntity =
         this.genericTableCatalog.createGenericTable(
@@ -143,8 +141,6 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .setDoc(createdEntity.getDoc())
             .setProperties(createdEntity.getPropertiesAsMap())
             .build();
-
-    validateDelegationModes(delegationModes);
 
     List<StorageAccessConfig> storageAccessConfigs =
         delegationModes.contains(VENDED_CREDENTIALS)
@@ -173,7 +169,6 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
   public LoadGenericTableResponse loadGenericTable(
       TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
     ensureResolutionManifestForTable(identifier);
-    validateDelegationModes(delegationModes);
 
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTableLike(identifier, PolarisEntitySubType.GENERIC_TABLE, delegationModes);
@@ -197,22 +192,6 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
         .setTable(loadedTable)
         .setStorageAccessConfigs(storageAccessConfigs)
         .build();
-  }
-
-  /**
-   * Validates that the requested delegation modes are allowed for this catalog. Throws a {@link
-   * ForbiddenException} if the client requests {@code vended-credentials} but the server-side
-   * feature flag is not enabled for this catalog.
-   */
-  private void validateDelegationModes(EnumSet<AccessDelegationMode> delegationModes) {
-    if (delegationModes.contains(VENDED_CREDENTIALS)
-        && !realmConfig()
-            .getConfig(
-                FeatureConfiguration.ENABLE_GENERIC_TABLES_CREDENTIAL_VENDING,
-                resolutionManifest.getResolvedCatalogEntity())) {
-      throw new ForbiddenException(
-          "Credential vending is not enabled for generic tables in this catalog");
-    }
   }
 
   /**
