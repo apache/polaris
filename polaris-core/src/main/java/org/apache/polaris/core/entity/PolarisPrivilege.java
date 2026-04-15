@@ -257,15 +257,17 @@ public enum PolarisPrivilege {
       List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
       PolarisEntityType.CATALOG_ROLE),
   /**
-   * Grants read-only access to all data and navigational metadata within a specific catalog.
-   * Intended for data analyst principals who need to read tables and views across an entire catalog
-   * without any write or administrative capabilities.
+   * Grants read-only access to all data and navigational metadata within a catalog or namespace.
+   * Intended for data analyst principals who need to read tables and views without any write or
+   * administrative capabilities. Can be granted at the catalog level (applies to all namespaces) or
+   * at the namespace level (scoped to a specific namespace).
    *
    * <p>This privilege subsumes: {@link #NAMESPACE_LIST}, {@link #NAMESPACE_READ_PROPERTIES}, {@link
    * #TABLE_LIST}, {@link #TABLE_READ_PROPERTIES}, {@link #TABLE_READ_DATA}, {@link #VIEW_LIST}, and
-   * {@link #VIEW_READ_PROPERTIES}.
+   * {@link #VIEW_READ_PROPERTIES}. It does not grant catalog-level administrative privileges such
+   * as {@link #CATALOG_READ_PROPERTIES}.
    */
-  CATALOG_READ_DATA(103, PolarisEntityType.CATALOG),
+  NAMESPACE_READ_DATA(103, PolarisEntityType.CATALOG),
   ;
 
   /**

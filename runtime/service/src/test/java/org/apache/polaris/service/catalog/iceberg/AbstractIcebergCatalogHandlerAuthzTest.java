@@ -141,6 +141,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -338,6 +339,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -350,6 +352,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -368,6 +371,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -387,6 +391,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -407,6 +412,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -423,6 +429,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -447,6 +454,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -574,6 +582,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -591,6 +600,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -602,6 +612,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -669,6 +680,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -683,6 +695,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -700,6 +713,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -842,6 +856,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -864,6 +879,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA, PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -880,6 +896,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1037,6 +1054,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1072,6 +1090,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1084,6 +1103,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1095,6 +1115,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1133,6 +1154,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1147,6 +1169,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1802,6 +1825,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA) // super-privilege of TABLE_READ_DATA
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 
@@ -1820,6 +1844,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().reportMetrics(TABLE_NS1A_1, request))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.NAMESPACE_READ_DATA)
         .createTests();
   }
 }
