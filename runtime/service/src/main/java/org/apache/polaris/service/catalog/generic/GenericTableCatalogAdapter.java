@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
-import static org.apache.polaris.service.catalog.common.CatalogUtils.decodeNamespace;
-
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -30,6 +28,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -78,7 +77,10 @@ public class GenericTableCatalogAdapter
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
-            TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
+            TableIdentifier.of(
+                NamespaceUtils.splitNamespace(
+                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+                createGenericTableRequest.getName()),
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getBaseLocation(),
             createGenericTableRequest.getDoc(),
@@ -95,7 +97,10 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
-    handler.dropGenericTable(TableIdentifier.of(decodeNamespace(namespace), genericTable));
+    handler.dropGenericTable(
+        TableIdentifier.of(
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+            genericTable));
     return Response.noContent().build();
   }
 
@@ -108,7 +113,9 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
-    ListGenericTablesResponse response = handler.listGenericTables(decodeNamespace(namespace));
+    ListGenericTablesResponse response =
+        handler.listGenericTables(
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR));
     return Response.ok(response).build();
   }
 
@@ -122,7 +129,11 @@ public class GenericTableCatalogAdapter
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
-        handler.loadGenericTable(TableIdentifier.of(decodeNamespace(namespace), genericTable));
+        handler.loadGenericTable(
+            TableIdentifier.of(
+                NamespaceUtils.splitNamespace(
+                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+                genericTable));
     return Response.ok(response).build();
   }
 }
