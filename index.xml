@@ -4872,7 +4872,7 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;/tr&gt;
  &lt;tr&gt;
  &lt;td&gt;cors.accessControlAllowCredentials&lt;/td&gt;
- &lt;td&gt;string&lt;/td&gt;
+ &lt;td&gt;bool&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;nil&lt;/code&gt;&lt;/td&gt;
  &lt;td&gt;The &lt;code&gt;Access-Control-Allow-Credentials&lt;/code&gt; response header. The value of this header will default to &lt;code&gt;true&lt;/code&gt; if &lt;code&gt;allowedOrigins&lt;/code&gt; property is set and there is a match with the precise &lt;code&gt;Origin&lt;/code&gt; header.&lt;/td&gt;
  &lt;/tr&gt;
