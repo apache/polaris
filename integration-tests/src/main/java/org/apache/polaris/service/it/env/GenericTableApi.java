@@ -52,7 +52,7 @@ public class GenericTableApi extends PolarisRestApi {
   public List<TableIdentifier> listGenericTables(String catalog, Namespace namespace) {
     String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
-        request("polaris/v1/{cat}/namespaces/{ns}/generic-tables", Map.of("cat", catalog, "ns", ns))
+        request("polaris/v1/{cat}/namespaces/" + ns + "/generic-tables", Map.of("cat", catalog))
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListGenericTablesResponse.class).getIdentifiers().stream().toList();
@@ -64,8 +64,8 @@ public class GenericTableApi extends PolarisRestApi {
         NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
-                Map.of("cat", catalog, "table", id.name(), "ns", ns))
+                "polaris/v1/{cat}/namespaces/" + ns + "/generic-tables/{table}",
+                Map.of("cat", catalog, "table", id.name()))
             .delete()) {
       assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
@@ -76,8 +76,8 @@ public class GenericTableApi extends PolarisRestApi {
         NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table}",
-                Map.of("cat", catalog, "table", id.name(), "ns", ns))
+                "polaris/v1/{cat}/namespaces/" + ns + "/generic-tables/{table}",
+                Map.of("cat", catalog, "table", id.name()))
             .get()) {
       return res.readEntity(LoadGenericTableResponse.class).getTable();
     }
@@ -88,9 +88,7 @@ public class GenericTableApi extends PolarisRestApi {
     String ns =
         NamespaceUtils.joinNamespace(id.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
-        request(
-                "polaris/v1/{cat}/namespaces/{ns}/generic-tables/",
-                Map.of("cat", catalog, "ns", ns))
+        request("polaris/v1/{cat}/namespaces/" + ns + "/generic-tables/", Map.of("cat", catalog))
             .post(
                 Entity.json(
                     CreateGenericTableRequest.builder()

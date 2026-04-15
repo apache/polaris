@@ -33,7 +33,6 @@ import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -323,7 +322,7 @@ public class IcebergCatalogAdapter
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
 
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchString);
 
@@ -370,7 +369,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -390,7 +389,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -461,7 +460,7 @@ public class IcebergCatalogAdapter
                 .toList());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -521,7 +520,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     Optional<String> refreshEndpoint =
         Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
     return withCatalog(
@@ -539,7 +538,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, view);
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.loadView(tableIdentifier)).build());
   }
@@ -553,7 +552,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -572,7 +571,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -614,7 +613,7 @@ public class IcebergCatalogAdapter
                 .toList());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -665,7 +664,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -685,7 +684,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
-    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     return withCatalog(
         securityContext,
         prefix,

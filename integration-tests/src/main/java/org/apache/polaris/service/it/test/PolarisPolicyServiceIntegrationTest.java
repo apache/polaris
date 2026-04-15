@@ -889,6 +889,39 @@ public class PolarisPolicyServiceIntegrationTest {
     }
   }
 
+  @Test
+  public void testNamespaceEncodeDecode() {
+    Namespace ns1 = Namespace.of("ns+1%20");
+    Namespace ns2 = Namespace.of("ns+1%20", "ns+2%2B");
+    restCatalog.createNamespace(ns1);
+    restCatalog.createNamespace(ns2);
+
+    // Note: policy names are constrained to ^[A-Za-z0-9\-_]+$
+    PolicyIdentifier policyId = new PolicyIdentifier(ns2, "p1");
+    Policy policy =
+        policyApi.createPolicy(
+            currentCatalogName,
+            policyId,
+            PredefinedPolicyTypes.DATA_COMPACTION,
+            EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+            "test policy in namespace with plus sign");
+
+    assertThat(policy).isNotNull();
+    assertThat(policy.getName()).isEqualTo("p1");
+
+    List<PolicyIdentifier> policyIdentifiers = policyApi.listPolicies(currentCatalogName, ns2);
+    assertThat(policyIdentifiers).hasSize(1);
+    PolicyIdentifier policyIdentifier = policyIdentifiers.getFirst();
+    assertThat(policyIdentifier.name()).isEqualTo("p1");
+    assertThat(policyIdentifier.namespace()).isEqualTo(ns2);
+
+    Policy loadedPolicy = policyApi.loadPolicy(currentCatalogName, policyId);
+    assertThat(loadedPolicy).isEqualTo(policy);
+
+    // Drop the policy explicitly so the namespace can be removed by @AfterEach cleanup.
+    policyApi.dropPolicy(currentCatalogName, policyId);
+  }
+
   private static ApplicablePolicy policyToApplicablePolicy(
       Policy policy, boolean inherited, Namespace parent) {
     return new ApplicablePolicy(
