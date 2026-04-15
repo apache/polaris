@@ -648,8 +648,30 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private boolean namespaceWithSameNameExists(TableIdentifier identifier) {
-    return listNamespaces(identifier.namespace()).stream()
-        .anyMatch(namespace -> namespace.level(namespace.length() - 1).equals(identifier.name()));
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    if (resolvedEntities == null) {
+      return false;
+    }
+
+    List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    EntityResult lookupResult =
+        getMetaStoreManager()
+            .readEntityByName(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                PolarisEntityType.NAMESPACE,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                identifier.name());
+    if (lookupResult.isSuccess()) {
+      return true;
+    }
+    if (lookupResult.getReturnStatus() != BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+      throw new ServiceFailureException(
+          "Failed to check existing namespace for '%s'. Status: %s ExtraInfo: %s",
+          identifier.name(), lookupResult.getReturnStatus(), lookupResult.getExtraInformation());
+    }
+    return false;
   }
 
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
