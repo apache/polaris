@@ -124,10 +124,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
                         Map.of(),
                         EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS)))
         .cleanupAction(() -> newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable))
-        .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
-        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
-        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .shouldFailWith(PolarisPrivilege.TABLE_CREATE)
         .createTests();
   }
 

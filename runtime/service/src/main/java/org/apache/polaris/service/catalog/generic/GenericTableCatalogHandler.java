@@ -43,7 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -237,17 +237,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       return List.of();
     }
 
-    Map<String, String> allConfig = new java.util.HashMap<>(credentials);
-    allConfig.putAll(storageAccessConfig.extraProperties());
+    Map<String, String> config = StorageUtil.toGenericTableConfig(storageAccessConfig);
 
-    // Remap Iceberg's "client.region" to the generic table API's "s3.client.region"
-    String clientRegionKey = StorageAccessProperty.CLIENT_REGION.getPropertyName();
-    String region = allConfig.remove(clientRegionKey);
-    if (region != null) {
-      allConfig.put("s3.client.region", region);
-    }
-
-    return List.of(
-        StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(allConfig).build());
+    return List.of(StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(config).build());
   }
 }
