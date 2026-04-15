@@ -61,7 +61,6 @@ import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
-import org.apache.polaris.core.persistence.pagination.MetricsReportToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -80,6 +79,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingR
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
+import org.apache.polaris.persistence.relational.jdbc.pagination.MetricsReportToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

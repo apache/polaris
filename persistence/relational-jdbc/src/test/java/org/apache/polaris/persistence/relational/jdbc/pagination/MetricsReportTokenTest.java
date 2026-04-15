@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.pagination;
+package org.apache.polaris.persistence.relational.jdbc.pagination;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.apache.polaris.core.persistence.metrics.MetricsRecordIdentity;
+import org.apache.polaris.core.persistence.pagination.Page;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.junit.jupiter.api.Test;
 
 class MetricsReportTokenTest {

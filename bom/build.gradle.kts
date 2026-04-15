@@ -90,6 +90,7 @@ dependencies {
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
+    api(project(":polaris-extensions-metrics-reports"))
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))
