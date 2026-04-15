@@ -1115,7 +1115,7 @@ cors:
   # @section -- CORS
   accessControlMaxAge: ""  # PT10M
   # @schema type:[boolean, null]
-  # -- The `Access-Control-Allow-Credentials` response header.
+  # -- (bool) The `Access-Control-Allow-Credentials` response header.
   # The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header.
   # @section -- CORS
   accessControlAllowCredentials: ~  # true

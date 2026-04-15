@@ -328,7 +328,7 @@ weight: 900
 | cors.allowedHeaders | list | `[]` | HTTP headers allowed for CORS, ex: X-Custom, Content-Disposition. If this is not set or empty, all requested headers are considered allowed. |
 | cors.exposedHeaders | list | `[]` | HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list. |
 | cors.accessControlMaxAge | string | `""` | The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration. |
-| cors.accessControlAllowCredentials | string | `nil` | The `Access-Control-Allow-Credentials` response header. The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header. |
+| cors.accessControlAllowCredentials | bool | `nil` | The `Access-Control-Allow-Credentials` response header. The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header. |
 
 ### Rate Limiter
 
