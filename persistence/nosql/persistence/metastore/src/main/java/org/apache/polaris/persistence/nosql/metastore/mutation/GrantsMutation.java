@@ -26,6 +26,7 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsOb
 
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
@@ -52,8 +53,11 @@ public record GrantsMutation(
     MemoizedIndexedAccess memoizedIndexedAccess,
     Privileges privileges,
     boolean doGrant,
+    boolean validateEntityReferences,
     SecurableGranteePrivilegeTuple... grants) {
   private static final Logger LOGGER = LoggerFactory.getLogger(GrantsMutation.class);
+
+  public static final class EntityCannotBeResolvedException extends RuntimeException {}
 
   public boolean apply() {
     try {
@@ -82,6 +86,10 @@ public record GrantsMutation(
 
                   var changed = false;
                   for (var g : grants) {
+                    if (validateEntityReferences && !allEntityReferencesExist(g)) {
+                      throw new EntityCannotBeResolvedException();
+                    }
+
                     var securable = GrantTriplet.forEntity(g.securable());
                     var grantee = GrantTriplet.forEntity(g.grantee());
                     var forSec = grantee.asDirected();
@@ -179,6 +187,22 @@ public record GrantsMutation(
 
                   // aclObj changed
                   return true;
+                }
+
+                private boolean allEntityReferencesExist(SecurableGranteePrivilegeTuple grant) {
+                  return entityReferenceExists(grant.securable())
+                      && entityReferenceExists(grant.grantee());
+                }
+
+                private boolean entityReferenceExists(PolarisEntityCore entity) {
+                  try {
+                    return memoizedIndexedAccess
+                        .indexedAccess(entity.getCatalogId(), entity.getTypeCode())
+                        .nameKeyById(entity.getId())
+                        .isPresent();
+                  } catch (IllegalArgumentException e) {
+                    return false;
+                  }
                 }
               })
           .isPresent();

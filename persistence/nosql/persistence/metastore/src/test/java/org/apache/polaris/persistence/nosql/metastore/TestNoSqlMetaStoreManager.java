@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -297,6 +298,91 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     // In NoSQL, this should return ENTITY_ALREADY_EXISTS instead of crashing
     assertThat(tableResult.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+  }
+
+  @Test
+  public void testGrantAndRevokeUsageRevalidateGranteeExistenceAndType() {
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "grantRevalidateCatalog");
+    CreateCatalogResult catalogCreated = metaStore.createCatalog(callContext, catalog, List.of());
+    assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    EntityResult catalogAdminRoleResult =
+        metaStore.readEntityByName(
+            callContext,
+            List.of(catalog),
+            PolarisEntityType.CATALOG_ROLE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogAdminRole());
+    assertThat(catalogAdminRoleResult.isSuccess()).isTrue();
+    PolarisBaseEntity catalogAdminRole = catalogAdminRoleResult.getEntity();
+    assertThat(catalogAdminRole).isNotNull();
+
+    PolarisBaseEntity principalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "grantRevalidatePrincipalRole");
+    EntityResult principalRoleCreate =
+        metaStore.createEntityIfNotExists(callContext, null, principalRole);
+    assertThat(principalRoleCreate.isSuccess()).isTrue();
+    PolarisBaseEntity createdPrincipalRole = principalRoleCreate.getEntity();
+    assertThat(createdPrincipalRole).isNotNull();
+    long principalRoleId = createdPrincipalRole.getId();
+
+    PolarisBaseEntity mismatchedTypeGrantee =
+        new PolarisBaseEntity.Builder(createdPrincipalRole)
+            .typeCode(PolarisEntityType.CATALOG_ROLE.getCode())
+            .build();
+
+    assertThat(
+            metaStore
+                .grantUsageOnRoleToGrantee(
+                    callContext, catalog, catalogAdminRole, mismatchedTypeGrantee)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    assertThat(
+            metaStore
+                .revokeUsageOnRoleFromGrantee(
+                    callContext, catalog, catalogAdminRole, mismatchedTypeGrantee)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+
+    assertThat(
+            metaStore
+                .dropEntityIfExists(callContext, null, createdPrincipalRole, null, false)
+                .isSuccess())
+        .isTrue();
+
+    assertThat(
+            metaStore
+                .grantUsageOnRoleToGrantee(
+                    callContext, catalog, catalogAdminRole, createdPrincipalRole)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    assertThat(
+            metaStore
+                .revokeUsageOnRoleFromGrantee(
+                    callContext, catalog, catalogAdminRole, createdPrincipalRole)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+
+    LoadGrantsResult grantsOnCatalogRole =
+        metaStore.loadGrantsOnSecurable(callContext, catalogAdminRole);
+    assertThat(grantsOnCatalogRole.isSuccess()).isTrue();
+    assertThat(grantsOnCatalogRole.getGrantRecords())
+        .noneSatisfy(
+            grantRecord -> assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
   }
 
   @Override

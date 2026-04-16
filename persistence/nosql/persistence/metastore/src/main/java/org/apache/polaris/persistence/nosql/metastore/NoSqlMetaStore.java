@@ -284,7 +284,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                     catalogAdminRole, effRole, PolarisPrivilege.CATALOG_ROLE_USAGE));
           }
 
-          persistGrantsOrRevokes(true, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
+          persistGrantsOrRevokes(
+              true, false, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
 
           byName.put(nameKey, objRef(catalogObj));
           byId.put(idKey, nameKey);
@@ -1302,10 +1303,17 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     }
   }
 
-  boolean persistGrantsOrRevokes(boolean doGrant, SecurableGranteePrivilegeTuple... grants) {
+  boolean persistGrantsOrRevokes(
+      boolean doGrant, boolean validateEntityReferences, SecurableGranteePrivilegeTuple... grants) {
     LOGGER.debug("Persisting {} for '{}'", doGrant ? "grants" : "revokes", Arrays.asList(grants));
 
-    return new GrantsMutation(persistence, memoizedIndexedAccess, privileges, doGrant, grants)
+    return new GrantsMutation(
+            persistence,
+            memoizedIndexedAccess,
+            privileges,
+            doGrant,
+            validateEntityReferences,
+            grants)
         .apply();
   }
 
