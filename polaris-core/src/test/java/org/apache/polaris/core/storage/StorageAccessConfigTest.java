@@ -25,6 +25,7 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SESSION_
 import static org.apache.polaris.core.storage.StorageAccessProperty.EXPIRATION_TIME;
 import static org.apache.polaris.core.storage.StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
@@ -79,15 +80,38 @@ public class StorageAccessConfigTest {
 
   @Test
   public void testExpiresAt() {
-    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
-    assertThat(b.build().expiresAt()).isEmpty();
-    b.put(GCS_ACCESS_TOKEN_EXPIRES_AT, "111");
-    assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(111));
-    b.put(AWS_SESSION_TOKEN_EXPIRES_AT_MS, "222");
-    assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(222));
-    b.put(EXPIRATION_TIME, "333");
-    assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(333));
-    b.expiresAt(Instant.ofEpochMilli(444));
-    assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(444));
+    assertThat(StorageAccessConfig.builder().build().expiresAt()).isEmpty();
+
+    assertThat(
+            StorageAccessConfig.builder()
+                .put(GCS_ACCESS_TOKEN_EXPIRES_AT, "111")
+                .build()
+                .expiresAt())
+        .hasValue(Instant.ofEpochMilli(111));
+
+    assertThat(
+            StorageAccessConfig.builder()
+                .put(AWS_SESSION_TOKEN_EXPIRES_AT_MS, "222")
+                .build()
+                .expiresAt())
+        .hasValue(Instant.ofEpochMilli(222));
+
+    assertThat(StorageAccessConfig.builder().put(EXPIRATION_TIME, "333").build().expiresAt())
+        .hasValue(Instant.ofEpochMilli(333));
+
+    assertThat(
+            StorageAccessConfig.builder().expiresAt(Instant.ofEpochMilli(444)).build().expiresAt())
+        .hasValue(Instant.ofEpochMilli(444));
+  }
+
+  @Test
+  public void testMultipleExpirationTimestampsThrows() {
+    StorageAccessConfig.Builder b =
+        StorageAccessConfig.builder().put(AWS_SESSION_TOKEN_EXPIRES_AT_MS, "1");
+
+    assertThatThrownBy(() -> b.put(EXPIRATION_TIME, "2"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName())
+        .hasMessageContaining(EXPIRATION_TIME.getPropertyName());
   }
 }

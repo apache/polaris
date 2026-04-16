@@ -58,7 +58,7 @@ public interface StorageAccessConfig {
   }
 
   static StorageAccessConfig.Builder builder() {
-    return ImmutableStorageAccessConfig.builder();
+    return new ValidatingBuilder(ImmutableStorageAccessConfig.builder());
   }
 
   interface Builder {
@@ -90,5 +90,77 @@ public interface StorageAccessConfig {
     }
 
     StorageAccessConfig build();
+  }
+
+  /**
+   * A decorator around {@link ImmutableStorageAccessConfig.Builder} that enforces at most one
+   * expiration timestamp property per {@link StorageAccessConfig}. Without this guard, multiple
+   * calls to {@link Builder#put} with different expiration timestamp properties silently overwrite
+   * {@link StorageAccessConfig#expiresAt()}.
+   */
+  class ValidatingBuilder implements Builder {
+    private final ImmutableStorageAccessConfig.Builder delegate;
+    private StorageAccessProperty expiresAtKey;
+
+    ValidatingBuilder(ImmutableStorageAccessConfig.Builder delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public Builder put(StorageAccessProperty key, String value) {
+      if (key.isExpirationTimestamp()) {
+        if (expiresAtKey != null) {
+          throw new IllegalArgumentException(
+              "Multiple expiration timestamp properties found while building StorageAccessConfig: "
+                  + expiresAtKey.getPropertyName()
+                  + " and "
+                  + key.getPropertyName()
+                  + ". Only a single expiration timestamp is allowed per StorageAccessConfig.");
+        }
+        expiresAtKey = key;
+      }
+      Builder.super.put(key, value);
+      return this;
+    }
+
+    @Override
+    @CanIgnoreReturnValue
+    public Builder putCredential(String key, String value) {
+      delegate.putCredential(key, value);
+      return this;
+    }
+
+    @Override
+    @CanIgnoreReturnValue
+    public Builder putExtraProperty(String key, String value) {
+      delegate.putExtraProperty(key, value);
+      return this;
+    }
+
+    @Override
+    @CanIgnoreReturnValue
+    public Builder putInternalProperty(String key, String value) {
+      delegate.putInternalProperty(key, value);
+      return this;
+    }
+
+    @Override
+    @CanIgnoreReturnValue
+    public Builder expiresAt(Instant expiresAt) {
+      delegate.expiresAt(expiresAt);
+      return this;
+    }
+
+    @Override
+    @CanIgnoreReturnValue
+    public Builder supportsCredentialVending(boolean supportsCredentialVending) {
+      delegate.supportsCredentialVending(supportsCredentialVending);
+      return this;
+    }
+
+    @Override
+    public StorageAccessConfig build() {
+      return delegate.build();
+    }
   }
 }
