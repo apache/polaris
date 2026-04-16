@@ -35,8 +35,6 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.google.common.primitives.Ints;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,6 +68,8 @@ import org.apache.polaris.persistence.nosql.api.ref.ImmutableReference;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.impl.commits.CommitFactory;
 import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Base implementation that every database-specific implementation is encouraged to extend.
@@ -163,9 +163,9 @@ public final class PersistenceImplementation implements Persistence {
         .build();
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference createReference(@Nonnull String name, @Nonnull Optional<ObjRef> pointer) {
+  public Reference createReference(@NonNull String name, @NonNull Optional<ObjRef> pointer) {
     var newRef = newReference(name, pointer);
     if (!backend.createReference(realmId, newRef)) {
       throw new ReferenceAlreadyExistsException(name);
@@ -174,9 +174,9 @@ public final class PersistenceImplementation implements Persistence {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Optional<Reference> updateReferencePointer(
-      @Nonnull Reference reference, @Nonnull ObjRef newPointer) {
+      @NonNull Reference reference, @NonNull ObjRef newPointer) {
     var current = reference.pointer();
     checkArgument(
         !newPointer.equals(current.orElse(null)),
@@ -213,27 +213,27 @@ public final class PersistenceImplementation implements Persistence {
         : Optional.empty();
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference fetchReference(@Nonnull String name) {
+  public Reference fetchReference(@NonNull String name) {
     return backend.fetchReference(realmId, name);
   }
 
   @Nullable
   @Override
-  public <T extends Obj> T getImmediate(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T getImmediate(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     return fetch(id, clazz);
   }
 
   @Nullable
   @Override
-  public <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     return fetchMany(clazz, id)[0];
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] fetchMany(@Nonnull Class<T> clazz, @Nonnull ObjRef... ids) {
+  public <T extends Obj> T[] fetchMany(@NonNull Class<T> clazz, @NonNull ObjRef... ids) {
     var fetchIds = asPersistIds(ids);
     var fetched = backend.fetch(realmId, fetchIds);
 
@@ -319,9 +319,9 @@ public final class PersistenceImplementation implements Persistence {
     return fetchIds;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T write(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T write(@NonNull T obj, @NonNull Class<T> clazz) {
     checkArgument(obj.versionToken() == null, "'obj' must have a null 'versionToken'");
 
     var createdAtMicros = currentTimeMicros();
@@ -345,9 +345,9 @@ public final class PersistenceImplementation implements Persistence {
   }
 
   @SuppressWarnings("unchecked")
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] writeMany(@Nonnull Class<T> clazz, @Nonnull T... objs) {
+  public <T extends Obj> T[] writeMany(@NonNull Class<T> clazz, @NonNull T... objs) {
     var numObjs = objs.length;
 
     @SuppressWarnings("unchecked")
@@ -407,12 +407,12 @@ public final class PersistenceImplementation implements Persistence {
   }
 
   @Override
-  public void delete(@Nonnull ObjRef id) {
+  public void delete(@NonNull ObjRef id) {
     deleteMany(id);
   }
 
   @Override
-  public void deleteMany(@Nonnull ObjRef... ids) {
+  public void deleteMany(@NonNull ObjRef... ids) {
     var deleteIds = asPersistIds(ids);
     if (!deleteIds.isEmpty()) {
       backend.delete(realmId, deleteIds);
@@ -421,7 +421,7 @@ public final class PersistenceImplementation implements Persistence {
 
   @Nullable
   @Override
-  public <T extends Obj> T conditionalInsert(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T conditionalInsert(@NonNull T obj, @NonNull Class<T> clazz) {
     var versionToken = obj.versionToken();
     checkArgument(versionToken != null, "'obj' must have a non-null 'versionToken'");
     checkArgument(obj.numParts() == 1, "'obj' must have 'numParts' == 1");
@@ -455,7 +455,7 @@ public final class PersistenceImplementation implements Persistence {
   @Nullable
   @Override
   public <T extends Obj> T conditionalUpdate(
-      @Nonnull T expected, @Nonnull T update, @Nonnull Class<T> clazz) {
+      @NonNull T expected, @NonNull T update, @NonNull Class<T> clazz) {
     checkArgument(
         expected.type().equals(update.type()) && expected.id() == update.id(),
         "Obj ids between 'expected' and 'update' do not match");
@@ -499,7 +499,7 @@ public final class PersistenceImplementation implements Persistence {
   }
 
   @Override
-  public <T extends Obj> boolean conditionalDelete(@Nonnull T expected, Class<T> clazz) {
+  public <T extends Obj> boolean conditionalDelete(@NonNull T expected, Class<T> clazz) {
     var expectedToken = expected.versionToken();
     checkArgument(expectedToken != null, "'obj' must have a non-null 'versionToken'");
     checkArgument(expected.numParts() == 1, "'expected' must have 'numParts' == 1");
@@ -513,27 +513,27 @@ public final class PersistenceImplementation implements Persistence {
 
   @Override
   public <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> createCommitter(
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType) {
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType) {
     return CommitFactory.newCommitter(this, refName, referencedObjType, resultType);
   }
 
   @Override
   public <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return IndexesProvider.buildReadIndex(indexContainer, this, indexValueSerializer);
   }
 
   @Override
   public <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return IndexesProvider.buildWriteIndex(indexContainer, this, indexValueSerializer);
   }
 
-  public static <T> T deserialize(byte[] binary, @Nonnull Class<T> clazz) {
+  public static <T> T deserialize(byte[] binary, @NonNull Class<T> clazz) {
     if (binary == null) {
       return null;
     }
@@ -545,7 +545,7 @@ public final class PersistenceImplementation implements Persistence {
   }
 
   /** Deserialize a byte array into an object of the given type, consumes the {@link ByteBuffer}. */
-  public static <T> T deserialize(ByteBuffer binary, @Nonnull Class<T> clazz) {
+  public static <T> T deserialize(ByteBuffer binary, @NonNull Class<T> clazz) {
     if (binary == null) {
       return null;
     }
@@ -582,7 +582,7 @@ public final class PersistenceImplementation implements Persistence {
       InputStream in,
       String versionToken,
       long createdAtMicros,
-      @Nonnull Class<T> clazz)
+      @NonNull Class<T> clazz)
       throws IOException {
     var objType = objTypeById(type);
     var typeClass = objType.targetClass();

@@ -21,11 +21,11 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
+import org.jspecify.annotations.NonNull;
 
 final class CatalogRoleMapping extends BaseCatalogMapping<CatalogRoleObj, CatalogRoleObj.Builder> {
   CatalogRoleMapping() {
@@ -37,7 +37,7 @@ final class CatalogRoleMapping extends BaseCatalogMapping<CatalogRoleObj, Catalo
   }
 
   @Override
-  public CatalogRoleObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public CatalogRoleObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return CatalogRoleObj.builder();
   }
 }

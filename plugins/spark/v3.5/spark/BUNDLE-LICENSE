@@ -229,14 +229,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This binary artifact contains jspecify.
-
-Copyright: Google LLC - SpotBugs Team
-Project URL: https://github.com/jspecify/jspecify
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This binary artifact contains Apache Datasketches.
 
 Copyright: 2020 The Apache Software Foundation
@@ -483,103 +475,6 @@ This binary artifact contains Eclipse MicroProfile OpenAPI.
 
 Copyright: 2017 Contributors to the Eclipse Foundation
 Project URL: https://github.com/microprofile/microprofile-open-api
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Jakarta Annotation.
-
-Project URL: https://projects.eclipse.org/projects/ee4j.ca
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Jakarta Validation.
-
-Project URL: https://beanvalidation.org
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Jakarta Servlet.
-
-Project URL: https://projects.eclipse.org/projects/ee4j.servlet
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Micrometer.
-
-Copyright: 2017-Present VMware, Inc. All Rights Reserved.
-Project URL: https://github.com/micrometer-metrics/micrometer
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Commons Compress.
-
-Copyright: 2002-2025 The Apache Software Foundation
-Project URL: https://commons.apache.org/proper/commons-compress/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Commons Codec.
-
-Copyright: 2002-2025 The Apache Software Foundation
-Project URL: https://commons.apache.org/proper/commons-codec/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains SLF4J.
-
-Copyright: 2004-2022 QOS.ch Sarl (Switzerland)
-Project URL: http://www.slf4j.org
-License: MIT License
-| Copyright (c) 2004-2022 QOS.ch Sarl (Switzerland)
-| All rights reserved.
-|
-| Permission is hereby granted, free  of charge, to any person obtaining
-| a  copy  of this  software  and  associated  documentation files  (the
-| "Software"), to  deal in  the Software without  restriction, including
-| without limitation  the rights to  use, copy, modify,  merge, publish,
-| distribute,  sublicense, and/or sell  copies of  the Software,  and to
-| permit persons to whom the Software  is furnished to do so, subject to
-| the following conditions:
-|
-| The  above  copyright  notice  and  this permission  notice  shall  be
-| included in all copies or substantial portions of the Software.
-|
-| THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
-| EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
-| MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
-| NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-| LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-| OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
-| WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
---------------------------------------------------------------------------------
-
-This binary artifact contains j2objc.
-
-Project URL: https://github.com/google/j2objc/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Commons IO.
-
-Copyright: 2002-2025 The Apache Software Foundation
-Project URL: https://commons.apache.org/proper/commons-io/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This binary artifact contains Commons Lang3.
-
-Copyright: 2001-2025 The Apache Software Foundation
-Project URL: https://commons.apache.org/proper/commons-lang/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------

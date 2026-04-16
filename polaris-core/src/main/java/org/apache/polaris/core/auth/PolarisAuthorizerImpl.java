@@ -134,6 +134,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -143,6 +144,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -751,15 +754,95 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   @Override
   public void resolveAuthorizationInputs(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "resolveAuthorizationInputs is not implemented yet for PolarisAuthorizerImpl");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    resolutionManifest.resolveAll();
   }
 
   @Override
+  @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    throw new UnsupportedOperationException(
-        "authorize is not implemented yet for PolarisAuthorizerImpl");
+    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
+    boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
+    try {
+      List<PolarisSecurable> targets = request.getTargets();
+      List<PolarisResolvedPathWrapper> resolvedTargets;
+      if (targets.isEmpty()) {
+        resolvedTargets =
+            prependRootContainer
+                ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
+                : null;
+      } else {
+        resolvedTargets = getResolvedSecurables(resolutionManifest, targets, prependRootContainer);
+      }
+      List<PolarisSecurable> secondaries = request.getSecondaries();
+      List<PolarisResolvedPathWrapper> resolvedSecondaries =
+          semantics.secondaryPrivileges().isEmpty() || secondaries.isEmpty()
+              ? null
+              : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
+      authorizeOrThrow(
+          request.getPrincipal(),
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          request.getOperation(),
+          resolvedTargets,
+          resolvedSecondaries);
+      return AuthorizationDecision.allow();
+    } catch (ForbiddenException e) {
+      LOGGER.debug(
+          "Authorization denied for principalName {} operation {} targets {} secondaries {}",
+          request.getPrincipal().getName(),
+          request.getOperation(),
+          request.getTargets(),
+          request.getSecondaries(),
+          e);
+      return AuthorizationDecision.deny(e.getMessage());
+    }
+  }
+
+  private List<PolarisResolvedPathWrapper> getResolvedSecurables(
+      PolarisResolutionManifest resolutionManifest,
+      List<PolarisSecurable> securables,
+      boolean prependRootContainer) {
+    return securables.stream()
+        .map(
+            securable -> {
+              PolarisResolvedPathWrapper resolvedSecurable =
+                  getResolvedSecurable(resolutionManifest, securable, prependRootContainer);
+              Preconditions.checkState(
+                  resolvedSecurable != null,
+                  "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
+                  securable.getLeaf().entityType(),
+                  securable.getLeaf(),
+                  securable.getParents());
+              return resolvedSecurable;
+            })
+        .toList();
+  }
+
+  private PolarisResolvedPathWrapper getResolvedSecurable(
+      PolarisResolutionManifest resolutionManifest,
+      PolarisSecurable securable,
+      boolean prependRootContainer) {
+    if (securable.getLeaf().entityType().isTopLevel()) {
+      // Ignore prependRootContainer for top-level entities.
+      return resolutionManifest.getResolvedTopLevelEntity(
+          securable.getLeaf().name(), securable.getLeaf().entityType());
+    }
+    return resolutionManifest.getResolvedPath(
+        ResolvedPathKey.of(getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+        prependRootContainer);
+  }
+
+  private List<String> getPathNamesWithinCatalog(PolarisSecurable securable) {
+    // Resolver path keys are scoped within the reference catalog, so the explicit catalog
+    // path segment is omitted from the PolarisSecurable path before lookup.
+    return securable.getPathSegments().stream()
+        .filter(
+            segment ->
+                segment.entityType() != org.apache.polaris.core.entity.PolarisEntityType.CATALOG)
+        .map(PathSegment::name)
+        .toList();
   }
 
   /**

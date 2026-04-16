@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.api;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
 import org.apache.polaris.ids.api.IdGenerator;
 import org.apache.polaris.ids.api.SnowflakeIdGenerator;
+import org.jspecify.annotations.NonNull;
 
 /**
  * API to lease node IDs, primarily to generate {@linkplain SnowflakeIdGenerator snowflake IDs}.
@@ -42,7 +42,7 @@ public interface NodeManagement extends AutoCloseable {
    * producers providing the same {@link IdGenerator} for the lifetime of the given {@link Node},
    * aka at most once for a {@link Node} instance.
    */
-  IdGenerator buildIdGenerator(@Nonnull NodeLease leasedNode);
+  IdGenerator buildIdGenerator(@NonNull NodeLease leasedNode);
 
   /** The maximum number of concurrently leased nodes that are supported. */
   int maxNumberOfNodes();
@@ -67,6 +67,5 @@ public interface NodeManagement extends AutoCloseable {
    * @return the leased node
    * @throws IllegalStateException if no node ID could be leased
    */
-  @Nonnull
-  NodeLease lease();
+  @NonNull NodeLease lease();
 }

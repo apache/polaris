@@ -29,7 +29,6 @@ import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.Re
 import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.PURGING;
 
 import com.google.errorprone.annotations.MustBeClosed;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -42,6 +41,7 @@ import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
 import org.apache.polaris.persistence.nosql.realms.api.RealmExpectedStateMismatchException;
 import org.apache.polaris.persistence.nosql.realms.api.RealmManagement;
 import org.apache.polaris.persistence.nosql.realms.spi.RealmStore;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class RealmManagementImpl implements RealmManagement {
@@ -62,13 +62,13 @@ class RealmManagementImpl implements RealmManagement {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   @MustBeClosed
   public Stream<RealmDefinition> list() {
     return store.list();
   }
 
-  private static void validateRealmId(@Nonnull String realmId) {
+  private static void validateRealmId(@NonNull String realmId) {
     checkArgument(
         realmId != null && VALID_REALM_ID_PATTERN.matcher(realmId).matches(),
         "Invalid realm ID '%s'",
@@ -76,16 +76,16 @@ class RealmManagementImpl implements RealmManagement {
   }
 
   @Override
-  @Nonnull
-  public Optional<RealmDefinition> get(@Nonnull String realmId) {
+  @NonNull
+  public Optional<RealmDefinition> get(@NonNull String realmId) {
     validateRealmId(realmId);
 
     return store.get(realmId);
   }
 
   @Override
-  @Nonnull
-  public RealmDefinition create(@Nonnull String realmId) {
+  @NonNull
+  public RealmDefinition create(@NonNull String realmId) {
     validateRealmId(realmId);
 
     var now = clock.get();
@@ -152,9 +152,9 @@ class RealmManagementImpl implements RealmManagement {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public RealmDefinition update(
-      @Nonnull RealmDefinition expected, @Nonnull RealmDefinition update) {
+      @NonNull RealmDefinition expected, @NonNull RealmDefinition update) {
     validateRealmId(expected.id());
     var realmId = expected.id();
     checkArgument(
@@ -182,7 +182,7 @@ class RealmManagementImpl implements RealmManagement {
   }
 
   @Override
-  public void delete(@Nonnull RealmDefinition expected) {
+  public void delete(@NonNull RealmDefinition expected) {
     var realmId = expected.id();
     validateRealmId(realmId);
     checkArgument(

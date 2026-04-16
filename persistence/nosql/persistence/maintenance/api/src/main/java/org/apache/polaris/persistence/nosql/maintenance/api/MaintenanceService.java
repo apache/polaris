@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.api;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus;
+import org.jspecify.annotations.NonNull;
 
 public interface MaintenanceService {
   /**
@@ -28,8 +28,7 @@ public interface MaintenanceService {
    * RealmStatus#ACTIVE ACTIVE} and {@link RealmStatus#INACTIVE INACTIVE} as "to retain" and realms
    * in state {@link RealmStatus#PURGING PURGING} as "to purge".
    */
-  @Nonnull
-  MaintenanceRunSpec buildMaintenanceRunSpec();
+  @NonNull MaintenanceRunSpec buildMaintenanceRunSpec();
 
   /**
    * Perform maintenance.
@@ -38,13 +37,12 @@ public interface MaintenanceService {
    *     #buildMaintenanceRunSpec()}
    * @return information about the maintenance run
    */
-  @Nonnull
-  MaintenanceRunInformation performMaintenance(@Nonnull MaintenanceRunSpec maintenanceRunSpec);
+  @NonNull MaintenanceRunInformation performMaintenance(
+      @NonNull MaintenanceRunSpec maintenanceRunSpec);
 
   /**
    * Retrieve information about recent maintenance runs. The number of available elements is
    * configured via {@link MaintenanceConfig#retainedRuns()}.
    */
-  @Nonnull
-  List<MaintenanceRunInformation> maintenanceRunLog();
+  @NonNull List<MaintenanceRunInformation> maintenanceRunLog();
 }

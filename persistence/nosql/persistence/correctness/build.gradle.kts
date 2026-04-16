@@ -38,6 +38,7 @@ dependencies {
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
 
   testFixturesImplementation(libs.jakarta.annotation.api)
+  testFixturesImplementation(libs.jspecify)
   testFixturesImplementation(libs.jakarta.validation.api)
 
   testFixturesCompileOnly(project(":polaris-immutables"))

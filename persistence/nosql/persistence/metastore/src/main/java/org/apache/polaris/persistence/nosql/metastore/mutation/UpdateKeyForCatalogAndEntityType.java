@@ -20,12 +20,12 @@ package org.apache.polaris.persistence.nosql.metastore.mutation;
 
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.byEntityType;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.jspecify.annotations.NonNull;
 
 public record UpdateKeyForCatalogAndEntityType(
-    @Nonnull PolarisEntityType entityType, long catalogId, boolean catalogContent) {
+    @NonNull PolarisEntityType entityType, long catalogId, boolean catalogContent) {
   public static UpdateKeyForCatalogAndEntityType updateKeyForCatalogAndEntityType(
       PolarisEntityCore entity) {
     var type = entity.getType();

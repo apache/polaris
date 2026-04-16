@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.impl;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.ids.api.IdGenerator;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeManagementState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
+import org.jspecify.annotations.NonNull;
 
 public class MockNodeStoreFactory implements NodeStoreFactory {
   private final AtomicReference<NodeManagementState> nodeState = new AtomicReference<>();
@@ -39,7 +39,7 @@ public class MockNodeStoreFactory implements NodeStoreFactory {
   }
 
   @Override
-  public boolean storeManagementState(@Nonnull NodeManagementState state) {
+  public boolean storeManagementState(@NonNull NodeManagementState state) {
     return nodeState.compareAndSet(null, state);
   }
 
@@ -48,9 +48,9 @@ public class MockNodeStoreFactory implements NodeStoreFactory {
     return Optional.ofNullable(nodeState.get());
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public NodeStore createNodeStore(@Nonnull IdGenerator idGenerator) {
+  public NodeStore createNodeStore(@NonNull IdGenerator idGenerator) {
     return nodeStore;
   }
 }

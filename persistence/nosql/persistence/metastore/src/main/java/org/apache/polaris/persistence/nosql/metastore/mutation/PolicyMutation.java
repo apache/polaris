@@ -25,7 +25,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.POLICY_MAPPINGS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.PolicyMappingKey.fromIndexKey;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
@@ -36,17 +35,18 @@ import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
+import org.jspecify.annotations.NonNull;
 
 public record PolicyMutation(
     Persistence persistence,
     MemoizedIndexedAccess memoizedIndexedAccess,
     long policyCatalogId,
     long policyId,
-    @Nonnull PolicyType policyType,
+    @NonNull PolicyType policyType,
     long targetCatalogId,
     long targetId,
     boolean doAttach,
-    @Nonnull Map<String, String> parameters) {
+    @NonNull Map<String, String> parameters) {
   public PolicyAttachmentResult apply() {
     try {
       var committer =

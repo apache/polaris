@@ -16,8 +16,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
@@ -47,9 +47,9 @@ class TableCommand(Command):
     """
 
     table_subcommand: str
-    catalog_name: str
-    namespace: List[str]
-    table_name: str
+    catalog_name: Optional[str] = None
+    namespace: Optional[List[str]] = field(default_factory=list)
+    table_name: Optional[str] = None
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -65,59 +65,66 @@ class TableCommand(Command):
             or self.table_subcommand == Subcommands.SUMMARIZE
             or self.table_subcommand == Subcommands.DELETE
         ):
-            if not self.table_name.strip():
+            if not self.table_name or not self.table_name.strip():
                 raise Exception("The table name cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))
-        ns_str = UNIT_SEPARATOR.join(self.namespace)
+        catalog_name = cast(str, self.catalog_name)
+        namespace_list = cast(List[str], self.namespace)
+        table_name = cast(str, self.table_name)
+        ns_str = UNIT_SEPARATOR.join(namespace_list)
+
         if self.table_subcommand == Subcommands.LIST:
             try:
-                result = catalog_api.list_tables(
-                    prefix=self.catalog_name, namespace=ns_str
-                )
+                result = catalog_api.list_tables(prefix=catalog_name, namespace=ns_str)
                 for table_identifier in result.identifiers:
                     print(table_identifier.to_json())
             except Exception as e:
-                handle_api_exception(f"Table Listing ({'.'.join(self.namespace)})", e)
+                handle_api_exception(
+                    f"Table Listing ({'.'.join(namespace_list)})",
+                    e,
+                )
         elif self.table_subcommand == Subcommands.GET:
             try:
                 print(
                     catalog_api.load_table(
-                        prefix=self.catalog_name,
+                        prefix=catalog_name,
                         namespace=ns_str,
-                        table=self.table_name,
+                        table=table_name,
                     ).to_json()
                 )
             except Exception as e:
-                handle_api_exception(f"Table Load ({self.table_name})", e)
+                handle_api_exception(f"Table Load ({table_name})", e)
         elif self.table_subcommand == Subcommands.DELETE:
-            print(
-                f"De-registering table {'.'.join(self.namespace)}.{self.table_name}..."
-            )
+            namespace_dot = ".".join(namespace_list)
+            print(f"De-registering table {namespace_dot}.{table_name}...")
             try:
                 catalog_api.drop_table(
-                    prefix=self.catalog_name,
+                    prefix=catalog_name,
                     namespace=ns_str,
-                    table=self.table_name,
+                    table=table_name,
                     purge_requested=False,
                 )
-                print(
-                    f"De-registering table {'.'.join(self.namespace)}.{self.table_name} completed"
-                )
+                print(f"De-registering table {namespace_dot}.{table_name} completed")
             except Exception as e:
-                handle_api_exception(f"Table De-registration ({self.table_name})", e)
+                handle_api_exception(f"Table De-registration ({table_name})", e)
         elif self.table_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api, catalog_api, ns_str)
 
     def _generate_summary(
         self, api: PolarisDefaultApi, catalog_api: IcebergCatalogAPI, ns_str: str
     ) -> None:
-        print(f"Table: {'.'.join(self.namespace)}.{self.table_name}")
+        catalog_name = cast(str, self.catalog_name)
+        namespace_list = cast(List[str], self.namespace)
+        table_name = cast(str, self.table_name)
+
+        namespace_dot = ".".join(namespace_list)
+        print(f"Table: {namespace_dot}.{table_name}")
         print("-" * 80)
         try:
             resp = catalog_api.load_table(
-                prefix=self.catalog_name, namespace=ns_str, table=self.table_name
+                prefix=catalog_name, namespace=ns_str, table=table_name
             )
             # Metadata
             metadata = resp.metadata
@@ -244,7 +251,7 @@ class TableCommand(Command):
         try:
             policy_api = PolicyAPI(catalog_api.api_client)
             resp = policy_api.get_applicable_policies(
-                prefix=self.catalog_name, namespace=ns_str, target_name=self.table_name
+                prefix=catalog_name, namespace=ns_str, target_name=table_name
             )
             applicable_policies = resp.applicable_policies or []
             if applicable_policies:

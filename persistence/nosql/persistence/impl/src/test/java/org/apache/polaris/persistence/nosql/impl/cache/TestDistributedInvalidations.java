@@ -25,7 +25,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,6 +40,7 @@ import org.apache.polaris.persistence.nosql.api.ref.ImmutableReference;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -268,12 +268,12 @@ public class TestDistributedInvalidations {
   protected static DistributedCacheInvalidation.Sender delegate(CacheBackend backend) {
     return new DistributedCacheInvalidation.Sender() {
       @Override
-      public void evictObj(@Nonnull String realmId, @Nonnull ObjRef objRef) {
+      public void evictObj(@NonNull String realmId, @NonNull ObjRef objRef) {
         backend.remove(realmId, objRef);
       }
 
       @Override
-      public void evictReference(@Nonnull String realmId, @Nonnull String refName) {
+      public void evictReference(@NonNull String realmId, @NonNull String refName) {
         backend.removeReference(realmId, refName);
       }
     };

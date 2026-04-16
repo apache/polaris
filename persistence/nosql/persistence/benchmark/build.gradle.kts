@@ -43,6 +43,7 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   jmhImplementation(libs.jmh.core)

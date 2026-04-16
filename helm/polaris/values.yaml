@@ -141,6 +141,24 @@ containerSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
+# @schema type: object
+# -- Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/).
+# Use this to configure a preStop hook for graceful shutdown, e.g.:
+# containerLifecycle:
+#   preStop:
+#     exec:
+#       command: ["/bin/sh", "-c", "sleep 30"]
+# @section -- Pod Configuration
+containerLifecycle: {}
+
+# @schema type: [integer, "null"]
+# @schema minimum: 0
+# -- (int) Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration.
+# See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
+# When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.
+# @section -- Pod Configuration
+terminationGracePeriodSeconds: ~
+
 # Polaris main service settings.
 service:
   # @schema enum: [ExternalName, ClusterIP, NodePort, LoadBalancer]
@@ -643,8 +661,7 @@ advancedConfig:
 # [EnvVar API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core)
 # This can be useful to get configuration values from Kubernetes secrets or config maps.
 # @section -- Advanced Configuration
-extraEnv:
-  []
+extraEnv: []
 #  - name: AWS_STORAGE_BUCKET
 #    value: s3://xxxxx/
 #  - name: AWS_ACCESS_KEY_ID
@@ -657,6 +674,19 @@ extraEnv:
 #      secretKeyRef:
 #        name: aws-secret
 #        key: secret_access_key
+
+# @schema item: object
+# -- Bulk import environment variables from Secrets or ConfigMaps.
+# Defines sources to populate environment variables using Kubernetes `envFrom`.
+# Each referenced Secret or ConfigMap will expose all its key-value pairs
+# as environment variables inside the Polaris container.
+# [EnvFrom API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envfromsource-v1-core)
+# @section -- Advanced Configuration
+envFrom: []
+#  - secretRef:
+#      name: polaris-env-secret
+#  - configMapRef:
+#      name: polaris-env-configmap
 
 # @schema item: object
 # -- Extra volumes to add to the polaris pod. See [Volumes](https://kubernetes.io/docs/concepts/storage/volumes/).
@@ -1103,7 +1133,7 @@ cors:
   # @section -- CORS
   accessControlMaxAge: ""  # PT10M
   # @schema type:[boolean, null]
-  # -- The `Access-Control-Allow-Credentials` response header.
+  # -- (bool) The `Access-Control-Allow-Credentials` response header.
   # The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header.
   # @section -- CORS
   accessControlAllowCredentials: ~  # true

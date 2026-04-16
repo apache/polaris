@@ -158,7 +158,7 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
@@ -201,7 +201,6 @@ jobs:
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
-          exec_process rm -f "${version_dir}/*vote-email{-subject,-body}.txt"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
@@ -354,7 +353,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: 'latest'
 
@@ -364,7 +363,7 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
           gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
@@ -585,7 +584,7 @@ jobs:
           You can find the KEYS file here:
           * https://downloads.apache.org/polaris/KEYS
 
-          Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
+          Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
           * https://repository.apache.org/content/repositories/${staging_repository_id}/
 
           Please download, verify, and test according to the release verification guide, which can be found at:
@@ -593,7 +592,7 @@ jobs:
 
           Please vote in the next 72 hours.
 
-          [ ] +1 Release this as Apache polaris ${version_without_rc}
+          [ ] +1 Release this as Apache Polaris ${version_without_rc}
           [ ] +0
           [ ] -1 Do not release this because...
 
