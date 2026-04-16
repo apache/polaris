@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.core.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
-import org.assertj.core.api.Assertions;
+import org.apache.iceberg.rest.RESTUtil;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,13 +52,15 @@ public class PolarisEntityUtilsTest {
   @ParameterizedTest
   @MethodSource("encodeNamespaceCases")
   public void testEncodeNamespace(Namespace ns, String expected) {
-    Assertions.assertThat(PolarisEntityUtils.encodeNamespace(ns)).isEqualTo(expected);
+    assertThat(PolarisEntityUtils.encodeNamespace(ns))
+        .isEqualTo(RESTUtil.encodeNamespace(ns))
+        .isEqualTo(expected);
   }
 
   @ParameterizedTest
   @NullSource
   public void testEncodeNamespaceNullInput(Namespace ns) {
-    Assertions.assertThatThrownBy(() -> PolarisEntityUtils.encodeNamespace(ns))
+    assertThatThrownBy(() -> PolarisEntityUtils.encodeNamespace(ns))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid namespace: null");
   }
@@ -81,35 +86,36 @@ public class PolarisEntityUtilsTest {
   @ParameterizedTest
   @MethodSource("decodeNamespaceCases")
   public void testDecodeNamespace(String encoded, Namespace expected) {
-    Assertions.assertThat(PolarisEntityUtils.decodeNamespace(encoded)).isEqualTo(expected);
+    assertThat(PolarisEntityUtils.decodeNamespace(encoded))
+        .isEqualTo(RESTUtil.decodeNamespace(encoded))
+        .isEqualTo(expected);
   }
 
   @ParameterizedTest
   @NullSource
   public void testDecodeNamespaceNullInput(String encoded) {
-    Assertions.assertThatThrownBy(() -> PolarisEntityUtils.decodeNamespace(encoded))
+    assertThatThrownBy(() -> PolarisEntityUtils.decodeNamespace(encoded))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Invalid namespace: null");
   }
 
-  static Stream<Arguments> roundTripCases() {
+  static Stream<Namespace> roundTripCases() {
     return Stream.of(
-        Arguments.of(Namespace.of("a")),
-        Arguments.of(Namespace.of("a", "b")),
-        Arguments.of(Namespace.of("a", "b", "c")),
-        Arguments.of(Namespace.of("hello world")),
-        Arguments.of(Namespace.of("a/b", "c")),
+        Namespace.of("a"),
+        Namespace.of("a", "b"),
+        Namespace.of("a", "b", "c"),
+        Namespace.of("hello world"),
+        Namespace.of("a/b", "c"),
         // literal %1F in a level name must survive the round-trip
-        Arguments.of(Namespace.of("%1F")),
-        Arguments.of(Namespace.of("a", "", "b")),
-        Arguments.of(Namespace.of("unicode \u4e2d\u6587")));
+        Namespace.of("%1F"),
+        Namespace.of("a", "", "b"),
+        Namespace.of("unicode \u4e2d\u6587"));
   }
 
   @ParameterizedTest
   @MethodSource("roundTripCases")
   public void testRoundTrip(Namespace ns) {
-    Assertions.assertThat(
-            PolarisEntityUtils.decodeNamespace(PolarisEntityUtils.encodeNamespace(ns)))
+    assertThat(PolarisEntityUtils.decodeNamespace(PolarisEntityUtils.encodeNamespace(ns)))
         .isEqualTo(ns);
   }
 }
