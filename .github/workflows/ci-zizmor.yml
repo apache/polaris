@@ -22,14 +22,8 @@ name: Zizmor
 on:
   pull_request:
     branches: [ "main", "release/*", "feature/*" ]
-    paths:
-      - '.github/workflows/**'
-      - '.github/actions/**'
   push:
-    branches: [ "main" ]
-    paths:
-      - '.github/workflows/**'
-      - '.github/actions/**'
+    branches: [ "main", "release/*", "feature/*" ]
 
 permissions:
   contents: read

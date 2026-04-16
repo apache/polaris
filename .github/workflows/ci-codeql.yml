@@ -21,9 +21,9 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/*", "feature/*" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/*", "feature/*" ]
   schedule:
     - cron: '16 4 * * 1'
 
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze Actions
+    name: CodeQL Analyze
     if: github.repository_owner == 'apache'
     runs-on: ubuntu-latest
     permissions:
