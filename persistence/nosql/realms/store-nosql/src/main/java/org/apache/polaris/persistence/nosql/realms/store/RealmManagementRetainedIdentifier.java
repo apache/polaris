@@ -20,12 +20,12 @@ package org.apache.polaris.persistence.nosql.realms.store;
 
 import static org.apache.polaris.persistence.nosql.realms.store.RealmsStateObj.REALMS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.maintenance.spi.CountDownPredicate;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ class RealmManagementRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
     if (!collector.isSystemRealm()) {
       return false;
     }

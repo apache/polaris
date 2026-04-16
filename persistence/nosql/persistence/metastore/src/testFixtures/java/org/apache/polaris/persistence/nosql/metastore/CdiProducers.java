@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.metastore;
 
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
@@ -28,6 +27,7 @@ import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 public class CdiProducers {

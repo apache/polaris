@@ -20,13 +20,13 @@ package org.apache.polaris.persistence.nosql.impl.cache;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 final class DistributedInvalidationsCacheBackend implements CacheBackend {
   private final CacheBackend local;
@@ -39,40 +39,40 @@ final class DistributedInvalidationsCacheBackend implements CacheBackend {
   }
 
   @Override
-  public Persistence wrap(@Nonnull Persistence persist) {
+  public Persistence wrap(@NonNull Persistence persist) {
     return new CachingPersistenceImpl(persist, this);
   }
 
   @Override
-  public Obj get(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public Obj get(@NonNull String realmId, @NonNull ObjRef id) {
     return local.get(realmId, id);
   }
 
   @Override
-  public void put(@Nonnull String realmId, @Nonnull Obj obj) {
+  public void put(@NonNull String realmId, @NonNull Obj obj) {
     // Note: .put() vs .putLocal() doesn't matter here, because 'local' is the local cache.
     local.putLocal(realmId, obj);
     sender.evictObj(realmId, objRef(obj));
   }
 
   @Override
-  public void putLocal(@Nonnull String realmId, @Nonnull Obj obj) {
+  public void putLocal(@NonNull String realmId, @NonNull Obj obj) {
     local.putLocal(realmId, obj);
   }
 
   @Override
-  public void putNegative(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public void putNegative(@NonNull String realmId, @NonNull ObjRef id) {
     local.putNegative(realmId, id);
   }
 
   @Override
-  public void remove(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public void remove(@NonNull String realmId, @NonNull ObjRef id) {
     local.remove(realmId, id);
     sender.evictObj(realmId, id);
   }
 
   @Override
-  public void clear(@Nonnull String realmId) {
+  public void clear(@NonNull String realmId) {
     local.clear(realmId);
   }
 
@@ -87,23 +87,23 @@ final class DistributedInvalidationsCacheBackend implements CacheBackend {
   }
 
   @Override
-  public Reference getReference(@Nonnull String realmId, @Nonnull String name) {
+  public Reference getReference(@NonNull String realmId, @NonNull String name) {
     return local.getReference(realmId, name);
   }
 
   @Override
-  public void removeReference(@Nonnull String realmId, @Nonnull String name) {
+  public void removeReference(@NonNull String realmId, @NonNull String name) {
     local.removeReference(realmId, name);
     sender.evictReference(realmId, name);
   }
 
   @Override
-  public void putReferenceLocal(@Nonnull String realmId, @Nonnull Reference reference) {
+  public void putReferenceLocal(@NonNull String realmId, @NonNull Reference reference) {
     local.putReferenceLocal(realmId, reference);
   }
 
   @Override
-  public void putReference(@Nonnull String realmId, @Nonnull Reference reference) {
+  public void putReference(@NonNull String realmId, @NonNull Reference reference) {
     // Note: .putReference() vs .putReferenceLocal() doesn't matter here, because 'local' is the
     // local cache.
     local.putReferenceLocal(realmId, reference);
@@ -111,7 +111,7 @@ final class DistributedInvalidationsCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void putReferenceNegative(@Nonnull String realmId, @Nonnull String name) {
+  public void putReferenceNegative(@NonNull String realmId, @NonNull String name) {
     local.putReferenceNegative(realmId, name);
   }
 }

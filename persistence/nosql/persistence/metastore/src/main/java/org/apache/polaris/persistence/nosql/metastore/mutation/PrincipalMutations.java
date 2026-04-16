@@ -27,8 +27,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMa
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.principalObjToPolarisPrincipalSecrets;
 import static org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj.PRINCIPALS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -48,6 +46,8 @@ import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
 import org.apache.polaris.persistence.nosql.metastore.committers.PrincipalsChangeCommitter;
 import org.apache.polaris.persistence.nosql.metastore.committers.PrincipalsChangeCommitterWrapper;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,14 +114,14 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
       return resultType;
     }
 
-    @Nonnull
+    @NonNull
     @Override
     public ChangeResult<R> change(
-        @Nonnull CommitterState<PrincipalsObj, R> state,
-        @Nonnull PrincipalsObj.Builder ref,
-        @Nonnull UpdatableIndex<ObjRef> byName,
-        @Nonnull UpdatableIndex<IndexKey> byId,
-        @Nonnull UpdatableIndex<ObjRef> byClientId)
+        @NonNull CommitterState<PrincipalsObj, R> state,
+        PrincipalsObj.@NonNull Builder ref,
+        @NonNull UpdatableIndex<ObjRef> byName,
+        @NonNull UpdatableIndex<IndexKey> byId,
+        @NonNull UpdatableIndex<ObjRef> byClientId)
         throws CommitException {
       var principalIdName = byId.get(IndexKey.key(principalId));
       if (principalIdName == null) {
@@ -186,14 +186,14 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
       return CreatePrincipalResult.class;
     }
 
-    @Nonnull
+    @NonNull
     @Override
     public ChangeResult<CreatePrincipalResult> change(
-        @Nonnull CommitterState<PrincipalsObj, CreatePrincipalResult> state,
-        @Nonnull PrincipalsObj.Builder ref,
-        @Nonnull UpdatableIndex<ObjRef> byName,
-        @Nonnull UpdatableIndex<IndexKey> byId,
-        @Nonnull UpdatableIndex<ObjRef> byClientId)
+        @NonNull CommitterState<PrincipalsObj, CreatePrincipalResult> state,
+        PrincipalsObj.@NonNull Builder ref,
+        @NonNull UpdatableIndex<ObjRef> byName,
+        @NonNull UpdatableIndex<IndexKey> byId,
+        @NonNull UpdatableIndex<ObjRef> byClientId)
         throws CommitException {
       var principalName = principal.getName();
       var principalId = principal.getId();
@@ -278,14 +278,14 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
       return PolarisPrincipalSecrets.class;
     }
 
-    @Nonnull
+    @NonNull
     @Override
     public ChangeResult<PolarisPrincipalSecrets> change(
-        @Nonnull CommitterState<PrincipalsObj, PolarisPrincipalSecrets> state,
-        @Nonnull PrincipalsObj.Builder ref,
-        @Nonnull UpdatableIndex<ObjRef> byName,
-        @Nonnull UpdatableIndex<IndexKey> byId,
-        @Nonnull UpdatableIndex<ObjRef> byClientId)
+        @NonNull CommitterState<PrincipalsObj, PolarisPrincipalSecrets> state,
+        PrincipalsObj.@NonNull Builder ref,
+        @NonNull UpdatableIndex<ObjRef> byName,
+        @NonNull UpdatableIndex<IndexKey> byId,
+        @NonNull UpdatableIndex<ObjRef> byClientId)
         throws CommitException {
       var nameKey = IndexKey.key(principalName);
       var principalObjRef = byName.get(nameKey);

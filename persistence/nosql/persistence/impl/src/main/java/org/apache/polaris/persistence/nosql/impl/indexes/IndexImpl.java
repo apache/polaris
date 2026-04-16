@@ -29,8 +29,6 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.AbstractList;
@@ -43,6 +41,8 @@ import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Implementation of {@link Index} that implements "version 1 serialization" of key-index-segments.
@@ -369,7 +369,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     modified = true;
     var e = elements;
     var serializer = this.serializer;
@@ -403,7 +403,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     var e = elements;
     var idx = search(e, key);
     if (idx < 0) {
@@ -424,19 +424,19 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     var idx = search(elements, key);
     return idx >= 0;
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
+  public boolean contains(@NonNull IndexKey key) {
     var el = getElement(key);
     return el != null && el.valueNullable() != null;
   }
 
   @Override
-  public @Nullable InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public @Nullable InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     var e = elements;
     var idx = search(e, key);
     if (idx < 0) {
@@ -460,7 +460,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull Iterator<InternalIndexElement<V>> elementIterator(
+  public @NonNull Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -495,7 +495,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull Iterator<InternalIndexElement<V>> reverseElementIterator(
+  public @NonNull Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -574,7 +574,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull ByteBuffer serialize() {
+  public @NonNull ByteBuffer serialize() {
     ByteBuffer target;
 
     if (serialized == null || modified) {
@@ -895,7 +895,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    @Nonnull
+    @NonNull
     public IndexKey key() {
       var k = key;
       if (k == null) {
@@ -976,7 +976,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return requireNonNull(serialized).duplicate();
   }
 
-  private static <V> int search(List<InternalIndexElement<V>> e, @Nonnull IndexKey key) {
+  private static <V> int search(List<InternalIndexElement<V>> e, @NonNull IndexKey key) {
     // Need a StoreIndexElement for the sake of 'binarySearch()' (the content value isn't used)
     return search(e, indexElement(key, ""));
   }

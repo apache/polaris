@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.maintenance.spi;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 
-import jakarta.annotation.Nonnull;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -35,11 +34,11 @@ import org.apache.polaris.persistence.nosql.api.index.IndexStripe;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 public interface RetainedCollector {
   /** ID of the realm being processed. */
-  @Nonnull
-  String realm();
+  @NonNull String realm();
 
   default boolean isSystemRealm() {
     return SYSTEM_REALM_ID.equals(realm());
@@ -58,8 +57,7 @@ public interface RetainedCollector {
    * efficient to just call the {@link #retainReference(String)}/{@link #retainObject(ObjRef)}
    * functions, because those will not access the backend database.
    */
-  @Nonnull
-  Persistence realmPersistence();
+  @NonNull Persistence realmPersistence();
 
   /**
    * Instruct the maintenance service to retain the reference with the given name.
@@ -67,7 +65,7 @@ public interface RetainedCollector {
    * <p>References that are fetched via {@link #realmPersistence()} are automatically marked to be
    * retained.
    */
-  void retainReference(@Nonnull String name);
+  void retainReference(@NonNull String name);
 
   /**
    * Instruct the maintenance service to retain the reference with the given object ID.
@@ -75,7 +73,7 @@ public interface RetainedCollector {
    * <p>Objects that are fetched via {@link #realmPersistence()} are automatically marked to be
    * retained.
    */
-  void retainObject(@Nonnull ObjRef objRef);
+  void retainObject(@NonNull ObjRef objRef);
 
   default <V> void indexRetain(IndexContainer<V> indexContainer) {
     indexContainer.stripes().stream().map(IndexStripe::segment).forEach(this::retainObject);

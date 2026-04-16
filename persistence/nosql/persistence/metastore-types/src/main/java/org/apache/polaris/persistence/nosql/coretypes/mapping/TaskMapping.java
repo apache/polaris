@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
 import static org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj.IMMEDIATE_TASKS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -42,6 +41,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTaskObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
+import org.jspecify.annotations.NonNull;
 
 final class TaskMapping extends BaseMapping<ImmediateTaskObj, ImmediateTaskObj.Builder> {
   TaskMapping() {
@@ -53,14 +53,14 @@ final class TaskMapping extends BaseMapping<ImmediateTaskObj, ImmediateTaskObj.B
   }
 
   @Override
-  public ImmediateTaskObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public ImmediateTaskObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return ImmediateTaskObj.builder();
   }
 
   @Override
   void mapToObjTypeSpecific(
       ImmediateTaskObj.Builder b,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

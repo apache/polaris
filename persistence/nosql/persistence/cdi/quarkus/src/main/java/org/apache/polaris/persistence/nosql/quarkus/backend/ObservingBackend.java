@@ -25,7 +25,6 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.enterprise.inject.Produces;
@@ -45,6 +44,7 @@ import org.apache.polaris.persistence.nosql.api.backend.PersistId;
 import org.apache.polaris.persistence.nosql.api.backend.WriteObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 /** Provides telemetry and tracing for all persistence backend operations. */
 @ApplicationScoped
@@ -58,17 +58,17 @@ public class ObservingBackend implements Backend {
     this.backend = backend;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public String type() {
     return backend.type();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Persistence newPersistence(
       Function<Backend, Backend> backendWrapper,
-      @Nonnull PersistenceParams persistenceParams,
+      @NonNull PersistenceParams persistenceParams,
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator) {
@@ -123,7 +123,7 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".scanBackend", histogram = true, longTask = true)
   @Override
   public void scanBackend(
-      @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer) {
+      @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer) {
     backend.scanBackend(referenceConsumer, objConsumer);
   }
 
@@ -132,7 +132,7 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".createReference", histogram = true)
   @Override
   public boolean createReference(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull Reference newRef) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull Reference newRef) {
     return backend.createReference(realmId, newRef);
   }
 
@@ -141,7 +141,7 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".createReferencesSilent", histogram = true)
   @Override
   public void createReferences(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull List<Reference> newRefs) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull List<Reference> newRefs) {
     backend.createReferences(realmId, newRefs);
   }
 
@@ -150,29 +150,29 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".updateReference", histogram = true)
   @Override
   public boolean updateReference(
-      @SpanAttribute("realm-id") @Nonnull String realmId,
-      @Nonnull Reference updatedRef,
-      @Nonnull Optional<ObjRef> expectedPointer) {
+      @SpanAttribute("realm-id") @NonNull String realmId,
+      @NonNull Reference updatedRef,
+      @NonNull Optional<ObjRef> expectedPointer) {
     return backend.updateReference(realmId, updatedRef, expectedPointer);
   }
 
   @WithSpan(TELEMETRY_PREFIX + ".fetchReference")
   @Counted(TELEMETRY_PREFIX + ".fetchReference")
   @Timed(value = TELEMETRY_PREFIX + ".fetchReference", histogram = true)
-  @Nonnull
+  @NonNull
   @Override
   public Reference fetchReference(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull String name) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull String name) {
     return backend.fetchReference(realmId, name);
   }
 
   @WithSpan(TELEMETRY_PREFIX + ".fetch")
   @Counted(TELEMETRY_PREFIX + ".fetch")
   @Timed(value = TELEMETRY_PREFIX + ".fetch", histogram = true)
-  @Nonnull
+  @NonNull
   @Override
   public Map<PersistId, FetchedObj> fetch(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull Set<PersistId> ids) {
     return backend.fetch(realmId, ids);
   }
 
@@ -181,7 +181,7 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".write", histogram = true)
   @Override
   public void write(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull List<WriteObj> writes) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull List<WriteObj> writes) {
     backend.write(realmId, writes);
   }
 
@@ -190,7 +190,7 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".delete", histogram = true)
   @Override
   public void delete(
-      @SpanAttribute("realm-id") @Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+      @SpanAttribute("realm-id") @NonNull String realmId, @NonNull Set<PersistId> ids) {
     backend.delete(realmId, ids);
   }
 
@@ -199,12 +199,12 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".conditionalInsert", histogram = true)
   @Override
   public boolean conditionalInsert(
-      @SpanAttribute("realm-id") @Nonnull String realmId,
+      @SpanAttribute("realm-id") @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String versionToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String versionToken,
+      @NonNull byte[] serializedValue) {
     return backend.conditionalInsert(
         realmId, objTypeId, persistId, createdAtMicros, versionToken, serializedValue);
   }
@@ -214,13 +214,13 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".conditionalUpdate", histogram = true)
   @Override
   public boolean conditionalUpdate(
-      @SpanAttribute("realm-id") @Nonnull String realmId,
+      @SpanAttribute("realm-id") @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String updateToken,
-      @Nonnull String expectedToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String updateToken,
+      @NonNull String expectedToken,
+      @NonNull byte[] serializedValue) {
     return backend.conditionalUpdate(
         realmId,
         objTypeId,
@@ -236,9 +236,9 @@ public class ObservingBackend implements Backend {
   @Timed(value = TELEMETRY_PREFIX + ".conditionalDelete", histogram = true)
   @Override
   public boolean conditionalDelete(
-      @SpanAttribute("realm-id") @Nonnull String realmId,
-      @Nonnull PersistId persistId,
-      @Nonnull String expectedToken) {
+      @SpanAttribute("realm-id") @NonNull String realmId,
+      @NonNull PersistId persistId,
+      @NonNull String expectedToken) {
     return backend.conditionalDelete(realmId, persistId, expectedToken);
   }
 
@@ -247,8 +247,7 @@ public class ObservingBackend implements Backend {
   public MeterFilter renameApplicationMeters() {
     return new MeterFilter() {
       @Override
-      @Nonnull
-      public Meter.Id map(@Nonnull Meter.Id id) {
+      public Meter.@NonNull Id map(Meter.@NonNull Id id) {
         var tags = id.getTags();
         var tag = Tag.of("class", ObservingBackend.class.getName());
         if (tags.contains(tag)) {

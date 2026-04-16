@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Internal index element representation.
@@ -47,6 +47,5 @@ interface InternalIndexElement<V> extends Index.Element<V> {
 
   int contentSerializedSize(IndexValueSerializer<V> ser);
 
-  @Nullable
-  V valueNullable();
+  @Nullable V valueNullable();
 }

@@ -27,8 +27,6 @@ import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMa
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.mapToEntityNameLookupRecord;
 import static org.apache.polaris.persistence.nosql.coretypes.mapping.EntityObjMappings.principalObjToPolarisPrincipalSecrets;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +78,8 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 record NoSqlMetaStoreManager(
     Supplier<BaseResult> purgeRealm, RootCredentialsSet rootCredentialsSet, Clock clock)
@@ -93,20 +93,20 @@ record NoSqlMetaStoreManager(
 
   // Realms
 
-  @Nonnull
+  @NonNull
   @Override
-  public BaseResult purge(@Nonnull PolarisCallContext callCtx) {
+  public BaseResult purge(@NonNull PolarisCallContext callCtx) {
     return purgeRealm.get();
   }
 
   // Catalog
 
-  @Nonnull
+  @NonNull
   @Override
   public CreateCatalogResult createCatalog(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity catalog,
-      @Nonnull List<PolarisEntityCore> principalRoles) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity catalog,
+      @NonNull List<PolarisEntityCore> principalRoles) {
     var prRoles = principalRoles.stream().map(PolarisBaseEntity.class::cast).toList();
 
     return ms(callCtx).createCatalog(catalog, prRoles);
@@ -114,49 +114,49 @@ record NoSqlMetaStoreManager(
 
   // Generic entities
 
-  @Nonnull
+  @NonNull
   @Override
   public EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity) {
+      @NonNull PolarisBaseEntity entity) {
     return ms(callCtx).createEntity(entity);
   }
 
   @SuppressWarnings("unchecked")
-  @Nonnull
+  @NonNull
   @Override
   public EntitiesResult createEntitiesIfNotExist(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull List<? extends PolarisBaseEntity> entities) {
+      @NonNull List<? extends PolarisBaseEntity> entities) {
     return ms(callCtx).createEntities((List<PolarisBaseEntity>) entities);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity) {
+      @NonNull PolarisBaseEntity entity) {
     return ms(callCtx).updateEntity(entity);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
+      @NonNull PolarisCallContext callCtx, @NonNull List<EntityWithPath> entities) {
     return ms(callCtx).updateEntities(entities);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntityResult renameEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entityToRename,
+      @NonNull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
-      @Nonnull PolarisEntity renamedEntity) {
+      @NonNull PolarisEntity renamedEntity) {
     if (newCatalogPath != null && !newCatalogPath.isEmpty()) {
       var last = newCatalogPath.getLast();
       // At least BasePolarisMetaStoreManagerTest comes with the wrong parentId in renamedEntity
@@ -167,25 +167,25 @@ record NoSqlMetaStoreManager(
     return ms(callCtx).updateEntity(renamedEntity);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entityToDrop,
+      @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return ms(callCtx).dropEntity(entityToDrop, cleanupProperties, cleanup);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntityResult readEntityByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull String name) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull String name) {
     return readEntityByName(ms(callCtx), catalogPath, entityType, name);
   }
 
@@ -204,14 +204,14 @@ record NoSqlMetaStoreManager(
     return entity != null ? new EntityResult(entity) : new EntityResult(ENTITY_NOT_FOUND, null);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Page<PolarisBaseEntity> listFullEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken) {
     var catalogStableId =
         (catalogPath != null && !catalogPath.isEmpty()) ? catalogPath.getFirst().getId() : 0L;
 
@@ -230,14 +230,14 @@ record NoSqlMetaStoreManager(
             Function.identity());
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken) {
     var catalogStableId =
         (catalogPath != null && !catalogPath.isEmpty()) ? catalogPath.getFirst().getId() : 0L;
 
@@ -259,25 +259,25 @@ record NoSqlMetaStoreManager(
     return new ListEntitiesResult(page);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
+  public GenerateEntityIdResult generateNewEntityId(@NonNull PolarisCallContext callCtx) {
     return new GenerateEntityIdResult(ms(callCtx).generateNewId());
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityType entityType,
+      @NonNull List<PolarisEntityId> entityIds) {
     throw new UnsupportedOperationException("Not implemented");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
@@ -298,14 +298,14 @@ record NoSqlMetaStoreManager(
     return new ResolvedEntityResult(entity, entity.getGrantRecordsVersion(), grantRecords);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull String entityName) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull String entityName) {
     var ms = ms(callCtx);
 
     // load that entity
@@ -323,13 +323,13 @@ record NoSqlMetaStoreManager(
     return new ResolvedEntityResult(entity, entity.getGrantRecordsVersion(), grantRecords);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId) {
     return loadResolvedEntityById(callCtx, entityCatalogId, entityId, entityType);
@@ -337,13 +337,13 @@ record NoSqlMetaStoreManager(
 
   // Principals & Polaris GrantManager
 
-  @Nonnull
+  @NonNull
   @Override
   public PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @Nonnull PolarisEntityCore role,
-      @Nonnull PolarisEntityCore grantee) {
+      @NonNull PolarisEntityCore role,
+      @NonNull PolarisEntityCore grantee) {
     var privilege =
         (grantee.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             ? PolarisPrivilege.CATALOG_ROLE_USAGE
@@ -352,13 +352,13 @@ record NoSqlMetaStoreManager(
     return grantPrivilegeOnSecurableToRole(callCtx, grantee, null, role, privilege);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @Nonnull PolarisEntityCore role,
-      @Nonnull PolarisEntityCore grantee) {
+      @NonNull PolarisEntityCore role,
+      @NonNull PolarisEntityCore grantee) {
     var privilege =
         (grantee.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             ? PolarisPrivilege.CATALOG_ROLE_USAGE
@@ -367,25 +367,25 @@ record NoSqlMetaStoreManager(
     return revokePrivilegeOnSecurableFromRole(callCtx, grantee, null, role, privilege);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore grantee,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore securable,
-      @Nonnull PolarisPrivilege privilege) {
+      @NonNull PolarisEntityCore securable,
+      @NonNull PolarisPrivilege privilege) {
     return grantOrRevokePrivilegeOnSecurableToRole(callCtx, true, grantee, securable, privilege);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore grantee,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore securable,
-      @Nonnull PolarisPrivilege privilege) {
+      @NonNull PolarisEntityCore securable,
+      @NonNull PolarisPrivilege privilege) {
     return grantOrRevokePrivilegeOnSecurableToRole(callCtx, false, grantee, securable, privilege);
   }
 
@@ -412,36 +412,36 @@ record NoSqlMetaStoreManager(
     return new PrivilegeResult(grantRecord);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
+      @NonNull PolarisCallContext callCtx, PolarisEntityCore securable) {
     return ms(callCtx)
         .loadGrants(securable.getCatalogId(), securable.getId(), securable.getTypeCode(), true);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+      @NonNull PolarisCallContext callCtx, PolarisEntityCore grantee) {
     return ms(callCtx)
         .loadGrants(grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode(), false);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ChangeTrackingResult loadEntitiesChangeTracking(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx, @NonNull List<PolarisEntityId> entityIds) {
     throw new UnsupportedOperationException("No change tracking - do not call this function");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long entityCatalogId,
       long entityId,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull PolarisEntityType entityType) {
     var entity = ms(callCtx).lookupEntity(entityCatalogId, entityId, entityType.getCode());
     return (entity != null) ? new EntityResult(entity) : new EntityResult(ENTITY_NOT_FOUND, null);
   }
@@ -449,14 +449,14 @@ record NoSqlMetaStoreManager(
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @Nonnull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext, T entity) {
     return Optional.of(ms(callContext).hasOverlappingSiblings(entity));
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+      @NonNull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     var ms = ms(callCtx);
 
     // find all available tasks
@@ -506,14 +506,14 @@ record NoSqlMetaStoreManager(
 
   // Policies
 
-  @Nonnull
+  @NonNull
   @Override
   public PolicyAttachmentResult attachPolicyToEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath,
-      @Nonnull PolicyEntity policy,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      @NonNull List<PolarisEntityCore> policyCatalogPath,
+      @NonNull PolicyEntity policy,
       Map<String, String> parameters) {
     if (parameters == null) {
       parameters = Map.of();
@@ -529,14 +529,14 @@ record NoSqlMetaStoreManager(
             parameters);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PolicyAttachmentResult detachPolicyFromEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath,
-      @Nonnull PolicyEntity policy) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityCore target,
+      @NonNull List<PolarisEntityCore> policyCatalogPath,
+      @NonNull PolicyEntity policy) {
     return ms(callCtx)
         .attachDetachPolicyOnEntity(
             policy.getCatalogId(),
@@ -548,21 +548,21 @@ record NoSqlMetaStoreManager(
             Map.of());
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public LoadPolicyMappingsResult loadPoliciesOnEntity(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore target) {
     return ms(callCtx)
         .loadPoliciesOnEntity(
             target.getType(), target.getCatalogId(), target.getId(), Optional.empty());
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public LoadPolicyMappingsResult loadPoliciesOnEntityByType(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull PolicyType policyType) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore target,
+      @NonNull PolicyType policyType) {
     return ms(callCtx)
         .loadPoliciesOnEntity(
             target.getType(), target.getCatalogId(), target.getId(), Optional.of(policyType));
@@ -570,17 +570,17 @@ record NoSqlMetaStoreManager(
 
   // Principals & PolarisSecretsManager
 
-  @Nonnull
+  @NonNull
   @Override
   public CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal) {
+      @NonNull PolarisCallContext callCtx, @NonNull PrincipalEntity principal) {
     return ms(callCtx).createPrincipal(principal, rootCredentialsSet);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrincipalSecretsResult loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId) {
     var secrets = ms(callCtx).loadPrincipalSecrets(clientId);
 
     return (secrets == null)
@@ -588,14 +588,14 @@ record NoSqlMetaStoreManager(
         : new PrincipalSecretsResult(secrets);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash) {
+      @NonNull String oldSecretHash) {
     return rotatePrincipalSecrets(ms(callCtx), principalId, reset, oldSecretHash);
   }
 
@@ -630,12 +630,12 @@ record NoSqlMetaStoreManager(
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PrincipalSecretsResult resetPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long principalId,
-      @Nonnull String resolvedClientId,
+      @NonNull String resolvedClientId,
       String customClientSecret) {
     try {
       return ms(callCtx)
@@ -663,7 +663,7 @@ record NoSqlMetaStoreManager(
 
   @Override
   public void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId, long principalId) {
     ms(callCtx)
         .updatePrincipalSecrets(
             String.class,
@@ -682,19 +682,19 @@ record NoSqlMetaStoreManager(
 
   // PolarisCredentialVendor
 
-  @Nonnull
+  @NonNull
   @Override
   public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
 
     checkArgument(
         !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
@@ -740,7 +740,7 @@ record NoSqlMetaStoreManager(
 
   @Override
   public void writeEvents(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+      @NonNull PolarisCallContext callCtx, @NonNull List<PolarisEvent> polarisEvents) {
     throw new UnsupportedOperationException("Events not supported in NoSQL persistence");
   }
 }
