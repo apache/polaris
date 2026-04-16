@@ -65,22 +65,17 @@ Check prerequisites based on the deployment type chosen:
 
 ### How to Check
 
-Run appropriate commands:
+Run appropriate commands based on the deployment type chosen. For efficiency, only check the tools you need and run checks in parallel:
 
 ```bash
-# Docker version
-docker --version
-docker compose version
+# For Quickstart/Docker - check in parallel
+docker --version & docker compose version & wait
 
-# Java version
-java -version
+# For Gradle - check in parallel
+docker --version & java -version & git --version & wait
 
-# Git
-git --version
-
-# For Kubernetes
-kubectl version --client
-helm version
+# For Kubernetes - check in parallel
+kubectl version --client & helm version & wait
 ```
 
 **Interpret the results** and tell the user clearly:
@@ -130,8 +125,10 @@ The logs will include credentials and example commands - guide them to save thes
 For users who want more control, guide them to clone the repository first:
 
 ```bash
-# Clone Polaris
-git clone https://github.com/apache/polaris.git
+# Clone Polaris (skip if already cloned)
+if [ ! -d "polaris" ]; then
+  git clone https://github.com/apache/polaris.git
+fi
 cd polaris
 
 # Build the Docker images
@@ -155,7 +152,9 @@ For contributors or those who want to run Polaris as a standalone process:
 
 ```bash
 # Clone if not already done
-git clone https://github.com/apache/polaris.git
+if [ ! -d "polaris" ]; then
+  git clone https://github.com/apache/polaris.git
+fi
 cd polaris
 
 # Build (this runs tests, takes 10-15 minutes)
@@ -173,6 +172,8 @@ cd polaris
 - Client Secret: `s3cr3t`
 - Realm: `POLARIS`
 
+⚠️ **Security Note**: These are default credentials for local development only. Change them immediately for any production or shared environment.
+
 The server will be available at:
 - API: http://localhost:8181
 - Management: http://localhost:8182
@@ -184,14 +185,13 @@ The server will be available at:
 Guide users to use Helm charts:
 
 ```bash
-# Clone repository
-git clone https://github.com/apache/polaris.git
+# Clone repository if not already done
+if [ ! -d "polaris" ]; then
+  git clone https://github.com/apache/polaris.git
+fi
 cd polaris/helm/polaris
 
-# Review values
-cat values.yaml
-
-# Install
+# Install (see helm/polaris/README.md for configuration options)
 helm install polaris . -n polaris --create-namespace
 
 # Check status
@@ -199,7 +199,7 @@ kubectl get pods -n polaris
 kubectl get services -n polaris
 ```
 
-Refer them to `helm/polaris/README.md` for detailed configuration options.
+Refer them to `helm/polaris/README.md` for detailed configuration options including storage, authentication, and replica settings.
 
 **After deployment starts**, wait for it to be healthy before continuing. Use appropriate health check commands for the deployment type.
 
@@ -207,19 +207,22 @@ Refer them to `helm/polaris/README.md` for detailed configuration options.
 
 ## Step 4: Verify Installation
 
-Once Polaris is running, verify it's accessible:
+Once Polaris is running, verify it's accessible. Use an automated retry loop:
 
 ```bash
-# Check health endpoint
-curl http://localhost:8182/q/health
-
-# Should return: {"status":"UP",...}
+# Wait for Polaris to be ready (with retry)
+echo "Waiting for Polaris to start..."
+until curl -s http://localhost:8182/q/health | grep -q '"status":"UP"'; do
+  echo "Not ready yet, waiting..."
+  sleep 2
+done
+echo "✅ Polaris is UP!"
 ```
 
-If health check fails, help troubleshoot:
-- Check if containers/processes are running
-- Check logs for errors
-- Verify ports are not already in use
+If health check continues to fail after 2-3 minutes, help troubleshoot:
+- Check if containers/processes are running: `docker ps` or `ps aux | grep polaris`
+- Check logs for errors: `docker logs polaris-polaris-1` or check console output
+- Verify ports are not already in use: `lsof -i :8181 -i :8182` or `netstat -an | grep 818`
 - Check firewall/network settings
 
 ---
@@ -235,13 +238,19 @@ Guide them through creating their first catalog using the REST API or `polaris` 
 #### Using REST API:
 
 ```bash
-# Get a token
-export TOKEN=$(curl -s -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+# Get a token (with error checking)
+TOKEN=$(curl -sS -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'grant_type=client_credentials' \
   -d 'client_id=root' \
   -d 'client_secret=s3cr3t' \
   -d 'scope=PRINCIPAL_ROLE:ALL' \
   | jq -r '.access_token')
+
+if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+  echo "❌ Failed to obtain access token"
+  exit 1
+fi
+echo "✅ Token obtained"
 
 # Create a catalog
 curl -X POST http://localhost:8181/api/management/v1/catalogs \
@@ -403,7 +412,7 @@ If users encounter issues, help them systematically:
 - Try: `./gradlew build --refresh-dependencies`
 
 ### Getting Help:
-- Slack: https://join.slack.com/t/apache-polaris/shared_invite/...
+- Slack: Join the Apache Polaris Slack workspace at https://polaris-catalog.slack.com (request invite via https://polaris.apache.org/community/)
 - Mailing list: dev@polaris.apache.org
 - GitHub issues: https://github.com/apache/polaris/issues
 
