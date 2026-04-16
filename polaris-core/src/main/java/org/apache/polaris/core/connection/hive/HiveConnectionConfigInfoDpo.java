@@ -51,7 +51,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentity) {
-    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity, null);
+    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity);
     this.warehouse = warehouse;
   }
 

@@ -89,6 +89,14 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, properties, true);
   }
 
+  public ConnectionConfigInfoDpo(
+      int connectionTypeCode,
+      @Nonnull String uri,
+      @Nullable AuthenticationParametersDpo authenticationParameters,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, null);
+  }
+
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
       @Nonnull String uri,

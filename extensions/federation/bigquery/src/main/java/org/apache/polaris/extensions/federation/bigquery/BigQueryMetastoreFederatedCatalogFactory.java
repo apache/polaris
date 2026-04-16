@@ -61,7 +61,8 @@ public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalo
     if (warehouse == null || warehouse.isEmpty()) {
       throw new IllegalArgumentException("warehouse is required for BigQuery Metastore federation");
     }
-    if (properties.get("gcp.bigquery.project-id") == null) {
+    String projectId = properties.get("gcp.bigquery.project-id");
+    if (projectId == null || projectId.isEmpty()) {
       throw new IllegalArgumentException(
           "gcp.bigquery.project-id is required for BigQuery Metastore federation");
     }

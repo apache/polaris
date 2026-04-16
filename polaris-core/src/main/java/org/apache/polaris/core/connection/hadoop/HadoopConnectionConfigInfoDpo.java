@@ -51,8 +51,7 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentityInfo,
       @JsonProperty(value = "warehouse", required = false) @Nullable String remoteCatalogName) {
-    super(
-        ConnectionType.HADOOP.getCode(), uri, authenticationParameters, serviceIdentityInfo, null);
+    super(ConnectionType.HADOOP.getCode(), uri, authenticationParameters, serviceIdentityInfo);
     this.warehouse = remoteCatalogName;
   }
 
