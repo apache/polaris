@@ -21,8 +21,9 @@ openapi: 3.0.3
 info:
   title: Apache Polaris Metrics Reports API
   description: >
-    Read-only API for querying persisted Iceberg table metrics (scan and commit reports)
-    from Apache Polaris. Requires TABLE_READ_METRICS privilege on the target table.
+    **Beta**: Read-only API for querying persisted Iceberg table metrics (scan and commit reports)
+    from Apache Polaris. This API is in beta and may change in future releases.
+    Requires TABLE_READ_METRICS privilege on the target table.
   version: 0.1.0
   license:
     name: Apache 2.0
