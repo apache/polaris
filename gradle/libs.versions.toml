@@ -19,7 +19,6 @@
 
 [versions]
 checkstyle = "13.4.0"
-graalvm = "25.0.2"
 hadoop = "3.4.3"
 iceberg = "1.10.1" # Ensure to update the iceberg version in regtests and getting-started to keep them up-to-date
 immutables = "2.12.1"
@@ -27,6 +26,7 @@ jmh = "1.37"
 picocli = "4.7.7"
 quarkus = "3.32.4"
 ranger = "2.8.0"
+ranger-graalvm = "25.0.2"
 scala212 = "2.12.19"
 swagger = "1.6.16"
 
@@ -53,9 +53,9 @@ commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.49.0" } # required by the polaris-java plugin
 google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.91.0" }
-graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "graalvm" }
-graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "graalvm" }
-graalvm-polyglot-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "graalvm" }
+graalvm-js-js-scriptengine = { module = "org.graalvm.js:js-scriptengine", version.ref = "ranger-graalvm" }
+graalvm-polyglot-js = { module = "org.graalvm.polyglot:js", version.ref = "ranger-graalvm" }
+graalvm-polyglot-polyglot = { module = "org.graalvm.polyglot:polyglot", version.ref = "ranger-graalvm" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.67.0" }
 guava = { module = "com.google.guava:guava", version = "33.6.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
