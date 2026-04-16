@@ -30,7 +30,6 @@ import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.bigquery.BigQueryMetastoreConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 
 /**
@@ -58,8 +57,15 @@ public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalo
           "BigQuery Metastore federation only supports IMPLICIT authentication.");
     }
 
-    String warehouse =
-        ((BigQueryMetastoreConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
+    Map<String, String> properties = connectionConfigInfoDpo.getProperties();
+    String warehouse = properties.get("warehouse");
+    if (warehouse == null || warehouse.isEmpty()) {
+      throw new IllegalArgumentException("warehouse is required for BigQuery Metastore federation");
+    }
+    if (properties.get("gcp.bigquery.project-id") == null) {
+      throw new IllegalArgumentException(
+          "gcp.bigquery.project-id is required for BigQuery Metastore federation");
+    }
     Map<String, String> mergedProperties =
         RESTUtil.merge(
             catalogProperties != null ? catalogProperties : Map.of(),

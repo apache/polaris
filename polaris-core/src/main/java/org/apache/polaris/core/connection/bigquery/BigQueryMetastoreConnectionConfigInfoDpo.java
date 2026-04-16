@@ -26,7 +26,6 @@ import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -46,18 +45,10 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
 
   public static final String DEFAULT_URI = "https://bigquery.googleapis.com";
 
-  // BigQuery Metastore catalog property keys
-  private static final String GCP_BIGQUERY_PROJECT_ID = "gcp.bigquery.project-id";
-
-  private final String warehouse;
-  private final String gcpProjectId;
-
   public BigQueryMetastoreConnectionConfigInfoDpo(
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = false) @Nullable
           AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "warehouse", required = true) @Nonnull String warehouse,
-      @JsonProperty(value = "gcpProjectId", required = true) @Nonnull String gcpProjectId,
       @JsonProperty(value = "properties", required = false) @Nullable
           Map<String, String> properties,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
@@ -68,16 +59,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
         authenticationParameters,
         serviceIdentity,
         properties);
-    this.warehouse = warehouse;
-    this.gcpProjectId = gcpProjectId;
-  }
-
-  public String getWarehouse() {
-    return warehouse;
-  }
-
-  public String getGcpProjectId() {
-    return gcpProjectId;
   }
 
   @Override
@@ -85,8 +66,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
     return MoreObjects.toStringHelper(this)
         .add("connectionTypeCode", getConnectionTypeCode())
         .add("uri", getUri())
-        .add("warehouse", warehouse)
-        .add("gcpProjectId", gcpProjectId)
         .add(
             "authenticationParameters",
             getAuthenticationParameters() != null
@@ -100,11 +79,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
       PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
 
-    // Required properties for BigQueryMetastoreCatalog
-    properties.put(GCP_BIGQUERY_PROJECT_ID, gcpProjectId);
-    properties.put(CatalogProperties.WAREHOUSE_LOCATION, warehouse);
-
-    // Add all user provided properties
+    // Add all user provided properties, including required: gcp.bigquery.project-id, warehouse
     properties.putAll(getProperties());
 
     if (getAuthenticationParameters() != null) {
@@ -123,12 +98,7 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
   public ConnectionConfigInfoDpo withServiceIdentity(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
     return new BigQueryMetastoreConnectionConfigInfoDpo(
-        getUri(),
-        getAuthenticationParameters(),
-        warehouse,
-        gcpProjectId,
-        getProperties(),
-        serviceIdentityInfo);
+        getUri(), getAuthenticationParameters(), getProperties(), serviceIdentityInfo);
   }
 
   @Override
@@ -137,8 +107,6 @@ public class BigQueryMetastoreConnectionConfigInfoDpo extends ConnectionConfigIn
     return BigQueryMetastoreConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.BIGQUERY)
         .setUri(getUri())
-        .setWarehouse(warehouse)
-        .setGcpProjectId(gcpProjectId)
         .setProperties(getProperties())
         .setAuthenticationParameters(
             getAuthenticationParameters() != null

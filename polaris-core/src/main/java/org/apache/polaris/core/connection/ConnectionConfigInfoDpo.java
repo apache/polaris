@@ -239,8 +239,6 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
             new BigQueryMetastoreConnectionConfigInfoDpo(
                 bigqueryUri,
                 authenticationParameters,
-                bigqueryConfigModel.getWarehouse(),
-                bigqueryConfigModel.getGcpProjectId(),
                 bigqueryConfigModel.getProperties(),
                 null /*Service Identity Info*/);
         break;

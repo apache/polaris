@@ -975,19 +975,13 @@ components:
     
     BigQueryMetastoreConnectionConfigInfo:
       type: object
-      description: Configuration necessary for connecting to a BigQuery Metastore Catalog
+      description: |
+        Configuration necessary for connecting to a BigQuery Metastore Catalog.
+        Required properties in the properties map:
+        - gcp.bigquery.project-id: The GCP project ID
+        - warehouse: The warehouse location for the BigQuery Metastore Catalog
       allOf:
         - $ref: '#/components/schemas/ConnectionConfigInfo'
-      properties:
-        warehouse:
-          type: string
-          description: The warehouse location for the BigQuery Metastore Catalog
-        gcpProjectId:
-          type: string
-          description: The GCP project ID
-      required:
-        - warehouse
-        - gcpProjectId
 
     AuthenticationParameters:
       type: object
