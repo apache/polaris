@@ -19,16 +19,11 @@
 
 package org.apache.polaris.service.catalog.common;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import java.net.URLEncoder;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -99,9 +94,5 @@ public class CatalogUtils {
                 }
               }
             });
-  }
-
-  public static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, UTF_8));
   }
 }
