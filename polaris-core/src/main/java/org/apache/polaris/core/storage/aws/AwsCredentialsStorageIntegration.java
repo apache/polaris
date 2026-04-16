@@ -25,6 +25,7 @@ import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +52,7 @@ import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.PackedPolicyTooLargeException;
 import software.amazon.awssdk.services.sts.model.Tag;
 
 /** Credential vendor that supports generating */
@@ -151,7 +153,17 @@ public class AwsCredentialsStorageIntegration
       StsClient stsClient =
           stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
 
-      AssumeRoleResponse response = stsClient.assumeRole(request.build());
+      AssumeRoleResponse response;
+      try {
+        response = stsClient.assumeRole(request.build());
+      } catch (PackedPolicyTooLargeException e) {
+        throw new RuntimeException(
+            "AWS STS rejected the session policy: it exceeds the 2048-character packed-policy"
+                + " limit. This commonly happens with deeply nested namespace hierarchies or"
+                + " long namespace names. Consider shortening the namespace path or splitting"
+                + " the hierarchy.",
+            e);
+      }
       accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
       accessConfig.put(
           StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
@@ -208,11 +220,16 @@ public class AwsCredentialsStorageIntegration
   }
 
   /**
-   * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
+   * Generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
    * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
+   *
+   * <p>Write locations are emitted in a single combined statement that grants both read and write
+   * actions, rather than in a separate write-only statement that duplicates the resource ARN
+   * already listed in the read statement. This keeps the packed inline policy within AWS STS's
+   * 2048-character limit for deeply nested namespace hierarchies.
    */
   private IamPolicy policyString(
       AwsStorageConfigurationInfo storageConfigurationInfo,
@@ -221,25 +238,24 @@ public class AwsCredentialsStorageIntegration
       Set<String> writeLocations,
       String region) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
-    IamStatement.Builder allowGetObjectStatementBuilder =
-        IamStatement.builder()
-            .effect(IamEffect.ALLOW)
-            .addAction("s3:GetObject")
-            .addAction("s3:GetObjectVersion");
-    Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
-    Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
-
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
     String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
     List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
+
+    // Locations readable but not writable receive only read actions; everything in writeLocations
+    // receives read and write actions from a single combined statement below. Splitting this way
+    // avoids listing every write-location ARN twice.
+    Set<String> readOnlyLocations = new HashSet<>(readLocations);
+    readOnlyLocations.removeAll(writeLocations);
+    boolean canWrite = !writeLocations.isEmpty();
+
+    Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
+    Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
             location -> {
               URI uri = URI.create(location);
-              allowGetObjectStatementBuilder.addResource(
-                  IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
               if (allowList) {
                 bucketListStatementBuilder
@@ -264,21 +280,22 @@ public class AwsCredentialsStorageIntegration
                           .addResource(key));
             });
 
-    boolean canWrite = !writeLocations.isEmpty();
     if (canWrite) {
-      IamStatement.Builder allowPutObjectStatementBuilder =
+      IamStatement.Builder allowReadWriteStatementBuilder =
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
+              .addAction("s3:GetObject")
+              .addAction("s3:GetObjectVersion")
               .addAction("s3:PutObject")
               .addAction("s3:DeleteObject");
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            allowPutObjectStatementBuilder.addResource(
+            allowReadWriteStatementBuilder.addResource(
                 IamResource.create(
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
-      policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
+      policyBuilder.addStatement(allowReadWriteStatementBuilder.build());
     }
     if (shouldUseKms(storageConfigurationInfo)) {
       addKmsKeyPolicy(
@@ -302,7 +319,26 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+
+    // Emit a read-only statement when there are read-only locations, or as a fallback with no
+    // resources when no combined read+write statement was emitted — ensuring the inline policy is
+    // always non-empty.
+    if (!readOnlyLocations.isEmpty() || !canWrite) {
+      IamStatement.Builder allowGetObjectStatementBuilder =
+          IamStatement.builder()
+              .effect(IamEffect.ALLOW)
+              .addAction("s3:GetObject")
+              .addAction("s3:GetObjectVersion");
+      readOnlyLocations.forEach(
+          location -> {
+            URI uri = URI.create(location);
+            allowGetObjectStatementBuilder.addResource(
+                IamResource.create(
+                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+          });
+      policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
+    }
+    return policyBuilder.build();
   }
 
   private static void addKmsKeyPolicy(
