@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.credentials.connection;
 
+import static org.apache.polaris.core.credentials.connection.CatalogAccessProperty.AWS_ACCESS_KEY_ID;
 import static org.apache.polaris.core.credentials.connection.CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS;
 import static org.apache.polaris.core.credentials.connection.CatalogAccessProperty.EXPIRES_AT_MS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,29 +32,15 @@ import org.junit.jupiter.api.Test;
 public class ConnectionCredentialsTest {
 
   @Test
-  public void testSameExpirationTs() {
-    Map<CatalogAccessProperty, String> properties = new HashMap<>();
-    Instant expireAt = Instant.ofEpochMilli(1);
-    String expireAtStr = String.valueOf(expireAt.toEpochMilli());
-
-    properties.put(AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireAtStr);
-    properties.put(EXPIRES_AT_MS, expireAtStr);
-
-    ConnectionCredentials credentials = ConnectionCredentials.of(properties);
-
-    assertThat(credentials.expiresAt()).hasValue(expireAt);
-  }
-
-  @Test
-  public void testDifferentExpirationTs() {
+  public void testMultipleExpirationTsThrows() {
     Map<CatalogAccessProperty, String> properties = new HashMap<>();
     properties.put(
         AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(1).toEpochMilli()));
-    properties.put(EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(2).toEpochMilli()));
+    properties.put(EXPIRES_AT_MS, String.valueOf(Instant.ofEpochMilli(1).toEpochMilli()));
 
     assertThatThrownBy(() -> ConnectionCredentials.of(properties))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Multiple distinct expiration timestamps")
+        .hasMessageContaining("Multiple expiration timestamp properties")
         .hasMessageContaining("rest.session-token-expires-at-ms")
         .hasMessageContaining("rest.expires-at-ms");
   }
@@ -63,7 +50,11 @@ public class ConnectionCredentialsTest {
     Instant expireAt = Instant.ofEpochMilli(1);
     ConnectionCredentials credentials =
         ConnectionCredentials.of(
-            Map.of(AWS_SESSION_TOKEN_EXPIRES_AT_MS, String.valueOf(expireAt.toEpochMilli())));
+            Map.of(
+                AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(expireAt.toEpochMilli()),
+                AWS_ACCESS_KEY_ID,
+                "test-key"));
     assertThat(credentials.expiresAt()).hasValue(expireAt);
   }
 }

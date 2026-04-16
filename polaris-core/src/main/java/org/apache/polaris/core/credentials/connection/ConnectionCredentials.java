@@ -42,9 +42,8 @@ public record ConnectionCredentials(Map<String, String> credentials, Optional<In
    * Creates ConnectionCredentials from a map of catalog access properties. Expiration timestamps
    * are extracted and stored separately; credential properties are stored in the credentials map.
    *
-   * <p>Only a single shared expiration timestamp is supported for a credentials bundle. If multiple
-   * expiration timestamp properties are present, they must all represent the same instant or an
-   * {@link IllegalArgumentException} is thrown.
+   * <p>Only a single expiration timestamp is supported per credentials bundle. If multiple
+   * expiration timestamp properties are present, an {@link IllegalArgumentException} is thrown.
    */
   public static ConnectionCredentials of(Map<CatalogAccessProperty, String> properties) {
     Map<String, String> credentials = new HashMap<>();
@@ -53,21 +52,16 @@ public record ConnectionCredentials(Map<String, String> credentials, Optional<In
     for (var entry : properties.entrySet()) {
       CatalogAccessProperty key = entry.getKey();
       if (key.isExpirationTimestamp()) {
-        Instant current = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
-        if (expiresAt == null) {
-          expiresAt = current;
-          expiresAtKey = key;
-        } else if (!current.equals(expiresAt)) {
+        if (expiresAtKey != null) {
           throw new IllegalArgumentException(
-              "Multiple distinct expiration timestamps found while building ConnectionCredentials: "
+              "Multiple expiration timestamp properties found while building ConnectionCredentials: "
                   + expiresAtKey.getPropertyName()
-                  + "="
-                  + expiresAt.toEpochMilli()
                   + " and "
                   + key.getPropertyName()
-                  + "="
-                  + current.toEpochMilli());
+                  + ". Only a single expiration timestamp is allowed per credentials bundle.");
         }
+        expiresAt = Instant.ofEpochMilli(Long.parseLong(entry.getValue()));
+        expiresAtKey = key;
       }
       if (key.isCredential()) {
         credentials.put(key.getPropertyName(), entry.getValue());
