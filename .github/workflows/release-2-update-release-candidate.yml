@@ -173,11 +173,15 @@ jobs:
           Changelog patched successfully
           EOT
 
-      - name: Generate Helm documentation
+      - name: Generate Helm schema and documentation
         if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
           exec_process make helm-schema-generate helm-doc-generate
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Helm schema & documentation
+          Helm schema and documentation files generated successfully.
+          EOT
 
       - name: Commit and push changes
         if: env.rc_number == '0'
