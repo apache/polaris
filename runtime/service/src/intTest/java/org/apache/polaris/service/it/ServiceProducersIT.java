@@ -40,9 +40,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.PolarisConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.service.config.AuthorizationConfiguration;
@@ -97,7 +96,7 @@ public class ServiceProducersIT {
               () -> "realm1",
               authorizationConfiguration,
               authorizerFactories,
-              new NoopRealmConfig());
+              new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "realm1"));
       assertThat(realmAuthorizer).isInstanceOf(TestPolarisAuthorizer.class);
 
       PolarisAuthorizer defaultAuthorizer =
@@ -105,7 +104,7 @@ public class ServiceProducersIT {
               () -> "other",
               authorizationConfiguration,
               authorizerFactories,
-              new NoopRealmConfig());
+              new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "other"));
       assertThat(defaultAuthorizer).isInstanceOf(PolarisAuthorizerImpl.class);
     }
   }
@@ -143,36 +142,7 @@ public class ServiceProducersIT {
         PolarisPrincipal polarisPrincipal,
         Set<PolarisBaseEntity> activatedEntities,
         PolarisAuthorizableOperation authzOp,
-        List<PolarisResolvedPathWrapper> targets,
-        List<PolarisResolvedPathWrapper> secondaries) {}
-  }
-
-  private static class NoopRealmConfig implements RealmConfig {
-    @SuppressWarnings("removal")
-    @Override
-    public <T> T getConfig(String configName) {
-      return null;
-    }
-
-    @SuppressWarnings("removal")
-    @Override
-    public <T> T getConfig(String configName, T defaultValue) {
-      return defaultValue;
-    }
-
-    @Override
-    public <T> T getConfig(PolarisConfiguration<T> config) {
-      return config.defaultValue();
-    }
-
-    @Override
-    public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
-      return getConfig(config);
-    }
-
-    @Override
-    public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
-      return getConfig(config);
-    }
+      List<PolarisResolvedPathWrapper> targets,
+      List<PolarisResolvedPathWrapper> secondaries) {}
   }
 }
