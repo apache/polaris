@@ -39,4 +39,8 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testImplementation(libs.jakarta.ws.rs.api)
+
+  // Provides jakarta.ws.rs.ext.RuntimeDelegate needed to build Response objects in unit tests
+  testRuntimeOnly(enforcedPlatform(libs.quarkus.bom))
+  testRuntimeOnly("io.quarkus.resteasy.reactive:resteasy-reactive")
 }
