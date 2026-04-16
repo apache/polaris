@@ -19,75 +19,95 @@
 
 package org.apache.polaris.service.events.listeners;
 
-import com.google.common.collect.ImmutableMap;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.admin.model.Catalog;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventType;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
+  private final Map<PolarisEventType, PersistenceEventHandler> handlers;
+
+  protected PolarisPersistenceEventListener() {
+    this(defaultHandlers());
+  }
+
+  PolarisPersistenceEventListener(Map<PolarisEventType, PersistenceEventHandler> handlers) {
+    EnumMap<PolarisEventType, PersistenceEventHandler> copy = new EnumMap<>(PolarisEventType.class);
+    copy.putAll(handlers);
+    this.handlers = copy;
+  }
+
   @Override
   public void onEvent(PolarisEvent event) {
-    switch (event.type()) {
-      case AFTER_CREATE_TABLE -> handleAfterCreateTable(event);
-      case AFTER_CREATE_CATALOG -> handleAfterCreateCatalog(event);
-      default -> {
-        // Other events not handled by this listener
-      }
+    PersistenceEventHandler handler = handlers.get(event.type());
+    if (handler != null) {
+      handler.handle(event, event.metadata().realmId(), this);
     }
   }
 
-  private void handleAfterCreateTable(PolarisEvent event) {
-    LoadTableResponse loadTableResponse =
-        event.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSE);
-    TableMetadata tableMetadata = loadTableResponse.tableMetadata();
-    String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
-    Namespace namespace = event.attributes().getRequired(EventAttributes.NAMESPACE);
-    String tableName = event.attributes().getRequired(EventAttributes.TABLE_NAME);
+  static Map<PolarisEventType, PersistenceEventHandler> defaultHandlers() {
+    EnumMap<PolarisEventType, PersistenceEventHandler> handlers =
+        new EnumMap<>(PolarisEventType.class);
+    handlers.put(PolarisEventType.AFTER_CREATE_CATALOG, new AfterCreateCatalogEventHandler());
+    handlers.putAll(TableEventHandler.createHandlers());
+    validateTableHandlerCoverage(handlers.keySet());
+    return Collections.unmodifiableMap(handlers);
+  }
 
+  private static void validateTableHandlerCoverage(Set<PolarisEventType> configuredEventTypes) {
+    EnumSet<PolarisEventType> expectedTableEvents =
+        Arrays.stream(PolarisEventType.values())
+            .filter(PolarisPersistenceEventListener::isTableEvent)
+            .collect(Collectors.toCollection(() -> EnumSet.noneOf(PolarisEventType.class)));
+
+    EnumSet<PolarisEventType> missingTableHandlers = EnumSet.copyOf(expectedTableEvents);
+    missingTableHandlers.removeAll(configuredEventTypes);
+    if (!missingTableHandlers.isEmpty()) {
+      throw new IllegalStateException(
+          "Missing persistence handlers for table events: " + missingTableHandlers);
+    }
+  }
+
+  private static boolean isTableEvent(PolarisEventType type) {
+    return type.code() >= PolarisEventType.BEFORE_CREATE_TABLE.code()
+        && type.code() <= PolarisEventType.AFTER_REFRESH_TABLE.code();
+  }
+
+  final void persistEvent(
+      PolarisEvent sourceEvent,
+      String realmId,
+      org.apache.polaris.core.entity.PolarisEvent.ResourceType resourceType,
+      String catalogName,
+      String resourceIdentifier,
+      Map<String, String> additionalProperties) {
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
         new org.apache.polaris.core.entity.PolarisEvent(
             catalogName,
-            event.metadata().eventId().toString(),
-            event.metadata().requestId().orElse(null),
-            event.type().name(),
-            event.metadata().timestamp().toEpochMilli(),
-            event.metadata().user().map(PolarisPrincipal::getName).orElse(null),
-            org.apache.polaris.core.entity.PolarisEvent.ResourceType.TABLE,
-            TableIdentifier.of(namespace, tableName).toString());
-    var additionalParameters =
-        ImmutableMap.<String, String>builder()
-            .put("table-uuid", tableMetadata.uuid())
-            .put("metadata", TableMetadataParser.toJson(tableMetadata));
-    additionalParameters.putAll(event.metadata().openTelemetryContext());
-    polarisEvent.setAdditionalProperties(additionalParameters.build());
-    processEvent(event.metadata().realmId(), polarisEvent);
-  }
+            sourceEvent.metadata().eventId().toString(),
+            sourceEvent.metadata().requestId().orElse(null),
+            sourceEvent.type().name(),
+            sourceEvent.metadata().timestamp().toEpochMilli(),
+            sourceEvent.metadata().user().map(PolarisPrincipal::getName).orElse(null),
+            resourceType,
+            resourceIdentifier);
 
-  private void handleAfterCreateCatalog(PolarisEvent event) {
-    Catalog catalog = event.attributes().getRequired(EventAttributes.CATALOG);
-    org.apache.polaris.core.entity.PolarisEvent polarisEvent =
-        new org.apache.polaris.core.entity.PolarisEvent(
-            catalog.getName(),
-            event.metadata().eventId().toString(),
-            event.metadata().requestId().orElse(null),
-            event.type().name(),
-            event.metadata().timestamp().toEpochMilli(),
-            event.metadata().user().map(PolarisPrincipal::getName).orElse(null),
-            org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG,
-            catalog.getName());
-    Map<String, String> openTelemetryContext = event.metadata().openTelemetryContext();
-    if (!openTelemetryContext.isEmpty()) {
-      polarisEvent.setAdditionalProperties(openTelemetryContext);
+    Map<String, String> finalProperties =
+        new HashMap<>(sourceEvent.metadata().openTelemetryContext());
+    if (additionalProperties != null && !additionalProperties.isEmpty()) {
+      finalProperties.putAll(additionalProperties);
     }
-    processEvent(event.metadata().realmId(), polarisEvent);
+    if (!finalProperties.isEmpty()) {
+      polarisEvent.setAdditionalProperties(finalProperties);
+    }
+    processEvent(realmId, polarisEvent);
   }
 
   protected abstract void processEvent(
