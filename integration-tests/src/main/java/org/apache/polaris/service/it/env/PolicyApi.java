@@ -63,8 +63,8 @@ public class PolicyApi extends PolarisRestApi {
     }
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies",
-                Map.of("cat", catalog),
+                "polaris/v1/{cat}/namespaces/{ns}/policies",
+                Map.of("cat", catalog, "ns", ns),
                 queryParams)
             .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -86,8 +86,8 @@ public class PolicyApi extends PolarisRestApi {
     }
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies/{policy}",
-                Map.of("cat", catalog, "policy", policyIdentifier.name()),
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()),
                 queryParams)
             .delete()) {
       if (res.getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
@@ -103,8 +103,8 @@ public class PolicyApi extends PolarisRestApi {
             policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies/{policy}",
-                Map.of("cat", catalog, "policy", policyIdentifier.name()))
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadPolicyResponse.class).getPolicy();
@@ -128,7 +128,7 @@ public class PolicyApi extends PolarisRestApi {
             .setContent(content)
             .build();
     try (Response res =
-        request("polaris/v1/{cat}/namespaces/" + ns + "/policies", Map.of("cat", catalog))
+        request("polaris/v1/{cat}/namespaces/{ns}/policies", Map.of("cat", catalog, "ns", ns))
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadPolicyResponse.class).getPolicy();
@@ -152,8 +152,8 @@ public class PolicyApi extends PolarisRestApi {
             .build();
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies/{policy}",
-                Map.of("cat", catalog, "policy", policyIdentifier.name()))
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadPolicyResponse.class).getPolicy();
@@ -172,8 +172,8 @@ public class PolicyApi extends PolarisRestApi {
         AttachPolicyRequest.builder().setTarget(target).setParameters(parameters).build();
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies/{policy}/mappings",
-                Map.of("cat", catalog, "policy", policyIdentifier.name()))
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
@@ -187,8 +187,8 @@ public class PolicyApi extends PolarisRestApi {
     DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(target).build();
     try (Response res =
         request(
-                "polaris/v1/{cat}/namespaces/" + ns + "/policies/{policy}/mappings",
-                Map.of("cat", catalog, "policy", policyIdentifier.name()))
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
