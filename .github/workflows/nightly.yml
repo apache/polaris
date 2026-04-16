@@ -99,7 +99,7 @@ jobs:
           make client-nightly-build
 
       - name: Publish Python client to Test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: client/python/dist/
