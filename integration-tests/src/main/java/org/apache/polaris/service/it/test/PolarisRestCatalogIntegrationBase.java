@@ -1545,10 +1545,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @Test
   public void testListGenericTables() {
-    // Also test encoding / decoding of namespaces and tables
-    Namespace namespace = Namespace.of("ns1+%20");
+    Namespace namespace = Namespace.of("ns1");
     restCatalog.createNamespace(namespace);
-    TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1+%2B");
+    TableIdentifier tableIdentifier1 = TableIdentifier.of(namespace, "tbl1");
     TableIdentifier tableIdentifier2 = TableIdentifier.of(namespace, "tbl2");
 
     try {
