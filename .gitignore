@@ -110,3 +110,14 @@ venv
 # to override default properties for local development.
 # And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
 application-local.properties
+
+# AI / Agentic Development Tools
+.agents/
+.aider/
+.aider.chat.history.md
+.aider.input.history
+.codex/
+.claude/
+.cursor/
+.opencode/
+skills-lock.json
