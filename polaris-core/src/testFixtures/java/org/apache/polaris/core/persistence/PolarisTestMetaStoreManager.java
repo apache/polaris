@@ -2963,6 +2963,108 @@ public class PolarisTestMetaStoreManager {
                 Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
   }
 
+  /**
+   * Verify that loadGrantsToGrantee and loadGrantsOnSecurable return only grants where the entity
+   * plays the expected role (grantee or securable).
+   */
+  public void testLoadGrantsGranteeVsSecurableRecords() {
+    // create a catalog — this also creates the catalog_admin role, which is automatically
+    // both a grantee (it has grants on the catalog) and a securable (it gets granted to the
+    // catalog owner).
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "load_grants_test");
+    CreateCatalogResult catalogCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
+    Assertions.assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    EntityResult catalogAdminResult =
+        polarisMetaStoreManager.readEntityByName(
+            this.polarisCallContext,
+            List.of(catalog),
+            PolarisEntityType.CATALOG_ROLE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogAdminRole());
+    Assertions.assertThat(catalogAdminResult.isSuccess()).isTrue();
+    PolarisBaseEntity catalogAdmin = catalogAdminResult.getEntity();
+
+    // none of the returned entities should be a CATALOG_ROLE — the securables should be
+    // catalogs, namespaces, etc., not the role itself
+    LoadGrantsResult catalogAdminAsGrantee =
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, catalogAdmin);
+    Assertions.assertThat(catalogAdminAsGrantee.isSuccess()).isTrue();
+    Assertions.assertThat(catalogAdminAsGrantee.getGrantRecords())
+        .isNotEmpty()
+        .allSatisfy(
+            g -> {
+              Assertions.assertThat(g.getGranteeCatalogId()).isEqualTo(catalogAdmin.getCatalogId());
+              Assertions.assertThat(g.getGranteeId()).isEqualTo(catalogAdmin.getId());
+            });
+    Assertions.assertThat(catalogAdminAsGrantee.getEntities())
+        .allSatisfy(
+            entity ->
+                Assertions.assertThat(entity.getType())
+                    .isNotEqualTo(PolarisEntityType.CATALOG_ROLE));
+
+    // now set up an explicit scenario to validate both directions thoroughly:
+    // create a namespace and a catalog role CR1 with grants in both directions
+    PolarisBaseEntity N1 = createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity CR1 = createEntity(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "CR1");
+
+    // grant a privilege TO CR1 on N1 (CR1 is the grantee)
+    grantPrivilege(CR1, List.of(catalog, N1), N1, PolarisPrivilege.TABLE_READ_DATA);
+
+    // create a principal role and grant CR1 usage to it (CR1 is the securable)
+    PolarisBaseEntity PR1 = createEntity(null, PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    grantToGrantee(catalog, CR1, PR1, PolarisPrivilege.CATALOG_ROLE_USAGE);
+
+    // loadGrantsToGrantee(CR1): all records must have granteeId == CR1
+    LoadGrantsResult granteeResult =
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, CR1);
+    Assertions.assertThat(granteeResult.getGrantRecords())
+        .isNotEmpty()
+        .allSatisfy(
+            g -> {
+              Assertions.assertThat(g.getGranteeId()).isEqualTo(CR1.getId());
+              Assertions.assertThat(g.getSecurableId()).isNotEqualTo(CR1.getId());
+            });
+    Assertions.assertThat(granteeResult.getGrantRecords())
+        .anySatisfy(
+            g -> {
+              Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
+              Assertions.assertThat(g.getPrivilegeCode())
+                  .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
+            });
+
+    // loadGrantsOnSecurable(CR1): all records must have securableId == CR1
+    LoadGrantsResult securableResult =
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, CR1);
+    Assertions.assertThat(securableResult.getGrantRecords())
+        .isNotEmpty()
+        .allSatisfy(
+            g -> {
+              Assertions.assertThat(g.getSecurableId()).isEqualTo(CR1.getId());
+              Assertions.assertThat(g.getGranteeId()).isNotEqualTo(CR1.getId());
+            });
+    Assertions.assertThat(securableResult.getGrantRecords())
+        .anySatisfy(
+            g -> {
+              Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
+              Assertions.assertThat(g.getPrivilegeCode())
+                  .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
+            });
+
+    // the two result sets must not overlap
+    Assertions.assertThat(granteeResult.getGrantRecords())
+        .doesNotContainAnyElementsOf(securableResult.getGrantRecords());
+  }
+
   private static PolarisEntityCore getEntityCore(PolarisBaseEntity entity) {
     return new PolarisEntityCore.Builder<>(entity).build();
   }
