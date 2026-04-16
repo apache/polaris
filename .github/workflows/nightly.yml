@@ -75,6 +75,7 @@ jobs:
 
   nightly_build_python_client:
     runs-on: ubuntu-latest
+    if: github.repository == 'apache/polaris'
     permissions:
       id-token: write
     steps:
