@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -441,12 +442,17 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Publish Python client release to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
+      - name: Build Python client release
         run: |
-          make client-release-publish RELEASE_VERSION="${version_without_rc}"
+          make client-release-build RELEASE_VERSION="${version_without_rc}"
 
+      - name: Publish Python client release to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Python Client
           ✅ Python client \`${version_without_rc}\` published to PyPI

@@ -18,8 +18,8 @@
 #
 
 [project]
-name = "apache-polaris"
-version = "1.4.0"
+name = "ahemani-apache-polaris"
+version = "1.4.0.dev20260416065624"
 description = "Apache Polaris"
 authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
 requires-python = ">=3.10,<3.14"

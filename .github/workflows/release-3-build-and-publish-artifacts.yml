@@ -529,6 +529,7 @@ jobs:
     needs: [prerequisite-checks]
     permissions:
       contents: read
+      id-token: write
     env:
       DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
       version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
@@ -552,12 +553,18 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Publish Python client RC to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
+      - name: Build Python client RC
         run: |
-          make client-rc-publish RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+          make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
 
+      - name: Publish Python client RC to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
           echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           🎉 Python client RC published successfully:
@@ -565,7 +572,7 @@ jobs:
           | Property | Value |
           | --- | --- |
           | Version | \`${version_without_rc}rc${rc_number}\` |
-          | Registry | PyPI |
+          | Registry | Test PyPI |
           EOT
 
   generate-release-email:
