@@ -188,38 +188,30 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 	@$(ACTIVATE_AND_CD) && uv run --active pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
 
-.PHONY: client-nightly-build
-client-nightly-build: client-setup-env ## Build nightly version for publishing to Test PyPI
-	@echo "--- Starting nightly build ---"
+# Internal target: stamp version and build. Requires BUILD_VERSION to be set.
+.PHONY: _client-build
+_client-build: client-setup-env
 	@$(ACTIVATE_AND_CD) && \
-	CURRENT_VERSION=$$(uv version --short) && \
-	DATE_SUFFIX=$$(date -u +%Y%m%d%H%M%S) && \
-	NIGHTLY_VERSION="$${CURRENT_VERSION}.dev$${DATE_SUFFIX}" && \
-	echo "Building nightly version: $${NIGHTLY_VERSION}" && \
-	uv version "$${NIGHTLY_VERSION}" && \
+	echo "Building version: $(BUILD_VERSION)" && \
+	uv version "$(BUILD_VERSION)" && \
 	uv build --clear
+
+.PHONY: client-nightly-build
+client-nightly-build: ## Build nightly version for publishing to Test PyPI
+	@$(MAKE) _client-build BUILD_VERSION="$$(cd $(PYTHON_CLIENT_DIR) && uv version --short).dev$$(date -u +%Y%m%d%H%M%S)"
 	@echo "--- Nightly build complete ---"
 
 .PHONY: client-rc-build
-client-rc-build: client-setup-env ## Build RC version for publishing to Test PyPI (requires RC_VERSION and RC_NUMBER)
-	@echo "--- Starting RC build ---"
+client-rc-build: ## Build RC version for publishing to Test PyPI (requires RC_VERSION and RC_NUMBER)
 	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
 	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
-	@$(ACTIVATE_AND_CD) && \
-	RC_PYPI_VERSION="$(RC_VERSION)rc$(RC_NUMBER)" && \
-	echo "Building RC version: $${RC_PYPI_VERSION}" && \
-	uv version "$${RC_PYPI_VERSION}" && \
-	uv build --clear
+	@$(MAKE) _client-build BUILD_VERSION="$(RC_VERSION)rc$(RC_NUMBER)"
 	@echo "--- RC build complete ---"
 
 .PHONY: client-release-build
-client-release-build: client-setup-env ## Build final release version for publishing to PyPI (requires RELEASE_VERSION)
-	@echo "--- Starting release build ---"
+client-release-build: ## Build final release version for publishing to PyPI (requires RELEASE_VERSION)
 	@if [ -z "$(RELEASE_VERSION)" ]; then echo "ERROR: RELEASE_VERSION is not set"; exit 1; fi
-	@$(ACTIVATE_AND_CD) && \
-	echo "Building release version: $(RELEASE_VERSION)" && \
-	uv version "$(RELEASE_VERSION)" && \
-	uv build --clear
+	@$(MAKE) _client-build BUILD_VERSION="$(RELEASE_VERSION)"
 	@echo "--- Release build complete ---"
 
 .PHONY: client-regenerate

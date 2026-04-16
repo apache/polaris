@@ -633,6 +633,9 @@ jobs:
 
           NB: you have to build the Docker images locally in order to test Helm charts.
 
+          The Python CLI RC is available on Test PyPI:
+          * https://test.pypi.org/project/apache-polaris/${version_without_rc}rc${rc_number}/
+
           You can find the KEYS file here:
           * https://downloads.apache.org/polaris/KEYS
 
