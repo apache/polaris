@@ -50,9 +50,8 @@ public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalo
     // IMPLICIT authentication.
     AuthenticationParametersDpo authenticationParametersDpo =
         connectionConfigInfoDpo.getAuthenticationParameters();
-    if (authenticationParametersDpo != null
-        && authenticationParametersDpo.getAuthenticationTypeCode()
-            != AuthenticationType.IMPLICIT.getCode()) {
+    if (authenticationParametersDpo.getAuthenticationTypeCode()
+        != AuthenticationType.IMPLICIT.getCode()) {
       throw new IllegalStateException(
           "BigQuery Metastore federation only supports IMPLICIT authentication.");
     }
