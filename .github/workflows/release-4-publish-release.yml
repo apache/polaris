@@ -432,6 +432,29 @@ jobs:
           exec_process ./gradlew releaseApacheStagingRepository --staging-repository-id "${STAGING_REPOSITORY_ID}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Nexus
+          ✅ Nexus staging repository released
+          EOT
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Publish Python client release to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          make client-release-publish RELEASE_VERSION="${version_without_rc}"
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Python Client
+          ✅ Python client \`${version_without_rc}\` published to PyPI
+          EOT
+
+      - name: Release summary
+        run: |
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Summary
           🎉 Release published successfully:
 
@@ -444,6 +467,7 @@ jobs:
           | GitHub release | ✅ Created with artifacts attached |
           | Docker images | ✅ Published to Docker Hub |
           | Nexus repository | ✅ Released |
+          | Python client | ✅ Published to PyPI |
           | Version | \`${version_without_rc}\` |
           | Final release tag | \`${final_release_tag}\` |
           EOT

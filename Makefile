@@ -201,6 +201,30 @@ client-nightly-publish: client-setup-env ## Build and publish nightly version to
 	uv publish --index testpypi
 	@echo "--- Nightly publish complete ---"
 
+.PHONY: client-rc-publish
+client-rc-publish: client-setup-env ## Build and publish RC version to PyPI (requires RC_VERSION and RC_NUMBER)
+	@echo "--- Starting RC publish ---"
+	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
+	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
+	@$(ACTIVATE_AND_CD) && \
+	RC_PYPI_VERSION="$(RC_VERSION)rc$(RC_NUMBER)" && \
+	echo "Publishing RC version: $${RC_PYPI_VERSION}" && \
+	uv version "$${RC_PYPI_VERSION}" && \
+	uv build --clear && \
+	uv publish --index testpypi
+	@echo "--- RC publish complete ---"
+
+.PHONY: client-release-publish
+client-release-publish: client-setup-env ## Build and publish final release version to PyPI (requires RELEASE_VERSION)
+	@echo "--- Starting release publish ---"
+	@if [ -z "$(RELEASE_VERSION)" ]; then echo "ERROR: RELEASE_VERSION is not set"; exit 1; fi
+	@$(ACTIVATE_AND_CD) && \
+	echo "Publishing release version: $(RELEASE_VERSION)" && \
+	uv version "$(RELEASE_VERSION)" && \
+	uv build --clear && \
+	uv publish
+	@echo "--- Release publish complete ---"
+
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
 	@echo "--- Regenerating client code ---"

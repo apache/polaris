@@ -523,10 +523,55 @@ jobs:
           | Artifact Hub metadata | ✅ Committed to dist dev |
           EOT
 
+  publish-python-client-rc:
+    name: Publish Python Client RC to PyPI
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up JDK for openapi-generator-cli
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Publish Python client RC to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          make client-rc-publish RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+          echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Python client RC published successfully:
+
+          | Property | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}rc${rc_number}\` |
+          | Registry | PyPI |
+          EOT
+
   generate-release-email:
     name: Generate Release Email Body
     runs-on: ubuntu-latest
-    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart]
+    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart, publish-python-client-rc]
     permissions:
       contents: read
     env:
