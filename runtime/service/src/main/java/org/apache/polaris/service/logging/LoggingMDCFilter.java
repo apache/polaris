@@ -30,6 +30,7 @@ import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.FilterPriorities;
+import org.apache.polaris.service.http.IcebergClientInfo;
 import org.slf4j.MDC;
 
 @PreMatching
@@ -39,8 +40,12 @@ import org.slf4j.MDC;
 public class LoggingMDCFilter implements ContainerRequestFilter {
 
   public static final String REALM_ID_KEY = "realmId";
+  public static final String ICEBERG_CLIENT_INFO_VERSION_KEY = "icebergClientInfoVersion";
+  public static final String ICEBERG_CLIENT_INFO_LANGUAGE_KEY = "icebergClientInfoLanguage";
 
   @Inject LoggingConfiguration loggingConfiguration;
+
+  @Inject IcebergClientInfo icebergClientInfo;
 
   @Override
   public void filter(ContainerRequestContext rc) {
@@ -52,5 +57,9 @@ public class LoggingMDCFilter implements ContainerRequestFilter {
     MDC.put(REQUEST_ID_KEY, (String) rc.getProperty(REQUEST_ID_KEY));
     RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
     MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
+    icebergClientInfo.icebergVersion().ifPresent(v -> MDC.put(ICEBERG_CLIENT_INFO_VERSION_KEY, v));
+    icebergClientInfo
+        .language()
+        .ifPresent(l -> MDC.put(ICEBERG_CLIENT_INFO_LANGUAGE_KEY, l.name()));
   }
 }

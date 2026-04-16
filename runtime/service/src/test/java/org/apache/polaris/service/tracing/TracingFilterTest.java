@@ -23,6 +23,7 @@ import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanContext;
@@ -33,14 +34,20 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @QuarkusTest
 @TestProfile(TracingFilterTest.Profile.class)
@@ -62,6 +69,11 @@ public class TracingFilterTest {
   }
 
   @Inject InMemorySpanExporter inMemorySpanExporter;
+
+  @BeforeEach
+  void resetSpanExporter() {
+    inMemorySpanExporter.reset();
+  }
 
   @Test
   void testW3CTraceContextPropagation() {
@@ -113,5 +125,75 @@ public class TracingFilterTest {
     assertThat(parent.getTraceState().asMap())
         .containsEntry("rojo", rojoState)
         .containsEntry("congo", congoState);
+  }
+
+  @ParameterizedTest
+  @MethodSource("icebergClientInfoCases")
+  void testIcebergClientInfoSpanAttributes(
+      String clientVersionHeader,
+      String userAgentHeader,
+      String expectedVersion,
+      String expectedLanguage) {
+
+    RequestSpecification spec =
+        given()
+            .contentType(ContentType.URLENC)
+            .formParam("grant_type", "client_credentials")
+            .formParam("scope", "PRINCIPAL_ROLE:ALL")
+            .formParam("client_id", "test-admin")
+            .formParam("client_secret", "test-secret");
+
+    if (clientVersionHeader != null) {
+      spec = spec.header("X-Client-Version", clientVersionHeader);
+    }
+    if (userAgentHeader != null) {
+      spec = spec.header("User-Agent", userAgentHeader);
+    }
+
+    spec.when().post().then().statusCode(200);
+
+    List<SpanData> spans =
+        await()
+            .atMost(Duration.ofSeconds(30))
+            .until(inMemorySpanExporter::getFinishedSpanItems, sp -> !sp.isEmpty());
+
+    SpanData span = spans.getFirst();
+    Map<AttributeKey<?>, Object> attributes = span.getAttributes().asMap();
+
+    if (expectedVersion != null) {
+      assertThat(attributes)
+          .containsEntry(stringKey(TracingFilter.ICEBERG_CLIENT_INFO_VERSION), expectedVersion);
+    } else {
+      assertThat(attributes)
+          .doesNotContainKey(stringKey(TracingFilter.ICEBERG_CLIENT_INFO_VERSION));
+    }
+
+    if (expectedLanguage != null) {
+      assertThat(attributes)
+          .containsEntry(stringKey(TracingFilter.ICEBERG_CLIENT_INFO_LANGUAGE), expectedLanguage);
+    } else {
+      assertThat(attributes)
+          .doesNotContainKey(stringKey(TracingFilter.ICEBERG_CLIENT_INFO_LANGUAGE));
+    }
+  }
+
+  static Stream<Arguments> icebergClientInfoCases() {
+    return Stream.of(
+        // Java: version comes from X-Client-Version
+        arguments(
+            "Apache Iceberg 1.10.1 (commit abc1234567890abcdef1234567890abcdef123456)",
+            "Apache-HttpClient/5.4 (Java/11.0.25)",
+            "1.10.1",
+            "JAVA"),
+        // Python (PyIceberg): version comes from User-Agent
+        arguments("PyIceberg 0.9.1", "PyIceberg/0.9.1", "0.9.1", "PYTHON"),
+        // Go (iceberg-go): X-Client-Version is a stale constant; version comes from User-Agent
+        arguments("0.14.1", "GoIceberg/0.5.0", "0.5.0", "GO"),
+        // Rust (iceberg-rust): X-Client-Version is a stale constant; version comes from User-Agent
+        arguments("0.14.1", "iceberg-rs/0.3.0", "0.3.0", "RUST"),
+        // C++ (iceberg-cpp): no X-Client-Version; version comes from User-Agent
+        arguments(null, "iceberg-cpp/0.3.0-SNAPSHOT", "0.3.0-SNAPSHOT", "CPP"),
+        // No Iceberg headers — version and language attributes must be absent from the span
+        arguments(null, null, null, null));
   }
 }

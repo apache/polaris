@@ -21,6 +21,7 @@ package org.apache.polaris.service.tracing;
 import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
@@ -28,6 +29,7 @@ import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.context.RealmContextFilter;
+import org.apache.polaris.service.http.IcebergClientInfo;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @PreMatching
@@ -38,9 +40,13 @@ public class TracingFilter implements ContainerRequestFilter {
 
   public static final String REQUEST_ID_ATTRIBUTE = "polaris.request.id";
   public static final String REALM_ID_ATTRIBUTE = "polaris.realm.id";
+  public static final String ICEBERG_CLIENT_INFO_VERSION = "polaris.iceberg-client-info.version";
+  public static final String ICEBERG_CLIENT_INFO_LANGUAGE = "polaris.iceberg-client-info.language";
 
   @ConfigProperty(name = "quarkus.otel.sdk.disabled")
   boolean sdkDisabled;
+
+  @Inject IcebergClientInfo icebergClientInfo;
 
   @Override
   public void filter(ContainerRequestContext rc) {
@@ -51,6 +57,12 @@ public class TracingFilter implements ContainerRequestFilter {
       RealmContext realmContext =
           (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
       span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());
+      icebergClientInfo
+          .icebergVersion()
+          .ifPresent(v -> span.setAttribute(ICEBERG_CLIENT_INFO_VERSION, v));
+      icebergClientInfo
+          .language()
+          .ifPresent(l -> span.setAttribute(ICEBERG_CLIENT_INFO_LANGUAGE, l.name()));
     }
   }
 }
