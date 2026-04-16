@@ -20,11 +20,11 @@ package org.apache.polaris.persistence.nosql.authz.store.nosql;
 
 import static org.apache.polaris.persistence.nosql.authz.store.nosql.PrivilegesMappingObj.PRIVILEGES_MAPPING_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundException;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class PrivilegesRetainedIdentifier implements PerRealmRetainedIdentifier {
@@ -35,7 +35,7 @@ class PrivilegesRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
     if (!collector.isSystemRealm()) {
       return false;
     }

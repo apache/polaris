@@ -46,6 +46,7 @@ dependencies {
   compileOnly("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations")
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -57,6 +58,7 @@ dependencies {
   testFixturesCompileOnly(platform(libs.jackson.bom))
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
+  testFixturesCompileOnly(libs.jspecify)
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)
 

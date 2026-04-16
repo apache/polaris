@@ -28,7 +28,6 @@ import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.Re
 import static org.apache.polaris.persistence.nosql.realms.store.RealmsStateObj.REALMS_REF_NAME;
 
 import com.google.common.collect.Streams;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -52,6 +51,7 @@ import org.apache.polaris.persistence.nosql.realms.api.RealmAlreadyExistsExcepti
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
 import org.apache.polaris.persistence.nosql.realms.api.RealmNotFoundException;
 import org.apache.polaris.persistence.nosql.realms.spi.RealmStore;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class RealmStoreImpl implements RealmStore {
@@ -61,7 +61,7 @@ class RealmStoreImpl implements RealmStore {
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
-  RealmStoreImpl(@Nonnull @SystemPersistence Persistence systemPersistence, Backend backend) {
+  RealmStoreImpl(@NonNull @SystemPersistence Persistence systemPersistence, Backend backend) {
     checkArgument(
         SYSTEM_REALM_ID.equals(systemPersistence.realmId()),
         "Realms management must happen in the %s realm",

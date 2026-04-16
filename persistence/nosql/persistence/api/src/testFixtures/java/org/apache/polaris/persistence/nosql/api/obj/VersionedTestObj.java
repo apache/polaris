@@ -20,9 +20,9 @@ package org.apache.polaris.persistence.nosql.api.obj;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableVersionedTestObj.class)
@@ -31,7 +31,7 @@ public interface VersionedTestObj extends Obj {
 
   ObjType TYPE = new VersionedTestObjType();
 
-  @Nonnull
+  @NonNull
   @Override
   default ObjType type() {
     return TYPE;
@@ -41,11 +41,9 @@ public interface VersionedTestObj extends Obj {
     return ImmutableVersionedTestObj.builder();
   }
 
-  @Nullable
-  String someValue();
+  @Nullable String someValue();
 
-  @Nullable
-  byte[] binary();
+  byte @Nullable [] binary();
 
   final class VersionedTestObjType extends AbstractObjType<VersionedTestObj> {
     public VersionedTestObjType() {

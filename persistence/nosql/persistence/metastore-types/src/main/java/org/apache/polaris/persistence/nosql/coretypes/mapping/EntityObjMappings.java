@@ -23,8 +23,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.function.Function.identity;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -50,6 +48,8 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public final class EntityObjMappings {
 
@@ -127,25 +127,25 @@ public final class EntityObjMappings {
    * Produces a builder for the {@link ObjBase} from the given {@link PolarisBaseEntity} with the
    * type-specific attributes populated.
    */
-  @Nonnull
+  @NonNull
   public static <O extends ObjBase, B extends ObjBase.Builder<O, B>> B mapToObj(
-      @Nonnull PolarisBaseEntity entity, Optional<PolarisPrincipalSecrets> principalSecrets) {
+      @NonNull PolarisBaseEntity entity, Optional<PolarisPrincipalSecrets> principalSecrets) {
     @SuppressWarnings("unchecked")
     var mapping = (BaseMapping<O, B>) byEntityType(entity.getType());
     return mapping.mapToObj(entity, principalSecrets);
   }
 
   /** Maps an {@link ObjBase} to a {@link PolarisBaseEntity} for the given catalog ID. */
-  @Nonnull
-  public static PolarisBaseEntity mapToEntity(@Nonnull ObjBase objBase, long catalogId) {
+  @NonNull
+  public static PolarisBaseEntity mapToEntity(@NonNull ObjBase objBase, long catalogId) {
     var entityTypeAndSubType = entityTypeAndSubType(objBase.type());
     return entityTypeAndSubType.typeMapping().mapToEntity(objBase, catalogId);
   }
 
   /** Maps an {@link ObjBase} to an {@link EntityNameLookupRecord} for the given catalog ID. */
-  @Nonnull
+  @NonNull
   public static EntityNameLookupRecord mapToEntityNameLookupRecord(
-      @Nonnull ObjBase objBase, long catalogId) {
+      @NonNull ObjBase objBase, long catalogId) {
 
     var entityTypeAndSubType = entityTypeAndSubType(objBase.type());
     entityTypeAndSubType.typeMapping().checkCatalogId(catalogId);
@@ -175,8 +175,8 @@ public final class EntityObjMappings {
    * has secrets.
    */
   // TODO move to MutationAttempt in the follow-up change
-  public static @Nonnull Optional<PolarisPrincipalSecrets> maybeObjToPolarisPrincipalSecrets(
-      @Nonnull ObjBase obj) {
+  public static @NonNull Optional<PolarisPrincipalSecrets> maybeObjToPolarisPrincipalSecrets(
+      @NonNull ObjBase obj) {
     if (obj instanceof PrincipalObj principalObj && principalObj.clientId().isPresent()) {
       return Optional.of(principalObjToPolarisPrincipalSecrets(principalObj));
     }
@@ -187,8 +187,8 @@ public final class EntityObjMappings {
    * Produces a {@link PolarisPrincipalSecrets} from the given {@link PrincipalObj} assuming a
    * {@code null} {@link PolarisPrincipalSecrets}.
    */
-  public static @Nonnull PolarisPrincipalSecrets principalObjToPolarisPrincipalSecrets(
-      @Nonnull PrincipalObj principalObj) {
+  public static @NonNull PolarisPrincipalSecrets principalObjToPolarisPrincipalSecrets(
+      @NonNull PrincipalObj principalObj) {
     return principalObjToPolarisPrincipalSecrets(principalObj, null);
   }
 
@@ -196,8 +196,8 @@ public final class EntityObjMappings {
    * Produces a {@link PolarisPrincipalSecrets} from the given {@link PrincipalObj} and the given
    * {@link PolarisPrincipalSecrets} if not {@code null}.
    */
-  public static @Nonnull PolarisPrincipalSecrets principalObjToPolarisPrincipalSecrets(
-      @Nonnull PrincipalObj principalObj, @Nullable PolarisPrincipalSecrets newPrincipalSecrets) {
+  public static @NonNull PolarisPrincipalSecrets principalObjToPolarisPrincipalSecrets(
+      @NonNull PrincipalObj principalObj, @Nullable PolarisPrincipalSecrets newPrincipalSecrets) {
     return new PolarisPrincipalSecrets(
         principalObj.stableId(),
         principalObj.clientId().orElse(null),
@@ -209,14 +209,14 @@ public final class EntityObjMappings {
   }
 
   /** Retrieve the {@link BaseMapping} for the given {@link PolarisEntityType}. */
-  public static @Nonnull BaseMapping<?, ?> byEntityType(@Nonnull PolarisEntityType entityType) {
+  public static @NonNull BaseMapping<?, ?> byEntityType(@NonNull PolarisEntityType entityType) {
     var mapping = BY_ENTITY_TYPE.get(entityType);
     checkArgument(mapping != null, "No type mapping for entity type %s", entityType);
     return mapping;
   }
 
   /** Retrieve the {@link BaseMapping} for a {@link PolarisEntityType} by their {@code int} code. */
-  public static @Nonnull BaseMapping<?, ?> byEntityTypeCode(int entityType) {
+  public static @NonNull BaseMapping<?, ?> byEntityTypeCode(int entityType) {
     checkArgument(
         entityType > 0 && entityType < BY_ENTITY_TYPE_CODE.length,
         "No type mapping for entity type code %s",
@@ -227,15 +227,15 @@ public final class EntityObjMappings {
   }
 
   public record EntityTypeAndSubType(
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType subType,
-      @Nonnull BaseMapping<?, ?> typeMapping) {}
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType subType,
+      @NonNull BaseMapping<?, ?> typeMapping) {}
 
   /**
    * Retrieve the {@link PolarisEntityType}, {@link PolarisEntitySubType} and the corresponding
    * {@link BaseMapping} for the given {@link ObjType}.
    */
-  public static @Nonnull EntityTypeAndSubType entityTypeAndSubType(@Nonnull ObjType objType) {
+  public static @NonNull EntityTypeAndSubType entityTypeAndSubType(@NonNull ObjType objType) {
     var mapping = BY_OBJ_TYPE_TARGET_CLASS.get(objType.targetClass());
     checkArgument(
         mapping != null,
@@ -257,7 +257,7 @@ public final class EntityObjMappings {
   }
 
   /** Checks whether the entity type defines catalog-content, aka tables, views and policies. */
-  public static boolean isCatalogContent(@Nonnull PolarisEntityType entityType) {
+  public static boolean isCatalogContent(@NonNull PolarisEntityType entityType) {
     return byEntityType(entityType).catalogContent();
   }
 
@@ -265,8 +265,8 @@ public final class EntityObjMappings {
    * Returns the object type for a Polaris entity type and subtype that can be used for
    * querying/filtering, allowing {@link PolarisEntitySubType#ANY_SUBTYPE} as the subtype.
    */
-  public static @Nonnull Class<? extends ObjBase> objTypeForPolarisTypeForFiltering(
-      @Nonnull PolarisEntityType entityType, @Nonnull PolarisEntitySubType subType) {
+  public static @NonNull Class<? extends ObjBase> objTypeForPolarisTypeForFiltering(
+      @NonNull PolarisEntityType entityType, @NonNull PolarisEntitySubType subType) {
     return byEntityType(entityType).objTypeClassForSubTypeForFiltering(subType);
   }
 
@@ -274,8 +274,8 @@ public final class EntityObjMappings {
    * Returns the "exact" object type for a Polaris entity type and subtype, <em>not</em> allowing
    * {@link PolarisEntitySubType#ANY_SUBTYPE} as the subtype.
    */
-  public static @Nonnull ObjType objTypeForPolarisType(
-      @Nonnull PolarisEntityType entityType, @Nonnull PolarisEntitySubType subType) {
+  public static @NonNull ObjType objTypeForPolarisType(
+      @NonNull PolarisEntityType entityType, @NonNull PolarisEntitySubType subType) {
     return byEntityType(entityType).objTypeForSubType(subType);
   }
 
@@ -285,8 +285,8 @@ public final class EntityObjMappings {
    * <p>For example, all catalog content is contained in a {@link CatalogStateObj}, all principals
    * in a {@link PrincipalsObj}.
    */
-  public static @Nonnull Class<? extends ContainerObj> containerTypeForEntityType(
-      @Nonnull PolarisEntityType entityType) {
+  public static @NonNull Class<? extends ContainerObj> containerTypeForEntityType(
+      @NonNull PolarisEntityType entityType) {
     var containerObjType = byEntityType(entityType).containerObjType;
     checkArgument(containerObjType != null, "Not a container managed ObjType for %s", entityType);
     @SuppressWarnings("unchecked")
@@ -295,7 +295,7 @@ public final class EntityObjMappings {
   }
 
   /** Return the {@link PolarisEntityType} for the given entity type code, never {@code null}. */
-  public static @Nonnull PolarisEntityType typeFromCode(int entityTypeCode) {
+  public static @NonNull PolarisEntityType typeFromCode(int entityTypeCode) {
     return byEntityTypeCode(entityTypeCode).entityType;
   }
 
@@ -303,8 +303,8 @@ public final class EntityObjMappings {
    * Yields the given object, if it matches the given entity type, otherwise returns an empty
    * optional.
    */
-  public static <C extends ObjBase> @Nonnull Optional<C> filterIsEntityType(
-      @Nonnull C objBase, int entityTypeCode) {
+  public static <C extends ObjBase> @NonNull Optional<C> filterIsEntityType(
+      @NonNull C objBase, int entityTypeCode) {
     return filterIsEntityType(objBase, typeFromCode(entityTypeCode));
   }
 
@@ -312,27 +312,27 @@ public final class EntityObjMappings {
    * Yields the given object, if it matches the given entity type, otherwise returns an empty
    * optional.
    */
-  public static <C extends ObjBase> @Nonnull Optional<C> filterIsEntityType(
-      @Nonnull C objBase, @Nonnull PolarisEntityType entityType) {
+  public static <C extends ObjBase> @NonNull Optional<C> filterIsEntityType(
+      @NonNull C objBase, @NonNull PolarisEntityType entityType) {
     return objTypeForPolarisTypeForFiltering(entityType, PolarisEntitySubType.ANY_SUBTYPE)
             .isInstance(objBase)
         ? Optional.of(objBase)
         : Optional.empty();
   }
 
-  public static @Nonnull String referenceName(
-      @Nonnull PolarisEntityType entityType, @Nonnull Optional<CatalogObj> catalog) {
+  public static @NonNull String referenceName(
+      @NonNull PolarisEntityType entityType, @NonNull Optional<CatalogObj> catalog) {
     var catalogStableId = catalog.map(ObjBase::stableId).orElse(0L);
     return referenceName(entityType, catalogStableId);
   }
 
-  public static @Nonnull String referenceName(
-      @Nonnull PolarisEntityType entityType, @Nonnull OptionalLong catalogId) {
+  public static @NonNull String referenceName(
+      @NonNull PolarisEntityType entityType, @NonNull OptionalLong catalogId) {
     return referenceName(entityType, catalogId.orElse(0L));
   }
 
-  public static @Nonnull String referenceName(
-      @Nonnull PolarisEntityType entityType, long catalogId) {
+  public static @NonNull String referenceName(
+      @NonNull PolarisEntityType entityType, long catalogId) {
     return BY_ENTITY_TYPE.get(entityType).refNameForCatalog(catalogId);
   }
 

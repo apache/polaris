@@ -39,7 +39,6 @@ import static org.apache.polaris.persistence.nosql.metastore.maintenance.Catalog
 import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_PRINCIPALS_RETAIN;
 import static org.apache.polaris.persistence.nosql.metastore.maintenance.CatalogsMaintenanceConfig.DEFAULT_PRINCIPAL_ROLES_RETAIN;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,6 +64,7 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RootObj;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +90,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
 
     // Note: References & objects retrieved via the `Persistence` instance returned by the
     // `RetainedCollector` are automatically retained (no need to call collector.retain*()

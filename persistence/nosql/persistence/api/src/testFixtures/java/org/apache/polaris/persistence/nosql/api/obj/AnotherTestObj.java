@@ -20,12 +20,12 @@ package org.apache.polaris.persistence.nosql.api.obj;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 @JsonSerialize(as = ImmutableAnotherTestObj.class)
@@ -39,23 +39,17 @@ public interface AnotherTestObj extends Obj {
     return TYPE;
   }
 
-  @Nullable
-  String text();
+  @Nullable String text();
 
-  @Nullable
-  byte[] binary();
+  byte @Nullable [] binary();
 
-  @Nullable
-  Number number();
+  @Nullable Number number();
 
-  @Nullable
-  Map<String, String> map();
+  @Nullable Map<String, String> map();
 
-  @Nullable
-  List<String> list();
+  @Nullable List<String> list();
 
-  @Nullable
-  Instant instant();
+  @Nullable Instant instant();
 
   Optional<String> optional();
 

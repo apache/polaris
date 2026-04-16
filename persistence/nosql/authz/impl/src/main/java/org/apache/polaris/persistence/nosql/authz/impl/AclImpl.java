@@ -20,7 +20,6 @@ package org.apache.polaris.persistence.nosql.authz.impl;
 
 import static org.agrona.collections.ObjectHashSet.DEFAULT_INITIAL_CAPACITY;
 
-import jakarta.annotation.Nonnull;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -31,6 +30,7 @@ import org.agrona.collections.Object2ObjectHashMap;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.AclEntry;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.jspecify.annotations.NonNull;
 
 record AclImpl(Object2ObjectHashMap<String, AclEntry> map) implements Acl {
 
@@ -39,13 +39,13 @@ record AclImpl(Object2ObjectHashMap<String, AclEntry> map) implements Acl {
   }
 
   @Override
-  public void forEach(@Nonnull BiConsumer<String, AclEntry> consumer) {
+  public void forEach(@NonNull BiConsumer<String, AclEntry> consumer) {
     map.forEach(consumer);
   }
 
   @Override
   public void entriesForRoleIds(
-      @Nonnull Set<String> roleIds, @Nonnull Consumer<AclEntry> aclEntryConsumer) {
+      @NonNull Set<String> roleIds, @NonNull Consumer<AclEntry> aclEntryConsumer) {
     roleIds.stream().map(map::get).filter(Objects::nonNull).forEach(aclEntryConsumer);
   }
 
@@ -68,7 +68,7 @@ record AclImpl(Object2ObjectHashMap<String, AclEntry> map) implements Acl {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public String toString() {
     return "Acl{"
         + map.entrySet().stream()
@@ -89,27 +89,27 @@ record AclImpl(Object2ObjectHashMap<String, AclEntry> map) implements Acl {
     }
 
     @Override
-    public AclBuilder from(@Nonnull Acl instance) {
+    public AclBuilder from(@NonNull Acl instance) {
       map.clear();
       map.putAll(((AclImpl) instance).map);
       return this;
     }
 
     @Override
-    public AclBuilder addEntry(@Nonnull String roleId, @Nonnull AclEntry entry) {
+    public AclBuilder addEntry(@NonNull String roleId, @NonNull AclEntry entry) {
       map.put(roleId, entry);
       return this;
     }
 
     @Override
-    public AclBuilder removeEntry(@Nonnull String roleId) {
+    public AclBuilder removeEntry(@NonNull String roleId) {
       map.remove(roleId);
       return this;
     }
 
     @Override
     public AclBuilder modify(
-        @Nonnull String roleId, @Nonnull Consumer<AclEntry.AclEntryBuilder> entry) {
+        @NonNull String roleId, @NonNull Consumer<AclEntry.AclEntryBuilder> entry) {
       map.compute(
           roleId,
           (k, e) -> {

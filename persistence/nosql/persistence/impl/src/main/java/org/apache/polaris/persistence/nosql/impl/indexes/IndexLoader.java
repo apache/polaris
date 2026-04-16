@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 @FunctionalInterface
 interface IndexLoader<V> {
@@ -36,6 +36,5 @@ interface IndexLoader<V> {
    *     of the input parameter set to the loaded indexes. Loaded indexes may or may not be the same
    *     (input) instance.
    */
-  @Nonnull
-  IndexSpi<V>[] loadIndexes(@Nonnull IndexSpi<V>[] indexes);
+  @NonNull IndexSpi<V>[] loadIndexes(@NonNull IndexSpi<V>[] indexes);
 }

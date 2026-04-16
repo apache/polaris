@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.api;
 
-import jakarta.annotation.Nullable;
 import java.time.Instant;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 /** Represents the local node's ID and informative, mutable state information. */
 @PolarisImmutable
@@ -40,8 +40,7 @@ public interface Node {
 
   Instant leaseTimestamp();
 
-  @Nullable
-  Instant renewLeaseTimestamp();
+  @Nullable Instant renewLeaseTimestamp();
 
   /** Timestamp since which this node's lease is no longer valid. */
   Instant expirationTimestamp();

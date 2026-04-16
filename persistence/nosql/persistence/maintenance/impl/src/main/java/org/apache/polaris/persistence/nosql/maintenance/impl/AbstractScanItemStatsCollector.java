@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.impl;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation.MaintenanceStats;
+import org.jspecify.annotations.NonNull;
 
 abstract class AbstractScanItemStatsCollector<I> implements ScanItemCallback<I> {
   final StatsHolder stats = new StatsHolder();
@@ -35,7 +35,7 @@ abstract class AbstractScanItemStatsCollector<I> implements ScanItemCallback<I> 
     /** Handles the maintenance-run outcome for a reference in a realm. */
     @Override
     public void itemOutcome(
-        @Nonnull String realm, @Nonnull String ref, @Nonnull ScanItemOutcome outcome) {
+        @NonNull String realm, @NonNull String ref, @NonNull ScanItemOutcome outcome) {
       stats.add(outcome);
       perRealm.computeIfAbsent(realm, realmId -> new StatsHolder()).add(outcome);
     }
@@ -57,7 +57,7 @@ abstract class AbstractScanItemStatsCollector<I> implements ScanItemCallback<I> 
     /** Handles the maintenance-run outcome for an object in a realm. */
     @Override
     public void itemOutcome(
-        @Nonnull String realm, @Nonnull ObjRef id, @Nonnull ScanItemOutcome outcome) {
+        @NonNull String realm, @NonNull ObjRef id, @NonNull ScanItemOutcome outcome) {
       stats.add(outcome);
       perRealmAndObjType
           .computeIfAbsent(realm, realmId -> new HashMap<>())

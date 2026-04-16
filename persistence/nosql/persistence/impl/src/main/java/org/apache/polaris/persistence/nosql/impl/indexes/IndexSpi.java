@@ -21,8 +21,6 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.indexElement;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
@@ -30,6 +28,8 @@ import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.ModifiableIndex;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 interface IndexSpi<V> extends ModifiableIndex<V> {
 
@@ -48,7 +48,7 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * @param element element to add
    * @return {@code true}, if the key did not exist in the index before
    */
-  boolean add(@Nonnull InternalIndexElement<V> element);
+  boolean add(@NonNull InternalIndexElement<V> element);
 
   /**
    * Convenience around {@link #add(InternalIndexElement)}.
@@ -58,7 +58,7 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * @return {@code true}, if the key did not exist in the index before
    */
   @Override
-  default boolean put(@Nonnull IndexKey key, @Nonnull V value) {
+  default boolean put(@NonNull IndexKey key, @NonNull V value) {
     requireNonNull(key, "key must not be null");
     requireNonNull(value, "value must not be null");
     return add(indexElement(key, value));
@@ -71,14 +71,13 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    * @return element or {@code null}, if the key does not exist. Does also return remove-sentinels,
    *     the element for remove sentinels is not {@code null}, the value for those is {@code null}.
    */
-  @Nullable
-  InternalIndexElement<V> getElement(@Nonnull IndexKey key);
+  @Nullable InternalIndexElement<V> getElement(@NonNull IndexKey key);
 
   /**
    * Check whether the index contains the given key, with a non-{@code null} or a {@code null}
    * value.
    */
-  boolean containsElement(@Nonnull IndexKey key);
+  boolean containsElement(@NonNull IndexKey key);
 
   /**
    * Get a list of all {@link IndexKey}s in this index - <em>do not use this method</em> in
@@ -100,16 +99,14 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    */
   @Nullable
   @Override
-  default V get(@Nonnull IndexKey key) {
+  default V get(@NonNull IndexKey key) {
     var elem = getElement(key);
     return elem != null ? elem.valueNullable() : null;
   }
 
-  @Nullable
-  IndexKey first();
+  @Nullable IndexKey first();
 
-  @Nullable
-  IndexKey last();
+  @Nullable IndexKey last();
 
   default Iterator<InternalIndexElement<V>> elementIterator() {
     return elementIterator(null, null, false);
@@ -125,14 +122,14 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
   Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch);
 
-  @Nonnull
+  @NonNull
   @Override
   default Iterator<Index.Element<V>> iterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return new IndexElementIter<>(elementIterator(lower, higher, prefetch));
   }
 
-  @Nonnull
+  @NonNull
   @Override
   default Iterator<Index.Element<V>> reverseIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
@@ -168,6 +165,5 @@ interface IndexSpi<V> extends ModifiableIndex<V> {
    */
   int estimatedSerializedSize();
 
-  @Nonnull
-  ByteBuffer serialize();
+  @NonNull ByteBuffer serialize();
 }

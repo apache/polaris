@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
 import static org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRolesObj.PRINCIPAL_ROLES_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRoleObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRolesObj;
+import org.jspecify.annotations.NonNull;
 
 final class PrincipalRoleMapping extends BaseMapping<PrincipalRoleObj, PrincipalRoleObj.Builder> {
   PrincipalRoleMapping() {
@@ -43,14 +43,14 @@ final class PrincipalRoleMapping extends BaseMapping<PrincipalRoleObj, Principal
   }
 
   @Override
-  public PrincipalRoleObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public PrincipalRoleObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return PrincipalRoleObj.builder();
   }
 
   @Override
   void mapToObjTypeSpecific(
       PrincipalRoleObj.Builder baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

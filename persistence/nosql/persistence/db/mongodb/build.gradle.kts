@@ -35,6 +35,7 @@ dependencies {
   implementation(libs.slf4j.api)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -51,6 +52,7 @@ dependencies {
 
   testFixturesApi(testFixtures(project(":polaris-persistence-nosql-impl")))
 
+  testFixturesCompileOnly(libs.jspecify)
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)
 

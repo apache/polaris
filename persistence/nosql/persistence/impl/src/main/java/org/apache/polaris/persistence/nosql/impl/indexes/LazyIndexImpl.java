@@ -20,14 +20,14 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static org.apache.polaris.persistence.nosql.impl.indexes.SupplyOnce.memoize;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class LazyIndexImpl<V> implements IndexSpi<V> {
 
@@ -123,17 +123,17 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     return loaded().add(element);
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     return loaded().remove(key);
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
+  public boolean contains(@NonNull IndexKey key) {
     if (!loaded && (key.equals(firstKey) || key.equals(lastKey))) {
       return true;
     }
@@ -141,7 +141,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     if (!loaded && (key.equals(firstKey) || key.equals(lastKey))) {
       return true;
     }
@@ -150,7 +150,7 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
 
   @Override
   @Nullable
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     return loaded().getElement(key);
   }
 
@@ -178,21 +178,21 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().elementIterator(lower, higher, prefetch);
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     return loaded().reverseElementIterator(lower, higher, prefetch);
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public ByteBuffer serialize() {
     return loaded().serialize();
   }

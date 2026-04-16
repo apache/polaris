@@ -24,7 +24,6 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj.REALM_GRANTS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -44,6 +43,7 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
 import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,11 +62,11 @@ public record GrantsMutation(
           .synchronizingLocally()
           .commitRuntimeException(
               new CommitRetryable<>() {
-                @Nonnull
+                @NonNull
                 @Override
                 public Optional<GrantsObj> attempt(
-                    @Nonnull CommitterState<GrantsObj, String> state,
-                    @Nonnull Supplier<Optional<GrantsObj>> refObjSupplier)
+                    @NonNull CommitterState<GrantsObj, String> state,
+                    @NonNull Supplier<Optional<GrantsObj>> refObjSupplier)
                     throws CommitException {
                   var persistence = state.persistence();
                   var refObj = refObjSupplier.get();

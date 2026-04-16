@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.impl.cache;
 import static org.apache.polaris.persistence.nosql.api.cache.CacheConfig.DEFAULT_ENABLE;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -33,6 +32,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.cache.CacheConfig;
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Decorator adding the application global cache to a {@link Persistence}, exposes priority {@value
@@ -74,12 +74,12 @@ class PersistenceCacheDecorator implements PersistenceDecorator {
   DistributedCacheInvalidation.Receiver distributedCacheInvalidationHandler() {
     return new DistributedCacheInvalidation.Receiver() {
       @Override
-      public void evictObj(@Nonnull String realmId, @Nonnull ObjRef objRef) {
+      public void evictObj(@NonNull String realmId, @NonNull ObjRef objRef) {
         local.remove(realmId, objRef);
       }
 
       @Override
-      public void evictReference(@Nonnull String realmId, @Nonnull String refName) {
+      public void evictReference(@NonNull String realmId, @NonNull String refName) {
         local.removeReference(realmId, refName);
       }
     };

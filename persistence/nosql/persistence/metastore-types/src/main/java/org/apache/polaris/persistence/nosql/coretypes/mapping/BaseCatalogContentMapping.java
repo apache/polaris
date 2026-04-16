@@ -19,13 +19,13 @@
 
 package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogBaseObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.ContentObj;
+import org.jspecify.annotations.NonNull;
 
 /** Base class for mapping objects that are catalog content, aka tables, views and policies. */
 abstract class BaseCatalogContentMapping<
@@ -33,19 +33,19 @@ abstract class BaseCatalogContentMapping<
         B extends ContentObj.Builder<O, B> & CatalogBaseObj.Builder<O, B>>
     extends BaseCatalogMapping<O, B> {
   BaseCatalogContentMapping(
-      @Nonnull ObjType objType,
-      @Nonnull ObjType containerObjType,
-      @Nonnull String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull ObjType objType,
+      @NonNull ObjType containerObjType,
+      @NonNull String refName,
+      @NonNull PolarisEntityType entityType) {
     super(objType, containerObjType, refName, entityType);
   }
 
   BaseCatalogContentMapping(
-      @Nonnull Class<? extends ContentObj> baseObjTypeClass,
-      @Nonnull Map<PolarisEntitySubType, ObjType> subTypes,
-      @Nonnull ObjType containerObjType,
-      @Nonnull String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull Class<? extends ContentObj> baseObjTypeClass,
+      @NonNull Map<PolarisEntitySubType, ObjType> subTypes,
+      @NonNull ObjType containerObjType,
+      @NonNull String refName,
+      @NonNull PolarisEntityType entityType) {
     super(baseObjTypeClass, subTypes, containerObjType, refName, entityType);
   }
 
