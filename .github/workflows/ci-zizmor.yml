@@ -20,25 +20,41 @@
 name: Zizmor
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
-    branches: ["**"]
+    branches: [ "main", "release/*", "feature/*" ]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  push:
+    branches: [ "main" ]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   zizmor:
-    name: Run zizmor
+    name: Zizmor
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-
-      - name: Run zizmor
-        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+      - name: Run Zizmor (SARIF upload)
+        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
         with:
+          min-severity: medium
+          min-confidence: medium
+      - name: Run Zizmor (PR annotations)
+        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+        with:
+          min-severity: medium
+          min-confidence: medium
           advanced-security: false
+          annotations: true
