@@ -529,6 +529,7 @@ jobs:
     needs: [prerequisite-checks]
     permissions:
       contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
       id-token: write
     env:
       DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
@@ -578,7 +579,12 @@ jobs:
   generate-release-email:
     name: Generate Release Email Body
     runs-on: ubuntu-latest
-    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart, publish-python-client-rc]
+    needs:
+      - prerequisite-checks
+      - build-and-publish-artifacts
+      - build-docker
+      - build-and-stage-helm-chart
+      - publish-python-client-rc
     permissions:
       contents: read
     env:

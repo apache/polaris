@@ -127,18 +127,21 @@ client-install-dependencies: $(VENV_DIR)
 client-setup-env: $(VENV_DIR) client-install-dependencies
 
 .PHONY: client-build
-client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format, and VERSION to stamp the version before building.
 	@echo "--- Building client distribution ---"
+	@if [ -n "$(VERSION)" ]; then \
+		$(ACTIVATE_AND_CD) && uv version "$(VERSION)"; \
+	fi
 	@if [ -n "$(FORMAT)" ]; then \
 		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
 			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
 			exit 1; \
 		fi; \
 		echo "Building with format: $(FORMAT)"; \
-		$(ACTIVATE_AND_CD) && uv build --format $(FORMAT); \
+		$(ACTIVATE_AND_CD) && uv build --clear --format $(FORMAT); \
 	else \
 		echo "Building default distribution (sdist and wheel)"; \
-		$(ACTIVATE_AND_CD) && uv build; \
+		$(ACTIVATE_AND_CD) && uv build --clear; \
 	fi
 	@echo "--- Client distribution build complete ---"
 
@@ -188,31 +191,22 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 	@$(ACTIVATE_AND_CD) && uv run --active pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
 
-# Internal target: stamp version and build. Requires BUILD_VERSION to be set.
-.PHONY: _client-build
-_client-build: client-setup-env
-	@$(ACTIVATE_AND_CD) && \
-	echo "Building version: $(BUILD_VERSION)" && \
-	uv version "$(BUILD_VERSION)" && \
-	uv build --clear
-
 .PHONY: client-nightly-build
 client-nightly-build: client-setup-env ## Build nightly version for publishing to Test PyPI
-	@$(MAKE) _client-build BUILD_VERSION="$$($(VENV_DIR)/bin/uv --directory $(PYTHON_CLIENT_DIR) version --short).dev$$(date -u +%Y%m%d%H%M%S)"
-	@echo "--- Nightly build complete ---"
+	@$(MAKE) client-build \
+		VERSION="$$($(VENV_DIR)/bin/uv --directory $(PYTHON_CLIENT_DIR) version --short).dev$$(date -u +%Y%m%d%H%M%S)" \
+		FORMAT=wheel
 
 .PHONY: client-rc-build
 client-rc-build: ## Build RC version for publishing to Test PyPI (requires RC_VERSION and RC_NUMBER)
 	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
 	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
-	@$(MAKE) _client-build BUILD_VERSION="$(RC_VERSION)rc$(RC_NUMBER)"
-	@echo "--- RC build complete ---"
+	@$(MAKE) client-build VERSION="$(RC_VERSION)rc$(RC_NUMBER)" FORMAT=wheel
 
 .PHONY: client-release-build
 client-release-build: ## Build final release version for publishing to PyPI (requires RELEASE_VERSION)
 	@if [ -z "$(RELEASE_VERSION)" ]; then echo "ERROR: RELEASE_VERSION is not set"; exit 1; fi
-	@$(MAKE) _client-build BUILD_VERSION="$(RELEASE_VERSION)"
-	@echo "--- Release build complete ---"
+	@$(MAKE) client-build VERSION="$(RELEASE_VERSION)" FORMAT=wheel
 
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code

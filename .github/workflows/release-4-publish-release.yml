@@ -38,7 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
+    outputs:
+      version_without_rc: ${{ steps.release-params.outputs.version_without_rc }}
 
     steps:
       - name: Checkout repository
@@ -88,6 +89,7 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Auto-determine release parameters from branch and Git state
+        id: release-params
         env:
           GIT_REF: ${{ github.ref }}
         run: |
@@ -172,6 +174,7 @@ jobs:
           echo "rc_tag=${rc_tag}" >> $GITHUB_ENV
           echo "final_release_tag=${final_release_tag}" >> $GITHUB_ENV
           echo "release_branch=${current_branch}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           | Parameter | Value |
@@ -437,27 +440,6 @@ jobs:
           ✅ Nexus staging repository released
           EOT
 
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-        with:
-          python-version: "3.13"
-
-      - name: Build Python client release
-        run: |
-          make client-release-build RELEASE_VERSION="${version_without_rc}"
-
-      - name: Publish Python client release to PyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
-        with:
-          packages-dir: client/python/dist/
-
-      - name: Update step summary
-        run: |
-          cat <<EOT >> $GITHUB_STEP_SUMMARY
-          ## Python Client
-          ✅ Python client \`${version_without_rc}\` published to PyPI
-          EOT
-
       - name: Release summary
         run: |
           cat <<EOT >> $GITHUB_STEP_SUMMARY
@@ -473,7 +455,51 @@ jobs:
           | GitHub release | ✅ Created with artifacts attached |
           | Docker images | ✅ Published to Docker Hub |
           | Nexus repository | ✅ Released |
-          | Python client | ✅ Published to PyPI |
           | Version | \`${version_without_rc}\` |
           | Final release tag | \`${final_release_tag}\` |
+          EOT
+
+  publish-python-client:
+    name: Publish Python Client to PyPI
+    runs-on: ubuntu-latest
+    needs: [publish-release]
+    permissions:
+      contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
+      id-token: write
+    env:
+      version_without_rc: ${{ needs.publish-release.outputs.version_without_rc }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up JDK for openapi-generator-cli
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Python client release
+        run: |
+          make client-release-build RELEASE_VERSION="${version_without_rc}"
+
+      - name: Publish Python client release to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Python Client
+          ✅ Python client \`${version_without_rc}\` published to PyPI
           EOT

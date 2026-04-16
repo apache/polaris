@@ -77,6 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'apache/polaris'
     permissions:
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
       id-token: write
     steps:
       - name: Checkout
