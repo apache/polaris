@@ -198,7 +198,7 @@ _client-build: client-setup-env
 
 .PHONY: client-nightly-build
 client-nightly-build: client-setup-env ## Build nightly version for publishing to Test PyPI
-	@$(MAKE) _client-build BUILD_VERSION="$$(cd $(PYTHON_CLIENT_DIR) && uv version --short).dev$$(date -u +%Y%m%d%H%M%S)"
+	@$(MAKE) _client-build BUILD_VERSION="$$($(VENV_DIR)/bin/uv --directory $(PYTHON_CLIENT_DIR) version --short).dev$$(date -u +%Y%m%d%H%M%S)"
 	@echo "--- Nightly build complete ---"
 
 .PHONY: client-rc-build
