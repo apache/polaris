@@ -18,7 +18,7 @@
 #
 
 [project]
-name = "apache-polaris"
+name = "ahemani-apache-polaris"
 version = "1.4.0"
 description = "Apache Polaris"
 authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
