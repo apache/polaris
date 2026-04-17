@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -62,9 +63,7 @@ public class OAuthClientCredentialVendorTest {
             clientSecretRef,
             List.of("catalog", "read:data"));
 
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://catalog.example.com", authParams, null, "test-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
     // Execute
     ConnectionCredentials credentials = oauthVendor.getConnectionCredentials(connectionConfig);
@@ -104,9 +103,7 @@ public class OAuthClientCredentialVendorTest {
         new OAuthClientCredentialsParametersDpo(
             "https://auth.example.com/token", "my-client-id", invalidSecretRef, List.of("catalog"));
 
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://catalog.example.com", authParams, null, "test-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
 
     // Execute & Verify - should propagate the exception from secrets manager
     Assertions.assertThatThrownBy(() -> oauthVendor.getConnectionCredentials(connectionConfig))
