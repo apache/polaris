@@ -56,6 +56,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -114,6 +115,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -130,6 +132,8 @@ import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import org.apache.polaris.service.storage.StorageLocationPreparer;
+import org.apache.polaris.service.storage.StorageLocationPreparerFactory;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -202,6 +206,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract CatalogHandlerUtils catalogHandlerUtils();
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
+
+  protected abstract StorageLocationPreparerFactory storageLocationPreparerFactory();
 
   protected abstract EventAttributeMap eventAttributeMap();
 
@@ -412,6 +418,65 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
+   * Prepares the underlying storage for a table about to be created. Resolves the effective table
+   * location from the request or computes it as baseLocation/namespace/tableName (matching
+   * Iceberg's defaultWarehouseLocation for the common case). No-op if no storage configuration.
+   */
+  private void prepareStorageForTable(
+      CatalogEntity catalog,
+      TableIdentifier tableIdentifier,
+      @Nullable String requestLocation,
+      Map<String, String> tableProperties) {
+    PolarisStorageConfigurationInfo storageConfig = catalog.getStorageConfigurationInfo();
+    if (storageConfig == null) {
+      return;
+    }
+    String effectiveLocation;
+    if (requestLocation != null) {
+      effectiveLocation = requestLocation;
+    } else {
+      String baseLocation = catalog.getBaseLocation();
+      if (baseLocation == null) {
+        return;
+      }
+      String base =
+          baseLocation.endsWith("/")
+              ? baseLocation.substring(0, baseLocation.length() - 1)
+              : baseLocation;
+      String namespacePath = String.join("/", tableIdentifier.namespace().levels());
+      effectiveLocation = base + "/" + namespacePath + "/" + tableIdentifier.name();
+    }
+    List<String> locations =
+        resolveStorageLocations(
+            effectiveLocation, tableProperties != null ? tableProperties : Map.of());
+    StorageLocationPreparer preparer = storageLocationPreparerFactory().create(storageConfig);
+    preparer.prepareLocations(locations);
+  }
+
+  /**
+   * Resolves the full set of storage locations needed for a table: the table location itself plus
+   * metadata and data paths (from table properties or defaults).
+   */
+  private List<String> resolveStorageLocations(
+      String tableLocation, Map<String, String> tableProperties) {
+    String metadataPath =
+        Optional.ofNullable(tableProperties.get(TableProperties.WRITE_METADATA_LOCATION))
+            .or(
+                () ->
+                    Optional.ofNullable(
+                        tableProperties.get(
+                            IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY)))
+            .orElse(tableLocation + "/metadata");
+
+    String dataPath =
+        Optional.ofNullable(
+                tableProperties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+            .orElse(tableLocation + "/data");
+
+    return List.of(tableLocation, metadataPath, dataPath);
+  }
+
+  /**
    * Create a table.
    *
    * @param namespace the namespace to create the table in
@@ -468,6 +533,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), tableIdentifier, request.location(), request.properties());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -592,6 +659,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), ident, request.location(), request.properties());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(

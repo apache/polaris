@@ -1,0 +1,32 @@
+{
+  "accessBoundaryRules": [
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyObjectReader",
+        "inRole:roles/storage.objectViewer"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.legacyBucketWriter"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data')"
+      }
+    },
+    {
+      "availablePermissions": [
+        "inRole:roles/storage.folderAdmin"
+      ],
+      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
+      "availabilityCondition": {
+        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/managedFolders/normal/path/to/data')"
+      }
+    }
+  ]
+}
