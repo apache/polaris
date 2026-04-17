@@ -2873,6 +2873,96 @@ public class PolarisTestMetaStoreManager {
         .doesNotContainAnyElementsOf(resolved.getGrantRecordsAsSecurable());
   }
 
+  public void testLoadResolvedEntitySkipsDroppedGranteeReferences() {
+    // create a catalog
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "staleGrantCatalog");
+    CreateCatalogResult catalogCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
+    Assertions.assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    // read the built-in catalog_admin role (will be the securable)
+    EntityResult catalogAdminRoleResult =
+        polarisMetaStoreManager.readEntityByName(
+            this.polarisCallContext,
+            List.of(catalog),
+            PolarisEntityType.CATALOG_ROLE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogAdminRole());
+    Assertions.assertThat(catalogAdminRoleResult.isSuccess()).isTrue();
+    PolarisBaseEntity catalogAdminRole = catalogAdminRoleResult.getEntity();
+    Assertions.assertThat(catalogAdminRole).isNotNull();
+
+    // create a principal role (will be the grantee)
+    PolarisBaseEntity principalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "staleGrantPrincipalRole");
+    EntityResult principalRoleCreate =
+        polarisMetaStoreManager.createEntityIfNotExists(
+            this.polarisCallContext, null, principalRole);
+    Assertions.assertThat(principalRoleCreate.isSuccess()).isTrue();
+    PolarisBaseEntity createdPrincipalRole = principalRoleCreate.getEntity();
+    Assertions.assertThat(createdPrincipalRole).isNotNull();
+    long principalRoleId = createdPrincipalRole.getId();
+
+    // grant usage on catalog_admin role to the principal role
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .grantUsageOnRoleToGrantee(
+                    this.polarisCallContext, catalog, catalogAdminRole, createdPrincipalRole)
+                .isSuccess())
+        .isTrue();
+
+    // verify the grant appears in the catalog_admin role's resolved entity
+    ResolvedEntityResult beforeDrop =
+        polarisMetaStoreManager.loadResolvedEntityById(
+            this.polarisCallContext,
+            catalogAdminRole.getCatalogId(),
+            catalogAdminRole.getId(),
+            PolarisEntityType.CATALOG_ROLE);
+    Assertions.assertThat(beforeDrop.isSuccess()).isTrue();
+    Assertions.assertThat(beforeDrop.getEntityGrantRecords())
+        .anySatisfy(
+            grantRecord -> {
+              Assertions.assertThat(grantRecord.getSecurableId())
+                  .isEqualTo(catalogAdminRole.getId());
+              Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId);
+            });
+
+    // drop the principal role (grantee)
+    Assertions.assertThat(
+            polarisMetaStoreManager
+                .dropEntityIfExists(
+                    this.polarisCallContext, null, createdPrincipalRole, null, false)
+                .isSuccess())
+        .isTrue();
+
+    // verify the stale grant is filtered out from the catalog_admin role's resolved entity
+    ResolvedEntityResult afterDrop =
+        polarisMetaStoreManager.loadResolvedEntityById(
+            this.polarisCallContext,
+            catalogAdminRole.getCatalogId(),
+            catalogAdminRole.getId(),
+            PolarisEntityType.CATALOG_ROLE);
+    Assertions.assertThat(afterDrop.isSuccess()).isTrue();
+    Assertions.assertThat(afterDrop.getEntityGrantRecords())
+        .noneSatisfy(
+            grantRecord ->
+                Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
+  }
+
   private static PolarisEntityCore getEntityCore(PolarisBaseEntity entity) {
     return new PolarisEntityCore.Builder<>(entity).build();
   }
