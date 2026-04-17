@@ -385,6 +385,29 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
             grantRecord -> assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
   }
 
+  @Test
+  public void testLoadGrantsReturnsEntityNotFoundForMissingAnchor() {
+    long missingId = metaStore.generateNewEntityId(callContext).getId();
+    PolarisBaseEntity missingPrincipalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            missingId,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "missingPrincipalRole");
+
+    LoadGrantsResult grantsToMissing =
+        metaStore.loadGrantsToGrantee(callContext, missingPrincipalRole);
+    assertThat(grantsToMissing.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+
+    LoadGrantsResult grantsOnMissing =
+        metaStore.loadGrantsOnSecurable(callContext, missingPrincipalRole);
+    assertThat(grantsOnMissing.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+  }
+
   @Override
   @Test
   @Disabled(
