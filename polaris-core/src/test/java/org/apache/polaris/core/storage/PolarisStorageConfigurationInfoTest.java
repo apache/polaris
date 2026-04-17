@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.storage;
+package org.apache.polaris.core.storage;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -25,8 +25,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
-import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;

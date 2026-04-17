@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.storage.gcp;
+package org.apache.polaris.core.storage.gcp;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,8 +56,6 @@ import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
-import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
