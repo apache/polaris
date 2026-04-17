@@ -58,6 +58,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
+import software.amazon.awssdk.services.sts.model.PackedPolicyTooLargeException;
 import software.amazon.awssdk.services.sts.model.StsException;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
@@ -92,6 +93,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public static final String AWS_PARTITION = "aws";
   public static final PolarisPrincipal POLARIS_PRINCIPAL =
       PolarisPrincipal.of("test-principal", Map.of(), Set.of());
+
+  /** AWS STS inline session policy size limit (packed), in characters. */
+  private static final int STS_PACKED_POLICY_LIMIT = 2048;
 
   @SafeVarargs
   private static RealmConfig enabledFeatures(FeatureConfiguration<Boolean>... enabledOptions) {
@@ -256,6 +260,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             IamStatement::resources)
                                         .returns(
                                             List.of(
+                                                IamAction.create("s3:GetObject"),
+                                                IamAction.create("s3:GetObjectVersion"),
                                                 IamAction.create("s3:PutObject"),
                                                 IamAction.create("s3:DeleteObject")),
                                             IamStatement::actions),
@@ -306,15 +312,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st ->
-                                                assertThat(st.resources())
-                                                    .containsExactlyInAnyOrder(
-                                                        IamResource.create(
-                                                            s3Arn(awsPartition, bucket, firstPath)),
-                                                        IamResource.create(
-                                                            s3Arn(
-                                                                awsPartition, bucket, secondPath))))
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    s3Arn(awsPartition, bucket, secondPath))),
+                                            IamStatement::resources)
                                         .returns(
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
@@ -392,6 +394,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             IamStatement::resources)
                                         .returns(
                                             List.of(
+                                                IamAction.create("s3:GetObject"),
+                                                IamAction.create("s3:GetObjectVersion"),
                                                 IamAction.create("s3:PutObject"),
                                                 IamAction.create("s3:DeleteObject")),
                                             IamStatement::actions),
@@ -410,18 +414,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st ->
-                                                assertThat(st.resources())
-                                                    .containsExactlyInAnyOrder(
-                                                        IamResource.create(
-                                                            s3Arn(
-                                                                AWS_PARTITION, bucket, firstPath)),
-                                                        IamResource.create(
-                                                            s3Arn(
-                                                                AWS_PARTITION,
-                                                                bucket,
-                                                                secondPath))))
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    s3Arn(AWS_PARTITION, bucket, secondPath))),
+                                            IamStatement::resources)
                                         .returns(
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
@@ -1635,6 +1632,184 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         context))
         .isInstanceOf(software.amazon.awssdk.services.sts.model.StsException.class)
         .hasMessageContaining("sts:TagSession");
+  }
+
+  /**
+   * Regression test for issue #3243: read and write actions for shared locations are emitted in a
+   * single statement, eliminating the duplicated ARN that previously inflated the policy.
+   */
+  @Test
+  public void testReadWriteLocationsMergedIntoSingleStatement() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String tablePath = "path/to/warehouse/ns/table";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .extracting(AssumeRoleRequest::policy)
+                  .extracting(IamPolicy::fromJson)
+                  .satisfies(
+                      policy -> {
+                        List<IamStatement> objectStatements =
+                            policy.statements().stream()
+                                .filter(
+                                    s ->
+                                        s.actions().stream()
+                                            .anyMatch(a -> a.value().startsWith("s3:GetObject")))
+                                .toList();
+                        // Exactly one object-access statement when read and write sets match,
+                        // carrying both read and write actions on the shared resource.
+                        assertThat(objectStatements)
+                            .singleElement()
+                            .returns(
+                                List.of(
+                                    IamAction.create("s3:GetObject"),
+                                    IamAction.create("s3:GetObjectVersion"),
+                                    IamAction.create("s3:PutObject"),
+                                    IamAction.create("s3:DeleteObject")),
+                                IamStatement::actions)
+                            .returns(
+                                List.of(
+                                    IamResource.create(s3Arn(AWS_PARTITION, bucket, tablePath))),
+                                IamStatement::resources);
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, tablePath))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, tablePath)),
+            Set.of(s3Path(bucket, tablePath)),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  /**
+   * Deeply-nested namespace paths (15 nested 32-char namespaces, mirroring the benchmark repro)
+   * would previously exceed the AWS STS packed-policy limit because each write location's ARN was
+   * listed in both the read and the write statement. With the merged statement, the policy stays
+   * well within the limit.
+   */
+  @Test
+  public void testDeepNestedNamespaceStaysWithinPackedPolicyLimit() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "my-very-long-s3-bucket";
+    String[] namespaces = {
+      "f5a4d86558ed1f7fddec42ce11d8ee3a",
+      "e3fa7fd44796b949fce728cb334f3c15",
+      "f031eb9dc709150a3e1e9a76e9af550a",
+      "5598924229adee97260cda483d70674c",
+      "0857633d48470f538d1fc4cdc789c753",
+      "c4c06b9b673a710f7ce865690ff8797b",
+      "9594c7f9e8a1cd28054ff71b933fdc3b",
+      "0018c223e978d13aeec87488bc333c70",
+      "d4c484ca41745b69286372286f3f30aa",
+      "362f8d6579892af8a9c5f38b4e664b07",
+      "f28f3a8b846271c68bdbc09992d88d28",
+      "915107073e394e3471173ec4633137fa",
+      "5eac9dac6dd84afcb35f4805af9d8b34",
+      "e1a24630cbf9ced9dffcc123b70b2e43",
+      "ab4ffa55f688360e0c12aef543c18351"
+    };
+    String deepPath = "catalog/" + String.join("/", namespaces);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest req = invocation.getArgument(0);
+              assertThat(req.policy().length())
+                  .as("inline policy JSON length for deep-nested namespace")
+                  .isLessThan(STS_PACKED_POLICY_LIMIT);
+              IamPolicy policy = IamPolicy.fromJson(req.policy());
+              long statementsReferencingDeepPath =
+                  policy.statements().stream()
+                      .filter(
+                          s ->
+                              s.resources().stream()
+                                  .anyMatch(r -> r.value().endsWith(deepPath + "/*")))
+                      .count();
+              assertThat(statementsReferencingDeepPath).isEqualTo(1);
+              return ASSUME_ROLE_RESPONSE;
+            });
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, "catalog"))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, deepPath)),
+            Set.of(s3Path(bucket, deepPath)),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  /**
+   * When the generated policy is still too large for STS despite the merging optimizations, the raw
+   * AWS SDK exception is rewrapped with an actionable message pointing at namespace path length.
+   */
+  @Test
+  public void testPackedPolicyTooLargeExceptionIsRewrapped() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+
+    PackedPolicyTooLargeException packedPolicyException =
+        (PackedPolicyTooLargeException)
+            PackedPolicyTooLargeException.builder()
+                .message("Packed policy consumes 118% of allotted space, please use smaller policy")
+                .awsErrorDetails(
+                    AwsErrorDetails.builder()
+                        .errorCode("PackedPolicyTooLarge")
+                        .serviceName("STS")
+                        .build())
+                .statusCode(400)
+                .build();
+
+    Mockito.when(stsClient.assumeRole(Mockito.any(AssumeRoleRequest.class)))
+        .thenThrow(packedPolicyException);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                new AwsCredentialsStorageIntegration(
+                        AwsStorageConfigurationInfo.builder()
+                            .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                            .roleARN(roleARN)
+                            .externalId(externalId)
+                            .build(),
+                        stsClient)
+                    .getSubscopedCreds(
+                        EMPTY_REALM_CONFIG,
+                        true,
+                        Set.of(s3Path(bucket, warehouseKeyPrefix)),
+                        Set.of(s3Path(bucket, warehouseKeyPrefix)),
+                        POLARIS_PRINCIPAL,
+                        Optional.empty(),
+                        CredentialVendingContext.empty()))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining(String.valueOf(STS_PACKED_POLICY_LIMIT))
+        .hasMessageContaining("namespace")
+        .hasCauseInstanceOf(PackedPolicyTooLargeException.class);
   }
 
   @Test
