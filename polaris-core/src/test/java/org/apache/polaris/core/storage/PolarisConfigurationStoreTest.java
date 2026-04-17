@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.storage;
+package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;

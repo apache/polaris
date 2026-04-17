@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.storage.azure;
+package org.apache.polaris.core.storage.azure;
 
 import org.apache.polaris.core.storage.StorageLocation;
-import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
