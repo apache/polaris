@@ -1203,17 +1203,35 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         catalogId,
         aclName,
         (securableAndGrantee, granted) -> {
-          var indexedAccess =
-              memoizedIndexedAccess.indexedAccess(
+          var securableExists =
+              entityExists(
                   securableAndGrantee.securableCatalogId(),
+                  securableAndGrantee.securableId(),
                   securableAndGrantee.securableTypeCode());
-          var existing = indexedAccess.nameKeyById(securableAndGrantee.securableId());
-          if (existing.isPresent()) {
-            collector.handle(securableAndGrantee, granted);
+          if (!securableExists) {
+            LOGGER.trace("Skipping stale grant record due to missing securable reference");
+            return;
           }
+
+          var granteeExists =
+              entityExists(
+                  securableAndGrantee.granteeCatalogId(),
+                  securableAndGrantee.granteeId(),
+                  securableAndGrantee.granteeTypeCode());
+          if (!granteeExists) {
+            LOGGER.trace("Skipping stale grant record due to missing grantee reference");
+            return;
+          }
+
+          collector.handle(securableAndGrantee, granted);
         },
         securablesIndex);
     return collector.grantRecords;
+  }
+
+  private boolean entityExists(long catalogId, long id, int typeCode) {
+    var indexedAccess = memoizedIndexedAccess.indexedAccess(catalogId, typeCode);
+    return indexedAccess.nameKeyById(id).isPresent();
   }
 
   private void collectGrantRecords(
