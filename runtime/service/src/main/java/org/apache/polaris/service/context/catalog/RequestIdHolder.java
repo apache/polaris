@@ -53,7 +53,7 @@ public class RequestIdHolder {
   @Produces
   @RequestScoped
   public RequestIdSupplier getRequestIdSupplier() {
-    return () -> requestId.get();
+    return requestId::get;
   }
 
   public void set(@Nullable String id) {

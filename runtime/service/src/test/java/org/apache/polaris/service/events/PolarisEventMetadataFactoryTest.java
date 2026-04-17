@@ -29,12 +29,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.context.catalog.RequestIdHolder;
 import org.junit.jupiter.api.Test;
 
 class PolarisEventMetadataFactoryTest {
 
   @Test
-  void testCreateReturnsNoRequestIdWhenSupplierReturnsNull() {
+  void testCreateReturnsNoRequestIdWhenHolderIsEmpty() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
@@ -48,7 +49,9 @@ class PolarisEventMetadataFactoryTest {
     when(realmContext.get()).thenReturn(() -> "test-realm");
     factory.realmContext = realmContext;
 
-    factory.requestIdSupplier = () -> null;
+    RequestIdHolder requestIdHolder = mock(RequestIdHolder.class);
+    when(requestIdHolder.get()).thenReturn(null);
+    factory.requestIdHolder = requestIdHolder;
 
     PolarisEventMetadata metadata = factory.create();
 
@@ -56,7 +59,7 @@ class PolarisEventMetadataFactoryTest {
   }
 
   @Test
-  void testCreateUsesRequestIdSupplier() {
+  void testCreateUsesRequestIdHolder() {
     PolarisEventMetadataFactory factory = new PolarisEventMetadataFactory();
     factory.clock = Clock.fixed(Instant.parse("2026-03-14T03:12:00Z"), ZoneOffset.UTC);
 
@@ -70,7 +73,9 @@ class PolarisEventMetadataFactoryTest {
     when(realmContext.get()).thenReturn(() -> "test-realm");
     factory.realmContext = realmContext;
 
-    factory.requestIdSupplier = () -> "req-123";
+    RequestIdHolder requestIdHolder = mock(RequestIdHolder.class);
+    when(requestIdHolder.get()).thenReturn("req-123");
+    factory.requestIdHolder = requestIdHolder;
 
     PolarisEventMetadata metadata = factory.create();
 

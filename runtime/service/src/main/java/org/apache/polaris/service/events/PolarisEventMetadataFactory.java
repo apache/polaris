@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RequestIdSupplier;
+import org.apache.polaris.service.context.catalog.RequestIdHolder;
 
 @ApplicationScoped
 public class PolarisEventMetadataFactory {
@@ -39,7 +39,7 @@ public class PolarisEventMetadataFactory {
   @Inject Clock clock;
   @Inject CurrentIdentityAssociation currentIdentityAssociation;
   @Inject Instance<RealmContext> realmContext;
-  @Inject RequestIdSupplier requestIdSupplier;
+  @Inject RequestIdHolder requestIdHolder;
 
   /**
    * Creates a new event metadata object.
@@ -99,15 +99,14 @@ public class PolarisEventMetadataFactory {
   }
 
   /**
-   * Extracts the request ID from the current {@link RequestIdSupplier}.
+   * Extracts the request ID from the current request-scoped {@link RequestIdHolder}.
    *
-   * <p>On normal HTTP request threads the supplier is backed by the request-scoped {@link
-   * org.apache.polaris.service.context.catalog.RequestIdHolder}. On async task threads it is
-   * populated by {@link org.apache.polaris.service.task.RequestIdPropagator}.
+   * <p>On normal HTTP request threads the holder is populated by {@code RequestIdFilter}. On async
+   * task threads it is populated by {@code TaskContextPropagator}.
    */
   private Optional<String> getRequestId() {
     try {
-      return Optional.ofNullable(requestIdSupplier.getRequestId());
+      return Optional.ofNullable(requestIdHolder.get());
     } catch (ContextNotActiveException e) {
       // No active request scope (e.g. background thread without @ActivateRequestContext).
       return Optional.empty();
