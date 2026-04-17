@@ -22,12 +22,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 
 public class PolicyEntity extends PolarisEntity {
 
@@ -84,7 +84,7 @@ public class PolicyEntity extends PolarisEntity {
   public Namespace getParentNamespace() {
     String parentNamespace = getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
     if (parentNamespace != null) {
-      return RESTUtil.decodeNamespace(parentNamespace);
+      return PolarisEntityUtils.decodeNamespace(parentNamespace);
     }
     return null;
   }
@@ -114,7 +114,7 @@ public class PolicyEntity extends PolarisEntity {
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY, PolarisEntityUtils.encodeNamespace(namespace));
       }
       return this;
     }
