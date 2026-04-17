@@ -31,7 +31,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
     chown -R spark:spark /home/spark /tmp/polaris-regtests && \
-    chmod -R 777 /opt/spark/conf
+    chmod -R 777 /opt/spark/conf && \
+    curl -o /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc && \
+    chmod +x /usr/local/bin/mc
 
 COPY --chown=spark:spark ./regtests/setup.sh ./regtests/pyspark-setup.sh ./regtests/requirements.txt /home/spark/polaris/regtests/
 COPY --chown=spark:spark ./client/python /home/spark/polaris/client/python
@@ -40,7 +42,8 @@ COPY --chown=spark:spark ./spec /home/spark/polaris/spec
 COPY --chown=spark:spark ./regtests /home/spark/polaris/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
-RUN chmod -R go+rwx /home/spark/polaris
+RUN chmod -R go+rwx /home/spark/polaris && \
+    chmod +x /home/spark/polaris/regtests/minio-setup.sh
 
 USER spark
 

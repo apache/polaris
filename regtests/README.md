@@ -132,6 +132,67 @@ AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.w
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
+## Run with MinIO (Local Development)
+
+For local development without AWS credentials, tests can run against MinIO, an S3-compatible object storage server that runs in a Docker container.
+
+### Automatic Mode Detection
+
+The test framework automatically detects which storage backend to use:
+- If `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are set → AWS mode
+- If AWS credentials are not available → MinIO mode
+
+### Running with MinIO
+
+MinIO is included automatically in the docker-compose setup:
+
+```shell
+# Start services (MinIO will be included automatically)
+docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+```
+
+If you don't have AWS credentials configured, MinIO mode will be automatically enabled. The tests will run against the local MinIO instance instead of real AWS S3.
+
+### Forcing MinIO Mode
+
+To explicitly use MinIO even if AWS credentials are available, set `MINIO_TEST_ENABLED=true` in your `.env` file:
+
+```shell
+# In .env file
+MINIO_TEST_ENABLED=true
+MINIO_ENDPOINT=http://minio:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+```
+
+Or export it as an environment variable:
+
+```shell
+export MINIO_TEST_ENABLED=true
+docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+```
+
+### MinIO Console
+
+When MinIO is running, you can access the MinIO web console to inspect buckets and objects:
+- URL: http://localhost:9001
+- Username: `minioadmin`
+- Password: `minioadmin`
+
+### Configuration
+
+MinIO settings can be customized in the `.env` file:
+- `MINIO_ENDPOINT` - MinIO server endpoint (default: `http://minio:9000`)
+- `MINIO_ACCESS_KEY` - Access key (default: `minioadmin`)
+- `MINIO_SECRET_KEY` - Secret key (default: `minioadmin`)
+
+### Limitations
+
+MinIO mode has some differences from AWS mode:
+- **KMS policy limitation**: MinIO supports KMS for server-side encryption, but its STS policy evaluator does not support KMS ARNs as resource identifiers in IAM policies. Polaris includes KMS key resources when subscoping credentials via STS AssumeRole, which MinIO rejects. The catalog is therefore configured with `kmsUnavailable=true` to omit KMS resources from the inline policy.
+- **Path-style access**: MinIO uses path-style S3 access (`http://endpoint/bucket/key`) instead of virtual-hosted style.
+
+MinIO does support STS AssumeRole on the same port as S3, so the full credential vending flow (vended credentials with session tokens) works identically to AWS.
 
 ## Fixing a failed test due to incorrect expected output
 

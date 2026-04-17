@@ -18,6 +18,20 @@
 #
 
 services:
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   polaris:
     image: apache/polaris:latest
     ports:
@@ -25,8 +39,8 @@ services:
       - "8182"
     environment:
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
       GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
@@ -57,9 +71,11 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       AWS_TEST_ENABLED: $AWS_TEST_ENABLED
-      AWS_STORAGE_BUCKET: $AWS_STORAGE_BUCKET
+      AWS_STORAGE_BUCKET: ${AWS_STORAGE_BUCKET:-polaris-test-bucket}
       AWS_ROLE_ARN: $AWS_ROLE_ARN
       AWS_TEST_BASE: $AWS_TEST_BASE
       GCS_TEST_ENABLED: $GCS_TEST_ENABLED
@@ -75,6 +91,12 @@ services:
       AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
       AWS_REGION_FOR_CROSS_REGION_TEST: $AWS_REGION_FOR_CROSS_REGION_TEST
+      MINIO_TEST_ENABLED: ${MINIO_TEST_ENABLED:-}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+
+      MINIO_TEST_BASE: ${MINIO_TEST_BASE:-s3://polaris-test-bucket/polaris_test}
     volumes:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/
