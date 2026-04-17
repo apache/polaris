@@ -34,6 +34,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -295,7 +296,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = {"", "file://path/to/my/table"})
+  @ValueSource(strings = {"", "s3://my-bucket/path/to/data/ns/my-table"})
   public void testGenericTableRoundTrip(String baseLocation) {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
@@ -315,6 +316,32 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
     Assertions.assertThat(resultEntity.getBaseLocation()).isEqualTo(baseLocation);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"file://path/to/my/table", "s3://unauthorized-bucket/path"})
+  public void testCreateGenericTableWithInvalidLocation(String baseLocation) {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"), "format", baseLocation, "doc", Map.of()))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testCreateGenericTableWithValidLocation() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    String baseLocation = "s3://my-bucket/path/to/data/ns/valid-table";
+    GenericTableEntity entity =
+        genericTableCatalog.createGenericTable(
+            TableIdentifier.of("ns", "t1"), "format", baseLocation, "doc", Map.of());
+
+    Assertions.assertThat(entity.getBaseLocation()).isEqualTo(baseLocation);
   }
 
   @Test

@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -90,26 +89,6 @@ public class StorageUtil {
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
   public static @Nonnull Set<String> getLocationsUsedByTable(ViewMetadata viewMetadata) {
     return Set.of(viewMetadata.location());
-  }
-
-  private static final String GENERIC_TABLE_S3_REGION_KEY = "s3.client.region";
-
-  /**
-   * Converts a core {@link StorageAccessConfig} into a flat config map suitable for the Generic
-   * Table API. Merges credentials and extra properties, and remaps Iceberg's {@code client.region}
-   * to {@code s3.client.region}.
-   */
-  public static Map<String, String> toGenericTableConfig(StorageAccessConfig storageAccessConfig) {
-    Map<String, String> config = new HashMap<>(storageAccessConfig.credentials());
-    config.putAll(storageAccessConfig.extraProperties());
-
-    String clientRegionKey = StorageAccessProperty.CLIENT_REGION.getPropertyName();
-    String region = config.remove(clientRegionKey);
-    if (region != null) {
-      config.put(GENERIC_TABLE_S3_REGION_KEY, region);
-    }
-
-    return config;
   }
 
   /** Removes "redundant" locations, so {/a/b/, /a/b/c, /a/b/d} will be reduced to just {/a/b/} */
