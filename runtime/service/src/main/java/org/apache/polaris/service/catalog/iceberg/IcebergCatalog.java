@@ -999,6 +999,39 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
+   * Validates that the specified {@code location} is valid for whatever storage config is found for
+   * this TableLike's parent hierarchy.
+   */
+  private void validateLocationForTableLike(TableIdentifier identifier, String location) {
+    PolarisResolvedPathWrapper resolvedStorageEntity =
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedStorageEntity == null) {
+      resolvedStorageEntity =
+          resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    }
+    if (resolvedStorageEntity == null) {
+      resolvedStorageEntity =
+          resolvedEntityView.getPassthroughResolvedPath(
+              ResolvedPathKey.ofNamespace(identifier.namespace()));
+    }
+
+    validateLocationForTableLike(identifier, location, resolvedStorageEntity);
+  }
+
+  /**
+   * Validates that the specified {@code location} is valid for whatever storage config is found for
+   * this TableLike's parent hierarchy.
+   */
+  private void validateLocationForTableLike(
+      TableIdentifier identifier,
+      String location,
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, identifier, Set.of(location), resolvedStorageEntity);
+  }
+
+  /**
    * Validates the table location has no overlap with other entities after checking the
    * configuration of the service
    */
@@ -1924,8 +1957,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
-        CatalogUtils.validateLocationsForTableLike(
-            realmConfig, identifier, Set.of(metadata.location()), resolvedStorageEntity);
+        validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
         validateNoLocationOverlap(
             catalogEntity,
             identifier,
@@ -2314,8 +2346,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     // Make sure the metadata file is valid for our allowed locations.
     String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-    CatalogUtils.validateLocationsForTableLike(
-        realmConfig, identifier, Set.of(metadataLocation), resolvedParent);
+    validateLocationForTableLike(identifier, metadataLocation, resolvedParent);
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
@@ -2381,8 +2412,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     // Make sure the metadata file is valid for our allowed locations.
     String metadataLocation = icebergTableLikeEntity.getMetadataLocation();
-    CatalogUtils.validateLocationsForTableLike(
-        realmConfig, identifier, Set.of(metadataLocation), resolvedEntities);
+    validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     EntityResult res =
@@ -2498,8 +2528,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // Validate location against the resolvedStorageEntity
       String metadataLocation =
           transformTableLikeLocation(tableIdentifier, request.getPayload().getMetadataLocation());
-      CatalogUtils.validateLocationsForTableLike(
-          realmConfig, tableIdentifier, Set.of(metadataLocation), resolvedStorageEntity);
+      validateLocationForTableLike(tableIdentifier, metadataLocation, resolvedStorageEntity);
 
       // Validate that we can construct a FileIO
       String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
@@ -2557,8 +2586,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .build();
       }
       // first validate we can read the metadata file
-      CatalogUtils.validateLocationForTableLike(
-          resolvedEntityView, realmConfig, tableIdentifier, newLocation);
+      validateLocationForTableLike(tableIdentifier, newLocation);
 
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
 
@@ -2575,8 +2603,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableMetadata tableMetadata = TableMetadataParser.read(fileIO, newLocation);
 
       // then validate that it points to a valid location for this table
-      CatalogUtils.validateLocationForTableLike(
-          resolvedEntityView, realmConfig, tableIdentifier, tableMetadata.location());
+      validateLocationForTableLike(tableIdentifier, tableMetadata.location());
 
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(tableIdentifier, tableMetadata);
