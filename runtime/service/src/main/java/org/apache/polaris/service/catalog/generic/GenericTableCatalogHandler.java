@@ -43,11 +43,11 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -171,7 +171,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     ensureResolutionManifestForTable(identifier);
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTableLike(identifier, PolarisEntitySubType.GENERIC_TABLE, delegationModes);
+        authorizeLoadTableLike(
+            identifier, PolarisEntitySubType.GENERIC_TABLE, !delegationModes.isEmpty());
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
@@ -237,7 +238,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       return List.of();
     }
 
-    Map<String, String> config = StorageUtil.toGenericTableConfig(storageAccessConfig);
+    Map<String, String> config = CatalogHandlerUtils.toGenericTableConfig(storageAccessConfig);
 
     return List.of(StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(config).build());
   }

@@ -286,20 +286,18 @@ public abstract class CatalogHandler {
 
   /**
    * Authorizes a load-table-like operation with optional credential vending delegation. When {@code
-   * vended-credentials} is present in the delegation modes, this method attempts write delegation
-   * authorization first, falling back to read delegation. The returned set of storage actions
-   * reflects the granted access level.
+   * delegationRequested} is true, this method attempts write delegation authorization first,
+   * falling back to read delegation. The returned set of storage actions reflects the granted
+   * access level.
    *
    * @param tableIdentifier the table to authorize access for
    * @param subType the entity subtype (e.g., ICEBERG_TABLE, GENERIC_TABLE)
-   * @param delegationModes the set of access delegation modes requested by the client
+   * @param delegationRequested whether credential vending was requested by the client
    * @return the set of storage actions granted; empty if credential vending was not requested
    */
   protected Set<PolarisStorageActions> authorizeLoadTableLike(
-      TableIdentifier tableIdentifier,
-      PolarisEntitySubType subType,
-      EnumSet<AccessDelegationMode> delegationModes) {
-    if (delegationModes.isEmpty()) {
+      TableIdentifier tableIdentifier, PolarisEntitySubType subType, boolean delegationRequested) {
+    if (!delegationRequested) {
       authorizeBasicTableLikeOperationOrThrow(
           PolarisAuthorizableOperation.LOAD_TABLE, subType, tableIdentifier);
       return Set.of();

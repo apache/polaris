@@ -19,11 +19,9 @@
 
 package org.apache.polaris.service.catalog.common;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
 import com.google.common.base.Preconditions;
-import java.net.URLEncoder;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -98,6 +96,31 @@ public class CatalogUtils {
     }
     return resolvedEntityView.getResolvedPath(
         ResolvedPathKey.ofNamespace(tableIdentifier.namespace()));
+  }
+
+  /**
+   * Validates that the specified {@code location} is valid for whatever storage config is found for
+   * this TableLike's parent hierarchy. Resolves the storage entity from the given entity view.
+   */
+  public static void validateLocationForTableLike(
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      RealmConfig realmConfig,
+      TableIdentifier identifier,
+      String location) {
+    PolarisResolvedPathWrapper resolvedStorageEntity =
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ANY_SUBTYPE);
+    if (resolvedStorageEntity == null) {
+      resolvedStorageEntity =
+          resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    }
+    if (resolvedStorageEntity == null) {
+      resolvedStorageEntity =
+          resolvedEntityView.getPassthroughResolvedPath(
+              ResolvedPathKey.ofNamespace(identifier.namespace()));
+    }
+
+    validateLocationsForTableLike(realmConfig, identifier, Set.of(location), resolvedStorageEntity);
   }
 
   /**

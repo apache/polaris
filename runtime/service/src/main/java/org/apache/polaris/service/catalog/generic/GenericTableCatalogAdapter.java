@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
 
 import jakarta.enterprise.context.RequestScoped;
