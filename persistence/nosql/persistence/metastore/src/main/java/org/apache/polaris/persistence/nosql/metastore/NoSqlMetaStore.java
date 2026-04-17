@@ -1152,8 +1152,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     //   - reverse ('r/...'): grants where that entity is the grantee
     //   - directed ('d/...'): grants where that entity is the securable
     // Filter by direction so callers receive only the requested perspective.
-    Predicate<GrantTriplet> entryFilter =
-        onSecurable ? triplet -> !triplet.reverseOrKey() : GrantTriplet::reverseOrKey;
+    Predicate<GrantTriplet> entryFilter = GrantTriplet::reverseOrKey;
+    entryFilter = onSecurable ? entryFilter.negate() : entryFilter;
 
     collectGrantRecords(
         catalogId,
