@@ -128,7 +128,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       String doc,
       Map<String, String> properties,
       EnumSet<AccessDelegationMode> delegationModes) {
-    authorizeCreateTableDirect(identifier, delegationModes);
+    authorizeCreateTableDirect(identifier, !delegationModes.isEmpty());
+    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     GenericTableEntity createdEntity =
         this.genericTableCatalog.createGenericTable(
@@ -143,15 +144,18 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     List<StorageAccessConfig> storageAccessConfigs =
-        delegationModes.contains(VENDED_CREDENTIALS)
-            ? vendCredentials(
-                identifier,
-                createdEntity,
-                Set.of(
-                    PolarisStorageActions.READ,
-                    PolarisStorageActions.WRITE,
-                    PolarisStorageActions.LIST))
-            : List.of();
+        resolvedMode
+            .filter(VENDED_CREDENTIALS::equals)
+            .map(
+                m ->
+                    vendCredentials(
+                        identifier,
+                        createdEntity,
+                        Set.of(
+                            PolarisStorageActions.READ,
+                            PolarisStorageActions.WRITE,
+                            PolarisStorageActions.LIST)))
+            .orElse(List.of());
 
     return LoadGenericTableResponse.builder()
         .setTable(createdTable)
@@ -173,6 +177,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTableLike(
             identifier, PolarisEntitySubType.GENERIC_TABLE, !delegationModes.isEmpty());
+    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
@@ -185,9 +190,10 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
             .build();
 
     List<StorageAccessConfig> storageAccessConfigs =
-        delegationModes.contains(VENDED_CREDENTIALS)
-            ? vendCredentials(identifier, loadedEntity, actionsRequested)
-            : List.of();
+        resolvedMode
+            .filter(VENDED_CREDENTIALS::equals)
+            .map(m -> vendCredentials(identifier, loadedEntity, actionsRequested))
+            .orElse(List.of());
 
     return LoadGenericTableResponse.builder()
         .setTable(loadedTable)

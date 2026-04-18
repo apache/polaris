@@ -117,7 +117,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
-import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -207,8 +206,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
-
-  protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -443,7 +440,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(TableIdentifier.of(namespace, request.name()), delegationModes);
+    authorizeCreateTableDirect(
+        TableIdentifier.of(namespace, request.name()), !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     request.validate();
@@ -1339,30 +1337,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } else {
       return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
     }
-  }
-
-  /**
-   * Resolves the access delegation mode by delegating to the configured {@link
-   * AccessDelegationModeResolver}.
-   *
-   * @param requestedModes The non-empty set of delegation modes requested by the client
-   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
-   */
-  protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
-      EnumSet<AccessDelegationMode> requestedModes) {
-
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    Optional<AccessDelegationMode> resolvedMode =
-        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
-
-    // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
-
-    return resolvedMode;
   }
 
   @Override
