@@ -509,7 +509,6 @@ public class StorageCredentialCacheTest {
                   .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
                   .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
                   .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
-                  .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                   .build()));
       if (res.size() == number) return res;
       res.add(

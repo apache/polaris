@@ -160,8 +160,6 @@ public class AwsCredentialsStorageIntegration
           .ifPresent(
               i -> {
                 accessConfig.put(
-                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                accessConfig.put(
                     StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                     String.valueOf(i.toEpochMilli()));
               });
