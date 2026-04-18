@@ -149,6 +149,16 @@ public enum DatabaseType {
    * caller.
    */
   public InputStream openInitScriptResource(int schemaVersion) {
+    return openInitScriptResource(schemaVersion, null);
+  }
+
+  /**
+   * Open an InputStream that contains data from an init script for a specific {@link
+   * DataSourceResolver.StoreType}. If a specialized script (e.g., schema-v4-metrics.sql) is not
+   * found, it falls back to the main script (schema-v4.sql).
+   */
+  public InputStream openInitScriptResource(
+      int schemaVersion, DataSourceResolver.StoreType storeType) {
     // Validate schema version is within acceptable range for this database type
     int latestVersion = getLatestSchemaVersion();
     if (schemaVersion <= 0 || schemaVersion > latestVersion) {
@@ -158,10 +168,21 @@ public enum DatabaseType {
               schemaVersion, this, latestVersion));
     }
 
+    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+    if (storeType != null) {
+      String specializedResourceName =
+          String.format(
+              "%s/schema-v%d-%s.sql",
+              this.getDisplayName(), schemaVersion, storeType.name().toLowerCase(Locale.ROOT));
+      InputStream specializedStream = classLoader.getResourceAsStream(specializedResourceName);
+      if (specializedStream != null) {
+        return specializedStream;
+      }
+    }
+
     final String resourceName =
         String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
 
-    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
     InputStream stream = classLoader.getResourceAsStream(resourceName);
     if (stream == null) {
       throw new IllegalStateException(

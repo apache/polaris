@@ -53,6 +53,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 eclipse { project { name = ideName } }
 
 tasks.named<RatTask>("rat").configure {
+  mustRunAfter(":polaris-config-docs-site:copyConfigSectionsToSite")
   // Gradle
   excludes.add("**/build/**")
   excludes.add("gradle/wrapper/gradle-wrapper*")
@@ -149,6 +150,9 @@ tasks.named<RatTask>("rat").configure {
 
   // Rat can't scan binary images
   excludes.add("**/*.png")
+
+  // Auto-generated site content (copied from docs by copyConfigSectionsToSite)
+  excludes.add("site/content/**")
 }
 
 tasks.register<Exec>("buildPythonClient") {
