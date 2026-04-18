@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.GRANT_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR;
@@ -77,6 +78,7 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.persistence.nosql.metastore.mutation.GrantsMutation;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -395,11 +397,15 @@ record NoSqlMetaStoreManager(
       PolarisEntityCore grantee,
       PolarisEntityCore securable,
       PolarisPrivilege privilege) {
-    if (!ms(callCtx)
-            .persistGrantsOrRevokes(
-                grant, new SecurableGranteePrivilegeTuple(securable, grantee, privilege))
-        && !grant) {
-      return new PrivilegeResult(GRANT_NOT_FOUND, "");
+    try {
+      if (!ms(callCtx)
+              .persistGrantsOrRevokes(
+                  grant, true, new SecurableGranteePrivilegeTuple(securable, grantee, privilege))
+          && !grant) {
+        return new PrivilegeResult(GRANT_NOT_FOUND, "");
+      }
+    } catch (GrantsMutation.EntityCannotBeResolvedException e) {
+      return new PrivilegeResult(ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     var grantRecord =
