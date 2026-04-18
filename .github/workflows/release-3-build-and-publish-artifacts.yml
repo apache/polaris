@@ -523,10 +523,68 @@ jobs:
           | Artifact Hub metadata | ✅ Committed to dist dev |
           EOT
 
+  publish-python-client-rc:
+    name: Publish Python Client RC to PyPI
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks]
+    permissions:
+      contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
+      id-token: write
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up JDK for openapi-generator-cli
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Python client RC
+        run: |
+          make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Publish Python client RC to Test PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
+          echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Python client RC published successfully:
+
+          | Property | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}rc${rc_number}\` |
+          | Registry | Test PyPI |
+          EOT
+
   generate-release-email:
     name: Generate Release Email Body
     runs-on: ubuntu-latest
-    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart]
+    needs:
+      - prerequisite-checks
+      - build-and-publish-artifacts
+      - build-docker
+      - build-and-stage-helm-chart
+      - publish-python-client-rc
     permissions:
       contents: read
     env:
@@ -580,6 +638,9 @@ jobs:
           * https://dist.apache.org/repos/dist/dev/polaris/helm-chart/${version_without_rc}
 
           NB: you have to build the Docker images locally in order to test Helm charts.
+
+          The Python CLI RC is available on Test PyPI:
+          * https://test.pypi.org/project/apache-polaris/${version_without_rc}rc${rc_number}/
 
           You can find the KEYS file here:
           * https://downloads.apache.org/polaris/KEYS
