@@ -60,6 +60,8 @@ github:
           # "CI/PR" is the name of the workflow _job_ (jobs.ci-pr.name in ci-pr.yml),
           # "Required Checks" is the name of the workflow _job_ in ci.yml.
           - "CI/PR / Required Checks"
+          - "Zizmor"
+          - "CodeQL Analyze"
 
   features:
     wiki: false
