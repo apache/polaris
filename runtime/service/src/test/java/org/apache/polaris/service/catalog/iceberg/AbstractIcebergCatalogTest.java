@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
@@ -2622,4 +2623,30 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       }
     }
   }
+
+  @Test
+  public void testUpdateNamespacePropertiesAtomic() {
+    catalog.createNamespace(
+        NS,
+        ImmutableMap.of(
+            "prop1", "val1",
+            "prop2", "val2",
+            "prop3", "val3"));
+
+    catalog.updateProperties(
+        NS,
+        ImmutableSet.of("prop1", "prop2", "missing_prop"),
+        ImmutableMap.of(
+            "prop3", "new_val3",
+            "prop4", "val4",
+            "prop5", "val5"));
+
+    Map<String, String> properties = catalog.loadNamespaceMetadata(NS);
+    Assertions.assertThat(properties).containsEntry("prop3", "new_val3");
+    Assertions.assertThat(properties).containsEntry("prop4", "val4");
+    Assertions.assertThat(properties).containsEntry("prop5", "val5");
+    Assertions.assertThat(properties).doesNotContainKey("prop1");
+    Assertions.assertThat(properties).doesNotContainKey("prop2");
+  }
 }
+
