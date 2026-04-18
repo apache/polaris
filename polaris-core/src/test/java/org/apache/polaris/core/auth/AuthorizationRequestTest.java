@@ -35,10 +35,8 @@ public class AuthorizationRequestTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LOAD_TABLE,
-            List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
-                    null)));
+            List.of(PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice"))),
+            List.of());
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL)).isTrue();
   }
@@ -49,11 +47,10 @@ public class AuthorizationRequestTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE,
+            List.of(PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice"))),
             List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")))));
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin"))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isTrue();
   }
@@ -65,16 +62,14 @@ public class AuthorizationRequestTest {
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
             List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
-                    null),
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                        new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role")))));
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                    new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+            List.of(
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                    new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role"))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.CATALOG_ROLE)).isTrue();
   }
@@ -85,32 +80,23 @@ public class AuthorizationRequestTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LOAD_VIEW,
-            List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-                    null)));
+            List.of(PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+            List.of());
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isFalse();
   }
 
   @Test
-  void allowsEmptyTargetBindings() {
+  void allowsEmptyTargetsAndSecondaries() {
     AuthorizationRequest request =
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LIST_CATALOGS,
-            List.of());
+            List.of(), // empty targets
+            List.of()); // empty secondaries
 
-    assertThat(request.getTargetBindings()).isEmpty();
     assertThat(request.getTargets()).isEmpty();
     assertThat(request.getSecondaries()).isEmpty();
-  }
-
-  @Test
-  void throwsWhenTargetBindingHasNoTargetOrSecondary() {
-    assertThatThrownBy(() -> AuthorizationTargetBinding.of(null, null))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("must contain a target or secondary");
   }
 
   @Test

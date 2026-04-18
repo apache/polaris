@@ -67,10 +67,8 @@ public class PolarisAuthorizerImplTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.GET_CATALOG,
-            List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-                    null)));
+            List.of(PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+            List.of());
 
     authzState.setResolutionManifest(manifest);
 
@@ -107,11 +105,10 @@ public class PolarisAuthorizerImplTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE,
+            List.of(),
             List.of(
-                AuthorizationTargetBinding.of(
-                    null,
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")))));
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin"))));
 
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
@@ -150,6 +147,7 @@ public class PolarisAuthorizerImplTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LIST_CATALOGS,
+            List.of(),
             List.of());
 
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
@@ -192,11 +190,10 @@ public class PolarisAuthorizerImplTest {
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.LIST_NAMESPACES,
             List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")),
-                    null)));
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                    new PathSegment(PolarisEntityType.NAMESPACE, "ns"))),
+            List.of());
 
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
@@ -236,10 +233,8 @@ public class PolarisAuthorizerImplTest {
         AuthorizationRequest.of(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
             PolarisAuthorizableOperation.GET_CATALOG,
-            List.of(
-                AuthorizationTargetBinding.of(
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-                    null)));
+            List.of(PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+            List.of());
 
     AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
