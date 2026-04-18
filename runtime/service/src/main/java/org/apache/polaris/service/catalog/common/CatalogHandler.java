@@ -22,13 +22,18 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNam
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.base.Preconditions;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -36,6 +41,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -45,6 +51,9 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.immutables.value.Value;
 
@@ -76,6 +85,8 @@ public abstract class CatalogHandler {
   public abstract ResolutionManifestFactory resolutionManifestFactory();
 
   public abstract PolarisAuthorizer authorizer();
+
+  public abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   protected PolarisResolutionManifest newResolutionManifest() {
     return resolutionManifestFactory().createResolutionManifest(polarisPrincipal(), catalogName());
@@ -215,6 +226,42 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  protected void authorizeCreateTableDirect(
+      TableIdentifier identifier, boolean delegationRequested) {
+    PolarisAuthorizableOperation op =
+        !delegationRequested
+            ? PolarisAuthorizableOperation.CREATE_TABLE_DIRECT
+            : PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+
+    CatalogEntity catalog = resolutionManifest.getResolvedCatalogEntity();
+    if (catalog != null && catalog.isStaticFacade()) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
+    }
+  }
+
+  /**
+   * Resolves the access delegation mode by delegating to the configured {@link
+   * AccessDelegationModeResolver}.
+   *
+   * @param requestedModes The set of delegation modes requested by the client
+   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
+   */
+  protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
+      EnumSet<AccessDelegationMode> requestedModes) {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    Optional<AccessDelegationMode> resolvedMode =
+        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
+
+    // TODO remove when remote signing is implemented
+    Preconditions.checkArgument(
+        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
+        "Unsupported access delegation mode: %s",
+        AccessDelegationMode.REMOTE_SIGNING);
+
+    return resolvedMode;
+  }
+
   /**
    * Ensures resolution manifest is initialized for a table identifier. This allows checking
    * catalog-level feature flags or other resolved entities before authorization. If already
@@ -261,6 +308,39 @@ public abstract class CatalogHandler {
     }
 
     initializeCatalog();
+  }
+
+  /**
+   * Authorizes a load-table-like operation with optional credential vending delegation. When {@code
+   * delegationRequested} is true, this method attempts write delegation authorization first,
+   * falling back to read delegation. The returned set of storage actions reflects the granted
+   * access level.
+   *
+   * @param tableIdentifier the table to authorize access for
+   * @param subType the entity subtype (e.g., ICEBERG_TABLE, GENERIC_TABLE)
+   * @param delegationRequested whether credential vending was requested by the client
+   * @return the set of storage actions granted; empty if credential vending was not requested
+   */
+  protected Set<PolarisStorageActions> authorizeLoadTableLike(
+      TableIdentifier tableIdentifier, PolarisEntitySubType subType, boolean delegationRequested) {
+    if (!delegationRequested) {
+      authorizeBasicTableLikeOperationOrThrow(
+          PolarisAuthorizableOperation.LOAD_TABLE, subType, tableIdentifier);
+      return Set.of();
+    }
+
+    Set<PolarisStorageActions> actionsRequested =
+        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+    try {
+      authorizeBasicTableLikeOperationOrThrow(
+          PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION, subType, tableIdentifier);
+      actionsRequested.add(PolarisStorageActions.WRITE);
+    } catch (ForbiddenException e) {
+      authorizeBasicTableLikeOperationOrThrow(
+          PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION, subType, tableIdentifier);
+    }
+
+    return actionsRequested;
   }
 
   protected void authorizeCollectionOfTableLikeOperationOrThrow(

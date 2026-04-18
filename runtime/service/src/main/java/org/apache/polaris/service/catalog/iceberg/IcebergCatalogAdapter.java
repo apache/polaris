@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -246,12 +247,6 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
-  }
-
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    // Parse the access delegation modes - validation will happen after mode resolution
-    // in IcebergCatalogHandler.resolveAccessDelegationModes()
-    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
   }
 
   @Override

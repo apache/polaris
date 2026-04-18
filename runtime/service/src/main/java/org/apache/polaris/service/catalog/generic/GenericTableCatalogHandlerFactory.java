@@ -29,6 +29,8 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 
 @RequestScoped
 public class GenericTableCatalogHandlerFactory {
@@ -39,6 +41,8 @@ public class GenericTableCatalogHandlerFactory {
   @Inject PolarisAuthorizer authorizer;
   @Inject PolarisCredentialManager credentialManager;
   @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject AccessDelegationModeResolver accessDelegationModeResolver;
 
   public GenericTableCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableGenericTableCatalogHandler.builder()
@@ -50,6 +54,8 @@ public class GenericTableCatalogHandlerFactory {
         .authorizer(authorizer)
         .credentialManager(credentialManager)
         .federatedCatalogFactories(federatedCatalogFactories)
+        .storageAccessConfigProvider(storageAccessConfigProvider)
+        .accessDelegationModeResolver(accessDelegationModeResolver)
         .build();
   }
 }

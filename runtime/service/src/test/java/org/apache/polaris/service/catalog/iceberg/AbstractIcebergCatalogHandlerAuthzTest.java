@@ -628,7 +628,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         manifest -> Mockito.spy(localCatalogFactory.createCatalog(manifest));
     IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, spyFactory);
 
-    // Call the optimized credential vending path — authorizeLoadTable inside
+    // Call the optimized credential vending path — authorizeLoadTableLike inside
     // will trigger initializeCatalog() which sets baseCatalog via our spy factory
     handler.loadCredentials(TABLE_NS1A_2, Optional.empty());
 

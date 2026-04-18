@@ -18,10 +18,13 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
+
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.EnumSet;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -29,6 +32,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.rest.NamespaceUtils;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -37,6 +41,11 @@ import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
+/**
+ * Adapter between the generated {@link PolarisCatalogGenericTableApiService} REST interface and
+ * {@link GenericTableCatalogHandler}. Parses request-level concerns such as the access delegation
+ * header before delegating to the handler.
+ */
 @RequestScoped
 public class GenericTableCatalogAdapter
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
@@ -74,6 +83,8 @@ public class GenericTableCatalogAdapter
       String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(polarisGenericTableAccessDelegation);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
@@ -84,7 +95,8 @@ public class GenericTableCatalogAdapter
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getBaseLocation(),
             createGenericTableRequest.getDoc(),
-            reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()));
+            reservedProperties.removeReservedProperties(createGenericTableRequest.getProperties()),
+            delegationModes);
 
     return Response.ok(response).build();
   }
@@ -127,13 +139,16 @@ public class GenericTableCatalogAdapter
       String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(polarisGenericTableAccessDelegation);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.loadGenericTable(
             TableIdentifier.of(
                 NamespaceUtils.splitNamespace(
                     namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
-                genericTable));
+                genericTable),
+            delegationModes);
     return Response.ok(response).build();
   }
 }

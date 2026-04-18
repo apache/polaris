@@ -33,6 +33,7 @@ import jakarta.inject.Inject;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,8 @@ import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -744,6 +747,26 @@ public class CatalogHandlerUtils {
     if (!dropped) {
       throw notFoundExceptionForTableLikeEntity(viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
+  }
+
+  private static final String GENERIC_TABLE_S3_REGION_KEY = "s3.client.region";
+
+  /**
+   * Converts a core {@link StorageAccessConfig} into a flat config map suitable for the Generic
+   * Table API. Merges credentials and extra properties, and remaps Iceberg's {@code client.region}
+   * to {@code s3.client.region}.
+   */
+  public static Map<String, String> toGenericTableConfig(StorageAccessConfig storageAccessConfig) {
+    Map<String, String> config = new HashMap<>(storageAccessConfig.credentials());
+    config.putAll(storageAccessConfig.extraProperties());
+
+    String clientRegionKey = StorageAccessProperty.CLIENT_REGION.getPropertyName();
+    String region = config.remove(clientRegionKey);
+    if (region != null) {
+      config.put(GENERIC_TABLE_S3_REGION_KEY, region);
+    }
+
+    return config;
   }
 
   protected ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {

@@ -40,7 +40,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +117,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
-import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -208,8 +206,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract PolarisMetricsReporter metricsReporter();
 
   protected abstract Clock clock();
-
-  protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -438,31 +434,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
         namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
   }
 
-  public void authorizeCreateTableDirect(
-      Namespace namespace, CreateTableRequest request, boolean delegationRequested) {
-    if (delegationRequested) {
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
-          TableIdentifier.of(namespace, request.name()));
-    } else {
-      TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT, identifier);
-    }
-
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
-  }
-
   public LoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableDirect(
+        TableIdentifier.of(namespace, request.name()), !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     request.validate();
@@ -755,14 +734,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public ImmutableLoadCredentialsResponse loadCredentials(
       TableIdentifier tableIdentifier, Optional<String> refreshCredentialsEndpoint) {
 
-    Set<PolarisStorageActions> actionsRequested = authorizeLoadTable(tableIdentifier, true);
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTableLike(tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, true);
 
     // Optimized credential vending is only supported for native Polaris catalogs.
     // Federated/external catalogs are passthrough — writes happen directly on the
     // remote catalog independently of Polaris, so there is no guarantee that entity
     // internal properties (e.g. location) in the Polaris metastore are in sync with
     // the remote catalog's actual table metadata.
-    // Note: this check must come after authorizeLoadTable because baseCatalog is
+    // Note: this check must come after authorizeLoadTableLike because baseCatalog is
     // initialized lazily during authorization.
     if (!(baseCatalog instanceof IcebergCatalog)) {
       return fallbackToFullLoadTable(tableIdentifier, refreshCredentialsEndpoint);
@@ -816,42 +796,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return responseBuilder.build();
   }
 
-  private Set<PolarisStorageActions> authorizeLoadTable(
-      TableIdentifier tableIdentifier, boolean delegationRequested) {
-    if (!delegationRequested) {
-      authorizeBasicTableLikeOperationOrThrow(
-          PolarisAuthorizableOperation.LOAD_TABLE,
-          PolarisEntitySubType.ICEBERG_TABLE,
-          tableIdentifier);
-      return Set.of();
-    }
-
-    // Here we have a single method that falls through multiple candidate
-    // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
-    // and
-    // failing the authz check if grants aren't found, we find the first most-privileged authz match
-    // and respond according to that.
-    PolarisAuthorizableOperation read =
-        PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
-    PolarisAuthorizableOperation write =
-        PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
-
-    Set<PolarisStorageActions> actionsRequested =
-        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-    try {
-      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
-      // easily.
-      authorizeBasicTableLikeOperationOrThrow(
-          write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-      actionsRequested.add(PolarisStorageActions.WRITE);
-    } catch (ForbiddenException e) {
-      authorizeBasicTableLikeOperationOrThrow(
-          read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-    }
-
-    return actionsRequested;
-  }
-
   public Optional<LoadTableResponse> loadTable(
       TableIdentifier tableIdentifier,
       String snapshots,
@@ -860,7 +804,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTableLike(
+            tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     if (ifNoneMatch != null) {
@@ -1392,30 +1337,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     } else {
       return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
     }
-  }
-
-  /**
-   * Resolves the access delegation mode by delegating to the configured {@link
-   * AccessDelegationModeResolver}.
-   *
-   * @param requestedModes The non-empty set of delegation modes requested by the client
-   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
-   */
-  protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
-      EnumSet<AccessDelegationMode> requestedModes) {
-
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    Optional<AccessDelegationMode> resolvedMode =
-        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
-
-    // TODO remove when remote signing is implemented
-    // Reject if the resolved mode is REMOTE_SIGNING since it's not yet supported
-    Preconditions.checkArgument(
-        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
-        "Unsupported access delegation mode: %s",
-        AccessDelegationMode.REMOTE_SIGNING);
-
-    return resolvedMode;
   }
 
   @Override
