@@ -335,6 +335,8 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-smallrye-fault-tolerance
 * Maven group:artifact IDs: io.quarkus:quarkus-smallrye-health
 * Maven group:artifact IDs: io.quarkus:quarkus-smallrye-jwt-build
+* Maven group:artifact IDs: io.quarkus:quarkus-smallrye-openapi
+* Maven group:artifact IDs: io.quarkus:quarkus-swagger-ui
 * Maven group:artifact IDs: io.quarkus:quarkus-tls-registry
 * Maven group:artifact IDs: io.quarkus:quarkus-tls-registry-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-transaction-annotations
@@ -383,6 +385,7 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
 * Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
+* Maven group:artifact IDs: io.smallrye:jandex
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -399,6 +402,8 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye:smallrye-health-api
 * Maven group:artifact IDs: io.smallrye:smallrye-health-provided-checks
 * Maven group:artifact IDs: io.smallrye:smallrye-jwt
+* Maven group:artifact IDs: io.smallrye:smallrye-open-api-core
+* Maven group:artifact IDs: io.smallrye:smallrye-open-api-model
 * Maven group:artifact IDs: io.smallrye:smallrye-jwt-build
 * Maven group:artifact IDs: io.smallrye:smallrye-jwt-common
 
@@ -1618,6 +1623,7 @@ This product bundles Microprofile.
 * Maven group:artifact IDs: org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api
 * Maven group:artifact IDs: org.eclipse.microprofile.health:microprofile-health-api
 * Maven group:artifact IDs: org.eclipse.microprofile.jwt:microprofile-jwt-auth-api
+* Maven group:artifact IDs: org.eclipse.microprofile.openapi:microprofile-openapi-api
 * Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-api
 * Maven group:artifact IDs: org.eclipse.microprofile.reactive-streams-operators:microprofile-reactive-streams-operators-core
 
