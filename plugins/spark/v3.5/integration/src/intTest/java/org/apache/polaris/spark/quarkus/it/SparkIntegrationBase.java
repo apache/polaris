@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -89,16 +90,8 @@ public abstract class SparkIntegrationBase {
 
     catalogName = client.newEntityName("spark_catalog");
 
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-            .build();
-    CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
-    props.putAll(s3Container.getS3ConfigProperties());
+    CatalogProperties props = new CatalogProperties(getDefaultBaseLocation());
+    props.putAll(getExtraCatalogProperties());
     props.put("polaris.config.drop-with-purge.enabled", "true");
     props.put("polaris.config.namespace-custom-location.enabled", "true");
     Catalog catalog =
@@ -106,7 +99,7 @@ public abstract class SparkIntegrationBase {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
             .setProperties(props)
-            .setStorageConfigInfo(awsConfigModel)
+            .setStorageConfigInfo(getStorageConfigInfo())
             .build();
 
     managementApi.createCatalog(catalog);
@@ -125,6 +118,24 @@ public abstract class SparkIntegrationBase {
         .withWarehouse(warehouseDir)
         .addCatalog(catalogName, "org.apache.polaris.spark.SparkCatalog", endpoints, sparkToken)
         .getOrCreate();
+  }
+
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+        .setExternalId("externalId")
+        .setUserArn("userArn")
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+        .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+        .build();
+  }
+
+  protected String getDefaultBaseLocation() {
+    return "s3://my-bucket/path/to/data";
+  }
+
+  protected Map<String, String> getExtraCatalogProperties() {
+    return s3Container.getS3ConfigProperties();
   }
 
   @AfterEach

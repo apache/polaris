@@ -42,6 +42,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,11 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
       throw new IllegalStateException(
           String.format(
               "Failed to fetch resolved parent for TableIdentifier '%s'", tableIdentifier));
+    }
+
+    if (baseLocation != null && !baseLocation.isEmpty()) {
+      CatalogUtils.validateLocationForTableLike(
+          resolvedEntityView, callContext.getRealmConfig(), tableIdentifier, baseLocation);
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
