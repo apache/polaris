@@ -42,11 +42,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with: # zizmor: ignore[artipacked]
+        with:
           # Fetch full history for proper branch operations
           fetch-depth: 0
           # Use a token with write permissions - persist-credentials is required for git push
-          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -184,8 +184,8 @@ jobs:
 
       - name: Copy distribution from SVN dev to release space
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -214,8 +214,8 @@ jobs:
 
       - name: Clean up old releases from dist release repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -267,8 +267,8 @@ jobs:
 
       - name: Transfer Helm index and artifacthub-repo.yml from dev to release
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -328,8 +328,8 @@ jobs:
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
         env:
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
-          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }} # zizmor: ignore[secrets-outside-env]
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
         run: |
           echo "${DOCKERHUB_TOKEN}" | docker login ghcr.io -u "${DOCKERHUB_USER}" --password-stdin
 
@@ -360,9 +360,9 @@ jobs:
 
       - name: Create GitHub release with artifacts
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -423,8 +423,8 @@ jobs:
 
       - name: Release candidate repository on Nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
         run: |
           source "${LIBS_DIR}/_exec.sh"
 

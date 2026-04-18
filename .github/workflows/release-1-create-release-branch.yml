@@ -42,11 +42,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with: # zizmor: ignore[artipacked]
+        with:
           # Fetch full history for proper branch operations
           fetch-depth: 0
           # Use a token with write permissions - persist-credentials is required for git push
-          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
