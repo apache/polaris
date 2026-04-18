@@ -67,6 +67,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 - Added summarize subcommand to Polaris CLI.
 - Added find and tables options to Polaris CLI.
+* **Apache Ranger Integration (Beta):** Added support for Apache Ranger as an external authorizer.
+  * Enables centralized access control management for Polaris activities via Ranger security policies.
+  * Toggle integration by setting `polaris.authorization.type=ranger` in the Polaris configuration.
 
 ### Changes
 
@@ -280,3 +283,4 @@ Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release
 [0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+[Apache Ranger Authorization]: https://ranger.apache.org/
