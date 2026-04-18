@@ -1528,15 +1528,6 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles jettison.
-
-* Maven group:artifact IDs: org.codehaus.jettison:jettison
-
-Project URL: https://github.com/jettison-json/jettison
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles animal-sniffer-annotations.
 
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
