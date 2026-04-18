@@ -19,10 +19,21 @@
 
 package org.apache.polaris.service.events.listeners;
 
-import org.apache.polaris.service.events.PolarisEvent;
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithName;
+import java.util.Optional;
+import java.util.Set;
 
-/** Strategy interface for converting service events into persistence events. */
-public interface PersistenceEventHandler {
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.event-listener.persistence")
+public interface PolarisPersistenceEventListenerConfiguration {
 
-  void handle(PolarisEvent event, String realmId, PolarisPersistenceEventListener parentListener);
+  /**
+   * Comma-separated list of EventAttributes key names that are safe to persist.
+   *
+   * <p>If unset, the default safe allowlist in PolarisPersistenceEventListener is used.
+   */
+  @WithName("allowlisted-attributes")
+  Optional<Set<String>> allowlistedAttributes();
 }

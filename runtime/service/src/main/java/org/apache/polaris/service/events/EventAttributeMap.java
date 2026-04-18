@@ -19,6 +19,7 @@
 package org.apache.polaris.service.events;
 
 import jakarta.enterprise.context.RequestScoped;
+import java.util.function.BiConsumer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -64,5 +65,9 @@ public final class EventAttributeMap {
 
   public boolean isEmpty() {
     return attributes.isEmpty();
+  }
+
+  public void forEach(BiConsumer<AttributeKey<?>, Object> consumer) {
+    attributes.forEach(consumer);
   }
 }
