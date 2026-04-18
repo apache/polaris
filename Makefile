@@ -138,7 +138,7 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 			exit 1; \
 		fi; \
 		echo "Building with format: $(FORMAT)"; \
-		$(ACTIVATE_AND_CD) && uv build --clear --format $(FORMAT); \
+		$(ACTIVATE_AND_CD) && uv build --clear --$(FORMAT); \
 	else \
 		echo "Building default distribution (sdist and wheel)"; \
 		$(ACTIVATE_AND_CD) && uv build --clear; \
