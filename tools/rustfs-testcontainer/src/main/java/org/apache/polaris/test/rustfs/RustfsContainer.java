@@ -20,7 +20,9 @@
 package org.apache.polaris.test.rustfs;
 
 import com.google.common.base.Preconditions;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.time.Duration;
@@ -120,15 +122,12 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
   private final String secretKey;
   private final String bucket;
 
+  private final int hostS3ApiPort = randomAvailablePort();
+
   private String hostPort;
   private String s3endpoint;
   private S3Client s3;
   private Optional<String> region;
-
-  @SuppressWarnings("unused")
-  public RustfsContainer() {
-    this(null, null, null, null, null);
-  }
 
   @SuppressWarnings("resource")
   public RustfsContainer(
@@ -138,11 +137,8 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
             .dockerImageName(image));
     withNetworkAliases(randomString("rustfs"));
     withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(RustfsContainer.class)));
-    // A fixed S3 API port is needed due to test-containers map a random port to host and
-    // RustFS is very restrict on server domains.
-    // Anything not using port 443 port must define the port as part of RUSTFS_SERVER_DOMAINS.
-    // More detail in https://github.com/rustfs/rustfs/issues/1593
-    addFixedExposedPort(S3_API_PORT, S3_API_PORT);
+    // RustFS requires the externally visible host/port to be declared in RUSTFS_SERVER_DOMAINS.
+    addFixedExposedPort(hostS3ApiPort, S3_API_PORT);
     addExposedPort(CONSOLE_PORT);
     this.accessKey = accessKey != null ? accessKey : randomString("access");
     this.secretKey = secretKey != null ? secretKey : randomString("secret");
@@ -154,7 +150,7 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
     withEnv(RUSTFS_ACCESS_KEY, this.accessKey);
     withEnv(RUSTFS_SECRET_KEY, this.secretKey);
     // S3 SDK encodes bucket names in host names - need to tell Rustfs which domain to use
-    withEnv(RUSTFS_DOMAIN, RUSTFS_DOMAIN_NAME + ":" + S3_API_PORT);
+    withEnv(RUSTFS_DOMAIN, RUSTFS_DOMAIN_NAME + ":" + hostS3ApiPort);
     setWaitStrategy(
         new HttpWaitStrategy()
             .forPort(CONSOLE_PORT)
@@ -169,6 +165,14 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
 
   private static String randomString(String prefix) {
     return prefix + "-" + Base58.randomString(6).toLowerCase(Locale.ROOT);
+  }
+
+  private static int randomAvailablePort() {
+    try (ServerSocket serverSocket = new ServerSocket(0)) {
+      return serverSocket.getLocalPort();
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to allocate a host port for RustFS", e);
+    }
   }
 
   @Override
@@ -244,7 +248,7 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
   public void start() {
     super.start();
 
-    this.hostPort = RUSTFS_DOMAIN_NAME + ":" + getMappedPort(S3_API_PORT);
+    this.hostPort = RUSTFS_DOMAIN_NAME + ":" + hostS3ApiPort;
     this.s3endpoint = String.format("http://%s/", hostPort);
 
     this.s3 = createS3Client();
