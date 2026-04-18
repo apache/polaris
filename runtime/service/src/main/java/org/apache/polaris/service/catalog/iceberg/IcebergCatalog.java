@@ -1319,6 +1319,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     public PolarisIcebergCatalogTableBuilder(TableIdentifier identifier, Schema schema) {
       super(identifier, schema);
+      withProperties(
+          PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
       this.identifier = identifier;
     }
 
@@ -1531,12 +1533,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               : resolvedTableEntities;
 
       // refresh credentials because we need to read the metadata file to validate its location
+      Map<String, String> commitFileIoProperties = new HashMap<>(tableDefaultProperties);
+      commitFileIoProperties.putAll(metadata.properties());
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
+              commitFileIoProperties,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
