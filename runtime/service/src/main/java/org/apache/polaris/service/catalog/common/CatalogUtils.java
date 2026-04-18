@@ -19,9 +19,6 @@
 
 package org.apache.polaris.service.catalog.common;
 
-import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
-
-import com.google.common.base.Preconditions;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
