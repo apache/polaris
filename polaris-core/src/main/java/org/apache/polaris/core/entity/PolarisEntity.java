@@ -381,6 +381,20 @@ public class PolarisEntity extends PolarisBaseEntity {
       return (B) this;
     }
 
+    /**
+     * Sets entity labels. Pass an empty map to clear all labels. Labels are stored internally and
+     * are not visible through the user-facing {@code properties} map.
+     */
+    public B setLabels(@Nonnull Map<String, String> labels) {
+      if (labels.isEmpty()) {
+        this.internalProperties.remove(LABELS_INTERNAL_KEY);
+      } else {
+        this.internalProperties.put(
+            LABELS_INTERNAL_KEY, convertPropertiesToJson(new HashMap<>(labels)));
+      }
+      return (B) this;
+    }
+
     public B setEntityVersion(int entityVersion) {
       this.entityVersion = entityVersion;
       return (B) this;

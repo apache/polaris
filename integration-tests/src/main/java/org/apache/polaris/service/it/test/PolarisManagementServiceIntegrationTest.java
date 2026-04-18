@@ -450,7 +450,11 @@ public class PolarisManagementServiceIntegrationTest {
     // default-base-location.
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(), Map.of("foo", "bar"), null /* storageConfigIno */);
+            fetchedCatalog.getEntityVersion(),
+            Map.of("foo", "bar"),
+            null /* storageConfigIno */,
+            null,
+            null);
 
     // Successfully update
     Catalog updatedCatalog;
@@ -576,7 +580,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "abfss://newcontainer@acct1.dfs.core.windows.net/"),
-            modifiedStorageConfig);
+            modifiedStorageConfig,
+            null,
+            null);
     try (Response response =
         managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(badUpdateRequest))) {
       assertThat(response)
@@ -593,7 +599,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "abfss://newcontainer@acct1.dfs.core.windows.net/"),
-            storageConfig);
+            storageConfig,
+            null,
+            null);
 
     // 200 successful update
     try (Response response =
@@ -667,7 +675,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            invalidModifiedStorageConfig);
+            invalidModifiedStorageConfig,
+            null,
+            null);
     try (Response response =
         managementApi
             .request("v1/catalogs/{cat}", Map.of("cat", catalogName))
@@ -693,7 +703,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            validModifiedStorageConfig);
+            validModifiedStorageConfig,
+            null,
+            null);
 
     // 200 successful update
     try (Response response =
@@ -779,7 +791,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            differentAccountConfig);
+            differentAccountConfig,
+            null,
+            null);
 
     try (Response response =
         managementApi
@@ -829,7 +843,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            updatedConfig);
+            updatedConfig,
+            null,
+            null);
 
     try (Response response =
         managementApi
@@ -878,7 +894,9 @@ public class PolarisManagementServiceIntegrationTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket1/"),
-            configWithDifferentExternalId);
+            configWithDifferentExternalId,
+            null,
+            null);
 
     try (Response response =
         managementApi
@@ -2486,6 +2504,245 @@ public class PolarisManagementServiceIntegrationTest {
     }
 
     managementApi.deletePrincipal(principal);
+  }
+
+  @Test
+  public void testCatalogLabelsCreateAndGet() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-bucket/"))
+            .build();
+    String catalogName = client.newEntityName("labels-create-catalog");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://my-bucket/data"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "prod", "team", "platform"))
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    Catalog fetched = managementApi.getCatalog(catalogName);
+    assertThat(fetched.getLabels()).containsEntry("env", "prod").containsEntry("team", "platform");
+  }
+
+  @Test
+  public void testCatalogLabelsPreservedOnUpdateWhenOmitted() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://preserve-bucket/"))
+            .build();
+    String catalogName = client.newEntityName("labels-preserve-catalog");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://preserve-bucket/data"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "staging"))
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    Catalog fetched = managementApi.getCatalog(catalogName);
+    assertThat(fetched.getLabels()).containsEntry("env", "staging");
+
+    // Update with labels omitted (null) — existing labels must be preserved
+    try (Response response =
+        managementApi.updateCatalogLabels(catalogName, fetched.getEntityVersion(), null, null)) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = response.readEntity(Catalog.class);
+      assertThat(updated.getLabels()).containsEntry("env", "staging");
+    }
+  }
+
+  @Test
+  public void testCatalogLabelsReplacedOnUpdate() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://replace-bucket/"))
+            .build();
+    String catalogName = client.newEntityName("labels-replace-catalog");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://replace-bucket/data"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "dev", "old-key", "old-val"))
+            .build();
+
+    managementApi.createCatalog(catalog);
+
+    Catalog fetched = managementApi.getCatalog(catalogName);
+
+    // Update with explicit new labels — fully replaces old labels
+    try (Response response =
+        managementApi.updateCatalogLabels(
+            catalogName, fetched.getEntityVersion(), Map.of("env", "prod"), null)) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = response.readEntity(Catalog.class);
+      assertThat(updated.getLabels()).containsEntry("env", "prod").doesNotContainKey("old-key");
+    }
+  }
+
+  @Test
+  public void testCatalogLabelsClearedWithClearLabelsField() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://clear-labels-bucket/"))
+            .build();
+    String catalogName = client.newEntityName("labels-clear-catalog");
+
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://clear-labels-bucket/data"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "prod", "team", "platform"))
+            .build());
+
+    Catalog fetched = managementApi.getCatalog(catalogName);
+    assertThat(fetched.getLabels()).containsKey("env");
+
+    // Clear all labels using clearLabels=true
+    try (Response response =
+        managementApi.updateCatalogLabels(catalogName, fetched.getEntityVersion(), null, true)) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updated = response.readEntity(Catalog.class);
+      assertThat(updated.getLabels()).isEmpty();
+    }
+  }
+
+  @Test
+  public void testListCatalogsWithLabelFilter() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://filter-bucket/"))
+            .build();
+
+    String prodCatalogName = client.newEntityName("filter-prod-catalog");
+    String devCatalogName = client.newEntityName("filter-dev-catalog");
+
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(prodCatalogName)
+            .setProperties(new CatalogProperties("s3://filter-bucket/prod"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "prod"))
+            .build());
+
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(devCatalogName)
+            .setProperties(new CatalogProperties("s3://filter-bucket/dev"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "dev"))
+            .build());
+
+    // Filter by env:prod — only prodCatalog should match
+    try (Response response = managementApi.listCatalogsByLabel(List.of("env:prod"))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      List<String> names =
+          response.readEntity(Catalogs.class).getCatalogs().stream()
+              .map(Catalog::getName)
+              .filter(n -> n.equals(prodCatalogName) || n.equals(devCatalogName))
+              .toList();
+      assertThat(names).containsExactly(prodCatalogName);
+    }
+
+    // No filter — both catalogs returned
+    try (Response response = managementApi.request("v1/catalogs").get()) {
+      List<String> names =
+          response.readEntity(Catalogs.class).getCatalogs().stream()
+              .map(Catalog::getName)
+              .filter(n -> n.equals(prodCatalogName) || n.equals(devCatalogName))
+              .toList();
+      assertThat(names).containsExactlyInAnyOrder(prodCatalogName, devCatalogName);
+    }
+  }
+
+  @Test
+  public void testListCatalogsWithInvalidLabelFilter() {
+    try (Response response = managementApi.listCatalogsByLabel(List.of("notKeyValue"))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testListCatalogsWithMultiLabelAndFilter() {
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://multi-label-bucket/"))
+            .build();
+
+    String bothLabelsCatalog = client.newEntityName("multi-label-both");
+    String oneLabelCatalog = client.newEntityName("multi-label-one");
+
+    // Catalog with both env=prod AND team=platform
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(bothLabelsCatalog)
+            .setProperties(new CatalogProperties("s3://multi-label-bucket/both"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "prod", "team", "platform"))
+            .build());
+
+    // Catalog with only env=prod
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(oneLabelCatalog)
+            .setProperties(new CatalogProperties("s3://multi-label-bucket/one"))
+            .setStorageConfigInfo(storageConfig)
+            .setLabels(Map.of("env", "prod"))
+            .build());
+
+    // AND filter: env:prod AND team:platform — only bothLabelsCatalog should match
+    try (Response response =
+        managementApi.listCatalogsByLabel(List.of("env:prod", "team:platform"))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      List<String> names =
+          response.readEntity(Catalogs.class).getCatalogs().stream()
+              .map(Catalog::getName)
+              .filter(n -> n.equals(bothLabelsCatalog) || n.equals(oneLabelCatalog))
+              .toList();
+      assertThat(names).containsExactly(bothLabelsCatalog);
+    }
   }
 
   public static JWTCreator.Builder defaultJwt() {

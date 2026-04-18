@@ -22,6 +22,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 
 /** Base class for API helper classes. */
@@ -45,6 +46,34 @@ public class RestApi {
   public Invocation.Builder request(
       String path, Map<String, String> templateValues, Map<String, String> queryParams) {
     return request(path, templateValues, queryParams, Map.of());
+  }
+
+  /**
+   * Builds a request with multi-value query parameters. Each key may map to multiple values,
+   * resulting in repeated query params (e.g. {@code ?label=k1:v1&label=k2:v2}).
+   */
+  public Invocation.Builder requestMultiParam(
+      String path, Map<String, String> templateValues, Map<String, List<String>> multiQueryParams) {
+    return requestMultiParam(path, templateValues, multiQueryParams, Map.of());
+  }
+
+  public Invocation.Builder requestMultiParam(
+      String path,
+      Map<String, String> templateValues,
+      Map<String, List<String>> multiQueryParams,
+      Map<String, String> headers) {
+    WebTarget target = client.target(uri).path(path);
+    for (Map.Entry<String, String> entry : templateValues.entrySet()) {
+      target = target.resolveTemplate(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, List<String>> entry : multiQueryParams.entrySet()) {
+      for (String value : entry.getValue()) {
+        target = target.queryParam(entry.getKey(), value);
+      }
+    }
+    Invocation.Builder request = target.request("application/json");
+    headers.forEach(request::header);
+    return request;
   }
 
   public Invocation.Builder request(
