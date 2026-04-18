@@ -59,6 +59,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -1433,6 +1434,101 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testCreateTableNameThatCollidesWithNamespace() {
+    Namespace parentNamespace = Namespace.of("ns1");
+    restCatalog.createNamespace(parentNamespace);
+    restCatalog.createNamespace(Namespace.of("ns1", "clash"));
+
+    assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildTable(TableIdentifier.of(parentNamespace, "clash"), SCHEMA)
+                    .create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testCreateViewNameThatCollidesWithNamespace() {
+    Namespace parentNamespace = Namespace.of("ns1");
+    restCatalog.createNamespace(parentNamespace);
+    restCatalog.createNamespace(Namespace.of("ns1", "clash"));
+
+    assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildView(TableIdentifier.of(parentNamespace, "clash"))
+                    .withSchema(SCHEMA)
+                    .withDefaultNamespace(parentNamespace)
+                    .withQuery("spark", VIEW_QUERY)
+                    .create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testCreateNamespaceNameThatCollidesWithTable() {
+    Namespace parentNamespace = Namespace.of("ns1");
+    restCatalog.createNamespace(parentNamespace);
+    restCatalog.buildTable(TableIdentifier.of(parentNamespace, "clash"), SCHEMA).create();
+
+    assertThatThrownBy(() -> restCatalog.createNamespace(Namespace.of("ns1", "clash")))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testCreateNamespaceNameThatCollidesWithView() {
+    Namespace parentNamespace = Namespace.of("ns1");
+    restCatalog.createNamespace(parentNamespace);
+    restCatalog
+        .buildView(TableIdentifier.of(parentNamespace, "clash"))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(parentNamespace)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    assertThatThrownBy(() -> restCatalog.createNamespace(Namespace.of("ns1", "clash")))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testCreateViewNameThatCollidesWithTable() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    restCatalog.buildTable(TableIdentifier.of(namespace, "clash"), SCHEMA).create();
+
+    assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildView(TableIdentifier.of(namespace, "clash"))
+                    .withSchema(SCHEMA)
+                    .withDefaultNamespace(namespace)
+                    .withQuery("spark", VIEW_QUERY)
+                    .create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testCreateTableNameThatCollidesWithView() {
+    Namespace namespace = Namespace.of("ns1");
+    restCatalog.createNamespace(namespace);
+    restCatalog
+        .buildView(TableIdentifier.of(namespace, "clash"))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    assertThatThrownBy(
+            () -> restCatalog.buildTable(TableIdentifier.of(namespace, "clash"), SCHEMA).create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("already exists");
   }
 
   @Test
