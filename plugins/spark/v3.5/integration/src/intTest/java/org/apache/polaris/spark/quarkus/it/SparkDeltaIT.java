@@ -26,7 +26,10 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -43,6 +46,24 @@ import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of("file://"))
+        .build();
+  }
+
+  @Override
+  protected String getDefaultBaseLocation() {
+    return warehouseDir.toString();
+  }
+
+  @Override
+  protected Map<String, String> getExtraCatalogProperties() {
+    return Map.of();
+  }
+
   private String defaultNs;
   private String tableRootDir;
 
