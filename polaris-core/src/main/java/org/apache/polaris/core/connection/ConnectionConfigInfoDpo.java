@@ -33,10 +33,12 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
+import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.connection.bigquery.BigQueryMetastoreConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
@@ -57,6 +59,7 @@ import org.apache.polaris.core.secrets.SecretReference;
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
   @JsonSubTypes.Type(value = HadoopConnectionConfigInfoDpo.class, name = "2"),
   @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
+  @JsonSubTypes.Type(value = BigQueryMetastoreConnectionConfigInfoDpo.class, name = "4"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   // The type of the connection
@@ -71,14 +74,27 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The Polaris service identity info of the connection
   private final ServiceIdentityInfoDpo serviceIdentity;
 
+  // Additional connection properties
+  private final Map<String, String> properties;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nullable
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
-          ServiceIdentityInfoDpo serviceIdentity) {
-    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
+          ServiceIdentityInfoDpo serviceIdentity,
+      @JsonProperty(value = "properties", required = false) @Nullable
+          Map<String, String> properties) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, properties, true);
+  }
+
+  public ConnectionConfigInfoDpo(
+      int connectionTypeCode,
+      @Nonnull String uri,
+      @Nullable AuthenticationParametersDpo authenticationParameters,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, null);
   }
 
   protected ConnectionConfigInfoDpo(
@@ -86,11 +102,13 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       @Nonnull String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
+      @Nullable Map<String, String> properties,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
     this.serviceIdentity = serviceIdentity;
+    this.properties = properties != null ? properties : Map.of();
     if (validateUri) {
       validateUri(uri);
     }
@@ -115,6 +133,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public @Nullable ServiceIdentityInfoDpo getServiceIdentity() {
     return serviceIdentity;
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
+  public Map<String, String> getProperties() {
+    return properties;
   }
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -208,6 +231,23 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getUri(),
                 authenticationParameters,
                 hiveConfigModel.getWarehouse(),
+                null /*Service Identity Info*/);
+        break;
+      case BIGQUERY:
+        BigQueryMetastoreConnectionConfigInfo bigqueryConfigModel =
+            (BigQueryMetastoreConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                bigqueryConfigModel.getAuthenticationParameters(), secretReferences);
+        String bigqueryUri =
+            bigqueryConfigModel.getUri() != null
+                ? bigqueryConfigModel.getUri()
+                : BigQueryMetastoreConnectionConfigInfoDpo.DEFAULT_URI;
+        config =
+            new BigQueryMetastoreConnectionConfigInfoDpo(
+                bigqueryUri,
+                authenticationParameters,
+                bigqueryConfigModel.getProperties(),
                 null /*Service Identity Info*/);
         break;
       default:

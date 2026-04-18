@@ -43,6 +43,10 @@ dependencies {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
   }
 
+  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("BIGQUERY") == true) {
+    runtimeOnly(project(":polaris-extensions-federation-bigquery"))
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
