@@ -56,10 +56,6 @@ public class CatalogUtils {
       String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-    Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
-        "Unsupported access delegation mode: %s",
-        accessDelegationMode);
     return delegationModes;
   }
 
