@@ -25,6 +25,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 
 @RequestScoped
 public class PolicyCatalogHandlerFactory {
@@ -33,6 +34,7 @@ public class PolicyCatalogHandlerFactory {
   @Inject ResolutionManifestFactory resolutionManifestFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisAuthorizer authorizer;
+  @Inject AccessDelegationModeResolver accessDelegationModeResolver;
 
   public PolicyCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutablePolicyCatalogHandler.builder()
@@ -42,6 +44,7 @@ public class PolicyCatalogHandlerFactory {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(authorizer)
+        .accessDelegationModeResolver(accessDelegationModeResolver)
         .build();
   }
 }

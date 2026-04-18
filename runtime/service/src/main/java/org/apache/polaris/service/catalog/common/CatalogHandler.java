@@ -22,6 +22,7 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNam
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.base.Preconditions;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -52,6 +53,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.immutables.value.Value;
 
@@ -83,6 +85,8 @@ public abstract class CatalogHandler {
   public abstract ResolutionManifestFactory resolutionManifestFactory();
 
   public abstract PolarisAuthorizer authorizer();
+
+  public abstract AccessDelegationModeResolver accessDelegationModeResolver();
 
   protected PolarisResolutionManifest newResolutionManifest() {
     return resolutionManifestFactory().createResolutionManifest(polarisPrincipal(), catalogName());
@@ -223,9 +227,9 @@ public abstract class CatalogHandler {
   }
 
   protected void authorizeCreateTableDirect(
-      TableIdentifier identifier, EnumSet<AccessDelegationMode> delegationModes) {
+      TableIdentifier identifier, boolean delegationRequested) {
     PolarisAuthorizableOperation op =
-        delegationModes.isEmpty()
+        !delegationRequested
             ? PolarisAuthorizableOperation.CREATE_TABLE_DIRECT
             : PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
@@ -234,6 +238,28 @@ public abstract class CatalogHandler {
     if (catalog != null && catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
+  }
+
+  /**
+   * Resolves the access delegation mode by delegating to the configured {@link
+   * AccessDelegationModeResolver}.
+   *
+   * @param requestedModes The set of delegation modes requested by the client
+   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
+   */
+  protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
+      EnumSet<AccessDelegationMode> requestedModes) {
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    Optional<AccessDelegationMode> resolvedMode =
+        accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
+
+    // TODO remove when remote signing is implemented
+    Preconditions.checkArgument(
+        resolvedMode.orElse(null) != AccessDelegationMode.REMOTE_SIGNING,
+        "Unsupported access delegation mode: %s",
+        AccessDelegationMode.REMOTE_SIGNING);
+
+    return resolvedMode;
   }
 
   /**
