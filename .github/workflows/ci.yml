@@ -214,7 +214,7 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Image build
         env: *gradle_env_vars
-        run: ./gradlew :polaris-server:assemble -Dquarkus.container-image.build=true
+        run: ./gradlew :polaris-server:assemble -PNonRESTCatalogs=HIVE,HADOOP -Dquarkus.container-image.build=true
       - name: Save image to tar
         run: |
           docker save apache/polaris:latest | zstd -T0 > polaris-image.tar.zst
