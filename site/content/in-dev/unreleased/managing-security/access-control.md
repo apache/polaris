@@ -115,6 +115,7 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | TABLE_WRITE_PROPERTIES | Enables configuring properties for the table. |
 | TABLE_READ_DATA | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog. |
 | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
+| TABLE_READ_METRICS | Enables reading persisted Iceberg scan and commit metrics reports for the table via the Metrics Reports API. |
 | TABLE_FULL_METADATA | Grants all table privileges, except TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted individually. |
 | TABLE_ATTACH_POLICY | Enables attaching policy to a table. |
 | TABLE_DETACH_POLICY | Enables detaching policy from a table. |

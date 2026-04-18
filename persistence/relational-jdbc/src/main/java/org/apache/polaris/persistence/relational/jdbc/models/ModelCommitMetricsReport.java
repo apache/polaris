@@ -19,13 +19,14 @@
 package org.apache.polaris.persistence.relational.jdbc.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
@@ -257,8 +258,6 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   // === Static conversion methods (following ModelEntity pattern) ===
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   /**
    * Converts a CommitMetricsRecord (SPI) to ModelCommitMetricsReport (JDBC).
    *
@@ -316,10 +315,52 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
       return "{}";
     }
     try {
-      return OBJECT_MAPPER.writeValueAsString(map);
+      return MetricsModelUtils.OBJECT_MAPPER.writeValueAsString(map);
     } catch (JsonProcessingException e) {
       return "{}";
     }
+  }
+
+  /**
+   * Converts this JDBC model back to the backend-agnostic SPI record.
+   *
+   * @return a CommitMetricsRecord built from this model's fields
+   */
+  default CommitMetricsRecord toRecord() {
+    return CommitMetricsRecord.builder()
+        .reportId(getReportId())
+        .catalogId(getCatalogId())
+        .tableId(getTableId())
+        .timestamp(Instant.ofEpochMilli(getTimestampMs()))
+        .metadata(MetricsModelUtils.parseMetadata(getMetadata()))
+        .principalName(getPrincipalName())
+        .requestId(getRequestId())
+        .otelTraceId(getOtelTraceId())
+        .otelSpanId(getOtelSpanId())
+        .snapshotId(getSnapshotId())
+        .sequenceNumber(Optional.ofNullable(getSequenceNumber()))
+        .operation(getOperation())
+        .addedDataFiles(getAddedDataFiles())
+        .removedDataFiles(getRemovedDataFiles())
+        .totalDataFiles(getTotalDataFiles())
+        .addedDeleteFiles(getAddedDeleteFiles())
+        .removedDeleteFiles(getRemovedDeleteFiles())
+        .totalDeleteFiles(getTotalDeleteFiles())
+        .addedEqualityDeleteFiles(getAddedEqualityDeleteFiles())
+        .removedEqualityDeleteFiles(getRemovedEqualityDeleteFiles())
+        .addedPositionalDeleteFiles(getAddedPositionalDeleteFiles())
+        .removedPositionalDeleteFiles(getRemovedPositionalDeleteFiles())
+        .addedRecords(getAddedRecords())
+        .removedRecords(getRemovedRecords())
+        .totalRecords(getTotalRecords())
+        .addedFileSizeBytes(getAddedFileSizeBytes())
+        .removedFileSizeBytes(getRemovedFileSizeBytes())
+        .totalFileSizeBytes(getTotalFileSizeBytes())
+        // The write path stores Optional.empty() as 0L; treat 0 as "unknown" on read.
+        .totalDurationMs(
+            getTotalDurationMs() == 0L ? Optional.empty() : Optional.of(getTotalDurationMs()))
+        .attempts(getAttempts())
+        .build();
   }
 
   /** Dummy instance to be used as a Converter when calling fromResultSet(). */

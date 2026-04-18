@@ -48,6 +48,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added a **beta** Table Metrics REST API (`/api/metrics-reports/v1/`) that exposes persisted Iceberg scan and commit metrics reports over HTTP. Querying requires the new `TABLE_READ_METRICS` privilege on the target table.
 - Added `envFrom` support in Helm chart.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.

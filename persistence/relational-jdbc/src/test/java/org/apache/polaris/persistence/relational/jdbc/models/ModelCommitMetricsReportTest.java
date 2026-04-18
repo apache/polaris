@@ -239,6 +239,97 @@ public class ModelCommitMetricsReportTest {
     assertEquals(TEST_METADATA, result.getMetadata());
   }
 
+  @Test
+  public void testToRecordAllFieldsRoundTrip() {
+    ModelCommitMetricsReport model = createTestReport();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals(TEST_REPORT_ID, record.reportId());
+    assertEquals(TEST_CATALOG_ID, record.catalogId());
+    assertEquals(TEST_TABLE_ID, record.tableId());
+    assertEquals(TEST_TIMESTAMP_MS, record.timestamp().toEpochMilli());
+    assertEquals(TEST_PRINCIPAL, record.principalName());
+    assertEquals(TEST_REQUEST_ID, record.requestId());
+    assertEquals(TEST_OTEL_TRACE_ID, record.otelTraceId());
+    assertEquals(TEST_SNAPSHOT_ID, record.snapshotId());
+    assertEquals(java.util.Optional.of(TEST_SEQUENCE_NUMBER), record.sequenceNumber());
+    assertEquals(TEST_OPERATION, record.operation());
+    assertEquals(TEST_ADDED_DATA_FILES, record.addedDataFiles());
+    assertEquals(TEST_REMOVED_DATA_FILES, record.removedDataFiles());
+    assertEquals(TEST_TOTAL_DATA_FILES, record.totalDataFiles());
+    assertEquals(TEST_ADDED_RECORDS, record.addedRecords());
+    assertEquals(TEST_REMOVED_RECORDS, record.removedRecords());
+    assertEquals(TEST_TOTAL_RECORDS, record.totalRecords());
+    assertEquals(TEST_ADDED_FILE_SIZE, record.addedFileSizeBytes());
+    assertEquals(TEST_REMOVED_FILE_SIZE, record.removedFileSizeBytes());
+    assertEquals(TEST_TOTAL_FILE_SIZE, record.totalFileSizeBytes());
+    // Non-zero totalDurationMs must be present in the Optional.
+    assertEquals(java.util.Optional.of(TEST_TOTAL_DURATION), record.totalDurationMs());
+    assertEquals(TEST_ATTEMPTS, record.attempts());
+  }
+
+  @Test
+  public void testToRecordZeroDurationIsUnknown() {
+    // The write path stores Optional.empty() as 0L.  On read, 0 must come back as empty, not 0.
+    ModelCommitMetricsReport model =
+        ImmutableModelCommitMetricsReport.builder()
+            .from(createTestReport())
+            .totalDurationMs(0L)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Optional.empty(), record.totalDurationMs());
+  }
+
+  @Test
+  public void testToRecordNullSequenceNumber() {
+    ModelCommitMetricsReport model =
+        ImmutableModelCommitMetricsReport.builder()
+            .from(createTestReport())
+            .sequenceNumber(null)
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Optional.empty(), record.sequenceNumber());
+  }
+
+  @Test
+  public void testToRecordMetadataDeserialized() {
+    ModelCommitMetricsReport model =
+        ImmutableModelCommitMetricsReport.builder()
+            .from(createTestReport())
+            .metadata("{\"env\":\"staging\",\"team\":\"data\"}")
+            .build();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals("staging", record.metadata().get("env"));
+    assertEquals("data", record.metadata().get("team"));
+  }
+
+  @Test
+  public void testToRecordEmptyMetadataReturnsEmptyMap() {
+    ModelCommitMetricsReport model =
+        ImmutableModelCommitMetricsReport.builder().from(createTestReport()).metadata("{}").build();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Map.of(), record.metadata());
+  }
+
+  @Test
+  public void testToRecordNullMetadataReturnsEmptyMap() {
+    ModelCommitMetricsReport model =
+        ImmutableModelCommitMetricsReport.builder().from(createTestReport()).metadata(null).build();
+
+    org.apache.polaris.core.persistence.metrics.CommitMetricsRecord record = model.toRecord();
+
+    assertEquals(java.util.Map.of(), record.metadata());
+  }
+
   private ModelCommitMetricsReport createTestReport() {
     return ImmutableModelCommitMetricsReport.builder()
         .reportId(TEST_REPORT_ID)
