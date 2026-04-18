@@ -39,7 +39,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
-import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
@@ -78,6 +77,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
 import org.apache.polaris.service.catalog.iceberg.ImmutableIcebergCatalogHandler;
+import org.apache.polaris.service.catalog.iceberg.LocalCatalogFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -317,10 +317,7 @@ public record TestServices(
 
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
-      @SuppressWarnings("unchecked")
-      Instance<FederatedCatalogFactory> federatedCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
-      Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
+      FederatedCatalogFactory federatedCatalogFactory = Mockito.mock(FederatedCatalogFactory.class);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
@@ -343,7 +340,7 @@ public record TestServices(
                   .authorizer(authorizer)
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
-                  .federatedCatalogFactories(federatedCatalogFactory)
+                  .federatedCatalogFactory(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
