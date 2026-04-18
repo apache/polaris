@@ -25,7 +25,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -33,6 +32,7 @@ import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /** Aws Polaris Storage Configuration information */
 @PolarisImmutable

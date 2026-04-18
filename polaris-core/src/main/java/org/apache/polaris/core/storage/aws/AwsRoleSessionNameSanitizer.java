@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import jakarta.annotation.Nonnull;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Utility class for sanitizing AWS STS role session names.
@@ -77,7 +77,7 @@ public final class AwsRoleSessionNameSanitizer {
    * @param input the string to sanitize (typically a principal name)
    * @return a sanitized string safe for use as an AWS STS role session name
    */
-  public static @Nonnull String sanitize(@Nonnull String input) {
+  public static @NonNull String sanitize(@NonNull String input) {
     String sanitized =
         INVALID_ROLE_SESSION_NAME_CHARS.matcher(input).replaceAll(DEFAULT_REPLACEMENT);
     return truncate(sanitized);
@@ -89,7 +89,7 @@ public final class AwsRoleSessionNameSanitizer {
    * @param input the string to truncate
    * @return the truncated string, or the original if already within limits
    */
-  static @Nonnull String truncate(@Nonnull String input) {
+  static @NonNull String truncate(@NonNull String input) {
     if (input.length() <= MAX_ROLE_SESSION_NAME_LENGTH) {
       return input;
     }

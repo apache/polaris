@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Interface for a Polaris entity cache */
 public interface EntityCache {
@@ -34,7 +34,7 @@ public interface EntityCache {
    *
    * @param cacheEntry cache entry to remove
    */
-  void removeCacheEntry(@Nonnull ResolvedPolarisEntity cacheEntry);
+  void removeCacheEntry(@NonNull ResolvedPolarisEntity cacheEntry);
 
   /**
    * Refresh the cache if needs be with a version of the entity/grant records matching the minimum
@@ -48,10 +48,9 @@ public interface EntityCache {
    *     records should be reloaded if needed
    * @return the cache entry for the entity or null if the specified entity does not exist
    */
-  @Nullable
-  ResolvedPolarisEntity getAndRefreshIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entityToValidate,
+  @Nullable ResolvedPolarisEntity getAndRefreshIfNeeded(
+      @NonNull PolarisCallContext callContext,
+      @NonNull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion);
 
@@ -64,9 +63,8 @@ public interface EntityCache {
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
-  @Nullable
-  EntityCacheLookupResult getOrLoadEntityById(
-      @Nonnull PolarisCallContext callContext,
+  @Nullable EntityCacheLookupResult getOrLoadEntityById(
+      @NonNull PolarisCallContext callContext,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType);
@@ -79,9 +77,8 @@ public interface EntityCache {
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
-  @Nullable
-  EntityCacheLookupResult getOrLoadEntityByName(
-      @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey);
+  @Nullable EntityCacheLookupResult getOrLoadEntityByName(
+      @NonNull PolarisCallContext callContext, @NonNull EntityCacheByNameKey entityNameKey);
 
   /**
    * Load multiple entities by id, returning those found in the cache and loading those not found.
@@ -107,7 +104,7 @@ public interface EntityCache {
    *     entity id does not exist.
    */
   List<EntityCacheLookupResult> getOrLoadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull List<PolarisEntityId> entityIds);
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityType entityType,
+      @NonNull List<PolarisEntityId> entityIds);
 }

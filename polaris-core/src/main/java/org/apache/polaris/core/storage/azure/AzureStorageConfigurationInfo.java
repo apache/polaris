@@ -21,10 +21,10 @@ package org.apache.polaris.core.storage.azure;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import java.util.Objects;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 /** Azure storage configuration information. */
 @PolarisImmutable

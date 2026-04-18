@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -26,6 +25,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.jspecify.annotations.NonNull;
 
 public class ResolvedPolarisEntity {
   private final PolarisEntity entity;
@@ -50,9 +50,9 @@ public class ResolvedPolarisEntity {
    * @param grantsVersion version of the grants when they were loaded
    */
   public ResolvedPolarisEntity(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisBaseEntity entity,
-      @Nonnull List<PolarisGrantRecord> grantRecords,
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisGrantRecord> grantRecords,
       int grantsVersion) {
     // validate not null
     diagnostics.checkNotNull(entity, "entity_null");
@@ -103,7 +103,7 @@ public class ResolvedPolarisEntity {
     return entity;
   }
 
-  public @Nonnull List<PolarisGrantRecord> getAllGrantRecords() {
+  public @NonNull List<PolarisGrantRecord> getAllGrantRecords() {
     return Stream.concat(grantRecordsAsGrantee.stream(), grantRecordsAsSecurable.stream())
         .collect(Collectors.toList());
   }

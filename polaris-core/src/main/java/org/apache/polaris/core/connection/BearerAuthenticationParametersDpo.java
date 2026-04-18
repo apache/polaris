@@ -20,10 +20,10 @@ package org.apache.polaris.core.connection;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to BearerAuthenticationParameters defined in the API
@@ -35,18 +35,18 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
   private final SecretReference bearerTokenReference;
 
   public BearerAuthenticationParametersDpo(
-      @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull
-          SecretReference bearerTokenReference) {
+      @JsonProperty(value = "bearerTokenReference", required = true)
+          @NonNull SecretReference bearerTokenReference) {
     super(AuthenticationType.BEARER.getCode());
     this.bearerTokenReference = bearerTokenReference;
   }
 
-  public @Nonnull SecretReference getBearerTokenReference() {
+  public @NonNull SecretReference getBearerTokenReference() {
     return bearerTokenReference;
   }
 
   @Override
-  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
+  public @NonNull AuthenticationParameters asAuthenticationParametersModel() {
     return BearerAuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
         .build();

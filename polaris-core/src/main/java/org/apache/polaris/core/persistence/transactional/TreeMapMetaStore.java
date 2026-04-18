@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -31,6 +30,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.jspecify.annotations.NonNull;
 
 /** Implements a simple in-memory store for Polaris, using tree-map */
 public class TreeMapMetaStore {
@@ -218,7 +218,7 @@ public class TreeMapMetaStore {
    *
    * @param diagnostics diagnostic services
    */
-  public TreeMapMetaStore(@Nonnull PolarisDiagnostics diagnostics) {
+  public TreeMapMetaStore(@NonNull PolarisDiagnostics diagnostics) {
 
     // the entities slice
     this.sliceEntities =
@@ -406,7 +406,7 @@ public class TreeMapMetaStore {
    * @return the result of the execution
    */
   public <T> T runInTransaction(
-      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
+      @NonNull PolarisDiagnostics diagnostics, @NonNull Supplier<T> transactionCode) {
 
     synchronized (lock) {
       // execute transaction
@@ -429,7 +429,7 @@ public class TreeMapMetaStore {
 
   /** Run inside a read/write transaction */
   public void runActionInTransaction(
-      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
+      @NonNull PolarisDiagnostics diagnostics, @NonNull Runnable transactionCode) {
 
     synchronized (lock) {
 
@@ -457,7 +457,7 @@ public class TreeMapMetaStore {
    * @return the result of the execution
    */
   public <T> T runInReadTransaction(
-      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
+      @NonNull PolarisDiagnostics diagnostics, @NonNull Supplier<T> transactionCode) {
     synchronized (lock) {
 
       // execute transaction
@@ -475,7 +475,7 @@ public class TreeMapMetaStore {
 
   /** Run inside a read only transaction */
   public void runActionInReadTransaction(
-      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
+      @NonNull PolarisDiagnostics diagnostics, @NonNull Runnable transactionCode) {
     synchronized (lock) {
 
       // execute transaction

@@ -27,8 +27,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +42,8 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +115,7 @@ public abstract class PolarisStorageConfigurationInfo {
    * @param jsonStr a json string
    * @return the PolarisStorageConfiguration object
    */
-  public static PolarisStorageConfigurationInfo deserialize(final @Nonnull String jsonStr) {
+  public static PolarisStorageConfigurationInfo deserialize(final @NonNull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     } catch (JsonProcessingException e) {
@@ -168,7 +168,7 @@ public abstract class PolarisStorageConfigurationInfo {
             });
   }
 
-  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  private static @NonNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       List<PolarisEntity> entityPath) {
     for (int i = entityPath.size() - 1; i >= 0; i--) {
       PolarisEntity e = entityPath.get(i);

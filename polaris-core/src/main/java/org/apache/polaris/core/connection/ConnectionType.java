@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.connection;
 
-import jakarta.annotation.Nonnull;
 import java.util.Arrays;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo.ConnectionTypeEnum defined in
@@ -69,7 +69,7 @@ public enum ConnectionType {
    * @param connectionTypeCode code associated to the connection type
    * @return ConnectionType corresponding to that code or null if mapping not found
    */
-  public static @Nonnull ConnectionType fromCode(int connectionTypeCode) {
+  public static @NonNull ConnectionType fromCode(int connectionTypeCode) {
     // ensure it is within bounds
     if (connectionTypeCode < 0 || connectionTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return ConnectionType.NULL_TYPE;

@@ -24,8 +24,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import jakarta.annotation.Nullable;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public class PolarisEvent {
   public static final String EMPTY_MAP_STRING = "{}";

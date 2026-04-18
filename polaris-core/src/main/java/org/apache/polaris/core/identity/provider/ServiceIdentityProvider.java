@@ -19,12 +19,12 @@
 
 package org.apache.polaris.core.identity.provider;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A provider interface for managing and resolving service identities in Polaris.
@@ -70,7 +70,7 @@ public interface ServiceIdentityProvider {
    *     if no service identity is available or applicable for this connection.
    */
   Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(
-      @Nonnull ConnectionConfigInfo connectionConfig);
+      @NonNull ConnectionConfigInfo connectionConfig);
 
   /**
    * Retrieves the user-facing {@link ServiceIdentityInfo} model for the given service identity
@@ -84,7 +84,7 @@ public interface ServiceIdentityProvider {
    *     or empty if the identity cannot be resolved.
    */
   Optional<ServiceIdentityInfo> getServiceIdentityInfo(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
    * Retrieves the service identity credential by resolving the actual credential or secret
@@ -99,5 +99,5 @@ public interface ServiceIdentityProvider {
    *     empty if the identity cannot be resolved.
    */
   Optional<ServiceIdentityCredential> getServiceIdentityCredential(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+      @NonNull ServiceIdentityInfoDpo serviceIdentityInfo);
 }

@@ -34,7 +34,6 @@ import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -56,6 +55,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,13 +90,13 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
+      @NonNull RealmConfig realmConfig,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
     // Note: GCP downscoped credentials do not support session tags like AWS STS.
     // The credentialVendingContext is accepted for interface compatibility but not used.
     try {
@@ -198,8 +198,8 @@ public class GcpCredentialsStorageIntegration
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations) {
     Map<String, List<String>> readConditionsMap = new HashMap<>();
     Map<String, List<String>> writeConditionsMap = new HashMap<>();
 

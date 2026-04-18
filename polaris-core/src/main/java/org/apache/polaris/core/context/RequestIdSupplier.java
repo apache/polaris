@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.context;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Supplier interface for obtaining the current request ID.
@@ -34,6 +34,5 @@ public interface RequestIdSupplier {
    *
    * @return the request ID, or null if not available
    */
-  @Nullable
-  String getRequestId();
+  @Nullable String getRequestId();
 }

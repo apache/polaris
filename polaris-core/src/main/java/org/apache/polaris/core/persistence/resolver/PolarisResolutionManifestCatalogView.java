@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.persistence.resolver;
 
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Defines the methods by which a Catalog is expected to access resolved catalog-path entities,

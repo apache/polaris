@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.aws.S3Location;
 import org.apache.polaris.core.storage.azure.AzureLocation;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,7 @@ public class StorageLocation {
     }
   }
 
-  protected StorageLocation(@Nonnull String location) {
+  protected StorageLocation(@NonNull String location) {
     if (location == null) {
       this.location = null;
     } else if (location.startsWith("file:/")) {
@@ -74,7 +74,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't start with `/`, this will add one */
-  protected static @Nonnull String ensureLeadingSlash(@Nonnull String location) {
+  protected static @NonNull String ensureLeadingSlash(@NonNull String location) {
     if (location.startsWith("/")) {
       return location;
     } else {

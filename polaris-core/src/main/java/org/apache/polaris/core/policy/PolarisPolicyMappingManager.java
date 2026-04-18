@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.policy;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.jspecify.annotations.NonNull;
 
 public interface PolarisPolicyMappingManager {
 
@@ -45,13 +45,12 @@ public interface PolarisPolicyMappingManager {
    *     POLICY_OF_SAME_TYPE_ALREADY_ATTACHED if the target already has a policy of the same type
    *     attached and the policy is inheritable.
    */
-  @Nonnull
-  PolicyAttachmentResult attachPolicyToEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath,
-      @Nonnull PolicyEntity policy,
+  @NonNull PolicyAttachmentResult attachPolicyToEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> targetCatalogPath,
+      @NonNull PolarisEntityCore target,
+      @NonNull List<PolarisEntityCore> policyCatalogPath,
+      @NonNull PolicyEntity policy,
       Map<String, String> parameters);
 
   /**
@@ -66,13 +65,12 @@ public interface PolarisPolicyMappingManager {
    *     target or policy does not exist. Will return POLICY_MAPPING_NOT_FOUND if the mapping cannot
    *     be found
    */
-  @Nonnull
-  PolicyAttachmentResult detachPolicyFromEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath,
-      @Nonnull PolicyEntity policy);
+  @NonNull PolicyAttachmentResult detachPolicyFromEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisEntityCore target,
+      @NonNull List<PolarisEntityCore> policyCatalogPath,
+      @NonNull PolicyEntity policy);
 
   /**
    * Load all policies attached to a target entity
@@ -82,9 +80,8 @@ public interface PolarisPolicyMappingManager {
    * @return the list of policy mapping records on the target entity. Will return ENTITY_NOT_FOUND
    *     if the specified target does not exist.
    */
-  @Nonnull
-  LoadPolicyMappingsResult loadPoliciesOnEntity(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target);
+  @NonNull LoadPolicyMappingsResult loadPoliciesOnEntity(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisEntityCore target);
 
   /**
    * Load all policies of a specific type attached to a target entity
@@ -95,9 +92,8 @@ public interface PolarisPolicyMappingManager {
    * @return the list of policy mapping records on the target entity. Will return ENTITY_NOT_FOUND
    *     if the specified target does not exist.
    */
-  @Nonnull
-  LoadPolicyMappingsResult loadPoliciesOnEntityByType(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull PolicyType policyType);
+  @NonNull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore target,
+      @NonNull PolicyType policyType);
 }

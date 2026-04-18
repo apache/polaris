@@ -22,10 +22,10 @@ package org.apache.polaris.core.persistence.pagination;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.Identifiable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 /** Pagination {@linkplain Token token} backed by {@link PolarisBaseEntity#getId() entity ID}. */
 @PolarisImmutable

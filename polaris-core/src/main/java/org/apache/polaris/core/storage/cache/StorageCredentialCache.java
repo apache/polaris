@@ -22,8 +22,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +40,8 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,14 +111,14 @@ public class StorageCredentialCache {
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
-      @Nonnull StorageCredentialsVendor storageCredentialsVendor,
-      @Nonnull PolarisEntity polarisEntity,
+      @NonNull StorageCredentialsVendor storageCredentialsVendor,
+      @NonNull PolarisEntity polarisEntity,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
     RealmContext realmContext = storageCredentialsVendor.getRealmContext();
     RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
@@ -188,8 +188,7 @@ public class StorageCredentialCache {
   }
 
   @VisibleForTesting
-  @Nullable
-  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+  @Nullable Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
     return getAccessConfig(key).map(StorageAccessConfig::credentials).orElse(null);
   }
 

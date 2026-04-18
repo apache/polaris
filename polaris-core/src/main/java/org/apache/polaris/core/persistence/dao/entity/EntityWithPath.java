@@ -19,10 +19,10 @@
 package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Class to represent an entity with its path
@@ -31,5 +31,5 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
  * @param entity the base entity itself
  */
 public record EntityWithPath(
-    @JsonProperty("catalogPath") @Nonnull List<PolarisEntityCore> catalogPath,
-    @JsonProperty("entity") @Nonnull PolarisBaseEntity entity) {}
+    @JsonProperty("catalogPath") @NonNull List<PolarisEntityCore> catalogPath,
+    @JsonProperty("entity") @NonNull PolarisBaseEntity entity) {}

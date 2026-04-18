@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.policy;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface for interacting with the Polaris persistence backend for Policy Mapping operations.
@@ -45,7 +45,7 @@ public interface PolicyMappingPersistence {
    *     with the same key
    */
   default void writeToPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
@@ -56,7 +56,7 @@ public interface PolicyMappingPersistence {
    * @param record policy mapping record to delete.
    */
   default void deleteFromPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
@@ -72,10 +72,10 @@ public interface PolicyMappingPersistence {
    *     policy
    */
   default void deleteAllEntityPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
@@ -93,7 +93,7 @@ public interface PolicyMappingPersistence {
    */
   @Nullable
   default PolarisPolicyMappingRecord lookupPolicyMappingRecord(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode,
@@ -112,9 +112,9 @@ public interface PolicyMappingPersistence {
    * @return the list of policy mapping records for the specified target entity with the specified
    *     policy type
    */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode) {
@@ -129,9 +129,9 @@ public interface PolicyMappingPersistence {
    * @param targetId id of the target entity
    * @return the list of policy mapping records for the specified target entity
    */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
-      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
@@ -144,9 +144,9 @@ public interface PolicyMappingPersistence {
    * @param policyTypeCode type code of the policy entity
    * @return the list of policy mapping records for the specified policy entity
    */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
       int policyTypeCode) {

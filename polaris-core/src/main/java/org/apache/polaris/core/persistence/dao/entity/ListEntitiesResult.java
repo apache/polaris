@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the return the result for a list entities call */
 public class ListEntitiesResult extends BaseResult {
@@ -41,7 +41,7 @@ public class ListEntitiesResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public ListEntitiesResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public ListEntitiesResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.entities = null;
   }

@@ -20,8 +20,8 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Base result class for any call to the persistence layer */
 public class BaseResult {
@@ -36,14 +36,14 @@ public class BaseResult {
     this.extraInformation = null;
   }
 
-  public BaseResult(@Nonnull BaseResult.ReturnStatus returnStatus) {
+  public BaseResult(@NonNull ReturnStatus returnStatus) {
     this.returnStatusCode = returnStatus.getCode();
     this.extraInformation = null;
   }
 
   @JsonCreator
   public BaseResult(
-      @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation) {
     this.returnStatusCode = returnStatus.getCode();
     this.extraInformation = extraInformation;

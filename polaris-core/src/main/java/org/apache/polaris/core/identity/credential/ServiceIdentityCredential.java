@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.identity.credential;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.annotations.NotNull;
 
 /**
@@ -47,12 +47,12 @@ public abstract class ServiceIdentityCredential {
   private final ServiceIdentityType identityType;
   private SecretReference identityInfoReference;
 
-  public ServiceIdentityCredential(@Nonnull ServiceIdentityType identityType) {
+  public ServiceIdentityCredential(@NonNull ServiceIdentityType identityType) {
     this(identityType, null);
   }
 
   public ServiceIdentityCredential(
-      @Nonnull ServiceIdentityType identityType, @Nullable SecretReference identityInfoReference) {
+      @NonNull ServiceIdentityType identityType, @Nullable SecretReference identityInfoReference) {
     this.identityType = identityType;
     this.identityInfoReference = identityInfoReference;
   }
@@ -61,7 +61,7 @@ public abstract class ServiceIdentityCredential {
     return identityType;
   }
 
-  public @Nonnull SecretReference getIdentityInfoReference() {
+  public @NonNull SecretReference getIdentityInfoReference() {
     return identityInfoReference;
   }
 
@@ -77,7 +77,7 @@ public abstract class ServiceIdentityCredential {
    *
    * @return The persistence object representation
    */
-  public abstract @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo();
+  public abstract @NonNull ServiceIdentityInfoDpo asServiceIdentityInfoDpo();
 
   /**
    * Converts this service identity credential into its API model representation.
@@ -87,5 +87,5 @@ public abstract class ServiceIdentityCredential {
    *
    * @return The API model representation for client responses
    */
-  public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
+  public abstract @NonNull ServiceIdentityInfo asServiceIdentityInfoModel();
 }

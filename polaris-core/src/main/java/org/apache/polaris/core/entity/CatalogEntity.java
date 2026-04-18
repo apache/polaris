@@ -21,8 +21,6 @@ package org.apache.polaris.core.entity;
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -51,6 +49,8 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -395,7 +395,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setConnectionConfigInfoDpo(
-        @Nonnull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+        @NonNull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
       internalProperties.put(
           PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
           connectionConfigInfoDpo.serialize());
@@ -408,7 +408,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
   }
 
-  protected static @Nonnull String getBaseLocation(Catalog catalog) {
+  protected static @NonNull String getBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }
