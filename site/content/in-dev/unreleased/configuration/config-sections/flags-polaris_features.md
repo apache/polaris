@@ -147,6 +147,15 @@ Config key for whether to allow setting the FILE_IO_IMPL using catalog propertie
 
 ---
 
+##### `polaris.features."ALLOW_STORAGE_NAME_OVERRIDE"`
+
+When enabled, clients may set and persist the 'polaris.storage.name' property on namespaces and tables; this allows an entity to override the inherited storage credential reference. Note that credential vending behavior is controlled by a second flag: RESOLVE_CREDENTIALS_BY_STORAGE_NAME must also be enabled for the server to use a persisted storageName when vending credentials. If ALLOW_STORAGE_NAME_OVERRIDE is disabled, requests that include 'polaris.storage.name' will be rejected with a BadRequest. If enabled, the property will be accepted and persisted, but whether it affects credential vending depends on RESOLVE_CREDENTIALS_BY_STORAGE_NAME.
+
+- **Type:** `Boolean`
+- **Default:** `false`
+
+---
+
 ##### `polaris.features."ALLOW_TABLE_LOCATION_OVERLAP"`
 
 If set to true, allow one table's location to reside within another table's location. This is only enforced within a given namespace.

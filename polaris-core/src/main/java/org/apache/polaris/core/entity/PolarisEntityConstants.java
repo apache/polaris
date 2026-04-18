@@ -49,6 +49,14 @@ public class PolarisEntityConstants {
   private static final String STORAGE_CONFIGURATION_INFO_PROPERTY_NAME =
       "storage_configuration_info";
 
+  /**
+   * Internal property key used to store a storage-name override reference on a namespace or table
+   * entity. Only the name string is stored; the full storage configuration is always resolved from
+   * the catalog entity at access time using {@link
+   * org.apache.polaris.core.storage.PolarisStorageConfigurationInfo#withStorageName}.
+   */
+  private static final String STORAGE_NAME_OVERRIDE_PROPERTY_NAME = "storage_name_override";
+
   private static final String STORAGE_INTEGRATION_IDENTIFIER_PROPERTY_NAME =
       "storage_integration_identifier";
 
@@ -105,6 +113,10 @@ public class PolarisEntityConstants {
 
   public static String getStorageConfigInfoPropertyName() {
     return STORAGE_CONFIGURATION_INFO_PROPERTY_NAME;
+  }
+
+  public static String getStorageNameOverridePropertyName() {
+    return STORAGE_NAME_OVERRIDE_PROPERTY_NAME;
   }
 
   public static String getConnectionConfigInfoPropertyName() {

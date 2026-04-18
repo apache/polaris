@@ -18,10 +18,15 @@
  */
 package org.apache.polaris.core.persistence;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthBootstrapUtil;
@@ -55,6 +60,8 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageConfigResolver;
 
 /**
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
@@ -67,6 +74,8 @@ public interface PolarisMetaStoreManager
         PolarisPolicyMappingManager,
         PolarisEventManager,
         PolarisMetricsManager {
+
+  ObjectMapper STORAGE_CONFIG_COMPARISON_MAPPER = new ObjectMapper();
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
@@ -537,5 +546,96 @@ public interface PolarisMetaStoreManager
       return Optional.empty();
     }
     return Optional.of(entityResult.getEntity()).map(PrincipalRoleEntity::of);
+  }
+
+  /**
+   * Resolves the effective storage configuration for an entity by reconstructing the entity
+   * hierarchy via {@code parentId} links and delegating to {@link StorageConfigResolver#resolve},
+   * which is the single source of truth for storage-name override resolution.
+   *
+   * <p>This is the credential-vending counterpart of {@code
+   * FileIOUtil.resolveEffectiveStorageConfig}; both paths use {@link StorageConfigResolver} to
+   * guarantee identical semantics.
+   *
+   * @param callCtx call context
+   * @param entity the entity whose storage config should be resolved
+   * @return the entity to use (either unchanged, or a synthetic copy with resolved
+   *     storageConfigInfo)
+   */
+  default PolarisBaseEntity resolveEntityStorageConfig(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+    Map<String, String> props = entity.getInternalPropertiesAsMap();
+
+    // Fast path: entity already carries the full storageConfigInfo (e.g. catalog entities).
+    if (props.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
+      return entity;
+    }
+
+    // Build the entity chain (leaf-to-root) by walking parentId links.
+    long catalogId = entity.getCatalogId();
+    List<PolarisBaseEntity> chain = new ArrayList<>();
+    chain.add(entity);
+
+    long currentParentId = entity.getParentId();
+    while (currentParentId != PolarisEntityConstants.getNullId() && currentParentId != catalogId) {
+      EntityResult parentResult =
+          loadEntity(callCtx, catalogId, currentParentId, PolarisEntityType.NAMESPACE);
+      if (parentResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+        break;
+      }
+      chain.add(parentResult.getEntity());
+      currentParentId = parentResult.getEntity().getParentId();
+    }
+
+    // Append the catalog entity (root of the chain).
+    EntityResult catalogResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), catalogId, PolarisEntityType.CATALOG);
+    if (catalogResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return entity;
+    }
+    chain.add(catalogResult.getEntity());
+
+    // Delegate to the shared resolver.
+    Optional<PolarisStorageConfigurationInfo> resolved = StorageConfigResolver.resolve(chain);
+    if (resolved.isEmpty()) {
+      return entity;
+    }
+
+    // Only create a synthetic entity if the resolved config differs from the catalog's base
+    // (i.e., an override was actually applied). If no override exists, the resolved config is
+    // the catalog's own config and should not be stamped onto a non-catalog entity.
+    String catalogConfigJson =
+        catalogResult
+            .getEntity()
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    String resolvedJson = resolved.get().serialize();
+    if (isStructurallyEqualJson(resolvedJson, catalogConfigJson)) {
+      return entity;
+    }
+
+    Map<String, String> resolvedProps = new HashMap<>(props);
+    resolvedProps.put(PolarisEntityConstants.getStorageConfigInfoPropertyName(), resolvedJson);
+    return new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(resolvedProps).build();
+  }
+
+  private static boolean isStructurallyEqualJson(
+      @Nullable String leftJson, @Nullable String rightJson) {
+    if (Objects.equals(leftJson, rightJson)) {
+      return true;
+    }
+    if (leftJson == null || rightJson == null) {
+      return false;
+    }
+
+    try {
+      JsonNode leftNode = STORAGE_CONFIG_COMPARISON_MAPPER.readTree(leftJson);
+      JsonNode rightNode = STORAGE_CONFIG_COMPARISON_MAPPER.readTree(rightJson);
+      return leftNode.equals(rightNode);
+    } catch (Exception e) {
+      // If either payload is malformed JSON, treat it as non-equal.
+      return false;
+    }
   }
 }

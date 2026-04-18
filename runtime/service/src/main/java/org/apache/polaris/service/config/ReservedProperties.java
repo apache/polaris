@@ -67,7 +67,9 @@ public interface ReservedProperties {
    * prefix
    */
   default Set<String> allowlist() {
-    return PolarisConfiguration.getAllCatalogConfigs();
+    Set<String> allowlist = new HashSet<>(PolarisConfiguration.getAllCatalogConfigs());
+    allowlist.add("polaris.storage.name");
+    return allowlist;
   }
 
   /** If true, attempts to modify a reserved property should throw an exception. */
