@@ -85,6 +85,7 @@ dependencies {
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.annotation.api)
 
   implementation(platform(libs.google.cloud.storage.bom))

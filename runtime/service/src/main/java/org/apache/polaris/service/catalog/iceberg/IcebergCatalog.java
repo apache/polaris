@@ -31,8 +31,6 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -147,6 +145,8 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -572,8 +572,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @Nonnull String resolveLocationForPath(
-      @Nonnull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
+  private static @NonNull String resolveLocationForPath(
+      @NonNull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -592,7 +592,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private static @Nullable String baseLocation(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisEntity entity) {
+      @NonNull PolarisDiagnostics diagnostics, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
       String catalogDefaultBaseLocation = catEntity.getBaseLocation();
@@ -2544,7 +2544,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @SuppressWarnings("FormatStringAnnotation")
-  private @Nonnull DropEntityResult dropTableLike(
+  private @NonNull DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,

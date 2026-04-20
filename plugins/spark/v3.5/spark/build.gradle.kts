@@ -61,7 +61,7 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 
-  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   compileOnly(project(":polaris-immutables"))

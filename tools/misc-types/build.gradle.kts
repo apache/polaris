@@ -26,6 +26,7 @@ description =
   "Misc types used in configurations and converters for microprofile-config & Jackson, exposes no runtime dependencies"
 
 dependencies {
+  compileOnly(libs.jspecify)
   compileOnly(libs.smallrye.config.core)
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")

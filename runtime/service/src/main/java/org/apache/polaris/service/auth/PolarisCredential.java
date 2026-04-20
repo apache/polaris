@@ -19,9 +19,9 @@
 package org.apache.polaris.service.auth;
 
 import io.quarkus.security.credential.Credential;
-import jakarta.annotation.Nullable;
 import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A Quarkus Security {@link Credential} exposing Polaris-specific attributes: the principal id,
@@ -49,17 +49,14 @@ public interface PolarisCredential extends Credential {
   }
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
-  @Nullable
-  Long getPrincipalId();
+  @Nullable Long getPrincipalId();
 
   /** The principal name, or null if unknown. Used for principal lookups by name. */
-  @Nullable
-  String getPrincipalName();
+  @Nullable String getPrincipalName();
 
   /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();
 
   /** The access token of the current user, or null if not applicable. */
-  @Nullable
-  String getToken();
+  @Nullable String getToken();
 }

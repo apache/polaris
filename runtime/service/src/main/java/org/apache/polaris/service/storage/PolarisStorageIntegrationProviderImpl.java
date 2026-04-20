@@ -22,8 +22,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -47,6 +45,8 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 @ApplicationScoped
@@ -133,24 +133,24 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new PolarisStorageIntegration<>((T) polarisStorageConfigurationInfo, "file") {
               @Override
               public StorageAccessConfig getSubscopedCreds(
-                  @Nonnull RealmConfig realmConfig,
+                  @NonNull RealmConfig realmConfig,
                   boolean allowListOperation,
-                  @Nonnull Set<String> allowedReadLocations,
-                  @Nonnull Set<String> allowedWriteLocations,
-                  @Nonnull PolarisPrincipal polarisPrincipal,
+                  @NonNull Set<String> allowedReadLocations,
+                  @NonNull Set<String> allowedWriteLocations,
+                  @NonNull PolarisPrincipal polarisPrincipal,
                   Optional<String> refreshCredentialsEndpoint,
-                  @Nonnull CredentialVendingContext credentialVendingContext) {
+                  @NonNull CredentialVendingContext credentialVendingContext) {
                 // FILE storage does not support credential vending
                 return StorageAccessConfig.builder().supportsCredentialVending(false).build();
               }
 
               @Override
-              public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
+              public @NonNull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
-                      @Nonnull RealmConfig realmConfig,
-                      @Nonnull T storageConfig,
-                      @Nonnull Set<PolarisStorageActions> actions,
-                      @Nonnull Set<String> locations) {
+                      @NonNull RealmConfig realmConfig,
+                      @NonNull T storageConfig,
+                      @NonNull Set<PolarisStorageActions> actions,
+                      @NonNull Set<String> locations) {
                 return Map.of();
               }
             };

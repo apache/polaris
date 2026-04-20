@@ -21,7 +21,7 @@ package org.apache.polaris.extension.auth.opa.token;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.Strings;
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 /** A simple token provider that returns a static string value. */
 public record StaticBearerTokenProvider(String token) implements BearerTokenProvider {
@@ -31,7 +31,7 @@ public record StaticBearerTokenProvider(String token) implements BearerTokenProv
   }
 
   @Override
-  public @Nonnull String getToken() {
+  public @NonNull String getToken() {
     return token;
   }
 }

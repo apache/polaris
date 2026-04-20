@@ -19,7 +19,6 @@
 
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
@@ -28,6 +27,7 @@ import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 public interface ModelEvent extends Converter<PolarisEvent> {
@@ -80,8 +80,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   String getEventId();
 
   // id of the request that generated this event
-  @Nullable
-  String getRequestId();
+  @Nullable String getRequestId();
 
   // event type that was created
   String getEventType();
@@ -90,8 +89,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   long getTimestampMs();
 
   // polaris principal who took this action
-  @Nullable
-  String getPrincipalName();
+  @Nullable String getPrincipalName();
 
   // Enum that states the type of resource was being operated on
   PolarisEvent.ResourceType getResourceType();
