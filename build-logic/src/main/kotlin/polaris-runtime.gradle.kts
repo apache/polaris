@@ -43,6 +43,8 @@ testing {
             // is not smart enough :(
             systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
             dependsOn(tasks.named("quarkusBuild"))
+            // Set the 'it' profile explicitly
+            jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Dquarkus.profile=it") })
           }
         }
         tasks.named(sources.compileJavaTaskName).configure {

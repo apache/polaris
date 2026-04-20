@@ -28,12 +28,10 @@ import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.Re
 import static org.apache.polaris.persistence.nosql.realms.store.RealmsStateObj.REALMS_REF_NAME;
 
 import com.google.common.collect.Streams;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -45,6 +43,7 @@ import org.apache.polaris.persistence.nosql.api.StreamUtil;
 import org.apache.polaris.persistence.nosql.api.SystemPersistence;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.commit.Committer;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
@@ -52,6 +51,7 @@ import org.apache.polaris.persistence.nosql.realms.api.RealmAlreadyExistsExcepti
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
 import org.apache.polaris.persistence.nosql.realms.api.RealmNotFoundException;
 import org.apache.polaris.persistence.nosql.realms.spi.RealmStore;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class RealmStoreImpl implements RealmStore {
@@ -61,7 +61,7 @@ class RealmStoreImpl implements RealmStore {
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
-  RealmStoreImpl(@Nonnull @SystemPersistence Persistence systemPersistence, Backend backend) {
+  RealmStoreImpl(@NonNull @SystemPersistence Persistence systemPersistence, Backend backend) {
     checkArgument(
         SYSTEM_REALM_ID.equals(systemPersistence.realmId()),
         "Realms management must happen in the %s realm",
@@ -94,14 +94,14 @@ class RealmStoreImpl implements RealmStore {
                         Streams.stream(entries),
                         bucket -> {
                           var objRefs =
-                              bucket.stream().map(Map.Entry::getValue).toArray(ObjRef[]::new);
+                              bucket.stream().map(Index.Element::value).toArray(ObjRef[]::new);
                           var objs = systemPersistence.fetchMany(RealmObj.class, objRefs);
                           var defs = new ArrayList<RealmDefinition>(bucket.size());
 
                           for (int i = 0; i < objs.length; i++) {
                             var obj = objs[i];
                             if (obj != null) {
-                              defs.add(objToDefinition(bucket.get(i).getKey().toString(), obj));
+                              defs.add(objToDefinition(bucket.get(i).key().toString(), obj));
                             }
                           }
                           return defs;

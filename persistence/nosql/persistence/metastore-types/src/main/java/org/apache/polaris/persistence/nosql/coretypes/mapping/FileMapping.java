@@ -19,10 +19,10 @@
 
 package org.apache.polaris.persistence.nosql.coretypes.mapping;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.FileObj;
+import org.jspecify.annotations.NonNull;
 
 final class FileMapping extends BaseMapping<FileObj, FileObj.Builder> {
   FileMapping() {
@@ -30,7 +30,7 @@ final class FileMapping extends BaseMapping<FileObj, FileObj.Builder> {
   }
 
   @Override
-  public FileObj.Builder newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public FileObj.Builder newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return FileObj.builder();
   }
 }

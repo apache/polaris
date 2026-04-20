@@ -34,16 +34,16 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)
 public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrincipalRolesApiService {
 
   @Inject @Delegate PolarisPrincipalRolesApiService delegate;
-  @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
 
   @Override
@@ -51,13 +51,13 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
             new EventAttributeMap().put(EventAttributes.CREATE_PRINCIPAL_ROLE_REQUEST, request)));
     Response resp = delegate.createPrincipalRole(request, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -69,13 +69,13 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
   @Override
   public Response deletePrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_DELETE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
             new EventAttributeMap().put(EventAttributes.PRINCIPAL_ROLE_NAME, principalRoleName)));
     Response resp = delegate.deletePrincipalRole(principalRoleName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_DELETE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -86,13 +86,13 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
   @Override
   public Response getPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_GET_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
             new EventAttributeMap().put(EventAttributes.PRINCIPAL_ROLE_NAME, principalRoleName)));
     Response resp = delegate.getPrincipalRole(principalRoleName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_GET_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -107,7 +107,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       UpdatePrincipalRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_UPDATE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -117,7 +117,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     Response resp =
         delegate.updatePrincipalRole(
             principalRoleName, updateRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_UPDATE_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -128,13 +128,13 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
 
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_PRINCIPAL_ROLES,
             eventMetadataFactory.create(),
             new EventAttributeMap()));
     Response resp = delegate.listPrincipalRoles(realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_PRINCIPAL_ROLES,
             eventMetadataFactory.create(),
@@ -149,7 +149,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       GrantCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -160,7 +160,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     Response resp =
         delegate.assignCatalogRoleToPrincipalRole(
             principalRoleName, catalogName, request, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -178,7 +178,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -189,7 +189,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     Response resp =
         delegate.revokeCatalogRoleFromPrincipalRole(
             principalRoleName, catalogName, catalogRoleName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -203,7 +203,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
   @Override
   public Response listAssigneePrincipalsForPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -211,7 +211,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     Response resp =
         delegate.listAssigneePrincipalsForPrincipalRole(
             principalRoleName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -225,7 +225,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       String catalogName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.BEFORE_LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),
@@ -235,7 +235,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     Response resp =
         delegate.listCatalogRolesForPrincipalRole(
             principalRoleName, catalogName, realmContext, securityContext);
-    polarisEventListener.onEvent(
+    polarisEventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE,
             eventMetadataFactory.create(),

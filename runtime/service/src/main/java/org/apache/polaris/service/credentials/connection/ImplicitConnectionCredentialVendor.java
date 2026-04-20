@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
+import java.util.Map;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
@@ -61,8 +62,7 @@ public class ImplicitConnectionCredentialVendor implements ConnectionCredentialV
 
     // Return empty credentials for implicit (no authentication) type with expiration
     // Set expiration to Long.MAX_VALUE to indicate infinite validity
-    return ConnectionCredentials.builder()
-        .put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE))
-        .build();
+    return ConnectionCredentials.of(
+        Map.of(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE)));
   }
 }

@@ -39,6 +39,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class AdminToolProducers {
 
   @Produces
+  @ApplicationScoped
   public MetaStoreManagerFactory metaStoreManagerFactory(
       QuarkusPersistenceConfiguration persistenceConfiguration,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
@@ -60,6 +61,7 @@ public class AdminToolProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public PolarisStorageIntegrationProvider storageIntegrationProvider() {
     // A storage integration provider is not required when running the admin tool.
     return new PolarisStorageIntegrationProvider() {
@@ -74,12 +76,14 @@ public class AdminToolProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public RealmConfigurationSource configurationStore() {
     // A configuration source is not required when running the admin tool.
     return RealmConfigurationSource.EMPTY_CONFIG;
   }
 
   @Produces
+  @ApplicationScoped
   public RealmConfig dummyRealmConfig(RealmConfigurationSource configurationSource) {
     // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
     String absentId = UUID.randomUUID().toString();

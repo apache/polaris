@@ -99,19 +99,23 @@ public class TestAbstractLayeredIndexImpl {
     var indexTestSet = basicIndexTestSet();
     var reference = indexTestSet.keyIndex();
     for (var k : indexTestSet.keys()) {
-      var el = requireNonNull(reference.getElement(k)).getValue();
+      var el = requireNonNull(reference.getElement(k)).valueNullable();
+      soft.assertThat(el).describedAs("Element value %s is not null", k).isNotNull();
       reference.put(k, objRef(el.type(), el.id(), 1));
     }
 
-    var expected = new ArrayList<IndexElement<ObjRef>>();
+    var expected = new ArrayList<InternalIndexElement<ObjRef>>();
     var embedded = newStoreIndex(OBJ_REF_SERIALIZER);
     reference
         .elementIterator()
         .forEachRemaining(
             el -> {
               if ((expected.size() % 5) == 0) {
-                el =
-                    indexElement(el.getKey(), objRef(el.getValue().type(), ~el.getValue().id(), 1));
+                var value = el.valueNullable();
+                soft.assertThat(value)
+                    .describedAs("Element value %s is null", el.key())
+                    .isNotNull();
+                el = indexElement(el.key(), objRef(value.type(), ~value.id(), 1));
                 embedded.add(el);
               }
               expected.add(el);
@@ -136,49 +140,49 @@ public class TestAbstractLayeredIndexImpl {
     for (var i = 0; i < expected.size(); i++) {
       var el = expected.get(i);
 
-      soft.assertThat(layered.containsElement(el.getKey())).isTrue();
-      soft.assertThat(layered.getElement(el.getKey())).isEqualTo(el);
-      soft.assertThat(newArrayList(layered.elementIterator(el.getKey(), el.getKey(), false)))
-          .allMatch(elem -> elem.getKey().startsWith(el.getKey()));
+      soft.assertThat(layered.containsElement(el.key())).isTrue();
+      soft.assertThat(layered.getElement(el.key())).isEqualTo(el);
+      soft.assertThat(newArrayList(layered.elementIterator(el.key(), el.key(), false)))
+          .allMatch(elem -> elem.key().startsWith(el.key()));
 
-      soft.assertThat(newArrayList(layered.elementIterator(el.getKey(), null, false)))
+      soft.assertThat(newArrayList(layered.elementIterator(el.key(), null, false)))
           .containsExactlyElementsOf(expected.subList(i, expected.size()));
-      soft.assertThat(newArrayList(layered.elementIterator(null, el.getKey(), false)))
+      soft.assertThat(newArrayList(layered.elementIterator(null, el.key(), false)))
           .containsExactlyElementsOf(expected.subList(0, i + 1));
 
-      soft.assertThat(newArrayList(layered.reverseElementIterator(el.getKey(), null, false)))
+      soft.assertThat(newArrayList(layered.reverseElementIterator(el.key(), null, false)))
           .containsExactlyElementsOf(expected.subList(i, expected.size()).reversed());
-      soft.assertThat(newArrayList(layered.reverseElementIterator(null, el.getKey(), false)))
+      soft.assertThat(newArrayList(layered.reverseElementIterator(null, el.key(), false)))
           .containsExactlyElementsOf(expected.subList(0, i + 1).reversed());
     }
 
     var veryFirst = indexElement(key("aaaaaaaaaa"), randomObjId());
     embedded.add(veryFirst);
 
-    soft.assertThat(layered.containsElement(veryFirst.getKey())).isTrue();
-    soft.assertThat(layered.getElement(veryFirst.getKey())).isEqualTo(veryFirst);
+    soft.assertThat(layered.containsElement(veryFirst.key())).isTrue();
+    soft.assertThat(layered.getElement(veryFirst.key())).isEqualTo(veryFirst);
     expected.addFirst(veryFirst);
     soft.assertThat(newArrayList(layered.elementIterator())).containsExactlyElementsOf(expected);
     soft.assertThat(newArrayList(layered.reverseElementIterator()))
         .containsExactlyElementsOf(expected.reversed());
     soft.assertThat(layered.asKeyList().size()).isEqualTo(reference.asKeyList().size() + 1);
 
-    soft.assertThat(layered.first()).isEqualTo(veryFirst.getKey());
+    soft.assertThat(layered.first()).isEqualTo(veryFirst.key());
     soft.assertThat(layered.last()).isEqualTo(referenceLast);
 
     var veryLast = indexElement(key("zzzzzzzzz"), randomObjId());
     embedded.add(veryLast);
 
-    soft.assertThat(layered.containsElement(veryLast.getKey())).isTrue();
-    soft.assertThat(layered.getElement(veryLast.getKey())).isEqualTo(veryLast);
+    soft.assertThat(layered.containsElement(veryLast.key())).isTrue();
+    soft.assertThat(layered.getElement(veryLast.key())).isEqualTo(veryLast);
     expected.add(veryLast);
     soft.assertThat(newArrayList(layered.elementIterator())).containsExactlyElementsOf(expected);
     soft.assertThat(newArrayList(layered.reverseElementIterator()))
         .containsExactlyElementsOf(expected.reversed());
     soft.assertThat(layered.asKeyList().size()).isEqualTo(reference.asKeyList().size() + 2);
 
-    soft.assertThat(layered.first()).isEqualTo(veryFirst.getKey());
-    soft.assertThat(layered.last()).isEqualTo(veryLast.getKey());
+    soft.assertThat(layered.first()).isEqualTo(veryFirst.key());
+    soft.assertThat(layered.last()).isEqualTo(veryLast.key());
   }
 
   @Test

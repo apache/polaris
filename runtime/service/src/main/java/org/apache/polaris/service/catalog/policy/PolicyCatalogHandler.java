@@ -34,6 +34,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
@@ -142,11 +143,12 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
-            true /* optional */),
-        identifier);
+            true /* optional */));
     resolutionManifest.resolveAll();
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(identifier, true);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()), true);
     if (target == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
@@ -212,16 +214,14 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
-            true /* optional */),
-        identifier);
+            true /* optional */));
 
     switch (target.getType()) {
       case CATALOG -> {}
       case NAMESPACE -> {
         Namespace targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
         resolutionManifest.addPath(
-            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE),
-            targetNamespace);
+            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE));
       }
       case TABLE_LIKE -> {
         TableIdentifier targetIdentifier =
@@ -229,8 +229,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         resolutionManifest.addPath(
             new ResolverPath(
                 PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
-                PolarisEntityType.TABLE_LIKE),
-            targetIdentifier);
+                PolarisEntityType.TABLE_LIKE));
       }
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     }
@@ -241,7 +240,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisResolvedPathWrapper policyWrapper =
         resolutionManifest.getPassthroughResolvedPath(
-            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()),
+            PolarisEntitySubType.NULL_SUBTYPE);
     if (policyWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }

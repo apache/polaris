@@ -2256,7 +2256,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           ms.loadAllGrantRecordsOnSecurableInCurrentTxn(callCtx, e.getCatalogId(), e.getId());
       final List<PolarisGrantRecord> grantRecordsAsGrantee =
           e.getType().isGrantee()
-              ? ms.loadAllGrantRecordsOnSecurableInCurrentTxn(callCtx, e.getCatalogId(), e.getId())
+              ? ms.loadAllGrantRecordsOnGranteeInCurrentTxn(callCtx, e.getCatalogId(), e.getId())
               : List.of();
       return new ResolvedPolarisEntity(
           PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);

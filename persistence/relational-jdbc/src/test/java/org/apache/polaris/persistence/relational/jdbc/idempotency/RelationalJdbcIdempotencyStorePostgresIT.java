@@ -77,6 +77,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
           public Optional<Long> initialDelayInMs() {
             return Optional.of(100L);
           }
+
+          @Override
+          public Optional<String> databaseType() {
+            return Optional.empty();
+          }
         };
     DatasourceOperations ops = new DatasourceOperations(dataSource, cfg);
     try (InputStream is =

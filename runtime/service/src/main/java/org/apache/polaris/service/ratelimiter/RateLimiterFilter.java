@@ -31,9 +31,9 @@ import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,16 +46,16 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
 
   private final RateLimiter rateLimiter;
-  private final PolarisEventListener polarisEventListener;
+  private final PolarisEventDispatcher polarisEventDispatcher;
   private final PolarisEventMetadataFactory eventMetadataFactory;
 
   @Inject
   public RateLimiterFilter(
       RateLimiter rateLimiter,
-      PolarisEventListener polarisEventListener,
+      PolarisEventDispatcher polarisEventDispatcher,
       PolarisEventMetadataFactory eventMetadataFactory) {
     this.rateLimiter = rateLimiter;
-    this.polarisEventListener = polarisEventListener;
+    this.polarisEventDispatcher = polarisEventDispatcher;
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
@@ -63,7 +63,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
     if (!rateLimiter.canProceed()) {
-      polarisEventListener.onEvent(
+      polarisEventDispatcher.dispatch(
           new PolarisEvent(
               PolarisEventType.BEFORE_LIMIT_REQUEST_RATE,
               eventMetadataFactory.create(),

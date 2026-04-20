@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -37,7 +37,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 /** Factory class for creating a Hadoop catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier(ConnectionType.HADOOP_FACTORY_IDENTIFIER)
-public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
+public class HadoopFederatedCatalogFactory implements FederatedCatalogFactory {
 
   @Override
   public Catalog createCatalog(

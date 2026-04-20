@@ -30,6 +30,7 @@ dependencies {
   compileOnly(project(":polaris-persistence-nosql-maintenance-cel"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
 

@@ -38,11 +38,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
+        with: # zizmor: ignore[artipacked]
           # Fetch full history. Branch operations require this.
           fetch-depth: 0
-          # Use a token with write permissions
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use a token with write permissions - persist-credentials is required for git push
+          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -53,12 +53,14 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
@@ -145,6 +147,12 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Set up helm-docs
+        if: env.rc_number == '0'
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
       - name: Update project versions
         if: env.rc_number == '0'
         run: |
@@ -167,6 +175,16 @@ jobs:
           Changelog patched successfully
           EOT
 
+      - name: Generate Helm schema and documentation
+        if: env.rc_number == '0'
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+          exec_process make helm-schema-generate helm-doc-generate
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Helm schema & documentation
+          Helm schema and documentation files generated successfully.
+          EOT
+
       - name: Commit and push changes
         if: env.rc_number == '0'
         run: |
@@ -180,6 +198,7 @@ jobs:
             "$HELM_README_FILE" \
             "$HELM_VALUES_FILE" \
             "$HELM_VALUES_SCHEMA_FILE" \
+            "$HELM_REFERENCE_DOC_FILE" \
             "$CHANGELOG_FILE"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 

@@ -188,7 +188,7 @@ tests:
     asserts:
       - exists:
           path: spec.template.metadata.annotations.checksum/config
-      - matchRegex: 
+      - matchRegex:
           path: spec.template.metadata.annotations.checksum/config
           pattern: "^[a-f0-9]{64}$"
   - it: should set pod annotations
@@ -337,6 +337,50 @@ tests:
             allowPrivilegeEscalation: true
             runAsNonRoot: false
             runAsUser: 1234
+
+  # spec.template.spec.containers[0].lifecycle
+  - it: should not set container lifecycle by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].lifecycle
+  - it: should set container lifecycle with preStop hook
+    template: deployment.yaml
+    set:
+      containerLifecycle:
+        preStop:
+          exec:
+            command: ["/bin/sh", "-c", "sleep 60"]
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].lifecycle
+          content:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 60"]
+
+  # spec.template.spec.terminationGracePeriodSeconds
+  - it: should not set terminationGracePeriodSeconds by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.terminationGracePeriodSeconds
+  - it: should set terminationGracePeriodSeconds
+    template: deployment.yaml
+    set:
+      terminationGracePeriodSeconds: 90
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 90
+  - it: should set terminationGracePeriodSeconds to zero
+    template: deployment.yaml
+    set:
+      terminationGracePeriodSeconds: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 0
 
   # spec.template.spec.containers[0].image
   - it: should set container image
@@ -1124,11 +1168,37 @@ tests:
                 name: polaris-storage-secret
                 key: awsAccessKeyId
 
+  - it: should set envFrom
+    template: deployment.yaml
+    set:
+      envFrom:
+        - secretRef:
+            name: polaris-env-secret
+        - configMapRef:
+            name: polaris-env-configmap
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: polaris-env-secret
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: polaris-env-configmap
+
   - it: should not set any environment variables by default
     template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
+
+  - it: should not set envFrom by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
 
   - it: should configure config volume
     template: deployment.yaml

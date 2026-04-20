@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# CODE_COPIED_TO_POLARIS Copied from Project Nessie v. 0.106.1
+
 name: 'Free disk space'
 description: 'Free runner disk space'
 runs:

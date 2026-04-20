@@ -34,7 +34,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -115,22 +114,6 @@ public abstract class PolarisAuthzTestsFactory {
             .flatMap(Set::stream)
             .collect(Collectors.toCollection(() -> EnumSet.noneOf(PolarisPrivilege.class)));
 
-    // Automatically create positive tests for all subsuming privileges of each
-    // individually-sufficient privilege, since they all must pass as well.
-    List<EnumSet<PolarisPrivilege>> missingSufficientPrivilegeSets =
-        sufficientIndividualPrivileges.stream()
-            .flatMap(p -> PolarisAuthorizerImpl.subsumingPrivilegesOf(p).stream())
-            .distinct()
-            .sorted(Comparator.comparing(Enum::name))
-            .map(EnumSet::of)
-            .filter(set -> !sufficientPrivilegeSets().contains(set))
-            .toList();
-    if (!missingSufficientPrivilegeSets.isEmpty()) {
-      Builder builder = builder().from(this);
-      missingSufficientPrivilegeSets.forEach(builder::addSufficientPrivilegeSet);
-      return builder.build();
-    }
-
     // Automatically create negative tests for each privilege not present *individually*
     // in the positive tests, as single privileges are assumed to be insufficient by default.
     List<EnumSet<PolarisPrivilege>> missingInsufficientPrivilegeSets =
@@ -195,9 +178,8 @@ public abstract class PolarisAuthzTestsFactory {
      * privileges in a single call are treated as a set of privileges that must all be granted
      * together.
      *
-     * <p>When calling this method with a single privilege, it's not necessary to explicitly call it
-     * again with subsuming privileges, as the test factory will automatically create positive tests
-     * for all subsuming privileges.
+     * <p>Make sure to explicitly call this method for each subsuming privilege that should also
+     * pass the test.
      */
     @CanIgnoreReturnValue
     public Builder shouldPassWith(PolarisPrivilege... privileges) {

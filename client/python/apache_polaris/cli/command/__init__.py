@@ -210,6 +210,35 @@ class Command(ABC):
                 attachment_type=options_get(Arguments.ATTACHMENT_TYPE),
                 attachment_path=options_get(Arguments.ATTACHMENT_PATH),
             )
+        elif options.command == Commands.SETUP:
+            from apache_polaris.cli.command.setup import SetupCommand
+
+            subcommand = options_get(f"{Commands.SETUP}_subcommand")
+            command = SetupCommand(
+                subcommand,
+                setup_config=options_get(Arguments.SETUP_CONFIG),
+                dry_run=options_get(Arguments.DRY_RUN),
+            )
+        elif options.command == Commands.TABLES:
+            from apache_polaris.cli.command.tables import TableCommand
+
+            subcommand = options_get(f"{Commands.TABLES}_subcommand")
+            command = TableCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(
+                    Arguments.NAMESPACE, lambda x: x.split(".") if x else None
+                ),
+                table_name=options_get(Arguments.TABLE),
+            )
+        elif options.command == Commands.FIND:
+            from apache_polaris.cli.command.find import FindCommand
+
+            command = FindCommand(
+                options_get(Arguments.IDENTIFIER),
+                catalog_name=options_get(Arguments.CATALOG),
+                type_filter=options_get(Arguments.TYPE),
+            )
 
         if command is not None:
             command.validate()

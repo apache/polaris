@@ -75,7 +75,7 @@ dependencies {
   }
   // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
   // of spark-sql dependency
-  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.3")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.4")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
   testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1") {

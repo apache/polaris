@@ -18,15 +18,14 @@
  */
 package org.apache.polaris.persistence.nosql.nodeids.api;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public interface NodeLease {
   /**
    * Returns the {@link Node} representation for this lease if the lease has not been released or
    * {@code null}.
    */
-  @Nullable
-  Node node();
+  @Nullable Node node();
 
   /**
    * Permanently release the lease. Does nothing, if already released. Throws if persisting the

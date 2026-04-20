@@ -63,8 +63,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
-  excludes.add("LICENSE")
-  excludes.add("NOTICE")
+  excludes.add("**/LICENSE*")
+  excludes.add("**/NOTICE*")
 
   excludes.add("**/no-license-notice-marker")
 
@@ -117,6 +117,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("node_modules/**")
 
   // Guides testing
+  excludes.add("site/content/guides/ceph/**/*.keyring")
   excludes.add("/getting-started") // it's a symlink
 
   // Python
@@ -142,6 +143,7 @@ tasks.named<RatTask>("rat").configure {
 
   // IntelliJ
   excludes.add(".idea")
+  excludes.add("site/it/.idea")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
 

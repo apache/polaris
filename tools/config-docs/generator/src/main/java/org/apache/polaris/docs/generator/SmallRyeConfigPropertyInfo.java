@@ -102,6 +102,11 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
     return simplifiedTypeName(property);
   }
 
+  @Override
+  public String enumTooltipText() {
+    return enumTooltipText(property);
+  }
+
   public boolean isSettableType() {
     return isSettableType(property);
   }
@@ -172,10 +177,14 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
       var leaf = property.asLeaf();
       var rawType = leaf.getValueRawType();
       if (rawType.isEnum()) {
-        return Arrays.stream(rawType.getEnumConstants())
-            .map(Enum.class::cast)
-            .map(Enum::name)
-            .collect(Collectors.joining(", "));
+        Object[] constants = rawType.getEnumConstants();
+        String firstThree =
+            Arrays.stream(constants)
+                .limit(3)
+                .map(Enum.class::cast)
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
+        return "enum (" + firstThree + (constants.length > 3 ? ", ..." : "") + ")";
       }
       if (property.hasConvertWith()) {
         // A smallrye-config converter always takes a string.
@@ -237,6 +246,31 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
       return "";
     }
     throw new UnsupportedOperationException("Don't know how to handle " + property);
+  }
+
+  public static String enumTooltipText(Property property) {
+    if (property.isOptional()) {
+      return enumTooltipText(property.asOptional().getNestedProperty());
+    }
+    if (property.isCollection()) {
+      return enumTooltipText(property.asCollection().getElement());
+    }
+    if (property.isMap()) {
+      return enumTooltipText(property.asMap().getValueProperty());
+    }
+    if (property.isLeaf()) {
+      var rawType = property.asLeaf().getValueRawType();
+      if (rawType.isEnum()) {
+        Object[] constants = rawType.getEnumConstants();
+        if (constants.length > 3) {
+          return Arrays.stream(constants)
+              .map(Enum.class::cast)
+              .map(Enum::name)
+              .collect(Collectors.joining(", "));
+        }
+      }
+    }
+    return null;
   }
 
   @Override

@@ -64,12 +64,14 @@ params:
   # "EOL" releases and only show the "active" ones in the top navbar - and have the `Releases` menu not appear
   # at the very right in the navbar.
   active_releases:
-    # Mention all active releases here, in semver descending order
-    # EOL releases (0.9.0, 1.0.0, 1.0.1) should NOT be listed here!
-    # When changing this list, also modify /docs/_index.md.
+    # Mention all active releases here, in semver descending order.
+    # Remove any version that should be moved to the "EOL" category.
     - "1.3.0"
     - "1.2.0"
     - "1.1.0"
+    - "1.0.1"
+    - "1.0.0"
+    - "0.9.0"
 
   ui:
     ul_show: 1
@@ -104,44 +106,6 @@ menu:
     - name: "Documentation"
       identifier: "doc"
       weight: 100
-      params:
-        orderby: weight.desc
-    - name: "Overview"
-      url: "/docs/"
-      parent: "doc"
-      weight: -100
-    - name: "In Development"
-      url: "/in-dev/unreleased/"
-      parent: "doc"
-      weight: 1
-    - name: "Latest"
-      url: "/releases/latest/"
-      parent: "doc"
-      weight: 2
-    - name: "1.3.0"
-      url: "/releases/1.3.0/"
-      parent: "doc"
-      weight: 995
-    - name: "1.2.0"
-      url: "/releases/1.2.0/"
-      parent: "doc"
-      weight: 996
-    - name: "1.1.0"
-      url: "/releases/1.1.0/"
-      parent: "doc"
-      weight: 997
-    - name: "1.0.1"
-      url: "/releases/1.0.1/"
-      parent: "doc"
-      weight: 998
-    - name: "1.0.0"
-      url: "/releases/1.0.0/"
-      parent: "doc"
-      weight: 999
-    - name: "0.9.0"
-      url: "/releases/0.9.0/"
-      parent: "doc"
-      weight: 1000
 
     - name: "Guides"
       identifier: "Guides"

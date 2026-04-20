@@ -20,7 +20,6 @@ package org.apache.polaris.core.connection;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -43,9 +42,6 @@ import org.apache.polaris.core.secrets.SecretReference;
  * API model.
  */
 public class OAuthClientCredentialsParametersDpo extends AuthenticationParametersDpo {
-
-  private static final Joiner COLON_JOINER = Joiner.on(":");
-
   @JsonProperty(value = "tokenUri")
   private final String tokenUri;
 

@@ -62,6 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, locat
 
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
@@ -96,6 +97,11 @@ COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
+
+CREATE INDEX IF NOT EXISTS idx_grants_realm_grantee 
+    ON grant_records (realm_id, grantee_id);
+CREATE INDEX IF NOT EXISTS idx_grants_realm_securable 
+    ON grant_records (realm_id, securable_id);
 
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,

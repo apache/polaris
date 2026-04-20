@@ -51,9 +51,13 @@ dependencies {
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
+
+  testCompileOnly(libs.jspecify)
+  testCompileOnly(libs.jakarta.annotation.api)
 
   testImplementation(platform(libs.jackson.bom))
   testImplementation("com.fasterxml.jackson.dataformat:jackson-dataformat-smile")
@@ -65,6 +69,7 @@ dependencies {
 
   testFixturesCompileOnly(project(":polaris-immutables"))
   testFixturesAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
+  testFixturesCompileOnly(libs.jspecify)
 
   testFixturesCompileOnly(libs.jakarta.annotation.api)
   testFixturesCompileOnly(libs.jakarta.validation.api)

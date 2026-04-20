@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -27,6 +25,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.varint.VarInt;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class ObjTestValue {
   private final byte[] bytes;
@@ -65,7 +65,7 @@ final class ObjTestValue {
   static final IndexValueSerializer<ObjTestValue> OBJ_TEST_SERIALIZER =
       new IndexValueSerializer<>() {
         @Override
-        public void skip(@Nonnull ByteBuffer buffer) {
+        public void skip(@NonNull ByteBuffer buffer) {
           var len = VarInt.readVarInt(buffer);
           if (len > 0) {
             buffer.position(buffer.position() + len);
@@ -74,7 +74,7 @@ final class ObjTestValue {
 
         @Override
         @Nullable
-        public ObjTestValue deserialize(@Nonnull ByteBuffer buffer) {
+        public ObjTestValue deserialize(@NonNull ByteBuffer buffer) {
           var len = VarInt.readVarInt(buffer);
           if (len == 0) {
             return null;
@@ -85,8 +85,8 @@ final class ObjTestValue {
         }
 
         @Override
-        @Nonnull
-        public ByteBuffer serialize(@Nullable ObjTestValue value, @Nonnull ByteBuffer target) {
+        @NonNull
+        public ByteBuffer serialize(@Nullable ObjTestValue value, @NonNull ByteBuffer target) {
           if (value == null) {
             return target.put((byte) 0);
           }

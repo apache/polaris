@@ -197,5 +197,10 @@ class MetricsReportPersistenceTest {
     public Optional<Long> initialDelayInMs() {
       return Optional.of(10L);
     }
+
+    @Override
+    public Optional<String> databaseType() {
+      return Optional.empty();
+    }
   }
 }

@@ -563,4 +563,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "When disabled, the default AWS credentials are used for all storages.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES")
+          .description(
+              "If set to true, allows unrestricted changes to storage configuration role "
+                  + "properties when updating a catalog, including changing the AWS account ID, "
+                  + "role ARN, external ID, or Azure tenant ID. When false (default), these "
+                  + "changes are restricted: new values can be set when none were previously "
+                  + "configured, but existing values cannot be changed to different ones.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

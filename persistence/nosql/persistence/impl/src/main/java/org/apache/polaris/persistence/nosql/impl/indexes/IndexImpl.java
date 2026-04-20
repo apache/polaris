@@ -29,8 +29,6 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.AbstractList;
@@ -38,18 +36,19 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import org.agrona.collections.Hashing;
-import org.agrona.collections.Long2ObjectHashMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Implementation of {@link Index} that implements "version 1 serialization" of key-index-segments.
  *
  * <p>"Version 1" uses a diff-like encoding to compress keys and a custom var-int encoding. {@link
- * IndexElement}s are serialized in their natural order.
+ * InternalIndexElement}s are serialized in their natural order.
  *
  * <p>{@link IndexKey}s are serialized by serializing each element's UTF-8 representation with a
  * terminating {@code 0} byte, and the whole key terminated by a trailing {@code 0} byte. Empty key
@@ -82,9 +81,9 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
  * <ul>
  *   <li>Assumption (not true): Store serialized keys <em>separate</em> from other binary content,
  *       assuming that {@link IndexKey}s are compressible and the compression ratio of a set of keys
- *       is pretty good, unlike for example hash values, which are rather random and serialization
+ *       is pretty good unlike, for example, hash values, which are rather random and serialization
  *       likely does not benefit from compression.
- *       <p><em>RESULT</em> Experiment with >80000 words (each at least 10 chars long) for key
+ *       <p><em>RESULT</em> Experiment with > 80,000 words (each at least 10 chars long) for key
  *       elements: compression (gzip) of a key-to-commit-entry index (32 byte hashes) with
  *       interleaved key and value saves about 15% - the compressed ratio with keys first is only
  *       marginally better (approx 20%), so it is not worth the extra complexity.
@@ -114,8 +113,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
   private static final byte CURRENT_STORE_INDEX_VERSION = 1;
 
-  public static final Comparator<IndexElement<?>> KEY_COMPARATOR =
-      Comparator.comparing(IndexElement::getKey);
+  public static final Comparator<InternalIndexElement<?>> KEY_COMPARATOR =
+      Comparator.comparing(InternalIndexElement::key);
 
   /**
    * Serialized size of the index at the time when the {@link #IndexImpl(List, int,
@@ -127,7 +126,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   private final int originalSerializedSize;
 
   private int estimatedSerializedSizeDiff;
-  private final List<IndexElement<V>> elements;
+  private final List<InternalIndexElement<V>> elements;
   private final IndexValueSerializer<V> serializer;
 
   /**
@@ -140,15 +139,21 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
   /**
    * Used to drastically reduce the amount of 4k {@link ByteBuffer} allocations during key
-   * deserialization operations, which are very frequent. The JMH results alone would justify the
-   * use of a {@link ThreadLocal} in this case. However, those would add a "permanent GC root" to
-   * this class. The implemented approach is a bit more expensive, but without the drawbacks of
-   * {@link ThreadLocal}s.
+   * serialization/deserialization operations, which are very frequent.
    *
-   * <p>An implementation based on an {@link java.util.ArrayDeque} was discarded, because it is way
-   * too expensive.
+   * <p>Uses a striped {@link AtomicReferenceArray} indexed by thread ID to avoid contention. Each
+   * thread maps to a slot via {@code threadId % POOL_SIZE}. Acquire uses {@link
+   * AtomicReferenceArray#getAndSet} (single atomic op) and release uses {@link
+   * AtomicReferenceArray#lazySet} (store-release, essentially free on x86). In the common case of
+   * no slot collisions, this achieves zero-allocation buffer reuse with minimal overhead.
    *
-   * <p>JMH results are as follows. Invoked via {@code java -jar
+   * <p>Works efficiently with both platform and virtual threads: the pool size is bounded and does
+   * not grow with the number of virtual threads. Slot collisions simply cause a fresh allocation.
+   *
+   * <p>Callers must use {@link #acquireScratchKeyBuffer()} and {@link
+   * #releaseScratchKeyBuffer(ByteBuffer)} in a try/finally pattern.
+   *
+   * <p>JMH results for the different approaches are as follows. Invoked via {@code java -jar
    * persistence/nosql/persistence/impl/build/libs/polaris-persistence-nosql-impl-1.1.0-incubating-SNAPSHOT-jmh.jar
    * RealisticKeyIndexImplBench -p namespaceLevels=3 -p foldersPerLevel=5 -p tablesPerNamespace=5
    * -prof gc -prof perf}.
@@ -159,99 +164,105 @@ final class IndexImpl<V> implements IndexSpi<V> {
    *         <th><code>Deque&lt;ByteBuffer&gt;</code></th>
    *         <th><code>ThreadLocal&lt;ByteBuffer&gt;</code></th>
    *         <th><code>Long2ObjectHashMap</code></th>
+   *         <th><code>AtomicReferenceArray</code></th>
    *         <th>unit</th>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAdd</td>
+   *         <td>deserializeAdd</td>
    *         <td>90</td>
    *         <td>22</td>
    *         <td>25</td>
+   *         <td>22</td>
    *         <td>µs/op (lower is better)</td>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAdd</td>
+   *         <td>deserializeAdd</td>
    *         <td>500k</td>
    *         <td>100k</td>
    *         <td>110k</td>
+   *         <td>111k</td>
    *         <td>bytes/op (lower is better)</td>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAdd</td>
+   *         <td>deserializeAdd</td>
    *         <td>1.2</td>
    *         <td>4.5</td>
    *         <td>4.2</td>
+   *         <td>3.8</td>
    *         <td>insn/clk (higher is better)</td>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAddSerialize</td>
+   *         <td>deserializeAddSerialize</td>
    *         <td>100</td>
    *         <td>45</td>
+   *         <td>50</td>
    *         <td>50</td>
    *         <td>µs/op (lower is better)</td>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAddSerialize</td>
+   *         <td>deserializeAddSerialize</td>
    *         <td>530k</td>
    *         <td>130k</td>
    *         <td>130k</td>
+   *         <td>135k</td>
    *         <td>bytes/op (lower is better)</td>
    *     </tr>
    *     <tr>
-   *         <td>RealisticKeyIndexImplBench.deserializeAddSerialize</td>
+   *         <td>deserializeAddSerialize</td>
    *         <td>2.3</td>
    *         <td>5.0</td>
    *         <td>4.7</td>
+   *         <td>4.4</td>
    *         <td>insn/clk (higher is better)</td>
    *     </tr>
    * </table>
+   *
+   * <p>The {@link java.util.ArrayDeque}-based approach is the slowest due to CAS contention and
+   * per-operation node allocations. {@link ThreadLocal} is the fastest, but adds a permanent GC
+   * root that is never cleaned up. The previous {@code Long2ObjectHashMap} approach (keyed by
+   * thread ID) performed well but accumulated entries from dead threads, causing the cache to
+   * degrade over time &mdash; especially with virtual threads, where short-lived threads would fill
+   * the map and the eviction policy preferentially retained dead threads' entries.
+   *
+   * <p>The {@link AtomicReferenceArray} approach matches the {@code Long2ObjectHashMap} performance
+   * while avoiding the dead thread accumulation problem entirely: the pool has a fixed number of
+   * slots, and slot collisions simply cause a fresh allocation with no bookkeeping overhead.
    */
-  private static final class ScratchBuffer {
-    final ByteBuffer buffer;
-    volatile long lastUsed;
+  @VisibleForTesting static final int POOL_SIZE = Runtime.getRuntime().availableProcessors() * 4;
 
-    ScratchBuffer() {
-      this.buffer = newKeyBuffer();
+  private static final AtomicReferenceArray<ByteBuffer> SCRATCH_POOL =
+      new AtomicReferenceArray<>(POOL_SIZE);
+
+  static ByteBuffer acquireScratchKeyBuffer() {
+    var slot = (int) (Thread.currentThread().threadId() % POOL_SIZE);
+    var buf = SCRATCH_POOL.getAndSet(slot, null);
+    if (buf != null) {
+      buf.clear();
+      return buf;
     }
+    return newKeyBuffer();
   }
 
-  /**
-   * Maximum number of cached {@link ByteBuffer}s, equals to the number of active threads accessing
-   * indexes.
-   */
-  private static final int MAX_KEY_BUFFERS = 2048;
+  static void releaseScratchKeyBuffer(ByteBuffer buf) {
+    var slot = (int) (Thread.currentThread().threadId() % POOL_SIZE);
+    SCRATCH_POOL.lazySet(slot, buf);
+  }
 
-  private static final Long2ObjectHashMap<ScratchBuffer> SCRATCH_KEY_BUFFERS =
-      new Long2ObjectHashMap<>(256, Hashing.DEFAULT_LOAD_FACTOR, true);
-
-  private static ByteBuffer scratchKeyBuffer() {
-    var tid = Thread.currentThread().threadId();
-    var t = System.nanoTime();
-    synchronized (SCRATCH_KEY_BUFFERS) {
-      var buffer = SCRATCH_KEY_BUFFERS.get(tid);
-      if (buffer == null) {
-        buffer = new ScratchBuffer();
-        if (SCRATCH_KEY_BUFFERS.size() == MAX_KEY_BUFFERS) {
-          var maxAge = Long.MAX_VALUE;
-          var candidate = -1L;
-          for (var iter = SCRATCH_KEY_BUFFERS.entrySet().iterator(); iter.hasNext(); ) {
-            iter.next();
-            var b = iter.getValue();
-            var age = Math.max(t - b.lastUsed, 0L);
-            if (age < maxAge) {
-              candidate = iter.getLongKey();
-              maxAge = age;
-            }
-          }
-          // Intentionally remove (evict) the youngest one, as its more likely that old scratch
-          // buffers are in an "old GC generation", which is more costly to garbage collect.
-          SCRATCH_KEY_BUFFERS.remove(candidate);
-        }
-        SCRATCH_KEY_BUFFERS.put(tid, buffer);
-        buffer.lastUsed = t;
-      } else {
-        buffer.buffer.clear();
+  @VisibleForTesting
+  static int scratchPoolSize() {
+    var count = 0;
+    for (var i = 0; i < SCRATCH_POOL.length(); i++) {
+      if (SCRATCH_POOL.get(i) != null) {
+        count++;
       }
-      return buffer.buffer;
+    }
+    return count;
+  }
+
+  @VisibleForTesting
+  static void clearScratchPool() {
+    for (var i = 0; i < SCRATCH_POOL.length(); i++) {
+      SCRATCH_POOL.set(i, null);
     }
   }
 
@@ -267,7 +278,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   private IndexImpl(
-      List<IndexElement<V>> elements,
+      List<InternalIndexElement<V>> elements,
       int originalSerializedSize,
       IndexValueSerializer<V> serializer,
       boolean modified) {
@@ -358,7 +369,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean add(@Nonnull IndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     modified = true;
     var e = elements;
     var serializer = this.serializer;
@@ -386,12 +397,13 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return true;
   }
 
-  private static <V> int addElementDiff(IndexElement<V> element, int elementSerializedSize) {
-    return element.getKey().serializedSize() + ASSUMED_PER_ENTRY_OVERHEAD + elementSerializedSize;
+  private static <V> int addElementDiff(
+      InternalIndexElement<V> element, int elementSerializedSize) {
+    return element.key().serializedSize() + ASSUMED_PER_ENTRY_OVERHEAD + elementSerializedSize;
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     var e = elements;
     var idx = search(e, key);
     if (idx < 0) {
@@ -407,24 +419,24 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return true;
   }
 
-  private int removeSizeDiff(IndexElement<V> element) {
+  private int removeSizeDiff(InternalIndexElement<V> element) {
     return 2 + element.contentSerializedSize(serializer);
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     var idx = search(elements, key);
     return idx >= 0;
   }
 
   @Override
-  public boolean contains(@Nonnull IndexKey key) {
+  public boolean contains(@NonNull IndexKey key) {
     var el = getElement(key);
-    return el != null && el.getValue() != null;
+    return el != null && el.valueNullable() != null;
   }
 
   @Override
-  public @Nullable IndexElement<V> getElement(@Nonnull IndexKey key) {
+  public @Nullable InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     var e = elements;
     var idx = search(e, key);
     if (idx < 0) {
@@ -437,18 +449,18 @@ final class IndexImpl<V> implements IndexSpi<V> {
   @Override
   public IndexKey first() {
     var e = elements;
-    return e.isEmpty() ? null : e.getFirst().getKey();
+    return e.isEmpty() ? null : e.getFirst().key();
   }
 
   @Nullable
   @Override
   public IndexKey last() {
     var e = elements;
-    return e.isEmpty() ? null : e.getLast().getKey();
+    return e.isEmpty() ? null : e.getLast().key();
   }
 
   @Override
-  public @Nonnull Iterator<IndexElement<V>> elementIterator(
+  public @NonNull Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -468,12 +480,12 @@ final class IndexImpl<V> implements IndexSpi<V> {
         ? new AbstractIterator<>() {
 
           @Override
-          protected IndexElement<V> computeNext() {
+          protected InternalIndexElement<V> computeNext() {
             if (!base.hasNext()) {
               return endOfData();
             }
             var v = base.next();
-            if (!v.getKey().startsWith(lower)) {
+            if (!v.key().startsWith(lower)) {
               return endOfData();
             }
             return v;
@@ -483,7 +495,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull Iterator<IndexElement<V>> reverseElementIterator(
+  public @NonNull Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
     var e = elements;
 
@@ -546,7 +558,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return new AbstractList<>() {
       @Override
       public IndexKey get(int index) {
-        return elements.get(index).getKey();
+        return elements.get(index).key();
       }
 
       @Override
@@ -562,7 +574,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public @Nonnull ByteBuffer serialize() {
+  public @NonNull ByteBuffer serialize() {
     ByteBuffer target;
 
     if (serialized == null || modified) {
@@ -576,48 +588,51 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
       ByteBuffer previousKey = null;
 
-      var scratchKeyBuffer = scratchKeyBuffer();
-
-      boolean onlyLazy;
-      IndexElement<V> previous = null;
-      for (var el : elements) {
-        ByteBuffer keyBuf = null;
-        if (isLazyElementImpl(el)) {
-          var lazyEl = (LazyIndexElement) el;
-          // The purpose of this 'if'-branch is to determine whether it can serialize the 'IndexKey'
-          // by _not_ fully materializing the `IndexKey`. This is possible if (and only if!) the
-          // current and the previous element are `LazyStoreIndexElement`s, where the previous
-          // element is exactly the one that has been deserialized.
-          //noinspection RedundantIfStatement
-          if (lazyEl.prefixLen == 0 || lazyEl.previous == previous) {
-            // Can use the optimized serialization in `LazyStoreIndexElement` if the current
-            // element has no prefix of if the previously serialized element was also a
-            // `LazyStoreIndexElement`. In other words, no intermediate `LazyStoreIndexElement` has
-            // been removed and no new element has been added.
-            onlyLazy = true;
+      var scratchKeyBuffer = acquireScratchKeyBuffer();
+      try {
+        boolean onlyLazy;
+        InternalIndexElement<V> previous = null;
+        for (var el : elements) {
+          ByteBuffer keyBuf = null;
+          if (isLazyElementImpl(el)) {
+            var lazyEl = (LazyIndexElement) el;
+            // The purpose of this 'if'-branch is to determine whether it can serialize the
+            // 'IndexKey' by _not_ fully materializing the `IndexKey`. This is possible if (and
+            // only if!) the current and the previous element are `LazyStoreIndexElement`s, where
+            // the previous element is exactly the one that has been deserialized.
+            //noinspection RedundantIfStatement
+            if (lazyEl.prefixLen == 0 || lazyEl.previous == previous) {
+              // Can use the optimized serialization in `LazyStoreIndexElement` if the current
+              // element has no prefix of if the previously serialized element was also a
+              // `LazyStoreIndexElement`. In other words, no intermediate `LazyStoreIndexElement`
+              // has been removed and no new element has been added.
+              onlyLazy = true;
+            } else {
+              // This if-branch detects whether an element has been removed from the index. In that
+              // case, serialization has to materialize the `IndexKey` for serialization.
+              onlyLazy = false;
+            }
+            if (onlyLazy) {
+              // Key serialization via 'LazyStoreIndexElement' is much cheaper (CPU and heap) than
+              // having to first materialize and then serialize it.
+              keyBuf = lazyEl.serializeKey(scratchKeyBuffer, previousKey);
+            }
           } else {
-            // This if-branch detects whether an element has been removed from the index. In that
-            // case, serialization has to materialize the `IndexKey` for serialization.
             onlyLazy = false;
           }
-          if (onlyLazy) {
-            // Key serialization via 'LazyStoreIndexElement' is much cheaper (CPU and heap) than
-            // having to first materialize and then serialize it.
-            keyBuf = lazyEl.serializeKey(scratchKeyBuffer, previousKey);
+
+          if (!onlyLazy) {
+            // Either 'el' is not a 'LazyStoreIndexElement' or the previous element of a
+            // 'LazyStoreIndexElement' is not suitable (see above).
+            keyBuf = serializeIndexKeyString(el.key(), scratchKeyBuffer);
           }
-        } else {
-          onlyLazy = false;
-        }
 
-        if (!onlyLazy) {
-          // Either 'el' is not a 'LazyStoreIndexElement' or the previous element of a
-          // 'LazyStoreIndexElement' is not suitable (see above).
-          keyBuf = serializeIndexKeyString(el.getKey(), scratchKeyBuffer);
+          previousKey = serializeKey(keyBuf, previousKey, target);
+          el.serializeContent(serializer, target);
+          previous = el;
         }
-
-        previousKey = serializeKey(keyBuf, previousKey, target);
-        el.serializeContent(serializer, target);
-        previous = el;
+      } finally {
+        releaseScratchKeyBuffer(scratchKeyBuffer);
       }
 
       target = target.flip();
@@ -631,7 +646,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
   // IntelliJ warns "Condition 'el.getClass() == LazyStoreIndexElement.class' is always 'false'",
   // which is a false positive (see below as well).
   @SuppressWarnings("ConstantValue")
-  private boolean isLazyElementImpl(IndexElement<V> el) {
+  private boolean isLazyElementImpl(InternalIndexElement<V> el) {
     return el.getClass() == LazyIndexElement.class;
   }
 
@@ -667,7 +682,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     var version = serialized.get();
     checkArgument(version == 1, "Unsupported serialized representation of KeyIndexSegment");
 
-    var elements = new ArrayList<IndexElement<V>>(readVarInt(serialized));
+    var elements = new ArrayList<InternalIndexElement<V>>(readVarInt(serialized));
 
     var first = true;
     var previousKeyLen = 0;
@@ -823,19 +838,23 @@ final class IndexImpl<V> implements IndexSpi<V> {
     private IndexKey materializeKey() {
       var serialized = serializedThreadSafe();
 
+      var suffixLen = valueOffset - keyOffset;
       var suffix = serialized.limit(valueOffset).position(keyOffset);
 
       var preLen = prefixLen;
-      var keyBuffer =
-          preLen > 0
-              ? prefixKey(serialized, this, preLen).position(preLen).put(suffix).flip()
-              : suffix;
-      return deserializeKey(keyBuffer);
+      if (preLen > 0) {
+        // Allocate a right-sized buffer for prefix + suffix. This avoids acquiring from the scratch
+        // pool, which would allocate a fresh 4KB buffer when called nested from serialize().
+        var keyBuffer = ByteBuffer.allocate(preLen + suffixLen);
+        prefixKey(serialized, this, preLen, keyBuffer);
+        keyBuffer.position(preLen).put(suffix).flip();
+        return deserializeKey(keyBuffer);
+      }
+      return deserializeKey(suffix);
     }
 
-    private ByteBuffer prefixKey(ByteBuffer serialized, LazyIndexElement me, int remaining) {
-      var keyBuffer = scratchKeyBuffer();
-
+    private void prefixKey(
+        ByteBuffer serialized, LazyIndexElement me, int remaining, ByteBuffer keyBuffer) {
       // This loop could be easier written using recursion. However, recursion is way more expensive
       // than this loop. Since this code is on a very hot code path, it is worth it.
       for (var e = me.predecessor; e != null; e = e.predecessor) {
@@ -863,8 +882,6 @@ final class IndexImpl<V> implements IndexSpi<V> {
           }
         }
       }
-
-      return keyBuffer;
     }
 
     @Override
@@ -878,7 +895,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    public IndexKey getKey() {
+    @NonNull
+    public IndexKey key() {
       var k = key;
       if (k == null) {
         k = key = materializeKey();
@@ -887,7 +905,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    public V getValue() {
+    @Nullable
+    public V valueNullable() {
       var c = content;
       if (c == null) {
         if (!hasContent) {
@@ -899,11 +918,6 @@ final class IndexImpl<V> implements IndexSpi<V> {
         }
       }
       return c;
-    }
-
-    @Override
-    public V setValue(V value) {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -962,12 +976,12 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return requireNonNull(serialized).duplicate();
   }
 
-  private static <V> int search(List<IndexElement<V>> e, @Nonnull IndexKey key) {
+  private static <V> int search(List<InternalIndexElement<V>> e, @NonNull IndexKey key) {
     // Need a StoreIndexElement for the sake of 'binarySearch()' (the content value isn't used)
     return search(e, indexElement(key, ""));
   }
 
-  private static <V> int search(List<IndexElement<V>> e, IndexElement<?> element) {
+  private static <V> int search(List<InternalIndexElement<V>> e, InternalIndexElement<?> element) {
     return binarySearch(e, element, KEY_COMPARATOR);
   }
 

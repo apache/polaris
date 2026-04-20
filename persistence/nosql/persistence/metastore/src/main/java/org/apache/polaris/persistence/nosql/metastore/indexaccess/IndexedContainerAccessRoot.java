@@ -23,11 +23,8 @@ import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootConta
 import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootEntityId;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -36,6 +33,8 @@ import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Special implementation for the "root entity".
@@ -152,33 +151,33 @@ final class IndexedContainerAccessRoot<C extends ContainerObj> extends IndexedCo
 
     @Nullable
     @Override
-    public T get(@Nonnull IndexKey key) {
+    public T get(@NonNull IndexKey key) {
       return this.key.equals(key) ? value() : null;
     }
 
     @Override
-    @Nonnull
-    public Iterator<Map.Entry<IndexKey, T>> iterator() {
-      return Collections.singletonList(Map.entry(key, value())).iterator();
+    @NonNull
+    public Iterator<Index.Element<T>> iterator() {
+      return Collections.singletonList(Index.Element.of(key, value())).iterator();
     }
 
-    @Nonnull
+    @NonNull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> iterator(
+    public Iterator<Index.Element<T>> iterator(
         @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
       // this is technically incorrect, but no need to implement this for now
       return iterator();
     }
 
-    @Nonnull
+    @NonNull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> reverseIterator() {
+    public Iterator<Index.Element<T>> reverseIterator() {
       return iterator();
     }
 
-    @Nonnull
+    @NonNull
     @Override
-    public Iterator<Map.Entry<IndexKey, T>> reverseIterator(
+    public Iterator<Index.Element<T>> reverseIterator(
         @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
       // this is technically incorrect, but no need to implement this for now
       return reverseIterator();

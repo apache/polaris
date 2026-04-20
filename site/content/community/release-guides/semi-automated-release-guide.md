@@ -202,8 +202,15 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
-Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications:
-* Change the title from `In Development` to `[major].[minor].[patch]`.
+Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
+`site/content/in-dev/release_index.md` and perform the following modifications:
+
+* Change the `title` from `Apache Polaris Documentation (Unreleased)` to `Apache Polaris [major].[minor].[patch] Documentation`.
+* Change the `linkTitle` from `In Development` to `[major].[minor].[patch]`.
+* Change the `weight` accordingly, e.g. for a version 1.2.3 use weight -10203.
+* Set the `release_version` parameter everywhere: `release_version: '[major].[minor].[patch]'`
+* Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
+* Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
 
 Commit and push to your fork:
@@ -230,21 +237,17 @@ The final step is to update the "Download" page on Polaris website with links to
 git checkout -b main-site-download-links-[major].[minor].[patch] main
 ```
 
-Edit the file `site/content/downloads/_index.md` and add a new section for the release.  The section should contain the following information:
+Create a new directory and file for the release under `site/content/downloads/[major].[minor].[patch]/index.md`. The file should contain the following information:
 
+* Front matter with appropriate metadata (title, weight, etc.)
 * A table with links to each of the artifacts, its PGP signature and associated checksum. All links in this section MUST point to `https://dlcdn.apache.org/` or `https://downloads.apache.org/`.
 * The release date.
 * A paragraph with the release notes.
 
-Then update the section of the previous release so that it references `https://archive.apache.org` instead of `https://dlcdn.apache.org/` and `https://downloads.apache.org/`.
+Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
+downloads page structure and requirements when adding a new release.
 
-Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new release.  Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the following format:
-
-```
-    - name: "[major].[minor].[patch]"
-      url: "/releases/[major].[minor].[patch]/"
-      parent: "doc"
-      weight: [previous release weight - 1]
-```
+Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
+release; remove the oldest release from this list.
 
 Then open a PR against the `main` branch with your changes.

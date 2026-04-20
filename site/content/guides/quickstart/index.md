@@ -29,3 +29,10 @@ menus:
 ---
 
 Please see the [quickstart guide](../../in-dev/unreleased/getting-started) for more information.
+
+<!--
+```shell
+cd "$SITE_TEST_GUIDE_DIR"
+docker compose up
+```
+-->

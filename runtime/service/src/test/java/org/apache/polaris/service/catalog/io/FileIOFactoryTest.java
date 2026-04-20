@@ -219,7 +219,7 @@ public class FileIOFactoryTest {
             services.taskExecutor(),
             services.storageAccessConfigProvider(),
             services.fileIOFactory(),
-            services.polarisEventListener(),
+            services.polarisEventDispatcher(),
             services.eventMetadataFactory());
     polarisCatalog.initialize(
         CATALOG_NAME,

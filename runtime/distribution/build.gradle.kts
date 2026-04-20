@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import licenses.LicenseNoticeMerge
 import publishing.PublishingHelperPlugin
 import publishing.digestTaskOutputs
 import publishing.signTaskOutputs
@@ -48,10 +49,23 @@ val serverDistribution by
     isCanBeResolved = true
   }
 
+val licenseNotice by
+  configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+  }
+
 dependencies {
   adminDistribution(project(":polaris-admin", "distributionElements"))
   serverDistribution(project(":polaris-server", "distributionElements"))
+  licenseNotice(project(":polaris-admin", "licenseNoticeElements"))
+  licenseNotice(project(":polaris-server", "licenseNoticeElements"))
 }
+
+val licenseNoticeMerge by
+  tasks.registering(LicenseNoticeMerge::class) { sourceLicenseNotice = licenseNotice }
+
+tasks.named("assembleDist").configure { dependsOn(licenseNoticeMerge) }
 
 distributions {
   main {
@@ -70,8 +84,7 @@ distributions {
       }
 
       from("README.md")
-      from("LICENSE")
-      from("NOTICE")
+      from(licenseNoticeMerge)
     }
   }
 }

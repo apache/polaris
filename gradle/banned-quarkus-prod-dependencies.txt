@@ -27,3 +27,7 @@
 
 # Contains old javax.* annotations that we do not want
 javax.servlet:javax.servlet-api
+
+
+# Don't need compile-time annotations in runtime
+com.google.errorprone:error_prone_annotations

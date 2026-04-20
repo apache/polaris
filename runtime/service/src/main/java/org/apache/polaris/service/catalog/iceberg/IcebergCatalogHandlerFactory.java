@@ -26,16 +26,17 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.service.catalog.AccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 
@@ -49,15 +50,16 @@ public class IcebergCatalogHandlerFactory {
   @Inject ResolutionManifestFactory resolutionManifestFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisCredentialManager credentialManager;
-  @Inject CallContextCatalogFactory catalogFactory;
+  @Inject LocalCatalogFactory localCatalogFactory;
   @Inject PolarisAuthorizer authorizer;
   @Inject ReservedProperties reservedProperties;
   @Inject CatalogHandlerUtils catalogHandlerUtils;
-  @Inject @Any Instance<ExternalCatalogFactory> externalCatalogFactories;
+  @Inject @Any Instance<FederatedCatalogFactory> federatedCatalogFactories;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject EventAttributeMap eventAttributeMap;
   @Inject PolarisMetricsReporter metricsReporter;
   @Inject Clock clock;
+  @Inject AccessDelegationModeResolver accessDelegationModeResolver;
 
   public IcebergCatalogHandler createHandler(String catalogName, PolarisPrincipal principal) {
     return ImmutableIcebergCatalogHandler.builder()
@@ -70,15 +72,16 @@ public class IcebergCatalogHandlerFactory {
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .credentialManager(credentialManager)
-        .catalogFactory(catalogFactory)
+        .localCatalogFactory(localCatalogFactory)
         .authorizer(authorizer)
         .reservedProperties(reservedProperties)
         .catalogHandlerUtils(catalogHandlerUtils)
-        .externalCatalogFactories(externalCatalogFactories)
+        .federatedCatalogFactories(federatedCatalogFactories)
         .storageAccessConfigProvider(storageAccessConfigProvider)
         .eventAttributeMap(eventAttributeMap)
         .metricsReporter(metricsReporter)
         .clock(clock)
+        .accessDelegationModeResolver(accessDelegationModeResolver)
         .build();
   }
 }

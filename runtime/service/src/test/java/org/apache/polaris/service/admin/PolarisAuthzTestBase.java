@@ -82,10 +82,10 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -104,7 +104,7 @@ public abstract class PolarisAuthzTestBase {
 
     @Override
     public Set<Class<?>> getEnabledAlternatives() {
-      return Set.of(TestPolarisCallContextCatalogFactory.class);
+      return Set.of(TestPolarisLocalCatalogFactory.class);
     }
 
     @Override
@@ -186,7 +186,6 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected ServiceIdentityProvider serviceIdentityProvider;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
-  @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected PolarisEventMetadataFactory eventMetadataFactory;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
@@ -196,6 +195,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
   @Inject protected RealmContextHolder realmContextHolder;
+  @Inject protected PolarisEventDispatcher polarisEventDispatcher;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -486,7 +486,7 @@ public abstract class PolarisAuthzTestBase {
             Mockito.mock(),
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener,
+            polarisEventDispatcher,
             eventMetadataFactory);
     this.baseCatalog.initialize(
         CATALOG_NAME,
@@ -500,22 +500,21 @@ public abstract class PolarisAuthzTestBase {
 
   @Alternative
   @RequestScoped
-  public static class TestPolarisCallContextCatalogFactory
-      extends PolarisCallContextCatalogFactory {
+  public static class TestPolarisLocalCatalogFactory extends PolarisLocalCatalogFactory {
 
     @SuppressWarnings("unused") // Required by CDI
-    protected TestPolarisCallContextCatalogFactory() {
+    protected TestPolarisLocalCatalogFactory() {
       this(null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
-    public TestPolarisCallContextCatalogFactory(
+    public TestPolarisLocalCatalogFactory(
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
         TaskExecutor taskExecutor,
         StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener,
+        PolarisEventDispatcher polarisEventDispatcher,
         PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
@@ -526,7 +525,7 @@ public abstract class PolarisAuthzTestBase {
           taskExecutor,
           accessConfigProvider,
           fileIOFactory,
-          polarisEventListener,
+          polarisEventDispatcher,
           eventMetadataFactory,
           metaStoreManager,
           callContext,
@@ -534,10 +533,10 @@ public abstract class PolarisAuthzTestBase {
     }
 
     @Override
-    public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
+    public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(resolvedManifest);
+      Catalog catalog = super.createCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

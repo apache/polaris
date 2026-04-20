@@ -41,6 +41,7 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +80,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
       String doc,
       Map<String, String> properties) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofNamespace(tableIdentifier.namespace()));
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -91,7 +93,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
 
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
     PolarisEntity entity = resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity();
     if (null == entity) {
       entity =
@@ -137,7 +139,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
   public GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.GENERIC_TABLE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -153,7 +155,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
+            ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.GENERIC_TABLE);
 
     if (resolvedEntities == null) {
       throw notFoundExceptionForTableLikeEntity(
@@ -176,7 +178,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
 
   @Override
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(namespace));
     if (resolvedEntities == null) {
       throw noSuchNamespaceException(namespace);
     }

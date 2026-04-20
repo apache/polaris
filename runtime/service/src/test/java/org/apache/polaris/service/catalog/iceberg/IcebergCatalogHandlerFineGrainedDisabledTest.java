@@ -78,6 +78,9 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldFailWith(
             PolarisPrivilege
                 .TABLE_ASSIGN_UUID) // This alone should be insufficient when feature disabled

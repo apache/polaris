@@ -115,12 +115,13 @@ Polaris tokens are valid for 1 hour.
 Note: if you request a Polaris token for the `realm-external` realm, it will not work because Polaris won't issue tokens
 for this realm:
 
+<!-- the '|| true' is there to let Guides CI not fail on this command -->
 ```shell
 curl -v http://localhost:8181/api/catalog/v1/oauth/tokens \
   --user root:s3cr3t \
   -H 'Polaris-Realm: realm-external' \
   -d 'grant_type=client_credentials' \
-  -d 'scope=PRINCIPAL_ROLE:ALL'
+  -d 'scope=PRINCIPAL_ROLE:ALL' || true
 ```
 
 This will return a `501 Not Implemented` error because for this realm, the internal token endpoint has been deactivated.
@@ -177,11 +178,12 @@ You can access Polaris using the tokens you obtained above. The following exampl
 Note: you cannot mix tokens from different realms. For example, you cannot use a token from the `realm-internal` realm to access
 the `realm-mixed` realm:
 
+<!-- the '|| true' is there to let Guides CI not fail on this command -->
 ```shell
 curl -v http://localhost:8181/api/management/v1/catalogs \
   -H "Authorization: Bearer $polaris_token_realm_internal" \
   -H 'Polaris-Realm: realm-mixed' \
-  -H 'Accept: application/json'
+  -H 'Accept: application/json' || true
 ```
 
 This will return a `401 Unauthorized` error because the token is not valid for the `realm-mixed` realm.
@@ -211,11 +213,12 @@ both (both realms share the same OIDC tenant configuration).
 
 Note: you cannot use a Keycloak token to access the `realm-internal` realm:
 
+<!-- the '|| true' is there to let Guides CI not fail on this command -->
 ```shell
 curl -v http://localhost:8181/api/management/v1/catalogs \
   -H "Authorization: Bearer $keycloak_token" \
   -H 'Polaris-Realm: realm-internal' \
-  -H 'Accept: application/json'
+  -H 'Accept: application/json' || true
 ```
 
 This will return a `401 Unauthorized` error because the token is not valid for the `realm-internal` realm.

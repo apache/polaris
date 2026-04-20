@@ -21,10 +21,10 @@ package org.apache.polaris.persistence.nosql.authz.api;
 import static org.apache.polaris.persistence.nosql.authz.api.Constants.EMPTY_PRIVILEGE_SET;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Represents a set of <em>individual privileges</em>.
@@ -79,7 +79,7 @@ public interface PrivilegeSet extends Set<Privilege> {
    * and only if all the individual privileges of a composite privilege are contained in this set.
    */
   @Override
-  boolean containsAll(@Nonnull Collection<?> c);
+  boolean containsAll(@NonNull Collection<?> c);
 
   /**
    * Checks whether any of given {@link Privilege privileges} is contained in this privilege set.
@@ -91,28 +91,28 @@ public interface PrivilegeSet extends Set<Privilege> {
 
   interface PrivilegeSetBuilder {
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder addPrivileges(@Nonnull Iterable<? extends Privilege> privileges);
+    PrivilegeSetBuilder addPrivileges(@NonNull Iterable<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder addPrivileges(@Nonnull PrivilegeSet privilegeSet);
+    PrivilegeSetBuilder addPrivileges(@NonNull PrivilegeSet privilegeSet);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder addPrivileges(@Nonnull Privilege... privileges);
+    PrivilegeSetBuilder addPrivileges(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder addPrivilege(@Nonnull Privilege privilege);
+    PrivilegeSetBuilder addPrivilege(@NonNull Privilege privilege);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder removePrivileges(@Nonnull Iterable<? extends Privilege> privileges);
+    PrivilegeSetBuilder removePrivileges(@NonNull Iterable<? extends Privilege> privileges);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder removePrivileges(@Nonnull PrivilegeSet privilegeSet);
+    PrivilegeSetBuilder removePrivileges(@NonNull PrivilegeSet privilegeSet);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder removePrivileges(@Nonnull Privilege... privileges);
+    PrivilegeSetBuilder removePrivileges(@NonNull Privilege... privileges);
 
     @CanIgnoreReturnValue
-    PrivilegeSetBuilder removePrivilege(@Nonnull Privilege privilege);
+    PrivilegeSetBuilder removePrivilege(@NonNull Privilege privilege);
 
     PrivilegeSet build();
   }

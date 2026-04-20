@@ -25,4 +25,5 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.event-listener.type` |  | `string` | The type of the event listener to use. Must be a registered (`PolarisEventListener`) identifier.  |
+| `polaris.event-listener.type` |  | `string` | The type of the event listener to use. Must be a registered (`PolarisEventListener`) identifier. <br><br>_Deprecated_ since 1.5.0, use 'polaris.event-listener.types' instead |
+| `polaris.event-listener.types` |  | `list of string` | Comma separated list of event listers, each item must be a registered (`PolarisEventListener`) identifier.   |

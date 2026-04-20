@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -75,8 +77,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -103,7 +104,7 @@ import org.mockito.Mockito;
 @SuppressWarnings("resource")
 public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
-  @Inject CallContextCatalogFactory callContextCatalogFactory;
+  @Inject LocalCatalogFactory localCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newHandler() {
@@ -111,19 +112,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
-    return newHandler(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
+    return newHandler(activatedPrincipalRoles, CATALOG_NAME, localCatalogFactory);
   }
 
   private IcebergCatalogHandler newHandler(
-      Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
+      Set<String> activatedPrincipalRoles, String catalogName, LocalCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
-    if (factory == callContextCatalogFactory) {
+    if (factory == localCatalogFactory) {
       return handler;
     }
-    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).build();
+    return ImmutableIcebergCatalogHandler.builder()
+        .from(handler)
+        .localCatalogFactory(factory)
+        .build();
   }
 
   @TestFactory
@@ -135,6 +139,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -212,6 +218,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .action(() -> refreshedWrapper.listNamespaces(Namespace.of()))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_LIST)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
                     .createTests(),
                 authzTestsBuilder("createNamespace (after rotation)")
                     .action(
@@ -221,11 +233,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropNamespace(ns3))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+                    .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
                     .createTests(),
                 authzTestsBuilder("listTables (after rotation)")
                     .action(() -> refreshedWrapper.listTables(NS1))
                     .principalName(principalName)
                     .shouldPassWith(PolarisPrivilege.TABLE_LIST)
+                    .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
+                    .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+                    .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+                    .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+                    .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+                    .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
                     .createTests())
             .flatMap(s -> s);
 
@@ -312,6 +335,9 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                   .dropNamespace(Namespace.of("ns1", "ns1a", "newns"));
             })
         .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
+        .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -322,6 +348,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -338,6 +366,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_CREATE)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -355,6 +385,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .createNamespace(CreateNamespaceRequest.builder().withNamespace(NS1AA).build()))
         .shouldPassWith(PolarisPrivilege.NAMESPACE_DROP)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -373,6 +405,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             })
         .shouldPassWith(PolarisPrivilege.NAMESPACE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.NAMESPACE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -387,6 +421,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -409,6 +445,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -458,6 +496,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             () -> newHandler(Set.of(PRINCIPAL_ROLE1)).createTableStaged(NS2, createStagedRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -518,6 +558,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -530,6 +572,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -545,6 +589,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -555,7 +601,61 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadCredentialsFromEntityPropertiesPrivileges() {
+    return authzTestsBuilder("loadCredentials")
+        .action(() -> newHandler().loadCredentials(TABLE_NS1A_2, Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .createTests();
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesSkipsFileIO() throws Exception {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Wrap the real factory to spy on the catalog it creates
+    LocalCatalogFactory spyFactory =
+        manifest -> Mockito.spy(localCatalogFactory.createCatalog(manifest));
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, spyFactory);
+
+    // Call the optimized credential vending path — authorizeLoadTable inside
+    // will trigger initializeCatalog() which sets baseCatalog via our spy factory
+    handler.loadCredentials(TABLE_NS1A_2, Optional.empty());
+
+    // Retrieve the spied baseCatalog and verify loadTable was never called
+    Field baseCatalogField = IcebergCatalogHandler.class.getDeclaredField("baseCatalog");
+    baseCatalogField.setAccessible(true);
+    Catalog spiedCatalog = (Catalog) baseCatalogField.get(handler);
+    Mockito.verify(spiedCatalog, Mockito.never()).loadTable(Mockito.any());
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesFallsBackForExternalCatalog() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Provide a factory that returns a non-IcebergCatalog to simulate an external catalog
+    Catalog mockExternalCatalog = Mockito.mock(Catalog.class);
+    LocalCatalogFactory externalFactory = manifest -> mockExternalCatalog;
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, externalFactory);
+
+    // The optimized path should detect the non-IcebergCatalog and fall back,
+    // which calls baseCatalog.loadTable()
+    Assertions.assertThatThrownBy(() -> handler.loadCredentials(TABLE_NS1A_2, Optional.empty()))
+        .isInstanceOf(Exception.class);
+
+    Mockito.verify(mockExternalCatalog).loadTable(TABLE_NS1A_2);
   }
 
   @TestFactory
@@ -568,6 +668,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             () -> newHandler().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -581,6 +682,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                         TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -597,6 +699,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                         TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -607,6 +710,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -621,6 +726,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             () -> newHandler().updateTableForStagedCreate(TABLE_NS1A_2, new UpdateTableRequest()))
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -642,6 +749,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -731,6 +840,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .createTableDirect(TABLE_NS1_1.namespace(), createRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_DROP)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -767,6 +878,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE)
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -784,6 +897,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameTable(rename2))
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_DROP)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -851,6 +966,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -918,6 +1035,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -951,6 +1070,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE2)).dropView(newview))
         .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -961,6 +1082,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -970,6 +1093,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().replaceView(VIEW_NS1A_2, new UpdateTableRequest()))
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1006,6 +1131,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
                     .createView(VIEW_NS1_1.namespace(), createRequest))
         .shouldPassWith(PolarisPrivilege.VIEW_DROP)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1018,6 +1145,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.VIEW_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.VIEW_CREATE)
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1035,6 +1164,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .cleanupAction(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).renameView(rename2))
         .shouldPassWith(PolarisPrivilege.VIEW_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.VIEW_DROP, PolarisPrivilege.VIEW_CREATE)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1094,7 +1225,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1157,7 +1288,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1206,7 +1337,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1255,7 +1386,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1307,7 +1438,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1376,21 +1507,21 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             externalCatalog, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
   }
 
-  private PolarisCallContextCatalogFactory createExternalCatalogFactory(String externalCatalog) {
-    return new PolarisCallContextCatalogFactory(
+  private PolarisLocalCatalogFactory createExternalCatalogFactory(String externalCatalog) {
+    return new PolarisLocalCatalogFactory(
         diagServices,
         resolverFactory,
         Mockito.mock(),
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener,
+        polarisEventDispatcher,
         eventMetadataFactory,
         metaStoreManager,
         callContext,
         authenticatedRoot) {
       @Override
-      public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
-        Catalog catalog = super.createCallContextCatalog(resolvedManifest);
+      public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
+        Catalog catalog = super.createCatalog(resolvedManifest);
         String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
         catalog.initialize(
             externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
@@ -1484,6 +1615,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_ASSIGN_UUID)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1501,6 +1637,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1517,6 +1658,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_SET_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1533,6 +1679,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, request))
         .shouldPassWith(PolarisPrivilege.TABLE_REMOVE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1552,7 +1703,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(
             PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION, PolarisPrivilege.TABLE_SET_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         // Test that having only one specific privilege fails (need both)
         .shouldFailWith(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION) // Only one of the two needed
         .shouldFailWith(PolarisPrivilege.TABLE_SET_PROPERTIES) // Only one of the two needed
@@ -1578,7 +1733,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("updateTable (TABLE_MANAGE_STRUCTURE super privilege)")
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, structuralRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1600,7 +1759,11 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("updateTable (TABLE_MANAGE_STRUCTURE sufficient for non-snapshot ops)")
         .action(() -> newHandler().updateTable(TABLE_NS1A_2, nonSnapshotRequest))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .createTests();
   }
 
@@ -1611,6 +1774,12 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("loadTable (TABLE_MANAGE_STRUCTURE insufficient)")
         .action(() -> newHandler().loadTable(TABLE_NS1A_2, "all"))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
         .shouldFailWith(PolarisPrivilege.TABLE_MANAGE_STRUCTURE)
         .createTests();
   }
@@ -1632,6 +1801,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .action(() -> newHandler().reportMetrics(TABLE_NS1A_1, request))
         .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA) // super-privilege of TABLE_READ_DATA
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 
@@ -1649,6 +1819,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return authzTestsBuilder("reportMetrics (write)")
         .action(() -> newHandler().reportMetrics(TABLE_NS1A_1, request))
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
   }
 }

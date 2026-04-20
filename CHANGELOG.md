@@ -41,11 +41,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
-- The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
+- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 - Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
+- The `REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE` operation no longer requires the `PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE` privilege. Only `CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE` on the catalog role is now required, making revoke symmetric with assign. This allows catalog administrators to fully manage catalog role assignments without requiring elevated privileges on principal roles.
+- The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 
 ### New Features
 
+- Added `envFrom` support in Helm chart.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
@@ -60,6 +63,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 - Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
 - Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
+- Added setup options to Polaris CLI.
+- Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
+- Added summarize subcommand to Polaris CLI.
+- Added find and tables options to Polaris CLI.
 
 ### Changes
 
@@ -70,16 +77,19 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Changed from Poetry to UV for Python package management.
 - Exclude KMS policies when KMS is not being used for S3.
 - Improved default KMS permission handling to better distinguish read-only and read-write access.
+- Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
 
 ### Deprecations
 
 - The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
 - `PolarisConfigurationStore` has been deprecated for removal.
+- The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
 
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
+- Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
 
 ### Commits
 

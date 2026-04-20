@@ -24,7 +24,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -36,7 +36,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 /** Factory class for creating a Hive catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier(ConnectionType.HIVE_FACTORY_IDENTIFIER)
-public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
+public class HiveFederatedCatalogFactory implements FederatedCatalogFactory {
 
   @Override
   public Catalog createCatalog(

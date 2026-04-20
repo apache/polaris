@@ -16,9 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pydantic import StrictStr
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import Subcommands, Arguments
@@ -30,6 +30,7 @@ from apache_polaris.sdk.management import (
     UpdatePrincipalRoleRequest,
     GrantPrincipalRoleRequest,
 )
+from apache_polaris.cli.command.utils import format_timestamp
 
 
 @dataclass
@@ -46,14 +47,34 @@ class PrincipalRolesCommand(Command):
 
     principal_roles_subcommand: str
     principal_role_name: str
-    principal_name: str
-    catalog_name: str
-    catalog_role_name: str
-    properties: Optional[Dict[str, StrictStr]]
-    set_properties: Dict[str, StrictStr]
-    remove_properties: List[str]
+    principal_name: Optional[str] = None
+    catalog_name: Optional[str] = None
+    catalog_role_name: Optional[str] = None
+    properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
+
+    def __post_init__(self) -> None:
+        if self.properties is None:
+            self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
 
     def validate(self) -> None:
+        if self.principal_roles_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.GET,
+            Subcommands.UPDATE,
+            Subcommands.GRANT,
+            Subcommands.REVOKE,
+            Subcommands.SUMMARIZE,
+        }:
+            if not self.principal_role_name:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}"
+                )
+
         if self.principal_roles_subcommand == Subcommands.LIST:
             if self.principal_name and self.catalog_role_name:
                 raise Exception(
@@ -68,17 +89,19 @@ class PrincipalRolesCommand(Command):
                 )
 
     def execute(self, api: PolarisDefaultApi) -> None:
+        principal_role_name = cast(str, self.principal_role_name)
+
         if self.principal_roles_subcommand == Subcommands.CREATE:
             request = CreatePrincipalRoleRequest(
                 principal_role=PrincipalRole(
-                    name=self.principal_role_name, properties=self.properties
+                    name=principal_role_name, properties=self.properties
                 )
             )
             api.create_principal_role(request)
         elif self.principal_roles_subcommand == Subcommands.DELETE:
-            api.delete_principal_role(self.principal_role_name)
+            api.delete_principal_role(principal_role_name)
         elif self.principal_roles_subcommand == Subcommands.GET:
-            print(api.get_principal_role(self.principal_role_name).to_json())
+            print(api.get_principal_role(principal_role_name).to_json())
         elif self.principal_roles_subcommand == Subcommands.LIST:
             if self.catalog_role_name:
                 for principal_role in api.list_principal_roles(
@@ -94,7 +117,7 @@ class PrincipalRolesCommand(Command):
                 for principal_role in api.list_principal_roles().roles:
                     print(principal_role.to_json())
         elif self.principal_roles_subcommand == Subcommands.UPDATE:
-            principal_role = api.get_principal_role(self.principal_role_name)
+            principal_role = api.get_principal_role(principal_role_name)
             new_properties = principal_role.properties or {}
 
             # Add or update all entries specified in set_properties
@@ -110,15 +133,65 @@ class PrincipalRolesCommand(Command):
                 current_entity_version=principal_role.entity_version,
                 properties=new_properties,
             )
-            api.update_principal_role(self.principal_role_name, request)
+            api.update_principal_role(principal_role_name, request)
         elif self.principal_roles_subcommand == Subcommands.GRANT:
             request = GrantPrincipalRoleRequest(
-                principal_role=PrincipalRole(name=self.principal_role_name),
+                principal_role=PrincipalRole(name=principal_role_name),
             )
-            api.assign_principal_role(self.principal_name, request)
+            api.assign_principal_role(cast(str, self.principal_name), request)
         elif self.principal_roles_subcommand == Subcommands.REVOKE:
-            api.revoke_principal_role(self.principal_name, self.principal_role_name)
+            api.revoke_principal_role(
+                cast(str, self.principal_name), principal_role_name
+            )
+        elif self.principal_roles_subcommand == Subcommands.SUMMARIZE:
+            self._generate_summary(api)
         else:
             raise Exception(
                 f"{self.principal_roles_subcommand} is not supported in the CLI"
             )
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        principal_role_name = cast(str, self.principal_role_name)
+        print(f"Principal Role: {principal_role_name}")
+        print("-" * 80)
+        # Metadata
+        role = api.get_principal_role(principal_role_name)
+        print("Metadata")
+        print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
+        print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
+        print(f"  {'Version:':<30} {role.entity_version}")
+
+        # Assigned Principals
+        principals = (
+            api.list_assignee_principals_for_principal_role(
+                principal_role_name
+            ).principals
+            or []
+        )
+        print("\nAssigned Principals")
+        if principals:
+            for principal in sorted(principals, key=lambda x: x.name):
+                print(f"  - {principal.name}")
+        else:
+            print("  No principals assigned")
+
+        # Assigned Catalog Roles
+        assigned_catalog_roles = []
+        catalogs = api.list_catalogs().catalogs or []
+        for catalog in catalogs:
+            catalog_roles = (
+                api.list_catalog_roles_for_principal_role(
+                    principal_role_name, catalog.name
+                ).roles
+                or []
+            )
+            for catalog_role in catalog_roles:
+                assigned_catalog_roles.append((catalog_role.name, catalog.name))
+
+        print("\nAssigned Catalog Roles")
+        if assigned_catalog_roles:
+            for catalog_role_name, catalog_name in sorted(assigned_catalog_roles):
+                print(f"  - {catalog_role_name} (Catalog: {catalog_name})")
+        else:
+            print("  No catalog roles assigned")
+        print("-" * 80)

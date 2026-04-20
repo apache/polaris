@@ -71,14 +71,11 @@ public class DefaultPolarisCredentialManagerTest {
         @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
       // Return test credentials
-      return ConnectionCredentials.builder()
-          .putCredential(
-              CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
-          .putCredential(
-              CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(), "sigv4-secret-key")
-          .putCredential(
-              CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "sigv4-session-token")
-          .build();
+      return ConnectionCredentials.of(
+          Map.of(
+              CatalogAccessProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key",
+              CatalogAccessProperty.AWS_SECRET_ACCESS_KEY, "sigv4-secret-key",
+              CatalogAccessProperty.AWS_SESSION_TOKEN, "sigv4-session-token"));
     }
   }
 
@@ -91,10 +88,8 @@ public class DefaultPolarisCredentialManagerTest {
     public @NotNull ConnectionCredentials getConnectionCredentials(
         @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
-      return ConnectionCredentials.builder()
-          .putCredential(
-              CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key")
-          .build();
+      return ConnectionCredentials.of(
+          Map.of(CatalogAccessProperty.AWS_ACCESS_KEY_ID, "oauth-access-key"));
     }
   }
 

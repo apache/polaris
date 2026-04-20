@@ -134,6 +134,10 @@
                 "type": "string"
             }
         },
+        "containerLifecycle": {
+            "description": "Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/). Use this to configure a preStop hook for graceful shutdown, e.g.: containerLifecycle: preStop: exec: command: [\"/bin/sh\", \"-c\", \"sleep 30\"]",
+            "type": "object"
+        },
         "containerSecurityContext": {
             "description": "Security context for the polaris container. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).",
             "type": "object"
@@ -173,6 +177,10 @@
                         "type": "string"
                     }
                 },
+                "enabled": {
+                    "description": "Specifies whether the CORS filter should be enabled. See [CORS](https://quarkus.io/guides/http-reference#cors-filter) for details.",
+                    "type": "boolean"
+                },
                 "exposedHeaders": {
                     "description": "HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list.",
                     "type": "array",
@@ -187,6 +195,13 @@
             "type": "object",
             "additionalProperties": {
                 "type": "string"
+            }
+        },
+        "envFrom": {
+            "description": "Bulk import environment variables from Secrets or ConfigMaps. Defines sources to populate environment variables using Kubernetes `envFrom`. Each referenced Secret or ConfigMap will expose all its key-value pairs as environment variables inside the Polaris container. [EnvFrom API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envfromsource-v1-core)",
+            "type": "array",
+            "items": {
+                "type": "object"
             }
         },
         "extraEnv": {
@@ -423,6 +438,10 @@
                 },
                 "enabled": {
                     "description": "Specifies whether an HTTPRoute should be created. See [Networking](https://polaris.apache.org/in-dev/unreleased/helm-chart/networking/) for more information.",
+                    "type": "boolean"
+                },
+                "exposeManagementEndpoints": {
+                    "description": "Enable to expose the management endpoints on your httproute. This is required if you want to use the management service for health checks and metrics scraping external to the cluster.",
                     "type": "boolean"
                 },
                 "gatewayName": {
@@ -1119,6 +1138,10 @@
                         "type": "string"
                     }
                 },
+                "requireHeader": {
+                    "description": "Whether to require the realm header in requests. When set to true, requests without the realm header will be rejected. When set to false, the default realm will be used instead. It is recommended to set this to true in production environments.",
+                    "type": "boolean"
+                },
                 "type": {
                     "description": "The type of realm context resolver to use. Two built-in types are supported: default and test; test is not recommended for production as it does not perform any realm validation.",
                     "type": "string"
@@ -1332,6 +1355,14 @@
                     "type": "integer"
                 }
             }
+        },
+        "terminationGracePeriodSeconds": {
+            "description": "Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination). When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time.",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
         },
         "tolerations": {
             "description": "A list of tolerations to apply to polaris pods. See [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/).",

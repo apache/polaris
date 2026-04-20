@@ -38,7 +38,6 @@ import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.Re
 
 import com.google.common.collect.Streams;
 import com.google.common.math.LongMath;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -75,6 +74,7 @@ import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIden
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
 import org.apache.polaris.persistence.nosql.realms.api.RealmExpectedStateMismatchException;
 import org.apache.polaris.persistence.nosql.realms.api.RealmManagement;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +144,7 @@ class MaintenanceServiceImpl implements MaintenanceService {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public List<MaintenanceRunInformation> maintenanceRunLog() {
     var runIds =
         Streams.stream(
@@ -162,7 +162,7 @@ class MaintenanceServiceImpl implements MaintenanceService {
         .toList();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public MaintenanceRunSpec buildMaintenanceRunSpec() {
     try (var realms = realmManagement.list()) {
@@ -186,9 +186,9 @@ class MaintenanceServiceImpl implements MaintenanceService {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public MaintenanceRunInformation performMaintenance(
-      @Nonnull MaintenanceRunSpec maintenanceRunSpec) {
+      @NonNull MaintenanceRunSpec maintenanceRunSpec) {
     LOGGER.info(
         "Triggering maintenance run with {} realms to purge and {} realms to process",
         maintenanceRunSpec.realmsToPurge().size(),

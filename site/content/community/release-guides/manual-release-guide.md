@@ -300,7 +300,7 @@ Next, you have to close the staging repository:
 
 The last step for a release candidate is to create a VOTE thread on the dev mailing list.
 
-A generated email template is available in the `build/distribution` folder.
+A generated email template is available in the `build/email-templates` folder.
 
 Example title subject:
 
@@ -313,10 +313,9 @@ Example content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official
-Apache Polaris x.y.z release.
+I propose that we release the following RC as the official Apache Polaris x.y.z release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
+This corresponds to the tag: apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/tree/<SHA1>
 
@@ -324,28 +323,27 @@ The release tarball, signature, and checksums are here:
 * https://dist.apache.org/repos/dist/dev/polaris/x.y.z
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/polaris/helm-chart
+* https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z
+
 NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
 * https://downloads.apache.org/polaris/KEYS
 
-Convenience binary artifacts are staged on Nexus. The Maven
-repositories URLs are:
+Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.
+Please download, verify, and test according to the release verification guide, which can be found at:
+* https://polaris.apache.org/community/release-guides/release-verification-guide/
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache Polaris x.y.z
 [ ] +0
 [ ] -1 Do not release this because...
 
-Only PMC members have binding votes, but other community
-members are encouraged to cast non-binding votes.
-This vote will pass if there are 3 binding +1 votes and
-more binding +1 votes than -1 votes.
+Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
 ```
 
 When a candidate is passed or rejected, reply with the vote result:
@@ -431,8 +429,15 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
-Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications:
-* Change the title from `In Development` to `[major].[minor].[patch]`.
+Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
+`site/content/in-dev/release_index.md` and perform the following modifications:
+
+* Change the `title` from `Apache Polaris Documentation (Unreleased)` to `Apache Polaris [major].[minor].[patch] Documentation`.
+* Change the `linkTitle` from `In Development` to `[major].[minor].[patch]`.
+* Change the `weight` accordingly, e.g. for a version 1.2.3 use weight -10203.
+* Set the `release_version` parameter everywhere: `release_version: '[major].[minor].[patch]'`
+* Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
+* Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
 
 Commit and push to your fork:
@@ -459,22 +464,18 @@ The final step is to update the "Download" page on Polaris website with links to
 git checkout -b main-site-download-links-[major].[minor].[patch] main
 ```
 
-Edit the file `site/content/downloads/_index.md` and add a new section for the release.  The section should contain the following information:
+Create a new directory and file for the release under `site/content/downloads/[major].[minor].[patch]/index.md`. The file should contain the following information:
 
+* Front matter with appropriate metadata (title, weight, etc.)
 * A table with links to each of the artifacts, its PGP signature and associated checksum. All links in this section MUST point to `https://dlcdn.apache.org/` or `https://downloads.apache.org/`.
 * The release date.
 * A paragraph with the release notes.
 
-Then update the section of the previous release so that it references `https://archive.apache.org` instead of `https://dlcdn.apache.org/` and `https://downloads.apache.org/`.
+Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
+downloads page structure and requirements when adding a new release.
 
-Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new release.  Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the following format:
-
-```
-    - name: "[major].[minor].[patch]"
-      url: "/releases/[major].[minor].[patch]/"
-      parent: "doc"
-      weight: [previous release weight - 1]
-```
+Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
+release; remove the oldest release from this list.
 
 Then open a PR against the `main` branch with your changes.
 

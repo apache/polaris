@@ -26,6 +26,7 @@ description = "Polaris async execution API"
 
 dependencies {
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
@@ -43,6 +44,7 @@ dependencies {
   testFixturesCompileOnly(platform(libs.jackson.bom))
   testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 
+  testFixturesApi(libs.jspecify)
   testFixturesApi(libs.jakarta.annotation.api)
   testFixturesApi(libs.jakarta.validation.api)
   testFixturesApi(libs.jakarta.inject.api)

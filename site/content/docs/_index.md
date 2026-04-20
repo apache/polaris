@@ -23,31 +23,14 @@ type: docs
 # Mark this as the documentation root - used by breadcrumb.html partial
 params:
   docs_root: true
+menus:
+  main:
+    parent: doc
+    weight: -999999 # 1st item in the menu
+    identifier: doc-overview
+    name: Overview
 ---
 
 Welcome to the Apache Polaris documentation. Select a version below to get started.
 
-## In Development
-
-The latest unreleased documentation from the main branch:
-
-- {{< docs-link version="unreleased" >}} (Latest development version)
-
-## Released Versions
-
-### Active Releases
-
-These versions are currently supported:
-
-- {{< docs-link version="1.3.0" >}}
-- {{< docs-link version="1.2.0" >}}
-- {{< docs-link version="1.1.0" >}}
-
-### End-of-Life Releases
-
-These versions are no longer supported:
-
-- {{< docs-link version="1.0.1" >}}
-- {{< docs-link version="1.0.0" >}}
-- {{< docs-link version="0.9.0" >}}
-
+{{< docs-list >}}

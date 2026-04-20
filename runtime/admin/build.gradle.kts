@@ -21,7 +21,7 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  // id("polaris-license-report")
+  id("polaris-license-report")
 }
 
 dependencies {
@@ -94,7 +94,14 @@ val distributionElements by
     isCanBeResolved = false
   }
 
+val licenseNoticeElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
 // Register the quarkus app directory as an artifact
 artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
+  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }

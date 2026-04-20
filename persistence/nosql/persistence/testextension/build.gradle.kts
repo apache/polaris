@@ -39,6 +39,7 @@ dependencies {
   implementation(libs.slf4j.api)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.validation.api)
 
   compileOnly(platform(libs.jackson.bom))

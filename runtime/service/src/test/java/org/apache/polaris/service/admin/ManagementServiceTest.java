@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
@@ -467,6 +468,238 @@ public class ManagementServiceTest {
     assertThat(catalogs)
         .extracting(Catalog::getName)
         .containsExactlyInAnyOrder("my-catalog-1", "my-catalog-2");
+  }
+
+  @Test
+  public void testUpdateCatalogChangeAwsAccountIdBlockedByDefault() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Changing the AWS account ID should be rejected by default
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::999999999999:role/other-role")
+                .build());
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify AWS account ID");
+  }
+
+  @Test
+  public void testUpdateCatalogChangesWithinSameAccountAllowed() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Changing role name within the same account should succeed
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/other-role")
+                .build());
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogChangeExternalIdBlockedByDefault() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("my-external-id")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Changing the external ID should be rejected by default
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setExternalId("different-external-id")
+                .build());
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageStartingWith("Cannot modify ExternalId");
+  }
+
+  @Test
+  public void testUpdateCatalogStorageConfigChangesAllowedWithFeatureFlag() {
+    TestServices flagEnabledServices =
+        TestServices.builder()
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("S3", "GCS", "AZURE"),
+                    "ALLOW_UNRESTRICTED_STORAGE_CONFIG_ROLE_CHANGES",
+                    Boolean.TRUE))
+            .build();
+
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("my-external-id")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        flagEnabledServices
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                flagEnabledServices.realmContext(),
+                flagEnabledServices.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        flagEnabledServices
+            .catalogsApi()
+            .getCatalog(
+                catalogName,
+                flagEnabledServices.realmContext(),
+                flagEnabledServices.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Changing both the AWS account ID and external ID should succeed with the feature flag
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::999999999999:role/other-role")
+                .setExternalId("different-external-id")
+                .build());
+    try (Response response =
+        flagEnabledServices
+            .catalogsApi()
+            .updateCatalog(
+                catalogName,
+                updateRequest,
+                flagEnabledServices.realmContext(),
+                flagEnabledServices.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
   }
 
   @Test

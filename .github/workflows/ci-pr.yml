@@ -24,6 +24,9 @@ on:
   pull_request:
     branches: [ "main", "release/*", "feature/*" ]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

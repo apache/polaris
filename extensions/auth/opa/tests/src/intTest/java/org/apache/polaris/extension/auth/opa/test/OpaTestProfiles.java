@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.auth.opa.test;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

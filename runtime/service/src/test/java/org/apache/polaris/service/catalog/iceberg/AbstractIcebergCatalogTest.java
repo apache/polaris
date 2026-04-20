@@ -38,6 +38,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -140,6 +141,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -203,6 +205,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.test.rootAugmentor.enabled", "true")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -233,7 +236,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject PolarisEventListener polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
@@ -246,6 +253,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisPrincipal authenticatedRoot;
   @Inject PolarisAdminService adminService;
   @Inject ResolverFactory resolverFactory;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -407,7 +415,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener,
+        polarisEventDispatcher,
         eventMetadataFactory);
   }
 

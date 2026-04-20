@@ -24,14 +24,18 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 /**
  * Simple class to represent a path within a catalog
  *
- * @param entityNames name of the entities in that path. The parent of the first named entity is the
- *     path is the catalog
- * @param lastEntityType all entities in a path are namespaces except the last one which can be a
- *     table_like entity versus a namespace
+ * @param key canonical path key (entity names + terminal entity type)
  * @param optional true if this path is optional, i.e. failing to fully resolve it is not an error
  */
-public record ResolverPath(
-    List<String> entityNames, PolarisEntityType lastEntityType, boolean optional) {
+public record ResolverPath(ResolvedPathKey key, boolean optional) {
+  /**
+   * Constructor for a non-optional path from a pre-built canonical key.
+   *
+   * @param key canonical path key (entity names + terminal entity type)
+   */
+  public ResolverPath(ResolvedPathKey key) {
+    this(key, false);
+  }
 
   /**
    * Constructor for a non-optional path.
@@ -40,6 +44,28 @@ public record ResolverPath(
    * @param lastEntityType type of the last entity
    */
   public ResolverPath(List<String> entityNames, PolarisEntityType lastEntityType) {
-    this(entityNames, lastEntityType, false);
+    this(new ResolvedPathKey(entityNames, lastEntityType), false);
+  }
+
+  /**
+   * Constructor for a path from entity names + terminal type.
+   *
+   * @param entityNames set of entity names, all are namespaces except the last one
+   * @param lastEntityType type of the last entity
+   * @param optional true if this path is optional, i.e. failing to fully resolve it is not an error
+   */
+  public ResolverPath(
+      List<String> entityNames, PolarisEntityType lastEntityType, boolean optional) {
+    this(new ResolvedPathKey(entityNames, lastEntityType), optional);
+  }
+
+  /** Compatibility accessor for existing call sites. */
+  public List<String> entityNames() {
+    return key.entityNames();
+  }
+
+  /** Compatibility accessor for existing call sites. */
+  public PolarisEntityType lastEntityType() {
+    return key.entityType();
   }
 }
