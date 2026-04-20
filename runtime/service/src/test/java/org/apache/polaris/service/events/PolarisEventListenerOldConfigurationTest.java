@@ -46,6 +46,7 @@ public class PolarisEventListenerOldConfigurationTest {
 
   @Inject PolarisEventListenerConfiguration polarisEventListenerConfiguration;
 
+  @SuppressWarnings("removal")
   @Test
   public void testOldListenerConfig() {
     assertTrue(polarisEventListenerConfiguration.type().isPresent());
