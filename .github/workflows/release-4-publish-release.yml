@@ -203,6 +203,9 @@ jobs:
           dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
           release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
 
+          dev_python_client_url="${APACHE_DIST_URL}/dev/polaris/python-client/${version_without_rc}"
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
+
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_artifacts_url}" "${release_artifacts_url}" \
             -m "Release Apache Polaris ${version_without_rc}"
@@ -211,9 +214,13 @@ jobs:
             "${dev_helm_url}" "${release_helm_url}" \
             -m "Release Apache Polaris Helm chart ${version_without_rc}"
 
+          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${dev_python_client_url}" "${release_python_client_url}" \
+            -m "Release Apache Polaris Python client ${version_without_rc}"
+
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Distribution
-          Artifacts and Helm chart moved from dist dev to dist release
+          Artifacts, Helm chart, and Python client moved from dist dev to dist release
           EOT
 
       - name: Clean up old releases from dist release repository
@@ -267,6 +274,27 @@ jobs:
           else
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "No old Helm chart versions found to remove" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # List and remove old Python client versions
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client"
+          old_python_client_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_python_client_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+
+          if [[ -n "${old_python_client_versions}" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Removing old Python client versions:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${old_python_client_versions}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            for old_python_client_version in ${old_python_client_versions}; do
+              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+                "${release_python_client_url}/${old_python_client_version}" \
+                -m "Remove old Python client ${old_python_client_version} (superseded by ${version_without_rc})"
+            done
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No old Python client versions found to remove" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Transfer Helm index and artifacthub-repo.yml from dev to release
@@ -477,25 +505,35 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-        with:
-          python-version: "3.13"
-
-      - name: Set up JDK for openapi-generator-cli
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Build Python client release
+      - name: Set up environment variables
         run: |
-          make client-release-build RELEASE_VERSION="${version_without_rc}"
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Download Python wheel from Apache dist release repository
+        env:
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
+
+          exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${release_python_client_url}" dist/
 
       - name: Publish Python client release to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
-          packages-dir: client/python/dist/
+          packages-dir: dist/
 
       - name: Update step summary
         run: |
