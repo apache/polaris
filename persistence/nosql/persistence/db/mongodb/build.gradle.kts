@@ -71,6 +71,9 @@ testing {
         dependencies {
           runtimeOnly(platform(libs.testcontainers.bom))
           runtimeOnly("org.testcontainers:testcontainers-mongodb")
+
+          compileOnly(platform(libs.jackson.bom))
+          compileOnly("com.fasterxml.jackson.core:jackson-annotations")
         }
       }
   }
