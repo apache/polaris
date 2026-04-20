@@ -136,7 +136,8 @@ services:
               "allowedLocations": ["s3://bucket123"],
               "endpoint": "http://localhost:9000",
               "endpointInternal": "http://rustfs:9000",
-              "pathStyleAccess": true
+              "pathStyleAccess": true,
+              "region": "us-west-2"
             }
           }
         }'
