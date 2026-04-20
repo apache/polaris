@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.nodeids.impl;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Map;
@@ -45,6 +44,7 @@ import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -103,9 +103,9 @@ public class TestNodeManagementImpl {
             config,
             clock,
             new NodeStoreFactory() {
-              @Nonnull
+              @NonNull
               @Override
-              public NodeStore createNodeStore(@Nonnull IdGenerator idGenerator) {
+              public NodeStore createNodeStore(@NonNull IdGenerator idGenerator) {
                 return new MockNodeStore();
               }
 
@@ -115,7 +115,7 @@ public class TestNodeManagementImpl {
               }
 
               @Override
-              public boolean storeManagementState(@Nonnull NodeManagementState state) {
+              public boolean storeManagementState(@NonNull NodeManagementState state) {
                 throw new UnsupportedOperationException();
               }
             },

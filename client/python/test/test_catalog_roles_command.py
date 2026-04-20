@@ -24,11 +24,22 @@ from apache_polaris.sdk.management import CatalogRole
 class TestCatalogRolessCommand(CLITestBase):
     def test_catalog_role_commands_validation(self) -> None:
         mock_client = self.build_mock_client()
-        # Missing catalog
-        self.check_exception(
-            lambda: self.mock_execute(mock_client, ["catalog-roles", "get", "foo"]),
-            "--catalog",
-        )
+        # Missing --catalog flag
+        for sub in ["create", "delete", "get", "update", "summarize"]:
+            with self.subTest(subcommand=sub):
+                self.check_exception(
+                    lambda: self.mock_execute(
+                        mock_client, ["catalog-roles", sub, "role_name"]
+                    ),
+                    "--catalog",
+                )
+        # Missing positional role name
+        for sub in ["create", "delete", "get", "update", "summarize"]:
+            with self.subTest(subcommand=sub, error="missing positional"):
+                with self.assertRaises(SystemExit):
+                    self.mock_execute(
+                        mock_client, ["catalog-roles", sub, "--catalog", "my_cat"]
+                    )
 
     def test_catalog_role_create(self) -> None:
         mock_client = self.build_mock_client()

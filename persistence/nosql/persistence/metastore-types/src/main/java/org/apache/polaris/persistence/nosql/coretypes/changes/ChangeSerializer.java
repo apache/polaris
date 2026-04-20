@@ -28,13 +28,13 @@ import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import com.google.common.io.CountingOutputStream;
 import com.google.common.primitives.Ints;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Index element value serializer for {@link Change} objects.
@@ -64,9 +64,9 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public ByteBuffer serialize(@Nullable Change value, @Nonnull ByteBuffer target) {
+  public ByteBuffer serialize(@Nullable Change value, @NonNull ByteBuffer target) {
     try {
       var bytes = MAPPER.writeValueAsBytes(value);
       putVarInt(target, bytes.length);
@@ -79,7 +79,7 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
 
   @Nullable
   @Override
-  public Change deserialize(@Nonnull ByteBuffer buffer) {
+  public Change deserialize(@NonNull ByteBuffer buffer) {
     try {
       var len = readVarInt(buffer);
       var readBuf = buffer.duplicate().limit(buffer.position() + len);
@@ -91,7 +91,7 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
   }
 
   @Override
-  public void skip(@Nonnull ByteBuffer buffer) {
+  public void skip(@NonNull ByteBuffer buffer) {
     var len = readVarInt(buffer);
     buffer.position(buffer.position() + len);
   }

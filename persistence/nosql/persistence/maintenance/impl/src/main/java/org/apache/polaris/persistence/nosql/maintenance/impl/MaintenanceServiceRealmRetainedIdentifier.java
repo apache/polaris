@@ -21,13 +21,13 @@ package org.apache.polaris.persistence.nosql.maintenance.impl;
 import static org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig.DEFAULT_RETAINED_RUNS;
 import static org.apache.polaris.persistence.nosql.maintenance.impl.MaintenanceRunsObj.MAINTENANCE_RUNS_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
 import org.apache.polaris.persistence.nosql.maintenance.spi.CountDownPredicate;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
 
 /** Retained-identifier for the maintenance service's own reference and objects. */
 @SuppressWarnings("CdiInjectionPointsInspection")
@@ -41,7 +41,7 @@ class MaintenanceServiceRealmRetainedIdentifier implements PerRealmRetainedIdent
   }
 
   @Override
-  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+  public boolean identifyRetained(@NonNull RetainedCollector collector) {
     if (!collector.isSystemRealm()) {
       return false;
     }

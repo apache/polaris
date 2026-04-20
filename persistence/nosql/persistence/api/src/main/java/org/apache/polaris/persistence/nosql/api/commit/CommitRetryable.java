@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.persistence.nosql.api.commit;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 @FunctionalInterface
 public interface CommitRetryable<REF_OBJ extends BaseCommitObj, RESULT> {
@@ -53,9 +53,8 @@ public interface CommitRetryable<REF_OBJ extends BaseCommitObj, RESULT> {
    *     {@linkplain Optional#empty() empty optional} indicates that a retry should be attempted.
    * @throws CommitException Instances of this class let the whole commit operation abort.
    */
-  @Nonnull
-  Optional<REF_OBJ> attempt(
-      @Nonnull CommitterState<REF_OBJ, RESULT> state,
-      @Nonnull Supplier<Optional<REF_OBJ>> refObjSupplier)
+  @NonNull Optional<REF_OBJ> attempt(
+      @NonNull CommitterState<REF_OBJ, RESULT> state,
+      @NonNull Supplier<Optional<REF_OBJ>> refObjSupplier)
       throws CommitException;
 }

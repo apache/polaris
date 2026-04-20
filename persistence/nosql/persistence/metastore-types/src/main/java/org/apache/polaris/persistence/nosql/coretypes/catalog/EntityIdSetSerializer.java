@@ -25,10 +25,10 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarLong;
 import static org.apache.polaris.persistence.varint.VarInt.skipVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
   private static final byte[] NULL;
@@ -39,9 +39,9 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
     buffer.get(NULL);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public ByteBuffer serialize(@Nullable EntityIdSet value, @Nonnull ByteBuffer target) {
+  public ByteBuffer serialize(@Nullable EntityIdSet value, @NonNull ByteBuffer target) {
     if (value == null) {
       return target.put(NULL);
     }
@@ -70,7 +70,7 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
 
   @Nullable
   @Override
-  public EntityIdSet deserialize(@Nonnull ByteBuffer buffer) {
+  public EntityIdSet deserialize(@NonNull ByteBuffer buffer) {
     var num = readVarInt(buffer);
     if (num == 0) {
       return null;
@@ -83,7 +83,7 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
   }
 
   @Override
-  public void skip(@Nonnull ByteBuffer buffer) {
+  public void skip(@NonNull ByteBuffer buffer) {
     var num = readVarInt(buffer);
     for (int i = 0; i < num; i++) {
       skipVarInt(buffer);

@@ -21,23 +21,23 @@ package org.apache.polaris.persistence.nosql.api.backend;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 
 public final class BackendLoader {
   private BackendLoader() {}
 
-  @Nonnull
-  public static <C> BackendFactory<C, ?> findFactoryByName(@Nonnull String name) {
+  @NonNull
+  public static <C> BackendFactory<C, ?> findFactoryByName(@NonNull String name) {
     return findFactory(f -> f.name().equals(name));
   }
 
-  @Nonnull
+  @NonNull
   public static Stream<BackendFactory<?, ?>> availableFactories() {
     @SuppressWarnings("rawtypes")
     var x = (Stream) loader().stream().map(ServiceLoader.Provider::get);
@@ -46,9 +46,9 @@ public final class BackendLoader {
     return r;
   }
 
-  @Nonnull
+  @NonNull
   public static <C> BackendFactory<C, ?> findFactory(
-      @Nonnull Predicate<BackendFactory<?, ?>> filter) {
+      @NonNull Predicate<BackendFactory<?, ?>> filter) {
     ServiceLoader<BackendFactory<C, ?>> loader = loader();
     List<BackendFactory<?, ?>> candidates = new ArrayList<>();
     boolean any = false;

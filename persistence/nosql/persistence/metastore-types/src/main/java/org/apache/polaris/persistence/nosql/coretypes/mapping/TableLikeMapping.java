@@ -25,7 +25,6 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
 import static org.apache.polaris.core.entity.table.IcebergTableLikeEntity.METADATA_LOCATION_KEY;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +38,7 @@ import org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.TableLikeObj;
+import org.jspecify.annotations.NonNull;
 
 final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Builder<O, B>>
     extends BaseCatalogContentMapping<O, B> {
@@ -55,7 +55,7 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
   }
 
   @Override
-  public B newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public B newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return cast(
         switch (subType) {
           case ICEBERG_TABLE -> IcebergTableObj.builder();
@@ -68,7 +68,7 @@ final class TableLikeMapping<O extends TableLikeObj, B extends TableLikeObj.Buil
   @Override
   void mapToObjTypeSpecific(
       B baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {

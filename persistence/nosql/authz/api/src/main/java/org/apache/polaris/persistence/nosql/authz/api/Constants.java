@@ -20,9 +20,9 @@ package org.apache.polaris.persistence.nosql.authz.api;
 
 import static java.util.Collections.emptyIterator;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Iterator;
+import org.jspecify.annotations.NonNull;
 
 final class Constants {
 
@@ -58,7 +58,7 @@ final class Constants {
         }
 
         @Override
-        public boolean containsAll(@Nonnull Collection<?> c) {
+        public boolean containsAll(@NonNull Collection<?> c) {
           return false;
         }
 
@@ -73,19 +73,19 @@ final class Constants {
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public Iterator<Privilege> iterator() {
           return emptyIterator();
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public Object[] toArray() {
           return new Object[0];
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public <T> T[] toArray(T[] a) {
           @SuppressWarnings("unchecked")
           var r = (T[]) new Object[a.length];
@@ -103,17 +103,17 @@ final class Constants {
         }
 
         @Override
-        public boolean addAll(@Nonnull Collection<? extends Privilege> c) {
+        public boolean addAll(@NonNull Collection<? extends Privilege> c) {
           throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean retainAll(@Nonnull Collection<?> c) {
+        public boolean retainAll(@NonNull Collection<?> c) {
           throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean removeAll(@Nonnull Collection<?> c) {
+        public boolean removeAll(@NonNull Collection<?> c) {
           throw new UnsupportedOperationException();
         }
 

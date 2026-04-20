@@ -22,7 +22,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
@@ -30,6 +29,7 @@ import java.util.Iterator;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Represents a set of {@link Privilege}s, implemented with a bit-map.
@@ -171,7 +171,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
 
   @Override
   @SuppressWarnings("PatternMatchingInstanceof")
-  public boolean containsAll(@Nonnull Collection<?> privileges) {
+  public boolean containsAll(@NonNull Collection<?> privileges) {
     for (var o : privileges) {
       if (!(o instanceof Privilege)) {
         return false;
@@ -241,7 +241,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     return Arrays.equals(privilegeSet.bytes, bytes);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public String toString() {
     var id = 0;
@@ -289,7 +289,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder addPrivileges(@Nonnull Iterable<? extends Privilege> privileges) {
+    public PrivilegeSetBuilder addPrivileges(@NonNull Iterable<? extends Privilege> privileges) {
       for (var privilege : privileges) {
         addPrivilege(privilege);
       }
@@ -297,7 +297,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder addPrivileges(@Nonnull Privilege... privileges) {
+    public PrivilegeSetBuilder addPrivileges(@NonNull Privilege... privileges) {
       for (var privilege : privileges) {
         addPrivilege(privilege);
       }
@@ -305,7 +305,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder addPrivileges(@Nonnull PrivilegeSet privilegeSet) {
+    public PrivilegeSetBuilder addPrivileges(@NonNull PrivilegeSet privilegeSet) {
       var bytes =
           (privilegeSet instanceof PrivilegeSetImpl privilegeSetImpl)
               ? privilegeSetImpl.bytes
@@ -316,7 +316,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder addPrivilege(@Nonnull Privilege privilege) {
+    public PrivilegeSetBuilder addPrivilege(@NonNull Privilege privilege) {
       for (var individualPrivilege : privilege.resolved()) {
         var id = privileges.idForName(individualPrivilege.name());
         this.bitSet.set(id);
@@ -325,7 +325,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder removePrivileges(@Nonnull Iterable<? extends Privilege> privileges) {
+    public PrivilegeSetBuilder removePrivileges(@NonNull Iterable<? extends Privilege> privileges) {
       for (var privilege : privileges) {
         removePrivilege(privilege);
       }
@@ -333,7 +333,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder removePrivileges(@Nonnull Privilege... privileges) {
+    public PrivilegeSetBuilder removePrivileges(@NonNull Privilege... privileges) {
       for (var privilege : privileges) {
         removePrivilege(privilege);
       }
@@ -341,7 +341,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder removePrivileges(@Nonnull PrivilegeSet privilegeSet) {
+    public PrivilegeSetBuilder removePrivileges(@NonNull PrivilegeSet privilegeSet) {
       var bytes =
           (privilegeSet instanceof PrivilegeSetImpl privilegeSetImpl)
               ? privilegeSetImpl.bytes
@@ -352,7 +352,7 @@ record PrivilegeSetImpl(Privileges privileges, byte[] bytes) implements Privileg
     }
 
     @Override
-    public PrivilegeSetBuilder removePrivilege(@Nonnull Privilege privilege) {
+    public PrivilegeSetBuilder removePrivilege(@NonNull Privilege privilege) {
       for (var individualPrivilege : privilege.resolved()) {
         var id = privileges.idForName(individualPrivilege.name());
         this.bitSet.clear(id);

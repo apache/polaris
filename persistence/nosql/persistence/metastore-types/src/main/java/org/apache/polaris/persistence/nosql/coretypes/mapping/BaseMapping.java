@@ -24,8 +24,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +39,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStorageObj;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O, B>> {
 
@@ -54,10 +54,10 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
 
   @SuppressWarnings("unchecked")
   BaseMapping(
-      @Nonnull ObjType objType,
+      @NonNull ObjType objType,
       @Nullable ObjType containerObjType,
       @Nullable String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull PolarisEntityType entityType) {
     this.baseObjTypeClass = (Class<? extends ObjBase>) objType.targetClass();
     this.objType = objType;
     this.subTypes = Map.of(PolarisEntitySubType.NULL_SUBTYPE, objType);
@@ -68,11 +68,11 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
   }
 
   BaseMapping(
-      @Nonnull Class<? extends ObjBase> baseObjTypeClass,
-      @Nonnull Map<PolarisEntitySubType, ObjType> subTypes,
-      @Nonnull ObjType containerObjType,
-      @Nonnull String refName,
-      @Nonnull PolarisEntityType entityType) {
+      @NonNull Class<? extends ObjBase> baseObjTypeClass,
+      @NonNull Map<PolarisEntitySubType, ObjType> subTypes,
+      @NonNull ObjType containerObjType,
+      @NonNull String refName,
+      @NonNull PolarisEntityType entityType) {
     this.baseObjTypeClass = baseObjTypeClass;
     this.objType = null;
     this.subTypes = subTypes;
@@ -91,12 +91,12 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
   }
 
   /** Check whether the given subtype is valid. */
-  public void validateSubType(@Nonnull PolarisEntitySubType subType) {
+  public void validateSubType(@NonNull PolarisEntitySubType subType) {
     objTypeForSubType(subType);
   }
 
   /** Retrieve the {@link ObjType} for the given {@link PolarisEntitySubType}. */
-  public @Nonnull ObjType objTypeForSubType(@Nonnull PolarisEntitySubType subType) {
+  public @NonNull ObjType objTypeForSubType(@NonNull PolarisEntitySubType subType) {
     checkArgument(
         subType != ANY_SUBTYPE,
         "Unresolvable subtype ANY_SUBTYPE for exact match for %s",
@@ -109,8 +109,8 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
   /**
    * Retrieve the {@link Class} used to filter objects for the given {@link PolarisEntitySubType}.
    */
-  public @Nonnull Class<? extends ObjBase> objTypeClassForSubTypeForFiltering(
-      @Nonnull PolarisEntitySubType subType) {
+  public @NonNull Class<? extends ObjBase> objTypeClassForSubTypeForFiltering(
+      @NonNull PolarisEntitySubType subType) {
     if (subType == ANY_SUBTYPE) {
       if (objType != null) {
         return cast(objType.targetClass());
@@ -134,13 +134,13 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
    * Returns the persistence reference name to manage entities for this mapping for the given
    * catalog ID.
    */
-  public @Nonnull String refNameForCatalog(long catalogId) {
+  public @NonNull String refNameForCatalog(long catalogId) {
     checkArgument(
         catalogId == 0L, "Catalog ID must be 0L, but is %s for %s", catalogId, entityType);
     return refName;
   }
 
-  public @Nonnull PolarisEntityType entityType() {
+  public @NonNull PolarisEntityType entityType() {
     return entityType;
   }
 
@@ -157,12 +157,12 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
   }
 
   @SuppressWarnings("unchecked")
-  public @Nonnull <C extends ContainerObj> Class<C> containerObjTypeClass() {
+  public @NonNull <C extends ContainerObj> Class<C> containerObjTypeClass() {
     return (Class<C>) containerObjType.targetClass();
   }
 
   /** Type specific mapping from a {@link PolarisBaseEntity} to an {@link ObjBase.Builder}. */
-  public abstract B newObjBuilder(@Nonnull PolarisEntitySubType subType);
+  public abstract B newObjBuilder(@NonNull PolarisEntitySubType subType);
 
   /**
    * Type specific mapping from a {@link PolarisBaseEntity} to an {@link ObjBase.Builder}.
@@ -173,7 +173,7 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
    */
   void mapToObjTypeSpecific(
       B baseBuilder,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> principalSecrets,
       Map<String, String> properties,
       Map<String, String> internalProperties) {}
@@ -197,7 +197,7 @@ public abstract class BaseMapping<O extends ObjBase, B extends ObjBase.Builder<O
    * type-specific attributes populated.
    */
   public final B mapToObj(
-      @Nonnull PolarisBaseEntity entity, Optional<PolarisPrincipalSecrets> principalSecrets) {
+      @NonNull PolarisBaseEntity entity, Optional<PolarisPrincipalSecrets> principalSecrets) {
     var properties = new HashMap<>(entity.getPropertiesAsMap());
     var internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
     validateSubType(entity.getSubType());

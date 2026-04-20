@@ -17,13 +17,14 @@
 # under the License.
 #
 import json
-from dataclasses import dataclass
-from typing import Dict, Optional, List, Iterator, Any
+from dataclasses import dataclass, field
+from typing import Dict, Optional, List, Iterator, Any, cast
 
 from pydantic import StrictStr
 
 from apache_polaris.cli.command import Command
-from apache_polaris.cli.constants import Subcommands
+from apache_polaris.cli.constants import Subcommands, Arguments
+from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import (
     PolarisDefaultApi,
     CreatePrincipalRequest,
@@ -50,15 +51,21 @@ class PrincipalsCommand(Command):
     """
 
     principals_subcommand: str
-    type: str
-    principal_name: str
-    client_id: str
-    principal_role: str
-    properties: Optional[Dict[str, StrictStr]]
-    set_properties: Dict[str, StrictStr]
-    remove_properties: List[str]
+    type: Optional[str] = None
+    principal_name: Optional[str] = None
+    client_id: Optional[str] = None
+    principal_role: Optional[str] = None
+    properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
     new_client_id: Optional[str] = None
     new_client_secret: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.properties is None:
+            self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
 
     def _get_catalogs(self, api: PolarisDefaultApi) -> Iterator[str]:
         for catalog in api.list_catalogs().catalogs:
@@ -66,7 +73,7 @@ class PrincipalsCommand(Command):
 
     def _get_principal_roles(self, api: PolarisDefaultApi) -> Iterator[str]:
         for principal_role in api.list_principal_roles_assigned(
-            self.principal_name
+            cast(str, self.principal_name)
         ).roles:
             yield principal_role.to_dict()["name"]
 
@@ -98,38 +105,51 @@ class PrincipalsCommand(Command):
         )
 
     def validate(self) -> None:
-        pass
+        if self.principals_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.GET,
+            Subcommands.UPDATE,
+            Subcommands.ROTATE_CREDENTIALS,
+            Subcommands.ACCESS,
+            Subcommands.RESET,
+            Subcommands.SUMMARIZE,
+        }:
+            if not self.principal_name:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL)}"
+                )
 
     def execute(self, api: PolarisDefaultApi) -> None:
+        principal_name = cast(str, self.principal_name)
+
         if self.principals_subcommand == Subcommands.CREATE:
             request = CreatePrincipalRequest(
                 principal=Principal(
-                    type=self.type.upper(),
-                    name=self.principal_name,
+                    type=self.type.upper() if self.type else None,
+                    name=principal_name,
                     client_id=self.client_id,
                     properties=self.properties,
                 )
             )
             print(self.build_credential_json(api.create_principal(request)))
         elif self.principals_subcommand == Subcommands.DELETE:
-            api.delete_principal(self.principal_name)
+            api.delete_principal(principal_name)
         elif self.principals_subcommand == Subcommands.GET:
-            print(api.get_principal(self.principal_name).to_json())
+            print(api.get_principal(principal_name).to_json())
         elif self.principals_subcommand == Subcommands.LIST:
             if self.principal_role:
                 for principal in api.list_assignee_principals_for_principal_role(
-                    self.principal_role
+                    cast(str, self.principal_role)
                 ).principals:
                     print(principal.to_json())
             else:
                 for principal in api.list_principals().principals:
                     print(principal.to_json())
         elif self.principals_subcommand == Subcommands.ROTATE_CREDENTIALS:
-            print(
-                self.build_credential_json(api.rotate_credentials(self.principal_name))
-            )
+            print(self.build_credential_json(api.rotate_credentials(principal_name)))
         elif self.principals_subcommand == Subcommands.UPDATE:
-            principal = api.get_principal(self.principal_name)
+            principal = api.get_principal(principal_name)
             new_properties = principal.properties or {}
 
             # Add or update all entries specified in set_properties
@@ -145,13 +165,13 @@ class PrincipalsCommand(Command):
                 current_entity_version=principal.entity_version,
                 properties=new_properties,
             )
-            api.update_principal(self.principal_name, request)
+            api.update_principal(principal_name, request)
         elif self.principals_subcommand == Subcommands.ACCESS:
-            principal = api.get_principal(self.principal_name).to_dict()["name"]
+            principal_obj_name = api.get_principal(principal_name).to_dict()["name"]
             principal_roles = self._get_principal_roles(api)
 
             # Initialize the result structure
-            result = {"principal": principal, "principal_roles": []}
+            result = {"principal": principal_obj_name, "principal_roles": []}
 
             # Construct the result structure for each principal role
             for principal_role in principal_roles:
@@ -185,13 +205,13 @@ class PrincipalsCommand(Command):
                 )
                 print(
                     self.build_credential_json(
-                        api.reset_credentials(self.principal_name, request)
+                        api.reset_credentials(principal_name, request)
                     )
                 )
             else:
                 print(
                     self.build_credential_json(
-                        api.reset_credentials(self.principal_name, None)
+                        api.reset_credentials(principal_name, None)
                     )
                 )
         elif self.principals_subcommand == Subcommands.SUMMARIZE:
@@ -200,10 +220,11 @@ class PrincipalsCommand(Command):
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, api: PolarisDefaultApi) -> None:
-        print(f"Principal: {self.principal_name}")
+        principal_name = cast(str, self.principal_name)
+        print(f"Principal: {principal_name}")
         print("-" * 80)
         # Metadata
-        principal = api.get_principal(self.principal_name)
+        principal = api.get_principal(principal_name)
         print("Metadata")
         print(f"  {'Client ID:':<30} {principal.client_id}")
         print(f"  {'Created:':<30} {format_timestamp(principal.create_timestamp)}")

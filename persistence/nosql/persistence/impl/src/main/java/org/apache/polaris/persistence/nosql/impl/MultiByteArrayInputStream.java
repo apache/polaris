@@ -20,10 +20,10 @@ package org.apache.polaris.persistence.nosql.impl;
 
 import static java.util.Objects.requireNonNull;
 
-import jakarta.annotation.Nonnull;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 
 final class MultiByteArrayInputStream extends InputStream {
   private final Iterator<byte[]> sources;
@@ -35,7 +35,7 @@ final class MultiByteArrayInputStream extends InputStream {
   }
 
   @Override
-  public int read(@Nonnull byte[] b, int off, int len) {
+  public int read(@NonNull byte[] b, int off, int len) {
     while (true) {
       if (checkCurrentEof()) {
         return -1;

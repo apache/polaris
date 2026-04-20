@@ -19,27 +19,27 @@
 package org.apache.polaris.persistence.nosql.authz.api;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import jakarta.annotation.Nonnull;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.jspecify.annotations.NonNull;
 
 public interface Acl {
 
   void entriesForRoleIds(
-      @Nonnull Set<String> roleIds, @Nonnull Consumer<AclEntry> aclEntryConsumer);
+      @NonNull Set<String> roleIds, @NonNull Consumer<AclEntry> aclEntryConsumer);
 
-  void forEach(@Nonnull BiConsumer<String, AclEntry> consumer);
+  void forEach(@NonNull BiConsumer<String, AclEntry> consumer);
 
   interface AclBuilder {
     @CanIgnoreReturnValue
-    AclBuilder from(@Nonnull Acl instance);
+    AclBuilder from(@NonNull Acl instance);
 
     @CanIgnoreReturnValue
-    AclBuilder addEntry(@Nonnull String roleId, @Nonnull AclEntry entry);
+    AclBuilder addEntry(@NonNull String roleId, @NonNull AclEntry entry);
 
     @CanIgnoreReturnValue
-    AclBuilder removeEntry(@Nonnull String roleId);
+    AclBuilder removeEntry(@NonNull String roleId);
 
     /**
      * Add, remove or update an {@linkplain AclEntry ACL entry} for a role.
@@ -50,7 +50,7 @@ public interface Acl {
      * be removed.
      */
     @CanIgnoreReturnValue
-    AclBuilder modify(@Nonnull String roleId, @Nonnull Consumer<AclEntry.AclEntryBuilder> entry);
+    AclBuilder modify(@NonNull String roleId, @NonNull Consumer<AclEntry.AclEntryBuilder> entry);
 
     Acl build();
   }

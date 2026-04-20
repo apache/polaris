@@ -24,7 +24,6 @@ import static java.lang.Integer.bitCount;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -63,6 +62,7 @@ import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableNodeState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
 import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,7 +209,7 @@ class NodeManagementImpl implements NodeManagement {
   }
 
   @Override
-  public IdGenerator buildIdGenerator(@Nonnull NodeLease leasedNode) {
+  public IdGenerator buildIdGenerator(@NonNull NodeLease leasedNode) {
     var idGenSource =
         new IdGeneratorSource() {
           @Override
@@ -263,7 +263,7 @@ class NodeManagementImpl implements NodeManagement {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public NodeLease lease() {
     var leaseParams = leaseInternal();
     var lease = new NodeLeaseImpl(leaseParams);

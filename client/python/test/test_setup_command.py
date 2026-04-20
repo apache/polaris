@@ -50,6 +50,22 @@ class TestSetupCommand(CLITestBase):
         self.mock_execute(mock_client, ["setup", "apply", "config.yaml", "--dry-run"])
         mock_client.list_principals.assert_called()
 
+    @patch("apache_polaris.cli.command.setup.os.path.isfile")
+    def test_setup_apply_s3_optional_fields(self, mock_isfile: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_isfile.return_value = True
+        # Sample S3 catalog without role_arn
+        setup_yaml = "catalogs:\n  - name: s3-catalog\n    storage_type: s3\n    default_base_location: s3://bucket/path"
+        with patch(
+            "apache_polaris.cli.command.setup.open", mock_open(read_data=setup_yaml)
+        ):
+            self.mock_execute(mock_client, ["setup", "apply", "config.yaml"])
+        mock_client.create_catalog.assert_called_once()
+        call_args = mock_client.create_catalog.call_args[0][0]
+        # role_arn should be None, NOT an empty string
+        self.assertIsNone(call_args.catalog.storage_config_info.role_arn)
+        self.assertEqual(call_args.catalog.name, "s3-catalog")
+
     @patch(
         "apache_polaris.cli.command.setup.open", new_callable=mock_open, read_data="{}"
     )

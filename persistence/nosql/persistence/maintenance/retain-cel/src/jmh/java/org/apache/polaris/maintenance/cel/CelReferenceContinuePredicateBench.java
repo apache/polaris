@@ -21,12 +21,12 @@ package org.apache.polaris.maintenance.cel;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -85,13 +85,13 @@ public class CelReferenceContinuePredicateBench {
               throw new UnsupportedOperationException();
             }
 
-            @Nonnull
+            @NonNull
             @Override
             public Obj withCreatedAtMicros(long createdAt) {
               throw new UnsupportedOperationException();
             }
 
-            @Nonnull
+            @NonNull
             @Override
             public Obj withNumParts(int numParts) {
               throw new UnsupportedOperationException();

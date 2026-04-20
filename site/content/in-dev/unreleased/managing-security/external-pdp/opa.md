@@ -100,7 +100,7 @@ Add the following to your Polaris configuration:
 polaris.authorization.type=opa
 
 # OPA server endpoint
-polaris.authorization.opa.policy-uri=http://localhost:8181/v1/data/polaris/authz/allow
+polaris.authorization.opa.policy-uri=http://<opa-host>:8181/v1/data/polaris/authz
 ```
 
 ### 4. Restart Polaris

@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.spi;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementations of this interface are called by the maintenance service for every realm to
@@ -52,5 +52,5 @@ public interface PerRealmRetainedIdentifier {
    *     implementation did not process the realm or wants to defer the decision to another
    *     implementation.
    */
-  boolean identifyRetained(@Nonnull RetainedCollector collector);
+  boolean identifyRetained(@NonNull RetainedCollector collector);
 }

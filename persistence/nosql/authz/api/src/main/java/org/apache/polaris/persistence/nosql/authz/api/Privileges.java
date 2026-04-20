@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.persistence.nosql.authz.api;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Collection;
 import java.util.Set;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Container holding all defined {@linkplain Privilege privileges}.
@@ -41,11 +41,11 @@ public interface Privileges {
    *
    * @throws IllegalArgumentException if no privilege for the given name exists.
    */
-  Privilege byName(@Nonnull String name);
+  Privilege byName(@NonNull String name);
 
-  int idForName(@Nonnull String name);
+  int idForName(@NonNull String name);
 
-  int idForPrivilege(@Nonnull Privilege privilege);
+  int idForPrivilege(@NonNull Privilege privilege);
 
   PrivilegeSet nonInheritablePrivileges();
 
@@ -55,7 +55,7 @@ public interface Privileges {
    * that fully match the {@linkplain Privilege.CompositePrivilege composite privileges}. If
    * multiple composite privileges match, all of those will be returned.
    */
-  Set<Privilege> collapseComposites(@Nonnull PrivilegeSet value);
+  Set<Privilege> collapseComposites(@NonNull PrivilegeSet value);
 
   /** Informative function, returns all known {@linkplain Privilege privileges}. */
   Collection<Privilege> all();

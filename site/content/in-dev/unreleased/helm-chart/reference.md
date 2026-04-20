@@ -62,6 +62,8 @@ weight: 900
 | podDisruptionBudget.annotations | object | `{}` | Annotations to add to the pod disruption budget. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/). |
 | containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsNonRoot":true,"runAsUser":10000,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris container. See [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/). |
+| containerLifecycle | object | `{}` | Lifecycle hooks for the polaris container. See [Container Lifecycle Hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/). Use this to configure a preStop hook for graceful shutdown, e.g.: containerLifecycle:   preStop:     exec:       command: ["/bin/sh", "-c", "sleep 30"] |
+| terminationGracePeriodSeconds | int | `nil` | Duration in seconds the pod needs to terminate gracefully. Must be greater than the preStop hook duration. See [Termination of Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination). When using a preStop hook, set this to at least the preStop sleep time plus the expected request completion time. |
 
 ### Service
 
@@ -328,7 +330,7 @@ weight: 900
 | cors.allowedHeaders | list | `[]` | HTTP headers allowed for CORS, ex: X-Custom, Content-Disposition. If this is not set or empty, all requested headers are considered allowed. |
 | cors.exposedHeaders | list | `[]` | HTTP headers exposed to the client, ex: X-Custom, Content-Disposition. The default is an empty list. |
 | cors.accessControlMaxAge | string | `""` | The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration. |
-| cors.accessControlAllowCredentials | string | `nil` | The `Access-Control-Allow-Credentials` response header. The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header. |
+| cors.accessControlAllowCredentials | bool | `nil` | The `Access-Control-Allow-Credentials` response header. The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header. |
 
 ### Rate Limiter
 

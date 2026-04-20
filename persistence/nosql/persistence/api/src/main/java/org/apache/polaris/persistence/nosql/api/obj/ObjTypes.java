@@ -21,17 +21,17 @@ package org.apache.polaris.persistence.nosql.api.obj;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.NonNull;
 
 public final class ObjTypes {
   private ObjTypes() {}
 
-  @Nonnull
-  public static ObjType objTypeById(@Nonnull String id) {
+  @NonNull
+  public static ObjType objTypeById(@NonNull String id) {
     var type = Registry.BY_ID.get(id);
     if (type == null) {
       type = Registry.genericType(id);

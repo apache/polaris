@@ -40,7 +40,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.net.SocketException;
@@ -61,6 +60,7 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheIn
 import org.apache.polaris.persistence.nosql.api.cache.DistributedCacheInvalidation;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -307,12 +307,12 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   }
 
   @Override
-  public void evictReference(@Nonnull String repositoryId, @Nonnull String refName) {
+  public void evictReference(@NonNull String repositoryId, @NonNull String refName) {
     enqueue(cacheInvalidationEvictReference(repositoryId, refName));
   }
 
   @Override
-  public void evictObj(@Nonnull String repositoryId, @Nonnull ObjRef objId) {
+  public void evictObj(@NonNull String repositoryId, @NonNull ObjRef objId) {
     enqueue(cacheInvalidationEvictObj(repositoryId, objId));
   }
 }

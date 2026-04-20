@@ -19,6 +19,8 @@
 
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
+from apache_polaris.cli.command.catalogs import CatalogsCommand
+from apache_polaris.cli.constants import Subcommands
 from apache_polaris.sdk.management import (
     PolarisCatalog,
     CatalogProperties,
@@ -44,6 +46,11 @@ class TestCatalogsCommand(CLITestBase):
             ),
             "--default-base-location",
         )
+        # Missing catalog name
+        for sub in ["delete", "get", "update", "summarize"]:
+            with self.subTest(subcommand=sub):
+                with self.assertRaises(SystemExit):
+                    self.mock_execute(mock_client, ["catalogs", sub])
         # Invalid property format
         self.check_exception(
             lambda: self.mock_execute(
@@ -136,6 +143,18 @@ class TestCatalogsCommand(CLITestBase):
             ),
             "Missing required argument for authentication type 'BEARER'",
         )
+
+    def test_catalog_input_normalization(self) -> None:
+        cmd = CatalogsCommand(
+            catalogs_subcommand=Subcommands.CREATE,
+            properties=None,
+            hierarchical=None,
+            sts_unavailable=None,
+        )
+        # __post_init__ should have normalized these
+        self.assertEqual(cmd.properties, {})
+        self.assertEqual(cmd.hierarchical, False)
+        self.assertEqual(cmd.sts_unavailable, False)
 
     def test_catalog_create_s3_options(self) -> None:
         mock_client = self.build_mock_client()

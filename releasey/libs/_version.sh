@@ -118,7 +118,9 @@ function update_helm_version {
   version_with_dash="${version//-/--}"
   exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(--incubating)?--SNAPSHOT/${version_with_dash}/g" "$HELM_README_FILE"
   exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_FILE"
-  exec_process sed -E -i~ "s|/in-dev/unreleased/|/releases/${new_version}/|g" "$HELM_VALUES_SCHEMA_FILE"
+  # It's not necessary to update $HELM_VALUES_SCHEMA_FILE or $HELM_REFERENCE_DOC_FILE here, because
+  # these files will be generated from $HELM_VALUES_FILE during the release process, and they will
+  # automatically reflect the updated version.
   exec_process sed -E -i~ 's/^(  tag: )"latest".*$/\1"'"${new_version}"'"/' "$HELM_VALUES_FILE"
 }
 

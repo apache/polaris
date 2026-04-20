@@ -17,7 +17,7 @@
 # under the License.
 #
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, cast
 
 from pydantic import StrictStr
 
@@ -53,14 +53,14 @@ class PrivilegesCommand(Command):
     """
 
     privileges_subcommand: str
-    action: str
-    catalog_name: str
-    catalog_role_name: str
-    namespace: List[StrictStr]
-    view: str
-    table: str
-    privilege: str
-    cascade: bool
+    action: Optional[str] = None
+    catalog_name: Optional[str] = None
+    catalog_role_name: Optional[str] = None
+    namespace: Optional[List[StrictStr]] = None
+    view: Optional[str] = None
+    table: Optional[str] = None
+    privilege: Optional[str] = None
+    cascade: bool = False
 
     def validate(self) -> None:
         if not self.catalog_name:
@@ -71,6 +71,12 @@ class PrivilegesCommand(Command):
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG_ROLE)}"
             )
+
+        if self.privileges_subcommand != Subcommands.LIST:
+            if not self.privilege:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.PRIVILEGE)}"
+                )
 
         if not self.privileges_subcommand:
             raise Exception("A subcommand must be provided")
@@ -100,36 +106,41 @@ class PrivilegesCommand(Command):
                 raise Exception(f"Invalid view privilege: {self.privilege}")
 
     def execute(self, api: PolarisDefaultApi) -> None:
+        catalog_name = cast(str, self.catalog_name)
+        role_name = cast(str, self.catalog_role_name)
+        namespace = cast(List[str], self.namespace)
+
         if self.privileges_subcommand == Subcommands.LIST:
             for grant in api.list_grants_for_catalog_role(
-                self.catalog_name, self.catalog_role_name
+                catalog_name, role_name
             ).grants:
                 print(grant.to_json())
         else:
+            privilege_name = cast(str, self.privilege)
             grant = None
             if self.privileges_subcommand == Subcommands.CATALOG:
                 grant = CatalogGrant(
-                    type=Subcommands.CATALOG, privilege=CatalogPrivilege(self.privilege)
+                    type=Subcommands.CATALOG, privilege=CatalogPrivilege(privilege_name)
                 )
             elif self.privileges_subcommand == Subcommands.NAMESPACE:
                 grant = NamespaceGrant(
                     type=Subcommands.NAMESPACE,
-                    namespace=self.namespace,
-                    privilege=NamespacePrivilege(self.privilege),
+                    namespace=namespace,
+                    privilege=NamespacePrivilege(privilege_name),
                 )
             elif self.privileges_subcommand == Subcommands.TABLE:
                 grant = TableGrant(
                     type=Subcommands.TABLE,
-                    namespace=self.namespace,
+                    namespace=namespace,
                     table_name=self.table,
-                    privilege=TablePrivilege(self.privilege),
+                    privilege=TablePrivilege(privilege_name),
                 )
             elif self.privileges_subcommand == Subcommands.VIEW:
                 grant = ViewGrant(
                     type=Subcommands.VIEW,
-                    namespace=self.namespace,
+                    namespace=namespace,
                     view_name=self.view,
-                    privilege=ViewPrivilege(self.privilege),
+                    privilege=ViewPrivilege(privilege_name),
                 )
 
             if not grant:
@@ -138,13 +149,11 @@ class PrivilegesCommand(Command):
                 )
             elif self.action == Actions.GRANT:
                 request = AddGrantRequest(grant=grant)
-                api.add_grant_to_catalog_role(
-                    self.catalog_name, self.catalog_role_name, request
-                )
+                api.add_grant_to_catalog_role(catalog_name, role_name, request)
             elif self.action == Actions.REVOKE:
                 request = RevokeGrantRequest(grant=grant)
                 api.revoke_grant_from_catalog_role(
-                    self.catalog_name, self.catalog_role_name, self.cascade, request
+                    catalog_name, role_name, self.cascade, request
                 )
             else:
                 raise Exception(f"{self.action} is not supported in the CLI")

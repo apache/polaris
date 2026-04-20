@@ -19,8 +19,9 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -64,7 +65,10 @@ public interface AuthorizationRequest {
   @Nonnull
   @Value.Derived
   default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream().map(AuthorizationTargetBinding::getTarget).toList();
+    return getTargetBindings().stream()
+        .map(AuthorizationTargetBinding::getTarget)
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   /**
@@ -75,18 +79,36 @@ public interface AuthorizationRequest {
   @Nonnull
   @Value.Derived
   default List<PolarisSecurable> getSecondaries() {
-    List<PolarisSecurable> secondaries = new ArrayList<>();
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getSecondary() != null) {
-        secondaries.add(targetBinding.getSecondary());
-      }
-    }
-    return secondaries;
+    return getTargetBindings().stream()
+        .map(AuthorizationTargetBinding::getSecondary)
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  /**
+   * Returns a stable debug string for authorization messages.
+   *
+   * <p>Includes the operation, principal name, formatted targets, and formatted secondaries.
+   */
+  @Nonnull
+  default String formatForAuthorizationMessage() {
+    return String.format(
+        "operation=%s principal=%s targets=%s secondaries=%s",
+        getOperation(),
+        getPrincipal().getName(),
+        formatSecurables(getTargets()),
+        formatSecurables(getSecondaries()));
+  }
+
+  private static String formatSecurables(List<PolarisSecurable> securables) {
+    return securables.stream()
+        .map(PolarisSecurable::formatForAuthorizationMessage)
+        .collect(Collectors.joining(", ", "[", "]"));
   }
 
   default boolean hasSecurableType(PolarisEntityType... types) {
     for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (containsType(targetBinding.getTarget(), types)) {
+      if (targetBinding.getTarget() != null && containsType(targetBinding.getTarget(), types)) {
         return true;
       }
       if (targetBinding.getSecondary() != null

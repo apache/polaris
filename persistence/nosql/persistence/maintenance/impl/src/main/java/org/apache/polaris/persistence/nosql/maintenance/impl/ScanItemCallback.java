@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.maintenance.impl;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 @FunctionalInterface
 interface ScanItemCallback<I> {
-  void itemOutcome(@Nonnull String realm, @Nonnull I id, @Nonnull ScanItemOutcome outcome);
+  void itemOutcome(@NonNull String realm, @NonNull I id, @NonNull ScanItemOutcome outcome);
 }

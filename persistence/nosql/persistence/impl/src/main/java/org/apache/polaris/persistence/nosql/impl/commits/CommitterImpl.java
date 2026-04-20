@@ -22,8 +22,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -45,6 +43,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.impl.commits.retry.RetryLoop;
 import org.apache.polaris.persistence.nosql.impl.commits.retry.RetryStatsConsumer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,7 +161,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     }
 
     @Override
-    public Optional<REF_OBJ> noCommit(@Nonnull RESULT result) {
+    public Optional<REF_OBJ> noCommit(@NonNull RESULT result) {
       noCommit = true;
       this.result = result;
       return Optional.empty();
@@ -183,7 +183,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
                 new DelegatingPersistence(persistence) {
                   @Nullable
                   @Override
-                  public <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+                  public <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz) {
                     T obj = getWrittenById(id, clazz);
                     if (obj == null) {
                       obj = persistence.fetch(id, clazz);
@@ -194,10 +194,10 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
                     return obj;
                   }
 
-                  @Nonnull
+                  @NonNull
                   @Override
                   public <T extends Obj> T[] fetchMany(
-                      @Nonnull Class<T> clazz, @Nonnull ObjRef... ids) {
+                      @NonNull Class<T> clazz, @NonNull ObjRef... ids) {
                     @SuppressWarnings("unchecked")
                     var r = (T[]) Array.newInstance(clazz, ids.length);
                     var persistenceIds = Arrays.copyOf(ids, ids.length);
@@ -236,7 +236,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
 
     @Override
     public <B extends BaseCommitObj.Builder<REF_OBJ, B>> Optional<REF_OBJ> commitResult(
-        @Nonnull RESULT result, @Nonnull B refObjBuilder, @Nonnull Optional<REF_OBJ> refObj) {
+        @NonNull RESULT result, @NonNull B refObjBuilder, @NonNull Optional<REF_OBJ> refObj) {
       long[] tail;
       if (refObj.isPresent()) {
         var r = refObj.get();
@@ -261,7 +261,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     }
 
     @Override
-    public Obj getWrittenByKey(@Nonnull Object key) {
+    public Obj getWrittenByKey(@NonNull Object key) {
       return objs.get(key);
     }
 
@@ -274,7 +274,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
 
     @Override
     public <O extends Obj> O writeIfNew(
-        @Nonnull Object key, @Nonnull O obj, @Nonnull Class<O> type) {
+        @NonNull Object key, @NonNull O obj, @NonNull Class<O> type) {
       var objId = objRef(obj);
       checkState(
           !mustNotDelete.contains(objId),
@@ -297,7 +297,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     }
 
     @Override
-    public void writeIntent(@Nonnull Object key, @Nonnull Obj obj) {
+    public void writeIntent(@NonNull Object key, @NonNull Obj obj) {
       var objId = objRef(obj);
       checkState(
           !mustNotDelete.contains(objId),
@@ -318,7 +318,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
 
     @Override
     public <O extends Obj> O writeOrReplace(
-        @Nonnull Object key, @Nonnull O obj, @Nonnull Class<O> type) {
+        @NonNull Object key, @NonNull O obj, @NonNull Class<O> type) {
       var objId = objRef(obj);
       LOGGER.debug("writeOrReplace '{}' {}", key, objId);
       checkState(

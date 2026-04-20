@@ -18,23 +18,24 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** A resource binding containing a primary target and optional secondary. */
 @PolarisImmutable
 public interface AuthorizationTargetBinding {
   static AuthorizationTargetBinding of(
-      @Nonnull PolarisSecurable target, @Nullable PolarisSecurable secondary) {
+      @Nullable PolarisSecurable target, @Nullable PolarisSecurable secondary) {
     return ImmutableAuthorizationTargetBinding.builder()
         .target(target)
         .secondary(secondary)
         .build();
   }
 
-  /** Returns the primary target securable for the binding. */
-  @Nonnull
+  /** Returns the primary target securable for the binding, if any. */
+  @Nullable
   PolarisSecurable getTarget();
 
   /**
@@ -53,4 +54,11 @@ public interface AuthorizationTargetBinding {
    */
   @Nullable
   PolarisSecurable getSecondary();
+
+  @Value.Check
+  default void validate() {
+    Preconditions.checkState(
+        getTarget() != null || getSecondary() != null,
+        "AuthorizationTargetBinding must contain a target or secondary");
+  }
 }
