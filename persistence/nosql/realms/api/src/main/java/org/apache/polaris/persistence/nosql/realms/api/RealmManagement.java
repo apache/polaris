@@ -19,9 +19,9 @@
 package org.apache.polaris.persistence.nosql.realms.api;
 
 import com.google.errorprone.annotations.MustBeClosed;
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Low-level realm management functionality.
@@ -47,11 +47,10 @@ public interface RealmManagement {
    * @return the persisted state of the realm definition
    * @throws RealmAlreadyExistsException if a realm with the given ID already exists
    */
-  @Nonnull
-  RealmDefinition create(@Nonnull String realmId);
+  @NonNull RealmDefinition create(@NonNull String realmId);
 
   /** Returns a stream of all realm definitions. The returned stream must be closed. */
-  @Nonnull
+  @NonNull
   @MustBeClosed
   Stream<RealmDefinition> list();
 
@@ -60,8 +59,7 @@ public interface RealmManagement {
    *
    * @return the realm definition if it exists.
    */
-  @Nonnull
-  Optional<RealmDefinition> get(@Nonnull String realmId);
+  @NonNull Optional<RealmDefinition> get(@NonNull String realmId);
 
   /**
    * Updates a realm definition to {@code update}, if the persisted state matches the {@code
@@ -78,8 +76,8 @@ public interface RealmManagement {
    * @throws RealmExpectedStateMismatchException if the expected state does not match
    * @throws IllegalArgumentException if the transition is not valid.
    */
-  @Nonnull
-  RealmDefinition update(@Nonnull RealmDefinition expected, @Nonnull RealmDefinition update);
+  @NonNull RealmDefinition update(
+      @NonNull RealmDefinition expected, @NonNull RealmDefinition update);
 
   /**
    * Deletes the given realm.
@@ -90,5 +88,5 @@ public interface RealmManagement {
    * @throws RealmNotFoundException if a realm with the given ID does not exist
    * @throws RealmExpectedStateMismatchException if the expected state does not match
    */
-  void delete(@Nonnull RealmDefinition expected);
+  void delete(@NonNull RealmDefinition expected);
 }

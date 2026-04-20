@@ -28,14 +28,14 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Describes a reference to an object.
@@ -56,8 +56,8 @@ public interface ObjRef {
         }
 
         @Override
-        @Nonnull
-        public ByteBuffer serialize(@Nullable ObjRef value, @Nonnull ByteBuffer target) {
+        @NonNull
+        public ByteBuffer serialize(@Nullable ObjRef value, @NonNull ByteBuffer target) {
           if (value == null) {
             return serializeNullToByteBuffer(target);
           }
@@ -66,33 +66,33 @@ public interface ObjRef {
 
         @Override
         @Nullable
-        public ObjRef deserialize(@Nonnull ByteBuffer buffer) {
+        public ObjRef deserialize(@NonNull ByteBuffer buffer) {
           return fromByteBuffer(buffer);
         }
 
         @Override
-        public void skip(@Nonnull ByteBuffer buffer) {
+        public void skip(@NonNull ByteBuffer buffer) {
           skipObjId(buffer);
         }
       };
 
-  static ObjRef objRef(@Nonnull String type, long id, int partNum) {
+  static ObjRef objRef(@NonNull String type, long id, int partNum) {
     return ImmutableObjRef.of(type, id, partNum);
   }
 
-  static ObjRef objRef(@Nonnull ObjType type, long id, int partNum) {
+  static ObjRef objRef(@NonNull ObjType type, long id, int partNum) {
     return objRef(type.id(), id, partNum);
   }
 
-  static ObjRef objRef(@Nonnull String type, long id) {
+  static ObjRef objRef(@NonNull String type, long id) {
     return objRef(type, id, 0);
   }
 
-  static ObjRef objRef(@Nonnull ObjType type, long id) {
+  static ObjRef objRef(@NonNull ObjType type, long id) {
     return objRef(type.id(), id);
   }
 
-  static ObjRef objRef(@Nonnull Obj obj) {
+  static ObjRef objRef(@NonNull Obj obj) {
     return objRef(obj.type(), obj.id(), obj.numParts());
   }
 
@@ -144,7 +144,7 @@ public interface ObjRef {
     return ObjRefSerialization.serializeAsBytes(type(), id(), numParts() - 1);
   }
 
-  static ByteBuffer skipObjId(@Nonnull ByteBuffer bytes) {
+  static ByteBuffer skipObjId(@NonNull ByteBuffer bytes) {
     return ObjRefSerialization.skipId(bytes);
   }
 

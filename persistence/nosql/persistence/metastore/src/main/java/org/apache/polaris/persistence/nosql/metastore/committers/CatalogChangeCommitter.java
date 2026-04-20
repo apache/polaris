@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.committers;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
@@ -27,16 +26,16 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet;
 import org.apache.polaris.persistence.nosql.coretypes.changes.Change;
+import org.jspecify.annotations.NonNull;
 
 @FunctionalInterface
 public interface CatalogChangeCommitter<RESULT> {
-  @Nonnull
-  ChangeResult<RESULT> change(
-      @Nonnull CommitterState<CatalogStateObj, RESULT> state,
-      @Nonnull CatalogStateObj.Builder ref,
-      @Nonnull UpdatableIndex<ObjRef> byName,
-      @Nonnull UpdatableIndex<IndexKey> byId,
-      @Nonnull UpdatableIndex<Change> changes,
-      @Nonnull UpdatableIndex<EntityIdSet> locations)
+  @NonNull ChangeResult<RESULT> change(
+      @NonNull CommitterState<CatalogStateObj, RESULT> state,
+      CatalogStateObj.@NonNull Builder ref,
+      @NonNull UpdatableIndex<ObjRef> byName,
+      @NonNull UpdatableIndex<IndexKey> byId,
+      @NonNull UpdatableIndex<Change> changes,
+      @NonNull UpdatableIndex<EntityIdSet> locations)
       throws CommitException;
 }

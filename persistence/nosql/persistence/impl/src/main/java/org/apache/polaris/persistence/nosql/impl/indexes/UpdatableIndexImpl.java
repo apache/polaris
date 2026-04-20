@@ -29,8 +29,6 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.
 import static org.apache.polaris.persistence.nosql.impl.indexes.IndexesInternal.newStoreIndex;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -46,6 +44,8 @@ import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,11 +61,11 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   UpdatableIndexImpl(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexSpi<V> embedded,
-      @Nonnull IndexSpi<V> reference,
-      @Nonnull PersistenceParams params,
-      @Nonnull LongSupplier idGenerator,
-      @Nonnull IndexValueSerializer<V> serializer) {
+      @NonNull IndexSpi<V> embedded,
+      @NonNull IndexSpi<V> reference,
+      @NonNull PersistenceParams params,
+      @NonNull LongSupplier idGenerator,
+      @NonNull IndexValueSerializer<V> serializer) {
     super(reference, embedded);
     this.indexContainer = indexContainer;
     this.params = params;
@@ -75,7 +75,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Override
   public IndexContainer<V> toIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj) {
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj) {
     checkNotFinalized();
     finalized = true;
 
@@ -99,7 +99,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   @Override
   public Optional<IndexContainer<V>> toOptionalIndexed(
-      @Nonnull String prefix, @Nonnull BiConsumer<String, ? super Obj> persistObj) {
+      @NonNull String prefix, @NonNull BiConsumer<String, ? super Obj> persistObj) {
     var indexContainer = toIndexed(prefix, persistObj);
     return indexContainer.embedded().remaining() == 0 && indexContainer.stripes().isEmpty()
         ? Optional.empty()
@@ -127,7 +127,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
   private void spillOutEmbedded(
       String prefix,
-      @Nonnull BiConsumer<String, ? super Obj> persistObj,
+      @NonNull BiConsumer<String, ? super Obj> persistObj,
       ImmutableIndexContainer.Builder<V> indexedBuilder) {
     var mutableReference = reference.asMutableIndex();
 
@@ -228,7 +228,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // Mutators
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     checkNotFinalized();
     var added = embedded.add(element);
     if (added) {
@@ -238,7 +238,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     checkNotFinalized();
     var updExisting = embedded.getElement(key);
     if (updExisting != null && updExisting.valueNullable() == null) {
@@ -266,19 +266,19 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   // readers
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     checkNotFinalized();
     return super.containsElement(key);
   }
 
   @Nullable
   @Override
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     checkNotFinalized();
     return super.getElement(key);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ByteBuffer serialize() {
     throw unsupported();
@@ -313,7 +313,7 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     return new UnsupportedOperationException("Updatable indexes do not support this operation");
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {

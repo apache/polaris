@@ -124,8 +124,8 @@ class ProfilesCommand(Command):
                 input(f"Polaris Client Secret [{current_client_secret}]: ")
                 or current_client_secret
             )
-            host = input(f"Polaris Client ID [{current_host}]: ") or current_host
-            port = input(f"Polaris Client Secret [{current_port}]: ") or current_port
+            host = input(f"Polaris Host [{current_host}]: ") or current_host
+            port = input(f"Polaris Port [{current_port}]: ") or current_port
             realm = input(f"Polaris Context Realm [{current_realm}]: ") or current_realm
             header = (
                 input(f"Polaris Context Header Name [{current_header}]: ")

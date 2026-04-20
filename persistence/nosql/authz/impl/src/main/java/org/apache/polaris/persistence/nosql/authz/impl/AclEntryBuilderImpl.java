@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import org.apache.polaris.persistence.nosql.authz.api.AclEntry;
 import org.apache.polaris.persistence.nosql.authz.api.ImmutableAclEntry;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
+import org.jspecify.annotations.NonNull;
 
 final class AclEntryBuilderImpl implements AclEntry.AclEntryBuilder {
   private final PrivilegeSet.PrivilegeSetBuilder granted;
@@ -41,97 +41,97 @@ final class AclEntryBuilderImpl implements AclEntry.AclEntryBuilder {
   }
 
   @Override
-  public AclEntry.AclEntryBuilder grant(@Nonnull Privilege privilege) {
+  public AclEntry.AclEntryBuilder grant(@NonNull Privilege privilege) {
     this.granted.addPrivilege(privilege);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder grant(@Nonnull Privilege... privileges) {
+  public AclEntry.AclEntryBuilder grant(@NonNull Privilege... privileges) {
     this.granted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder grant(@Nonnull Collection<? extends Privilege> privileges) {
+  public AclEntry.AclEntryBuilder grant(@NonNull Collection<? extends Privilege> privileges) {
     this.granted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder grant(@Nonnull PrivilegeSet privileges) {
+  public AclEntry.AclEntryBuilder grant(@NonNull PrivilegeSet privileges) {
     this.granted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder revoke(@Nonnull Privilege privilege) {
+  public AclEntry.AclEntryBuilder revoke(@NonNull Privilege privilege) {
     this.granted.removePrivilege(privilege);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder revoke(@Nonnull Privilege... privileges) {
+  public AclEntry.AclEntryBuilder revoke(@NonNull Privilege... privileges) {
     this.granted.removePrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder revoke(@Nonnull Collection<? extends Privilege> privileges) {
+  public AclEntry.AclEntryBuilder revoke(@NonNull Collection<? extends Privilege> privileges) {
     this.granted.removePrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder revoke(@Nonnull PrivilegeSet privileges) {
+  public AclEntry.AclEntryBuilder revoke(@NonNull PrivilegeSet privileges) {
     this.granted.removePrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder restrict(@Nonnull Privilege privilege) {
+  public AclEntry.AclEntryBuilder restrict(@NonNull Privilege privilege) {
     this.restricted.addPrivilege(privilege);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder restrict(@Nonnull Privilege... privileges) {
+  public AclEntry.AclEntryBuilder restrict(@NonNull Privilege... privileges) {
     this.restricted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder restrict(@Nonnull Collection<? extends Privilege> privileges) {
+  public AclEntry.AclEntryBuilder restrict(@NonNull Collection<? extends Privilege> privileges) {
     this.restricted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder restrict(@Nonnull PrivilegeSet privileges) {
+  public AclEntry.AclEntryBuilder restrict(@NonNull PrivilegeSet privileges) {
     this.restricted.addPrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder unrestrict(@Nonnull Privilege privilege) {
+  public AclEntry.AclEntryBuilder unrestrict(@NonNull Privilege privilege) {
     this.restricted.removePrivilege(privilege);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder unrestrict(@Nonnull Privilege... privileges) {
+  public AclEntry.AclEntryBuilder unrestrict(@NonNull Privilege... privileges) {
     this.restricted.removePrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder unrestrict(@Nonnull Collection<? extends Privilege> privileges) {
+  public AclEntry.AclEntryBuilder unrestrict(@NonNull Collection<? extends Privilege> privileges) {
     this.restricted.removePrivileges(privileges);
     return this;
   }
 
   @Override
-  public AclEntry.AclEntryBuilder unrestrict(@Nonnull PrivilegeSet privileges) {
+  public AclEntry.AclEntryBuilder unrestrict(@NonNull PrivilegeSet privileges) {
     this.restricted.removePrivileges(privileges);
     return this;
   }

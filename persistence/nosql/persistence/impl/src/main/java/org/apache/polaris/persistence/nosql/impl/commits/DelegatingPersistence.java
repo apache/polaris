@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.persistence.nosql.impl.commits;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -42,6 +40,8 @@ import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 abstract class DelegatingPersistence implements Persistence {
   protected final Persistence delegate;
@@ -50,15 +50,15 @@ abstract class DelegatingPersistence implements Persistence {
     this.delegate = persistence;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference createReference(@Nonnull String name, @Nonnull Optional<ObjRef> pointer)
+  public Reference createReference(@NonNull String name, @NonNull Optional<ObjRef> pointer)
       throws ReferenceAlreadyExistsException {
     return delegate.createReference(name, pointer);
   }
 
   @Override
-  public void createReferenceSilent(@Nonnull String name) {
+  public void createReferenceSilent(@NonNull String name) {
     delegate.createReferenceSilent(name);
   }
 
@@ -67,88 +67,88 @@ abstract class DelegatingPersistence implements Persistence {
     delegate.createReferencesSilent(referenceNames);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Reference fetchOrCreateReference(
-      @Nonnull String name, @Nonnull Supplier<Optional<ObjRef>> pointerForCreate) {
+      @NonNull String name, @NonNull Supplier<Optional<ObjRef>> pointerForCreate) {
     return delegate.fetchOrCreateReference(name, pointerForCreate);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Optional<Reference> updateReferencePointer(
-      @Nonnull Reference reference, @Nonnull ObjRef newPointer) throws ReferenceNotFoundException {
+      @NonNull Reference reference, @NonNull ObjRef newPointer) throws ReferenceNotFoundException {
     return delegate.updateReferencePointer(reference, newPointer);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference fetchReference(@Nonnull String name) throws ReferenceNotFoundException {
+  public Reference fetchReference(@NonNull String name) throws ReferenceNotFoundException {
     return delegate.fetchReference(name);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference fetchReferenceForUpdate(@Nonnull String name) throws ReferenceNotFoundException {
+  public Reference fetchReferenceForUpdate(@NonNull String name) throws ReferenceNotFoundException {
     return delegate.fetchReferenceForUpdate(name);
   }
 
   @Override
   public <T extends Obj> Optional<T> fetchReferenceHead(
-      @Nonnull String name, @Nonnull Class<T> clazz) throws ReferenceNotFoundException {
+      @NonNull String name, @NonNull Class<T> clazz) throws ReferenceNotFoundException {
     return delegate.fetchReferenceHead(name, clazz);
   }
 
   @Nullable
   @Override
-  public <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     return delegate.fetch(id, clazz);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] fetchMany(@Nonnull Class<T> clazz, @Nonnull ObjRef... ids) {
+  public <T extends Obj> T[] fetchMany(@NonNull Class<T> clazz, @NonNull ObjRef... ids) {
     return delegate.fetchMany(clazz, ids);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T write(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T write(@NonNull T obj, @NonNull Class<T> clazz) {
     return delegate.write(obj, clazz);
   }
 
   @SuppressWarnings("unchecked")
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] writeMany(@Nonnull Class<T> clazz, @Nonnull T... objs) {
+  public <T extends Obj> T[] writeMany(@NonNull Class<T> clazz, @NonNull T... objs) {
     return delegate.writeMany(clazz, objs);
   }
 
   @Override
-  public void delete(@Nonnull ObjRef id) {
+  public void delete(@NonNull ObjRef id) {
     delegate.delete(id);
   }
 
   @Override
-  public void deleteMany(@Nonnull ObjRef... ids) {
+  public void deleteMany(@NonNull ObjRef... ids) {
     delegate.deleteMany(ids);
   }
 
   @Nullable
   @Override
-  public <T extends Obj> T conditionalInsert(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T conditionalInsert(@NonNull T obj, @NonNull Class<T> clazz) {
     return delegate.conditionalInsert(obj, clazz);
   }
 
   @Nullable
   @Override
   public <T extends Obj> T conditionalUpdate(
-      @Nonnull T expected, @Nonnull T update, @Nonnull Class<T> clazz) {
+      @NonNull T expected, @NonNull T update, @NonNull Class<T> clazz) {
     return delegate.conditionalUpdate(expected, update, clazz);
   }
 
   @Override
-  public <T extends Obj> boolean conditionalDelete(@Nonnull T expected, Class<T> clazz) {
+  public <T extends Obj> boolean conditionalDelete(@NonNull T expected, Class<T> clazz) {
     return delegate.conditionalDelete(expected, clazz);
   }
 
@@ -174,7 +174,7 @@ abstract class DelegatingPersistence implements Persistence {
 
   @Nullable
   @Override
-  public <T extends Obj> T getImmediate(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T getImmediate(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     return delegate.getImmediate(id, clazz);
   }
 
@@ -185,29 +185,29 @@ abstract class DelegatingPersistence implements Persistence {
 
   @Override
   public <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> createCommitter(
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType) {
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType) {
     return delegate.createCommitter(refName, referencedObjType, resultType);
   }
 
   @Override
   public <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return delegate.buildReadIndex(indexContainer, indexValueSerializer);
   }
 
   @Override
   public <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return delegate.buildWriteIndex(indexContainer, indexValueSerializer);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Duration objAge(@Nonnull Obj obj) {
+  public Duration objAge(@NonNull Obj obj) {
     return delegate.objAge(obj);
   }
 

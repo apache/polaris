@@ -20,11 +20,11 @@ package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import static java.util.Collections.singletonList;
 
-import jakarta.annotation.Nonnull;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Combines two {@link Index store indexes}, where one index serves as the "reference" and the other
@@ -64,19 +64,19 @@ final class ReadOnlyLayeredIndexImpl<V> extends AbstractLayeredIndexImpl<V> {
     throw unsupported();
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public ByteBuffer serialize() {
     throw unsupported();
   }
 
   @Override
-  public boolean add(@Nonnull InternalIndexElement<V> element) {
+  public boolean add(@NonNull InternalIndexElement<V> element) {
     throw unsupported();
   }
 
   @Override
-  public boolean remove(@Nonnull IndexKey key) {
+  public boolean remove(@NonNull IndexKey key) {
     throw unsupported();
   }
 

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.authz.api;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 public interface PrivilegeCheck {
   /**
@@ -48,5 +48,5 @@ public interface PrivilegeCheck {
    * @param aclChain Represents the chain of ACLs to check. The ACL for the entity must be the first
    *     one in the chain.
    */
-  PrivilegeSet effectivePrivilegeSet(@Nonnull AclChain aclChain);
+  PrivilegeSet effectivePrivilegeSet(@NonNull AclChain aclChain);
 }

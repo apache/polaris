@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Iterator;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * General interface for all store indexes.
@@ -58,8 +58,7 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @param key key to retrieve the value for
    * @return value or {@code null}, if the key does not exist
    */
-  @Nullable
-  V get(@Nonnull IndexKey key);
+  @Nullable V get(@NonNull IndexKey key);
 
   /**
    * Represents an element in an index. Both the {@link #key()} and {@link #value()} are guaranteed
@@ -68,13 +67,11 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @param <V> element value type
    */
   interface Element<V> {
-    @Nonnull
-    IndexKey key();
+    @NonNull IndexKey key();
 
-    @Nonnull
-    V value();
+    @NonNull V value();
 
-    static <V> Element<V> of(@Nonnull IndexKey key, @Nonnull V value) {
+    static <V> Element<V> of(@NonNull IndexKey key, @NonNull V value) {
       return IndexElem.of(key, value);
     }
   }
@@ -87,7 +84,7 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @see #iterator()
    */
   @Override
-  @Nonnull
+  @NonNull
   default Iterator<Element<V>> iterator() {
     return iterator(null, null, false);
   }
@@ -114,8 +111,7 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @see #reverseIterator()
    * @see #iterator(IndexKey, IndexKey, boolean)
    */
-  @Nonnull
-  Iterator<Element<V>> iterator(
+  @NonNull Iterator<Element<V>> iterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch);
 
   /**
@@ -126,7 +122,7 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @see #iterator(IndexKey, IndexKey, boolean)
    * @see #iterator()
    */
-  @Nonnull
+  @NonNull
   default Iterator<Element<V>> reverseIterator() {
     return reverseIterator(null, null, false);
   }
@@ -155,7 +151,6 @@ public interface Index<V> extends Iterable<Index.Element<V>> {
    * @see #iterator(IndexKey, IndexKey, boolean)
    * @see #iterator()
    */
-  @Nonnull
-  Iterator<Element<V>> reverseIterator(
+  @NonNull Iterator<Element<V>> reverseIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch);
 }

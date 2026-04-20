@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.api.index;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
 
 /** Represents an {@link Index} that can be modified using put and remove functions. */
 public interface ModifiableIndex<V> extends Index<V> {
@@ -31,7 +31,7 @@ public interface ModifiableIndex<V> extends Index<V> {
    * @return {@code true} if the {@link IndexKey} didn't exist or {@code false} if the key was
    *     already present and the operation only updated the {@link ObjRef}.
    */
-  boolean put(@Nonnull IndexKey key, @Nonnull V value);
+  boolean put(@NonNull IndexKey key, @NonNull V value);
 
   /**
    * Removes the index element for the given key.
@@ -39,5 +39,5 @@ public interface ModifiableIndex<V> extends Index<V> {
    * @return {@code true} if the {@link IndexKey} did exist and was removed, {@code false}
    *     otherwise.
    */
-  boolean remove(@Nonnull IndexKey key);
+  boolean remove(@NonNull IndexKey key);
 }
