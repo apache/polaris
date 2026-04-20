@@ -41,7 +41,7 @@ public interface AnotherTestObj extends Obj {
 
   @Nullable String text();
 
-  byte @Nullable [] binary();
+  @Nullable byte[] binary();
 
   @Nullable Number number();
 

@@ -43,7 +43,7 @@ public interface VersionedTestObj extends Obj {
 
   @Nullable String someValue();
 
-  byte @Nullable [] binary();
+  @Nullable byte[] binary();
 
   final class VersionedTestObjType extends AbstractObjType<VersionedTestObj> {
     public VersionedTestObjType() {

@@ -41,7 +41,7 @@ public interface CommitTestObj extends BaseCommitObj {
 
   @Nullable String text();
 
-  byte @Nullable [] binary();
+  @Nullable byte[] binary();
 
   @Nullable Number number();
 
