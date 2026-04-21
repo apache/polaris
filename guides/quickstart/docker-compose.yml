@@ -136,7 +136,8 @@ services:
               "allowedLocations": ["s3://bucket123"],
               "endpoint": "http://localhost:9000",
               "endpointInternal": "http://rustfs:9000",
-              "pathStyleAccess": true
+              "pathStyleAccess": true,
+              "region": "us-west-2"
             }
           }
         }'
@@ -271,12 +272,12 @@ services:
         echo "    --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \\"
         echo "    --conf spark.sql.catalog.polaris.credential=$$USER_CLIENT_ID:$$USER_CLIENT_SECRET \\"
         echo "    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.endpoint=http://localhost:9000 \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.path-style-access=true \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.access-key-id=polaris_root \\"
-        echo "    --conf spark.sql.catalog.polaris.s3.secret-access-key=polaris_pass \\"
-        echo "    --conf spark.sql.catalog.polaris.client.region=irrelevant \\"
+        echo "    --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \\"
         echo "    --conf spark.sql.defaultCatalog=polaris"
+        echo ""
+        echo "Note: With credential vending enabled (X-Iceberg-Access-Delegation=vended-credentials),"
+        echo "      Polaris automatically provides temporary S3 credentials, endpoint, region, and"
+        echo "      other storage configuration. No explicit storage settings are needed."
         echo ""
         echo "To get started with REST API:"
         echo "  # Get a token"

@@ -103,7 +103,8 @@ services:
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
           "endpoint":"http://localhost:9000",
           "endpointInternal":"http://rustfs:9000",
-          "pathStyleAccess":true}' &&
+          "pathStyleAccess":true,
+          "region":"us-west-2"}' &&
         export STORAGE_LOCATION='s3://bucket123' &&
         /polaris/create-catalog.sh POLARIS $$TOKEN &&
         echo Extra grants... &&
