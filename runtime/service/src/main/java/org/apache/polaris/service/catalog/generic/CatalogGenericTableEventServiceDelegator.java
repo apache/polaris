@@ -33,6 +33,7 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventDispatcher;
+import org.apache.polaris.service.events.PolarisEventInterceptorManager;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
@@ -45,6 +46,7 @@ public class CatalogGenericTableEventServiceDelegator
 
   @Inject @Delegate GenericTableCatalogAdapter delegate;
   @Inject PolarisEventDispatcher polarisEventDispatcher;
+  @Inject PolarisEventInterceptorManager polarisEventInterceptorManager;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
 
@@ -98,18 +100,31 @@ public class CatalogGenericTableEventServiceDelegator
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
-    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_DROP_GENERIC_TABLE)) {
-      polarisEventDispatcher.dispatch(
+    boolean hasBeforeListeners =
+        polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_DROP_GENERIC_TABLE);
+    boolean hasInterceptors = polarisEventInterceptorManager.hasInterceptors();
+    if (hasBeforeListeners || hasInterceptors) {
+      PolarisEvent beforeEvent =
           new PolarisEvent(
               PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
               eventMetadataFactory.create(),
               new EventAttributeMap()
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE_NAME, namespace)
-                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
+                  .put(EventAttributes.GENERIC_TABLE_NAME, genericTable));
+
+      if (hasInterceptors) {
+        beforeEvent = polarisEventInterceptorManager.intercept(beforeEvent);
+      }
+
+      if (hasBeforeListeners) {
+        polarisEventDispatcher.dispatch(beforeEvent);
+      }
     }
+
     Response resp =
         delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
+
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_GENERIC_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
