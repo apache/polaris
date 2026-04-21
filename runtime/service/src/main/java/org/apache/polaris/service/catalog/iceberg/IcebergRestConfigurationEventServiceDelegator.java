@@ -60,18 +60,22 @@ public class IcebergRestConfigurationEventServiceDelegator
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_GET_CONFIG,
-            eventMetadataFactory.create(),
-            new EventAttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_GET_CONFIG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_GET_CONFIG,
+              eventMetadataFactory.create(),
+              new EventAttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
+    }
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
-    polarisEventDispatcher.dispatch(
-        new PolarisEvent(
-            PolarisEventType.AFTER_GET_CONFIG,
-            eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())));
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_GET_CONFIG)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_GET_CONFIG,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())));
+    }
     return resp;
   }
 }

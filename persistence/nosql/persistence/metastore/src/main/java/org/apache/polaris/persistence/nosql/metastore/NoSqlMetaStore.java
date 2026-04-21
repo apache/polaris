@@ -284,7 +284,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                     catalogAdminRole, effRole, PolarisPrivilege.CATALOG_ROLE_USAGE));
           }
 
-          persistGrantsOrRevokes(true, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
+          persistGrantsOrRevokes(
+              true, false, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
 
           byName.put(nameKey, objRef(catalogObj));
           byId.put(idKey, nameKey);
@@ -1136,13 +1137,26 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   LoadGrantsResult loadGrants(long catalogId, long id, int entityTypeCode, boolean onSecurable) {
+    PolarisEntityType entityType = PolarisEntityType.fromCode(entityTypeCode);
     LOGGER.debug(
         "loadGrants on {} for catalog:{}, id:{}, entityType:{}({})",
         onSecurable ? "securable" : "grantee",
         catalogId,
         id,
-        PolarisEntityType.fromCode(entityTypeCode),
+        entityType,
         entityTypeCode);
+
+    var anchorEntity = lookupEntity(catalogId, id, entityTypeCode);
+    if (anchorEntity == null) {
+      LOGGER.trace(
+          "Anchor entity for loadGrants does not exist, returning ENTITY_NOT_FOUND: catalog:{}, id:{}, entityType:{}({})",
+          catalogId,
+          id,
+          entityType,
+          entityTypeCode);
+      return new LoadGrantsResult(ENTITY_NOT_FOUND, null);
+    }
+
     var aclName = new GrantTriplet(true, catalogId, id, entityTypeCode).toRoleName();
 
     var collector = new GrantRecordsCollector();
@@ -1163,6 +1177,20 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               onSecurable
                   ? securableAndGrantee.granteeTypeCode()
                   : securableAndGrantee.securableTypeCode();
+
+          // Skip self-referencing entries where the target is the anchor entity itself.
+          // The bidirectional ACL model produces these when securable == grantee.
+          if (targetId == id && targetTypeCode == entityTypeCode) {
+            if (LOGGER.isTraceEnabled()) {
+              LOGGER.trace(
+                  "    Skipping self-referencing grant entry for catalog:{}, id:{}, entityType:{}({})",
+                  targetCatalogId,
+                  targetId,
+                  PolarisEntityType.fromCode(targetTypeCode),
+                  targetTypeCode);
+            }
+            return;
+          }
 
           var indexedAccess = memoizedIndexedAccess.indexedAccess(targetCatalogId, targetTypeCode);
           var entityOptional =
@@ -1189,10 +1217,11 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         collector.grantRecords.size(),
         catalogId,
         id,
-        PolarisEntityType.fromCode(entityTypeCode),
+        entityType,
         entityTypeCode);
 
-    return new LoadGrantsResult(1, collector.grantRecords, entities);
+    return new LoadGrantsResult(
+        anchorEntity.getGrantRecordsVersion(), collector.grantRecords, entities);
   }
 
   private List<PolarisGrantRecord> collectGrantRecords(
@@ -1203,17 +1232,35 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         catalogId,
         aclName,
         (securableAndGrantee, granted) -> {
-          var indexedAccess =
-              memoizedIndexedAccess.indexedAccess(
+          var securableExists =
+              entityExists(
                   securableAndGrantee.securableCatalogId(),
+                  securableAndGrantee.securableId(),
                   securableAndGrantee.securableTypeCode());
-          var existing = indexedAccess.nameKeyById(securableAndGrantee.securableId());
-          if (existing.isPresent()) {
-            collector.handle(securableAndGrantee, granted);
+          if (!securableExists) {
+            LOGGER.trace("Skipping stale grant record due to missing securable reference");
+            return;
           }
+
+          var granteeExists =
+              entityExists(
+                  securableAndGrantee.granteeCatalogId(),
+                  securableAndGrantee.granteeId(),
+                  securableAndGrantee.granteeTypeCode());
+          if (!granteeExists) {
+            LOGGER.trace("Skipping stale grant record due to missing grantee reference");
+            return;
+          }
+
+          collector.handle(securableAndGrantee, granted);
         },
         securablesIndex);
     return collector.grantRecords;
+  }
+
+  private boolean entityExists(long catalogId, long id, int typeCode) {
+    var indexedAccess = memoizedIndexedAccess.indexedAccess(catalogId, typeCode);
+    return indexedAccess.nameKeyById(id).isPresent();
   }
 
   private void collectGrantRecords(
@@ -1284,10 +1331,17 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     }
   }
 
-  boolean persistGrantsOrRevokes(boolean doGrant, SecurableGranteePrivilegeTuple... grants) {
+  boolean persistGrantsOrRevokes(
+      boolean doGrant, boolean validateEntityReferences, SecurableGranteePrivilegeTuple... grants) {
     LOGGER.debug("Persisting {} for '{}'", doGrant ? "grants" : "revokes", Arrays.asList(grants));
 
-    return new GrantsMutation(persistence, memoizedIndexedAccess, privileges, doGrant, grants)
+    return new GrantsMutation(
+            persistence,
+            memoizedIndexedAccess,
+            privileges,
+            doGrant,
+            validateEntityReferences,
+            grants)
         .apply();
   }
 

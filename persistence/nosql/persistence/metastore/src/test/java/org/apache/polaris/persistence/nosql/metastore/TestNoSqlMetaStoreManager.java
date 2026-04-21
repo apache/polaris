@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.metastore;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import io.smallrye.common.annotation.Identifier;
@@ -39,6 +40,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -47,6 +49,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -297,6 +300,154 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     // In NoSQL, this should return ENTITY_ALREADY_EXISTS instead of crashing
     assertThat(tableResult.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS);
+  }
+
+  @Test
+  public void testGrantAndRevokeUsageRevalidateGranteeExistenceAndType() {
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "grantRevalidateCatalog");
+    CreateCatalogResult catalogCreated = metaStore.createCatalog(callContext, catalog, List.of());
+    assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    EntityResult catalogAdminRoleResult =
+        metaStore.readEntityByName(
+            callContext,
+            List.of(catalog),
+            PolarisEntityType.CATALOG_ROLE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PolarisEntityConstants.getNameOfCatalogAdminRole());
+    assertThat(catalogAdminRoleResult.isSuccess()).isTrue();
+    PolarisBaseEntity catalogAdminRole = catalogAdminRoleResult.getEntity();
+    assertThat(catalogAdminRole).isNotNull();
+
+    PolarisBaseEntity principalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "grantRevalidatePrincipalRole");
+    EntityResult principalRoleCreate =
+        metaStore.createEntityIfNotExists(callContext, null, principalRole);
+    assertThat(principalRoleCreate.isSuccess()).isTrue();
+    PolarisBaseEntity createdPrincipalRole = principalRoleCreate.getEntity();
+    assertThat(createdPrincipalRole).isNotNull();
+    long principalRoleId = createdPrincipalRole.getId();
+
+    PolarisBaseEntity mismatchedTypeGrantee =
+        new PolarisBaseEntity.Builder(createdPrincipalRole)
+            .typeCode(PolarisEntityType.CATALOG_ROLE.getCode())
+            .build();
+
+    assertThat(
+            metaStore
+                .grantUsageOnRoleToGrantee(
+                    callContext, catalog, catalogAdminRole, mismatchedTypeGrantee)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    assertThat(
+            metaStore
+                .revokeUsageOnRoleFromGrantee(
+                    callContext, catalog, catalogAdminRole, mismatchedTypeGrantee)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+
+    assertThat(
+            metaStore
+                .dropEntityIfExists(callContext, null, createdPrincipalRole, null, false)
+                .isSuccess())
+        .isTrue();
+
+    assertThat(
+            metaStore
+                .grantUsageOnRoleToGrantee(
+                    callContext, catalog, catalogAdminRole, createdPrincipalRole)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+    assertThat(
+            metaStore
+                .revokeUsageOnRoleFromGrantee(
+                    callContext, catalog, catalogAdminRole, createdPrincipalRole)
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED);
+
+    LoadGrantsResult grantsOnCatalogRole =
+        metaStore.loadGrantsOnSecurable(callContext, catalogAdminRole);
+    assertThat(grantsOnCatalogRole.isSuccess()).isTrue();
+    assertThat(grantsOnCatalogRole.getGrantRecords())
+        .noneSatisfy(
+            grantRecord -> assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
+  }
+
+  @Test
+  public void testLoadGrantsReturnsEntityNotFoundForMissingAnchor() {
+    long missingId = metaStore.generateNewEntityId(callContext).getId();
+    PolarisBaseEntity missingPrincipalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            missingId,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "missingPrincipalRole");
+
+    LoadGrantsResult grantsToMissing =
+        metaStore.loadGrantsToGrantee(callContext, missingPrincipalRole);
+    assertThat(grantsToMissing.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+
+    LoadGrantsResult grantsOnMissing =
+        metaStore.loadGrantsOnSecurable(callContext, missingPrincipalRole);
+    assertThat(grantsOnMissing.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+  }
+
+  @Test
+  public void testLoadGrantsSkipsSelfReferencingEntries() {
+    PolarisBaseEntity principalRole =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "selfReferencingPrincipalRole");
+
+    EntityResult createResult = metaStore.createEntityIfNotExists(callContext, null, principalRole);
+    assertThat(createResult.isSuccess()).isTrue();
+    PolarisBaseEntity createdPrincipalRole = createResult.getEntity();
+    assertThat(createdPrincipalRole).isNotNull();
+
+    assertThat(
+            metaStore
+                .grantPrivilegeOnSecurableToRole(
+                    callContext,
+                    createdPrincipalRole,
+                    null,
+                    createdPrincipalRole,
+                    PolarisPrivilege.PRINCIPAL_ROLE_USAGE)
+                .isSuccess())
+        .isTrue();
+
+    assertThat(
+            List.of(
+                metaStore.loadGrantsOnSecurable(callContext, createdPrincipalRole),
+                metaStore.loadGrantsToGrantee(callContext, createdPrincipalRole)))
+        .extracting(
+            LoadGrantsResult::isSuccess,
+            LoadGrantsResult::getGrantRecords,
+            LoadGrantsResult::getEntities)
+        .containsExactly( //
+            tuple(true, List.of(), List.of()), //
+            tuple(true, List.of(), List.of()));
   }
 
   @Override
