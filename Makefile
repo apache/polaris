@@ -201,12 +201,12 @@ client-nightly-build: client-setup-env ## Build nightly version for publishing t
 client-rc-build: ## Build RC version for publishing to Test PyPI (requires RC_VERSION and RC_NUMBER)
 	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
 	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
-	@$(MAKE) client-build VERSION="$(RC_VERSION)rc$(RC_NUMBER)" FORMAT=wheel
+	@$(MAKE) client-build VERSION="$(RC_VERSION)rc$(RC_NUMBER)"
 
 .PHONY: client-release-build
 client-release-build: ## Build final release version for publishing to PyPI (requires RELEASE_VERSION)
 	@if [ -z "$(RELEASE_VERSION)" ]; then echo "ERROR: RELEASE_VERSION is not set"; exit 1; fi
-	@$(MAKE) client-build VERSION="$(RELEASE_VERSION)" FORMAT=wheel
+	@$(MAKE) client-build VERSION="$(RELEASE_VERSION)"
 
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code

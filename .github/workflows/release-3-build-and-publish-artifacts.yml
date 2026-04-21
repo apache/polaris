@@ -575,13 +575,14 @@ jobs:
         run: |
           make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
 
-      - name: Sign and checksum Python wheel
+      - name: Sign and checksum Python distributions
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          wheel_file=$(ls client/python/dist/*.whl)
-          calculate_sha512 "${wheel_file}"
-          exec_process gpg --armor --output "${wheel_file}.asc" --detach-sig "${wheel_file}"
+          for dist_file in client/python/dist/*.whl client/python/dist/*.tar.gz; do
+            calculate_sha512 "${dist_file}"
+            exec_process gpg --armor --output "${dist_file}.asc" --detach-sig "${dist_file}"
+          done
 
       - name: Publish Python client RC to Test PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
@@ -613,9 +614,7 @@ jobs:
           fi
 
           exec_process mkdir -p "${python_client_version_dir}"
-          exec_process cp client/python/dist/*.whl "${python_client_version_dir}/"
-          exec_process cp client/python/dist/*.whl.sha512 "${python_client_version_dir}/"
-          exec_process cp client/python/dist/*.whl.asc "${python_client_version_dir}/"
+          exec_process cp client/python/dist/* "${python_client_version_dir}/"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add --parents "python-client/${version_without_rc}"
