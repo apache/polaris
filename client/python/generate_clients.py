@@ -44,59 +44,18 @@ PACKAGE_NAME_POLARIS_CATALOG = (
 PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
 # Cleanup
-KEEP_TEST_FILES = [
-    Path("test/cli_test_utils.py"),
-    Path("test/test_catalog_roles_command.py"),
-    Path("test/test_catalogs_command.py"),
-    Path("test/test_find_command.py"),
-    Path("test/test_namespaces_command.py"),
-    Path("test/test_parser_basic.py"),
-    Path("test/test_policies_command.py"),
-    Path("test/test_principal_roles_command.py"),
-    Path("test/test_principals_command.py"),
-    Path("test/test_privileges_command.py"),
-    Path("test/test_profiles_command.py"),
-    Path("test/test_setup_command.py"),
-    Path("test/test_tables_command.py"),
-]
 EXCLUDE_PATHS = [
-    Path(".gitignore"),
-    Path(".openapi-generator"),
-    Path(".openapi-generator-ignore"),
-    Path(".pytest_cache"),
-    Path("test/test_cli_parsing.py"),
-    Path("__pycache__"),
-    Path("apache_polaris/__pycache__"),
     Path("apache_polaris/cli"),
-    Path("apache_polaris/sdk/__pycache__"),
-    Path("apache_polaris/sdk/catalog/__pycache__"),
-    Path("apache_polaris/sdk/catalog/models/__pycache__"),
-    Path("apache_polaris/sdk/catalog/api/__pycache__"),
-    Path("apache_polaris/sdk/management/__pycache__"),
-    Path("apache_polaris/sdk/management/models/__pycache__"),
-    Path("apache_polaris/sdk/management/api/__pycache__"),
     Path("integration_tests"),
-    Path(".github/workflows/python.yml"),
-    Path(".gitlab-ci.yml"),
+    Path("tests"),
     Path("pyproject.toml"),
     Path("requirements.txt"),
-    Path("test-requirements.txt"),
-    Path("setup.py"),
-    Path(".DS_Store"),
-    Path("Makefile"),
-    Path("poetry.lock"),
-    Path("uv.lock"),
     Path("docker-compose.yml"),
-    Path(".pre-commit-config.yaml"),
     Path("README.md"),
     Path("generate_clients.py"),
     Path("hatch_build.py"),
-    Path(".venv"),
-    Path("venv"),
-    Path("dist"),
     Path("templates"),
     Path("spec"),
-    Path("PKG-INFO"),
     Path("LICENSE"),
     Path("NOTICE"),
 ]
@@ -106,41 +65,10 @@ EXCLUDE_EXTENSIONS = [
     "keep",
     "gitignore",
     "pyc",
+    "lock",
 ]
 
 logger = logging.getLogger(__name__)
-
-
-def clean_old_tests() -> None:
-    logger.info("Deleting old tests...")
-    test_dir = CLIENT_DIR / "test"
-    if not test_dir.exists():
-        logger.info(f"Test directory {test_dir} does not exist, skipping test cleanup.")
-        return
-
-    for item in test_dir.rglob("*"):
-        if item.is_file():
-            # Check if the file should be kept relative to CLIENT_DIR
-            relative_path = item.relative_to(CLIENT_DIR)
-            if relative_path not in KEEP_TEST_FILES:
-                try:
-                    os.remove(item)
-                    logger.debug(f"{relative_path}: removed")
-                except OSError as e:
-                    logger.error(f"Error removing {relative_path}: {e}")
-            else:
-                logger.debug(f"{relative_path}: skipped")
-
-    init_py_to_delete = CLIENT_DIR / "test" / "__init__.py"
-    if init_py_to_delete.exists():
-        try:
-            os.remove(init_py_to_delete)
-            logger.debug(f"{init_py_to_delete.relative_to(CLIENT_DIR)}: removed")
-        except OSError as e:
-            logger.error(
-                f"Error removing {init_py_to_delete.relative_to(CLIENT_DIR)}: {e}"
-            )
-    logger.info("Old test deletion complete.")
 
 
 def generate_polaris_management_client() -> None:
@@ -219,66 +147,76 @@ def generate_iceberg_catalog_client() -> None:
     )
 
 
-def _prepend_header_to_file(file_path: Path, header_file_path: Path) -> None:
+def _prepend_header_to_file(file_path: Path, header_file_path: Path) -> bool:
     try:
         with open(header_file_path, "r") as hf:
             header_content = hf.read()
-        with open(file_path, "r+") as f:
+        with open(file_path, "r") as f:
             original_content = f.read()
-            f.seek(0)
+        if original_content.startswith(header_content):
+            return False
+        with open(file_path, "w") as f:
             f.write(header_content + original_content)
+        return True
     except IOError as e:
         logger.error(f"Error prepending header to {file_path}: {e}")
+        return False
 
 
 def prepend_licenses() -> None:
     logger.info("Re-applying license headers...")
 
-    # Combine all paths to exclude into one set.
-    all_excluded_paths = set(EXCLUDE_PATHS) | set(KEEP_TEST_FILES)
+    all_excluded_paths = set(EXCLUDE_PATHS)
+    tmp_dirs = {
+        "__pycache__",
+        "venv",
+        ".venv",
+        "build",
+        "dist",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+    }
 
-    for file_path in CLIENT_DIR.rglob("*"):
-        if not file_path.is_file():
-            continue
-
-        relative_file_path = file_path.relative_to(CLIENT_DIR)
-
-        # Determine file extension, handling dotfiles.
-        file_extension = ""
-        if (
-            relative_file_path.name.startswith(".")
-            and "." not in relative_file_path.name[1:]
-        ):
-            file_extension = relative_file_path.name.lstrip(".")
-        else:
-            file_extension = relative_file_path.suffix.lstrip(".")
-
-        if file_extension in EXCLUDE_EXTENSIONS:
-            logger.debug(f"{relative_file_path}: skipped (extension excluded)")
-            continue
-
-        # Check if the path should be excluded.
-        is_excluded = False
-        for excluded_path in all_excluded_paths:
-            if (
-                relative_file_path == excluded_path
-                or excluded_path in relative_file_path.parents
-            ):
-                is_excluded = True
-                break
-
-        if is_excluded:
-            logger.debug(f"{relative_file_path}: skipped (path excluded)")
-            continue
-
-        header_file_path = HEADER_DIR / f"header-{file_extension}.txt"
-
-        if header_file_path.is_file():
-            _prepend_header_to_file(file_path, header_file_path)
-            logger.debug(f"{relative_file_path}: updated")
-        else:
-            logger.error(f"No header compatible with file {relative_file_path}")
-            sys.exit(2)
+    for root, dirs, files in os.walk(CLIENT_DIR):
+        relative_root = Path(root).relative_to(CLIENT_DIR)
+        # Prune dirs in-place to prevent os.walk from entering them to reduce I/O
+        ## Prune hidden dirs
+        ## Prune temp (cache/builds/venv) dirs
+        ## Prune manual exclusion dirs
+        dirs[:] = [
+            d
+            for d in dirs
+            if not (
+                d.startswith(".")
+                or d in tmp_dirs
+                or (relative_root / d) in all_excluded_paths
+            )
+        ]
+        for file in files:
+            file_path = Path(root) / file
+            relative_file_path = file_path.relative_to(CLIENT_DIR)
+            if file.startswith(".") and "." not in file[1:]:
+                file_extension = file.lstrip(".")
+            else:
+                file_extension = file_path.suffix.lstrip(".")
+            if file_extension in EXCLUDE_EXTENSIONS:
+                logger.debug(f"{relative_file_path}: skipped (extension excluded)")
+                continue
+            if file.startswith(".") or relative_file_path in all_excluded_paths:
+                logger.debug(f"{relative_file_path}: skipped (file excluded)")
+                continue
+            header_file_path = HEADER_DIR / f"header-{file_extension}.txt"
+            if header_file_path.is_file():
+                if _prepend_header_to_file(file_path, header_file_path):
+                    logger.debug(f"{relative_file_path}: updated")
+                else:
+                    logger.debug(
+                        f"{relative_file_path}: skipped (header already present)"
+                    )
+            else:
+                logger.error(f"No header file found for {relative_file_path}")
+                sys.exit(2)
     logger.info("License fix complete.")
 
 
@@ -308,7 +246,6 @@ def prepare_spec_dir() -> None:
 
 def build() -> None:
     prepare_spec_dir()
-    clean_old_tests()
     generate_polaris_management_client()
     generate_polaris_catalog_client()
     generate_iceberg_catalog_client()

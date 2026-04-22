@@ -210,7 +210,7 @@ client-regenerate: client-setup-env ## Regenerate the client code
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && uv run --active pytest test/
+	@$(ACTIVATE_AND_CD) && uv run --active pytest tests/
 	@echo "--- Client unit tests complete ---"
 
 ##@ Helm

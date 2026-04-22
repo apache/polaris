@@ -1162,11 +1162,17 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
     var collector = new GrantRecordsCollector();
     var entities = new ArrayList<PolarisBaseEntity>();
     var ids = new HashSet<Long>();
+    // ACLs for a given entity contain two directional entry flavors:
+    //   - reverse ('r/...'): grants where that entity is the grantee
+    //   - directed ('d/...'): grants where that entity is the securable
+    // Filter by direction so callers receive only the requested perspective.
+    Predicate<GrantTriplet> entryFilter = GrantTriplet::reverseOrKey;
+    entryFilter = onSecurable ? entryFilter.negate() : entryFilter;
 
     collectGrantRecords(
         catalogId,
         aclName,
-        ((securableAndGrantee, granted) -> {
+        (securableAndGrantee, granted) -> {
           var targetCatalogId =
               onSecurable
                   ? securableAndGrantee.granteeCatalogId()
@@ -1210,7 +1216,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
           } else {
             LOGGER.trace("    Not returning stale entity reference");
           }
-        }));
+        },
+        entryFilter);
 
     LOGGER.trace(
         "Returning {} grant records for loadGrants for catalog:{}, id:{}, entityType:{}({})",
@@ -1254,7 +1261,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
 
           collector.handle(securableAndGrantee, granted);
         },
-        securablesIndex);
+        securablesIndex,
+        triplet -> true);
     return collector.grantRecords;
   }
 
@@ -1264,12 +1272,16 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
   }
 
   private void collectGrantRecords(
-      long catalogStableId, String aclName, AclEntryHandler aclEntryConsumer) {
+      long catalogStableId,
+      String aclName,
+      AclEntryHandler aclEntryConsumer,
+      Predicate<GrantTriplet> tripletFilter) {
     LOGGER.debug("Checking ACL '{}'", aclName);
 
     var securablesIndex = memoizedIndexedAccess.grantsIndex();
     if (securablesIndex.isPresent()) {
-      collectGrantRecords(catalogStableId, aclName, aclEntryConsumer, securablesIndex.get());
+      collectGrantRecords(
+          catalogStableId, aclName, aclEntryConsumer, securablesIndex.get(), tripletFilter);
     } else {
       LOGGER.trace("ACL {} does not exist", aclName);
     }
@@ -1279,7 +1291,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
       long catalogStableId,
       String aclName,
       AclEntryHandler aclEntryConsumer,
-      Index<ObjRef> securablesIndex) {
+      Index<ObjRef> securablesIndex,
+      Predicate<GrantTriplet> tripletFilter) {
     var securableKey = IndexKey.key(aclName);
 
     LOGGER.trace("Processing existing ACL {}", aclName);
@@ -1292,6 +1305,10 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               acl.forEach(
                   (role, entry) -> {
                     var triplet = GrantTriplet.fromRoleName(role);
+                    if (!tripletFilter.test(triplet)) {
+                      LOGGER.trace("  Skipping ACL entry role '{}' due to direction filter", role);
+                      return;
+                    }
                     LOGGER
                         .atTrace()
                         .setMessage("  ACL has securable {} ({}) with privileges {}")
