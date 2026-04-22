@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 public class RangerPolicyConditionIT extends RangerIntegrationTestBase {
 
   @Test
-  void getPrincipalListsWithoutAuthorization() {
+  void getCatalogListsWithoutAuthorization() {
     String polcondu1Token = getUserToken("polcondu1");
     given()
         .contentType(ContentType.JSON)
@@ -41,7 +41,7 @@ public class RangerPolicyConditionIT extends RangerIntegrationTestBase {
   }
 
   @Test
-  void getPrincipalListsWithAuthorization() {
+  void getCatalogListsWithAuthorization() {
     String polcondu2Token = getUserToken("polcondu2");
     given()
         .contentType(ContentType.JSON)
