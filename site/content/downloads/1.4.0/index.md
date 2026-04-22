@@ -23,7 +23,7 @@ release_version: "1.4.0"
 release_date: "2026-04-21"
 weight: -10400
 hide_summary: true
-exclude_search: true
+exclude_search: false
 type: downloads
 menus:
   main:
