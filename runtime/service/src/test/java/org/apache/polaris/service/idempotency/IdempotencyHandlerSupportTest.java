@@ -204,17 +204,19 @@ class IdempotencyHandlerSupportTest {
 
   @Test
   void inProgressWaitTimesOutWhenLeaseStillValid() {
-    // Configure a tiny wait so the test is fast, but a long lease so we hit the wait timeout
-    // (not the stale-lease branch).
+    // The polling loop measures elapsed time via Clock#instant(), so this scenario must use a
+    // real clock; with a frozen test clock the deadline check never trips and the loop never
+    // exits. Configure a tiny wait so the test stays fast, but a long lease so we hit the wait
+    // timeout (not the stale-lease branch).
+    Clock realClock = Clock.systemUTC();
     support =
         IdempotencyHandlerSupport.forTesting(
-            config(true, Duration.ofMillis(50), Duration.ofMillis(10)), storeInstance, testClock);
+            config(true, Duration.ofMillis(50), Duration.ofMillis(10)), storeInstance, realClock);
 
     String key = uuidV7();
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
 
-    // Pre-populate an in-progress reservation owned by another executor.
-    Instant now = nowRef.get();
+    Instant now = realClock.instant();
     store.reserve(
         REALM, key, OPERATION, RESOURCE, pHash, now.plusSeconds(300), "other-executor", now);
 
