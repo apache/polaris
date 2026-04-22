@@ -701,7 +701,7 @@
       ]
     },
     {
-      "id": 12, "name": "policy:POLARIS/catalog-list",
+      "id": 12, "name": "Realm:POLARIS",
       "resources": {
         "root":      { "values": [ "POLARIS" ] }
       },
