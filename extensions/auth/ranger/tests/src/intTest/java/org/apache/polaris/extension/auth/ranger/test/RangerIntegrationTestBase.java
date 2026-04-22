@@ -27,6 +27,7 @@ import io.restassured.http.ContentType;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +40,8 @@ public abstract class RangerIntegrationTestBase {
 
   private static final JsonMapper mapper = JsonMapper.builder().build();
   private final List<String> catalogsToCleanup = new ArrayList<>();
+
+  protected Map<String, String> user2Token = new HashMap<>();
 
   protected String toJson(Object value) {
     try {
@@ -69,6 +72,15 @@ public abstract class RangerIntegrationTestBase {
       fail("Failed to parse access_token from admin OAuth response: " + response);
     }
     return accessToken;
+  }
+
+  protected String getUserToken(String userName) {
+    String token = user2Token.get(userName);
+    if (token == null) {
+      token = createPrincipalAndGetToken(userName);
+      user2Token.put(userName, token);
+    }
+    return token;
   }
 
   protected String createPrincipalAndGetToken(String principalName) {

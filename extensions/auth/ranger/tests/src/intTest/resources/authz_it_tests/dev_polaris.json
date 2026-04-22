@@ -439,6 +439,16 @@
       { "itemId": 67, "name": "policy-attach",        "label": "Policy Attach",        "category": "MANAGE" },
       { "itemId": 68, "name": "policy-detach",        "label": "Policy Detach",        "category": "MANAGE" },
       { "itemId": 69, "name": "policy-metadata-full", "label": "Policy Metadata Full", "category": "MANAGE", "impliedGrants": [ "policy-create", "policy-drop", "policy-list", "policy-read", "policy-write" ] }
+    ],
+    "policyConditions": [
+      {
+        "itemId":1,
+        "name":"_expression",
+        "evaluator": "org.apache.ranger.plugin.conditionevaluator.RangerScriptConditionEvaluator",
+        "evaluatorOptions" : {"engineName":"JavaScript"},
+        "label":"Enter boolean expression",
+        "description": "Boolean expression"
+      }
     ]
   },
   "policies": [
@@ -688,6 +698,50 @@
             { "type": "policy-detach" }
           ],
           "users": [ "root" ] }
+      ]
+    },
+    {
+      "id": 12, "name": "policy:POLARIS/catalog-list",
+      "resources": {
+        "root":      { "values": [ "POLARIS" ] }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            {
+              "type": "catalog-list"
+            }
+          ],
+          "users": [
+            "polcondu1"
+          ],
+          "conditions": [
+            {
+              "type": "_expression",
+              "values": [
+                "new java.util.Date().getHours() >= 10 && new java.util.Date().getHours() <= 9"
+              ]
+            }
+          ]
+        },
+        {
+          "accesses": [
+            {
+              "type": "catalog-list"
+            }
+          ],
+          "users": [
+            "polcondu2"
+          ],
+          "conditions": [
+            {
+              "type": "_expression",
+              "values": [
+                "new java.util.Date().getHours() >= 0 && new java.util.Date().getHours() <= 24"
+              ]
+            }
+          ]
+        }
       ]
     }
   ]
