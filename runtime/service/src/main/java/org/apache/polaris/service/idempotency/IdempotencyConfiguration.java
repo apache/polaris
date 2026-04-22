@@ -87,7 +87,7 @@ public interface IdempotencyConfiguration {
   Duration inProgressWait();
 
   /** Polling interval used while waiting for an in-progress duplicate. */
-  @WithDefault("PT100MS")
+  @WithDefault("PT0.1S")
   Duration inProgressPollInterval();
 
   /**
