@@ -8,8 +8,8 @@
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
@@ -42,35 +42,27 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String TABLE_NAME = "idempotency_records";
 
-  // Logical tenant / realm identifier.
   String REALM_ID = "realm_id";
-  // Client-provided idempotency key.
   String IDEMPOTENCY_KEY = "idempotency_key";
-  // Logical operation type (e.g. commit-table).
   String OPERATION_TYPE = "operation_type";
-  // Normalized identifier of the affected resource.
   String RESOURCE_ID = "resource_id";
 
-  // Final HTTP status code once the operation is completed (null while in-progress).
+  // Hash of caller principal identity bound to the reservation.
+  // Compared on replay to prevent cross-principal cache hits.
+  String PRINCIPAL_HASH = "principal_hash";
+
   String HTTP_STATUS = "http_status";
-  // Optional error subtype for failures.
   String ERROR_SUBTYPE = "error_subtype";
-  // Short serialized representation of the response body.
+
+  // Minimal response body (JSON) for replay; null for credential-bearing mutations,
+  // which re-derive the response on replay rather than serving stored content.
   String RESPONSE_SUMMARY = "response_summary";
-  // Serialized representation of response headers.
-  String RESPONSE_HEADERS = "response_headers";
-  // Timestamp when the operation was finalized (null while in-progress).
   String FINALIZED_AT = "finalized_at";
 
-  // Timestamp when the record was created.
   String CREATED_AT = "created_at";
-  // Timestamp when the record was last updated.
   String UPDATED_AT = "updated_at";
-  // Timestamp for the last heartbeat update (null if no heartbeat recorded).
   String HEARTBEAT_AT = "heartbeat_at";
-  // Identifier of the executor that owns the in-progress record (null if not owned).
   String EXECUTOR_ID = "executor_id";
-  // Expiration timestamp after which the record can be considered stale/purgeable.
   String EXPIRES_AT = "expires_at";
 
   List<String> ALL_COLUMNS =
@@ -78,10 +70,10 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
           IDEMPOTENCY_KEY,
           OPERATION_TYPE,
           RESOURCE_ID,
+          PRINCIPAL_HASH,
           HTTP_STATUS,
           ERROR_SUBTYPE,
           RESPONSE_SUMMARY,
-          RESPONSE_HEADERS,
           FINALIZED_AT,
           CREATED_AT,
           UPDATED_AT,
@@ -97,6 +89,8 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   String getResourceId();
 
+  String getPrincipalHash();
+
   @Nullable
   Integer getHttpStatus();
 
@@ -105,9 +99,6 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   @Nullable
   String getResponseSummary();
-
-  @Nullable
-  String getResponseHeaders();
 
   @Nullable
   Instant getFinalizedAt();
@@ -131,7 +122,6 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
 
   /** Convert the current ResultSet row into an {@link IdempotencyRecord}. */
   static IdempotencyRecord fromRow(ResultSet rs) throws SQLException {
-    // Requires realm_id to be projected in the ResultSet.
     return fromRow(rs.getString(REALM_ID), rs);
   }
 
@@ -143,11 +133,11 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     String idempotencyKey = rs.getString(IDEMPOTENCY_KEY);
     String operationType = rs.getString(OPERATION_TYPE);
     String resourceId = rs.getString(RESOURCE_ID);
+    String principalHash = rs.getString(PRINCIPAL_HASH);
 
     Integer httpStatus = (Integer) rs.getObject(HTTP_STATUS);
     String errorSubtype = rs.getString(ERROR_SUBTYPE);
     String responseSummary = rs.getString(RESPONSE_SUMMARY);
-    String responseHeaders = rs.getString(RESPONSE_HEADERS);
 
     Instant createdAt = rs.getTimestamp(CREATED_AT).toInstant();
     Instant updatedAt = rs.getTimestamp(UPDATED_AT).toInstant();
@@ -166,10 +156,10 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
         idempotencyKey,
         operationType,
         resourceId,
+        principalHash,
         httpStatus,
         errorSubtype,
         responseSummary,
-        responseHeaders,
         createdAt,
         updatedAt,
         finalizedAt,
@@ -184,10 +174,10 @@ public interface ModelIdempotencyRecord extends Converter<IdempotencyRecord> {
     map.put(IDEMPOTENCY_KEY, getIdempotencyKey());
     map.put(OPERATION_TYPE, getOperationType());
     map.put(RESOURCE_ID, getResourceId());
+    map.put(PRINCIPAL_HASH, getPrincipalHash());
     map.put(HTTP_STATUS, getHttpStatus());
     map.put(ERROR_SUBTYPE, getErrorSubtype());
     map.put(RESPONSE_SUMMARY, getResponseSummary());
-    map.put(RESPONSE_HEADERS, getResponseHeaders());
     map.put(FINALIZED_AT, getFinalizedAt() == null ? null : Timestamp.from(getFinalizedAt()));
     map.put(CREATED_AT, Timestamp.from(getCreatedAt()));
     map.put(UPDATED_AT, Timestamp.from(getUpdatedAt()));

@@ -90,6 +90,8 @@ import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -324,6 +326,18 @@ public record TestServices(
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
+      IdempotencyConfiguration idempotencyConfiguration =
+          Mockito.mock(IdempotencyConfiguration.class);
+      Mockito.when(idempotencyConfiguration.enabled()).thenReturn(false);
+      Mockito.when(idempotencyConfiguration.keyHeader()).thenReturn("Idempotency-Key");
+      @SuppressWarnings("unchecked")
+      Instance<org.apache.polaris.core.persistence.IdempotencyStore> idempotencyStoreInstance =
+          Mockito.mock(Instance.class);
+      Mockito.when(idempotencyStoreInstance.isUnsatisfied()).thenReturn(true);
+      IdempotencyHandlerSupport idempotencySupport =
+          IdempotencyHandlerSupport.forTesting(
+              idempotencyConfiguration, idempotencyStoreInstance, clock);
+
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {
             @Override
@@ -350,13 +364,20 @@ public record TestServices(
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
+                  .idempotencyConfiguration(idempotencyConfiguration)
+                  .idempotencySupport(idempotencySupport)
                   .build();
             }
           };
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
-              callContext, new DefaultCatalogPrefixParser(), reservedProperties, handlerFactory);
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              handlerFactory,
+              idempotencyConfiguration,
+              idempotencySupport);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

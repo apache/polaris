@@ -58,6 +58,8 @@ import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -78,17 +80,43 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
+  private final IdempotencyConfiguration idempotencyConfiguration;
+  private final IdempotencyHandlerSupport idempotencySupport;
+
+  @Inject HttpHeaders httpHeaders;
 
   @Inject
   public IcebergCatalogAdapter(
       CallContext callContext,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      IcebergCatalogHandlerFactory handlerFactory) {
+      IcebergCatalogHandlerFactory handlerFactory,
+      IdempotencyConfiguration idempotencyConfiguration,
+      IdempotencyHandlerSupport idempotencySupport) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
+    this.idempotencyConfiguration = idempotencyConfiguration;
+    this.idempotencySupport = idempotencySupport;
+  }
+
+  /**
+   * Reads the configured Idempotency-Key request header and validates it.
+   *
+   * @return validated key, or {@link Optional#empty()} if absent / idempotency disabled
+   * @throws BadRequestException if the header is present but not a valid UUID v7
+   */
+  private Optional<String> readIdempotencyKey() {
+    if (httpHeaders == null) {
+      return Optional.empty();
+    }
+    String headerValue = httpHeaders.getHeaderString(idempotencyConfiguration.keyHeader());
+    try {
+      return idempotencySupport.validatedKey(headerValue);
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("%s", e.getMessage());
+    }
   }
 
   /**
@@ -277,14 +305,22 @@ public class IcebergCatalogAdapter
                   prefix,
                   TableIdentifier.of(namespace, createTableRequest.name()));
           if (createTableRequest.stageCreate()) {
+            // createTableStaged is naturally safe to re-run on retry: the table is not persisted to
+            // the catalog and the location/metadata computation is deterministic. Idempotency
+            // wiring for staged create is intentionally deferred (tracked as a follow-up issue).
             return Response.ok(
                     catalog.createTableStaged(
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
+            Optional<String> idempotencyKey = readIdempotencyKey();
             LoadTableResponse response =
                 catalog.createTableDirect(
-                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
+                    ns,
+                    createTableRequest,
+                    delegationModes,
+                    refreshCredentialsEndpoint,
+                    idempotencyKey);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();

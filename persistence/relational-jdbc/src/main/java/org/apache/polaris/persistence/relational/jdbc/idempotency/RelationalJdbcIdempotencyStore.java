@@ -53,19 +53,19 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       String idempotencyKey,
       String operationType,
       String normalizedResourceId,
+      String principalHash,
       Instant expiresAt,
       String executorId,
       Instant now) {
     try {
-      // Build insert values directly to avoid requiring an Immutables-generated model type.
       Map<String, Object> insertMap = new LinkedHashMap<>();
       insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
       insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
       insertMap.put(ModelIdempotencyRecord.RESOURCE_ID, normalizedResourceId);
+      insertMap.put(ModelIdempotencyRecord.PRINCIPAL_HASH, principalHash);
       insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, null);
       insertMap.put(ModelIdempotencyRecord.ERROR_SUBTYPE, null);
       insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
-      insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
       insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
       insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
       insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
@@ -179,7 +179,6 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       throw new IdempotencyPersistenceException("Failed to update idempotency heartbeat", e);
     }
 
-    // Raced with finalize/ownership loss; re-check to return a meaningful result.
     Optional<IdempotencyRecord> after = load(realmId, idempotencyKey);
     if (after.isEmpty()) {
       return HeartbeatResult.NOT_FOUND;
@@ -191,26 +190,50 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
+  public boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    try {
+      QueryGenerator.PreparedQuery delete =
+          QueryGenerator.generateDeleteQuery(
+              ModelIdempotencyRecord.ALL_COLUMNS,
+              ModelIdempotencyRecord.TABLE_NAME,
+              Map.of(
+                  ModelIdempotencyRecord.REALM_ID,
+                  realmId,
+                  ModelIdempotencyRecord.IDEMPOTENCY_KEY,
+                  idempotencyKey,
+                  ModelIdempotencyRecord.EXECUTOR_ID,
+                  executorId),
+              Map.of(),
+              Map.of(),
+              Set.of(ModelIdempotencyRecord.HTTP_STATUS),
+              Set.of());
+      return datasourceOperations.executeUpdate(delete) > 0;
+    } catch (SQLException e) {
+      throw new IdempotencyPersistenceException("Failed to cancel idempotency reservation", e);
+    }
+  }
+
+  @Override
   public boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
       Instant finalizedAt) {
-    // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
     setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
     setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
 
     Map<String, Object> whereEquals = new HashMap<>();
     whereEquals.put(ModelIdempotencyRecord.REALM_ID, realmId);
     whereEquals.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
+    whereEquals.put(ModelIdempotencyRecord.EXECUTOR_ID, executorId);
 
     QueryGenerator.PreparedQuery update =
         QueryGenerator.generateUpdateQuery(

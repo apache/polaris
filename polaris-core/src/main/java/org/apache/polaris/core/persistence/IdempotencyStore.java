@@ -26,11 +26,16 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * <p>An {@link IdempotencyStore} is responsible for:
  *
  * <ul>
- *   <li>Reserving an idempotency key for a particular operation and resource
- *   <li>Recording completion status and response metadata
+ *   <li>Reserving an idempotency key for a particular operation, resource, and caller principal
+ *   <li>Recording completion status and (optionally) a minimal response summary
  *   <li>Allowing callers to look up existing records to detect duplicates
+ *   <li>Cancelling an in-progress reservation if the executing call fails before finalization
  *   <li>Expiring and purging old reservations
  * </ul>
+ *
+ * <p>The handler-level idempotency design always runs after authorization, so the store does not
+ * need to enforce identity itself; it only needs to persist the {@code principalHash} so the
+ * handler can validate it on replay and reject cross-principal cache hits.
  *
  * <p>Implementations must be thread-safe if used concurrently.
  */
@@ -74,8 +79,8 @@ public interface IdempotencyStore {
   }
 
   /**
-   * Result of a {@link #reserve(String, String, String, String, Instant, String, Instant)} call,
-   * including the outcome and, when applicable, the existing idempotency record.
+   * Result of a {@link #reserve(String, String, String, String, String, Instant, String, Instant)}
+   * call, including the outcome and, when applicable, the existing idempotency record.
    *
    * @param type outcome of the reservation attempt
    * @param existing existing idempotency record, when {@link #type ()} is {@link
@@ -84,16 +89,20 @@ public interface IdempotencyStore {
   record ReserveResult(ReserveResultType type, Optional<IdempotencyRecord> existing) {}
 
   /**
-   * Attempts to reserve an idempotency key for a given operation and resource.
+   * Attempts to reserve an idempotency key for a given operation, resource, and caller.
    *
    * <p>If no record exists yet, the implementation should create a new reservation owned by {@code
    * executorId}. If a record already exists, the implementation should return {@link
-   * ReserveResultType#DUPLICATE} along with the existing record.
+   * ReserveResultType#DUPLICATE} along with the existing record. The caller is responsible for
+   * comparing the existing record's {@code principalHash} and {@code normalizedResourceId} against
+   * the current request and rejecting mismatches as conflicts.
    *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
-   * @param operationType logical operation name (e.g., {@code "commit-table"})
+   * @param operationType logical operation name (e.g., {@code "create-table"})
    * @param normalizedResourceId normalized identifier of the affected resource
+   * @param principalHash hash of the caller principal identity (e.g., {@code SHA256(name + ":" +
+   *     realmId)}); persisted so replay can verify the same caller
    * @param expiresAt timestamp after which the reservation is considered expired
    * @param executorId identifier of the caller attempting the reservation
    * @param now timestamp representing the current time
@@ -105,6 +114,7 @@ public interface IdempotencyStore {
       String idempotencyKey,
       String operationType,
       String normalizedResourceId,
+      String principalHash,
       Instant expiresAt,
       String executorId,
       Instant now);
@@ -132,17 +142,38 @@ public interface IdempotencyStore {
       String realmId, String idempotencyKey, String executorId, Instant now);
 
   /**
-   * Marks an idempotency record as finalized, recording HTTP status and response metadata.
+   * Cancels an in-progress reservation owned by {@code executorId}.
+   *
+   * <p>This is used by handler-level idempotency to release the key when the handler hits an error
+   * before reaching finalization (for example, a 401/403 from the authorizer or a downstream IAM
+   * failure during credential vending). After cancellation the next caller may acquire the same
+   * key.
+   *
+   * <p>Implementations must not cancel a reservation that has already been finalized, and must not
+   * cancel a reservation that is owned by a different executor.
+   *
+   * @return {@code true} if the reservation was removed, {@code false} otherwise
+   */
+  boolean cancelInProgressReservation(String realmId, String idempotencyKey, String executorId);
+
+  /**
+   * Marks an idempotency record as finalized, recording HTTP status and an optional response
+   * summary.
+   *
+   * <p>For credential-bearing mutations the handler always passes {@code null} for {@code
+   * responseSummary} since the response is rebuilt from authoritative state on replay rather than
+   * served from the store.
    *
    * <p>Implementations should be tolerant of idempotent re-finalization attempts and typically
-   * return {@code false} when a record was already finalized.
+   * return {@code false} when a record was already finalized or is owned by a different executor.
    *
    * @param realmId logical tenant or realm identifier
    * @param idempotencyKey application-provided idempotency key
+   * @param executorId identifier of the executor that owns the reservation
    * @param httpStatus HTTP status code returned to the client, or {@code null} if not applicable
    * @param errorSubtype optional error subtype or code, if the operation failed
-   * @param responseSummary short, serialized representation of the response body
-   * @param responseHeaders serialized representation of response headers
+   * @param responseSummary short, serialized representation of the response body; pass {@code null}
+   *     for credential-bearing mutations
    * @param finalizedAt timestamp when the operation completed
    * @return {@code true} if the record was transitioned to a finalized state, {@code false}
    *     otherwise
@@ -150,10 +181,10 @@ public interface IdempotencyStore {
   boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
+      String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
       Instant finalizedAt);
 
   /**

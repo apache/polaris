@@ -111,10 +111,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, exp, "A", now);
+    String ph = "principal-hash-A";
+    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, ph, exp, "A", now);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
-    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, exp, "B", now);
+    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, ph, exp, "B", now);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
@@ -122,6 +123,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     assertThat(rec.idempotencyKey()).isEqualTo(key);
     assertThat(rec.operationType()).isEqualTo(op);
     assertThat(rec.normalizedResourceId()).isEqualTo(rid);
+    assertThat(rec.principalHash()).isEqualTo(ph);
     assertThat(rec.httpStatus()).isNull();
   }
 
@@ -129,42 +131,26 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   void heartbeatAndFinalize() {
     String realm = "test-realm";
     String key = "K2";
-    String op = "commit-table";
+    String op = "create-table";
     String rid = "catalogs/1/tables/ns.tbl2";
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    store.reserve(realm, key, op, rid, exp, "A", now);
+    store.reserve(realm, key, op, rid, "principal-hash-A", exp, "A", now);
     HeartbeatResult hb = store.updateHeartbeat(realm, key, "A", now.plusSeconds(1));
     assertThat(hb).isEqualTo(HeartbeatResult.UPDATED);
 
-    boolean fin =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(2));
+    boolean fin = store.finalizeRecord(realm, key, "A", 200, null, null, now.plusSeconds(2));
     assertThat(fin).isTrue();
 
     // finalize again should be a no-op
-    boolean fin2 =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(3));
+    boolean fin2 = store.finalizeRecord(realm, key, "A", 200, null, null, now.plusSeconds(3));
     assertThat(fin2).isFalse();
 
     Optional<IdempotencyRecord> rec = store.load(realm, key);
     assertThat(rec).isPresent();
     assertThat(rec.get().isFinalized()).isTrue();
-    assertThat(rec.get().httpStatus()).isEqualTo(201);
+    assertThat(rec.get().httpStatus()).isEqualTo(200);
   }
 
   @Test
@@ -176,7 +162,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant now = Instant.now();
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
-    store.reserve(realm, key, op, rid, expPast, "A", now);
+    store.reserve(realm, key, op, rid, "principal-hash-A", expPast, "A", now);
     int purged = store.purgeExpired(realm, Instant.now());
     assertThat(purged).isEqualTo(1);
   }
@@ -185,25 +171,64 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
   void duplicateReturnsExistingBindingForMismatch() {
     String realm = "test-realm";
     String key = "K4";
-    String op1 = "commit-table";
+    String op1 = "create-table";
     String rid1 = "catalogs/1/tables/ns.tbl4";
     String op2 = "drop-table"; // different binding
     String rid2 = "catalogs/1/tables/ns.tbl4"; // same resource, different op
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op1, rid1, exp, "A", now);
+    IdempotencyStore.ReserveResult r1 =
+        store.reserve(realm, key, op1, rid1, "principal-hash-A", exp, "A", now);
     assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
     // Second reserve with different op/resource should *not* overwrite the original binding.
-    // The store must return DUPLICATE with the *original* (op1, rid1); the HTTP layer
-    // (IdempotencyFilter)
-    // will detect the mismatch and return 422.
-    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op2, rid2, exp, "B", now);
+    // The store must return DUPLICATE with the *original* (op1, rid1); the handler will
+    // detect the mismatch via principalHash/normalizedResourceId comparison and return 422.
+    IdempotencyStore.ReserveResult r2 =
+        store.reserve(realm, key, op2, rid2, "principal-hash-B", exp, "B", now);
     assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
     assertThat(rec.operationType()).isEqualTo(op1);
     assertThat(rec.normalizedResourceId()).isEqualTo(rid1);
+    assertThat(rec.principalHash()).isEqualTo("principal-hash-A");
+  }
+
+  @Test
+  void cancelInProgressReservation() {
+    String realm = "test-realm";
+    String key = "K5";
+    String op = "create-table";
+    String rid = "catalogs/1/tables/ns.tbl5";
+    Instant now = Instant.now();
+    Instant exp = now.plus(Duration.ofMinutes(5));
+
+    store.reserve(realm, key, op, rid, "principal-hash-A", exp, "A", now);
+    boolean cancelled = store.cancelInProgressReservation(realm, key, "A");
+    assertThat(cancelled).isTrue();
+    assertThat(store.load(realm, key)).isEmpty();
+
+    // After cancel a different caller may acquire the same key.
+    IdempotencyStore.ReserveResult r3 =
+        store.reserve(realm, key, op, rid, "principal-hash-B", exp, "B", now);
+    assertThat(r3.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+  }
+
+  @Test
+  void cancelDoesNotRemoveFinalizedRecord() {
+    String realm = "test-realm";
+    String key = "K6";
+    String op = "create-table";
+    String rid = "catalogs/1/tables/ns.tbl6";
+    Instant now = Instant.now();
+    Instant exp = now.plus(Duration.ofMinutes(5));
+
+    store.reserve(realm, key, op, rid, "principal-hash-A", exp, "A", now);
+    store.finalizeRecord(realm, key, "A", 200, null, null, now.plusSeconds(1));
+
+    boolean cancelled = store.cancelInProgressReservation(realm, key, "A");
+    assertThat(cancelled).isFalse();
+    assertThat(store.load(realm, key)).isPresent();
   }
 }

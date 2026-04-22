@@ -129,6 +129,8 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
+import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -210,6 +212,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract Clock clock();
 
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
+
+  protected abstract IdempotencyConfiguration idempotencyConfiguration();
+
+  protected abstract IdempotencyHandlerSupport idempotencySupport();
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -420,7 +426,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
+        namespace,
+        request,
+        EnumSet.noneOf(AccessDelegationMode.class),
+        Optional.empty(),
+        Optional.empty());
   }
 
   /**
@@ -435,7 +445,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       CreateTableRequest request,
       Optional<String> refreshCredentialsEndpoint) {
     return createTableDirect(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
+        namespace,
+        request,
+        EnumSet.of(VENDED_CREDENTIALS),
+        refreshCredentialsEndpoint,
+        Optional.empty());
   }
 
   public void authorizeCreateTableDirect(
@@ -461,10 +475,93 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
+    return createTableDirect(
+        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty());
+  }
+
+  /**
+   * Create a table with optional handler-level idempotency.
+   *
+   * <p>If {@code idempotencyKey} is empty (or idempotency is disabled), this delegates straight to
+   * the underlying create logic. If a key is supplied:
+   *
+   * <ol>
+   *   <li>Authorization runs first (so idempotency cannot bypass it).
+   *   <li>The handler reserves the key, bound to the caller's principal hash and a hash of the
+   *       request resource (namespace + name + delegation modes).
+   *   <li>If reservation is OWNED, the table is created and the record is finalized with HTTP
+   *       status only (no response body is stored).
+   *   <li>If reservation is DUPLICATE for the same caller and binding, the response is rebuilt from
+   *       authoritative state via {@code loadTable +
+   *       buildLoadTableResponseWithDelegationCredentials}, which re-vends fresh credentials. No
+   *       stored credentials are ever replayed.
+   *   <li>Cross-principal or cross-binding duplicates are rejected with HTTP 422.
+   * </ol>
+   */
+  public LoadTableResponse createTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> idempotencyKey) {
 
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
+    if (idempotencyKey.isEmpty() || !idempotencySupport().isEnabled()) {
+      return doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+    }
+
+    String key = idempotencyKey.get();
+    String realmId = realmContext().getRealmIdentifier();
+    String principalHash =
+        idempotencySupport().principalHash(polarisPrincipal().getName(), realmId);
+    String resourceId =
+        idempotencySupport()
+            .resourceHash(
+                "create-table:"
+                    + namespace.toString()
+                    + ":"
+                    + request.name()
+                    + ":"
+                    + delegationModesToken(delegationModes));
+
+    IdempotencyHandlerSupport.Outcome outcome;
+    try {
+      outcome =
+          idempotencySupport()
+              .reserveOrWait(realmId, key, "create-table", resourceId, principalHash);
+    } catch (IdempotencyHandlerSupport.ConflictException e) {
+      throw new BadRequestException("%s", e.getMessage());
+    } catch (IdempotencyHandlerSupport.InProgressTimeoutException e) {
+      // 409 retry-later is the closest spec-aligned response; surface as a 409 from Iceberg's
+      // exception model. CommitFailedException maps to 409 in the Iceberg REST handler.
+      throw new CommitFailedException("%s", e.getMessage());
+    }
+
+    return switch (outcome) {
+      case IdempotencyHandlerSupport.Outcome.Owned owned -> {
+        try {
+          LoadTableResponse response =
+              doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+          idempotencySupport().finalizeOwned(realmId, key, owned.executorId(), 200, null, null);
+          yield response;
+        } catch (RuntimeException e) {
+          // Release the reservation so subsequent retries can proceed; we don't replay errors.
+          idempotencySupport().cancelOwned(realmId, key, owned.executorId());
+          throw e;
+        }
+      }
+      case IdempotencyHandlerSupport.Outcome.Duplicate dup ->
+          replayCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+    };
+  }
+
+  private LoadTableResponse doCreateTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint) {
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -505,6 +602,52 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  /**
+   * Replay path for an idempotent {@code createTableDirect}: load the existing table and rebuild a
+   * response with freshly-vended credentials for the current caller. No credentials from the
+   * original call are stored or returned.
+   */
+  private LoadTableResponse replayCreateTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint) {
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+    Table table;
+    try {
+      table = baseCatalog.loadTable(tableIdentifier);
+    } catch (NoSuchTableException e) {
+      // The original create succeeded but the table is no longer there (manual drop, retention,
+      // etc.). Surface the same not-found the client would get from a normal load.
+      throw e;
+    }
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier,
+              tableMetadata,
+              resolvedMode,
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST),
+              refreshCredentialsEndpoint)
+          .build();
+    }
+    if (table instanceof BaseMetadataTable) {
+      throw notFoundExceptionForTableLikeEntity(
+          tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
+    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  private static String delegationModesToken(EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes == null || delegationModes.isEmpty()) {
+      return "none";
+    }
+    return delegationModes.stream().map(Enum::name).sorted().collect(Collectors.joining(","));
   }
 
   private TableMetadata stageTableCreateHelper(Namespace namespace, CreateTableRequest request) {
