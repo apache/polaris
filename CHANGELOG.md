@@ -32,6 +32,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 ### Breaking changes
+- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 - The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 
 ### New Features
@@ -64,7 +65,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
-- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
+- The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 - Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
 - The `REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE` operation no longer requires the `PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE` privilege. Only `CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE` on the catalog role is now required, making revoke symmetric with assign. This allows catalog administrators to fully manage catalog role assignments without requiring elevated privileges on principal roles.
 
