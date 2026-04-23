@@ -23,7 +23,7 @@ title: 'Latest Release'
 linkTitle: 'Latest'
 layout: 'redirect'
 params:
-  redirect_to: '/releases/1.3.0/'
+  redirect_to: '/releases/1.4.0/'
 menus:
   main:
     parent: doc
