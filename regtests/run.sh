@@ -81,7 +81,10 @@ fi
 # Run MinIO setup if in MinIO mode
 if [ "${MINIO_TEST_ENABLED}" == "true" ]; then
   loginfo "Setting up MinIO for tests"
-  ${REGTEST_HOME}/minio-setup.sh
+  if ! ${REGTEST_HOME}/minio-setup.sh; then
+    logred "MinIO setup failed; aborting regression tests"
+    exit 1
+  fi
   loginfo "MinIO mode enabled"
 else
   loginfo "AWS mode enabled"
