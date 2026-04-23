@@ -45,9 +45,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for multiple event listeners. Set `polaris.event-listener.types` to a comma-separated list of event listener types to enable multiple event listeners.
 - Added support for enabling only a subset of event types and event categories per event listener. Set `polaris.event-listener.`_`<name>`_`.enabled-event-types` or `polaris.event-listener.`_`<name>`_`.enabled-event-categories` to the list of event types or categories for the specified event listener to only consume the selected subset of events.
 - Added support for **Apache Ranger** as an external authorizer (Beta).
+- Added `envFrom` support in Helm chart.
 
 ### Changes
 - Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
+- Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
 
 ### Deprecations
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
@@ -76,7 +78,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Added `envFrom` support in Helm chart.
 - Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
@@ -96,7 +97,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
-- Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
 - The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 - Added KMS options to Polaris CLI.
