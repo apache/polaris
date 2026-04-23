@@ -34,7 +34,8 @@ import java.util.Locale;
 public enum DatabaseType {
   POSTGRES("postgres"),
   COCKROACHDB("cockroachdb"),
-  H2("h2");
+  H2("h2"),
+  MYSQL("mysql");
 
   private final String displayName; // Store the user-friendly name
 
@@ -48,6 +49,22 @@ public enum DatabaseType {
   }
 
   /**
+   * Returns the SQL placeholder text to use for equality comparisons against a JSON-typed column.
+   *
+   * <p>MySQL JSON columns require {@code CAST(? AS JSON)} so the right-hand side is parsed into a
+   * JSON value and compared structurally; comparing a JSON column to a plain string parameter is
+   * formatting-sensitive (e.g. {@code '{"a":1}'} vs {@code '{"a": 1}'}) and may not match.
+   *
+   * <p>All other supported databases use the default {@code ?} placeholder.
+   */
+  public String asJsonConditionPlaceholder() {
+    return switch (this) {
+      case MYSQL -> "CAST(? AS JSON)";
+      case POSTGRES, COCKROACHDB, H2 -> "?";
+    };
+  }
+
+  /**
    * Returns the latest schema version available for this database type. This is used as the default
    * schema version for new installations.
    */
@@ -56,6 +73,7 @@ public enum DatabaseType {
       case POSTGRES -> 4; // PostgreSQL has schemas v1, v2, v3, v4
       case COCKROACHDB -> 4; // CockroachDB schema version kept in sync with PostgreSQL
       case H2 -> 4; // H2 uses same schemas as PostgreSQL
+      case MYSQL -> 4; // MySQL has schema v4 only
     };
   }
 
@@ -64,6 +82,7 @@ public enum DatabaseType {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
       case "cockroachdb" -> DatabaseType.COCKROACHDB;
+      case "mysql" -> DatabaseType.MYSQL;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }
@@ -100,6 +119,8 @@ public enum DatabaseType {
         inferredType = DatabaseType.POSTGRES;
       } else if (productName.contains("h2")) {
         inferredType = DatabaseType.H2;
+      } else if (productName.contains("mysql")) {
+        inferredType = DatabaseType.MYSQL;
       }
 
       // If a type was explicitly configured, use it and validate

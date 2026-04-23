@@ -56,6 +56,26 @@ dependencies {
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
+// MySQL is opt-in: the GPL JDBC driver (ASF Category X) is not bundled in the default
+// build. `runtime/service` does not bring the driver transitively, so the default
+// release build stays GPL-free without any classpath exclusions. The driver is added
+// directly here only when `-PincludeMysqlDriver=true` is provided.
+//
+// Verification contract for the opt-in `-PincludeMysqlDriver=true` build:
+// - Supported: `:polaris-server:assemble`, Quarkus image build tasks.
+// - NOT supported (will fail by design because the GPL MySQL JDBC driver is
+//   intentionally absent from `LICENSE`):
+//   `:polaris-server:build`, `:polaris-server:check`,
+//   `:polaris-server:publishToMavenLocal`, `:polaris-server:generateLicenseReport`,
+//   `:polaris-server:checkLicense`, `:polaris-server:licenseReportZip`.
+// See `runtime/server/README.md` for the downstream/custom-build framing.
+if (project.hasProperty("includeMysqlDriver")) {
+  dependencies { runtimeOnly("io.quarkus:quarkus-jdbc-mysql") }
+  // Override the `jdbc=false` default in `application.properties` so Quarkus wires up
+  // the MySQL named datasource at build time.
+  quarkus { quarkusBuildProperties.put("quarkus.datasource.mysql.jdbc", "true") }
+}
+
 quarkus {
   quarkusBuildProperties.put("quarkus.package.jar.type", "fast-jar")
   // Pull manifest attributes from the "main" `jar` task to get the

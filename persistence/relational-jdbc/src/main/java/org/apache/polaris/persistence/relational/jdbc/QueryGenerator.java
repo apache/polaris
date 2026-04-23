@@ -32,12 +32,22 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelRegistry;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utility class to generate parameterized SQL queries (SELECT, INSERT, UPDATE, DELETE). Ensures
- * consistent SQL generation and protects against injection by managing parameters separately.
+ * Generates parameterized SQL queries (SELECT, INSERT, UPDATE, DELETE). Ensures consistent SQL
+ * generation and protects against injection by managing parameters separately.
+ *
+ * <p>An instance is bound to a {@link DatabaseType} at construction time; the active database is
+ * not passed through every public method, so callers do not need to thread it through the call
+ * site. This keeps database-type knowledge contained at the persistence-layer boundary (typically a
+ * single field per {@code JdbcBasePersistenceImpl}).
+ *
+ * <p>Methods that produce SQL whose shape does not depend on the database type (INSERT, the
+ * hard-coded grant-record DELETE, the schema-version SELECT, etc.) are kept as {@code static}
+ * because callers can reuse them without a {@code QueryGenerator} instance.
  */
 public class QueryGenerator {
 
@@ -50,6 +60,17 @@ public class QueryGenerator {
   /** A container for the query fragment SQL string and the ordered parameter values. */
   record QueryFragment(String sql, List<Object> parameters) {}
 
+  private final DatabaseType databaseType;
+
+  public QueryGenerator(@NonNull DatabaseType databaseType) {
+    this.databaseType = databaseType;
+  }
+
+  /** Returns the {@link DatabaseType} bound to this generator. */
+  public DatabaseType databaseType() {
+    return databaseType;
+  }
+
   /**
    * Generates a SELECT query with projection and filtering.
    *
@@ -59,7 +80,7 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public static PreparedQuery generateSelectQuery(
+  public PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
@@ -75,20 +96,24 @@ public class QueryGenerator {
    * @return A parameterized SELECT query.
    * @throws IllegalArgumentException if any whereClause column isn't in projections.
    */
-  public static PreparedQuery generateSelectQuery(
+  public PreparedQuery generateSelectQuery(
       @NonNull List<String> projections,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
       @NonNull Map<String, Object> whereGreater,
       @Nullable String orderByColumn) {
     QueryFragment where =
-        generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
-    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), orderByColumn);
+        generateWhereClause(tableName, new HashSet<>(projections), whereEquals, whereGreater);
+    PreparedQuery query =
+        generateSelectQueryStatic(projections, tableName, where.sql(), orderByColumn);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
   /**
    * Builds a DELETE query to remove grant records for a given entity.
+   *
+   * <p>The WHERE clause is hard-coded and does not reference JSON columns, so this method does not
+   * need a {@link DatabaseType} and stays static.
    *
    * @param entity The target entity (either grantee or securable).
    * @param realmId The associated realm.
@@ -112,6 +137,9 @@ public class QueryGenerator {
   /**
    * Builds a SELECT query using a list of entity ID pairs (catalog_id, id).
    *
+   * <p>The WHERE clause is constructed manually and does not reference JSON columns, so this method
+   * stays static.
+   *
    * @param realmId Realm to filter by.
    * @param schemaVersion The schema version of entities table to query
    * @param entityIds List of PolarisEntityId pairs.
@@ -132,7 +160,7 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(
+        generateSelectQueryStatic(
                 ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, where, null)
             .sql(),
         params);
@@ -140,6 +168,9 @@ public class QueryGenerator {
 
   /**
    * Generates an INSERT query for a given table.
+   *
+   * <p>INSERT does not have a WHERE clause and the per-column placeholder is always {@code ?}, so
+   * this method stays static.
    *
    * @param allColumns Columns to insert values into.
    * @param tableName Target table name.
@@ -178,13 +209,14 @@ public class QueryGenerator {
    * @param whereClause Conditions for filtering rows to update.
    * @return UPDATE query with parameter values.
    */
-  public static PreparedQuery generateUpdateQuery(
+  public PreparedQuery generateUpdateQuery(
       @NonNull List<String> allColumns,
       @NonNull String tableName,
       @NonNull List<Object> values,
       @NonNull Map<String, Object> whereClause) {
     List<Object> bindingParams = new ArrayList<>(values);
-    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
+    QueryFragment where =
+        generateWhereClause(tableName, new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
     String sql =
         "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
@@ -209,7 +241,7 @@ public class QueryGenerator {
    * @param whereIsNotNull Columns that must be NOT NULL.
    * @return UPDATE query with parameter bindings.
    */
-  public static PreparedQuery generateUpdateQuery(
+  public PreparedQuery generateUpdateQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> setClause,
@@ -227,7 +259,7 @@ public class QueryGenerator {
 
     QueryFragment where =
         generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
+            tableName, columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
 
     List<String> setParts = new ArrayList<>();
     List<Object> params = new ArrayList<>();
@@ -254,11 +286,12 @@ public class QueryGenerator {
    * @param whereClause Column-value filters.
    * @return DELETE query with parameter bindings.
    */
-  public static PreparedQuery generateDeleteQuery(
+  public PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereClause) {
-    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
+    QueryFragment where =
+        generateWhereClause(tableName, new HashSet<>(tableColumns), whereClause, Map.of());
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
@@ -267,7 +300,7 @@ public class QueryGenerator {
    * Builds a DELETE query that supports richer WHERE predicates (equality, greater-than, less-than,
    * IS NULL, IS NOT NULL).
    */
-  public static PreparedQuery generateDeleteQuery(
+  public PreparedQuery generateDeleteQuery(
       @NonNull List<String> tableColumns,
       @NonNull String tableName,
       @NonNull Map<String, Object> whereEquals,
@@ -278,12 +311,12 @@ public class QueryGenerator {
     Set<String> columns = new HashSet<>(tableColumns);
     QueryFragment where =
         generateWhereClauseExtended(
-            columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
+            tableName, columns, whereEquals, whereGreater, whereLess, whereIsNull, whereIsNotNull);
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
-  private static PreparedQuery generateSelectQuery(
+  private static PreparedQuery generateSelectQueryStatic(
       @NonNull List<String> columnNames,
       @NonNull String tableName,
       @NonNull String filter,
@@ -301,12 +334,13 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  static QueryFragment generateWhereClause(
+  QueryFragment generateWhereClause(
+      @NonNull String tableName,
       @NonNull Set<String> tableColumns,
       @NonNull Map<String, Object> whereEquals,
       @NonNull Map<String, Object> whereGreater) {
     return generateWhereClauseExtended(
-        tableColumns, whereEquals, whereGreater, Map.of(), Set.of(), Set.of());
+        tableName, tableColumns, whereEquals, whereGreater, Map.of(), Set.of(), Set.of());
   }
 
   private static void validateColumns(
@@ -319,7 +353,8 @@ public class QueryGenerator {
   }
 
   @VisibleForTesting
-  static QueryFragment generateWhereClauseExtended(
+  QueryFragment generateWhereClauseExtended(
+      @NonNull String tableName,
       @NonNull Set<String> tableColumns,
       @NonNull Map<String, Object> whereEquals,
       @NonNull Map<String, Object> whereGreater,
@@ -335,7 +370,12 @@ public class QueryGenerator {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
-      conditions.add(entry.getKey() + " = ?");
+      String column = entry.getKey();
+      if (ModelRegistry.isJsonColumn(tableName, column)) {
+        conditions.add(column + " = " + databaseType.asJsonConditionPlaceholder());
+      } else {
+        conditions.add(column + " = ?");
+      }
       parameters.add(entry.getValue());
     }
     for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {
@@ -414,7 +454,7 @@ public class QueryGenerator {
 
     QueryFragment where = new QueryFragment(clause, finalParams);
     PreparedQuery query =
-        generateSelectQuery(
+        generateSelectQueryStatic(
             ModelEntity.getAllColumnNames(schemaVersion),
             ModelEntity.TABLE_NAME,
             where.sql(),

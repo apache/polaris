@@ -20,8 +20,10 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrincipalForRealm;
 
+import io.quarkus.agroal.DataSource.DataSourceLiteral;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
@@ -96,8 +98,38 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Produces
   @ApplicationScoped
   static DatasourceOperations produceDatasourceOperations(
-      Instance<DataSource> dataSource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
-    return new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
+      Instance<DataSource> defaultDataSource,
+      @Any Instance<DataSource> dataSources,
+      RelationalJdbcConfiguration relationalJdbcConfiguration) {
+    Optional<String> configuredType = relationalJdbcConfiguration.databaseType();
+    String mysql = DatabaseType.MYSQL.getDisplayName();
+
+    // Use a named DataSource if one is declared for the configured database-type; otherwise fall
+    // back to the default (unnamed) DataSource shared by PostgreSQL, CockroachDB and H2.
+    //
+    // MySQL is the only backend that requires its own named DataSource (it needs the GPL MySQL
+    // driver, which is opt-in at build time and inactive by default). If MySQL is configured but
+    // its named DataSource is not resolvable, fail fast at the fallback point with actionable
+    // guidance instead of silently using the default (PostgreSQL-driver) DataSource — that would
+    // otherwise surface much later as a confusing database-type mismatch.
+    DataSource ds =
+        configuredType
+            .map(type -> dataSources.select(new DataSourceLiteral(type)))
+            .filter(Instance::isResolvable)
+            .map(Instance::get)
+            .orElseGet(
+                () -> {
+                  if (configuredType.map(type -> type.equals(mysql)).orElse(false)) {
+                    throw new IllegalStateException(
+                        "Database type 'mysql' is configured but the 'mysql' named datasource is"
+                            + " not available. Build the server with -PincludeMysqlDriver=true and"
+                            + " enable the datasource at runtime: quarkus.datasource.mysql.active="
+                            + "true together with quarkus.datasource.mysql.jdbc.url, .username and"
+                            + " .password.");
+                  }
+                  return defaultDataSource.get();
+                });
+    return new DatasourceOperations(ds, relationalJdbcConfiguration);
   }
 
   protected PrincipalSecretsGenerator secretsGenerator(

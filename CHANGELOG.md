@@ -82,6 +82,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for multiple event listeners. Set `polaris.event-listener.types` to a comma-separated list of event listener types to enable multiple event listeners.
 - Added support for enabling only a subset of event types and event categories per event listener. Set `polaris.event-listener.`_`<name>`_`.enabled-event-types` or `polaris.event-listener.`_`<name>`_`.enabled-event-categories` to the list of event types or categories for the specified event listener to only consume the selected subset of events.
 - Added support for **Apache Ranger** as an external authorizer (Beta).
+- Added source-level support for building a MySQL-capable Polaris server for the relational JDBC backend. Official Polaris release artifacts do not include the MySQL JDBC driver, which is GPL-licensed. Users who need this path should download the official Polaris source release and build their own derivative from that source tree (`./gradlew :polaris-server:assemble -PincludeMysqlDriver=true`); see `runtime/server/README.md` in the unpacked source release for build details.
 
 ### Changes
 - Improved Python CLI error messages and exit codes for invalid arguments and configuration errors.

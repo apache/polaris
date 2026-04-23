@@ -475,6 +475,47 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testAttachAndDetachPolicyWithNonTrivialJsonParameters() {
+    // Regression coverage for `JdbcBasePersistenceImpl.deleteFromPolicyMappingRecords`:
+    // the DELETE WHERE clause passes the `parameters` JSON column value verbatim and
+    // must match the stored row. On MySQL this requires `CAST(? AS JSON)` placeholder
+    // selection (via `ModelRegistry.isJsonColumn` + `DatabaseType.asJsonConditionPlaceholder`);
+    // on PostgreSQL the `parameters` column is jsonb and matches with a plain `?`
+    // placeholder bound to a `PGobject(jsonb)` value. Either way, attaching with
+    // non-trivial JSON parameters and then detaching must succeed.
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    PolicyAttachmentTarget catalogTarget =
+        PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
+    Map<String, String> nonTrivialParameters =
+        Map.of("retention", "30days", "scope", "namespace-and-tables", "owner", "polaris-it");
+    policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, nonTrivialParameters);
+
+    // Detach exercises `deleteFromPolicyMappingRecords` which uses the `parameters`
+    // JSON column in the DELETE WHERE clause. A regression that drops the JSON
+    // placeholder selection (or that re-introduces `Converter.MysqlJsonValue`-based
+    // dispatch in the wrong way) would silently fail to delete the row on MySQL.
+    policyApi.detachPolicy(currentCatalogName, NS1_P1, catalogTarget);
+
+    // Re-attaching the same target with different non-trivial parameters must succeed
+    // (the previous row must have actually been deleted, not just orphaned).
+    policyApi.attachPolicy(
+        currentCatalogName,
+        NS1_P1,
+        catalogTarget,
+        Map.of("retention", "7days", "scope", "namespace-only"));
+    policyApi.detachPolicy(currentCatalogName, NS1_P1, catalogTarget);
+
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testDropNonExistingPolicy() {
     restCatalog.createNamespace(NS1);
     try (Response res =
