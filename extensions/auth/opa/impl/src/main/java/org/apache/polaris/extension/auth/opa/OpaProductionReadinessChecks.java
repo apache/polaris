@@ -19,20 +19,39 @@
 package org.apache.polaris.extension.auth.opa;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
+import io.smallrye.common.annotation.Identifier;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.service.config.AuthorizationConfiguration;
 
 @ApplicationScoped
 public class OpaProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkOpaAuthorization(
-      PolarisAuthorizerFactory authorizerFactory) {
-    if (authorizerFactory instanceof OpaPolarisAuthorizerFactory opaFactory) {
+      AuthorizationConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
+    for (String authorizationType :
+        authorizationConfig.realms().values().stream()
+            .map(realmConfig -> realmConfig.type())
+            .distinct()
+            .toList()) {
+      Instance<PolarisAuthorizerFactory> selectedFactory =
+          authorizerFactories.select(Identifier.Literal.of(authorizationType));
+      if (!selectedFactory.isResolvable()) {
+        continue;
+      }
+
+      if (!(selectedFactory.get() instanceof OpaPolarisAuthorizerFactory opaFactory)) {
+        continue;
+      }
+
       OpaAuthorizationConfig config = opaFactory.getConfig();
 
       List<Error> errors = new ArrayList<>();
@@ -51,6 +70,7 @@ public class OpaProductionReadinessChecks {
 
       return ProductionReadinessCheck.of(errors);
     }
+
     return ProductionReadinessCheck.OK;
   }
 }
