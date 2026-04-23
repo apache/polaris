@@ -55,6 +55,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -131,6 +132,7 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
+    EntityNameValidator.validateNamespace(createNamespaceRequest.namespace());
     return withCatalog(
         securityContext,
         prefix,
@@ -265,6 +267,7 @@ public class IcebergCatalogAdapter
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
+    EntityNameValidator.validateName(createTableRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     return withCatalog(
@@ -410,6 +413,7 @@ public class IcebergCatalogAdapter
       RegisterTableRequest registerTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    EntityNameValidator.validateName(registerTableRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     return withCatalog(
@@ -429,6 +433,7 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    EntityNameValidator.validateName(renameTableRequest.destination().name());
     return withCatalog(
         securityContext,
         prefix,
@@ -487,6 +492,7 @@ public class IcebergCatalogAdapter
         ImmutableCreateViewRequest.copyOf(createViewRequest)
             .withProperties(
                 reservedProperties.removeReservedProperties(createViewRequest.properties()));
+    EntityNameValidator.validateName(revisedRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     return withCatalog(
@@ -587,6 +593,7 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    EntityNameValidator.validateName(renameTableRequest.destination().name());
     return withCatalog(
         securityContext,
         prefix,

@@ -396,6 +396,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         + identifier.name();
   }
 
+  @Override
+  protected boolean supportsNamesWithSlashes() {
+    return false;
+  }
+
   protected boolean supportsNotifications() {
     return true;
   }
