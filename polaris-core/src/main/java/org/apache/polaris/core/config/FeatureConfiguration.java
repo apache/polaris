@@ -68,14 +68,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
           .description(
-              "If set to true, skip credential-subscoping indirection entirely whenever trying\n"
-                  + "   to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made\n"
-                  + "   to use StorageConfigs to generate table-specific storage credentials, but instead the default\n"
-                  + "   fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT\n"
-                  + "   credential-loading will be used for the FileIO.\n"
-                  + "   Typically this setting is used in single-tenant server deployments that don't rely on\n"
-                  + "   \"credential-vending\" and can use server-default environment variables or credential config\n"
-                  + "   files for all storage access, or in test/dev scenarios.")
+              "Test/dev-only. If true, bypass credential subscoping entirely: FileIO falls back to\n"
+                  + "   the server's ambient credentials (pod IAM role, env vars, credential files).\n"
+                  + "   Intended for tests with fake storage paths (no real STS). NOT for production:\n"
+                  + "   those credentials are handed to every client, breaking defense-in-depth. For\n"
+                  + "   S3-compatible storage without STS, set stsUnavailable: true on the storage config\n"
+                  + "   instead.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

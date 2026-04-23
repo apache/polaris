@@ -431,7 +431,7 @@ A comma-separated list of fields to include as session tags in AWS STS AssumeRol
 
 ##### `polaris.features."SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION"`
 
-If set to true, skip credential-subscoping indirection entirely whenever trying to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made to use StorageConfigs to generate table-specific storage credentials, but instead the default fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT credential-loading will be used for the FileIO. Typically this setting is used in single-tenant server deployments that don't rely on "credential-vending" and can use server-default environment variables or credential config files for all storage access, or in test/dev scenarios.
+Test/dev-only. If true, bypass credential subscoping entirely: FileIO falls back to the server's ambient credentials (pod IAM role, env vars, credential files). Intended for tests with fake storage paths (no real STS). NOT for production: those credentials are handed to every client, breaking defense-in-depth. For S3-compatible storage without STS, set stsUnavailable: true on the storage config instead.
 
 - **Type:** `Boolean`
 - **Default:** `false`
