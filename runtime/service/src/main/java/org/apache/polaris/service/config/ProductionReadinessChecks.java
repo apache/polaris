@@ -299,8 +299,8 @@ public class ProductionReadinessChecks {
     var message =
         "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION is enabled. This flag is test/dev-only and returns "
             + "the Polaris server's ambient credentials to every client, breaking defense-in-depth. "
-            + "For S3-compatible storage without STS, set stsUnavailable: true on the catalog's "
-            + "storage config instead.";
+            + "For S3-compatible storage without STS, set stsUnavailable: true on the storage "
+            + "config instead.";
     var errors = new ArrayList<Error>();
     if (Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
       errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
