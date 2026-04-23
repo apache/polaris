@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.validation;
 
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 
 /**
  * Validates entity names provided by clients at the REST layer (tables, views, namespaces, generic
@@ -53,5 +54,11 @@ public final class EntityNameValidator {
     for (String level : namespace.levels()) {
       validateName(level);
     }
+  }
+
+  /** Validates the namespace and name of an identifier. */
+  public static void validateIdentifier(TableIdentifier identifier) {
+    validateNamespace(identifier.namespace());
+    validateName(identifier.name());
   }
 }

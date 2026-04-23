@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -102,6 +103,35 @@ class EntityNameValidatorTest {
   @Test
   void validateNamespaceRejectsLevelWithSurroundingWhitespace() {
     assertThatThrownBy(() -> EntityNameValidator.validateNamespace(Namespace.of("ns1", " bad ")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("whitespace");
+  }
+
+  @Test
+  void validateIdentifierAccepts() {
+    assertThatCode(
+            () ->
+                EntityNameValidator.validateIdentifier(
+                    TableIdentifier.of(Namespace.of("ns1", "ns2"), "table")))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void validateIdentifierRejectsBadNamespaceLevel() {
+    assertThatThrownBy(
+            () ->
+                EntityNameValidator.validateIdentifier(
+                    TableIdentifier.of(Namespace.of("ns1", "bad/level"), "table")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'/'");
+  }
+
+  @Test
+  void validateIdentifierRejectsBadName() {
+    assertThatThrownBy(
+            () ->
+                EntityNameValidator.validateIdentifier(
+                    TableIdentifier.of(Namespace.of("ns1"), " bad ")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("whitespace");
   }

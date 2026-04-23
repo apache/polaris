@@ -75,11 +75,11 @@ public class GenericTableCatalogAdapter
       String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateName(createGenericTableRequest.getName());
     TableIdentifier identifier =
         TableIdentifier.of(
             NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
             createGenericTableRequest.getName());
+    EntityNameValidator.validateIdentifier(identifier);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(

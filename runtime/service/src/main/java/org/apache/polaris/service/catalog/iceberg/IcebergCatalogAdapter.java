@@ -267,9 +267,9 @@ public class IcebergCatalogAdapter
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
-    EntityNameValidator.validateName(createTableRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, createTableRequest.name()));
     return withCatalog(
         securityContext,
         prefix,
@@ -413,9 +413,9 @@ public class IcebergCatalogAdapter
       RegisterTableRequest registerTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateName(registerTableRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerTableRequest.name()));
     return withCatalog(
         securityContext,
         prefix,
@@ -433,7 +433,7 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateName(renameTableRequest.destination().name());
+    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
     return withCatalog(
         securityContext,
         prefix,
@@ -492,9 +492,9 @@ public class IcebergCatalogAdapter
         ImmutableCreateViewRequest.copyOf(createViewRequest)
             .withProperties(
                 reservedProperties.removeReservedProperties(createViewRequest.properties()));
-    EntityNameValidator.validateName(revisedRequest.name());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, revisedRequest.name()));
     return withCatalog(
         securityContext,
         prefix,
@@ -593,7 +593,7 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EntityNameValidator.validateName(renameTableRequest.destination().name());
+    EntityNameValidator.validateIdentifier(renameTableRequest.destination());
     return withCatalog(
         securityContext,
         prefix,
