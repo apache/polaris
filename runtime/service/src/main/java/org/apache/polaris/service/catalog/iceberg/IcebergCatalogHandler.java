@@ -587,6 +587,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      polarisCatalog.validateStagedTableCreate(ident, metadata);
+    }
+
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
             metadata,
