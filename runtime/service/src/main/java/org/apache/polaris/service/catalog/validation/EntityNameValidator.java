@@ -56,7 +56,6 @@ public final class EntityNameValidator {
     }
   }
 
-  /** Validates the namespace and name of an identifier. */
   public static void validateIdentifier(TableIdentifier identifier) {
     validateNamespace(identifier.namespace());
     validateName(identifier.name());
