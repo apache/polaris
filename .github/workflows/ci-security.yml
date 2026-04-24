@@ -17,13 +17,18 @@
 # under the License.
 #
 
-name: Zizmor
+# Security scans for GitHub Actions workflow files. Container image scanning
+# lives in ci.yml (docker-image-scan) because it depends on the built image.
+
+name: Security
 
 on:
   pull_request:
     branches: [ "main", "release/*", "feature/*" ]
   push:
     branches: [ "main", "release/*", "feature/*" ]
+  schedule:
+    - cron: '16 4 * * 1'
 
 permissions:
   contents: read
@@ -49,3 +54,27 @@ jobs:
           #min-confidence:
           advanced-security: ${{ github.event_name != 'pull_request' }}
           annotations: ${{ github.event_name == 'pull_request' }}
+
+  codeql:
+    name: CodeQL Analyze
+    if: github.repository_owner == 'apache'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4
+        with:
+          languages: actions
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4
+        with:
+          category: "/language:actions"
