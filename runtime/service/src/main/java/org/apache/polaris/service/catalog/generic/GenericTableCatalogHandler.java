@@ -146,7 +146,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     List<StorageAccessConfig> storageAccessConfigs =
         resolvedMode
             .filter(VENDED_CREDENTIALS::equals)
-            .map(
+            .flatMap(
                 m ->
                     vendCredentials(
                         identifier,
@@ -155,6 +155,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
                             PolarisStorageActions.READ,
                             PolarisStorageActions.WRITE,
                             PolarisStorageActions.LIST)))
+            .map(List::of)
             .orElse(List.of());
 
     return LoadGenericTableResponse.builder()
@@ -192,7 +193,8 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     List<StorageAccessConfig> storageAccessConfigs =
         resolvedMode
             .filter(VENDED_CREDENTIALS::equals)
-            .map(m -> vendCredentials(identifier, loadedEntity, actionsRequested))
+            .flatMap(m -> vendCredentials(identifier, loadedEntity, actionsRequested))
+            .map(List::of)
             .orElse(List.of());
 
     return LoadGenericTableResponse.builder()
@@ -202,11 +204,11 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
   }
 
   /**
-   * Vends scoped storage credentials for the given generic table. Returns an empty list if the
-   * table has no base location, no resolved storage configuration, or if the underlying storage
-   * integration produces no credentials.
+   * Vends scoped storage credentials for the given generic table. Returns empty if the table has no
+   * base location, no resolved storage configuration, or if the underlying storage integration
+   * produces no credentials.
    */
-  private List<StorageAccessConfig> vendCredentials(
+  private Optional<StorageAccessConfig> vendCredentials(
       TableIdentifier tableIdentifier,
       GenericTableEntity entity,
       Set<PolarisStorageActions> actions) {
@@ -215,7 +217,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       LOGGER.debug(
           "No base location set for generic table {}, skipping credential vending",
           tableIdentifier);
-      return List.of();
+      return Optional.empty();
     }
 
     PolarisResolvedPathWrapper resolvedStoragePath =
@@ -224,7 +226,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
     if (resolvedStoragePath == null) {
       LOGGER.debug(
           "Unable to find storage configuration information for generic table {}", tableIdentifier);
-      return List.of();
+      return Optional.empty();
     }
 
     Set<String> tableLocations = Set.of(baseLocation);
@@ -241,11 +243,12 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
           !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
           "Credential vending was requested for generic table %s, but no credentials are available",
           tableIdentifier);
-      return List.of();
+      return Optional.empty();
     }
 
     Map<String, String> config = CatalogHandlerUtils.toGenericTableConfig(storageAccessConfig);
 
-    return List.of(StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(config).build());
+    return Optional.of(
+        StorageAccessConfig.builder().setPrefix(baseLocation).setConfig(config).build());
   }
 }

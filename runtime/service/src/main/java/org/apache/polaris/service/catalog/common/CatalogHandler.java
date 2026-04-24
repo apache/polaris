@@ -229,9 +229,9 @@ public abstract class CatalogHandler {
   protected void authorizeCreateTableDirect(
       TableIdentifier identifier, boolean delegationRequested) {
     PolarisAuthorizableOperation op =
-        !delegationRequested
-            ? PolarisAuthorizableOperation.CREATE_TABLE_DIRECT
-            : PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
+        delegationRequested
+            ? PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION
+            : PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     CatalogEntity catalog = resolutionManifest.getResolvedCatalogEntity();
