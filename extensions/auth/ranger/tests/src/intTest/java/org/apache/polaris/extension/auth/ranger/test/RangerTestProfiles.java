@@ -37,7 +37,8 @@ public final class RangerTestProfiles {
       config.put(
           "polaris.authorization.ranger.authz.default.policy.source.impl",
           "org.apache.ranger.admin.client.EmbeddedResourcePolicySource");
-      config.put("polaris.authorization.ranger.authz.default.enable.implicit.userstore.enricher", "true");
+      config.put(
+          "polaris.authorization.ranger.authz.default.enable.implicit.userstore.enricher", "true");
       config.put(
           "polaris.authorization.ranger.authz.default.policy.source.embedded_resource.path",
           "/authz_it_tests");
