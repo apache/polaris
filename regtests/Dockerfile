@@ -32,8 +32,10 @@ RUN apt-get update && \
     mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
     chown -R spark:spark /home/spark /tmp/polaris-regtests && \
     chmod -R 777 /opt/spark/conf && \
-    curl -o /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc && \
-    chmod +x /usr/local/bin/mc
+    curl -fL --retry 5 --retry-delay 2 --retry-connrefused \
+         -o /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc && \
+    chmod +x /usr/local/bin/mc && \
+    /usr/local/bin/mc --version
 
 COPY --chown=spark:spark ./regtests/setup.sh ./regtests/pyspark-setup.sh ./regtests/requirements.txt /home/spark/polaris/regtests/
 COPY --chown=spark:spark ./client/python /home/spark/polaris/client/python
