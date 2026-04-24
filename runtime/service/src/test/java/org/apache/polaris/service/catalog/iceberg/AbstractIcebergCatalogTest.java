@@ -1037,53 +1037,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   @Test
-  public void testSparseCreateCommitPassesTableDefaultPropertiesToFileIO() {
-    Namespace namespace = Namespace.of("fileio-defaults-commit");
-    TableIdentifier table = TableIdentifier.of(namespace, "table");
-    AtomicReference<Map<String, String>> capturedProperties = new AtomicReference<>();
-    FileIOFactory capturingFileIOFactory = spy(this.fileIOFactory);
-    doAnswer(
-            invocation -> {
-              capturedProperties.set(Map.copyOf(invocation.getArgument(2)));
-              return invocation.callRealMethod();
-            })
-        .when(capturingFileIOFactory)
-        .loadFileIO(any(), any(), any());
-
-    IcebergCatalog catalog =
-        newConfiguredIcebergCatalog(
-            CATALOG_NAME,
-            capturingFileIOFactory,
-            Map.of(
-                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.endpoint",
-                "http://minio.local",
-                CatalogProperties.TABLE_DEFAULT_PREFIX + "s3.path-style-access",
-                "true"));
-
-    try {
-      catalog.createNamespace(namespace);
-
-      TableMetadata metadata =
-          TableMetadata.newTableMetadata(
-              SCHEMA,
-              PartitionSpec.unpartitioned(),
-              SortOrder.unsorted(),
-              catalog.transformTableLikeLocation(table, baseTableLocation(table)),
-              Map.of("created-at", "now"));
-
-      catalog.newTableOps(table, false).commit(null, metadata);
-
-      assertThat(capturedProperties.get())
-          .containsEntry("s3.endpoint", "http://minio.local")
-          .containsEntry("s3.path-style-access", "true");
-    } finally {
-      if (catalog.tableExists(table)) {
-        catalog.dropTable(table, true);
-      }
-    }
-  }
-
-  @Test
   public void testUpdateNotificationWhenTableAndNamespacesDontExist() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),

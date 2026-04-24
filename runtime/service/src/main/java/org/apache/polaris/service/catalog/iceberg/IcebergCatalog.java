@@ -1536,14 +1536,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               : resolvedTableEntities;
 
       // refresh credentials because we need to read the metadata file to validate its location
-      Map<String, String> commitFileIoProperties = new HashMap<>(tableDefaultProperties);
-      commitFileIoProperties.putAll(metadata.properties());
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              commitFileIoProperties,
+              new HashMap<>(metadata.properties()),
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
