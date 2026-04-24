@@ -2201,6 +2201,6 @@ This product bundles GraalVM libraries.
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-runtime
 
 Home page: https://github.com/oracle/graal/
-License: The GNU General Public License (GPL) - https://github.com/oracle/graal/blob/master/LICENSE
+License: The Universal Permissive License (UPL), Version 1.0 - https://github.com/oracle/graal/blob/master/LICENSE
 
 --------------------------------------------------------------------------------
