@@ -713,31 +713,13 @@
             }
           ],
           "users": [
-            "polcondu1"
+            "polcondu1", "polcondu2"
           ],
           "conditions": [
             {
               "type": "_expression",
               "values": [
-                "new java.util.Date().getHours() >= 10 && new java.util.Date().getHours() <= 9"
-              ]
-            }
-          ]
-        },
-        {
-          "accesses": [
-            {
-              "type": "catalog-list"
-            }
-          ],
-          "users": [
-            "polcondu2"
-          ],
-          "conditions": [
-            {
-              "type": "_expression",
-              "values": [
-                "new java.util.Date().getHours() >= 0 && new java.util.Date().getHours() <= 24"
+                "USER.allowedSensitiveLevel > 5"
               ]
             }
           ]
