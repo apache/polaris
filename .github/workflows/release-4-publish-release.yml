@@ -279,6 +279,21 @@ jobs:
           dev_helm_chart_url="${APACHE_DIST_URL}/dev/polaris/helm-chart"
           release_helm_chart_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
 
+          # Remove any existing index.yaml / artifacthub-repo.yml at the release location before the move.
+          # svn mv to a URL fails with "already exists" if the destination path is present, which is the
+          # case on every release after the first one has put these files under release/polaris/helm-chart/.
+          existing_release_files=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_chart_url}" | grep -E '^(index\.yaml|artifacthub-repo\.yml)$' || true)
+
+          if [[ -n "${existing_release_files}" ]]; then
+            files_to_remove=()
+            for f in ${existing_release_files}; do
+              files_to_remove+=("${release_helm_chart_url}/${f}")
+            done
+            exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+              "${files_to_remove[@]}" \
+              -m "Remove previous Helm index and artifacthub-repo.yml (superseded by ${version_without_rc})"
+          fi
+
           # Move index.yaml and artifacthub-repo.yml from dev to release
           # The index was already properly generated in workflow 3 with relative URLs for the current
           # release and absolute URLs to archive.apache.org for previous releases, so we just transfer it as-is
