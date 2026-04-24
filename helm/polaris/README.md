@@ -19,7 +19,7 @@
 
 # Helm Chart for Apache Polaris
 
-[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/search?repo=apache-polaris)
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/helm/apache-polaris/polaris)
 
 [Apache Polaris](https://polaris.apache.org/) is an open-source, fully-featured catalog for Apache Iceberg™. It 
 implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, 
