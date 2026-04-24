@@ -43,7 +43,7 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 
 ## Documentation
 
-Full documentation for Helm Chart lives [on the website](https://polaris.apache.org/in-dev/unreleased/helm/).
+Full documentation for Helm Chart lives [on the website](https://polaris.apache.org/releases/latest/helm-chart/).
 
 ## Contributing
 
