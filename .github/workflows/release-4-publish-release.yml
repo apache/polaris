@@ -171,10 +171,10 @@ jobs:
 
           # Export variables for next steps
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
           echo "rc_tag=${rc_tag}" >> $GITHUB_ENV
           echo "final_release_tag=${final_release_tag}" >> $GITHUB_ENV
           echo "release_branch=${current_branch}" >> $GITHUB_ENV
-          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           | Parameter | Value |

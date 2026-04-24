@@ -19,12 +19,12 @@
 
 [project]
 name = "apache-polaris"
-version = "1.4.0"
+version = "1.4.0rc2"
 description = "Apache Polaris"
 authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
 requires-python = ">=3.10,<3.14"
 readme = "README.md"
-license = "Apache-2.0"
+license = {text = "Apache-2.0"}
 license-files = ["LICENSE", "NOTICE"]
 keywords = [
     "Apache Polaris",

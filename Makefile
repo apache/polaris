@@ -138,7 +138,7 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 			exit 1; \
 		fi; \
 		echo "Building with format: $(FORMAT)"; \
-		$(ACTIVATE_AND_CD) && uv build --clear --$(FORMAT); \
+		$(ACTIVATE_AND_CD) && uv build --$(FORMAT); \
 	else \
 		echo "Building default distribution (sdist and wheel)"; \
 		$(ACTIVATE_AND_CD) && uv build --clear; \
@@ -198,15 +198,20 @@ client-nightly-build: client-setup-env ## Build nightly version for publishing t
 		FORMAT=wheel
 
 .PHONY: client-rc-build
-client-rc-build: ## Build RC version for publishing to Test PyPI (requires RC_VERSION and RC_NUMBER)
+client-rc-build: client-setup-env ## Build RC wheel for staging to Apache dist dev (requires RC_VERSION and RC_NUMBER)
 	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
 	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
-	@$(MAKE) client-build VERSION="$(RC_VERSION)rc$(RC_NUMBER)"
+	@echo "--- Building RC wheel for version $(RC_VERSION) RC$(RC_NUMBER) ---"
+	@$(ACTIVATE_AND_CD) && uv version "$(RC_VERSION)" && uv build --wheel
+	@echo "--- RC wheel build complete ---"
 
-.PHONY: client-release-build
-client-release-build: ## Build final release version for publishing to PyPI (requires RELEASE_VERSION)
-	@if [ -z "$(RELEASE_VERSION)" ]; then echo "ERROR: RELEASE_VERSION is not set"; exit 1; fi
-	@$(MAKE) client-build VERSION="$(RELEASE_VERSION)"
+.PHONY: client-rc-testpypi-build
+client-rc-testpypi-build: client-setup-env ## Build RC wheel with rc suffix for Test PyPI (requires RC_VERSION and RC_NUMBER)
+	@if [ -z "$(RC_VERSION)" ]; then echo "ERROR: RC_VERSION is not set"; exit 1; fi
+	@if [ -z "$(RC_NUMBER)" ]; then echo "ERROR: RC_NUMBER is not set"; exit 1; fi
+	@echo "--- Building RC wheel for Test PyPI: $(RC_VERSION)rc$(RC_NUMBER) ---"
+	@$(ACTIVATE_AND_CD) && uv version "$(RC_VERSION)rc$(RC_NUMBER)" && uv build --wheel
+	@echo "--- RC wheel build for Test PyPI complete ---"
 
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code

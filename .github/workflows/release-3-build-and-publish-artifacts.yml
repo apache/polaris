@@ -571,24 +571,17 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: true
 
-      - name: Build Python client RC
+      - name: Build Python client RC for SVN
         run: |
           make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
 
-      - name: Sign and checksum Python distributions
+      - name: Sign and checksum Python wheel
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          for dist_file in client/python/dist/*.whl client/python/dist/*.tar.gz; do
-            calculate_sha512 "${dist_file}"
-            exec_process gpg --armor --output "${dist_file}.asc" --detach-sig "${dist_file}"
-          done
-
-      - name: Publish Python client RC to Test PyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: client/python/dist/
+          wheel_file=$(ls client/python/dist/*.whl)
+          calculate_sha512 "${wheel_file}"
+          exec_process gpg --armor --output "${wheel_file}.asc" --detach-sig "${wheel_file}"
 
       - name: Stage Python wheel to Apache dist dev repository
         env:
@@ -621,6 +614,16 @@ jobs:
 
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Python client ${version_without_rc} RC${rc_number}"
 
+      - name: Build Python client RC for Test PyPI
+        run: |
+          make client-rc-testpypi-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Publish Python client RC to Test PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: client/python/dist/
+
       - name: Update step summary
         run: |
           echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
@@ -629,9 +632,9 @@ jobs:
 
           | Property | Value |
           | --- | --- |
-          | Version | \`${version_without_rc}rc${rc_number}\` |
-          | Registry | Test PyPI |
+          | Version | \`${version_without_rc}\` |
           | Apache dist dev | \`python-client/${version_without_rc}\` |
+          | Registry | Test PyPI |
           EOT
 
   generate-release-email:
@@ -697,10 +700,10 @@ jobs:
 
           NB: you have to build the Docker images locally in order to test Helm charts.
 
-          The Python CLI RC wheel is available on:
+          The Python CLI wheel is available on:
           * https://dist.apache.org/repos/dist/dev/polaris/python-client/${version_without_rc}
 
-          The Python CLI RC is also available on Test PyPI:
+          The Python CLI is also available on Test PyPI:
           * https://test.pypi.org/project/apache-polaris/${version_without_rc}rc${rc_number}/
 
           You can find the KEYS file here:
