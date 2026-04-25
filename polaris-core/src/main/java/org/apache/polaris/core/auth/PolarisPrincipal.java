@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -35,17 +36,16 @@ public interface PolarisPrincipal extends Principal {
    * roles.
    *
    * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
+   * properties will be derived from both the user-defined and internal properties of the entity.
+   * Internal properties take precedence over user-defined ones on key conflicts.
    *
    * @param principalEntity the principal entity representing the user or service
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles) {
-    return of(
-        principalEntity.getName(),
-        principalEntity.getInternalPropertiesAsMap(),
-        roles,
-        Optional.empty());
+    Map<String, String> allProperties = new HashMap<>(principalEntity.getPropertiesAsMap());
+    allProperties.putAll(principalEntity.getInternalPropertiesAsMap());
+    return of(principalEntity.getName(), allProperties, roles, Optional.empty());
   }
 
   /**
@@ -53,7 +53,8 @@ public interface PolarisPrincipal extends Principal {
    * roles.
    *
    * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
+   * properties will be derived from both the user-defined and internal properties of the entity.
+   * Internal properties take precedence over user-defined ones on key conflicts.
    *
    * @param principalEntity the principal entity representing the user or service
    * @param roles the set of roles associated with the principal
@@ -61,8 +62,9 @@ public interface PolarisPrincipal extends Principal {
    */
   static PolarisPrincipal of(
       PrincipalEntity principalEntity, Set<String> roles, Optional<String> token) {
-    return of(
-        principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
+    Map<String, String> allProperties = new HashMap<>(principalEntity.getPropertiesAsMap());
+    allProperties.putAll(principalEntity.getInternalPropertiesAsMap());
+    return of(principalEntity.getName(), allProperties, roles, token);
   }
 
   /**
