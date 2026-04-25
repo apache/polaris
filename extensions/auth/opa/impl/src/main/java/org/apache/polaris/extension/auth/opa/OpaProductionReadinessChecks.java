@@ -18,59 +18,83 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
-import io.smallrye.common.annotation.Identifier;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
-import org.apache.polaris.service.config.AuthorizationConfiguration;
+import org.eclipse.microprofile.config.Config;
 
 @ApplicationScoped
 public class OpaProductionReadinessChecks {
 
+  private static final String OPA_AUTHORIZATION_TYPE = "opa";
+  private static final String DEFAULT_AUTHORIZATION_TYPE_PROPERTY = "polaris.authorization.type";
+  private static final String AUTHORIZATION_REALMS_PREFIX = "polaris.authorization.realms.";
+  private static final String AUTHORIZATION_TYPE_SUFFIX = ".type";
+
   @Produces
   public ProductionReadinessCheck checkOpaAuthorization(
-      AuthorizationConfiguration authorizationConfig,
-      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
-    for (String authorizationType :
-        authorizationConfig.realms().values().stream()
-            .map(realmConfig -> realmConfig.type())
-            .distinct()
-            .toList()) {
-      Instance<PolarisAuthorizerFactory> selectedFactory =
-          authorizerFactories.select(Identifier.Literal.of(authorizationType));
-      if (!selectedFactory.isResolvable()) {
-        continue;
-      }
+      Config config, @Any Instance<OpaPolarisAuthorizerFactory> opaAuthorizerFactories) {
+    List<String> opaAuthorizationTypeProperties = opaAuthorizationTypeProperties(config);
+    if (opaAuthorizationTypeProperties.isEmpty()) {
+      return ProductionReadinessCheck.OK;
+    }
 
-      if (!(selectedFactory.get() instanceof OpaPolarisAuthorizerFactory opaFactory)) {
-        continue;
-      }
+    Instance<OpaPolarisAuthorizerFactory> selectedFactory =
+        opaAuthorizerFactories.select(Identifier.Literal.of(OPA_AUTHORIZATION_TYPE));
+    if (!selectedFactory.isResolvable()) {
+      return ProductionReadinessCheck.OK;
+    }
 
-      OpaAuthorizationConfig config = opaFactory.getConfig();
+    OpaAuthorizationConfig opaConfig = selectedFactory.get().getConfig();
+    List<Error> errors = new ArrayList<>();
 
-      List<Error> errors = new ArrayList<>();
-
+    for (String property : opaAuthorizationTypeProperties) {
       errors.add(
           Error.of(
               "OPA authorization is currently a Beta feature and is not a stable release. Breaking changes may be introduced in future versions. Use with caution in production environments.",
-              "polaris.authorization.type"));
-
-      if (!config.http().verifySsl()) {
-        errors.add(
-            Error.ofSevere(
-                "SSL certificate verification is disabled for OPA communication. This exposes the service to man-in-the-middle attacks and other severe security risks.",
-                "polaris.authorization.opa.http.verify-ssl"));
-      }
-
-      return ProductionReadinessCheck.of(errors);
+              property));
     }
 
-    return ProductionReadinessCheck.OK;
+    if (!opaConfig.http().verifySsl()) {
+      errors.add(
+          Error.ofSevere(
+              "SSL certificate verification is disabled for OPA communication. This exposes the service to man-in-the-middle attacks and other severe security risks.",
+              "polaris.authorization.opa.http.verify-ssl"));
+    }
+
+    return ProductionReadinessCheck.of(errors);
+  }
+
+  private static List<String> opaAuthorizationTypeProperties(Config config) {
+    List<String> properties = new ArrayList<>();
+    if (isOpaAuthorizationType(config, DEFAULT_AUTHORIZATION_TYPE_PROPERTY)) {
+      properties.add(DEFAULT_AUTHORIZATION_TYPE_PROPERTY);
+    }
+    config
+        .getPropertyNames()
+        .forEach(property -> addOpaRealmTypeProperty(config, property, properties));
+    return properties;
+  }
+
+  private static void addOpaRealmTypeProperty(
+      Config config, String property, List<String> properties) {
+    if (property.startsWith(AUTHORIZATION_REALMS_PREFIX)
+        && property.endsWith(AUTHORIZATION_TYPE_SUFFIX)
+        && isOpaAuthorizationType(config, property)) {
+      properties.add(property);
+    }
+  }
+
+  private static boolean isOpaAuthorizationType(Config config, String property) {
+    return config
+        .getOptionalValue(property, String.class)
+        .filter(OPA_AUTHORIZATION_TYPE::equals)
+        .isPresent();
   }
 }

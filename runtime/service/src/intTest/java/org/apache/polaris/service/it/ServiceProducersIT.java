@@ -19,6 +19,7 @@
 package org.apache.polaris.service.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -40,6 +41,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -76,7 +78,8 @@ public class ServiceProducersIT {
     public Map<String, String> getConfigOverrides() {
       Map<String, String> config = new HashMap<>();
       config.put("polaris.authorization.type", "internal");
-      config.put("polaris.authorization.realm1.type", "test-authorizer");
+      config.put("polaris.authorization.realms.realm1.type", "test-authorizer");
+      config.put("polaris.authorization.realms.unknown.type", "missing-authorizer");
       return config;
     }
   }
@@ -106,6 +109,19 @@ public class ServiceProducersIT {
               authorizerFactories,
               new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "other"));
       assertThat(defaultAuthorizer).isInstanceOf(PolarisAuthorizerImpl.class);
+    }
+
+    @Test
+    void testUnknownRealmAuthorizerSelectionFailsClearly() {
+      assertThatThrownBy(
+              () ->
+                  serviceProducers.polarisAuthorizer(
+                      () -> "unknown",
+                      authorizationConfiguration,
+                      authorizerFactories,
+                      new RealmConfigImpl(RealmConfigurationSource.EMPTY_CONFIG, () -> "unknown")))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Unknown authorization type 'missing-authorizer'");
     }
   }
 
@@ -142,7 +158,7 @@ public class ServiceProducersIT {
         PolarisPrincipal polarisPrincipal,
         Set<PolarisBaseEntity> activatedEntities,
         PolarisAuthorizableOperation authzOp,
-      List<PolarisResolvedPathWrapper> targets,
-      List<PolarisResolvedPathWrapper> secondaries) {}
+        List<PolarisResolvedPathWrapper> targets,
+        List<PolarisResolvedPathWrapper> secondaries) {}
   }
 }

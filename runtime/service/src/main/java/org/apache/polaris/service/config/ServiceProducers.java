@@ -145,10 +145,15 @@ public class ServiceProducers {
       AuthorizationConfiguration authorizationConfig,
       @Any Instance<PolarisAuthorizerFactory> authorizerFactories,
       RealmConfig realmConfig) {
-    PolarisAuthorizerFactory factory =
-        authorizerFactories
-            .select(Identifier.Literal.of(authorizationConfig.forRealm(realmContext).type()))
-            .get();
+    String authorizationType = authorizationConfig.forRealm(realmContext).type();
+    Instance<PolarisAuthorizerFactory> selectedFactory =
+        authorizerFactories.select(Identifier.Literal.of(authorizationType));
+    if (!selectedFactory.isResolvable()) {
+      throw new IllegalArgumentException(
+          "Unknown authorization type '%s'. Expected a PolarisAuthorizerFactory bean annotated with @Identifier(\"%s\")."
+              .formatted(authorizationType, authorizationType));
+    }
+    PolarisAuthorizerFactory factory = selectedFactory.get();
     return factory.create(realmConfig);
   }
 
