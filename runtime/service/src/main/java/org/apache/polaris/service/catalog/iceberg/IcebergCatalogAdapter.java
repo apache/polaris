@@ -125,10 +125,6 @@ public class IcebergCatalogAdapter
     return handlerFactory.createHandler(catalogName, principal);
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
-    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-  }
-
   @Override
   public Response createNamespace(
       String prefix,
@@ -252,6 +248,12 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
+  }
+
+  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+    // Parse the access delegation modes - validation will happen after mode resolution
+    // in IcebergCatalogHandler.resolveAccessDelegationModes()
+    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
   }
 
   @Override
