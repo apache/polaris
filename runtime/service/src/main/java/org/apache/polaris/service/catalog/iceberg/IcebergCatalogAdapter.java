@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -124,6 +123,10 @@ public class IcebergCatalogAdapter
   IcebergCatalogHandler newHandler(SecurityContext securityContext, String catalogName) {
     PolarisPrincipal principal = validatePrincipal(securityContext);
     return handlerFactory.createHandler(catalogName, principal);
+  }
+
+  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+    return AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
   }
 
   @Override
