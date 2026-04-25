@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesListWithValidation;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -26,11 +29,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.junit.jupiter.api.DynamicNode;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 @QuarkusTest
@@ -174,6 +179,13 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
+  }
+
+  @Test
+  void testInvalidAccessDelegationMode() {
+    assertThatThrownBy(() -> fromProtocolValuesListWithValidation("invalid-mode"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Unknown access delegation mode: invalid-mode");
   }
 
   @TestFactory

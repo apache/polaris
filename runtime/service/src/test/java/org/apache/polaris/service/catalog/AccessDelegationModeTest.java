@@ -21,9 +21,12 @@ package org.apache.polaris.service.catalog;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesList;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesListWithValidation;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.EnumSet;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -61,5 +64,41 @@ class AccessDelegationModeTest {
     assertThat(fromProtocolValuesList("true")).isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
     assertThat(fromProtocolValuesList("true, vended-credentials"))
         .isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
+  }
+
+  @ParameterizedTest
+  @EnumSource(AccessDelegationMode.class)
+  void testWithValidationSingle(AccessDelegationMode mode) {
+    assertThat(fromProtocolValuesListWithValidation(mode.protocolValue()))
+        .isEqualTo(EnumSet.of(mode));
+  }
+
+  @Test
+  void testWithValidationSeveral() {
+    assertThat(fromProtocolValuesListWithValidation("vended-credentials, remote-signing"))
+        .isEqualTo(EnumSet.of(VENDED_CREDENTIALS, REMOTE_SIGNING));
+  }
+
+  @Test
+  void testWithValidationEmpty() {
+    assertThat(fromProtocolValuesListWithValidation(null))
+        .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+    assertThat(fromProtocolValuesListWithValidation(""))
+        .isEqualTo(EnumSet.noneOf(AccessDelegationMode.class));
+  }
+
+  @Test
+  void testWithValidationUnknownThrows() {
+    assertThatThrownBy(() -> fromProtocolValuesListWithValidation("abc"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Unknown access delegation mode: abc");
+
+    assertThatThrownBy(() -> fromProtocolValuesListWithValidation("abc,def"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Unknown access delegation mode: abc");
+
+    assertThatThrownBy(() -> fromProtocolValuesListWithValidation("abc,remote-signing"))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Unknown access delegation mode: abc");
   }
 }

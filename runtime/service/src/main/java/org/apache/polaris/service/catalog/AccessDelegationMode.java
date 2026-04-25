@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,33 @@ public enum AccessDelegationMode {
         .map(Mapper::map)
         .filter(Objects::nonNull)
         .forEach(set::add);
+    return set;
+  }
+
+  /**
+   * Like {@link #fromProtocolValuesList(String)}, but throws a {@link BadRequestException} if any
+   * individual value in the comma-separated list is not a recognized access delegation mode.
+   */
+  public static EnumSet<AccessDelegationMode> fromProtocolValuesListWithValidation(
+      String protocolValues) {
+    if (protocolValues == null || protocolValues.isEmpty()) {
+      return EnumSet.noneOf(AccessDelegationMode.class);
+    }
+
+    EnumSet<AccessDelegationMode> set = EnumSet.noneOf(AccessDelegationMode.class);
+    for (String raw : protocolValues.split(",")) {
+      String key = raw.trim();
+      AccessDelegationMode mode = Mapper.BY_PROTOCOL_VALUE.get(key);
+      if (mode == null) {
+        throw new BadRequestException(
+            "Unknown access delegation mode: %s. Supported values are: %s",
+            key,
+            Arrays.stream(AccessDelegationMode.values())
+                .map(AccessDelegationMode::protocolValue)
+                .collect(Collectors.joining(", ")));
+      }
+      set.add(mode);
+    }
     return set;
   }
 

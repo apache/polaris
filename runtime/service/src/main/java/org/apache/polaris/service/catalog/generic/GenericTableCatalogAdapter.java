@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.catalog.generic;
 
-import static org.apache.polaris.service.catalog.common.CatalogUtils.parseAccessDelegationModes;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.fromProtocolValuesListWithValidation;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -90,7 +90,7 @@ public class GenericTableCatalogAdapter
             createGenericTableRequest.getName());
     EntityNameValidator.validateIdentifier(identifier);
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(polarisGenericTableAccessDelegation);
+        fromProtocolValuesListWithValidation(polarisGenericTableAccessDelegation);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
@@ -143,7 +143,7 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(polarisGenericTableAccessDelegation);
+        fromProtocolValuesListWithValidation(polarisGenericTableAccessDelegation);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.loadGenericTable(
