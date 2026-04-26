@@ -21,8 +21,8 @@ It is updated to remove all swagger annotations and support builders and immutab
 {{#vendorExtensions.x-field-extra-annotation}}
     {{{vendorExtensions.x-field-extra-annotation}}}
 {{/vendorExtensions.x-field-extra-annotation}}
-{{#useBeanValidation}}{{>beanValidation}}{{^isPrimitiveType}}{{^isDate}}{{^isDateTime}}{{^isString}}{{^isFile}}  @Valid
-{{/isFile}}{{/isString}}{{/isDateTime}}{{/isDate}}{{/isPrimitiveType}}{{/useBeanValidation}}  private final {{{datatypeWithEnum}}} {{name}};{{/vars}}
+{{#useBeanValidation}}{{>beanValidation}}{{^isPrimitiveType}}{{^isDate}}{{^isDateTime}}{{^isString}}{{^isFile}}{{^isContainer}}{{^vendorExtensions.x-polaris-skip-valid-annotation}}  @Valid
+{{/vendorExtensions.x-polaris-skip-valid-annotation}}{{/isContainer}}{{/isFile}}{{/isString}}{{/isDateTime}}{{/isDate}}{{/isPrimitiveType}}{{/useBeanValidation}}  private final {{{datatypeWithEnum}}} {{name}};{{/vars}}
 {{#vars}}
     /**
     {{#description}}
