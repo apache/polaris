@@ -79,7 +79,7 @@ services:
       test: ["CMD", "test", "-f", "/tmp/polaris-setup-done"]
 
   prometheus:
-    image: docker.io/prom/prometheus:v3.11.2
+    image: docker.io/prom/prometheus:v3.11.3
     ports:
       - "9093:9090"
     depends_on:
