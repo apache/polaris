@@ -213,6 +213,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
   public static final String CATALOG_NAME = "polaris-catalog";
+  public static final String STORAGE_LOCATION = "s3://my-bucket/path/to/data";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
@@ -286,22 +287,20 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     realmContextHolder.set(() -> realmName);
     polarisContext = callContext.getPolarisCallContext();
 
-    String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .setAllowedLocations(List.of(STORAGE_LOCATION, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .setDefaultBaseLocation(STORAGE_LOCATION)
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -309,7 +308,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -384,6 +383,17 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  @Override
+  protected String baseTableLocation(TableIdentifier identifier) {
+    // Override the file:/tmp default used by CatalogTests so inherited tests pass locations that
+    // fall inside this catalog's allowed S3 locations.
+    return STORAGE_LOCATION
+        + "/baseTableLocation/"
+        + String.join("/", identifier.namespace().levels())
+        + "/"
+        + identifier.name();
   }
 
   protected boolean supportsNotifications() {
@@ -1898,7 +1908,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new CatalogEntity.Builder()
                 .setName(noPurgeCatalogName)
                 .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                 .addProperty(
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(

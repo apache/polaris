@@ -990,35 +990,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   /**
-   * Applies the rule controlled by REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY to a
-   * tablelike location
-   */
-  private String applyReplaceNewLocationWithCatalogDefault(String specifiedTableLikeLocation) {
-    String replaceNewLocationPrefix = catalogEntity.getReplaceNewLocationPrefixWithCatalogDefault();
-    if (specifiedTableLikeLocation != null
-        && replaceNewLocationPrefix != null
-        && specifiedTableLikeLocation.startsWith(replaceNewLocationPrefix)) {
-      String modifiedLocation =
-          defaultBaseLocation
-              + specifiedTableLikeLocation.substring(replaceNewLocationPrefix.length());
-      LOGGER
-          .atDebug()
-          .addKeyValue("specifiedTableLikeLocation", specifiedTableLikeLocation)
-          .addKeyValue("modifiedLocation", modifiedLocation)
-          .log("Translating specifiedTableLikeLocation based on config");
-      return modifiedLocation;
-    }
-    return specifiedTableLikeLocation;
-  }
-
-  /**
    * Based on configuration settings, for callsites that need to handle potentially setting a new
    * base location for a TableLike entity, produces the transformed location if applicable, or else
    * the unaltered specified location.
    */
   public String transformTableLikeLocation(TableIdentifier tableIdentifier, String location) {
-    return applyDefaultLocationObjectStoragePrefix(
-        tableIdentifier, applyReplaceNewLocationWithCatalogDefault(location));
+    return applyDefaultLocationObjectStoragePrefix(tableIdentifier, location);
   }
 
   /**

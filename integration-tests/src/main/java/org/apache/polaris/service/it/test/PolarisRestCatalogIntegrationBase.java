@@ -95,7 +95,6 @@ import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.CatalogConfig;
@@ -285,11 +284,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
-
-    if (!testRuntimeURI.getScheme().equals("file")) {
-      catalogPropsBuilder.addProperty(
-          CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
-    }
 
     Catalog.TypeEnum catalogType =
         IntegrationTestsHelper.extractFromAnnotatedElements(

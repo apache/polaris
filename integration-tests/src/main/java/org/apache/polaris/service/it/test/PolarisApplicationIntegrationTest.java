@@ -70,7 +70,6 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
@@ -208,10 +207,7 @@ public class PolarisApplicationIntegrationTest {
       StorageConfigInfo storageConfig,
       String defaultBaseLocation,
       Map<String, String> additionalProperties) {
-    CatalogProperties.Builder propsBuilder =
-        CatalogProperties.builder(defaultBaseLocation)
-            .addProperty(
-                CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:/");
+    CatalogProperties.Builder propsBuilder = CatalogProperties.builder(defaultBaseLocation);
     for (var entry : additionalProperties.entrySet()) {
       propsBuilder.addProperty(entry.getKey(), entry.getValue());
     }
