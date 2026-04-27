@@ -317,6 +317,29 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .build();
             config = awsConfig;
             break;
+          case S3_TABLES:
+            if (defaultBaseLocation == null
+                || !defaultBaseLocation.startsWith(
+                    PolarisStorageConfigurationInfo.S3_TABLES_ARN_PREFIX)) {
+              throw new BadRequestException(
+                  "S3 Tables catalogs require default-base-location to be an S3 Tables "
+                      + "bucket ARN (e.g. arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket)"
+                      + ", but got: %s",
+                  defaultBaseLocation);
+            }
+            AwsS3TablesStorageConfigInfo s3TablesConfigModel =
+                (AwsS3TablesStorageConfigInfo) storageConfigModel;
+            config =
+                AwsS3TablesStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
+                    .roleARN(s3TablesConfigModel.getRoleArn())
+                    .externalId(s3TablesConfigModel.getExternalId())
+                    .region(s3TablesConfigModel.getRegion())
+                    .currentKmsKey(s3TablesConfigModel.getCurrentKmsKey())
+                    .allowedKmsKeys(s3TablesConfigModel.getAllowedKmsKeys())
+                    .build();
+            break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
             config =
@@ -343,28 +366,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                 FileStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
                     .storageName(storageConfigModel.getStorageName())
-                    .build();
-            break;
-          case S3_TABLES:
-            if (defaultBaseLocation == null
-                || !defaultBaseLocation.startsWith("arn:aws:s3tables")) {
-              throw new BadRequestException(
-                  "S3 Tables catalogs require default-base-location to be an S3 Tables "
-                      + "bucket ARN (e.g. arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket)"
-                      + ", but got: %s",
-                  defaultBaseLocation);
-            }
-            AwsS3TablesStorageConfigInfo s3TablesConfigModel =
-                (AwsS3TablesStorageConfigInfo) storageConfigModel;
-            config =
-                AwsS3TablesStorageConfigurationInfo.builder()
-                    .allowedLocations(allowedLocations)
-                    .storageName(storageConfigModel.getStorageName())
-                    .roleARN(s3TablesConfigModel.getRoleArn())
-                    .externalId(s3TablesConfigModel.getExternalId())
-                    .region(s3TablesConfigModel.getRegion())
-                    .currentKmsKey(s3TablesConfigModel.getCurrentKmsKey())
-                    .allowedKmsKeys(s3TablesConfigModel.getAllowedKmsKeys())
                     .build();
             break;
           default:

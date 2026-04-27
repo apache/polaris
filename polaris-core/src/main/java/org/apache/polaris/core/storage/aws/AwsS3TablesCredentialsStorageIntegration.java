@@ -56,6 +56,16 @@ import software.amazon.awssdk.services.sts.model.Tag;
 public class AwsS3TablesCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsS3TablesStorageConfigurationInfo> {
 
+  // S3 Tables IAM actions for read operations
+  public static final String ACTION_GET_TABLE_DATA = "s3tables:GetTableData";
+  public static final String ACTION_GET_TABLE_METADATA_LOCATION =
+      "s3tables:GetTableMetadataLocation";
+
+  // S3 Tables IAM actions for write operations
+  public static final String ACTION_UPDATE_TABLE_METADATA_LOCATION =
+      "s3tables:UpdateTableMetadataLocation";
+  public static final String ACTION_PUT_TABLE_DATA = "s3tables:PutTableData";
+
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
@@ -173,8 +183,8 @@ public class AwsS3TablesCredentialsStorageIntegration
     IamStatement.Builder readStatement =
         IamStatement.builder()
             .effect(IamEffect.ALLOW)
-            .addAction("s3tables:GetTableData")
-            .addAction("s3tables:GetTableMetadataLocation");
+            .addAction(ACTION_GET_TABLE_DATA)
+            .addAction(ACTION_GET_TABLE_METADATA_LOCATION);
 
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
@@ -188,8 +198,8 @@ public class AwsS3TablesCredentialsStorageIntegration
       IamStatement.Builder writeStatement =
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
-              .addAction("s3tables:UpdateTableMetadataLocation")
-              .addAction("s3tables:PutTableData");
+              .addAction(ACTION_UPDATE_TABLE_METADATA_LOCATION)
+              .addAction(ACTION_PUT_TABLE_DATA);
 
       writeLocations.forEach(arn -> writeStatement.addResource(IamResource.create(arn)));
       policyBuilder.addStatement(writeStatement.build());
@@ -214,7 +224,9 @@ public class AwsS3TablesCredentialsStorageIntegration
           @Nonnull AwsS3TablesStorageConfigurationInfo storageConfig,
           @Nonnull Set<PolarisStorageActions> actions,
           @Nonnull Set<String> locations) {
-    // No-op stub for S3 Tables — real validation deferred to a follow-up PR.
+    // TODO(https://github.com/apache/polaris/issues/4302): Implement S3 Tables location
+    // validation. This requires calling s3tables:GetTableBucket or similar to verify that the
+    // configured role can actually access the table bucket ARN.
     return Map.of();
   }
 }

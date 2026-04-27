@@ -196,13 +196,16 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
+  /** ARN prefix for S3 Tables resources. */
+  public static final String S3_TABLES_ARN_PREFIX = "arn:aws:s3tables";
+
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3(List.of("s3://", "s3a://")),
+    S3_TABLES(S3_TABLES_ARN_PREFIX),
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
-    S3_TABLES("arn:aws:s3tables"),
     ;
 
     private final List<String> prefixes;

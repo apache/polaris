@@ -18,6 +18,10 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.storage.aws.AwsS3TablesCredentialsStorageIntegration.ACTION_GET_TABLE_DATA;
+import static org.apache.polaris.core.storage.aws.AwsS3TablesCredentialsStorageIntegration.ACTION_GET_TABLE_METADATA_LOCATION;
+import static org.apache.polaris.core.storage.aws.AwsS3TablesCredentialsStorageIntegration.ACTION_PUT_TABLE_DATA;
+import static org.apache.polaris.core.storage.aws.AwsS3TablesCredentialsStorageIntegration.ACTION_UPDATE_TABLE_METADATA_LOCATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -95,10 +99,10 @@ class AwsS3TablesCredentialsStorageIntegrationTest {
     Mockito.verify(stsClient).assumeRole(captor.capture());
     String policy = captor.getValue().policy();
 
-    assertThat(policy).contains("s3tables:GetTableData");
-    assertThat(policy).contains("s3tables:GetTableMetadataLocation");
-    assertThat(policy).doesNotContain("s3tables:UpdateTableMetadataLocation");
-    assertThat(policy).doesNotContain("s3tables:PutTableData");
+    assertThat(policy).contains(ACTION_GET_TABLE_DATA);
+    assertThat(policy).contains(ACTION_GET_TABLE_METADATA_LOCATION);
+    assertThat(policy).doesNotContain(ACTION_UPDATE_TABLE_METADATA_LOCATION);
+    assertThat(policy).doesNotContain(ACTION_PUT_TABLE_DATA);
     assertThat(policy).contains(TABLE_ARN);
   }
 
@@ -123,10 +127,10 @@ class AwsS3TablesCredentialsStorageIntegrationTest {
     Mockito.verify(stsClient).assumeRole(captor.capture());
     String policy = captor.getValue().policy();
 
-    assertThat(policy).contains("s3tables:GetTableData");
-    assertThat(policy).contains("s3tables:GetTableMetadataLocation");
-    assertThat(policy).contains("s3tables:UpdateTableMetadataLocation");
-    assertThat(policy).contains("s3tables:PutTableData");
+    assertThat(policy).contains(ACTION_GET_TABLE_DATA);
+    assertThat(policy).contains(ACTION_GET_TABLE_METADATA_LOCATION);
+    assertThat(policy).contains(ACTION_UPDATE_TABLE_METADATA_LOCATION);
+    assertThat(policy).contains(ACTION_PUT_TABLE_DATA);
     assertThat(policy).contains(TABLE_ARN);
   }
 
