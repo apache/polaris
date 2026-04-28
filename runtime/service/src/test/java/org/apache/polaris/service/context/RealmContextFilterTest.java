@@ -22,6 +22,7 @@ package org.apache.polaris.service.context;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
+import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -29,6 +30,7 @@ import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
 import org.junit.jupiter.api.Test;
@@ -46,9 +48,44 @@ class RealmContextFilterTest {
           "polaris.realm-context.header-name",
           REALM_HEADER,
           "polaris.realm-context.realms",
-          "realm1,realm2",
-          "polaris.bootstrap.credentials",
-          "realm1,client1,secret1;realm2,client2,secret2");
+          "realm1,realm2");
+    }
+
+    @Override
+    public List<TestResourceEntry> testResources() {
+      // `org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet` retrieves the
+      // environmental provides values from, 1st, a system property and, if not present, from an
+      // environment variable. But `RootCredentialsSet` does not query the configuration backend.
+      //
+      // The fact that `RootCredentialsSet` could retrieve 'polaris.bootstrap.credentials' for this
+      // test via system properties was leveraging an implementation detail in Quarkus.
+      // Configs do no longer become system properties in Quarkus/smallrye-config.
+      //
+      // The test-profile effectively ensures that this test runs "alone", so updating and restoring
+      // the relevant system property for `RootCredentialsSet` is safe.
+      return List.of(new TestResourceEntry(RealmContextFilterTestResource.class));
+    }
+  }
+
+  public static class RealmContextFilterTestResource
+      implements QuarkusTestResourceLifecycleManager {
+    private String oldProperty;
+
+    @Override
+    public Map<String, String> start() {
+      oldProperty = System.getProperty("polaris.bootstrap.credentials");
+      System.setProperty(
+          "polaris.bootstrap.credentials", "realm1,client1,secret1;realm2,client2,secret2");
+      return Map.of();
+    }
+
+    @Override
+    public void stop() {
+      if (oldProperty == null) {
+        System.clearProperty("polaris.bootstrap.credentials");
+      } else {
+        System.setProperty("polaris.bootstrap.credentials", oldProperty);
+      }
     }
   }
 
