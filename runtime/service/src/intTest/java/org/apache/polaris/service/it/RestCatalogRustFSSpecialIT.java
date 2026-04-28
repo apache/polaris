@@ -330,7 +330,7 @@ public class RestCatalogRustFSSpecialIT {
   }
 
   @Test
-  public void testCreateTableVendedCredentialsWithFullAwsShapeAndKmsEnabledFails()
+  public void testCreateTableVendedCredentialsWithFullAwsShapeAndNonNativeEndpointPasses()
       throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(
@@ -345,7 +345,7 @@ public class RestCatalogRustFSSpecialIT {
             Optional.of(false))) {
       TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
       try {
-        assertLoadTableWithVendedCredentialsFailsWithKmsError(id);
+        assertLoadTableWithVendedCredentialsSucceeds(id);
       } finally {
         catalogApi.dropTable(catalogName, id);
       }
@@ -373,18 +373,6 @@ public class RestCatalogRustFSSpecialIT {
         catalogApi.dropTable(catalogName, id);
       }
     }
-  }
-
-  private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
-    assertThatThrownBy(
-            () ->
-                catalogApi.loadTable(
-                    catalogName,
-                    id,
-                    "ALL",
-                    Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
-        .hasMessageContaining("Status Code: 400");
   }
 
   private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {

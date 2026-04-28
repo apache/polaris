@@ -329,7 +329,7 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @Test
-  public void testCreateTableVendedCredentialsWithFullAwsShapeAndKmsEnabledFails()
+  public void testCreateTableVendedCredentialsWithFullAwsShapeAndNonNativeEndpointPasses()
       throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(
@@ -344,7 +344,7 @@ public class RestCatalogMinIOSpecialIT {
             Optional.of(false))) {
       TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
       try {
-        assertLoadTableWithVendedCredentialsFailsWithKmsError(id);
+        assertLoadTableWithVendedCredentialsSucceeds(id);
       } finally {
         catalogApi.dropTable(catalogName, id);
       }
@@ -372,19 +372,6 @@ public class RestCatalogMinIOSpecialIT {
         catalogApi.dropTable(catalogName, id);
       }
     }
-  }
-
-  private void assertLoadTableWithVendedCredentialsFailsWithKmsError(TableIdentifier id) {
-    assertThatThrownBy(
-            () ->
-                catalogApi.loadTable(
-                    catalogName,
-                    id,
-                    "ALL",
-                    Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
-        .hasMessageContaining("Failed to get subscoped credentials")
-        .hasMessageContaining("invalid resource")
-        .hasMessageContaining("arn:aws:kms:us-west-2:000000000000:key/*");
   }
 
   private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {
