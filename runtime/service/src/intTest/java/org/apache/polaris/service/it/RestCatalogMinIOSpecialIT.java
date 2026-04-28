@@ -51,6 +51,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
@@ -258,6 +259,92 @@ public class RestCatalogMinIOSpecialIT {
   public void testCreateTableVendedCredentials(boolean pathStyle) throws IOException {
     LoadTableResponse response =
         doTestCreateTable(pathStyle, Optional.of(VENDED_CREDENTIALS), true);
+    assertThat(response.config())
+        .containsEntry(
+            REFRESH_CREDENTIALS_ENDPOINT,
+            "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
+    assertThat(response.credentials()).hasSize(1);
+  }
+
+  @Test
+  public void testCreateTableVendedCredentialsWithPartialAwsShapePasses() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true)) {
+      TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
+      try {
+        assertLoadTableWithVendedCredentialsSucceeds(id);
+      } finally {
+        catalogApi.dropTable(catalogName, id);
+      }
+    }
+  }
+
+  @Test
+  public void testVendedCredentialsFailClosedForWildcardTableIdentifiers() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true)) {
+      Namespace targetNamespace = Namespace.of("foo");
+      Namespace checkedNamespace = Namespace.of("*");
+      TableIdentifier targetId = TableIdentifier.of(targetNamespace, "target");
+      TableIdentifier checkedId = TableIdentifier.of(checkedNamespace, "*");
+      restCatalog.createNamespace(targetNamespace);
+      restCatalog.createNamespace(checkedNamespace);
+      restCatalog.createTable(targetId, SCHEMA);
+
+      try {
+        assertThatThrownBy(() -> restCatalog.createTable(checkedId, SCHEMA))
+            .hasMessageContaining("Access Denied");
+      } finally {
+        if (restCatalog.tableExists(checkedId)) {
+          restCatalog.dropTable(checkedId);
+        }
+        if (restCatalog.tableExists(targetId)) {
+          restCatalog.dropTable(targetId);
+        }
+      }
+    }
+  }
+
+  private TableIdentifier createTableAndVerifyMetadata(RESTCatalog restCatalog) {
+    catalogApi.createNamespace(catalogName, "test-ns");
+    TableIdentifier id = TableIdentifier.of("test-ns", "t1");
+    Table table = restCatalog.createTable(id, SCHEMA);
+    assertThat(table).isNotNull();
+
+    TableOperations ops = ((HasTableOperations) table).operations();
+    URI location = URI.create(ops.current().metadataFileLocation());
+
+    GetObjectResponse response =
+        s3Client
+            .getObject(
+                GetObjectRequest.builder()
+                    .bucket(location.getAuthority())
+                    .key(location.getPath().substring(1)) // drop leading slash
+                    .build())
+            .response();
+    assertThat(response.contentLength()).isGreaterThan(0);
+    return id;
+  }
+
+  private void assertLoadTableWithVendedCredentialsSucceeds(TableIdentifier id) {
+    LoadTableResponse response =
+        catalogApi.loadTable(
+            catalogName,
+            id,
+            "ALL",
+            Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue()));
     assertThat(response.config())
         .containsEntry(
             REFRESH_CREDENTIALS_ENDPOINT,
