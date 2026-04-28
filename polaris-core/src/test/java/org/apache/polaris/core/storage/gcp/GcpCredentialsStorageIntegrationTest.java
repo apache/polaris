@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.CredentialVendingContext;
@@ -61,6 +62,9 @@ import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -272,6 +276,128 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .isEqualTo(refRules);
   }
 
+  @Test
+  public void testGenerateAccessBoundaryQuotesCelLiteralCharacters() {
+    String path = "a'b\"c\\d";
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://bucket1/" + path), Set.of("gs://bucket1/" + path));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(2);
+
+    assertThat(expressionAt(parsedRules, 0))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/"
+                + "a\\'b\\\"c\\\\d"
+                + "') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('"
+                + "a\\'b\\\"c\\\\d"
+                + "')");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d')");
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      quoteCharacter = '`',
+      emptyValue = "",
+      value = {
+        "``|``",
+        "plain|plain",
+        "'|\\'",
+        "\\\"|\\\\\\\"",
+        "\\\\|\\\\\\\\",
+        "a'b\\\\c|a\\'b\\\\\\\\c",
+        "a\tb|a\\tb",
+      })
+  public void testQuoteForCelString(String input, String expectedOutput) {
+    assertThat(GcpCredentialsStorageIntegration.escapeCelLiteral(input)).isEqualTo(expectedOutput);
+  }
+
+  @ParameterizedTest
+  @MethodSource("handledControlCharacterCases")
+  public void testQuoteForCelStringEscapesHandledControlCharacters(
+      String input, String expectedOutput) {
+    assertThat(GcpCredentialsStorageIntegration.escapeCelLiteral(input)).isEqualTo(expectedOutput);
+  }
+
+  private static Stream<Arguments> handledControlCharacterCases() {
+    return Stream.of(
+        Arguments.of("\b", "\\b"),
+        Arguments.of("a\bb", "a\\bb"),
+        Arguments.of("\f", "\\f"),
+        Arguments.of("a\fb", "a\\fb"),
+        Arguments.of("\n", "\\n"),
+        Arguments.of("a\nb", "a\\nb"),
+        Arguments.of("\r", "\\r"),
+        Arguments.of("a\rb", "a\\rb"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"\uD83D\uDE00", "prefix-\uD834\uDD1E-suffix"})
+  public void testQuoteForCelStringPreservesValidSurrogatePairs(String input) {
+    assertThat(GcpCredentialsStorageIntegration.escapeCelLiteral(input)).isEqualTo(input);
+  }
+
+  @ParameterizedTest
+  @MethodSource("unpairedSurrogateCases")
+  public void testQuoteForCelStringRejectsUnpairedSurrogates(String input) {
+    Assertions.assertThatThrownBy(() -> GcpCredentialsStorageIntegration.escapeCelLiteral(input))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported unpaired surrogate");
+  }
+
+  private static Stream<String> unpairedSurrogateCases() {
+    return Stream.of(
+        String.valueOf((char) 0xD83D),
+        String.valueOf((char) 0xDE00),
+        new String(new char[] {(char) 0xD83D, 'a'}),
+        new String(new char[] {'a', (char) 0xDE00}));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0x0000, 0x0001, 0x0007, 0x000B, 0x001F, 0x007F})
+  public void testQuoteForCelStringRejectsUnsupportedControlCharacters(int codePoint) {
+    String input = "a" + (char) codePoint + "b";
+
+    Assertions.assertThatThrownBy(() -> GcpCredentialsStorageIntegration.escapeCelLiteral(input))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported control character");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryRejectsUnsupportedCelLiteralCharacters() {
+    Assertions.assertThatThrownBy(
+            () ->
+                GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+                    true, Set.of("gs://bucket1/a\u001fb"), Set.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported control character");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryPreservesLiteralQuestionMarksInPath() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            true, Set.of("gs://bucket1/path/to/data?with?question"), Set.of());
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(
+            parsedRules
+                .path("accessBoundaryRules")
+                .get(0)
+                .path("availabilityCondition")
+                .path("expression")
+                .asText())
+        .contains("projects/_/buckets/bucket1/objects/path/to/data?with?question")
+        .contains("startsWith('path/to/data?with?question')");
+  }
+
   /**
    * Custom comparator as ObjectNodes are compared by field indexes as opposed to field names. They
    * also don't equate a field that is present and set to null with a field that is omitted
@@ -384,5 +510,14 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private boolean isNotNull(JsonNode node) {
     return node != null && !node.isNull();
+  }
+
+  private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
+    return parsedRules
+        .path("accessBoundaryRules")
+        .path(ruleIndex)
+        .path("availabilityCondition")
+        .path("expression")
+        .asText();
   }
 }
