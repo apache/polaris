@@ -287,7 +287,8 @@ public class AwsCredentialsStorageIntegration
           policyBuilder,
           canWrite,
           region,
-          storageConfigurationInfo.getAwsAccountId());
+          storageConfigurationInfo.getAwsAccountId(),
+          storageConfigurationInfo.getStsEndpointUri() == null);
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder
@@ -311,11 +312,12 @@ public class AwsCredentialsStorageIntegration
       IamPolicy.Builder policyBuilder,
       boolean canWrite,
       String region,
-      String accountId) {
+      String accountId,
+      boolean isNativeAwsEndpoint) {
 
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
-    boolean isAwsS3 = region != null && accountId != null;
+    boolean isAwsS3 = isNativeAwsEndpoint && region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
     if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {

@@ -1675,4 +1675,90 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             CredentialVendingContext.empty());
   }
+
+  @Test
+  public void testNoKmsWildcardForCustomStsEndpoint() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-1";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    // Custom stsEndpoint (e.g. Ceph RGW) with region + accountId set: wildcard KMS must be
+    // suppressed because non-AWS STS endpoints reject kms: actions in inline policies.
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .stsEndpoint("http://ceph-rgw:8080")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testNoKmsWildcardForS3CompatibleEndpoint() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-1";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    // S3-compatible endpoint set (no explicit stsEndpoint): STS endpoint URI is derived from the
+    // S3 endpoint, so it is also non-AWS and must not receive a wildcard KMS policy.
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .endpoint("http://minio:9000")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
 }
