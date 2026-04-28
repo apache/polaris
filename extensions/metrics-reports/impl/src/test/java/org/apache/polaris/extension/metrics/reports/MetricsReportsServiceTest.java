@@ -46,6 +46,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
@@ -76,6 +77,7 @@ class MetricsReportsServiceTest {
   private static final long TABLE_ID = 200L;
 
   private MetricsPersistence persistence;
+  private PolarisMetaStoreManager metaStoreManager;
   private PolarisAuthorizer authorizer;
   private PolarisResolutionManifest manifest;
   private PolarisPrincipal principal;
@@ -88,35 +90,33 @@ class MetricsReportsServiceTest {
   void setUp() {
     persistence = mock(MetricsPersistence.class);
 
-    // BasePersistence extends MetricsPersistence, so we need a BasePersistence mock.
-    org.apache.polaris.core.persistence.BasePersistence basePersistence =
-        mock(org.apache.polaris.core.persistence.BasePersistence.class);
-    // Delegate MetricsPersistence calls to the persistence mock.
-    when(basePersistence.listScanReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
+    metaStoreManager = mock(PolarisMetaStoreManager.class);
+    when(metaStoreManager.listScanMetrics(
+            any(PolarisCallContext.class), anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenAnswer(
             inv ->
                 persistence.listScanReports(
-                    inv.getArgument(0),
                     inv.getArgument(1),
                     inv.getArgument(2),
                     inv.getArgument(3),
                     inv.getArgument(4),
                     inv.getArgument(5),
-                    inv.getArgument(6)));
-    when(basePersistence.listCommitReports(anyLong(), anyLong(), any(), any(), any(), any(), any()))
+                    inv.getArgument(6),
+                    inv.getArgument(7)));
+    when(metaStoreManager.listCommitMetrics(
+            any(PolarisCallContext.class), anyLong(), anyLong(), any(), any(), any(), any(), any()))
         .thenAnswer(
             inv ->
                 persistence.listCommitReports(
-                    inv.getArgument(0),
                     inv.getArgument(1),
                     inv.getArgument(2),
                     inv.getArgument(3),
                     inv.getArgument(4),
                     inv.getArgument(5),
-                    inv.getArgument(6)));
+                    inv.getArgument(6),
+                    inv.getArgument(7)));
 
     PolarisCallContext polarisCallContext = mock(PolarisCallContext.class);
-    when(polarisCallContext.getMetaStore()).thenReturn(basePersistence);
 
     CallContext callContext = mock(CallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
@@ -154,7 +154,8 @@ class MetricsReportsServiceTest {
     factory = mock(ResolutionManifestFactory.class);
     when(factory.createResolutionManifest(eq(principal), eq(CATALOG))).thenReturn(manifest);
 
-    service = new MetricsReportsService(callContext, authorizer, principal, factory);
+    service =
+        new MetricsReportsService(callContext, metaStoreManager, authorizer, principal, factory);
     realmContext = mock(RealmContext.class);
     securityContext = mock(SecurityContext.class);
   }

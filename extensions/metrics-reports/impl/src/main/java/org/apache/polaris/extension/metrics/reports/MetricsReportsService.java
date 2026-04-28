@@ -41,9 +41,9 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -58,12 +58,14 @@ import org.apache.polaris.service.metrics.api.PolarisCatalogsApiService;
  * Service implementation for the Metrics Reports API.
  *
  * <p>Resolves catalog/namespace/table names to internal IDs, performs authorization, and delegates
- * to the {@link MetricsPersistence} layer to retrieve persisted metrics reports.
+ * to the {@link org.apache.polaris.core.persistence.metrics.MetricsPersistence} layer to retrieve
+ * persisted metrics reports.
  */
 @RequestScoped
 public class MetricsReportsService implements PolarisCatalogsApiService {
 
   private final CallContext callContext;
+  private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer authorizer;
   private final PolarisPrincipal polarisPrincipal;
   private final ResolutionManifestFactory resolutionManifestFactory;
@@ -71,10 +73,12 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
   @Inject
   public MetricsReportsService(
       @Nonnull CallContext callContext,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull PolarisAuthorizer authorizer,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull ResolutionManifestFactory resolutionManifestFactory) {
     this.callContext = callContext;
+    this.metaStoreManager = metaStoreManager;
     this.authorizer = authorizer;
     this.polarisPrincipal = polarisPrincipal;
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -106,22 +110,34 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     long catalogId = tableEntity.getCatalogId();
     long tableId = tableEntity.getId();
 
-    MetricsPersistence persistence = callContext.getPolarisCallContext().getMetaStore();
-
     PageToken token = PageToken.build(pageToken, pageSize, () -> true);
 
     return switch (metricType) {
       case "scan" -> {
         Page<ScanMetricsRecord> page =
-            persistence.listScanReports(
-                catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
+            metaStoreManager.listScanMetrics(
+                callContext.getPolarisCallContext(),
+                catalogId,
+                tableId,
+                snapshotId,
+                principalName,
+                timestampFrom,
+                timestampTo,
+                token);
         yield Response.ok(buildResponse("scan", page, MetricsReportsService::scanRecordToMap))
             .build();
       }
       case "commit" -> {
         Page<CommitMetricsRecord> page =
-            persistence.listCommitReports(
-                catalogId, tableId, snapshotId, principalName, timestampFrom, timestampTo, token);
+            metaStoreManager.listCommitMetrics(
+                callContext.getPolarisCallContext(),
+                catalogId,
+                tableId,
+                snapshotId,
+                principalName,
+                timestampFrom,
+                timestampTo,
+                token);
         yield Response.ok(buildResponse("commit", page, MetricsReportsService::commitRecordToMap))
             .build();
       }
