@@ -202,6 +202,13 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
+Update the binary distribution download link in `[major].[minor].[patch]/getting-started/binary-distribution.md`.
+Replace any old release URL with the correct one for this release. For a non-incubating release the URL format is:
+
+```
+https://downloads.apache.org/polaris/[major].[minor].[patch]/polaris-bin-[major].[minor].[patch].tgz
+```
+
 Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 `site/content/in-dev/release_index.md` and perform the following modifications:
 
