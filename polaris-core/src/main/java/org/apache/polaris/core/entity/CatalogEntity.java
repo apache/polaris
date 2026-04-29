@@ -172,6 +172,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
             .setKmsUnavailable(awsConfig.getKmsUnavailable())
+            .setNoWildcardKmsPolicy(awsConfig.getNoWildcardKmsPolicy())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
@@ -325,6 +326,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .kmsUnavailable(awsConfigModel.getKmsUnavailable())
+                    .noWildcardKmsPolicy(awsConfigModel.getNoWildcardKmsPolicy())
                     .build();
             config = awsConfig;
             break;

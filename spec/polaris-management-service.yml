@@ -1173,6 +1173,15 @@ components:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
+            noWildcardKmsPolicy:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to omit the wildcard KMS key
+                statement from the inline policy passed to AssumeRole. Set this when using
+                an S3-compatible STS implementation (e.g. Ceph RGW) that does not support
+                `kms:` actions in AssumeRole inline policies. Unlike `kmsUnavailable`, this
+                only suppresses the wildcard statement; explicitly configured KMS keys
+                (via `currentKmsKey` or `allowedKmsKeys`) are still included.
 
     AzureStorageConfigInfo:
       type: object

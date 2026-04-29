@@ -288,7 +288,7 @@ public class AwsCredentialsStorageIntegration
           canWrite,
           region,
           storageConfigurationInfo.getAwsAccountId(),
-          storageConfigurationInfo.getStsEndpointUri() == null);
+          !Boolean.TRUE.equals(storageConfigurationInfo.getNoWildcardKmsPolicy()));
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder
@@ -313,11 +313,11 @@ public class AwsCredentialsStorageIntegration
       boolean canWrite,
       String region,
       String accountId,
-      boolean isNativeAwsEndpoint) {
+      boolean allowWildcardKms) {
 
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
-    boolean isAwsS3 = isNativeAwsEndpoint && region != null && accountId != null;
+    boolean isAwsS3 = allowWildcardKms && region != null && accountId != null;
 
     // Nothing to do if no keys are configured and not AWS S3
     if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {

@@ -215,6 +215,30 @@ public class RestCatalogRustFSSpecialIT {
       Optional<String> region,
       Optional<String> roleArn,
       Optional<Boolean> kmsUnavailable) {
+    return createCatalog(
+        endpoint,
+        stsEndpoint,
+        pathStyleAccess,
+        endpointInternal,
+        delegationMode,
+        stsEnabled,
+        region,
+        roleArn,
+        kmsUnavailable,
+        Optional.empty());
+  }
+
+  private RESTCatalog createCatalog(
+      Optional<String> endpoint,
+      Optional<String> stsEndpoint,
+      boolean pathStyleAccess,
+      Optional<String> endpointInternal,
+      Optional<AccessDelegationMode> delegationMode,
+      boolean stsEnabled,
+      Optional<String> region,
+      Optional<String> roleArn,
+      Optional<Boolean> kmsUnavailable,
+      Optional<Boolean> noWildcardKmsPolicy) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -228,6 +252,7 @@ public class RestCatalogRustFSSpecialIT {
     region.ifPresent(storageConfig::setRegion);
     roleArn.ifPresent(storageConfig::setRoleArn);
     kmsUnavailable.ifPresent(storageConfig::setKmsUnavailable);
+    noWildcardKmsPolicy.ifPresent(storageConfig::setNoWildcardKmsPolicy);
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
@@ -342,7 +367,8 @@ public class RestCatalogRustFSSpecialIT {
             true,
             Optional.of(TEST_REGION),
             Optional.of(TEST_ROLE_ARN),
-            Optional.of(false))) {
+            Optional.of(false),
+            Optional.of(true))) {
       TableIdentifier id = createTableAndVerifyMetadata(restCatalog);
       try {
         assertLoadTableWithVendedCredentialsSucceeds(id);

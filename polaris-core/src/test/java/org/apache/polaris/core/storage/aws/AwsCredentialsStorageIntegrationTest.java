@@ -1677,7 +1677,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testNoKmsWildcardForCustomStsEndpoint() {
+  public void testNoWildcardKmsPolicyFlag() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -1698,15 +1698,13 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
 
-    // Custom stsEndpoint (e.g. Ceph RGW) with region + accountId set: wildcard KMS must be
-    // suppressed because non-AWS STS endpoints reject kms: actions in inline policies.
     new AwsCredentialsStorageIntegration(
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
                 .region(region)
-                .stsEndpoint("http://ceph-rgw:8080")
+                .noWildcardKmsPolicy(true)
                 .build(),
             stsClient)
         .getSubscopedCreds(
@@ -1720,36 +1718,41 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
-  public void testNoKmsWildcardForS3CompatibleEndpoint() {
+  public void testWildcardKmsPresentWithExplicitAwsRegionalStsEndpoint() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
     String region = "us-east-1";
+    String accountId = "012345678901";
 
+    // An explicit regional AWS STS endpoint without noWildcardKmsPolicy must still receive the
+    // wildcard KMS statement. This would have been incorrectly suppressed by the old
+    // getStsEndpointUri() == null heuristic.
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
               AssumeRoleRequest request = invocation.getArgument(0);
               IamPolicy policy = IamPolicy.fromJson(request.policy());
               assertThat(policy.statements())
-                  .noneMatch(
+                  .anySatisfy(
                       stmt ->
-                          stmt.actions().stream()
-                              .anyMatch(action -> action.value().startsWith("kms:")));
+                          assertThat(stmt.resources())
+                              .contains(
+                                  IamResource.create(
+                                      String.format(
+                                          "arn:aws:kms:%s:%s:key/*", region, accountId))));
               return ASSUME_ROLE_RESPONSE;
             });
 
-    // S3-compatible endpoint set (no explicit stsEndpoint): STS endpoint URI is derived from the
-    // S3 endpoint, so it is also non-AWS and must not receive a wildcard KMS policy.
     new AwsCredentialsStorageIntegration(
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
                 .region(region)
-                .endpoint("http://minio:9000")
+                .stsEndpoint("https://sts.us-east-1.amazonaws.com")
                 .build(),
             stsClient)
         .getSubscopedCreds(
