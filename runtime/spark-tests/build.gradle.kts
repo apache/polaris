@@ -33,6 +33,10 @@ dependencies {
   }
 
   implementation(project(":polaris-runtime-service"))
+  runtimeOnly(project(":polaris-extensions-federation-hive")) {
+    // Brings shaded parquet 1.10 which conflicts with Iceberg's parquet 1.16 in test code.
+    exclude("org.apache.parquet", "parquet-hadoop-bundle")
+  }
 
   testImplementation(project(":polaris-tests"))
   testImplementation(testFixtures(project(":polaris-runtime-service")))

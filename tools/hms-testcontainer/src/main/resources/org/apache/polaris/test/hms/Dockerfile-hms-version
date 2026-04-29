@@ -1,0 +1,44 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# The FROM line is managed by Renovate.
+FROM apache/hive:4.0.1
+
+# The apache/hive:4.x image does not ship hadoop-aws or the AWS SDK in /opt/hive/lib,
+# so HMS cannot resolve s3a:// table locations out of the box. We add them here.
+# The Thrift API is wire-compatible with the older 3.x hive-metastore client we use
+# on the test side (see gradle/libs.versions.toml -> hive-metastore).
+# HADOOP_AWS_VERSION must match the Hadoop version bundled with apache/hive:4.x;
+# AWS_SDK_BUNDLE_VERSION should be pinned for the specific hadoop-aws version.
+ARG HADOOP_AWS_VERSION=3.3.6
+ARG AWS_SDK_BUNDLE_VERSION=1.12.367
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL -o /opt/hive/lib/hadoop-aws.jar \
+      https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar
+
+RUN curl -fsSL -o /opt/hive/lib/aws-sdk-bundle.jar \
+      https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_BUNDLE_VERSION}/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar
+
+USER hive
