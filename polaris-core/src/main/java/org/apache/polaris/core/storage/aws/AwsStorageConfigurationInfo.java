@@ -118,9 +118,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract @Nullable Boolean getKmsUnavailable();
 
   /**
-   * Flag indicating whether the wildcard KMS key statement should be omitted from AssumeRole
-   * inline policies. Set to {@code true} for S3-compatible STS implementations (e.g. Ceph RGW)
-   * that reject {@code kms:} actions in inline policies.
+   * Flag indicating whether the wildcard KMS key statement should be omitted from AssumeRole inline
+   * policies. Set to {@code true} for S3-compatible STS implementations (e.g. Ceph RGW) that reject
+   * {@code kms:} actions in inline policies.
    */
   public abstract @Nullable Boolean getNoWildcardKmsPolicy();
 
