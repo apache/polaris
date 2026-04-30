@@ -44,8 +44,7 @@ import org.testcontainers.utility.DockerImageName;
  * #withS3aEndpoint} to point HMS at an S3-compatible test backend (e.g. RustFS / MinIO running in
  * another container) so location validation succeeds end-to-end.
  */
-public final class HmsContainer extends GenericContainer<HmsContainer>
-    implements HmsAccess, AutoCloseable {
+public final class HmsContainer extends GenericContainer<HmsContainer> implements AutoCloseable {
 
   private static final int THRIFT_PORT = 9083;
   private static final String DOCKERFILE_RESOURCE = "Dockerfile-hms-version";
@@ -105,13 +104,11 @@ public final class HmsContainer extends GenericContainer<HmsContainer>
     }
   }
 
-  @Override
   public String hostPort() {
     Preconditions.checkState(hostPort != null, "Container not yet started");
     return hostPort;
   }
 
-  @Override
   public String thriftUri() {
     Preconditions.checkState(thriftUri != null, "Container not yet started");
     return thriftUri;
