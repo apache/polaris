@@ -137,6 +137,61 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(List.<String>of())
           .buildFeatureConfiguration();
 
+  /**
+   * The set of fields supported for composing the AWS STS role session name during credential
+   * vending.
+   *
+   * <p>Supported values:
+   *
+   * <ul>
+   *   <li>{@code realm} - The realm identifier for the request
+   *   <li>{@code catalog} - The name of the catalog vending credentials
+   *   <li>{@code namespace} - The namespace being accessed (dot-separated)
+   *   <li>{@code table} - The table name being accessed
+   *   <li>{@code principal} - The principal name requesting credentials
+   * </ul>
+   */
+  public static final List<String> SUPPORTED_SESSION_NAME_FIELDS =
+      List.<String>of("realm", "catalog", "namespace", "table", "principal");
+
+  /**
+   * Ordered list of fields to include in the STS role session name for AWS credential vending.
+   * Fields are joined with {@code -} and prefixed with {@code p-}. The result is truncated to the
+   * AWS 64-character session name limit using proportional allocation across fields.
+   *
+   * <p>When empty (default), falls back to {@link #INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL}
+   * behaviour for backward compatibility.
+   *
+   * <p>Supported fields: realm, catalog, namespace, table, principal.
+   *
+   * <p>Example: setting {@code ["realm","catalog","table","principal"]} produces session names like
+   * {@code p-acme-hr_catalog-employee-etl_writer} (truncated to 64 chars).
+   *
+   * <p>Note: enabling this flag causes the session name to vary per request context, which may
+   * reduce credential cache reuse depending on which fields are configured.
+   */
+  public static final FeatureConfiguration<List<String>>
+      SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL =
+          PolarisConfiguration.<List<String>>builder()
+              .key("SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL")
+              .description(
+                  "Ordered list of fields to include in the STS role session name for AWS credential vending.\n"
+                      + "Fields are joined with '-' and prefixed with 'p-'. The result is truncated to 64 characters\n"
+                      + "(the AWS STS session name limit) using proportional allocation across fields.\n"
+                      + "When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour.\n"
+                      + "\n"
+                      + "Supported fields: "
+                      + String.join(", ", SUPPORTED_SESSION_NAME_FIELDS)
+                      + "\n"
+                      + "\n"
+                      + "Example: [\"realm\",\"catalog\",\"table\",\"principal\"] produces session names like\n"
+                      + "'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars).\n"
+                      + "\n"
+                      + "Note: enabling this flag may reduce credential cache reuse when context-specific fields\n"
+                      + "(e.g. table, namespace) are included, since credentials are keyed partly on session name.")
+              .defaultValue(List.<String>of())
+              .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
