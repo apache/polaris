@@ -32,9 +32,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.slf4j.Logger;
@@ -121,11 +124,25 @@ public class IdempotencyHandlerSupport {
   }
 
   /**
-   * SHA-256 of {@code principalName + ":" + realmId}, returned as a hex string. The input is
-   * deterministic per (principal, realm) and is what the store binds against.
+   * SHA-256 (hex) of the calling principal's identity, bound to the realm. The input includes the
+   * principal name, the activated role set, and the principal's properties, all canonicalised so
+   * the hash is deterministic and order-independent.
+   *
+   * <p>Roles and properties are part of the binding so two callers that share a name but differ in
+   * activated roles or authentication context do not collide. The principal's access token is
+   * intentionally excluded because tokens rotate without changing identity.
    */
-  public String principalHash(String principalName, String realmId) {
-    return sha256Hex(principalName + ":" + realmId);
+  public String principalHash(PolarisPrincipal principal, String realmId) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("name=").append(principal.getName()).append('|');
+    sb.append("realm=").append(realmId).append('|');
+    sb.append("roles=");
+    new TreeSet<>(principal.getRoles()).forEach(r -> sb.append(r).append(','));
+    sb.append('|');
+    sb.append("props=");
+    new TreeMap<>(principal.getProperties())
+        .forEach((k, v) -> sb.append(k).append('=').append(v).append(','));
+    return sha256Hex(sb.toString());
   }
 
   /** SHA-256 hex of an arbitrary string used as the resource binding component. */

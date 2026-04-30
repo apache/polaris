@@ -514,8 +514,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     String key = idempotencyKey.get();
     String realmId = realmContext().getRealmIdentifier();
-    String principalHash =
-        idempotencySupport().principalHash(polarisPrincipal().getName(), realmId);
+    String principalHash = idempotencySupport().principalHash(polarisPrincipal(), realmId);
     String resourceId =
         idempotencySupport()
             .resourceHash(

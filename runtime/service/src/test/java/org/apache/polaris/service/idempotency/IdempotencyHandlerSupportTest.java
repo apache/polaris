@@ -30,9 +30,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.core.persistence.InMemoryIdempotencyStore;
@@ -49,8 +52,10 @@ class IdempotencyHandlerSupportTest {
   private static final String REALM = "realm-1";
   private static final String OPERATION = "create-table";
   private static final String RESOURCE = "ns:tbl:none";
-  private static final String PRINCIPAL_A = "principal-A";
-  private static final String PRINCIPAL_B = "principal-B";
+  private static final PolarisPrincipal PRINCIPAL_A =
+      PolarisPrincipal.of("principal-A", Map.of(), Set.of());
+  private static final PolarisPrincipal PRINCIPAL_B =
+      PolarisPrincipal.of("principal-B", Map.of(), Set.of());
 
   private InMemoryIdempotencyStore store;
   private AtomicReference<Instant> nowRef;
@@ -125,6 +130,24 @@ class IdempotencyHandlerSupportTest {
 
     assertThat(support.resourceHash("a")).isEqualTo(support.resourceHash("a"));
     assertThat(support.resourceHash("a")).isNotEqualTo(support.resourceHash("b"));
+  }
+
+  @Test
+  void principalHashIncludesRolesAndPropertiesAndIsOrderIndependent() {
+    PolarisPrincipal aliceReader = PolarisPrincipal.of("alice", Map.of(), Set.of("reader"));
+    PolarisPrincipal aliceAdmin = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
+    assertThat(support.principalHash(aliceReader, REALM))
+        .isNotEqualTo(support.principalHash(aliceAdmin, REALM));
+
+    PolarisPrincipal aliceWithProps =
+        PolarisPrincipal.of("alice", Map.of("dept", "eng"), Set.of("reader"));
+    assertThat(support.principalHash(aliceReader, REALM))
+        .isNotEqualTo(support.principalHash(aliceWithProps, REALM));
+
+    PolarisPrincipal rolesAB = PolarisPrincipal.of("alice", Map.of(), Set.of("a", "b"));
+    PolarisPrincipal rolesBA = PolarisPrincipal.of("alice", Map.of(), Set.of("b", "a"));
+    assertThat(support.principalHash(rolesAB, REALM))
+        .isEqualTo(support.principalHash(rolesBA, REALM));
   }
 
   @Test
