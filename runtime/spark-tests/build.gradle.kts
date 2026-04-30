@@ -42,7 +42,8 @@ dependencies {
   // HadoopFileIO (its default) against an s3a:// warehouse.
   runtimeOnly(libs.hadoop.aws) {
     // Exclude the AWS SDK V2 fat-jar `bundle`: hadoop-aws 3.4.3 pulls bundle:2.35.4, which clashes
-    // with Polaris's individual SDK modules. The required modules (s3, sts, etc.) are already on the classpath via the awssdk-bom.
+    // with Polaris's individual SDK modules. The required modules (s3, sts, etc.) are already on
+    // the classpath via the awssdk-bom.
     exclude("software.amazon.awssdk", "bundle")
     exclude("org.slf4j", "slf4j-reload4j")
     exclude("org.slf4j", "slf4j-log4j12")
