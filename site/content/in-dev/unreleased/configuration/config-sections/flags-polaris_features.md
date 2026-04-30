@@ -57,7 +57,7 @@ If set to true, allow credential vending for external catalogs.
 
 ##### `polaris.features."ALLOW_EXTERNAL_METADATA_FILE_LOCATION"`
 
-If set to true, allows metadata files to be located outside the default metadata directory.
+If set to true, Polaris allows metadata files to be located outside the table's default metadata directory. This relaxes the normal check that metadata stays under the table location and should only be used when metadata is intentionally stored in separately controlled locations.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -66,7 +66,7 @@ If set to true, allows metadata files to be located outside the default metadata
 
 ##### `polaris.features."ALLOW_EXTERNAL_TABLE_LOCATION"`
 
-If set to true, allows tables to have external locations outside the default structure.
+If set to true, Polaris treats table locations as externally managed instead of assuming the default managed structure. Allowed-location validation still applies, but metadata location checks are relaxed, so operators should keep allowed locations narrow and specific. This setting is typically used together with ALLOW_UNSTRUCTURED_TABLE_LOCATION.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -104,7 +104,7 @@ If set to true, allow one namespace's location to reside within another namespac
 
 ##### `polaris.features."ALLOW_OPTIMIZED_SIBLING_CHECK"`
 
-When set to true, Polaris will permit enabling the feature OPTIMIZED_SIBLING_CHECK for catalogs, this is done to prevent accidental enabling the feature in cases such as schema migrations, without backfill and hence leading to potential data integrity issues. This will be removed in 2.0.0 when polaris ships with the necessary migrations to backfill the index.
+When set to true, Polaris permits OPTIMIZED_SIBLING_CHECK to be enabled after explicit operator acknowledgment. Only acknowledge this when the realm has the required index and backfill state; enabling the check in previously used realms without that state may lead to incorrect overlap validation. This flag is temporary and will be removed when Polaris can backfill the required data automatically.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -149,7 +149,7 @@ Config key for whether to allow setting the FILE_IO_IMPL using catalog propertie
 
 ##### `polaris.features."ALLOW_TABLE_LOCATION_OVERLAP"`
 
-If set to true, allow one table's location to reside within another table's location. This is only enforced within a given namespace.
+If set to true, Polaris allows table or view locations to overlap existing table or namespace locations. This disables Polaris location-overlap protection for table-like objects in the catalog and should only be used for compatibility cases where storage isolation is enforced outside Polaris.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -168,7 +168,7 @@ If set to true, allows unrestricted changes to storage configuration role proper
 
 ##### `polaris.features."ALLOW_UNSTRUCTURED_TABLE_LOCATION"`
 
-If set to true, allows unstructured table locations.
+If set to true, Polaris allows caller-specified table and view locations outside the structured namespace layout. This removes the default constraint that confines new table locations to the parent namespace location. Allowed-location validation still applies, but this should only be enabled for catalogs that must support externally managed or migrated table locations.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -178,7 +178,7 @@ If set to true, allows unstructured table locations.
 
 ##### `polaris.features."ALLOW_WILDCARD_LOCATION"`
 
-Indicates whether asterisks ('*') in configuration values defining allowed storage locations are processed as meaning 'any location'.
+Indicates whether asterisks ('*') in configured allowed locations are processed as meaning 'any location'. If enabled and '*' is present in an allowed-locations list, Polaris accepts every requested location. This removes the normal location allowlist boundary and should only be used for tightly controlled compatibility or test scenarios.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -385,7 +385,7 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
-When set, an index is used to perform the sibling check between tables, views, and namespaces. New locations will be checked against previous ones based on components, so the new location /foo/bar/ will check for a sibling at /, /foo/ and /foo/bar/%. In order for this check to be correct, locations should end with a slash. See ADD_TRAILING_SLASH_TO_LOCATION for a way to enforce this when new locations are added. Only supported by the JDBC metastore.
+When set, Polaris uses an index to perform sibling overlap checks between tables, views, and namespaces. This is not a bypass mode, but enabling or disabling it can change overlap-detection coverage for non-standard location layouts. Only enable it when the required index and backfill state is known to be correct. For correct results, locations should end with a slash; see ADD_TRAILING_SLASH_TO_LOCATION. Supported by the JDBC and NoSQL metastore implementations.
 
 - **Type:** `Boolean`
 - **Default:** `false`
