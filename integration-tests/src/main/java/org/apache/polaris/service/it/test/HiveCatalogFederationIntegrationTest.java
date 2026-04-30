@@ -50,9 +50,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
 import org.apache.polaris.test.hms.HmsContainer;
-import org.apache.polaris.test.rustfs.Rustfs;
 import org.apache.polaris.test.rustfs.RustfsAccess;
-import org.apache.polaris.test.rustfs.RustfsExtension;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
@@ -60,6 +58,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -82,10 +81,23 @@ import org.junit.jupiter.api.io.TempDir;
  *       true}: used by cleanup code.
  *   <li>{@link FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS} = {@code true}.
  * </ul>
+ *
+ * This test also requires a properly-configured {@link RustfsAccess} instance. The {@code
+ * core-site.xml} file in {@code src/main/resources} will be used to configure the S3A filesystem.
+ * Therefore, the test must set the following system properties, which will be substituted into that
+ * file at startup using Hadoop's {@code ${name}} substitution:
+ *
+ * <ul>
+ *   <li>{@code polaris.s3.endpoint}
+ *   <li>{@code polaris.s3.access-key}
+ *   <li>{@code polaris.s3.secret-key}
+ * </ul>
+ *
+ * The values of the above properties must correspond to the values exposed by the RustFS container.
  */
-@ExtendWith(RustfsExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
-public class HiveCatalogFederationIntegrationTest {
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public abstract class HiveCatalogFederationIntegrationTest {
 
   public static final String BUCKET_URI_PREFIX = "/rustfs-test-hive-federation";
   public static final String RUSTFS_ACCESS_KEY = "test-ak-123-hive-federation";
@@ -101,53 +113,56 @@ public class HiveCatalogFederationIntegrationTest {
           .setPrivilege(CatalogPrivilege.CATALOG_MANAGE_CONTENT)
           .build();
 
-  private static PolarisClient client;
-  private static ManagementApi managementApi;
-  private static PolarisApiEndpoints endpoints;
-  private static SparkSession spark;
-  private static HmsContainer hmsContainer;
-  private static String hmsThriftUri;
-  private static URI warehouseLocation;
-  private static String s3endpoint;
+  /**
+   * Returns the RustFS instance backing the test. The subclass is also responsible for propagating
+   * the endpoint/credentials to the Polaris JVM as system properties so Hadoop's {@code
+   * core-site.xml} can substitute them.
+   */
+  protected abstract RustfsAccess rustfsAccess();
 
-  @TempDir static Path warehouseDir;
+  private PolarisClient client;
+  private ManagementApi managementApi;
+  private PolarisApiEndpoints endpoints;
+  private SparkSession spark;
+  private HmsContainer hmsContainer;
+  private String hmsThriftUri;
+  private URI warehouseLocation;
+  private String s3endpoint;
+
+  @TempDir Path warehouseDir;
 
   private String federatedCatalogName;
   private String federatedCatalogRoleName;
 
   @BeforeAll
-  static void setup(
-      PolarisApiEndpoints apiEndpoints,
-      ClientCredentials credentials,
-      @Rustfs(accessKey = RUSTFS_ACCESS_KEY, secretKey = RUSTFS_SECRET_KEY)
-          RustfsAccess rustfsAccess) {
+  void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     String adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
-    s3endpoint = rustfsAccess.s3endpoint();
-    warehouseLocation = rustfsAccess.s3BucketUri(BUCKET_URI_PREFIX + "/warehouse");
+    RustfsAccess rustfs = rustfsAccess();
+    s3endpoint = rustfs.s3endpoint();
+    // s3a:// (not s3://) so the federated HiveCatalog's HadoopFileIO routes to S3AFileSystem
+    // without relying on the legacy fs.s3.impl mapping (also set in core-site.xml as a backstop).
+    warehouseLocation = URI.create("s3a://" + rustfs.bucket() + BUCKET_URI_PREFIX + "/warehouse");
 
     // HMS validates s3a:// table locations during create-table by talking to the underlying
     // S3 endpoint. RustFS only accepts requests whose Host header matches the value of its
     // RUSTFS_SERVER_DOMAINS env var (set to RustFS's fixed host port via the testcontainer).
     // We therefore connect to RustFS using its exact host:port name from inside HMS, with an
     // extra /etc/hosts entry pointing that hostname at the Docker host gateway ("host-gateway").
-    String rustfsHost = rustfsAccess.hostPort().substring(0, rustfsAccess.hostPort().indexOf(':'));
+    String rustfsHost = rustfs.hostPort().substring(0, rustfs.hostPort().indexOf(':'));
     hmsContainer =
         new HmsContainer()
             .withExtraHost(rustfsHost, "host-gateway")
-            .withS3aEndpoint(
-                "http://" + rustfsAccess.hostPort(),
-                rustfsAccess.accessKey(),
-                rustfsAccess.secretKey())
+            .withS3aEndpoint("http://" + rustfs.hostPort(), rustfs.accessKey(), rustfs.secretKey())
             .withStartupAttempts(3);
     hmsContainer.start();
     hmsThriftUri = hmsContainer.thriftUri();
   }
 
   @AfterAll
-  static void close() throws Exception {
+  void close() throws Exception {
     if (hmsContainer != null) {
       hmsContainer.close();
     }
@@ -183,19 +198,7 @@ public class HiveCatalogFederationIntegrationTest {
                     .build())
             .build();
 
-    // Polaris's HIVE federation creates an Iceberg HiveCatalog inside the server. Without an
-    // explicit io-impl, HiveCatalog defaults to HadoopFileIO and tries to load S3AFileSystem,
-    // which is not on the Polaris runtime classpath. Force S3FileIO and pass the RustFS endpoint
-    // + creds so Polaris's in-server HiveCatalog can read the Iceberg metadata JSON when serving
-    // loadTable(). These long-lived creds stay server-side: clients use the vended-credentials
-    // path (see X-Iceberg-Access-Delegation header below), which overrides the s3.* entries in
-    // the loadTable config response with subscoped STS creds.
     CatalogProperties catalogProperties = new CatalogProperties(warehouseLocation.toString());
-    catalogProperties.put("io-impl", "org.apache.iceberg.aws.s3.S3FileIO");
-    catalogProperties.put("s3.endpoint", s3endpoint);
-    catalogProperties.put("s3.path-style-access", "true");
-    catalogProperties.put("s3.access-key-id", RUSTFS_ACCESS_KEY);
-    catalogProperties.put("s3.secret-access-key", RUSTFS_SECRET_KEY);
 
     ExternalCatalog externalCatalog =
         ExternalCatalog.builder()
@@ -233,7 +236,7 @@ public class HiveCatalogFederationIntegrationTest {
             .withConfig("spark.sql.catalog." + DIRECT_CATALOG_NAME + ".uri", hmsThriftUri)
             .withConfig(
                 "spark.sql.catalog." + DIRECT_CATALOG_NAME + ".warehouse",
-                warehouseLocation.toString().replace("s3://", "s3a://"))
+                warehouseLocation.toString())
             .withConfig(
                 "spark.sql.catalog." + DIRECT_CATALOG_NAME + ".io-impl",
                 "org.apache.iceberg.aws.s3.S3FileIO")
@@ -277,26 +280,20 @@ public class HiveCatalogFederationIntegrationTest {
 
   private void seedHmsTables() {
     spark.sql("USE " + DIRECT_CATALOG_NAME);
-    // Namespace and table locations use s3a:// because Hadoop's FileSystem registry maps that
-    // scheme to S3AFileSystem, which we added to the apache/hive image (see Dockerfile-hms-version)
-    // along with the AWS SDK bundle. The hive-site.xml installed by HmsContainer.withS3aEndpoint
-    // points S3AFileSystem at RustFS so HMS can validate the LOCATIONs during create-database /
-    // create-table. Iceberg's S3FileIO on the read side accepts s3a:// URIs interchangeably with
-    // s3://.
-    String s3aWarehouse = warehouseLocation.toString().replace("s3://", "s3a://");
-    spark.sql("CREATE NAMESPACE IF NOT EXISTS ns1 LOCATION '" + s3aWarehouse + "/ns1.db'");
+    String warehouse = warehouseLocation.toString();
+    spark.sql("CREATE NAMESPACE IF NOT EXISTS ns1 LOCATION '" + warehouse + "/ns1.db'");
     spark.sql(
         "CREATE TABLE IF NOT EXISTS ns1.test_table (id int, name string) USING iceberg "
             + "LOCATION '"
-            + s3aWarehouse
+            + warehouse
             + "/ns1/test_table'");
     spark.sql("INSERT INTO ns1.test_table VALUES (1, 'Alice'), (2, 'Bob')");
 
-    spark.sql("CREATE NAMESPACE IF NOT EXISTS ns2 LOCATION '" + s3aWarehouse + "/ns2.db'");
+    spark.sql("CREATE NAMESPACE IF NOT EXISTS ns2 LOCATION '" + warehouse + "/ns2.db'");
     spark.sql(
         "CREATE TABLE IF NOT EXISTS ns2.test_table (id int, name string) USING iceberg "
             + "LOCATION '"
-            + s3aWarehouse
+            + warehouse
             + "/ns2/test_table'");
     spark.sql("INSERT INTO ns2.test_table VALUES (1, 'Apache Polaris'), (2, 'Apache Iceberg')");
   }

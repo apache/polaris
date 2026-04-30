@@ -19,15 +19,28 @@
 package org.apache.polaris.service.spark.it;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
 import org.apache.polaris.service.it.test.HiveCatalogFederationIntegrationTest;
+import org.apache.polaris.test.rustfs.RustfsAccess;
+import org.apache.polaris.test.rustfs.RustfsContainer;
 
 @TestProfile(HiveCatalogFederationIT.HiveFederationProfile.class)
+@QuarkusTestResource(HiveCatalogFederationIT.RustfsResource.class)
 @QuarkusIntegrationTest
 public class HiveCatalogFederationIT extends HiveCatalogFederationIntegrationTest {
+
+  /** Populated by {@link RustfsResource#inject} before {@code @BeforeAll} runs. */
+  private RustfsAccess rustfsAccess;
+
+  @Override
+  protected RustfsAccess rustfsAccess() {
+    return rustfsAccess;
+  }
 
   public static class HiveFederationProfile implements QuarkusTestProfile {
     @Override
@@ -51,6 +64,45 @@ public class HiveCatalogFederationIT extends HiveCatalogFederationIntegrationTes
               "polaris.storage.aws.secret-key",
               HiveCatalogFederationIntegrationTest.RUSTFS_SECRET_KEY)
           .build();
+    }
+  }
+
+  /**
+   * Starts a RustFS container , exposes its endpoint and credentials, and injects the running
+   * container into {@link HiveCatalogFederationIT#rustfsAccess} on the test instance.
+   */
+  public static class RustfsResource implements QuarkusTestResourceLifecycleManager {
+
+    private RustfsContainer container;
+
+    @Override
+    public Map<String, String> start() {
+      container =
+          new RustfsContainer(
+                  null,
+                  HiveCatalogFederationIntegrationTest.RUSTFS_ACCESS_KEY,
+                  HiveCatalogFederationIntegrationTest.RUSTFS_SECRET_KEY,
+                  null,
+                  null)
+              .withStartupAttempts(5);
+      container.start();
+      return ImmutableMap.of(
+          "polaris.s3.endpoint", container.s3endpoint(),
+          "polaris.s3.access-key", container.accessKey(),
+          "polaris.s3.secret-key", container.secretKey());
+    }
+
+    @Override
+    public void inject(TestInjector testInjector) {
+      testInjector.injectIntoFields(container, new TestInjector.MatchesType(RustfsAccess.class));
+    }
+
+    @Override
+    public void stop() {
+      if (container != null) {
+        container.close();
+        container = null;
+      }
     }
   }
 }
