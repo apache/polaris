@@ -24,5 +24,5 @@
 # IMPORTANT: update this version number when publishing a new latest release
 # (alongside site/content/releases/latest/index.md in the versioned-docs branch).
 RewriteEngine On
-RewriteRule ^releases/latest$ /releases/1.4.0/ [R=302,L]
-RewriteRule ^releases/latest/(.*)$ /releases/1.4.0/$1 [R=302,L]
+RewriteRule ^releases/latest$ /releases/1.4.1/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/1.4.1/$1 [R=302,L]
