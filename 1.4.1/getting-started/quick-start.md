@@ -17,17 +17,27 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+Title: Quickstart
+type: docs
+weight: 99
 ---
+
+Use this guide to quickly start running Polaris. This is not intended for production use.
+
+## Prerequisites
+
+- Have Docker (with Docker Compose v2) installed & running on your machine
+
+## Running
+
+Run the following command:
+
+```bash
+curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml | docker compose -f - up
+
+```
+This command will:
+1. Create a Catalog named `quickstart_catalog` with RustFS-backed storage.
+2. Create a user principal `quickstart_user` with full access to the catalog.
+
+Once the command has been run, you will see examples on how to interact with this Polaris server in the logs.

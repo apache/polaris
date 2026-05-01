@@ -17,17 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: Deploying Polaris on Cloud Providers
+linkTitle: Cloud Providers
+type: docs
+weight: 300
 ---
+
+Polaris can be deployed on various cloud providers, including Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP). 
+In the following guides, we will walk you through the process of deploying Polaris on each of these cloud providers.

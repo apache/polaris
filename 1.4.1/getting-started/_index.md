@@ -17,17 +17,22 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: Getting Started with Apache Polaris
+linkTitle: Getting Started
+type: docs
+weight: 101
 ---
+
+Welcome to Apache Polaris! This section provides several ways to get started with Polaris.
+
+## Quick Start Options
+
+Choose the method that best fits your needs:
+
+- **[Binary Distribution]({{% relref "binary-distribution" %}})**: Download and run the pre-built binary distribution. This is the fastest way to get started with Polaris.
+
+- **[Quickstart]({{% relref "quick-start" %}})**: Use Docker Compose to quickly start Polaris with a pre-configured setup. This is ideal for trying out Polaris without installing dependencies.
+
+## Getting Help
+
+If you need help or have questions, please refer to the [documentation]({{% relref "../../" %}}) or reach out to the community.

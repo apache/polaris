@@ -17,17 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: Migrating from Existing Iceberg Catalogs
+linkTitle: Catalog Migration
+type: docs
+weight: 300
 ---
+
+There are two ways to migrate an existing Iceberg catalog to Polaris:
+1. Using the [Iceberg Catalog Migrator tool](../../../../../tools/iceberg-catalog-migrator/): A command-line tool to migrate Iceberg tables from one Iceberg catalog to another.
+   This tool works with any existing Iceberg catalog including Polaris.
+2. Using the [Polaris Synchronizer tool](../../../../../tools/polaris-synchronizer/): A tool to migrate entities from one Polaris instance to another.
+   This tool is specific to Polaris.

@@ -17,17 +17,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: smallrye-polaris_secrets_manager
+build:
+  list: never
+  render: never
 ---
+
+| Property | Default Value | Type | Description |
+|----------|---------------|------|-------------|
+| `polaris.secrets-manager.type` |  | `string` | The type of the UserSecretsManagerFactory to use. This is the (`org.apache.polaris.core.secrets.UserSecretsManagerFactory`) identifier.  |

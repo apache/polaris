@@ -17,17 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: smallrye-polaris_rate_limiter_token_bucket
+build:
+  list: never
+  render: never
 ---
+
+| Property | Default Value | Type | Description |
+|----------|---------------|------|-------------|
+| `polaris.rate-limiter.token-bucket.requests-per-second` |  | `long` | Number of allowed requests per second per realm. The value _must_ be greater than zero.  |
+| `polaris.rate-limiter.token-bucket.window` |  | `duration` | This setting is no longer used and will be removed in a future release. <br><br>_Deprecated_  |
+| `polaris.rate-limiter.token-bucket.type` |  | `string` | The type of the token bucket factory. Must be a registered (`org.apache.polaris.service.ratelimiter.TokenBucketFactory`) identifier.  |

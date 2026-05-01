@@ -17,17 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: smallrye-polaris_reserved_properties
+build:
+  list: never
+  render: never
 ---
+
+Used to track entity properties reserved for use by the catalog. These properties may not be  overridden by the end user.
+

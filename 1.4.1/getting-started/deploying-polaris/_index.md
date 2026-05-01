@@ -17,17 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: Deploying Polaris
+linkTitle: Deploying Polaris
+type: docs
+weight: 200
 ---
+
+Here you can find the guides of how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
+
+Locally, Polaris can be deployed using both docker and local build. 
+On the cloud, the following tutorials will deploy Polaris using docker environment.

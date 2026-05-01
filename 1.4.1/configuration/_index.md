@@ -17,17 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: Configuration
+linkTitle: Configuration
+type: docs
+weight: 550
 ---
+
+This section covers how to configure Apache Polaris.
+
+- [Configuring Polaris]({{% ref "configuring-polaris.md" %}}) - Learn how to configure Polaris using environment variables, configuration files, and other mechanisms.
+- [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
+- [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
+

@@ -17,17 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: 'Polaris API Reference'
+type: docs
+weight: 1100
 ---
+
+The Apache Polaris API offers a comprehensive set of endpoints that enable you to manage principals, principal-roles, catalogs, and catalog-roles programmatically.
+
+It follows REST standards, using clear, resource-based URLs, standard HTTP methods, response codes, and secure authentication. With the Polaris API, you can create, manage, and query Iceberg catalogs efficiently.

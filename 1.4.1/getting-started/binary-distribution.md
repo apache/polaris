@@ -17,17 +17,35 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+Title: Binary Distribution
+type: docs
+weight: 100
 ---
+Use this guide to quickly start running Polaris using the pre-built binary distribution.
+
+## Prerequisites
+
+- Java SE 21 or later installed on your machine
+
+## Running
+
+Download and extract the binary distribution:
+
+```bash
+curl -L https://downloads.apache.org/incubator/polaris/1.4.1/polaris-bin-1.4.1.tgz | tar xz
+cd polaris-bin-1.3.0-incubating
+```
+
+Start the Polaris server:
+
+```bash
+bin/server
+```
+
+The server will start and listen on http://localhost:8182. Health and metrics endpoints are available under /q.
+
+You can verify the server is running by checking the health endpoint:
+
+```bash
+curl http://localhost:8182/q/health
+```

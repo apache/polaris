@@ -17,17 +17,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-# This file creates the /releases/latest/ redirect to the current latest stable release.
-# Update the 'redirect_to' parameter below when publishing a new release.
-title: 'Latest Release'
-linkTitle: 'Latest'
-layout: 'redirect'
-params:
-  redirect_to: '/releases/1.4.1/'
-menus:
-  main:
-    parent: doc
-    weight: -999997 # 3rd item in the menu
-    identifier: doc-latest
-    name: Latest
+title: smallrye-polaris_node
+build:
+  list: never
+  render: never
 ---
+
+Node management configuration.
+
+| Property | Default Value | Type | Description |
+|----------|---------------|------|-------------|
+| `polaris.node.lease-duration` | `PT1H` | `duration` | Duration of a node-lease.  |
+| `polaris.node.renewal-period` | `PT15M` | `duration` | Time window before the end of a node lease when the lease will be renewed.  |
+| `polaris.node.num-nodes` | `1024` | `int` | Maximum number of concurrently active Polaris nodes. Do not change this value or the ID  generator spec, it is a rather internal property. See ID generator spec below.  |
+| `polaris.node.id-generator-spec.type` | `snowflake` | `string` |  |
+| `polaris.node.id-generator-spec.params.`_`<name>`_ |  | `string` |  |
