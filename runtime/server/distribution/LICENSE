@@ -1111,8 +1111,8 @@ This product bundles OpenTelemetry Java Instrumentation.
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-incubator
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-jdbc
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java17
-* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java8
 
 Project URL: https://github.com/open-telemetry/opentelemetry-java-instrumentation
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
