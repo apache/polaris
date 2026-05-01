@@ -1021,6 +1021,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         tableIdentifier, applyReplaceNewLocationWithCatalogDefault(location));
   }
 
+  void validateStagedTableCreate(TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
+    PolarisResolvedPathWrapper resolvedStorageEntity =
+        CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier);
+    if (resolvedStorageEntity == null) {
+      throw noSuchNamespaceException(tableIdentifier.namespace());
+    }
+    Set<String> dataLocations =
+        StorageUtil.getLocationsUsedByTable(tableMetadata.location(), tableMetadata.properties());
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, tableIdentifier, dataLocations, resolvedStorageEntity);
+    List<PolarisEntity> resolvedNamespace = resolvedStorageEntity.getRawFullPath();
+    PolarisEntity storageLeafEntity = resolvedStorageEntity.getRawLeafEntity();
+    dataLocations.forEach(
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity, tableIdentifier, resolvedNamespace, location, storageLeafEntity));
+  }
+
   /**
    * Validates that the specified {@code location} is valid for whatever storage config is found for
    * this TableLike's parent hierarchy.
