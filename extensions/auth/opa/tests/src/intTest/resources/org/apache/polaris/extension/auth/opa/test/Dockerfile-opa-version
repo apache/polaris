@@ -16,4 +16,4 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM docker.io/openpolicyagent/opa:1.16.0
+FROM docker.io/openpolicyagent/opa:1.16.1
