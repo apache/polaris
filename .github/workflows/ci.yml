@@ -500,6 +500,8 @@ jobs:
             -o /usr/local/bin/docker-compose
           sudo chmod 755 /usr/local/bin/docker-compose
           sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      - name: Verify release-doc link policy
+        run: site/bin/check-release-doc-links.sh
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
 
