@@ -346,7 +346,7 @@ class OptionTree:
                         Argument(
                             Arguments.PROPERTY,
                             str,
-                            Hints.PROPERTY,
+                            Hints.CATALOG_PROPERTY,
                             allow_repeats=True,
                         ),
                     ]
@@ -401,7 +401,7 @@ class OptionTree:
                         Argument(
                             Arguments.SET_PROPERTY,
                             str,
-                            Hints.SET_PROPERTY,
+                            Hints.CATALOG_SET_PROPERTY,
                             allow_repeats=True,
                         ),
                         Argument(
