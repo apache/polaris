@@ -20,6 +20,8 @@
 title: Polaris Evolution
 type: docs
 weight: 1000
+robots: noindex
+exclude_search: true
 ---
 
 This page discusses what can be expected from Apache Polaris as the project evolves.

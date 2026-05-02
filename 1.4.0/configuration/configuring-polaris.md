@@ -20,6 +20,8 @@
 title: Configuring Polaris
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 ## Overview

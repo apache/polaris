@@ -20,6 +20,8 @@
 title: Metastores
 type: docs
 weight: 700
+robots: noindex
+exclude_search: true
 ---
 
 

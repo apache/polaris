@@ -21,6 +21,8 @@ title: Creating a catalog on Azure
 linkTitle: Azure
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `azure` only options

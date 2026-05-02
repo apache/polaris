@@ -21,6 +21,8 @@ title: smallrye-polaris_authorization_opa
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Configuration for OPA (Open Policy Agent) authorization. 

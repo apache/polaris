@@ -20,6 +20,8 @@
 title: NoSQL MongoDB
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 {{< alert note >}}

@@ -21,6 +21,8 @@
 title: Persistence
 linkTitle: Persistence
 weight: 400
+robots: noindex
+exclude_search: true
 ---
 
 This page describes how to configure persistence for Polaris when deploying with the Helm chart.

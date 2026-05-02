@@ -21,6 +21,8 @@ title: flags-polaris_features
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Feature configurations for Polaris. These are stable, user-facing settings.

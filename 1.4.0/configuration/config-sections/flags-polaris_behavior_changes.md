@@ -21,6 +21,8 @@ title: flags-polaris_behavior_changes
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Internal behavior change configurations. These are unstable and may be removed.

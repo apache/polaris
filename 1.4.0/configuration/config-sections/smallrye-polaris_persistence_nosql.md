@@ -21,6 +21,8 @@ title: smallrye-polaris_persistence_nosql
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Polaris persistence backend configuration.

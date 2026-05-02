@@ -20,6 +20,8 @@
 Title: Quickstart
 type: docs
 weight: 99
+robots: noindex
+exclude_search: true
 ---
 
 Use this guide to quickly start running Polaris. This is not intended for production use.

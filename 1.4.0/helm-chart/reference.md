@@ -21,6 +21,8 @@ title: Values Reference
 linkTitle: Values Reference
 type: docs
 weight: 900
+robots: noindex
+exclude_search: true
 ---
 
 ### Deployment

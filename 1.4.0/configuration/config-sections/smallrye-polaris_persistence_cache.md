@@ -21,6 +21,8 @@ title: smallrye-polaris_persistence_cache
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Persistence cache configuration.

@@ -21,6 +21,8 @@ title: smallrye-polaris_service_identity
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Configuration interface for managing service identities across multiple realms in Polaris. 

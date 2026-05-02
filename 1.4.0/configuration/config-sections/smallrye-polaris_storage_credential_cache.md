@@ -21,6 +21,8 @@ title: smallrye-polaris_storage_credential_cache
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 | Property | Default Value | Type | Description |

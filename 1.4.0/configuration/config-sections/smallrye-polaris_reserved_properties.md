@@ -21,6 +21,8 @@ title: smallrye-polaris_reserved_properties
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Used to track entity properties reserved for use by the catalog. These properties may not be  overridden by the end user.

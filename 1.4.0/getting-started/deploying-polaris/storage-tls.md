@@ -21,6 +21,8 @@ title: Accessing Storage with TLS and Self-Signed Certificates
 linkTitle: Storage with TLS
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 Sometimes the storage targeted by the Polaris Server is expected to be accessed over TLS but the

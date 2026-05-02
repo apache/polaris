@@ -21,6 +21,8 @@ title: Configuration
 linkTitle: Configuration
 type: docs
 weight: 550
+robots: noindex
+exclude_search: true
 ---
 
 This section covers how to configure Apache Polaris.
