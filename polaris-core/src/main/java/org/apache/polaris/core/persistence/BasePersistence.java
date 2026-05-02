@@ -58,7 +58,8 @@ import org.apache.polaris.core.policy.PolicyMappingPersistence;
  * default, all metrics operations are no-ops. Implementations that support metrics persistence
  * (e.g., JDBC) should override these methods to provide actual storage.
  */
-public interface BasePersistence extends PolicyMappingPersistence, MetricsPersistence {
+public interface BasePersistence
+    extends PolicyMappingPersistence, MetricsPersistence, IdempotencyPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

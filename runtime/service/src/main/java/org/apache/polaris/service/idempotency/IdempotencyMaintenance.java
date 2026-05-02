@@ -24,13 +24,16 @@ import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,9 +41,15 @@ import org.slf4j.LoggerFactory;
 /**
  * Background maintenance for idempotency: periodically purges expired records.
  *
- * <p>Uses a Vert.x periodic timer and offloads the actual store I/O to the worker pool to avoid
- * blocking the event loop. A non-reentrant flag prevents overlapping purges if a tick takes longer
- * than the configured interval.
+ * <p>Triggered by Quarkus's {@code StartupEvent} (see {@link #onStart}), which registers a Vert.x
+ * periodic timer at {@link IdempotencyConfiguration#purgeInterval()}. Each tick offloads the actual
+ * store I/O to the worker pool to avoid blocking the event loop. A non-reentrant flag prevents
+ * overlapping purges if a tick takes longer than the configured interval. The timer is cancelled on
+ * {@code ShutdownEvent}.
+ *
+ * <p>The timer fires for every configured realm, but the per-realm purge is skipped unless that
+ * realm has {@link FeatureConfiguration#IDEMPOTENCY_PURGE_ENABLED} set, so each tenant can opt in
+ * or out independently.
  */
 @ApplicationScoped
 public class IdempotencyMaintenance {
@@ -49,7 +58,8 @@ public class IdempotencyMaintenance {
 
   @Inject IdempotencyConfiguration configuration;
   @Inject RealmContextConfiguration realmContextConfiguration;
-  @Inject Instance<IdempotencyStore> store;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject RealmConfigurationSource realmConfigurationSource;
   @Inject Clock clock;
   @Inject Vertx vertx;
 
@@ -57,13 +67,6 @@ public class IdempotencyMaintenance {
   private final AtomicBoolean purgeRunning = new AtomicBoolean(false);
 
   void onStart(@Observes StartupEvent event) {
-    if (!configuration.enabled() || !configuration.purgeEnabled()) {
-      return;
-    }
-    if (store.isUnsatisfied()) {
-      LOGGER.warn("Idempotency purge enabled but no IdempotencyStore is wired; skipping");
-      return;
-    }
     Optional<String> purgeExecutorId = configuration.purgeExecutorId();
     if (purgeExecutorId.isPresent()) {
       String localExecutorId = IdempotencyHandlerSupport.resolveExecutorId(configuration);
@@ -104,13 +107,22 @@ public class IdempotencyMaintenance {
 
   private void purgeOnce() {
     Instant cutoff = clock.instant().minus(configuration.purgeGrace());
-    IdempotencyStore s = store.get();
     for (String realm : realmContextConfiguration.realms()) {
       try {
-        int purged = s.purgeExpired(realm, cutoff);
+        var realmConfig = new RealmConfigImpl(realmConfigurationSource, () -> realm);
+        if (!realmConfig.getConfig(FeatureConfiguration.IDEMPOTENCY_PURGE_ENABLED)) {
+          continue;
+        }
+        IdempotencyPersistence persistence =
+            metaStoreManagerFactory.getOrCreateSession(() -> realm);
+        int purged = persistence.purgeExpired(realm, cutoff);
         if (purged > 0) {
           LOGGER.debug("Purged {} expired idempotency records for realm {}", purged, realm);
         }
+      } catch (UnsupportedOperationException e) {
+        // Backend (e.g. in-memory dev mode) does not support idempotency persistence; skip.
+        LOGGER.debug(
+            "Skipping idempotency purge for realm {}: backend does not support idempotency", realm);
       } catch (Exception e) {
         LOGGER.warn("Failed to purge expired idempotency records for realm {}", realm, e);
       }

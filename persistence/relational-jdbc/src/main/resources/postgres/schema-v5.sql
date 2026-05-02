@@ -16,9 +16,18 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- Changes from v2:
---  * Added `events` table
---  * Added `idempotency_records` table for REST idempotency
+-- Changes from v4:
+--  * idempotency_records: add `principal_hash` (NOT NULL) so handler-level idempotency can
+--    bind reservations to the calling principal and reject cross-principal cache hits.
+--  * idempotency_records: drop the unused `response_headers` column. The handler-level design
+--    rebuilds responses from authoritative state on replay rather than serving stored bodies,
+--    so no headers need to be replayed.
+--
+-- Migration notes:
+--  * The idempotency feature was disabled by default in 1.4.0, so the table is expected to be
+--    empty and the in-place ADD/DROP is safe. The ALTER statements below are written with
+--    IF [NOT] EXISTS so they are idempotent on both fresh installs (where the CREATE TABLE
+--    above already produced the new shape) and existing 1.4.0 installs.
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
@@ -28,7 +37,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 4)
+VALUES ('version', 5)
 ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
@@ -148,12 +157,12 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
     idempotency_key TEXT NOT NULL,
     operation_type TEXT NOT NULL,
     resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
+    principal_hash TEXT NOT NULL,         -- hash of caller principal + realm; checked on replay to prevent cross-principal cache hits
 
     -- Finalization/replay
     http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
     error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
+    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string); null for credential-bearing mutations
     finalized_at TIMESTAMP,              -- when http_status was written
 
     -- Liveness/ops
@@ -169,6 +178,13 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
     ON idempotency_records (realm_id, expires_at);
+
+-- v4 -> v5 migration for idempotency_records: idempotent ALTER TABLE statements that bring an
+-- existing v4 table up to the v5 shape and are no-ops on a fresh v5 install.
+ALTER TABLE idempotency_records ADD COLUMN IF NOT EXISTS principal_hash TEXT;
+UPDATE idempotency_records SET principal_hash = '' WHERE principal_hash IS NULL;
+ALTER TABLE idempotency_records ALTER COLUMN principal_hash SET NOT NULL;
+ALTER TABLE idempotency_records DROP COLUMN IF EXISTS response_headers;
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE

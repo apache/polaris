@@ -573,4 +573,82 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "configured, but existing values cannot be changed to different ones.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  // ============================================================================
+  // Handler-level idempotency (tenant-visible behaviour knobs)
+  // ============================================================================
+  //
+  // Platform/infrastructure knobs (keyHeader, executorId, purgeExecutorId, polling interval,
+  // purge interval, purge grace) live in IdempotencyConfiguration as @ConfigMapping deploy
+  // constants. The values below are the knobs that operators may legitimately want to vary
+  // per-realm or even per-catalog — for example, enabling idempotency for one catalog while
+  // leaving it off globally, or tuning the in-progress wait for a specific tenant.
+
+  public static final FeatureConfiguration<Boolean> IDEMPOTENCY_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("IDEMPOTENCY_ENABLED")
+          .catalogConfig("polaris.config.idempotency.enabled")
+          .description(
+              "Master switch for handler-level idempotency. When true (and an Idempotency-Key "
+                  + "header is present), supported handler methods (initially createTableDirect) "
+                  + "reserve the key after authorization and rebuild the response from "
+                  + "authoritative state on replay. May be overridden per-catalog so that a "
+                  + "specific catalog can opt in or out of idempotency without changing the "
+                  + "realm-wide setting.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> IDEMPOTENCY_TTL_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("IDEMPOTENCY_TTL_MILLIS")
+          .description(
+              "Default TTL (in milliseconds) for newly reserved idempotency keys. After this "
+                  + "duration the reservation may be purged by the background maintenance task.")
+          .defaultValue(5L * 60L * 1000L) // 5 minutes
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> IDEMPOTENCY_TTL_GRACE_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("IDEMPOTENCY_TTL_GRACE_MILLIS")
+          .description(
+              "Additional grace (in milliseconds) added to IDEMPOTENCY_TTL_MILLIS when reserving "
+                  + "keys. Extends retention slightly to tolerate clock skew and queued retries "
+                  + "while keeping the advertised lifetime unchanged.")
+          .defaultValue(0L)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> IDEMPOTENCY_IN_PROGRESS_WAIT_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("IDEMPOTENCY_IN_PROGRESS_WAIT_MILLIS")
+          .description(
+              "Maximum time (in milliseconds) the handler waits while polling an in-progress "
+                  + "reservation owned by another executor before returning a retryable response. "
+                  + "The poll loop runs synchronously on the calling worker thread, so this value "
+                  + "is the upper bound on how long a single duplicate request can pin a worker. "
+                  + "Set conservatively: a high value combined with concurrent duplicate traffic "
+                  + "can exhaust the worker pool. Operators are expected to deploy route-level "
+                  + "rate limiting on idempotent endpoints in addition to this cap.")
+          .defaultValue(2_000L) // 2 seconds
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> IDEMPOTENCY_LEASE_TTL_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("IDEMPOTENCY_LEASE_TTL_MILLIS")
+          .description(
+              "Lease TTL (in milliseconds) for considering an in-progress idempotency owner "
+                  + "\"active\" based on heartbeatAt. If a duplicate observes "
+                  + "(now - heartbeatAt > leaseTtl), the owner is treated as stale and the "
+                  + "server will not wait indefinitely.")
+          .defaultValue(25_000L) // 25 seconds
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> IDEMPOTENCY_PURGE_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("IDEMPOTENCY_PURGE_ENABLED")
+          .description(
+              "Enable periodic purge of expired idempotency records for this realm. In multi-node "
+                  + "deployments, enabling purge on all replicas may cause unnecessary contention; "
+                  + "set polaris.idempotency.purge-executor-id to pin purge to a single replica.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

@@ -26,11 +26,11 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
- * Simple in-memory {@link IdempotencyStore} implementation.
+ * Simple in-memory {@link IdempotencyPersistence} implementation.
  *
  * <p>Intended for dev/test and in-memory Polaris deployments; not durable across restarts.
  */
-public final class InMemoryIdempotencyStore implements IdempotencyStore {
+public final class InMemoryIdempotencyPersistence implements IdempotencyPersistence {
 
   private record Key(String realmId, String idempotencyKey) {}
 
@@ -80,7 +80,7 @@ public final class InMemoryIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public Optional<IdempotencyRecord> load(String realmId, String idempotencyKey) {
+  public Optional<IdempotencyRecord> loadIdempotencyRecord(String realmId, String idempotencyKey) {
     RecordState s = records.get(new Key(realmId, idempotencyKey));
     return s == null ? Optional.empty() : Optional.of(s.record);
   }

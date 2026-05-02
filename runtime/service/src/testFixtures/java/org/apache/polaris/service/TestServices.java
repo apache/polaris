@@ -328,15 +328,20 @@ public record TestServices(
 
       IdempotencyConfiguration idempotencyConfiguration =
           Mockito.mock(IdempotencyConfiguration.class);
-      Mockito.when(idempotencyConfiguration.enabled()).thenReturn(false);
       Mockito.when(idempotencyConfiguration.keyHeader()).thenReturn("Idempotency-Key");
-      @SuppressWarnings("unchecked")
-      Instance<org.apache.polaris.core.persistence.IdempotencyStore> idempotencyStoreInstance =
-          Mockito.mock(Instance.class);
-      Mockito.when(idempotencyStoreInstance.isUnsatisfied()).thenReturn(true);
+      // Idempotency is disabled in TestServices (IDEMPOTENCY_ENABLED defaults to false in the
+      // realm config), so the persistence lookup is never invoked. We pass a function that always
+      // throws to make any accidental access loud during tests.
+      java.util.function.Function<
+              String, org.apache.polaris.core.persistence.IdempotencyPersistence>
+          idempotencyPersistenceLookup =
+              realm -> {
+                throw new IllegalStateException(
+                    "IdempotencyPersistence should not be used when idempotency is disabled");
+              };
       IdempotencyHandlerSupport idempotencySupport =
           IdempotencyHandlerSupport.forTesting(
-              idempotencyConfiguration, idempotencyStoreInstance, clock);
+              idempotencyConfiguration, idempotencyPersistenceLookup, clock);
 
       IcebergCatalogHandlerFactory handlerFactory =
           new IcebergCatalogHandlerFactory() {
@@ -364,7 +369,6 @@ public record TestServices(
                   .clock(clock)
                   .accessDelegationModeResolver(
                       new DefaultAccessDelegationModeResolver(realmConfig))
-                  .idempotencyConfiguration(idempotencyConfiguration)
                   .idempotencySupport(idempotencySupport)
                   .build();
             }
@@ -376,7 +380,6 @@ public record TestServices(
               new DefaultCatalogPrefixParser(),
               reservedProperties,
               handlerFactory,
-              idempotencyConfiguration,
               idempotencySupport);
 
       // Optionally wrap with event delegator

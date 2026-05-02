@@ -24,16 +24,23 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Idempotency configuration (handler-level design).
+ * Deploy-time / platform configuration for handler-level idempotency.
  *
- * <p>Idempotency is implemented inside the catalog handler, after authorization. The Iceberg REST
- * adapter reads the {@code Idempotency-Key} request header and forwards it into the wired handler
- * methods. Reservations are persisted via {@link
- * org.apache.polaris.core.persistence.IdempotencyStore}.
+ * <p>Reservations are persisted via {@link
+ * org.apache.polaris.core.persistence.IdempotencyPersistence}, which sits on the realm's {@link
+ * org.apache.polaris.core.persistence.BasePersistence}.
  *
- * <p>Endpoint scope is intentionally not configurable here: only a small set of handler methods are
- * wired today (initially {@code createTableDirect}). See the project's mailing list discussion for
- * the design rationale.
+ * <h2>What lives here vs. {@link org.apache.polaris.core.config.FeatureConfiguration}</h2>
+ *
+ * <p>The settings on this interface are deployment-wide constants that an operator typically sets
+ * once per service installation (HTTP header name, executor identity, infrastructure timing knobs).
+ * They do not vary per-realm or per-catalog and are read directly from the Quarkus configuration
+ * tree.
+ *
+ * <p>Tenant-visible behaviour knobs (whether the feature is on, TTLs, the in-progress wait budget,
+ * lease TTL, purge enable) live in {@link org.apache.polaris.core.config.FeatureConfiguration} as
+ * {@code IDEMPOTENCY_*} entries so they can be overridden per-realm or per-catalog at runtime
+ * through the standard configuration resolution path.
  *
  * <h2>Single-node vs multi-node deployments</h2>
  *
@@ -42,32 +49,15 @@ import java.util.Optional;
  * ownership/cancel/heartbeats can be attributed correctly.
  *
  * <p>Purge is a best-effort background cleanup. In multi-node deployments, enabling purge on every
- * replica can create unnecessary contention; consider running purge in only one replica or via an
- * external scheduled job.
+ * replica can create unnecessary contention; consider running purge in only one replica (via {@link
+ * #purgeExecutorId()}) or via an external scheduled job.
  */
 @ConfigMapping(prefix = "polaris.idempotency")
 public interface IdempotencyConfiguration {
 
-  /** Master switch for handler-level idempotency. */
-  @WithDefault("false")
-  boolean enabled();
-
   /** Request header name containing the client-provided idempotency key. */
   @WithDefault("Idempotency-Key")
   String keyHeader();
-
-  /** Default TTL for newly reserved keys. Examples: {@code PT5M}, {@code PT300S}. */
-  @WithDefault("PT5M")
-  Duration ttl();
-
-  /**
-   * Additional grace added to {@link #ttl()} when reserving keys.
-   *
-   * <p>Extends retention slightly to tolerate clock skew and queued retries while keeping the
-   * advertised lifetime unchanged.
-   */
-  @WithDefault("PT0S")
-  Duration ttlGrace();
 
   /**
    * Executor identifier to store alongside reservations (e.g. pod / instance id).
@@ -80,40 +70,16 @@ public interface IdempotencyConfiguration {
   Optional<String> executorId();
 
   /**
-   * Maximum time the handler waits while polling an in-progress reservation owned by another
-   * executor before returning a retryable response.
-   */
-  @WithDefault("PT30S")
-  Duration inProgressWait();
-
-  /** Polling interval used while waiting for an in-progress duplicate. */
-  @WithDefault("PT0.1S")
-  Duration inProgressPollInterval();
-
-  /**
-   * Lease TTL for considering an in-progress owner "active" based on {@code heartbeatAt}.
-   *
-   * <p>If a duplicate observes {@code now - heartbeatAt > leaseTtl}, the owner is treated as stale
-   * and the server should not wait indefinitely.
-   */
-  @WithDefault("PT25S")
-  Duration leaseTtl();
-
-  /**
-   * Enable periodic purge of expired idempotency records.
-   *
-   * <p>In multi-node deployments, enabling purge on all replicas may cause unnecessary contention.
-   */
-  @WithDefault("false")
-  boolean purgeEnabled();
-
-  /**
    * Optional executor id that is allowed to run purge.
    *
    * <p>When set, only the node whose resolved {@link #executorId()} matches this value will run the
    * purge timer.
    */
   Optional<String> purgeExecutorId();
+
+  /** Polling interval used while waiting for an in-progress duplicate. */
+  @WithDefault("PT0.1S")
+  Duration inProgressPollInterval();
 
   /** Purge interval. Examples: {@code PT1M}, {@code PT60S}. */
   @WithDefault("PT1M")

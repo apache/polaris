@@ -16,23 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
 
-import org.apache.polaris.core.exceptions.PolarisException;
+package org.apache.polaris.persistence.relational.jdbc;
 
-/**
- * Raised when the {@link IdempotencyPersistence} fails due to an underlying persistence/storage
- * error.
- *
- * <p>This is treated as an internal server error by {@code PolarisExceptionMapper}.
- */
-public class IdempotencyPersistenceException extends PolarisException {
+public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV5SchemaTest
+    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
 
-  public IdempotencyPersistenceException(String message) {
-    super(message);
-  }
-
-  public IdempotencyPersistenceException(String message, Throwable cause) {
-    super(message, cause);
+  @Override
+  public int schemaVersion() {
+    return 5;
   }
 }

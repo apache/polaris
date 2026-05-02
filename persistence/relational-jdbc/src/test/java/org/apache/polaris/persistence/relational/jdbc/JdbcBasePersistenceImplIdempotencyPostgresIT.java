@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc.idempotency;
+package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,11 +24,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.entity.IdempotencyRecord;
-import org.apache.polaris.core.persistence.IdempotencyStore;
-import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
-import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
-import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
+import org.apache.polaris.core.persistence.IdempotencyPersistence.HeartbeatResult;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,8 +37,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+/**
+ * Postgres-backed integration tests for the {@link IdempotencyPersistence} methods on {@link
+ * JdbcBasePersistenceImpl}. The same scenarios are covered against the in-memory implementation in
+ * {@code IdempotencyPersistenceSpiTest}.
+ */
 @Testcontainers
-public class RelationalJdbcIdempotencyStorePostgresIT {
+public class JdbcBasePersistenceImplIdempotencyPostgresIT {
 
   @Container
   private static final PostgreSQLContainer POSTGRES =
@@ -49,7 +53,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
               .asCompatibleSubstituteFor("postgres"));
 
   private static DataSource dataSource;
-  private static RelationalJdbcIdempotencyStore store;
+  private static IdempotencyPersistence store;
 
   @BeforeAll
   static void setup() throws Exception {
@@ -60,7 +64,6 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     ds.setPassword(POSTGRES.getPassword());
     dataSource = ds;
 
-    // Apply schema
     RelationalJdbcConfiguration cfg =
         new RelationalJdbcConfiguration() {
           @Override
@@ -87,14 +90,19 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     try (InputStream is =
         Thread.currentThread()
             .getContextClassLoader()
-            .getResourceAsStream("postgres/schema-v4.sql")) {
+            .getResourceAsStream("postgres/schema-v5.sql")) {
       if (is == null) {
-        throw new IllegalStateException("schema-v4.sql not found on classpath");
+        throw new IllegalStateException("schema-v5.sql not found on classpath");
       }
       ops.executeScript(is);
     }
 
-    store = new RelationalJdbcIdempotencyStore(dataSource, cfg);
+    // The idempotency methods on JdbcBasePersistenceImpl only use datasourceOperations and
+    // realmId-as-parameter; secrets generator / storage provider / schemaVersion are unused on
+    // these paths, so we can safely pass nulls / 0 in this targeted IT.
+    store =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(), ops, null, null, "test-realm", 0);
   }
 
   @AfterAll
@@ -112,11 +120,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     String ph = "principal-hash-A";
-    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, ph, exp, "A", now);
-    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    IdempotencyPersistence.ReserveResult r1 = store.reserve(realm, key, op, rid, ph, exp, "A", now);
+    assertThat(r1.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
 
-    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, ph, exp, "B", now);
-    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    IdempotencyPersistence.ReserveResult r2 = store.reserve(realm, key, op, rid, ph, exp, "B", now);
+    assertThat(r2.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
     assertThat(rec.realmId()).isEqualTo(realm);
@@ -147,7 +155,7 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     boolean fin2 = store.finalizeRecord(realm, key, "A", 200, null, null, now.plusSeconds(3));
     assertThat(fin2).isFalse();
 
-    Optional<IdempotencyRecord> rec = store.load(realm, key);
+    Optional<IdempotencyRecord> rec = store.loadIdempotencyRecord(realm, key);
     assertThat(rec).isPresent();
     assertThat(rec.get().isFinalized()).isTrue();
     assertThat(rec.get().httpStatus()).isEqualTo(200);
@@ -178,16 +186,16 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 =
+    IdempotencyPersistence.ReserveResult r1 =
         store.reserve(realm, key, op1, rid1, "principal-hash-A", exp, "A", now);
-    assertThat(r1.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(r1.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
 
     // Second reserve with different op/resource should *not* overwrite the original binding.
     // The store must return DUPLICATE with the *original* (op1, rid1); the handler will
     // detect the mismatch via principalHash/normalizedResourceId comparison and return 422.
-    IdempotencyStore.ReserveResult r2 =
+    IdempotencyPersistence.ReserveResult r2 =
         store.reserve(realm, key, op2, rid2, "principal-hash-B", exp, "B", now);
-    assertThat(r2.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    assertThat(r2.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.DUPLICATE);
     assertThat(r2.existing()).isPresent();
     IdempotencyRecord rec = r2.existing().get();
     assertThat(rec.operationType()).isEqualTo(op1);
@@ -207,12 +215,12 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     store.reserve(realm, key, op, rid, "principal-hash-A", exp, "A", now);
     boolean cancelled = store.cancelInProgressReservation(realm, key, "A");
     assertThat(cancelled).isTrue();
-    assertThat(store.load(realm, key)).isEmpty();
+    assertThat(store.loadIdempotencyRecord(realm, key)).isEmpty();
 
     // After cancel a different caller may acquire the same key.
-    IdempotencyStore.ReserveResult r3 =
+    IdempotencyPersistence.ReserveResult r3 =
         store.reserve(realm, key, op, rid, "principal-hash-B", exp, "B", now);
-    assertThat(r3.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(r3.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
   }
 
   @Test
@@ -229,6 +237,6 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
 
     boolean cancelled = store.cancelInProgressReservation(realm, key, "A");
     assertThat(cancelled).isFalse();
-    assertThat(store.load(realm, key)).isPresent();
+    assertThat(store.loadIdempotencyRecord(realm, key)).isPresent();
   }
 }

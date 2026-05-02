@@ -25,11 +25,11 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.junit.jupiter.api.Test;
 
 /**
- * SPI conformance tests for {@link IdempotencyStore} implementations against the in-memory
+ * SPI conformance tests for {@link IdempotencyPersistence} implementations against the in-memory
  * implementation. The same scenarios are covered against the JDBC implementation in {@code
- * RelationalJdbcIdempotencyStorePostgresIT}.
+ * RelationalJdbcIdempotencyPersistencePostgresIT}.
  */
-class IdempotencyStoreSpiTest {
+class IdempotencyPersistenceSpiTest {
 
   private static final String REALM = "realm-1";
   private static final String OP = "create-table";
@@ -37,21 +37,21 @@ class IdempotencyStoreSpiTest {
   private static final String PRINCIPAL_HASH = "principal-hash-A";
   private static final String OTHER_PRINCIPAL_HASH = "principal-hash-B";
 
-  private final InMemoryIdempotencyStore store = new InMemoryIdempotencyStore();
+  private final InMemoryIdempotencyPersistence store = new InMemoryIdempotencyPersistence();
 
   @Test
   void firstReserveOwnsAndDuplicateReturnsRecord() {
     Instant now = Instant.parse("2026-04-01T00:00:00Z");
     Instant expires = now.plus(5, ChronoUnit.MINUTES);
 
-    IdempotencyStore.ReserveResult first =
+    IdempotencyPersistence.ReserveResult first =
         store.reserve(REALM, "k1", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-1", now);
-    assertThat(first.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(first.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
     assertThat(first.existing()).isEmpty();
 
-    IdempotencyStore.ReserveResult second =
+    IdempotencyPersistence.ReserveResult second =
         store.reserve(REALM, "k1", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-2", now);
-    assertThat(second.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    assertThat(second.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.DUPLICATE);
     assertThat(second.existing()).isPresent();
     IdempotencyRecord existing = second.existing().get();
     assertThat(existing.executorId()).isEqualTo("exec-1");
@@ -66,9 +66,9 @@ class IdempotencyStoreSpiTest {
 
     store.reserve(REALM, "k2", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-1", now);
 
-    IdempotencyStore.ReserveResult second =
+    IdempotencyPersistence.ReserveResult second =
         store.reserve(REALM, "k2", OP, RESOURCE, OTHER_PRINCIPAL_HASH, expires, "exec-2", now);
-    assertThat(second.type()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
+    assertThat(second.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.DUPLICATE);
     assertThat(second.existing()).isPresent();
     // The store does not enforce identity itself; it persists the original principal hash so the
     // handler can compare and reject. This guarantees no cross-principal cache hits.
@@ -85,9 +85,9 @@ class IdempotencyStoreSpiTest {
     assertThat(cancelled).isTrue();
 
     // After cancel, key is free again.
-    IdempotencyStore.ReserveResult retry =
+    IdempotencyPersistence.ReserveResult retry =
         store.reserve(REALM, "k3", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-1", now);
-    assertThat(retry.type()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
+    assertThat(retry.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
   }
 
   @Test
@@ -98,7 +98,7 @@ class IdempotencyStoreSpiTest {
     store.reserve(REALM, "k4", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-1", now);
     assertThat(store.cancelInProgressReservation(REALM, "k4", "exec-other")).isFalse();
     // Reservation still owned by exec-1.
-    Optional<IdempotencyRecord> rec = store.load(REALM, "k4");
+    Optional<IdempotencyRecord> rec = store.loadIdempotencyRecord(REALM, "k4");
     assertThat(rec).isPresent();
     assertThat(rec.get().executorId()).isEqualTo("exec-1");
   }
@@ -128,7 +128,7 @@ class IdempotencyStoreSpiTest {
     assertThat(store.finalizeRecord(REALM, "k6", "exec-1", 200, null, null, now.plusSeconds(2)))
         .isFalse();
 
-    Optional<IdempotencyRecord> loaded = store.load(REALM, "k6");
+    Optional<IdempotencyRecord> loaded = store.loadIdempotencyRecord(REALM, "k6");
     assertThat(loaded).isPresent();
     assertThat(loaded.get().httpStatus()).isEqualTo(200);
     assertThat(loaded.get().isFinalized()).isTrue();
@@ -142,17 +142,17 @@ class IdempotencyStoreSpiTest {
     Instant expires = now.plus(5, ChronoUnit.MINUTES);
 
     assertThat(store.updateHeartbeat(REALM, "missing", "exec-1", now))
-        .isEqualTo(IdempotencyStore.HeartbeatResult.NOT_FOUND);
+        .isEqualTo(IdempotencyPersistence.HeartbeatResult.NOT_FOUND);
 
     store.reserve(REALM, "k7", OP, RESOURCE, PRINCIPAL_HASH, expires, "exec-1", now);
     assertThat(store.updateHeartbeat(REALM, "k7", "exec-1", now.plusSeconds(1)))
-        .isEqualTo(IdempotencyStore.HeartbeatResult.UPDATED);
+        .isEqualTo(IdempotencyPersistence.HeartbeatResult.UPDATED);
     assertThat(store.updateHeartbeat(REALM, "k7", "exec-other", now.plusSeconds(2)))
-        .isEqualTo(IdempotencyStore.HeartbeatResult.LOST_OWNERSHIP);
+        .isEqualTo(IdempotencyPersistence.HeartbeatResult.LOST_OWNERSHIP);
 
     store.finalizeRecord(REALM, "k7", "exec-1", 200, null, null, now.plusSeconds(3));
     assertThat(store.updateHeartbeat(REALM, "k7", "exec-1", now.plusSeconds(4)))
-        .isEqualTo(IdempotencyStore.HeartbeatResult.FINALIZED);
+        .isEqualTo(IdempotencyPersistence.HeartbeatResult.FINALIZED);
   }
 
   @Test
@@ -164,7 +164,7 @@ class IdempotencyStoreSpiTest {
 
     int purged = store.purgeExpired(REALM, t0.plusSeconds(60));
     assertThat(purged).isEqualTo(1);
-    assertThat(store.load(REALM, "expired")).isEmpty();
-    assertThat(store.load(REALM, "alive")).isPresent();
+    assertThat(store.loadIdempotencyRecord(REALM, "expired")).isEmpty();
+    assertThat(store.loadIdempotencyRecord(REALM, "alive")).isPresent();
   }
 }

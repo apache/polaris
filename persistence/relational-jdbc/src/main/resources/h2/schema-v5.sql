@@ -15,22 +15,34 @@
 -- KIND, either express or implied.  See the License for the
 -- specific language governing permissions and limitations
 -- under the License.
+--
 
--- Changes from v2:
---  * Added `events` table
---  * Added `idempotency_records` table for REST idempotency
+-- Changes from v4:
+--  * idempotency_records: add `principal_hash` (NOT NULL) so handler-level idempotency can
+--    bind reservations to the calling principal and reject cross-principal cache hits.
+--  * idempotency_records: drop the unused `response_headers` column. The handler-level design
+--    rebuilds responses from authoritative state on replay rather than serving stored bodies,
+--    so no headers need to be replayed.
+--
+-- Migration notes:
+--  * The idempotency feature was disabled by default in 1.4.0, so the table is expected to be
+--    empty and the in-place ADD/DROP is safe. The ALTER statements below are written with
+--    IF [NOT] EXISTS so they are idempotent on both fresh installs (where the CREATE TABLE
+--    above already produced the new shape) and existing 1.4.0 installs.
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
-SET search_path TO POLARIS_SCHEMA;
+SET SCHEMA POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
-    version_key TEXT PRIMARY KEY,
+    version_key VARCHAR PRIMARY KEY,
     version_value INTEGER NOT NULL
 );
-INSERT INTO version (version_key, version_value)
-VALUES ('version', 4)
-ON CONFLICT (version_key) DO UPDATE
-SET version_value = EXCLUDED.version_value;
+
+MERGE INTO version (version_key, version_value)
+    KEY (version_key)
+    VALUES ('version', 5);
+
+-- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -47,24 +59,22 @@ CREATE TABLE IF NOT EXISTS entities (
     purge_timestamp BIGINT NOT NULL,
     to_purge_timestamp BIGINT NOT NULL,
     last_update_timestamp BIGINT NOT NULL,
-    properties JSONB not null default '{}'::JSONB,
-    internal_properties JSONB not null default '{}'::JSONB,
+    properties TEXT NOT NULL DEFAULT '{}',
+    internal_properties TEXT NOT NULL DEFAULT '{}',
     grant_records_version INT NOT NULL,
     location_without_scheme TEXT,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
 
+CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, location_without_scheme);
+
 -- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_catalog_id_id ON entities (catalog_id, id);
-CREATE INDEX IF NOT EXISTS idx_locations
-    ON entities USING btree (realm_id, parent_id, location_without_scheme)
-    WHERE location_without_scheme IS NOT NULL;
 
 COMMENT ON TABLE entities IS 'all the entities';
 
-COMMENT ON COLUMN entities.realm_id IS 'realm_id used for multi-tenancy';
 COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
 COMMENT ON COLUMN entities.id IS 'entity id';
 COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
@@ -91,7 +101,6 @@ CREATE TABLE IF NOT EXISTS grant_records (
 );
 
 COMMENT ON TABLE grant_records IS 'grant records for entities';
-
 COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
 COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
 COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
@@ -122,7 +131,7 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     policy_type_code INTEGER NOT NULL,
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
-    parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
+    parameters TEXT NOT NULL DEFAULT '{}',
     PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
 );
 
@@ -138,37 +147,42 @@ CREATE TABLE IF NOT EXISTS events (
     principal_name TEXT,
     resource_type TEXT NOT NULL,
     resource_identifier TEXT NOT NULL,
-    additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
+    additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );
 
--- Idempotency records (key-only idempotency; durable replay)
 CREATE TABLE IF NOT EXISTS idempotency_records (
     realm_id TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
     operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
+    resource_id TEXT NOT NULL, -- normalized request-derived resource identifier (not a generated entity id)
+    principal_hash TEXT NOT NULL, -- hash of caller principal + realm; checked on replay to prevent cross-principal cache hits
 
     -- Finalization/replay
-    http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
-    error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
-    finalized_at TIMESTAMP,              -- when http_status was written
+    http_status INTEGER,       -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
+    error_subtype TEXT,        -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
+    response_summary TEXT,     -- minimal body to reproduce equivalent response (JSON string); null for credential-bearing mutations
+    finalized_at TIMESTAMP,    -- when http_status was written
 
     -- Liveness/ops
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    heartbeat_at TIMESTAMP,              -- updated by owner while IN_PROGRESS
-    executor_id TEXT,                    -- owner pod/worker id
+    heartbeat_at TIMESTAMP,  -- updated by owner while IN_PROGRESS
+    executor_id TEXT,        -- owner pod/worker id
     expires_at TIMESTAMP,
 
     PRIMARY KEY (realm_id, idempotency_key)
 );
 
--- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
     ON idempotency_records (realm_id, expires_at);
+
+-- v4 -> v5 migration for idempotency_records: idempotent ALTER TABLE statements that bring an
+-- existing v4 table up to the v5 shape and are no-ops on a fresh v5 install.
+ALTER TABLE idempotency_records ADD COLUMN IF NOT EXISTS principal_hash TEXT;
+UPDATE idempotency_records SET principal_hash = '' WHERE principal_hash IS NULL;
+ALTER TABLE idempotency_records ALTER COLUMN principal_hash SET NOT NULL;
+ALTER TABLE idempotency_records DROP COLUMN IF EXISTS response_headers;
 
 -- ============================================================================
 -- SCAN METRICS REPORT TABLE
@@ -218,7 +232,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     total_delete_file_size_bytes BIGINT DEFAULT 0,
 
     -- Additional metadata (for extensibility)
-    metadata JSONB DEFAULT '{}'::JSONB,
+    metadata TEXT DEFAULT '{}',
 
     PRIMARY KEY (realm_id, report_id)
 );
@@ -287,7 +301,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     attempts INTEGER DEFAULT 1,
 
     -- Additional metadata (for extensibility)
-    metadata JSONB DEFAULT '{}'::JSONB,
+    metadata TEXT DEFAULT '{}',
 
     PRIMARY KEY (realm_id, report_id)
 );

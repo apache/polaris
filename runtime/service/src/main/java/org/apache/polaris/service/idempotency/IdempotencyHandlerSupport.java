@@ -21,8 +21,8 @@ package org.apache.polaris.service.idempotency;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.HttpHeaders;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -32,14 +32,18 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.IdempotencyRecord;
-import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,8 +52,19 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Encapsulates the parts that are independent of any specific handler method: idempotency-key
  * validation (UUID v7), principal/resource hashing, executor id resolution, polling for in-progress
- * duplicates, and thin wrappers around the {@link IdempotencyStore} reserve / cancel / finalize
- * operations.
+ * duplicates, and thin wrappers around the {@link IdempotencyPersistence} reserve / cancel /
+ * finalize operations.
+ *
+ * <p>Configuration is split: deploy-time constants such as the header name and executor identity
+ * come from {@link IdempotencyConfiguration} via CDI, while tenant-visible behaviour (whether the
+ * feature is on, TTLs, in-progress wait budget, lease TTL) is read per-call from a {@link
+ * RealmConfig} so it can vary per realm or even per catalog. The handler is expected to obtain a
+ * {@code RealmConfig} from the request scope and pass it in.
+ *
+ * <p>The actual persistence is sourced per-realm from {@link MetaStoreManagerFactory}, since {@link
+ * org.apache.polaris.core.persistence.BasePersistence} extends {@link IdempotencyPersistence}: the
+ * same per-realm session that handlers already use for catalog data also serves as the idempotency
+ * persistence.
  *
  * <p>The handler decides what to do on each {@link Outcome}: for {@link Outcome#owned()} it
  * executes the operation and finalizes; for {@link Outcome#duplicate(IdempotencyRecord)} it
@@ -67,29 +82,60 @@ public class IdempotencyHandlerSupport {
           Pattern.CASE_INSENSITIVE);
 
   @Inject IdempotencyConfiguration configuration;
-  @Inject Instance<IdempotencyStore> storeInstance;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject Clock clock;
 
   private final AtomicReference<String> resolvedExecutorId = new AtomicReference<>();
 
   /**
-   * Test-only factory that builds an instance without going through CDI. Intended for unit tests
-   * that need to wire a mock {@link IdempotencyStore}.
+   * Test-only factory that builds an instance without going through CDI. Tests pass a {@code
+   * persistenceLookup} function returning the {@link IdempotencyPersistence} for a given realm id;
+   * production code goes through {@link MetaStoreManagerFactory#getOrCreateSession}.
    */
   public static IdempotencyHandlerSupport forTesting(
       IdempotencyConfiguration configuration,
-      Instance<IdempotencyStore> storeInstance,
+      Function<String, IdempotencyPersistence> persistenceLookup,
       Clock clock) {
     IdempotencyHandlerSupport support = new IdempotencyHandlerSupport();
     support.configuration = configuration;
-    support.storeInstance = storeInstance;
     support.clock = clock;
+    support.testPersistenceLookup = persistenceLookup;
     return support;
   }
 
-  /** Returns true if handler-level idempotency is enabled and the store is wired. */
-  public boolean isEnabled() {
-    return configuration.enabled() && !storeInstance.isUnsatisfied();
+  // Test-only override; null in production.
+  private Function<String, IdempotencyPersistence> testPersistenceLookup;
+
+  /** Returns true if handler-level idempotency is enabled for the given realm. */
+  public boolean isEnabled(RealmConfig realmConfig) {
+    return realmConfig.getConfig(FeatureConfiguration.IDEMPOTENCY_ENABLED);
+  }
+
+  /**
+   * Returns true if handler-level idempotency is enabled for the given realm, with optional
+   * per-catalog override via the {@code polaris.config.idempotency.enabled} catalog property.
+   */
+  public boolean isEnabled(RealmConfig realmConfig, CatalogEntity catalogEntity) {
+    return realmConfig.getConfig(FeatureConfiguration.IDEMPOTENCY_ENABLED, catalogEntity);
+  }
+
+  /**
+   * Reads and validates the idempotency key from the JAX-RS request headers using the deploy-time
+   * configured header name from {@link IdempotencyConfiguration#keyHeader()}.
+   *
+   * <p>This is the entry point used by the REST adapter so it doesn't have to inject {@link
+   * IdempotencyConfiguration} just to look up the header name.
+   *
+   * @return validated key, or {@link Optional#empty()} if {@code httpHeaders} is null, the header
+   *     is absent / blank, or idempotency is disabled for this realm
+   * @throws IllegalArgumentException if the header is present but not a valid UUID v7 (callers
+   *     translate this into a 400 Bad Request)
+   */
+  public Optional<String> validatedKey(@Nullable HttpHeaders httpHeaders, RealmConfig realmConfig) {
+    if (httpHeaders == null) {
+      return Optional.empty();
+    }
+    return validatedKey(httpHeaders.getHeaderString(configuration.keyHeader()), realmConfig);
   }
 
   /**
@@ -102,8 +148,8 @@ public class IdempotencyHandlerSupport {
    * @throws IllegalArgumentException if the key is present but malformed (handlers translate this
    *     into a 400 Bad Request)
    */
-  public Optional<String> validatedKey(@Nullable String headerValue) {
-    if (!isEnabled() || headerValue == null) {
+  public Optional<String> validatedKey(@Nullable String headerValue, RealmConfig realmConfig) {
+    if (!isEnabled(realmConfig) || headerValue == null) {
       return Optional.empty();
     }
     String trimmed = headerValue.trim();
@@ -124,13 +170,15 @@ public class IdempotencyHandlerSupport {
   }
 
   /**
-   * SHA-256 (hex) of the calling principal's identity, bound to the realm. The input includes the
-   * principal name, the activated role set, and the principal's properties, all canonicalised so
-   * the hash is deterministic and order-independent.
+   * SHA-256 (hex) of the calling principal's identity, bound to the realm. The input is the
+   * principal name, the realm id, and the activated role set, canonicalised so the hash is
+   * deterministic and order-independent.
    *
-   * <p>Roles and properties are part of the binding so two callers that share a name but differ in
-   * activated roles or authentication context do not collide. The principal's access token is
-   * intentionally excluded because tokens rotate without changing identity.
+   * <p>Roles are part of the binding so two callers that share a name but differ in activated roles
+   * do not collide. Principal properties are intentionally excluded: they are admin-mutable and not
+   * authentication context, so unrelated property edits (SCIM sync, display-name update, tagging)
+   * during the idempotency TTL would otherwise invalidate retries from the same client. The
+   * principal's access token is also excluded because tokens rotate without changing identity.
    */
   public String principalHash(PolarisPrincipal principal, String realmId) {
     StringBuilder sb = new StringBuilder();
@@ -138,10 +186,6 @@ public class IdempotencyHandlerSupport {
     sb.append("realm=").append(realmId).append('|');
     sb.append("roles=");
     new TreeSet<>(principal.getRoles()).forEach(r -> sb.append(r).append(','));
-    sb.append('|');
-    sb.append("props=");
-    new TreeMap<>(principal.getProperties())
-        .forEach((k, v) -> sb.append(k).append('=').append(v).append(','));
     return sha256Hex(sb.toString());
   }
 
@@ -157,23 +201,28 @@ public class IdempotencyHandlerSupport {
    * resource, this method throws {@link ConflictException}, which the handler translates to 422.
    *
    * <p>If the existing reservation is still in progress and not stale, this method blocks (with a
-   * short polling interval) up to {@link IdempotencyConfiguration#inProgressWait()}, then either
-   * returns the duplicate (now finalized) or throws {@link InProgressTimeoutException} which the
-   * handler translates to 409 (retry later).
+   * short polling interval) up to the configured in-progress wait, then either returns the
+   * duplicate (now finalized) or throws {@link InProgressTimeoutException} which the handler
+   * translates to 409 (retry later). TTL, in-progress wait, and lease TTL are all read from {@code
+   * realmConfig}, so they may vary per-realm.
    */
   public Outcome reserveOrWait(
       String realmId,
       String idempotencyKey,
       String operationType,
       String normalizedResourceId,
-      String principalHash) {
-    IdempotencyStore store = storeInstance.get();
+      String principalHash,
+      RealmConfig realmConfig) {
+    IdempotencyPersistence persistence = persistenceFor(realmId);
     Instant now = clock.instant();
-    Instant expiresAt = now.plus(configuration.ttl()).plus(configuration.ttlGrace());
+    Duration ttl = millisAsDuration(realmConfig, FeatureConfiguration.IDEMPOTENCY_TTL_MILLIS);
+    Duration ttlGrace =
+        millisAsDuration(realmConfig, FeatureConfiguration.IDEMPOTENCY_TTL_GRACE_MILLIS);
+    Instant expiresAt = now.plus(ttl).plus(ttlGrace);
     String executorId = resolveExecutorId();
 
-    IdempotencyStore.ReserveResult result =
-        store.reserve(
+    IdempotencyPersistence.ReserveResult result =
+        persistence.reserve(
             realmId,
             idempotencyKey,
             operationType,
@@ -183,20 +232,21 @@ public class IdempotencyHandlerSupport {
             executorId,
             now);
 
-    if (result.type() == IdempotencyStore.ReserveResultType.OWNED) {
+    if (result.type() == IdempotencyPersistence.ReserveResultType.OWNED) {
       return Outcome.owned(executorId);
     }
 
     IdempotencyRecord existing =
         result.existing().orElseThrow(() -> new IllegalStateException("DUPLICATE without record"));
     return validateAndWait(
-        store,
+        persistence,
         realmId,
         idempotencyKey,
         operationType,
         normalizedResourceId,
         principalHash,
-        existing);
+        existing,
+        realmConfig);
   }
 
   /**
@@ -213,9 +263,9 @@ public class IdempotencyHandlerSupport {
       int httpStatus,
       @Nullable String errorSubtype,
       @Nullable String responseSummary) {
-    IdempotencyStore store = storeInstance.get();
+    IdempotencyPersistence persistence = persistenceFor(realmId);
     boolean ok =
-        store.finalizeRecord(
+        persistence.finalizeRecord(
             realmId,
             idempotencyKey,
             executorId,
@@ -224,10 +274,12 @@ public class IdempotencyHandlerSupport {
             responseSummary,
             clock.instant());
     if (!ok) {
+      // Log a redacted key summary (first/last 4 chars) so DEBUG output is useful for correlation
+      // without leaking the full client-supplied Idempotency-Key into log pipelines.
       LOGGER.debug(
           "finalizeRecord returned false for realm={} key={} (race with another finalize?)",
           realmId,
-          idempotencyKey);
+          summarizeKey(idempotencyKey));
     }
   }
 
@@ -237,13 +289,15 @@ public class IdempotencyHandlerSupport {
    * Subsequent retries are then free to reacquire the same key.
    */
   public void cancelOwned(String realmId, String idempotencyKey, String executorId) {
-    IdempotencyStore store = storeInstance.get();
-    boolean cancelled = store.cancelInProgressReservation(realmId, idempotencyKey, executorId);
+    IdempotencyPersistence persistence = persistenceFor(realmId);
+    boolean cancelled =
+        persistence.cancelInProgressReservation(realmId, idempotencyKey, executorId);
     if (!cancelled) {
+      // Same redaction as in finalizeOwned: keep the key out of DEBUG log output verbatim.
       LOGGER.debug(
           "cancelInProgressReservation returned false for realm={} key={} executor={}",
           realmId,
-          idempotencyKey,
+          summarizeKey(idempotencyKey),
           executorId);
     }
   }
@@ -267,14 +321,28 @@ public class IdempotencyHandlerSupport {
     return defaultExecutorId();
   }
 
+  /**
+   * Resolves the per-realm {@link IdempotencyPersistence}. In production this delegates to {@link
+   * MetaStoreManagerFactory#getOrCreateSession} (whose return type implements {@link
+   * IdempotencyPersistence} via {@link org.apache.polaris.core.persistence.BasePersistence}); in
+   * unit tests it goes through the lookup function passed to {@link #forTesting}.
+   */
+  IdempotencyPersistence persistenceFor(String realmId) {
+    if (testPersistenceLookup != null) {
+      return testPersistenceLookup.apply(realmId);
+    }
+    return metaStoreManagerFactory.getOrCreateSession(() -> realmId);
+  }
+
   private Outcome validateAndWait(
-      IdempotencyStore store,
+      IdempotencyPersistence persistence,
       String realmId,
       String idempotencyKey,
       String expectedOperationType,
       String expectedResourceId,
       String expectedPrincipalHash,
-      IdempotencyRecord existing) {
+      IdempotencyRecord existing,
+      RealmConfig realmConfig) {
     if (!expectedPrincipalHash.equals(existing.principalHash())) {
       throw new ConflictException(
           "Idempotency-Key already used by a different caller for the same key");
@@ -289,9 +357,11 @@ public class IdempotencyHandlerSupport {
       return Outcome.duplicate(existing);
     }
 
-    Duration maxWait = configuration.inProgressWait();
+    Duration maxWait =
+        millisAsDuration(realmConfig, FeatureConfiguration.IDEMPOTENCY_IN_PROGRESS_WAIT_MILLIS);
     Duration interval = configuration.inProgressPollInterval();
-    Duration leaseTtl = configuration.leaseTtl();
+    Duration leaseTtl =
+        millisAsDuration(realmConfig, FeatureConfiguration.IDEMPOTENCY_LEASE_TTL_MILLIS);
 
     Instant deadline = clock.instant().plus(maxWait);
     IdempotencyRecord current = existing;
@@ -317,10 +387,15 @@ public class IdempotencyHandlerSupport {
         throw new RuntimeException("Interrupted while waiting for idempotency key", e);
       }
       current =
-          store
-              .load(realmId, idempotencyKey)
+          persistence
+              .loadIdempotencyRecord(realmId, idempotencyKey)
               .orElseThrow(() -> new IllegalStateException("In-progress record disappeared"));
     }
+  }
+
+  private static Duration millisAsDuration(
+      RealmConfig realmConfig, FeatureConfiguration<Long> millisConfig) {
+    return Duration.ofMillis(realmConfig.getConfig(millisConfig));
   }
 
   private static String defaultExecutorId() {
@@ -371,7 +446,7 @@ public class IdempotencyHandlerSupport {
     return key.substring(0, 4) + "..." + key.substring(key.length() - 4);
   }
 
-  /** Result of {@link #reserveOrWait(String, String, String, String, String)}. */
+  /** Result of {@link #reserveOrWait}. */
   public sealed interface Outcome permits Outcome.Owned, Outcome.Duplicate {
 
     static Outcome owned(String executorId) {

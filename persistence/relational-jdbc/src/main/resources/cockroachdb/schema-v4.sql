@@ -150,12 +150,12 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
     idempotency_key TEXT NOT NULL,
     operation_type TEXT NOT NULL,
     resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
-    principal_hash TEXT NOT NULL,         -- hash of caller principal + realm; checked on replay to prevent cross-principal cache hits
 
     -- Finalization/replay
     http_status INT4,                    -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
     error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string); null for credential-bearing mutations
+    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
+    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
     finalized_at TIMESTAMP,              -- when http_status was written
 
     -- Liveness/ops

@@ -24,6 +24,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -68,6 +69,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
@@ -129,7 +131,6 @@ import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 import org.apache.polaris.service.idempotency.IdempotencyHandlerSupport;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -212,8 +213,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   protected abstract Clock clock();
 
   protected abstract AccessDelegationModeResolver accessDelegationModeResolver();
-
-  protected abstract IdempotencyConfiguration idempotencyConfiguration();
 
   protected abstract IdempotencyHandlerSupport idempotencySupport();
 
@@ -418,12 +417,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Create a table.
+   * Convenience entry point used only by handler-level authorization tests, which exercise the
+   * authorization wiring without going through the REST adapter. Production callers go through
+   * {@link #createTableDirect(Namespace, CreateTableRequest, EnumSet, Optional, Optional)} via the
+   * adapter.
    *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
+  @VisibleForTesting
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     return createTableDirect(
         namespace,
@@ -434,12 +437,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   /**
-   * Create a table.
+   * Convenience entry point used only by handler-level authorization tests for the write-delegation
+   * variant. Production callers go through the adapter, which resolves the delegation modes and
+   * refresh-credentials endpoint from the request.
    *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
+  @VisibleForTesting
   public LoadTableResponse createTableDirectWithWriteDelegation(
       Namespace namespace,
       CreateTableRequest request,
@@ -468,15 +474,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
-  }
-
-  public LoadTableResponse createTableDirect(
-      Namespace namespace,
-      CreateTableRequest request,
-      EnumSet<AccessDelegationMode> delegationModes,
-      Optional<String> refreshCredentialsEndpoint) {
-    return createTableDirect(
-        namespace, request, delegationModes, refreshCredentialsEndpoint, Optional.empty());
   }
 
   /**
@@ -508,11 +505,33 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    if (idempotencyKey.isEmpty() || !idempotencySupport().isEnabled()) {
+    if (idempotencyKey.isEmpty()
+        || !idempotencySupport().isEnabled(realmConfig(), getResolvedCatalogEntity())) {
       return doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+    } else {
+      return createTableDirectIdempotently(
+          namespace,
+          request,
+          delegationModes,
+          resolvedMode,
+          refreshCredentialsEndpoint,
+          idempotencyKey.get());
     }
+  }
 
-    String key = idempotencyKey.get();
+  /**
+   * Idempotent variant of {@code createTableDirect}: reserves the key, dispatches OWNED vs.
+   * DUPLICATE, and translates idempotency exceptions to the Iceberg REST exception types. Caller
+   * has already verified that idempotency is enabled and a key is present.
+   */
+  private LoadTableResponse createTableDirectIdempotently(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<AccessDelegationMode> resolvedMode,
+      Optional<String> refreshCredentialsEndpoint,
+      String idempotencyKey) {
+
     String realmId = realmContext().getRealmIdentifier();
     String principalHash = idempotencySupport().principalHash(polarisPrincipal(), realmId);
     String resourceId =
@@ -529,31 +548,39 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       outcome =
           idempotencySupport()
-              .reserveOrWait(realmId, key, "create-table", resourceId, principalHash);
+              .reserveOrWait(
+                  realmId,
+                  idempotencyKey,
+                  "create-table",
+                  resourceId,
+                  principalHash,
+                  realmConfig());
     } catch (IdempotencyHandlerSupport.ConflictException e) {
-      throw new BadRequestException("%s", e.getMessage());
+      // Cross-principal or cross-binding reuse of the same Idempotency-Key: the request is
+      // well-formed but cannot be processed against the existing reservation. Surface as 422.
+      throw new UnprocessableEntityException("%s", e.getMessage());
     } catch (IdempotencyHandlerSupport.InProgressTimeoutException e) {
       // 409 retry-later is the closest spec-aligned response; surface as a 409 from Iceberg's
       // exception model. CommitFailedException maps to 409 in the Iceberg REST handler.
       throw new CommitFailedException("%s", e.getMessage());
     }
 
-    return switch (outcome) {
-      case IdempotencyHandlerSupport.Outcome.Owned owned -> {
-        try {
-          LoadTableResponse response =
-              doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
-          idempotencySupport().finalizeOwned(realmId, key, owned.executorId(), 200, null, null);
-          yield response;
-        } catch (RuntimeException e) {
-          // Release the reservation so subsequent retries can proceed; we don't replay errors.
-          idempotencySupport().cancelOwned(realmId, key, owned.executorId());
-          throw e;
-        }
+    if (outcome instanceof IdempotencyHandlerSupport.Outcome.Owned owned) {
+      try {
+        LoadTableResponse response =
+            doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
+        idempotencySupport()
+            .finalizeOwned(realmId, idempotencyKey, owned.executorId(), 200, null, null);
+        return response;
+      } catch (RuntimeException e) {
+        // Release the reservation so subsequent retries can proceed; we don't replay errors.
+        idempotencySupport().cancelOwned(realmId, idempotencyKey, owned.executorId());
+        throw e;
       }
-      case IdempotencyHandlerSupport.Outcome.Duplicate dup ->
-          replayCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
-    };
+    }
+    // Outcome.Duplicate: rebuild the response from authoritative state instead of replaying any
+    // stored body, so credentials are freshly vended for the current caller.
+    return replayCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
   }
 
   private LoadTableResponse doCreateTableDirect(
@@ -607,6 +634,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * Replay path for an idempotent {@code createTableDirect}: load the existing table and rebuild a
    * response with freshly-vended credentials for the current caller. No credentials from the
    * original call are stored or returned.
+   *
+   * <p>Authorization is not repeated here: {@link #authorizeCreateTableDirect} already ran for the
+   * current caller in {@code createTableDirect} before the idempotency lookup, and the duplicate
+   * was matched on the same {@code principalHash} and resource binding. {@code loadTable}
+   * authorization is intentionally skipped because the operation we're replaying is a create, not a
+   * load; re-running create authorization is what gates this path.
    */
   private LoadTableResponse replayCreateTableDirect(
       Namespace namespace,
@@ -614,14 +647,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<AccessDelegationMode> resolvedMode,
       Optional<String> refreshCredentialsEndpoint) {
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
-    Table table;
-    try {
-      table = baseCatalog.loadTable(tableIdentifier);
-    } catch (NoSuchTableException e) {
-      // The original create succeeded but the table is no longer there (manual drop, retention,
-      // etc.). Surface the same not-found the client would get from a normal load.
-      throw e;
-    }
+    // If the original create succeeded but the table is no longer there (manual drop, retention,
+    // etc.), loadTable raises NoSuchTableException, surfacing the same not-found the client would
+    // get from a regular load.
+    Table table = baseCatalog.loadTable(tableIdentifier);
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
       return buildLoadTableResponseWithDelegationCredentials(

@@ -16,14 +16,22 @@
  */
 package org.apache.polaris.core.persistence;
 
+import com.google.common.annotations.Beta;
 import java.time.Instant;
 import java.util.Optional;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 
 /**
- * Abstraction for persisting and querying idempotency records.
+ * SPI for persisting and querying idempotency records.
  *
- * <p>An {@link IdempotencyStore} is responsible for:
+ * <p>This interface lives at the same layer as {@link BasePersistence}, {@link
+ * org.apache.polaris.core.policy.PolicyMappingPersistence}, and {@link
+ * org.apache.polaris.core.persistence.metrics.MetricsPersistence}: a backend that wants to support
+ * handler-level idempotency implements these methods on its existing persistence class. {@link
+ * BasePersistence} extends this interface so that any code already holding a {@link
+ * BasePersistence} can also drive idempotency on backends that support it.
+ *
+ * <p>An {@link IdempotencyPersistence} is responsible for:
  *
  * <ul>
  *   <li>Reserving an idempotency key for a particular operation, resource, and caller principal
@@ -37,9 +45,15 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * need to enforce identity itself; it only needs to persist the {@code principalHash} so the
  * handler can validate it on replay and reject cross-principal cache hits.
  *
+ * <p>All methods have default implementations that throw {@link UnsupportedOperationException}.
+ * Backends that do not support handler-level idempotency inherit the throwing defaults; the feature
+ * is opt-in (disabled by default) so deployments that do not enable it never reach those methods.
+ * Backends that support idempotency override every method.
+ *
  * <p>Implementations must be thread-safe if used concurrently.
  */
-public interface IdempotencyStore {
+@Beta
+public interface IdempotencyPersistence {
 
   /** High-level outcome of attempting to reserve an idempotency key. */
   enum ReserveResultType {
@@ -109,7 +123,7 @@ public interface IdempotencyStore {
    * @return {@link ReserveResult} describing whether the caller owns the reservation or hit a
    *     duplicate
    */
-  ReserveResult reserve(
+  default ReserveResult reserve(
       String realmId,
       String idempotencyKey,
       String operationType,
@@ -117,7 +131,10 @@ public interface IdempotencyStore {
       String principalHash,
       Instant expiresAt,
       String executorId,
-      Instant now);
+      Instant now) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 
   /**
    * Loads an existing idempotency record for the given realm and key, if present.
@@ -126,7 +143,10 @@ public interface IdempotencyStore {
    * @param idempotencyKey application-provided idempotency key
    * @return the corresponding {@link IdempotencyRecord}, if it exists
    */
-  Optional<IdempotencyRecord> load(String realmId, String idempotencyKey);
+  default Optional<IdempotencyRecord> loadIdempotencyRecord(String realmId, String idempotencyKey) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 
   /**
    * Updates the heartbeat for an in-progress reservation to indicate that the executor is still
@@ -138,8 +158,11 @@ public interface IdempotencyStore {
    * @param now timestamp representing the current time
    * @return {@link HeartbeatResult} describing whether the heartbeat was updated or why it was not
    */
-  HeartbeatResult updateHeartbeat(
-      String realmId, String idempotencyKey, String executorId, Instant now);
+  default HeartbeatResult updateHeartbeat(
+      String realmId, String idempotencyKey, String executorId, Instant now) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 
   /**
    * Cancels an in-progress reservation owned by {@code executorId}.
@@ -154,7 +177,11 @@ public interface IdempotencyStore {
    *
    * @return {@code true} if the reservation was removed, {@code false} otherwise
    */
-  boolean cancelInProgressReservation(String realmId, String idempotencyKey, String executorId);
+  default boolean cancelInProgressReservation(
+      String realmId, String idempotencyKey, String executorId) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 
   /**
    * Marks an idempotency record as finalized, recording HTTP status and an optional response
@@ -178,14 +205,17 @@ public interface IdempotencyStore {
    * @return {@code true} if the record was transitioned to a finalized state, {@code false}
    *     otherwise
    */
-  boolean finalizeRecord(
+  default boolean finalizeRecord(
       String realmId,
       String idempotencyKey,
       String executorId,
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      Instant finalizedAt);
+      Instant finalizedAt) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 
   /**
    * Purges records in a given realm whose expiration time is strictly before the given instant.
@@ -194,5 +224,8 @@ public interface IdempotencyStore {
    * @param before cutoff instant; records expiring before this time may be removed
    * @return number of records that were purged
    */
-  int purgeExpired(String realmId, Instant before);
+  default int purgeExpired(String realmId, Instant before) {
+    throw new UnsupportedOperationException(
+        "This persistence backend does not support handler-level idempotency");
+  }
 }
