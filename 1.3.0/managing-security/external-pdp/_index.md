@@ -21,6 +21,8 @@ title: External Policy Decision Point
 linkTitle: External PDP
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 This section provides information about integrating Apache Polaris (Incubating) with external Policy Decision Points (PDPs) for authorization.

@@ -21,6 +21,8 @@ title: Open Policy Agent (OPA) Integration
 linkTitle: OPA
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 {{< alert warning "Preview Feature" >}}

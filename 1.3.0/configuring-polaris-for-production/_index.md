@@ -21,6 +21,8 @@ title: Configuring Polaris for Production
 linkTitle: Production Configuration
 type: docs
 weight: 600
+robots: noindex
+exclude_search: true
 ---
 
 The default server configuration is intended for development and testing. When you deploy Polaris in production,

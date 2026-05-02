@@ -20,6 +20,8 @@
 title: Iceberg REST Federation
 type: docs
 weight: 704
+robots: noindex
+exclude_search: true
 ---
 
 Polaris can federate an external Iceberg REST catalog (e.g., another Polaris deployment, AWS Glue, or a custom Iceberg

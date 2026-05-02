@@ -21,6 +21,8 @@ title: Migrating from Existing Iceberg Catalogs
 linkTitle: Catalog Migration
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 There are two ways to migrate an existing Iceberg catalog to Polaris:

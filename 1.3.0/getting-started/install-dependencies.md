@@ -20,6 +20,8 @@
 Title: Installing Dependencies
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 This guide serves as an introduction to several key entities that can be managed with Apache Polaris (Incubating), describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.

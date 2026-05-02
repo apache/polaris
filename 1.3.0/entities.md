@@ -20,6 +20,8 @@
 Title: Entities
 type: docs
 weight: 400
+robots: noindex
+exclude_search: true
 ---
 
 This page documents various entities that can be managed in Apache Polaris (Incubating).

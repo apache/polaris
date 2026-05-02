@@ -20,6 +20,8 @@
 title: Admin Tool
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 Polaris includes a tool for administrators to manage the metastore.

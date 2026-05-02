@@ -21,6 +21,8 @@ title: Creating a catalog on Apache Ozone
 linkTitle: Ozone
 type: docs
 weight: 150
+robots: noindex
+exclude_search: true
 ---
 
 When creating a catalog based on [Apache Ozone](https://ozone.apache.org/) storage it is important to 

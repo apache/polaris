@@ -20,6 +20,8 @@
 Title: Polaris Helm Chart
 type: docs
 weight: 675
+robots: noindex
+exclude_search: true
 ---
 
 <!---
