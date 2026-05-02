@@ -40,4 +40,8 @@ The general process for handling security vulnerabilities as follows:
 
 # Known Security Vulnerabilities (CVEs)
 
-No CVE so far.
+* [CVE-2026-42809](../security-advisories/CVE-2026-42809/)
+* [CVE-2026-42810](../security-advisories/CVE-2026-42810/)
+* [CVE-2026-42811](../security-advisories/CVE-2026-42811/)
+* [CVE-2026-42812](../security-advisories/CVE-2026-42812/)
+
