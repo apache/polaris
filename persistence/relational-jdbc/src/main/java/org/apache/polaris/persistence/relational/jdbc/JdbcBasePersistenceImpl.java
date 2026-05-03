@@ -221,6 +221,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getCatalogId(),
               "entity_version",
               originalEntity.getEntityVersion(),
+              "grant_records_version",
+              originalEntity.getGrantRecordsVersion(),
               "realm_id",
               realmId);
       try {
@@ -236,8 +238,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
-              "Entity '%s' id '%s' concurrently modified; expected version %s",
-              originalEntity.getName(), originalEntity.getId(), originalEntity.getEntityVersion());
+              "Entity '%s' id '%s' concurrently modified; expected entity_version=%s, grant_records_version=%s",
+              originalEntity.getName(),
+              originalEntity.getId(),
+              originalEntity.getEntityVersion(),
+              originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
         throw new RuntimeException(
