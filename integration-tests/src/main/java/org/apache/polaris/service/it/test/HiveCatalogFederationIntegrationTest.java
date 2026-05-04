@@ -107,6 +107,8 @@ public abstract class HiveCatalogFederationIntegrationTest {
   private static final String PRINCIPAL_ROLE_NAME = "test-hive-federation-user-role";
   private static final String DIRECT_CATALOG_NAME = "hms_direct";
 
+  private static final String HMS_VERSION = "4.0.1";
+
   private static final CatalogGrant CATALOG_ADMIN_GRANT =
       CatalogGrant.builder()
           .setType(GrantResource.TypeEnum.CATALOG)
@@ -153,7 +155,7 @@ public abstract class HiveCatalogFederationIntegrationTest {
     // extra /etc/hosts entry pointing that hostname at the Docker host gateway ("host-gateway").
     String rustfsHost = rustfs.hostPort().substring(0, rustfs.hostPort().indexOf(':'));
     hmsContainer =
-        new HmsContainer()
+        new HmsContainer(HMS_VERSION)
             .withExtraHost(rustfsHost, "host-gateway")
             .withS3aEndpoint("http://" + rustfs.hostPort(), rustfs.accessKey(), rustfs.secretKey())
             .withStartupAttempts(3);
