@@ -21,7 +21,6 @@ package org.apache.polaris.service.it;
 
 import static org.apache.iceberg.types.Types.NestedField.optional;
 import static org.apache.iceberg.types.Types.NestedField.required;
-import static org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo.GOOGLE_USER_PROJECT_HEADER_KEY;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -176,7 +175,7 @@ public class GcpCatalogFederationIntegrationIT {
         IcebergRestConnectionConfigInfo.builder()
             .setRemoteCatalogName(FEDERATED_CATALOG)
             .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
-            .setProperties(Map.of(GOOGLE_USER_PROJECT_HEADER_KEY, QUOTA_PROJECT))
+            .setProperties(Map.of("header.x-goog-user-project", QUOTA_PROJECT))
             .setAuthenticationParameters(authenticationParameters)
             .setUri(BIG_LAKE_REST_URI)
             .build();

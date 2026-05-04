@@ -44,9 +44,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
     implements IcebergCatalogPropertiesProvider {
 
-  public static final String GOOGLE_USER_PROJECT_HEADER_KEY = "header.x-goog-user-project";
-
-  private static final List<String> ALLOWED_PROPERTIES = List.of(GOOGLE_USER_PROJECT_HEADER_KEY);
+  private static final List<String> ALLOWED_PROPERTIES = List.of("header.x-goog-user-project");
 
   private final String remoteCatalogName;
 
