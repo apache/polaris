@@ -41,5 +41,5 @@ Purge is a best-effort background cleanup. In multi-node deployments, enabling p
 | `polaris.idempotency.executor-id` |  | `string` | Executor identifier to store alongside reservations (e.g. pod / instance id).   <br><br>If unset or blank, the service derives a best-effort identifier from environment / host info  (for example `$POD_NAME` / `$HOSTNAME` plus the process id).   <br><br>In multi-node deployments, executor ids must be unique per replica. |
 | `polaris.idempotency.purge-executor-id` |  | `string` | Optional executor id that is allowed to run purge. <br><br>When set, only the node whose resolved (`#executorId()`) matches this value will run the  purge timer.  |
 | `polaris.idempotency.in-progress-poll-interval` | `PT0.1S` | `duration` | Polling interval used while waiting for an in-progress duplicate.  |
-| `polaris.idempotency.purge-interval` | `PT1M` | `duration` | Purge interval. Examples: `PT1M`, `PT60S`. |
+| `polaris.idempotency.purge-interval` | `PT1H` | `duration` | Purge interval. Defaults to `PT1H` so per-pod wake-ups stay cheap; operators with very  high reservation churn can lower it. Examples: `PT1H`, `PT15M`. |
 | `polaris.idempotency.purge-grace` | `PT0S` | `duration` | Purge records expired strictly before `(now - purgeGrace)`.  |
