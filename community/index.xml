@@ -102,7 +102,7 @@
 &lt;h2 id="affected-versions" id="affected-versions"&gt;Affected versions&lt;a class="heading-anchor" href="#affected-versions" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;ul&gt;
-&lt;li&gt;Apache Polaris before 1.4.1&lt;/li&gt;
+&lt;li&gt;Apache Polaris &amp;lt; 1.4.1&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id="description" id="description"&gt;Description&lt;a class="heading-anchor" href="#description" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
