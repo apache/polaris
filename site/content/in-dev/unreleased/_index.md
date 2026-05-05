@@ -29,7 +29,7 @@ menus:
     parent: doc
     weight: 999999 # last item in the docs dropdown
     identifier: doc-in-dev
-    name: Developer Docs (main branch, unreleased)
+    name: Developer Docs (unreleased)
 cascade:
   type: docs
   params:
