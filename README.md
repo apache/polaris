@@ -28,6 +28,11 @@ Documentation is available at https://polaris.apache.org. The REST OpenAPI speci
 [Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
 and [Polaris Catalog API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
+For a high-level, auto-generated tour of the codebase's modules and relationships, see the
+[Code Wiki for Apache Polaris](https://codewiki.google/github.com/apache/polaris).
+It is a third-party, auto-generated navigation aid, useful for orientation, but the
+source tree remains the authoritative reference.
+
 [Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
 for contribution guidelines.
 
