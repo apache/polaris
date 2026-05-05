@@ -579,12 +579,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("IDEMPOTENCY_ENABLED")
           .catalogConfig("polaris.config.idempotency.enabled")
           .description(
-              "Master switch for handler-level idempotency. When true (and an Idempotency-Key "
-                  + "header is present), supported handler methods (initially createTableDirect) "
-                  + "reserve the key after authorization and rebuild the response from "
-                  + "authoritative state on replay. May be overridden per-catalog so that a "
-                  + "specific catalog can opt in or out of idempotency without changing the "
-                  + "realm-wide setting.")
+              "Enables idempotent request handling. When true, a request that includes an "
+                  + "Idempotency-Key header is tracked so retries with the same key return the "
+                  + "same result instead of running the operation twice. Currently applies to "
+                  + "createTable. May be overridden per-catalog to enable or disable idempotency "
+                  + "for individual catalogs without changing the realm-wide setting.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
