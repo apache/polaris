@@ -81,8 +81,11 @@ public interface IdempotencyConfiguration {
   @WithDefault("PT0.1S")
   Duration inProgressPollInterval();
 
-  /** Purge interval. Examples: {@code PT1M}, {@code PT60S}. */
-  @WithDefault("PT1M")
+  /**
+   * Purge interval. Defaults to {@code PT1H} so per-pod wake-ups stay cheap; operators with very
+   * high reservation churn can lower it. Examples: {@code PT1H}, {@code PT15M}.
+   */
+  @WithDefault("PT1H")
   Duration purgeInterval();
 
   /** Purge records expired strictly before {@code (now - purgeGrace)}. */

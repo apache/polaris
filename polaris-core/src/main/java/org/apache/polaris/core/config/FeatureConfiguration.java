@@ -574,16 +574,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  // ============================================================================
-  // Handler-level idempotency (tenant-visible behaviour knobs)
-  // ============================================================================
-  //
-  // Platform/infrastructure knobs (keyHeader, executorId, purgeExecutorId, polling interval,
-  // purge interval, purge grace) live in IdempotencyConfiguration as @ConfigMapping deploy
-  // constants. The values below are the knobs that operators may legitimately want to vary
-  // per-realm or even per-catalog — for example, enabling idempotency for one catalog while
-  // leaving it off globally, or tuning the in-progress wait for a specific tenant.
-
   public static final FeatureConfiguration<Boolean> IDEMPOTENCY_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("IDEMPOTENCY_ENABLED")

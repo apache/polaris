@@ -204,6 +204,33 @@ public class JdbcBasePersistenceImplIdempotencyPostgresIT {
   }
 
   @Test
+  void duplicateReturnsExistingBindingForCrossPrincipal() {
+    // Same (realm, key) + same (operationType, normalizedResourceId), but a different caller.
+    // The persistence layer must return DUPLICATE with the *original* principalHash so the
+    // handler can reject the cross-principal replay with 422. This is the core security property
+    // of the v5 schema change (principal_hash NOT NULL) and is verified at the persistence layer.
+    String realm = "test-realm";
+    String key = "K4cp";
+    String op = "create-table";
+    String rid = "catalogs/1/tables/ns.tbl4cp";
+    Instant now = Instant.now();
+    Instant exp = now.plus(Duration.ofMinutes(5));
+
+    IdempotencyPersistence.ReserveResult r1 =
+        store.reserve(realm, key, op, rid, "principal-hash-A", exp, "A", now);
+    assertThat(r1.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.OWNED);
+
+    IdempotencyPersistence.ReserveResult r2 =
+        store.reserve(realm, key, op, rid, "principal-hash-B", exp, "B", now);
+    assertThat(r2.type()).isEqualTo(IdempotencyPersistence.ReserveResultType.DUPLICATE);
+    assertThat(r2.existing()).isPresent();
+    IdempotencyRecord rec = r2.existing().get();
+    assertThat(rec.operationType()).isEqualTo(op);
+    assertThat(rec.normalizedResourceId()).isEqualTo(rid);
+    assertThat(rec.principalHash()).isEqualTo("principal-hash-A");
+  }
+
+  @Test
   void cancelInProgressReservation() {
     String realm = "test-realm";
     String key = "K5";
