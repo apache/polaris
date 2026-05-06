@@ -40,8 +40,9 @@ The general process for handling security vulnerabilities as follows:
 
 # Known Security Vulnerabilities (CVEs)
 
-* [CVE-2026-42809](../security-advisories/cve-2026-42809/)
-* [CVE-2026-42810](../security-advisories/cve-2026-42810/)
-* [CVE-2026-42811](../security-advisories/cve-2026-42811/)
-* [CVE-2026-42812](../security-advisories/cve-2026-42812/)
+* Fixed in Apache Polaris 1.4.1
+  * [CVE-2026-42809](../security-advisories/cve-2026-42809/)
+  * [CVE-2026-42810](../security-advisories/cve-2026-42810/)
+  * [CVE-2026-42811](../security-advisories/cve-2026-42811/)
+  * [CVE-2026-42812](../security-advisories/cve-2026-42812/)
 
