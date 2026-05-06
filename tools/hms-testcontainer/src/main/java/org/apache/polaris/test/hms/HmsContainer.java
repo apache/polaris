@@ -58,7 +58,7 @@ public final class HmsContainer extends GenericContainer<HmsContainer> implement
     // The apache/hive images do not ship hadoop-aws or the AWS SDK in /opt/hive/lib,
     // but in /opt/hadoop/share/hadoop/tools/lib/, which is not added to HADOOP_CLASSPATH by
     // default.
-    withEnv("HADOOP_CLASSPATH", "$HADOOP_CLASSPATH:/opt/hadoop/share/hadoop/tools/lib/*");
+    withEnv("HADOOP_CLASSPATH", "/opt/hadoop/share/hadoop/tools/lib/*");
     // Wait until the Thrift port inside the container is listening. The apache/hive
     // entrypoint runs schema initialization (Derby) before launching the metastore, which
     // can take ~30s on a cold start.
