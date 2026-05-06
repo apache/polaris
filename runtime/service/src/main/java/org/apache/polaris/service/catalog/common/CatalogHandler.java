@@ -143,7 +143,10 @@ public abstract class CatalogHandler {
                 op,
                 List.of(
                     AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.namespace(catalogName(), namespace), null))));
+                        namespace.isEmpty()
+                            ? PolarisSecurableMapper.catalog(catalogName())
+                            : PolarisSecurableMapper.namespace(catalogName(), namespace),
+                        null))));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
@@ -185,7 +188,10 @@ public abstract class CatalogHandler {
                 op,
                 List.of(
                     AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.namespace(catalogName(), parentNamespace), null))));
+                        parentNamespace.isEmpty()
+                            ? PolarisSecurableMapper.catalog(catalogName())
+                            : PolarisSecurableMapper.namespace(catalogName(), parentNamespace),
+                        null))));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(parentNamespace), true);
     if (target == null) {
@@ -278,10 +284,12 @@ public abstract class CatalogHandler {
     ensureResolutionManifestForTable(identifier);
     if (resolutionManifest.getPrimaryResolverStatus() == null) {
       if (!ops.isEmpty()) {
-        // Pre-resolution runs once for the shared target set. Current built-in authorizers
-        // resolve broadly and do not vary resolution scope by operation, so any op in the set is
-        // sufficient here. If a future authorizer makes pre-resolution operation-specific, this
-        // path may need to resolve for each op or accept a multi-op request.
+        // Pre-resolution intentionally runs once for the shared target set using a representative
+        // operation from the requested op set. This is a temporary misuse of the current SPI
+        // shape: operation is part of resolveAuthorizationInputs(...), but built-in authorizers do
+        // not currently vary resolution scope by operation, so any op in the set is sufficient.
+        // Once the SPI supports repeated or multi-op resolution cleanly, this path should stop
+        // depending on a representative operation.
         AuthorizationState authzState = new AuthorizationState();
         authzState.setResolutionManifest(resolutionManifest);
         authorizer()

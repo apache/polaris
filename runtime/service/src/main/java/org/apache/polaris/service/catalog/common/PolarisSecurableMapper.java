@@ -48,6 +48,9 @@ public final class PolarisSecurableMapper {
   }
 
   public static PolarisSecurable namespace(String catalogName, Namespace namespace) {
+    if (namespace.isEmpty()) {
+      throw new IllegalArgumentException("Namespace target must not be empty");
+    }
     ImmutablePolarisSecurable.Builder builder =
         ImmutablePolarisSecurable.builder()
             .addPathSegment(new PathSegment(PolarisEntityType.CATALOG, catalogName));
@@ -90,6 +93,9 @@ public final class PolarisSecurableMapper {
       case CATALOG:
         return catalog(catalogName);
       case NAMESPACE:
+        if (target.getPath().isEmpty()) {
+          throw new IllegalArgumentException("Namespace target path must not be empty");
+        }
         target.getPath().stream()
             .map(level -> new PathSegment(PolarisEntityType.NAMESPACE, level))
             .forEach(builder::addPathSegment);

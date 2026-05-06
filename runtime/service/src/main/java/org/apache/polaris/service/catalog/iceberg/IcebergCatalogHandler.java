@@ -90,6 +90,9 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.AuthorizationTargetBinding;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -108,8 +111,6 @@ import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -125,6 +126,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.common.PolarisSecurableMapper;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.EventAttributeMap;
@@ -234,19 +236,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private CatalogEntity getResolvedCatalogEntity() {
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
-    diagnostics().checkNotNull(catalogEntity, "No catalog available");
-    return catalogEntity;
-  }
-
-  private CatalogEntity resolveCatalogEntityForConfig() {
-    PolarisResolutionManifest configResolutionManifest = newResolutionManifest();
-    ResolverStatus status =
-        configResolutionManifest.resolveSelections(EnumSet.of(Resolvable.REFERENCE_CATALOG));
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException("Catalog not found: %s", catalogName());
-    }
-
-    CatalogEntity catalogEntity = configResolutionManifest.getResolvedCatalogEntity();
     diagnostics().checkNotNull(catalogEntity, "No catalog available");
     return catalogEntity;
   }
@@ -1034,10 +1023,27 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
-    // Resolve only the reference catalog up front so operation deduction can read catalog-scoped
-    // config without forcing full authorization resolution before the authorizer runs.
+    ensureResolutionManifestForTable(tableIdentifier);
+    // Intentionally pre-resolve once using coarse UPDATE_TABLE so we can read catalog-scoped
+    // config from the shared manifest before authorizing the final per-update operation set.
+    // This is a temporary misuse of the current SPI shape: operation is part of the
+    // resolveAuthorizationInputs(...) request, but built-in authorizers do not currently vary
+    // resolution by operation. Once the SPI supports multiple resolution passes cleanly, this flow
+    // should stop relying on a representative operation for planning-time config lookup.
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authzState,
+            AuthorizationRequest.of(
+                polarisPrincipal(),
+                PolarisAuthorizableOperation.UPDATE_TABLE,
+                List.of(
+                    AuthorizationTargetBinding.of(
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier), null))));
+
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
-        getUpdateTableAuthorizableOperations(request, resolveCatalogEntityForConfig());
+        getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
 
     authorizeBasicTableLikeOperationsOrThrow(
         authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
