@@ -99,9 +99,14 @@ class AwsSessionNameBuilderTest {
   }
 
   @Test
-  void proportionalAllocationGivesRemainderToLastField() {
-    // 4 fields, budget = 64 - 2 (prefix) - 3 (separators) = 59
-    // base = 59/4 = 14, remainder = 59%4 = 3 → last field gets 14+3=17 chars
+  void greedyAllocationDistributesUnusedBudget() {
+    // 4 fields all truncated, budget = 64 - 2 (prefix) - 3 (separators) = 59
+    // Greedy: each field gets an equal share of what remains; unused chars flow forward.
+    // i=0: alloc=59/4=14, used=14, remaining=45
+    // i=1: alloc=45/3=15, used=15, remaining=30
+    // i=2: alloc=30/2=15, used=15, remaining=15
+    // i=3: alloc=15/1=15, used=15
+    // → "p-" + 14a + "-" + 15b + "-" + 15c + "-" + 15d = 64
     String long1 = "a".repeat(50);
     String long2 = "b".repeat(50);
     String long3 = "c".repeat(50);
@@ -118,9 +123,17 @@ class AwsSessionNameBuilderTest {
                 SessionNameField.NAMESPACE,
                 SessionNameField.PRINCIPAL));
 
-    // "p-" + 14 a's + "-" + 14 b's + "-" + 14 c's + "-" + 17 d's = 2+14+1+14+1+14+1+17 = 64
+    assertThat(result)
+        .isEqualTo(
+            "p-"
+                + "a".repeat(14)
+                + "-"
+                + "b".repeat(15)
+                + "-"
+                + "c".repeat(15)
+                + "-"
+                + "d".repeat(15));
     assertThat(result).hasSize(64);
-    assertThat(result).startsWith("p-");
   }
 
   @Test
@@ -172,8 +185,11 @@ class AwsSessionNameBuilderTest {
   }
 
   @Test
-  void twoFieldsProportionalBudget() {
-    // 2 fields: budget = 64 - 2 - 1 = 61, base = 30, remainder = 1 → last gets 31
+  void twoFieldsTruncatedFillsEntireLimit() {
+    // 2 fields both truncated: budget = 64 - 2 - 1 = 61
+    // i=0: alloc=61/2=30, used=30, remaining=31
+    // i=1: alloc=31,  used=31
+    // → "p-" + 30 a's + "-" + 31 b's = 64
     String long1 = "a".repeat(50);
     String long2 = "b".repeat(50);
     CredentialVendingContext context = ctx(long1, long2, null, null);
@@ -182,7 +198,49 @@ class AwsSessionNameBuilderTest {
         AwsSessionNameBuilder.buildSessionName(
             long2, context, List.of(SessionNameField.REALM, SessionNameField.PRINCIPAL));
 
-    // "p-" + 30 a's + "-" + 31 b's = 2+30+1+31 = 64
+    assertThat(result).isEqualTo("p-" + "a".repeat(30) + "-" + "b".repeat(31));
     assertThat(result).hasSize(64);
+  }
+
+  @Test
+  void customPrefixIsUsed() {
+    CredentialVendingContext context = ctx(null, "mycat", null, null);
+    String result =
+        AwsSessionNameBuilder.buildSessionName(
+            "alice",
+            context,
+            List.of(SessionNameField.CATALOG, SessionNameField.PRINCIPAL),
+            "org-");
+    assertThat(result).isEqualTo("org-mycat-alice");
+  }
+
+  @Test
+  void extractPrefixDefaultsToP() {
+    assertThat(AwsSessionNameBuilder.extractPrefix(List.of("realm", "catalog"))).isEqualTo("p-");
+  }
+
+  @Test
+  void extractPrefixParsesToken() {
+    assertThat(AwsSessionNameBuilder.extractPrefix(List.of("prefix-myorg", "catalog")))
+        .isEqualTo("myorg-");
+  }
+
+  @Test
+  void extractPrefixSanitizesInvalidChars() {
+    assertThat(AwsSessionNameBuilder.extractPrefix(List.of("prefix-my org"))).isEqualTo("my_org-");
+  }
+
+  @Test
+  void shortFirstFieldDonatesBudgetToSubsequentFields() {
+    // realm="ab" (2 chars, short), catalog="b"*50 (truncated)
+    // budget = 64 - 2 - 1 = 61
+    // i=0 (realm): alloc=61/2=30, used=2, remaining=59
+    // i=1 (catalog): alloc=59, used=min(50,59)=50
+    // → "p-ab-" + 50 b's = 2+2+1+50 = 55
+    CredentialVendingContext context = ctx("ab", "b".repeat(50), null, null);
+    String result =
+        AwsSessionNameBuilder.buildSessionName(
+            "ignored", context, List.of(SessionNameField.REALM, SessionNameField.CATALOG));
+    assertThat(result).isEqualTo("p-ab-" + "b".repeat(50));
   }
 }

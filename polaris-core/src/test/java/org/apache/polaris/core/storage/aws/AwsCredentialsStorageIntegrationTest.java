@@ -1660,10 +1660,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
 
-    assertThat(request.roleSessionName()).startsWith("p-");
-    assertThat(request.roleSessionName()).hasSizeLessThanOrEqualTo(64);
-    assertThat(request.roleSessionName()).contains("hr_catalog");
-    assertThat(request.roleSessionName()).contains("test-principal");
+    assertThat(request.roleSessionName()).isEqualTo("p-hr_catalog-test-principal");
   }
 
   @Test
@@ -1702,8 +1699,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
 
-    assertThat(request.roleSessionName()).startsWith("p-");
-    assertThat(request.roleSessionName()).hasSizeLessThanOrEqualTo(64);
+    assertThat(request.roleSessionName()).isEqualTo("p-myrealm-mycat-myns-mytbl-test-principal");
+  }
+
+  @Test
+  public void testSessionNameFieldsCustomPrefix() {
+    RealmConfig config = sessionNameFields("prefix-polaris", "catalog", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder().catalogName(Optional.of("hr_catalog")).build();
+
+    AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
+
+    assertThat(request.roleSessionName()).isEqualTo("polaris-hr_catalog-test-principal");
   }
 
   @Test

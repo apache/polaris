@@ -34,7 +34,7 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
  * trace_id are excluded because they are high-cardinality or unsuitable for the session name
  * format.
  */
-public enum SessionNameField {
+enum SessionNameField {
   REALM("realm") {
     @Override
     public String getValue(String principalName, CredentialVendingContext context) {

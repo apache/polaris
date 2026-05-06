@@ -156,13 +156,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
 
   /**
    * Ordered list of fields to include in the STS role session name for AWS credential vending.
-   * Fields are joined with {@code -} and prefixed with {@code p-}. The result is truncated to the
-   * AWS 64-character session name limit using proportional allocation across fields.
+   * Fields are joined with {@code -} and prefixed with {@code p-} by default. The result is
+   * truncated to the AWS 64-character session name limit; any budget unused by a short field is
+   * carried forward to subsequent fields.
    *
    * <p>When empty (default), falls back to {@link #INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL}
    * behaviour for backward compatibility.
    *
    * <p>Supported fields: realm, catalog, namespace, table, principal.
+   *
+   * <p>The prefix can be customised by including a {@code prefix-X} token anywhere in the list
+   * (e.g. {@code ["prefix-myorg", "catalog", "principal"]} → {@code myorg-catalog-principal}).
+   * Defaults to {@code p-}.
    *
    * <p>Example: setting {@code ["realm","catalog","table","principal"]} produces session names like
    * {@code p-acme-hr_catalog-employee-etl_writer} (truncated to 64 chars).
@@ -176,13 +181,17 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .key("SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL")
               .description(
                   "Ordered list of fields to include in the STS role session name for AWS credential vending.\n"
-                      + "Fields are joined with '-' and prefixed with 'p-'. The result is truncated to 64 characters\n"
-                      + "(the AWS STS session name limit) using proportional allocation across fields.\n"
+                      + "Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to\n"
+                      + "64 characters (the AWS STS session name limit); budget unused by a short field flows to\n"
+                      + "subsequent fields.\n"
                       + "When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour.\n"
                       + "\n"
                       + "Supported fields: "
                       + String.join(", ", SUPPORTED_SESSION_NAME_FIELDS)
                       + "\n"
+                      + "\n"
+                      + "To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix\n"
+                      + "to 'myorg-'). Defaults to 'p-'.\n"
                       + "\n"
                       + "Example: [\"realm\",\"catalog\",\"table\",\"principal\"] produces session names like\n"
                       + "'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars).\n"

@@ -110,8 +110,10 @@ public class AwsCredentialsStorageIntegration
 
     List<String> sessionNameFieldNames =
         realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
+    String sessionNamePrefix = AwsSessionNameBuilder.extractPrefix(sessionNameFieldNames);
     List<SessionNameField> enabledSessionNameFields =
         sessionNameFieldNames.stream()
+            .filter(t -> !t.startsWith(AwsSessionNameBuilder.PREFIX_CONFIG_TOKEN))
             .map(SessionNameField::fromConfigName)
             .flatMap(Optional::stream)
             .collect(Collectors.toList());
@@ -120,7 +122,10 @@ public class AwsCredentialsStorageIntegration
     if (!enabledSessionNameFields.isEmpty()) {
       roleSessionName =
           buildSessionName(
-              polarisPrincipal.getName(), credentialVendingContext, enabledSessionNameFields);
+              polarisPrincipal.getName(),
+              credentialVendingContext,
+              enabledSessionNameFields,
+              sessionNamePrefix);
     } else if (includePrincipalNameInSubscopedCredential) {
       roleSessionName =
           AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName());
