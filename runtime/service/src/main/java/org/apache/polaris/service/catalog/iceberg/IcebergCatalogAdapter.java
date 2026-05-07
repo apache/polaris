@@ -439,7 +439,7 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           catalog.renameTable(renameTableRequest);
-          return Response.ok(Response.Status.NO_CONTENT).build();
+          return Response.status(Response.Status.NO_CONTENT).build();
         });
   }
 

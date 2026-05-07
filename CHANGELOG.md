@@ -52,6 +52,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
 
 ### Fixes
+- Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
 
 ### Commits
 

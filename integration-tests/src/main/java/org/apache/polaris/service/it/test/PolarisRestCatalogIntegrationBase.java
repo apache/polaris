@@ -618,6 +618,19 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testRenameTableReturns204() {
+    restCatalog.createNamespace(Namespace.of("rename_ns"));
+    restCatalog
+        .buildTable(TableIdentifier.of(Namespace.of("rename_ns"), "src_table"), SCHEMA)
+        .create();
+
+    catalogApi.renameTable(
+        currentCatalogName,
+        TableIdentifier.of(Namespace.of("rename_ns"), "src_table"),
+        TableIdentifier.of(Namespace.of("rename_ns"), "dst_table"));
+  }
+
+  @Test
   public void testCreateTableWithOverriddenBaseLocation() {
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
