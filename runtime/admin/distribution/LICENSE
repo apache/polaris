@@ -214,7 +214,7 @@ This product bundles and includes code from Apache Iceberg.
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ This product bundles and includes code from Netty.
 
 Copyright: Copyright © 2025 The Netty project
 Home page: https://netty.io/
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1016,12 +1016,12 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta Activation APi.
+This product bundles Jakarta Activation API.
 
 * Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
 
 Project URL: https://github.com/jakartaee/jaf-api
-License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1030,7 +1030,7 @@ This product bundles Jakarta Annotation API.
 * Maven group:artifact IDs: jakarta.annotation:jakarta.annotation-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.ca
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1039,7 +1039,7 @@ This product bundles Jakarta EL API.
 * Maven group:artifact IDs: jakarta.el:jakarta.el-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.el
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1075,7 +1075,7 @@ This product bundles Jakarta Interceptor API.
 * Maven group:artifact IDs: jakarta.interceptor:jakarta.interceptor-api
 
 Project URL: https://github.com/jakartaee/interceptors
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1093,7 +1093,7 @@ This product bundles Jakarta Resource API.
 * Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
 
 Project URL: https://jakarta.ee/specifications/connectors/
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1102,7 +1102,7 @@ This product bundles Jakarta Servlet API.
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1111,7 +1111,7 @@ This product bundles Jakarta Transaction API.
 * Maven group:artifact IDs: jakarta.transaction:jakarta.transaction-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.jta
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1129,7 +1129,7 @@ This product bundles Jakarta RESTful Web Services.
 * Maven group:artifact IDs: jakarta.ws.rs:jakarta.ws.rs-api
 
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1233,7 +1233,7 @@ This product bundles animal-sniffer-annotations.
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
 
 Project URL: https://www.mojohaus.org/animal-sniffer
-License: MIT license
+License: MIT License
 | The MIT License
 |
 | Copyright (c) 2009 codehaus.org.
