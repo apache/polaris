@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -113,8 +114,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     // Get credentials
     ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
@@ -157,8 +157,7 @@ public class SigV4ConnectionCredentialVendorTest {
 
     // Create connection config with service identity and auth params
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
 
@@ -195,8 +194,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "glue");
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     vendor.getConnectionCredentials(connectionConfig);
 
@@ -216,8 +214,7 @@ public class SigV4ConnectionCredentialVendorTest {
             "arn:aws:iam::123456789012:role/customer-role", null, null, "ap-southeast-1", null);
 
     IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+        createConnectionConfig(authParams, serviceIdentity);
 
     vendor.getConnectionCredentials(connectionConfig);
 

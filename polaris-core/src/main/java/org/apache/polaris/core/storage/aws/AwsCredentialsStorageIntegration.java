@@ -22,6 +22,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDEN
 import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSessionName;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumSet;
@@ -39,6 +40,7 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import org.slf4j.Logger;
@@ -257,12 +259,14 @@ public class AwsCredentialsStorageIntegration
         .distinct()
         .forEach(
             location -> {
-              URI uri = URI.create(location);
+              StorageUri uri = StorageUri.parse(location);
+              String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
               allowGetObjectStatementBuilder.addResource(
                   IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
-              final var bucket = arnPrefix + StorageUtil.getBucket(uri);
+                      arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
+              final var bucket = arnPrefix + uri.authority();
               if (allowList) {
+                String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
                 bucketListStatementBuilder
                     .computeIfAbsent(
                         bucket,
@@ -274,7 +278,7 @@ public class AwsCredentialsStorageIntegration
                     .addCondition(
                         IamConditionOperator.STRING_LIKE,
                         "s3:prefix",
-                        StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
+                        StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
               }
               bucketGetLocationStatementBuilder.computeIfAbsent(
                   bucket,
@@ -294,10 +298,11 @@ public class AwsCredentialsStorageIntegration
               .addAction("s3:DeleteObject");
       writeLocations.forEach(
           location -> {
-            URI uri = URI.create(location);
+            StorageUri uri = StorageUri.parse(location);
+            String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
             allowPutObjectStatementBuilder.addResource(
                 IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+                    arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }
@@ -418,10 +423,29 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
-  private static @Nonnull String parseS3Path(URI uri) {
-    String bucket = StorageUtil.getBucket(uri);
-    String path = trimLeadingSlash(uri.getPath());
+  private static @Nonnull String parseS3Path(StorageUri uri) {
+    String bucket = uri.authority();
+    String path = trimLeadingSlash(uri.rawPath());
     return String.join("/", bucket, path);
+  }
+
+  /**
+   * Escapes IAM pattern characters that must remain literal inside object resource ARNs and {@link
+   * IamConditionOperator#STRING_LIKE StringLike} conditions.
+   */
+  @VisibleForTesting
+  static @Nonnull String escapeIamGlobLiteral(String value) {
+    StringBuilder escaped = new StringBuilder(value.length() + 8);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '*' -> escaped.append("${*}");
+        case '?' -> escaped.append("${?}");
+        case '$' -> escaped.append("${$}");
+        default -> escaped.append(c);
+      }
+    }
+    return escaped.toString();
   }
 
   private static @Nonnull String trimLeadingSlash(String path) {

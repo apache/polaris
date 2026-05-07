@@ -589,10 +589,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
-    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
+
+    if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
+      polarisCatalog.validateStagedTableCreate(ident, metadata);
+    }
+
+    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return buildLoadTableResponseWithDelegationCredentials(
             ident,

@@ -51,14 +51,19 @@ import org.apache.polaris.persistence.nosql.api.cache.CacheInvalidations.CacheIn
 import org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj;
 import org.apache.polaris.service.catalog.iceberg.AbstractIcebergCatalogTest;
 import org.assertj.core.api.SoftAssertions;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 @QuarkusTest
 @TestProfile(TestPersistenceDistCacheInvalidationsIntegration.Profile.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 // Need two IPs in this test. macOS doesn't allow binding to arbitrary 127.x.x.x addresses.
 @EnabledOnOs(OS.LINUX)
 @SuppressWarnings("CdiInjectionPointsInspection")
@@ -69,8 +74,7 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
-          .put("quarkus.management.port", "" + QUARKUS_MANAGEMENT_PORT)
-          .put("quarkus.management.test-port", "" + QUARKUS_MANAGEMENT_PORT)
+          .put("quarkus.management.port", "0")
           .put("quarkus.management.host", "127.0.0.1")
           .put("quarkus.management.enabled", "true")
           .put("polaris.persistence.type", "nosql")
@@ -87,16 +91,6 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
 
   static final String TOKEN = "otherToken";
   static final String ENDPOINT = "/polaris-management/cache-coherency";
-
-  // MUST be constant for test AND service
-  static final int QUARKUS_MANAGEMENT_PORT = 64321;
-
-  static URI CACHE_INVALIDATIONS_ENDPOINT =
-      URI.create(
-          format(
-              "http://127.0.0.1:%d%s?sender=" + UUID.randomUUID(),
-              QUARKUS_MANAGEMENT_PORT,
-              ENDPOINT));
 
   SoftAssertions soft;
   ObjectMapper mapper;
@@ -117,12 +111,69 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
     soft.assertAll();
   }
 
+  private static int quarkusManagementPort() {
+    var quarkusManagementPort =
+        ConfigProvider.getConfig().getConfigValue("quarkus.management.port");
+    var managementPortString = quarkusManagementPort.getValue();
+    return Integer.parseInt(managementPortString);
+  }
+
+  private static URI invalidationEndpoint() {
+    return URI.create(
+        format(
+            "http://127.0.0.1:%d%s?sender=" + UUID.randomUUID(),
+            quarkusManagementPort(),
+            ENDPOINT));
+  }
+
+  /**
+   * This one is not a real test, but a necessity due to the set environment setup.
+   *
+   * <p>In this test, we can no longer use a statically configured management-port but have to use a
+   * dynamically bound one. That forces the {@code
+   * org.apache.polaris.persistence.nosql.quarkus.distcache.CacheInvalidationSender} to queue
+   * invalidation messages until the actual bound management port is available from the
+   * configuration.
+   *
+   * <p>This test-code effectively just drains the queue until it is empty, so that the actual tests
+   * have a clean state.
+   */
   @Test
+  @Order(1)
+  public void clearQueuedInvalidations() throws Exception {
+    var queue = new LinkedBlockingQueue<Map.Entry<URI, String>>();
+    try (var ignore =
+        new HttpTestServer(
+            new InetSocketAddress("127.1.2.3", quarkusManagementPort()),
+            ENDPOINT,
+            exchange -> {
+              try (InputStream requestBody = exchange.getRequestBody()) {
+                queue.add(
+                    entry(exchange.getRequestURI(), new String(requestBody.readAllBytes(), UTF_8)));
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+              exchange.sendResponseHeaders(204, -1);
+              exchange.getResponseBody().close();
+            })) {
+      var persistence = realmPersistenceFactory.newBuilder().realmId("warmup").build();
+      var obj = SimpleTestObj.builder().id(persistence.generateId()).text("warmup").build();
+      var expected = cacheInvalidationEvictObj(persistence.realmId(), objRef(obj));
+
+      persistence.write(obj, SimpleTestObj.class);
+
+      awaitContainsInvalidation(queue, expected);
+    }
+  }
+
+  @Test
+  @Order(2)
   public void systemRealm() throws Exception {
     sendReceive(systemPersistence);
   }
 
   @Test
+  @Order(2)
   public void otherRealm() throws Exception {
     var persistence = realmPersistenceFactory.newBuilder().realmId("foo").build();
     sendReceive(persistence);
@@ -132,7 +183,7 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
     var queue = new LinkedBlockingQueue<Map.Entry<URI, String>>();
     try (var ignore =
         new HttpTestServer(
-            new InetSocketAddress("127.1.2.3", QUARKUS_MANAGEMENT_PORT),
+            new InetSocketAddress("127.1.2.3", quarkusManagementPort()),
             ENDPOINT,
             exchange -> {
               try (InputStream requestBody = exchange.getRequestBody()) {
@@ -201,8 +252,27 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
     }
   }
 
+  private void awaitContainsInvalidation(
+      LinkedBlockingQueue<Map.Entry<URI, String>> queue, CacheInvalidation expected)
+      throws Exception {
+    var tEnd = System.nanoTime() + TimeUnit.MINUTES.toNanos(1);
+    while (System.nanoTime() < tEnd) {
+      var invalidation = queue.poll(1, TimeUnit.SECONDS);
+      if (invalidation == null) {
+        continue;
+      }
+
+      var invalidations = mapper.readValue(invalidation.getValue(), CacheInvalidations.class);
+      if (invalidations.invalidations().contains(expected)) {
+        return;
+      }
+    }
+
+    throw new AssertionError("Timed out waiting for warmup invalidation " + expected);
+  }
+
   private void send(CacheInvalidations invalidations) throws Exception {
-    var urlConn = CACHE_INVALIDATIONS_ENDPOINT.toURL().openConnection();
+    var urlConn = invalidationEndpoint().toURL().openConnection();
     urlConn.setDoOutput(true);
     urlConn.setRequestProperty("Content-Type", APPLICATION_JSON);
     urlConn.setRequestProperty("Polaris-Cache-Invalidation-Token", TOKEN);

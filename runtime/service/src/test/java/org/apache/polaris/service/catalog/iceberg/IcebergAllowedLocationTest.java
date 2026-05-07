@@ -137,6 +137,138 @@ public class IcebergAllowedLocationTest {
     assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
   }
 
+  @Test
+  void testCreateTableStagedOutsideOfCatalogAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
+    assertNotEquals(catalogLocation, namespaceLocation);
+
+    createCatalog(services, Map.of(), catalogLocation, null);
+
+    // create a namespace outside of catalog allowed locations
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    createTableRequest,
+                    "vended-credentials",
+                    services.realmContext(),
+                    services.securityContext()));
+  }
+
+  @Test
+  void testCreateTableStagedInsideCatalogAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
+    assertNotEquals(catalogLocation, namespaceLocation);
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                "vended-credentials",
+                services.realmContext(),
+                services.securityContext())) {
+      assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
+    }
+  }
+
+  @Test
+  void testCreateTableStagedWithExplicitLocationOutsideAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+    var externalLocation = tmpDir.resolve("external-location").toAbsolutePath().toUri().toString();
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withLocation(externalLocation)
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    createTableRequest,
+                    null,
+                    services.realmContext(),
+                    services.securityContext()));
+  }
+
+  @Test
+  void testCreateTableStagedWithExplicitLocationInsideAllowedLocations(@TempDir Path tmpDir) {
+    var services = getTestServices();
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+    var customLocation = namespaceLocation + "/custom-location";
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder()
+            .withLocation(customLocation)
+            .withName(getTableName())
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    try (Response response =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                "vended-credentials",
+                services.realmContext(),
+                services.securityContext())) {
+      assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
+    }
+  }
+
   private static TestServices getTestServices() {
     Map<String, Object> strictServicesWithOptimizedOverlapCheck =
         Map.of(

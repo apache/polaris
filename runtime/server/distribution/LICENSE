@@ -308,7 +308,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
 * Maven group:artifact IDs: io.quarkus:quarkus-grpc-common
 * Maven group:artifact IDs: io.quarkus:quarkus-hibernate-validator
-* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jackson
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
 * Maven group:artifact IDs: io.quarkus:quarkus-jsonp
@@ -1111,8 +1110,8 @@ This product bundles OpenTelemetry Java Instrumentation.
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-instrumentation-api-incubator
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-jdbc
+* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry
 * Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java17
-* Maven group:artifact IDs: io.opentelemetry.instrumentation:opentelemetry-runtime-telemetry-java8
 
 Project URL: https://github.com/open-telemetry/opentelemetry-java-instrumentation
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1528,15 +1527,6 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-This product bundles jettison.
-
-* Maven group:artifact IDs: org.codehaus.jettison:jettison
-
-Project URL: https://github.com/jettison-json/jettison
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
 This product bundles animal-sniffer-annotations.
 
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
@@ -1629,7 +1619,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 This product bundles Parsson.
 
 * Maven group:artifact IDs: org.eclipse.parsson:parsson
-* Maven group:artifact IDs: org.eclipse.parsson:jakarta.json
 
 Project URL: https://github.com/eclipse-ee4j/parsson
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
@@ -2184,10 +2173,8 @@ License: CDDL - https://javaee.github.io/jaxb-v2/LICENSE
 
 This product bundles GraalVM libraries.
 
-* Maven group:artifact IDs: org.graalvm.js:js
 * Maven group:artifact IDs: org.graalvm.js:js-language
 * Maven group:artifact IDs: org.graalvm.js:js-scriptengine
-* Maven group:artifact IDs: org.graalvm.polyglot:js
 * Maven group:artifact IDs: org.graalvm.polyglot:polyglot
 * Maven group:artifact IDs: org.graalvm.regex:regex
 * Maven group:artifact IDs: org.graalvm.sdk:collections

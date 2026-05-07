@@ -998,6 +998,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return applyDefaultLocationObjectStoragePrefix(tableIdentifier, location);
   }
 
+  void validateStagedTableCreate(TableIdentifier tableIdentifier, TableMetadata tableMetadata) {
+    PolarisResolvedPathWrapper resolvedStorageEntity =
+        CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier);
+    if (resolvedStorageEntity == null) {
+      throw noSuchNamespaceException(tableIdentifier.namespace());
+    }
+    Set<String> dataLocations =
+        StorageUtil.getLocationsUsedByTable(tableMetadata.location(), tableMetadata.properties());
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, tableIdentifier, dataLocations, resolvedStorageEntity);
+    List<PolarisEntity> resolvedNamespace = resolvedStorageEntity.getRawFullPath();
+    PolarisEntity storageLeafEntity = resolvedStorageEntity.getRawLeafEntity();
+    dataLocations.forEach(
+        location ->
+            validateNoLocationOverlap(
+                catalogEntity, tableIdentifier, resolvedNamespace, location, storageLeafEntity));
+  }
+
   /**
    * Validates that the specified {@code location} is valid for whatever storage config is found for
    * this TableLike's parent hierarchy.
@@ -1511,17 +1529,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   ResolvedPathKey.ofNamespace(tableIdentifier.namespace()))
               : resolvedTableEntities;
 
-      // refresh credentials because we need to read the metadata file to validate its location
-      tableFileIO =
-          loadFileIOForTableLike(
-              tableIdentifier,
-              StorageUtil.getLocationsUsedByTable(metadata),
-              resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST));
+      Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
 
       List<PolarisEntity> resolvedNamespace =
           resolvedTableEntities == null
@@ -1530,21 +1538,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
 
-      if (base == null
-          || !metadata.location().equals(base.location())
-          || !Objects.equal(
-              base.properties().get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-              metadata
-                  .properties()
-                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
+      if (base == null || requestedTableLocationsChanged(base, metadata)) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
-        Set<String> dataLocations =
-            StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
         CatalogUtils.validateLocationsForTableLike(
-            realmConfig, tableIdentifier, dataLocations, resolvedStorageEntity);
+            realmConfig, tableIdentifier, requestedLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
-        dataLocations.forEach(
+        requestedLocations.forEach(
             location ->
                 validateNoLocationOverlap(
                     catalogEntity,
@@ -1553,10 +1553,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                     location,
                     resolvedStorageEntity.getRawLeafEntity()));
         // and that the metadata file points to a location within the table's directory structure
-        if (metadata.metadataFileLocation() != null) {
-          validateMetadataFileInTableDir(tableIdentifier, metadata);
-        }
+        validateMetadataFileInTableDir(
+            tableIdentifier, metadata.location(), nextMetadataFileLocation(metadata));
       }
+
+      tableFileIO =
+          loadFileIOForTableLike(
+              tableIdentifier,
+              requestedLocations,
+              resolvedStorageEntity,
+              new HashMap<>(metadata.properties()),
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST));
 
       String newLocation = writeNewMetadataIfRequired(base == null, metadata);
       String oldLocation = base == null ? null : base.metadataFileLocation();
@@ -1635,6 +1645,27 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(tableIdentifier, entity);
       }
+    }
+
+    private boolean requestedTableLocationsChanged(TableMetadata base, TableMetadata metadata) {
+      return !metadata.location().equals(base.location())
+          || !Objects.equal(
+              base.properties().get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+              metadata
+                  .properties()
+                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+          || !Objects.equal(
+              base.properties()
+                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY),
+              metadata
+                  .properties()
+                  .get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY));
+    }
+
+    private String nextMetadataFileLocation(TableMetadata metadata) {
+      return metadata.metadataFileLocation() != null
+          ? metadata.metadataFileLocation()
+          : metadataFileLocation(metadata, "metadata.json");
     }
 
     @Override
@@ -2156,20 +2187,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private void validateMetadataFileInTableDir(TableIdentifier identifier, TableMetadata metadata) {
+    validateMetadataFileInTableDir(
+        identifier, metadata.location(), metadata.metadataFileLocation());
+  }
+
+  private void validateMetadataFileInTableDir(
+      TableIdentifier identifier, String tableLocation, String metadataLocation) {
     boolean allowEscape = realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !realmConfig.getConfig(FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
-          metadata.location(),
+          tableLocation,
           identifier,
-          metadata.metadataFileLocation());
-      StorageLocation metadataFileLocation = StorageLocation.of(metadata.metadataFileLocation());
-      StorageLocation baseLocation = StorageLocation.of(metadata.location());
+          metadataLocation);
+      StorageLocation metadataFileLocation = StorageLocation.of(metadataLocation);
+      StorageLocation baseLocation = StorageLocation.of(tableLocation);
       if (!metadataFileLocation.isChildOf(baseLocation)) {
         throw new BadRequestException(
             "Metadata location %s is not allowed outside of table location %s",
-            metadata.metadataFileLocation(), metadata.location());
+            metadataLocation, tableLocation);
       }
     }
   }

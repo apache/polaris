@@ -55,8 +55,11 @@ public class StorageUtil {
    * @return The bucket/authority of the path
    */
   public static @Nonnull String getBucket(String path) {
-    URI uri = URI.create(path);
-    return getBucket(uri);
+    int schemeSeparator = path.indexOf("://");
+    if (schemeSeparator <= 0) {
+      return null;
+    }
+    return StorageUri.parse(path).authority();
   }
 
   /**
@@ -64,7 +67,9 @@ public class StorageUtil {
    *
    * @param uri A path to parse
    * @return The bucket/authority of the URI
+   * @deprecated Use {@link StorageUri#parse(String)} instead.
    */
+  @Deprecated(forRemoval = true)
   public static @Nonnull String getBucket(URI uri) {
     return uri.getAuthority();
   }

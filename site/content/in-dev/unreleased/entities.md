@@ -52,11 +52,21 @@ Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the CreateTableRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
+{{< alert warning >}}
+Table properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in table properties.
+{{< /alert >}}
+
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
 For information on managing views with the REST API or for more information on what data can be associated with a view, see [the CreateViewRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
+
+{{< alert warning >}}
+View properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in view properties.
+{{< /alert >}}
 
 ## Principal
 

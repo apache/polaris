@@ -31,6 +31,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -86,6 +87,7 @@ import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.storage.aws.StsClientsPool;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
 import org.apache.polaris.service.tracing.RequestIdFilter;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
@@ -117,6 +119,13 @@ public class ServiceProducers {
   @Singleton
   public PolarisDiagnostics polarisDiagnostics() {
     return new PolarisDefaultDiagServiceImpl();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public RootCredentialsSet rootCredentialsSet(
+      @ConfigProperty(name = RootCredentialsSet.SYSTEM_PROPERTY) Optional<String> credentials) {
+    return credentials.map(RootCredentialsSet::fromString).orElse(RootCredentialsSet.EMPTY);
   }
 
   // Polaris core beans - request scope
@@ -272,16 +281,15 @@ public class ServiceProducers {
       @Observes Startup event,
       Bootstrapper bootstrapper,
       PersistenceConfiguration config,
-      RealmContextConfiguration realmContextConfiguration) {
-    var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
+      RealmContextConfiguration realmContextConfiguration,
+      RootCredentialsSet rootCredentialsSet) {
     var rootCredentials = rootCredentialsSet.credentials();
     if (config.isAutoBootstrap()) {
       var realmIds = realmContextConfiguration.realms();
 
       LOGGER.info(
-          "Bootstrapping realm(s) {}, if necessary, from root credentials set provided via the environment variable {} or Java system property {} ...",
+          "Bootstrapping realm(s) {}, if necessary, from root credentials set provided via the {} configuration property ...",
           realmIds.stream().map(r -> "'" + r + "'").collect(Collectors.joining(", ")),
-          RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
       var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
@@ -291,17 +299,13 @@ public class ServiceProducers {
             var principalSecrets = secrets.getPrincipalSecrets();
 
             var log =
-                LOGGER
-                    .atInfo()
-                    .addArgument(realm)
-                    .addArgument(RootCredentialsSet.ENVIRONMENT_VARIABLE)
-                    .addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
+                LOGGER.atInfo().addArgument(realm).addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
             if (rootCredentials.containsKey(realm)) {
               log.log(
-                  "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the environment variable {} or Java system property {}, not printed to stdout.");
+                  "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the {} configuration property, not printed to stdout.");
             } else {
               log.log(
-                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the environment variable {} or Java system property {}, see separate message printed to stdout.");
+                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, see separate message printed to stdout.");
               String msg =
                   String.format(
                       "realm: %1s root principal credentials: %2s:%3s",
@@ -321,19 +325,17 @@ public class ServiceProducers {
       if (!unusedRealmSecrets.isEmpty()) {
         // This is intentionally an error to highlight the importance of the situation.
         LOGGER.error(
-            "The realms {} are already fully bootstrapped but the secrets are still available via the environment variable {} or Java system property {}. "
-                + "Remove this security sensitive information from the environment / Java system properties!",
+            "The realms {} are already fully bootstrapped but the secrets are still available via the {} configuration property. "
+                + "Remove this security sensitive information from the application configuration!",
             unusedRealmSecrets,
-            RootCredentialsSet.ENVIRONMENT_VARIABLE,
             RootCredentialsSet.SYSTEM_PROPERTY);
       }
     } else if (!rootCredentials.isEmpty()) {
       // This is intentionally an error to highlight the importance of the situation.
       LOGGER.error(
-          "Secrets for the realms {} are available via the environment variable {} or Java system property {}. "
-              + "Remove this security sensitive information from the environment / Java system properties!",
+          "Secrets for the realms {} are available via the {} configuration property. "
+              + "Remove this security sensitive information from the application configuration!",
           rootCredentials.keySet(),
-          RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
     }
   }
