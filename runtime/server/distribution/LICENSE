@@ -1592,7 +1592,7 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles conscrypt (openjdk-uber).
+This product bundles Conscrypt (openjdk-uber).
 
 * Maven group:artifact IDs: org.conscrypt:conscrypt-openjdk-uber
 
@@ -2246,7 +2246,7 @@ This product bundles XZ for Java shaded by GraalVM.
 * Maven group:artifact IDs: org.graalvm.shadowed:xz
 
 Home page: https://tukaani.org/xz/java.html
-License: BSD 0-Claude
+License: BSD 0-Clause
 Note: GraalVM licensing documentation identifies this shaded code as XZ for Java 1.10, which is in XZ for Java's 0BSD-licensed release line.
 |  Copyright (C) The XZ for Java authors and contributors
 |  
