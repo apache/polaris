@@ -54,8 +54,8 @@ dependencies {
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
   implementation("io.quarkus:quarkus-container-image-docker")
-  
-  implementation("io.quarkus:quarkus-test-common")
+
+  "quarkusProdRuntimeClasspathConfigurationDeployment"("io.quarkus:quarkus-test-common")
 }
 
 quarkus {
