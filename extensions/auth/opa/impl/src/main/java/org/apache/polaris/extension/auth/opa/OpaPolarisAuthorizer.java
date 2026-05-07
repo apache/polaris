@@ -109,25 +109,32 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request) {
     authzState.getResolutionManifest().resolveAll();
   }
 
   @Override
   @Nonnull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request) {
     boolean allowed =
         queryOpa(
             buildOpaAuthorizationInput(
-                request.getPrincipal(),
+                polarisPrincipal,
                 request.getOperation(),
                 toResourceEntitiesFromSecurables(request.getTargets()),
                 toResourceEntitiesFromSecurables(request.getSecondaries())));
     return allowed
         ? AuthorizationDecision.allow()
         : AuthorizationDecision.deny(
-            "OPA denied authorization for " + request.formatForAuthorizationMessage());
+            "OPA denied authorization for principal="
+                + polarisPrincipal.getName()
+                + " "
+                + request.formatForAuthorizationMessage());
   }
 
   /**
@@ -297,8 +304,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private ImmutableResource buildResource(
       List<ResourceEntity> targets, List<ResourceEntity> secondaries) {
     // Backward compatibility: keep the existing OPA input shape with separate target and
-    // secondary lists. Future work can align this with AuthorizationTargetBinding semantics
-    // using binding tuples like [(target, secondary), ...].
+    // secondary lists. Future work can align this with richer request shapes if OPA starts
+    // consuming pairwise authorization intent directly.
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 

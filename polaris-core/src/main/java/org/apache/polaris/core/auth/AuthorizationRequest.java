@@ -19,71 +19,54 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 /**
  * Authorization request inputs for pre-authorization and core authorization.
  *
- * <p>This wrapper keeps authorization inputs together and conveys the intent to be authorized via
- * {@link AuthorizationTargetBinding} target bindings.
+ * <p>This hierarchy makes the target shape explicit on the request itself while preserving the
+ * normalized compatibility accessors used by current authorizer implementations.
  */
-@PolarisImmutable
-public interface AuthorizationRequest {
-  static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull List<AuthorizationTargetBinding> targetBindings) {
-    return ImmutableAuthorizationRequest.builder()
-        .principal(principal)
-        .operation(operation)
-        .targetBindings(targetBindings)
-        .build();
+public sealed interface AuthorizationRequest
+    permits UntargetedAuthorizationRequest,
+        SingleTargetAuthorizationRequest,
+        PairwiseTargetAuthorizationRequest {
+  static AuthorizationRequest of(@Nonnull PolarisAuthorizableOperation operation) {
+    return new UntargetedAuthorizationRequest(operation);
   }
 
-  /** Returns the principal requesting authorization. */
-  @Nonnull
-  PolarisPrincipal getPrincipal();
+  static AuthorizationRequest of(
+      @Nonnull PolarisAuthorizableOperation operation, @Nonnull PolarisSecurable target) {
+    return new SingleTargetAuthorizationRequest(operation, target);
+  }
+
+  static AuthorizationRequest of(
+      @Nonnull PolarisAuthorizableOperation operation,
+      @Nullable PolarisSecurable target,
+      @Nullable PolarisSecurable secondary) {
+    if (target == null && secondary == null) {
+      return new UntargetedAuthorizationRequest(operation);
+    }
+    if (target != null && secondary == null) {
+      return new SingleTargetAuthorizationRequest(operation, target);
+    }
+    return new PairwiseTargetAuthorizationRequest(operation, target, secondary);
+  }
 
   /** Returns the operation being authorized. */
   @Nonnull
   PolarisAuthorizableOperation getOperation();
 
-  /** Returns the target/secondary target bindings. */
+  /** Returns the primary target securables, if any. */
   @Nonnull
-  List<AuthorizationTargetBinding> getTargetBindings();
+  List<PolarisSecurable> getTargets();
 
-  /**
-   * Returns the primary target securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
+  /** Returns secondary securables, if any. */
   @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getTarget)
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  /**
-   * Returns secondary securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
-  @Nonnull
-  @Value.Derived
-  default List<PolarisSecurable> getSecondaries() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getSecondary)
-        .filter(Objects::nonNull)
-        .toList();
-  }
+  List<PolarisSecurable> getSecondaries();
 
   /**
    * Returns a stable debug string for authorization messages.
@@ -93,11 +76,8 @@ public interface AuthorizationRequest {
   @Nonnull
   default String formatForAuthorizationMessage() {
     return String.format(
-        "operation=%s principal=%s targets=%s secondaries=%s",
-        getOperation(),
-        getPrincipal().getName(),
-        formatSecurables(getTargets()),
-        formatSecurables(getSecondaries()));
+        "operation=%s targets=%s secondaries=%s",
+        getOperation(), formatSecurables(getTargets()), formatSecurables(getSecondaries()));
   }
 
   private static String formatSecurables(List<PolarisSecurable> securables) {
@@ -107,12 +87,13 @@ public interface AuthorizationRequest {
   }
 
   default boolean hasSecurableType(PolarisEntityType... types) {
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getTarget() != null && containsType(targetBinding.getTarget(), types)) {
+    for (PolarisSecurable target : getTargets()) {
+      if (containsType(target, types)) {
         return true;
       }
-      if (targetBinding.getSecondary() != null
-          && containsType(targetBinding.getSecondary(), types)) {
+    }
+    for (PolarisSecurable secondary : getSecondaries()) {
+      if (containsType(secondary, types)) {
         return true;
       }
     }

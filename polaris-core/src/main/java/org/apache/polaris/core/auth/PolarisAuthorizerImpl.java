@@ -749,7 +749,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
     resolutionManifest.resolveAll();
   }
@@ -757,7 +759,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   @Override
   @Nonnull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
     RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
@@ -778,7 +782,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
               ? null
               : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
       authorizeOrThrow(
-          request.getPrincipal(),
+          polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
           request.getOperation(),
           resolvedTargets,
@@ -787,7 +791,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     } catch (ForbiddenException e) {
       LOGGER.debug(
           "Authorization denied for principalName {} operation {} targets {} secondaries {}",
-          request.getPrincipal().getName(),
+          polarisPrincipal.getName(),
           request.getOperation(),
           request.getTargets(),
           request.getSecondaries(),

@@ -38,7 +38,9 @@ public interface PolarisAuthorizer {
    * <p>This method should not perform authorization decisions directly.
    */
   void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request);
 
   /**
    * Core authorization entry point for the new SPI.
@@ -48,7 +50,9 @@ public interface PolarisAuthorizer {
    */
   @Nonnull
   AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request);
 
   /**
    * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
@@ -56,8 +60,10 @@ public interface PolarisAuthorizer {
    * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
    */
   default void authorizeOrThrow(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    AuthorizationDecision decision = authorize(authzState, request);
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull AuthorizationRequest request) {
+    AuthorizationDecision decision = authorize(authzState, polarisPrincipal, request);
     if (!decision.isAllowed()) {
       String message = decision.getMessage().orElse("Authorization denied");
       throw new ForbiddenException("%s", message);
