@@ -2247,6 +2247,7 @@ This product bundles XZ for Java shaded by GraalVM.
 
 Home page: https://tukaani.org/xz/java.html
 License: BSD 0-Claude
+Note: GraalVM licensing documentation identifies this shaded code as XZ for Java 1.10, which is in XZ for Java's 0BSD-licensed release line.
 |  Copyright (C) The XZ for Java authors and contributors
 |  
 |  Permission to use, copy, modify, and/or distribute this
