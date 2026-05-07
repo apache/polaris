@@ -70,7 +70,7 @@ public final class AwsSessionNameBuilder {
    *
    * @see #buildSessionName(String, CredentialVendingContext, List, String)
    */
-  public static String buildSessionName(
+  static String buildSessionName(
       String principalName, CredentialVendingContext context, List<SessionNameField> fields) {
     return buildSessionName(principalName, context, fields, DEFAULT_SESSION_NAME_PREFIX);
   }
@@ -99,7 +99,7 @@ public final class AwsSessionNameBuilder {
    * @param prefix the session name prefix (including any trailing separator)
    * @return a valid AWS STS role session name of at most 64 characters
    */
-  public static String buildSessionName(
+  static String buildSessionName(
       String principalName,
       CredentialVendingContext context,
       List<SessionNameField> fields,
