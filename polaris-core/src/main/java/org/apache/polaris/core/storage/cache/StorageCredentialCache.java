@@ -131,22 +131,30 @@ public class StorageCredentialCache {
     List<String> sessionTagFields =
         realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
     boolean includeSessionTags = !sessionTagFields.isEmpty();
+    List<String> sessionNameFields =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
+    // Session name fields that pull from CredentialVendingContext (realm/catalog/namespace/table)
+    // require the context to be part of the cache key so different request contexts don't share
+    // a cached credential that was stamped with another context's session name.
+    boolean sessionNameNeedsContext =
+        sessionNameFields.stream()
+            .anyMatch(f -> Set.of("realm", "catalog", "namespace", "table").contains(f));
+    boolean sessionNameNeedsPrincipal = sessionNameFields.contains("principal");
 
-    // When session tags are enabled, the cache key needs to include:
-    // 1. The credential vending context to avoid returning cached credentials with different
-    //    session tags (realm/catalog/namespace/table/roles/traceId)
-    // 2. The principal, because the polaris:principal session tag is included in AWS credentials
-    //    and we must not serve credentials tagged for principal A to principal B
-    // When session tags are disabled, we only include principal if explicitly configured.
-    //
-    // Note: The trace ID is controlled at the source (StorageAccessConfigProvider). When
-    // "trace_id" is not in SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL, the context's traceId is left
-    // empty, which allows efficient caching across requests with different trace IDs.
+    // The cache key must include the principal whenever any feature encodes it into credentials
+    // (session tags include polaris:principal; session name can include the principal field;
+    // INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL sets the legacy role session name).
     boolean includePrincipalInCacheKey =
-        includePrincipalNameInSubscopedCredential || includeSessionTags;
-    // When session tags are disabled, use empty context to ensure consistent cache key behavior
+        includePrincipalNameInSubscopedCredential
+            || includeSessionTags
+            || sessionNameNeedsPrincipal;
+    // Include the full context in the cache key when session tags or session name fields draw from
+    // context-varying dimensions (realm/catalog/namespace/table). Without this, two requests for
+    // different tables could share a cached credential stamped with the wrong session name.
     CredentialVendingContext contextForCacheKey =
-        includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
+        (includeSessionTags || sessionNameNeedsContext)
+            ? credentialVendingContext
+            : CredentialVendingContext.empty();
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
