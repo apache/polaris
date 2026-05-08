@@ -424,19 +424,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
 
     new AwsCredentialsStorageIntegration(
+            stsClient,
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
                 .region("us-east-1")
                 .build(),
-            stsClient)
-        .getSubscopedCreds(
-            EMPTY_REALM_CONFIG,
+            EMPTY_REALM_CONFIG)
+        .generateStorageAccessConfig(
             true,
             Set.of(specialLocation),
             Set.of(specialLocation),
-            POLARIS_PRINCIPAL,
             Optional.empty(),
             CredentialVendingContext.empty());
   }
@@ -510,19 +509,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
 
     new AwsCredentialsStorageIntegration(
+            stsClient,
             AwsStorageConfigurationInfo.builder()
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
                 .region("us-east-1")
                 .build(),
-            stsClient)
-        .getSubscopedCreds(
-            EMPTY_REALM_CONFIG,
+            EMPTY_REALM_CONFIG)
+        .generateStorageAccessConfig(
             true,
             Set.of(specialLocation),
             Set.of(specialLocation),
-            POLARIS_PRINCIPAL,
             Optional.empty(),
             CredentialVendingContext.empty());
   }
