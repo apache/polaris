@@ -25,7 +25,7 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.authentication.type` | `internal` | `INTERNAL, EXTERNAL, MIXED` | The type of authentication to use.  |
+| `polaris.authentication.type` | `internal` | `enum (INTERNAL, EXTERNAL, MIXED)` | The type of authentication to use.  |
 | `polaris.authentication.authenticator.type` | `default` | `string` | The type of the identity provider. Must be a registered (`Authenticator`) identifier.  |
 | `polaris.authentication.token-service.type` | `default` | `string` | The type of the OAuth2 service. Must be a registered (`IcebergRestOAuth2ApiService`) identifier.  |
 | `polaris.authentication.token-broker.max-token-generation` | `PT1H` | `duration` | The maximum token duration.  |
@@ -34,7 +34,7 @@ build:
 | `polaris.authentication.token-broker.rsa-key-pair.private-key-file` |  | `path` | The path to the private key file.  |
 | `polaris.authentication.token-broker.symmetric-key.secret` |  | `string` | The secret to use for both signing and verifying signatures. Either this option of (`#file()`) must be provided.  |
 | `polaris.authentication.token-broker.symmetric-key.file` |  | `path` | The file to read the secret from. Either this option of (`#secret()`) must be provided.  |
-| `polaris.authentication.`_`<realm>`_`.type` | `internal` | `INTERNAL, EXTERNAL, MIXED` | The type of authentication to use.  |
+| `polaris.authentication.`_`<realm>`_`.type` | `internal` | `enum (INTERNAL, EXTERNAL, MIXED)` | The type of authentication to use.  |
 | `polaris.authentication.`_`<realm>`_`.authenticator.type` | `default` | `string` | The type of the identity provider. Must be a registered (`Authenticator`) identifier.  |
 | `polaris.authentication.`_`<realm>`_`.token-service.type` | `default` | `string` | The type of the OAuth2 service. Must be a registered (`IcebergRestOAuth2ApiService`) identifier.  |
 | `polaris.authentication.`_`<realm>`_`.token-broker.max-token-generation` | `PT1H` | `duration` | The maximum token duration.  |

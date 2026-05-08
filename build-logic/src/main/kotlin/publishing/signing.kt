@@ -36,11 +36,11 @@ fun Project.signTaskOutputs(task: TaskProvider<*>): Unit {
     val signingTask = tasks.register("sign" + task.name.capitalized())
     signingTask.configure {
       dependsOn(task)
+      val signingExtension = project.extensions.getByType(SigningExtension::class.java)
       actions.addLast {
         val files = task.get().outputs.files.files
         files.forEach { file -> logger.info("Signing $file for '${task.get().path}'") }
-        val ext = project.extensions.getByType(SigningExtension::class.java)
-        ext.sign(*files.toTypedArray())
+        signingExtension.sign(*files.toTypedArray())
       }
     }
     task.configure { finalizedBy(signingTask) }

@@ -47,7 +47,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -793,45 +792,178 @@ public class TestIndexImpl {
     soft.assertThatCode(() -> index.divide(3)).doesNotThrowAnyException();
   }
 
+  /**
+   * Verifies that an index containing null-valued elements (tombstones) can be serialized and
+   * deserialized without data corruption. This is a test for a potential bug where {@code
+   * IndexValueSerializer.serialize(null, target)} could write to a different buffer instead of
+   * {@code target}, causing the serialized byte stream to be shifted and subsequent deserialization
+   * to fail with a {@link java.nio.BufferUnderflowException}.
+   */
+  @Test
+  void serializeDeserializeWithNullValues() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var key1 = key("table1");
+    var key2 = key("table2");
+    var key3 = key("table3");
+    var key4 = key("table4");
+
+    var value1 = randomObjId();
+    var value3 = randomObjId();
+
+    index.add(indexElement(key1, value1));
+    index.add(indexElement(key2, (ObjRef) null)); // tombstone
+    index.add(indexElement(key3, value3));
+    index.add(indexElement(key4, (ObjRef) null)); // tombstone
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(deserialized.estimatedSerializedSize()).isEqualTo(serialized.remaining());
+
+    var el1 = deserialized.getElement(key1);
+    var el2 = deserialized.getElement(key2);
+    var el3 = deserialized.getElement(key3);
+    var el4 = deserialized.getElement(key4);
+
+    soft.assertThat(el1).isNotNull();
+    soft.assertThat(el1.key()).isEqualTo(key1);
+    soft.assertThat(el1.valueNullable()).isEqualTo(value1);
+
+    soft.assertThat(el2).isNotNull();
+    soft.assertThat(el2.key()).isEqualTo(key2);
+    soft.assertThat(el2.valueNullable()).isNull();
+
+    soft.assertThat(el3).isNotNull();
+    soft.assertThat(el3.key()).isEqualTo(key3);
+    soft.assertThat(el3.valueNullable()).isEqualTo(value3);
+
+    soft.assertThat(el4).isNotNull();
+    soft.assertThat(el4.key()).isEqualTo(key4);
+    soft.assertThat(el4.valueNullable()).isNull();
+
+    // Verify that the deserialized index can be re-serialized and deserialized again.
+    // Add an element to force re-serialization (modified flag).
+    var key5 = key("table5");
+    var value5 = randomObjId();
+    deserialized.add(indexElement(key5, value5));
+    var reserialized = deserialized.serialize();
+    var redeserialized = deserializeStoreIndex(reserialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(redeserialized.getElement(key1).valueNullable()).isEqualTo(value1);
+    soft.assertThat(redeserialized.getElement(key2).valueNullable()).isNull();
+    soft.assertThat(redeserialized.getElement(key3).valueNullable()).isEqualTo(value3);
+    soft.assertThat(redeserialized.getElement(key4).valueNullable()).isNull();
+  }
+
+  @Test
+  void serializeDeserializeWithNullValuesObjTest() {
+    var index = newStoreIndex(OBJ_TEST_SERIALIZER);
+    var key1 = key("a");
+    var key2 = key("b");
+    var key3 = key("c");
+
+    index.add(indexElement(key1, objTestValueFromString("cafe")));
+    index.add(indexElement(key2, (ObjTestValue) null)); // tombstone
+    index.add(indexElement(key3, objTestValueFromString("babe")));
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_TEST_SERIALIZER);
+
+    soft.assertThat(deserialized.getElement(key1).valueNullable())
+        .isEqualTo(objTestValueFromString("cafe"));
+    soft.assertThat(deserialized.getElement(key2).valueNullable()).isNull();
+    soft.assertThat(deserialized.getElement(key3).valueNullable())
+        .isEqualTo(objTestValueFromString("babe"));
+  }
+
+  /** Tests that replacing a non-null value with null (tombstone) round-trips correctly. */
+  @Test
+  void replaceValueWithNull() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var key1 = key("table1");
+    var key2 = key("table2");
+
+    var value1 = randomObjId();
+    var value2 = randomObjId();
+
+    index.add(indexElement(key1, value1));
+    index.add(indexElement(key2, value2));
+
+    // Serialize, deserialize, then replace key2 with null (tombstone)
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    deserialized.add(indexElement(key2, (ObjRef) null));
+
+    var reserialized = deserialized.serialize();
+    var final_ = deserializeStoreIndex(reserialized, OBJ_REF_SERIALIZER);
+
+    soft.assertThat(final_.getElement(key1).valueNullable()).isEqualTo(value1);
+    soft.assertThat(final_.getElement(key2).valueNullable()).isNull();
+  }
+
+  /**
+   * Tests that an index with only null-valued elements (all tombstones) round-trips correctly. This
+   * is an edge case where every serialized value is the null marker.
+   */
+  @Test
+  void allNullValues() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+
+    for (var i = 0; i < 10; i++) {
+      index.add(indexElement(key("key" + i), (ObjRef) null));
+    }
+
+    var serialized = index.serialize();
+    var deserialized = deserializeStoreIndex(serialized, OBJ_REF_SERIALIZER);
+
+    for (var i = 0; i < 10; i++) {
+      var el = deserialized.getElement(key("key" + i));
+      soft.assertThat(el).describedAs("Element for key%d", i).isNotNull();
+      soft.assertThat(el.valueNullable()).describedAs("Value for key%d", i).isNull();
+    }
+  }
+
   // The following multithreaded "tests" are only there to verify that no ByteBuffer related
   // exceptions are thrown.
 
   @Test
   public void multithreadedGetKey() throws Exception {
-    multithreaded(KeyIndexTestSet::randomGetKey, true);
+    multithreaded(KeyIndexTestSet::randomGetKey, 200);
   }
 
   @Test
   public void multithreadedSerialize() throws Exception {
-    multithreaded(KeyIndexTestSet::serialize, false);
+    multithreaded(KeyIndexTestSet::serialize, 50);
   }
 
   @Test
   public void multithreadedFirst() throws Exception {
-    multithreaded(ts -> ts.keyIndex().first(), false);
+    multithreaded(ts -> ts.keyIndex().first(), 50);
   }
 
   @Test
   public void multithreadedLast() throws Exception {
-    multithreaded(ts -> ts.keyIndex().last(), false);
+    multithreaded(ts -> ts.keyIndex().last(), 50);
   }
 
   @Test
   public void multithreadedKeys() throws Exception {
-    multithreaded(ts -> ts.keyIndex().asKeyList(), false);
+    multithreaded(ts -> ts.keyIndex().asKeyList(), 50);
   }
 
   @Test
   public void multithreadedElementIterator() throws Exception {
-    multithreaded(ts -> ts.keyIndex().elementIterator().forEachRemaining(el -> {}), false);
+    multithreaded(ts -> ts.keyIndex().elementIterator().forEachRemaining(el -> {}), 50);
   }
 
   @Test
   public void multithreadedIterator() throws Exception {
-    multithreaded(ts -> ts.keyIndex().iterator().forEachRemaining(el -> {}), false);
+    multithreaded(ts -> ts.keyIndex().iterator().forEachRemaining(el -> {}), 50);
   }
 
-  void multithreaded(Consumer<KeyIndexTestSet<ObjRef>> worker, boolean longTest) throws Exception {
+  void multithreaded(Consumer<KeyIndexTestSet<ObjRef>> worker, int iterationsPerThread)
+      throws Exception {
     var indexTestSet =
         KeyIndexTestSet.<ObjRef>newGenerator()
             .keySet(ImmutableRandomUuidKeySet.builder().numKeys(100_000).build())
@@ -845,7 +977,6 @@ public class TestIndexImpl {
     try (var executor = Executors.newFixedThreadPool(threads)) {
       var latch = new CountDownLatch(threads);
       var start = new Semaphore(0);
-      var stop = new AtomicBoolean();
 
       var futures =
           IntStream.range(0, threads)
@@ -859,7 +990,7 @@ public class TestIndexImpl {
                             } catch (InterruptedException e) {
                               throw new RuntimeException(e);
                             }
-                            while (!stop.get()) {
+                            for (var iter = 0; iter < iterationsPerThread; iter++) {
                               worker.accept(indexTestSet);
                             }
                           },
@@ -869,11 +1000,118 @@ public class TestIndexImpl {
       latch.await();
       start.release(threads);
 
-      Thread.sleep(longTest ? TimeUnit.SECONDS.toMillis(3) : 500L);
-
-      stop.set(true);
-
-      CompletableFuture.allOf(futures).get();
+      CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
     }
+  }
+
+  @Test
+  void scratchPoolAcquireRelease() {
+    IndexImpl.clearScratchPool();
+    var buf = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(buf).isNotNull();
+    soft.assertThat(buf.position()).isEqualTo(0);
+
+    // Write some data, then release
+    buf.put((byte) 42);
+    IndexImpl.releaseScratchKeyBuffer(buf);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+
+    // Re-acquire from the same thread should return the same buffer, cleared
+    var buf2 = IndexImpl.acquireScratchKeyBuffer();
+    try {
+      soft.assertThat(buf2).isSameAs(buf);
+      soft.assertThat(buf2.position()).isEqualTo(0);
+    } finally {
+      IndexImpl.releaseScratchKeyBuffer(buf2);
+    }
+  }
+
+  @Test
+  void scratchPoolNestedAcquire() {
+    IndexImpl.clearScratchPool();
+
+    // First acquire takes the buffer from the slot
+    var outer = IndexImpl.acquireScratchKeyBuffer();
+    // Second acquire from the same thread hits the same (now empty) slot, must allocate fresh
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(0);
+    var inner = IndexImpl.acquireScratchKeyBuffer();
+
+    soft.assertThat(inner).isNotSameAs(outer);
+
+    // Both buffers are independently usable
+    outer.put((byte) 1);
+    inner.put((byte) 2);
+    soft.assertThat(outer.get(0)).isEqualTo((byte) 1);
+    soft.assertThat(inner.get(0)).isEqualTo((byte) 2);
+
+    // Release inner first, then outer — outer wins the slot (last-write-wins)
+    IndexImpl.releaseScratchKeyBuffer(inner);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+    IndexImpl.releaseScratchKeyBuffer(outer);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+
+    // Re-acquire should get the outer buffer (last released to this slot)
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+    var reacquired = IndexImpl.acquireScratchKeyBuffer();
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(0);
+    soft.assertThat(reacquired).isSameAs(outer);
+    IndexImpl.releaseScratchKeyBuffer(reacquired);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+    IndexImpl.releaseScratchKeyBuffer(outer);
+    soft.assertThat(IndexImpl.scratchPoolSize()).isEqualTo(1);
+  }
+
+  @Test
+  void scratchPoolConcurrentAccess() throws Exception {
+    IndexImpl.clearScratchPool();
+
+    var threads = Runtime.getRuntime().availableProcessors() * 2;
+    var iterationsPerThread = 1000;
+    var latch = new CountDownLatch(threads);
+    var start = new Semaphore(0);
+
+    try (var executor = Executors.newFixedThreadPool(threads)) {
+      var futures =
+          IntStream.range(0, threads)
+              .mapToObj(
+                  i ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            latch.countDown();
+                            try {
+                              start.acquire();
+                            } catch (InterruptedException e) {
+                              throw new RuntimeException(e);
+                            }
+                            for (var iter = 0; iter < iterationsPerThread; iter++) {
+                              var buf = IndexImpl.acquireScratchKeyBuffer();
+                              // Write a marker to verify no buffer is shared concurrently
+                              var marker = (byte) (Thread.currentThread().hashCode() & 0xFF);
+                              buf.put(0, marker);
+                              // Simulate work
+                              for (var j = 1; j < 16; j++) {
+                                buf.put(j, marker);
+                              }
+                              // Verify our marker is still intact (no other thread overwrote it)
+                              for (var j = 0; j < 16; j++) {
+                                if (buf.get(j) != marker) {
+                                  throw new AssertionError(
+                                      "Buffer was concurrently modified at position " + j);
+                                }
+                              }
+                              IndexImpl.releaseScratchKeyBuffer(buf);
+                            }
+                          },
+                          executor))
+              .toArray(CompletableFuture[]::new);
+
+      latch.await();
+      start.release(threads);
+
+      CompletableFuture.allOf(futures).get(60, TimeUnit.SECONDS);
+    }
+
+    // Pool should still be bounded
+    soft.assertThat(IndexImpl.scratchPoolSize()).isLessThanOrEqualTo(IndexImpl.POOL_SIZE);
   }
 }

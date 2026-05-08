@@ -24,6 +24,9 @@ on:
   push:
     branches: [ "main", "release/*", "feature/*" ]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -31,6 +34,12 @@ concurrency:
 jobs:
   ci-main:
     name: CI/${{ github.ref_name }}
+    # security-events: write is required so that ci.yml's docker-image-scan job
+    # can upload Trivy SARIF to Code Scanning. Permissions at this job level
+    # become the ceiling for the reusable workflow's jobs.
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/ci.yml
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}

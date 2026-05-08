@@ -94,6 +94,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.util.LocationUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -214,6 +215,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
   public static final String CATALOG_NAME = "polaris-catalog";
+  public static final String STORAGE_LOCATION = "s3://my-bucket/path/to/data";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
@@ -287,22 +289,20 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     realmContextHolder.set(() -> realmName);
     polarisContext = callContext.getPolarisCallContext();
 
-    String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .setAllowedLocations(List.of(STORAGE_LOCATION, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .setDefaultBaseLocation(STORAGE_LOCATION)
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -310,7 +310,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -390,6 +390,22 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  @Override
+  protected String baseTableLocation(TableIdentifier identifier) {
+    // Override the file:/tmp default used by CatalogTests so inherited tests pass locations that
+    // fall inside this catalog's allowed S3 locations.
+    return STORAGE_LOCATION
+        + "/baseTableLocation/"
+        + String.join("/", identifier.namespace().levels())
+        + "/"
+        + identifier.name();
+  }
+
+  @Override
+  protected boolean supportsNamesWithSlashes() {
+    return false;
   }
 
   protected boolean supportsNotifications() {
@@ -1899,7 +1915,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new CatalogEntity.Builder()
                 .setName(noPurgeCatalogName)
                 .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                 .addProperty(
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
@@ -2454,6 +2469,73 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         table -> String.valueOf(table.sortOrder().orderId()));
   }
 
+  @Test
+  public void testUpdatePropertiesRejectsOutOfTableWriteMetadataLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+
+    String metadataDirectory =
+        "%s/table-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String metadataPrefix = metadataDirectory + "/";
+
+    Assertions.assertThatThrownBy(
+            () ->
+                table
+                    .updateProperties()
+                    .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+                    .commit())
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+
+    Assertions.assertThat(inMemoryFilesUnderPrefix(metadataPrefix)).isEmpty();
+    Assertions.assertThat(catalog.loadTable(TABLE).properties())
+        .doesNotContainKey(TableProperties.WRITE_METADATA_LOCATION);
+  }
+
+  @Test
+  public void testUpdatePropertiesAcceptsInTableWriteMetadataLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+
+    String metadataDirectory =
+        "%s/custom-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(table.location()), UUID.randomUUID());
+    String metadataPrefix = metadataDirectory + "/";
+    table
+        .updateProperties()
+        .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+        .commit();
+
+    Table updatedTable = catalog.loadTable(TABLE);
+    String metadataFileLocation =
+        ((BaseTable) updatedTable).operations().current().metadataFileLocation();
+
+    Assertions.assertThat(metadataFileLocation).startsWith(metadataPrefix);
+    Assertions.assertThat(fileIO.fileExists(metadataFileLocation)).isTrue();
+    Assertions.assertThat(inMemoryFilesUnderPrefix(metadataPrefix)).contains(metadataFileLocation);
+    Assertions.assertThat(updatedTable.properties())
+        .containsEntry(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory);
+  }
+
   private void validatePropertiesUpdated(
       EntityResult schemaResult, String key, Function<Table, String> expectedValue) {
     Table afterUpdate = catalog.loadTable(TABLE);
@@ -2470,6 +2552,32 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .extracting(PolarisEntity::getInternalPropertiesAsMap)
         .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
         .containsEntry(key, expectedValue.apply(afterUpdate));
+  }
+
+  private void updateCatalogProperties(Map<String, String> properties) {
+    CatalogEntity.Builder builder = new CatalogEntity.Builder(CatalogEntity.of(catalogEntity));
+    properties.forEach(builder::addProperty);
+
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), builder.build());
+
+    Assertions.assertThat(result).returns(true, EntityResult::isSuccess);
+    catalogEntity = PolarisEntity.of(result.getEntity());
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> inMemoryFilesUnderPrefix(String prefix) {
+    try {
+      var field = InMemoryFileIO.class.getDeclaredField("IN_MEMORY_FILES");
+      field.setAccessible(true);
+      Map<String, byte[]> files = (Map<String, byte[]>) field.get(null);
+      return files.keySet().stream()
+          .filter(location -> location.startsWith(prefix))
+          .collect(Collectors.toSet());
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("Unable to inspect in-memory file contents", e);
+    }
   }
 
   @Test

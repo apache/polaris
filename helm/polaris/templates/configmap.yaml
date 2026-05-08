@@ -35,6 +35,7 @@ data:
     {{- /* Realm Context */ -}}
     {{- $_ := set $map "polaris.realm-context.type" .Values.realmContext.type -}}
     {{- $_ =  set $map "polaris.realm-context.realms" (join "," .Values.realmContext.realms) -}}
+    {{- $_ =  set $map "polaris.realm-context.require-header" .Values.realmContext.requireHeader -}}
 
     {{- /* Features */ -}}
     {{- range $k, $v := .Values.features -}}

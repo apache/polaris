@@ -22,13 +22,13 @@ package org.apache.polaris.persistence.nosql.coretypes.mapping;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.NamespaceObj;
+import org.jspecify.annotations.NonNull;
 
 final class NamespaceMapping<O extends NamespaceObj, B extends NamespaceObj.Builder<O, B>>
     extends BaseCatalogContentMapping<O, B> {
@@ -42,7 +42,7 @@ final class NamespaceMapping<O extends NamespaceObj, B extends NamespaceObj.Buil
   }
 
   @Override
-  public B newObjBuilder(@Nonnull PolarisEntitySubType subType) {
+  public B newObjBuilder(@NonNull PolarisEntitySubType subType) {
     return cast(LocalNamespaceObj.builder());
   }
 }

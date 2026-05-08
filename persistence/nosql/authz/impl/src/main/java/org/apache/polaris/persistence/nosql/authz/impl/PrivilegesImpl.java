@@ -27,7 +27,6 @@ import static org.apache.polaris.persistence.nosql.authz.api.PredefinedRoles.ANO
 import static org.apache.polaris.persistence.nosql.authz.api.PredefinedRoles.PUBLIC_ROLE;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -54,6 +53,7 @@ import org.apache.polaris.persistence.nosql.authz.spi.PrivilegeDefinition;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesProvider;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesRepository;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class PrivilegesImpl implements Privileges {
@@ -170,7 +170,7 @@ class PrivilegesImpl implements Privileges {
   }
 
   @Override
-  public Privilege byName(@Nonnull String name) {
+  public Privilege byName(@NonNull String name) {
     var ex = nameToPrivilege.get(name);
     checkArgument(ex != null, "Unknown privilege '%s'", name);
     return ex.privilege();
@@ -184,14 +184,14 @@ class PrivilegesImpl implements Privileges {
   }
 
   @Override
-  public int idForName(@Nonnull String name) {
+  public int idForName(@NonNull String name) {
     var ex = nameToPrivilege.get(name);
     checkArgument(ex != null && ex.id() >= 0, "Unknown individual privilege '%s'", name);
     return ex.id();
   }
 
   @Override
-  public int idForPrivilege(@Nonnull Privilege privilege) {
+  public int idForPrivilege(@NonNull Privilege privilege) {
     return idForName(privilege.name());
   }
 
@@ -211,7 +211,7 @@ class PrivilegesImpl implements Privileges {
   }
 
   @Override
-  public Set<Privilege> collapseComposites(@Nonnull PrivilegeSet value) {
+  public Set<Privilege> collapseComposites(@NonNull PrivilegeSet value) {
     Set<Privilege> collapsed = new HashSet<>();
 
     var work = newPrivilegesSetBuilder().addPrivileges(value);

@@ -24,6 +24,8 @@ import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.XmlReportRenderer
 import com.github.jk1.license.task.ReportTask
 import licenses.LicenseFileValidation
+import licenses.NoticeFileLicenseFilter
+import licenses.QuarkusAppDependencyFilter
 
 plugins { id("com.github.jk1.dependency-license-report") }
 
@@ -31,10 +33,12 @@ afterEvaluate {
   licenseReport {
     filters =
       arrayOf(
+        QuarkusAppDependencyFilter(),
         LicenseBundleNormalizer(
           "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
           false,
         ),
+        NoticeFileLicenseFilter(),
         LicenseFileValidation(),
       )
     allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
@@ -52,10 +56,12 @@ afterEvaluate {
 
 val generateLicenseReport =
   tasks.named<ReportTask>("generateLicenseReport") {
+    dependsOn("quarkusBuild")
     inputs
       .files(
         rootProject.projectDir.resolve("gradle/license/normalizer-bundle.json"),
         rootProject.projectDir.resolve("gradle/license/allowed-licenses.json"),
+        project.layout.buildDirectory.file("quarkus-app/quarkus-app-dependencies.txt"),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("renderersHash", licenseReport.renderers.contentHashCode())

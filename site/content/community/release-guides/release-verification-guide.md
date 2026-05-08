@@ -42,11 +42,11 @@ Tasks that are automated:
 * Checksums and PGP signatures are valid.
 * All expected artifacts are present.
 * Source code artifacts have correct names matching the current release.
-* Built artifacts are [reproducible](#reproducible-builds).
 * Build passes.
 * `LICENSE` and `NOTICE` files are included.
-* main and sources jar artifacts contain `META-INF/LICENSE` and `META-INF/NOTICE` files.
+* main and sources jar artifacts (excluding Spark JARs) contain `META-INF/LICENSE` and `META-INF/NOTICE` files.
 * main distribution artifacts contain `LICENSE` and `NOTICE` files in the top-level directory.
+* *(Optional, with `--reproducible-builds`)* Built artifacts are [reproducible](#reproducible-builds).
 
 Tasks that need human attention:
 * Download links are valid. Check all links in the `[VOTE]` email for the release:
@@ -77,8 +77,7 @@ The Polaris project is committed to providing reproducible builds as an essentia
 _Apache trusted releases_.
 The project depends on frameworks which also strive to provide reproducible builds, but not all
 these frameworks can provide fully reproducible builds yet.
-The Polaris project's release verification tool will therefore report some issues that are currently expected.
-See [below](#reproducible-builds) for details.
+Reproducible build verification is available as an optional check via `--reproducible-builds`; see [below](#reproducible-builds) for details.
 
 After you have completed the verification of the release candidate, respond to the release vote email,
 detailing the checks and tests you performed, and providing a summary of their outcomes.
@@ -113,7 +112,7 @@ bash <(curl \
 ```
 
 The tool is intended for Polaris versions 1.3 and newer.
-The tool may report issues, see [below](#reproducible-builds) for details.
+With `--reproducible-builds`, the tool may report known reproducible build issues; see [below](#reproducible-builds) for details.
 
 That script requires a couple of tools installed and will check that those are available
 and report those that need to be installed.
@@ -181,10 +180,12 @@ After that, release candidate verification starts immediately, performing the fo
 5. Helm chart GPG signature and checksum checks
 6. Source tarball and binary artifacts GPG signature and checksum checks
 7. Build Polaris from the Git commit/tag
-8. Compares that the list of Maven artifacts produced by the build matches those in the Nexus staging repository.
-9. Compares the individual Maven artifacts of the local build with the ones in the Nexus staging repository.
-10. Compares the main binary distribution artifacts for Polaris server and Polaris admin tool.
-11. Compares the locally built Helm chart with the one in the staging repository.
+8. Checks mandatory LICENSE/NOTICE content in Maven JARs (excluding Spark JARs) and distribution archives.
+9. Checks mandatory LICENSE/NOTICE content in the Helm chart.
+10. *(Optional, with `--reproducible-builds`)* Compares that the list of Maven artifacts produced by the build matches those in the Nexus staging repository.
+11. *(Optional, with `--reproducible-builds`)* Compares the individual Maven artifacts of the local build with the ones in the Nexus staging repository.
+12. *(Optional, with `--reproducible-builds`)* Compares the main binary distribution artifacts for Polaris server and Polaris admin tool.
+13. *(Optional, with `--reproducible-builds`)* Compares the locally built Helm chart with the one in the staging repository.
 
 Found issues are reported on the console in _red_.
 
@@ -204,6 +205,8 @@ You can keep it around by using the `--keep-temp-dir` (`-k`) option.
 Remember to delete it manually when you're done.
 
 # Reproducible builds
+
+> **Work in progress:** Reproducible build verification is available as an optional check and must be explicitly enabled with the `--reproducible-builds` flag. Full reproducibility is not yet achieved for artifacts.
 
 A build is reproducible if the built artifacts are identical for every build on every machine from the same source.
 
@@ -227,4 +230,4 @@ Pending on full support for reproducible builds in Quarkus:
 * Zips and tarballs containing any of the above are not guaranteed to be reproducible.
 
 Helm packages are not binary reproducible yet.
-See helm-package notes on [this page](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds). 
+See helm-package notes on [this page](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds).

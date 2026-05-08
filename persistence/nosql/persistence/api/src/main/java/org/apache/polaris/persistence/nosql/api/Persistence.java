@@ -20,8 +20,6 @@ package org.apache.polaris.persistence.nosql.api;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -48,6 +46,8 @@ import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Polaris NoSQL persistence interface providing fundamental primitive operations to manage
@@ -83,8 +83,7 @@ public interface Persistence {
    *
    * @throws ReferenceAlreadyExistsException if a reference with the same name already exists
    */
-  @Nonnull
-  Reference createReference(@Nonnull String name, @Nonnull Optional<ObjRef> pointer)
+  @NonNull Reference createReference(@NonNull String name, @NonNull Optional<ObjRef> pointer)
       throws ReferenceAlreadyExistsException;
 
   /**
@@ -93,7 +92,7 @@ public interface Persistence {
    *
    * @see #createReferencesSilent(Set)
    */
-  default void createReferenceSilent(@Nonnull String name) {
+  default void createReferenceSilent(@NonNull String name) {
     createReferencesSilent(Set.of(name));
   }
 
@@ -112,9 +111,9 @@ public interface Persistence {
    * Convenience function to return an existing reference or to create the reference with a supplied
    * {@linkplain Reference#pointer() pointer}, if it does not already exist.
    */
-  @Nonnull
+  @NonNull
   default Reference fetchOrCreateReference(
-      @Nonnull String name, @Nonnull Supplier<Optional<ObjRef>> pointerForCreate) {
+      @NonNull String name, @NonNull Supplier<Optional<ObjRef>> pointerForCreate) {
     try {
       return fetchReference(name);
     } catch (ReferenceNotFoundException e) {
@@ -141,9 +140,8 @@ public interface Persistence {
    *     be returned.
    * @throws ReferenceNotFoundException if the reference does not exist
    */
-  @Nonnull
-  Optional<Reference> updateReferencePointer(
-      @Nonnull Reference reference, @Nonnull ObjRef newPointer) throws ReferenceNotFoundException;
+  @NonNull Optional<Reference> updateReferencePointer(
+      @NonNull Reference reference, @NonNull ObjRef newPointer) throws ReferenceNotFoundException;
 
   /**
    * Fetch the reference with the given name, leveraging the reference cache.
@@ -152,8 +150,7 @@ public interface Persistence {
    * @see #fetchReferenceForUpdate(String)
    * @see #fetchReferenceHead(String, Class)
    */
-  @Nonnull
-  Reference fetchReference(@Nonnull String name) throws ReferenceNotFoundException;
+  @NonNull Reference fetchReference(@NonNull String name) throws ReferenceNotFoundException;
 
   /**
    * Fetches the reference with the given name, but will always fetch the most recent state from the
@@ -161,8 +158,8 @@ public interface Persistence {
    *
    * @see #fetchReference(String)
    */
-  @Nonnull
-  default Reference fetchReferenceForUpdate(@Nonnull String name)
+  @NonNull
+  default Reference fetchReferenceForUpdate(@NonNull String name)
       throws ReferenceNotFoundException {
     return fetchReference(name);
   }
@@ -175,7 +172,7 @@ public interface Persistence {
    * @see #fetch(ObjRef, Class)
    */
   default <T extends Obj> Optional<T> fetchReferenceHead(
-      @Nonnull String name, @Nonnull Class<T> clazz) throws ReferenceNotFoundException {
+      @NonNull String name, @NonNull Class<T> clazz) throws ReferenceNotFoundException {
     var ref = fetchReference(name);
     return ref.pointer()
         .map(
@@ -198,8 +195,7 @@ public interface Persistence {
    * @param <T> returned type can also be just {@code Obj}
    * @see #fetchMany(Class, ObjRef[])
    */
-  @Nullable
-  <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz);
+  @Nullable <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz);
 
   /**
    * Fetch multiple objects for the given object Ids.
@@ -215,8 +211,7 @@ public interface Persistence {
    *     null} elements for objects that do not exist
    * @see #fetch(ObjRef, Class)
    */
-  @Nonnull
-  <T extends Obj> T[] fetchMany(@Nonnull Class<T> clazz, @Nonnull ObjRef... ids);
+  @NonNull <T extends Obj> T[] fetchMany(@NonNull Class<T> clazz, @NonNull ObjRef... ids);
 
   /**
    * Persist {@code obj} with eventually consistent guarantees.
@@ -234,8 +229,7 @@ public interface Persistence {
    *     updated
    * @see #writeMany(Class, Obj[])
    */
-  @Nonnull
-  <T extends Obj> T write(@Nonnull T obj, @Nonnull Class<T> clazz);
+  @NonNull <T extends Obj> T write(@NonNull T obj, @NonNull Class<T> clazz);
 
   /**
    * Persist multiple {@code objs} with eventually consistent guarantees.
@@ -258,8 +252,7 @@ public interface Persistence {
    * @see #write(Obj, Class)
    */
   @SuppressWarnings("unchecked")
-  @Nonnull
-  <T extends Obj> T[] writeMany(@Nonnull Class<T> clazz, @Nonnull T... objs);
+  @NonNull <T extends Obj> T[] writeMany(@NonNull Class<T> clazz, @NonNull T... objs);
 
   /**
    * Unconditionally delete the object with the given id.
@@ -274,7 +267,7 @@ public interface Persistence {
    *
    * @see #deleteMany(ObjRef[])
    */
-  void delete(@Nonnull ObjRef id);
+  void delete(@NonNull ObjRef id);
 
   /**
    * Unconditionally delete the objects with the given ids.
@@ -291,7 +284,7 @@ public interface Persistence {
    *     the array
    * @see #delete(ObjRef)
    */
-  void deleteMany(@Nonnull ObjRef... ids);
+  void deleteMany(@NonNull ObjRef... ids);
 
   /**
    * Persist {@code obj} with strong consistent guarantees.
@@ -306,8 +299,7 @@ public interface Persistence {
    * @return {@code obj} with the {@link Obj#createdAtMicros()} field updated if and only if no
    *     other object with the same object id existed before, otherwise {@code null}
    */
-  @Nullable
-  <T extends Obj> T conditionalInsert(@Nonnull T obj, @Nonnull Class<T> clazz);
+  @Nullable <T extends Obj> T conditionalInsert(@NonNull T obj, @NonNull Class<T> clazz);
 
   /**
    * Update an object with strong consistent guarantees.
@@ -324,9 +316,8 @@ public interface Persistence {
    *     {@linkplain Obj#type() type} but a different {@linkplain Obj#versionToken() version token}
    * @return updated state in the database, if successful, otherwise {@code null}
    */
-  @Nullable
-  <T extends Obj> T conditionalUpdate(
-      @Nonnull T expected, @Nonnull T update, @Nonnull Class<T> clazz);
+  @Nullable <T extends Obj> T conditionalUpdate(
+      @NonNull T expected, @NonNull T update, @NonNull Class<T> clazz);
 
   /**
    * Delete an object with strong consistent guarantees.
@@ -335,7 +326,7 @@ public interface Persistence {
    * @return {@code true} if the object existed with the expected version token and was deleted in
    *     the database, if successful, otherwise {@code false}
    */
-  <T extends Obj> boolean conditionalDelete(@Nonnull T expected, Class<T> clazz);
+  <T extends Obj> boolean conditionalDelete(@NonNull T expected, Class<T> clazz);
 
   PersistenceParams params();
 
@@ -355,26 +346,25 @@ public interface Persistence {
    *
    * <p>Non-caching implementations default to {@link #fetch(ObjRef, Class)}.
    */
-  @Nullable
-  <T extends Obj> T getImmediate(@Nonnull ObjRef id, @Nonnull Class<T> clazz);
+  @Nullable <T extends Obj> T getImmediate(@NonNull ObjRef id, @NonNull Class<T> clazz);
 
   Commits commits();
 
   <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> createCommitter(
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType);
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType);
 
   <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer);
+      @NonNull IndexValueSerializer<V> indexValueSerializer);
 
   <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer);
+      @NonNull IndexValueSerializer<V> indexValueSerializer);
 
-  @Nonnull
-  default Duration objAge(@Nonnull Obj obj) {
+  @NonNull
+  default Duration objAge(@NonNull Obj obj) {
     return Duration.ofNanos(
         TimeUnit.MICROSECONDS.toNanos(Math.max(currentTimeMicros() - obj.createdAtMicros(), 0L)));
   }

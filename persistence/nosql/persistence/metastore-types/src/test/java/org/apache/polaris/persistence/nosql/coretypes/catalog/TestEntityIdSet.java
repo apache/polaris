@@ -94,4 +94,24 @@ public class TestEntityIdSet {
         EntityIdSet.entityIdSet(
             LongStream.range(MAX_VALUE - 1000, MAX_VALUE).boxed().collect(Collectors.toSet())));
   }
+
+  /**
+   * Verifies that {@code serialize(null, target)} writes the null marker directly into {@code
+   * target} and does not return a different buffer.
+   */
+  @Test
+  void serializeNullWritesToTarget() {
+    var target = ByteBuffer.allocate(64);
+    var returned = ENTITY_ID_SET_SERIALIZER.serialize(null, target);
+
+    // Must return the same target buffer
+    soft.assertThat(returned).isSameAs(target);
+    // Must have advanced the position
+    soft.assertThat(target.position()).isGreaterThan(0);
+
+    // Verify that the bytes written to target actually round-trip via deserialize
+    target.flip();
+    var deserialized = ENTITY_ID_SET_SERIALIZER.deserialize(target);
+    soft.assertThat(deserialized).isNull();
+  }
 }

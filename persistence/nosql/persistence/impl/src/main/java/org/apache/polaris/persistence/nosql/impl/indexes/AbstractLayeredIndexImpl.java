@@ -19,13 +19,13 @@
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Combines two {@link Index store indexes}, where one index serves as the "reference" and the other
@@ -88,13 +88,13 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public boolean containsElement(@Nonnull IndexKey key) {
+  public boolean containsElement(@NonNull IndexKey key) {
     return embedded.containsElement(key) || reference.containsElement(key);
   }
 
   @Nullable
   @Override
-  public InternalIndexElement<V> getElement(@Nonnull IndexKey key) {
+  public InternalIndexElement<V> getElement(@NonNull IndexKey key) {
     var v = embedded.getElement(key);
     return v != null ? v : reference.getElement(key);
   }
@@ -127,7 +127,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
     return f.compareTo(i) > 0 ? f : i;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> elementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
@@ -190,7 +190,7 @@ abstract class AbstractLayeredIndexImpl<V> implements IndexSpi<V> {
     };
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<InternalIndexElement<V>> reverseElementIterator(
       @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {

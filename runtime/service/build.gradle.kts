@@ -178,8 +178,10 @@ dependencies {
   testFixturesImplementation(libs.jakarta.ws.rs.api)
 
   testFixturesImplementation(platform(libs.quarkus.bom))
+  testFixturesImplementation("io.quarkus:quarkus-junit-config")
   testFixturesImplementation("io.quarkus:quarkus-rest-client")
   testFixturesImplementation("io.quarkus:quarkus-rest-client-jackson")
+  testFixturesImplementation("io.quarkus:quarkus-test-common")
 
   testFixturesImplementation(platform(libs.iceberg.bom))
   testFixturesImplementation("org.apache.iceberg:iceberg-api")

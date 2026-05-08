@@ -72,15 +72,10 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
-    --conf spark.sql.catalog.polaris.credential=root:s3cr3t \
-    --conf spark.sql.catalog.polaris.client.region=us-west-2 \
-    --conf spark.sql.catalog.polaris.s3.endpoint=http://rustfs:9000
+    --conf spark.sql.catalog.polaris.credential=root:s3cr3t
 ```
 
 Note: `s3cr3t` is defined as the password for the `root` user in the `docker-compose.yml` file.
-
-Note: The `client.region` configuration is required for the AWS S3 client to work, but it is not used in this example
-since RustFS does not require a specific region.
 
 ## Running Queries
 

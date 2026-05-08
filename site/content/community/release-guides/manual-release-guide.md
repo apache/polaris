@@ -300,7 +300,7 @@ Next, you have to close the staging repository:
 
 The last step for a release candidate is to create a VOTE thread on the dev mailing list.
 
-A generated email template is available in the `build/distribution` folder.
+A generated email template is available in the `build/email-templates` folder.
 
 Example title subject:
 
@@ -313,10 +313,9 @@ Example content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official
-Apache Polaris x.y.z release.
+I propose that we release the following RC as the official Apache Polaris x.y.z release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
+This corresponds to the tag: apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/tree/<SHA1>
 
@@ -324,28 +323,27 @@ The release tarball, signature, and checksums are here:
 * https://dist.apache.org/repos/dist/dev/polaris/x.y.z
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/polaris/helm-chart
+* https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z
+
 NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
 * https://downloads.apache.org/polaris/KEYS
 
-Convenience binary artifacts are staged on Nexus. The Maven
-repositories URLs are:
+Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.
+Please download, verify, and test according to the release verification guide, which can be found at:
+* https://polaris.apache.org/community/release-guides/release-verification-guide/
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache Polaris x.y.z
 [ ] +0
 [ ] -1 Do not release this because...
 
-Only PMC members have binding votes, but other community
-members are encouraged to cast non-binding votes.
-This vote will pass if there are 3 binding +1 votes and
-more binding +1 votes than -1 votes.
+Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
 ```
 
 When a candidate is passed or rejected, reply with the vote result:
@@ -431,6 +429,13 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
+Update the binary distribution download link in `[major].[minor].[patch]/getting-started/binary-distribution.md`.
+Replace any old release URL with the correct one for this release. For a non-incubating release the URL format is:
+
+```
+https://downloads.apache.org/polaris/[major].[minor].[patch]/polaris-bin-[major].[minor].[patch].tgz
+```
+
 Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 `site/content/in-dev/release_index.md` and perform the following modifications:
 
@@ -441,6 +446,8 @@ Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 * Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
 * Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
+
+Update the "latest" redirect in the versioned-docs branch: edit `releases/latest/index.md` (i.e. `site/content/releases/latest/index.md` when using the Git worktree) and update the `redirect_to` parameter in the front matter to point to the new release (e.g., change `redirect_to: '/releases/1.3.0/'` to `redirect_to: '/releases/[major].[minor].[patch]/'`).
 
 Commit and push to your fork:
 
@@ -476,8 +483,18 @@ Create a new directory and file for the release under `site/content/downloads/[m
 Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
 downloads page structure and requirements when adding a new release.
 
+Also edit `site/content/downloads/latest/index.md` and update the `redirect_to` parameter to point to
+the new release (e.g., change `redirect_to: '/downloads/1.3.0/'` to `redirect_to: '/downloads/[major].[minor].[patch]/'`).
+
 Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
 release; remove the oldest release from this list.
+
+Also edit `site/static/.htaccess` and update the version in both `RewriteRule` lines for `releases/latest/` to point to the new release (e.g., change `1.3.0` to `[major].[minor].[patch]`):
+
+```
+RewriteRule ^releases/latest$ /releases/[major].[minor].[patch]/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/[major].[minor].[patch]/$1 [R=302,L]
+```
 
 Then open a PR against the `main` branch with your changes.
 

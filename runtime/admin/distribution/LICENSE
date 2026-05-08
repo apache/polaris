@@ -299,7 +299,6 @@ This product bundles Quarkus.
 * Maven group:artifact IDs: io.quarkus:quarkus-development-mode-spi
 * Maven group:artifact IDs: io.quarkus:quarkus-devservices
 * Maven group:artifact IDs: io.quarkus:quarkus-fs-util
-* Maven group:artifact IDs: io.quarkus:quarkus-ide-launcher
 * Maven group:artifact IDs: io.quarkus:quarkus-jdbc-postgresql
 * Maven group:artifact IDs: io.quarkus:quarkus-jsonp
 * Maven group:artifact IDs: io.quarkus:quarkus-micrometer

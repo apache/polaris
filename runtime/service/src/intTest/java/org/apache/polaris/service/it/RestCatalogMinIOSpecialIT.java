@@ -51,6 +51,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
@@ -370,6 +371,41 @@ public class RestCatalogMinIOSpecialIT {
         assertLoadTableWithVendedCredentialsSucceeds(id);
       } finally {
         catalogApi.dropTable(catalogName, id);
+      }
+    }
+  }
+
+  @Test
+  public void testVendedCredentialsFailClosedForWildcardTableIdentifiers() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of(endpoint),
+            true,
+            Optional.empty(),
+            Optional.of(VENDED_CREDENTIALS),
+            true,
+            Optional.of(TEST_REGION),
+            Optional.of(TEST_ROLE_ARN),
+            Optional.of(true))) {
+      Namespace targetNamespace = Namespace.of("foo");
+      Namespace checkedNamespace = Namespace.of("*");
+      TableIdentifier targetId = TableIdentifier.of(targetNamespace, "target");
+      TableIdentifier checkedId = TableIdentifier.of(checkedNamespace, "*");
+      restCatalog.createNamespace(targetNamespace);
+      restCatalog.createNamespace(checkedNamespace);
+      restCatalog.createTable(targetId, SCHEMA);
+
+      try {
+        assertThatThrownBy(() -> restCatalog.createTable(checkedId, SCHEMA))
+            .hasMessageContaining("Access Denied");
+      } finally {
+        if (restCatalog.tableExists(checkedId)) {
+          restCatalog.dropTable(checkedId);
+        }
+        if (restCatalog.tableExists(targetId)) {
+          restCatalog.dropTable(targetId);
+        }
       }
     }
   }

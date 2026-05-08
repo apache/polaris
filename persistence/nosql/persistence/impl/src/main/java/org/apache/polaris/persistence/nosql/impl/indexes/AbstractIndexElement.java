@@ -19,37 +19,9 @@
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
 import com.google.common.base.MoreObjects;
-import com.google.errorprone.annotations.Var;
-import java.util.Objects;
-import org.apache.polaris.persistence.nosql.api.index.Index;
+import org.apache.polaris.persistence.nosql.api.index.IndexElem;
 
-abstract class AbstractIndexElement<V> implements InternalIndexElement<V> {
-
-  @Override
-  public boolean equals(Object o) {
-    if (o == this) {
-      return true;
-    }
-    if (o instanceof InternalIndexElement<?> other) {
-      return key().equals(other.key()) && Objects.equals(valueNullable(), other.valueNullable());
-    }
-    if (o instanceof Index.Element<?> other) {
-      // This case is just for tests, not for actual production usage.
-      return key().equals(other.key()) && Objects.equals(valueNullable(), other.value());
-    }
-    return false;
-  }
-
-  @Override
-  public int hashCode() {
-    @Var var h = 5381;
-    h += (h << 5) + key().hashCode();
-    var v = valueNullable();
-    if (v != null) {
-      h += (h << 5) + v.hashCode();
-    }
-    return h;
-  }
+abstract class AbstractIndexElement<V> extends IndexElem<V> implements InternalIndexElement<V> {
 
   @Override
   public String toString() {

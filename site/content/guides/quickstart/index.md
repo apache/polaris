@@ -28,7 +28,7 @@ menus:
         weight: 2
 ---
 
-Please see the [quickstart guide](../../in-dev/unreleased/getting-started) for more information.
+Please see the [quickstart guide](/releases/latest/getting-started/) for more information.
 
 <!--
 ```shell

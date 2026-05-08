@@ -18,7 +18,7 @@
 # under the License.
 #
 title: 'Apache Polaris Documentation (Unreleased)'
-linkTitle: 'In Development'
+linkTitle: 'Developer Docs'
 type: docs
 weight: 200
 params:
@@ -27,20 +27,15 @@ params:
 menus:
   main:
     parent: doc
-    weight: -999998 # 2nd item in the menu
+    weight: 999999 # last item in the docs dropdown
     identifier: doc-in-dev
+    name: Developer Docs (unreleased)
 cascade:
   type: docs
   params:
     show_page_toc: true
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
-
-> [!DANGER] Caution!
-> 
-> These pages refer to the current state of the main branch, which is still under active development.
-> 
-> Functionalities can be changed, removed or added without prior notice.
 
 Apache Polaris is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
@@ -151,10 +146,9 @@ To secure interactions with service connections, Polaris vends temporary storage
 execution. These credentials allow the query engine to run the query without requiring access to your cloud storage for
 Iceberg tables. This process is called credential vending.
 
-As of now, the following limitation is known regarding Apache Iceberg support:
+The following applies to Apache Iceberg with Apache Spark:
 
-- **remove_orphan_files:** Apache Spark can't use credential vending
-  for this due to a known issue. See [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914) for details.
+- **remove_orphan_files**: By default this procedure lists storage through Spark's Hadoop layer, not Iceberg, so Polaris vended credentials may not apply to that step. From **Iceberg 1.10**, use **`prefix_listing => true`** in `CALL ... remove_orphan_files(...)` (or **`.usePrefixListing(true)`** on `SparkActions.deleteOrphanFiles`) so listing uses Iceberg's file client and vended credentials apply. See [apache/iceberg#12254](https://github.com/apache/iceberg/pull/12254). Note: Listing runs on the driver for this mode and can be slow for very large file sets.
 
 ### Identity and access management (IAM)
 

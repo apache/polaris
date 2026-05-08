@@ -47,20 +47,22 @@ final class SupplyOnce {
       return switch (loaded) {
         case 1 -> (T) result;
         case 2 -> throw (RuntimeException) result;
+        case 3 -> throw new IllegalStateException("Recursive call to SupplyOnce.get() detected");
         case 0 -> load();
         default -> throw new IllegalStateException();
       };
     }
 
     private T load() {
+      loaded = 3;
       try {
-        loaded = 1;
         T obj = loader.get();
         result = obj;
+        loaded = 1;
         return obj;
       } catch (RuntimeException re) {
-        loaded = 2;
         result = re;
+        loaded = 2;
         throw re;
       }
     }

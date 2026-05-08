@@ -22,8 +22,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
-import jakarta.annotation.Nonnull;
 import java.nio.ByteBuffer;
+import org.jspecify.annotations.NonNull;
 
 final class ObjRefSerialization {
   private ObjRefSerialization() {}
@@ -75,7 +75,7 @@ final class ObjRefSerialization {
     return bytes;
   }
 
-  static ByteBuffer skipId(@Nonnull ByteBuffer bytes) {
+  static ByteBuffer skipId(@NonNull ByteBuffer bytes) {
     var versionAndNameLength = bytes.get();
     if (versionAndNameLength == 0) {
       return bytes;

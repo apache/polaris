@@ -97,6 +97,12 @@ public interface AllTypes extends InterfaceOne {
 
   Map<String, SomeEnum> mapToEnum();
 
+  LargeEnum largeEnum();
+
+  Optional<LargeEnum> optionalLargeEnum();
+
+  List<LargeEnum> listOfLargeEnum();
+
   Optional<Boolean> optionalBool();
 
   /** My {@code MappedA}. */

@@ -46,17 +46,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          STAGING_REPO_ID_INPUT: ${{ github.event.inputs.staging_repository_id }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
@@ -65,7 +69,7 @@ jobs:
           fi
 
           # Validate staging repository ID parameter
-          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          staging_repo_id="${STAGING_REPO_ID_INPUT}"
           if [[ -z "${staging_repo_id}" ]]; then
             echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
             exit 1
@@ -78,6 +82,8 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Validate and extract version from RC tag
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -85,7 +91,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
             # Running from a tag
@@ -121,8 +127,8 @@ jobs:
 
       - name: Drop Apache Nexus staging repository
         env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$NEXUS_PASSWORD"
 
@@ -174,8 +180,8 @@ jobs:
 
       - name: Delete artifacts from Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 

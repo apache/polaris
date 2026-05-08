@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.authz.store.nosql;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 import static org.apache.polaris.persistence.nosql.authz.store.nosql.PrivilegesMappingObj.PRIVILEGES_MAPPING_REF_NAME;
 
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,6 +30,7 @@ import org.apache.polaris.persistence.nosql.api.SystemPersistence;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesMapping;
 import org.apache.polaris.persistence.nosql.authz.spi.PrivilegesRepository;
+import org.jspecify.annotations.NonNull;
 
 @ApplicationScoped
 class PrivilegesRepositoryImpl implements PrivilegesRepository {
@@ -56,7 +56,7 @@ class PrivilegesRepositoryImpl implements PrivilegesRepository {
 
   @Override
   public boolean updatePrivilegesMapping(
-      @Nonnull PrivilegesMapping expectedState, @Nonnull PrivilegesMapping newState) {
+      @NonNull PrivilegesMapping expectedState, @NonNull PrivilegesMapping newState) {
     var existing =
         Optional.ofNullable(persistence.fetch(privilegesMappingObjRef, PrivilegesMappingObj.class));
 
@@ -87,7 +87,7 @@ class PrivilegesRepositoryImpl implements PrivilegesRepository {
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public PrivilegesMapping fetchPrivilegesMapping() {
     return Optional.ofNullable(
             persistence.fetch(privilegesMappingObjRef, PrivilegesMappingObj.class))

@@ -23,8 +23,6 @@ import static java.util.Collections.emptyIterator;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
 import com.google.common.collect.AbstractIterator;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -52,6 +50,8 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.maintenance.spi.ObjTypeRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** {@link RetainedCollector} implementation, per realm. */
 final class RetainedCollectorImpl implements Persistence, RetainedCollector {
@@ -72,20 +72,20 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     this.objTypeRetainedIdentifiers = objTypeRetainedIdentifiers;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public String realm() {
     return realmId;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Persistence realmPersistence() {
     return this;
   }
 
   @Override
-  public void retainObject(@Nonnull ObjRef objRef) {
+  public void retainObject(@NonNull ObjRef objRef) {
     if (!currentNesting.add(objRef.id())) {
       return;
     }
@@ -104,15 +104,15 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   }
 
   @Override
-  public void retainReference(@Nonnull String name) {
+  public void retainReference(@NonNull String name) {
     allRetained.addRetainedRef(realmId, name);
   }
 
   // Persistence delegate
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference createReference(@Nonnull String name, @Nonnull Optional<ObjRef> pointer)
+  public Reference createReference(@NonNull String name, @NonNull Optional<ObjRef> pointer)
       throws ReferenceAlreadyExistsException {
     retainReference(name);
     pointer.ifPresent(this::retainObject);
@@ -120,7 +120,7 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   }
 
   @Override
-  public void createReferenceSilent(@Nonnull String name) {
+  public void createReferenceSilent(@NonNull String name) {
     retainReference(name);
     persistence.createReferenceSilent(name);
   }
@@ -131,10 +131,10 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     persistence.createReferencesSilent(referenceNames);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Reference fetchOrCreateReference(
-      @Nonnull String name, @Nonnull Supplier<Optional<ObjRef>> pointerForCreate) {
+      @NonNull String name, @NonNull Supplier<Optional<ObjRef>> pointerForCreate) {
     try {
       return fetchReference(name);
     } catch (ReferenceNotFoundException e) {
@@ -149,27 +149,27 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Optional<Reference> updateReferencePointer(
-      @Nonnull Reference reference, @Nonnull ObjRef newPointer) throws ReferenceNotFoundException {
+      @NonNull Reference reference, @NonNull ObjRef newPointer) throws ReferenceNotFoundException {
     retainReference(reference.name());
     retainObject(newPointer);
     return persistence.updateReferencePointer(reference, newPointer);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference fetchReference(@Nonnull String name) throws ReferenceNotFoundException {
+  public Reference fetchReference(@NonNull String name) throws ReferenceNotFoundException {
     retainReference(name);
     var ref = persistence.fetchReference(name);
     ref.pointer().ifPresent(this::retainObject);
     return ref;
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public Reference fetchReferenceForUpdate(@Nonnull String name) throws ReferenceNotFoundException {
+  public Reference fetchReferenceForUpdate(@NonNull String name) throws ReferenceNotFoundException {
     retainReference(name);
     var ref = persistence.fetchReferenceForUpdate(name);
     ref.pointer().ifPresent(this::retainObject);
@@ -178,7 +178,7 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
 
   @Override
   public <T extends Obj> Optional<T> fetchReferenceHead(
-      @Nonnull String name, @Nonnull Class<T> clazz) throws ReferenceNotFoundException {
+      @NonNull String name, @NonNull Class<T> clazz) throws ReferenceNotFoundException {
     retainReference(name);
     var ref = persistence.fetchReferenceHead(name, clazz);
     ref.ifPresent(head -> retainObject(objRef(head)));
@@ -187,14 +187,14 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
 
   @Nullable
   @Override
-  public <T extends Obj> T fetch(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T fetch(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     retainObject(id);
     return persistence.fetch(id, clazz);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T[] fetchMany(@Nonnull Class<T> clazz, @Nonnull ObjRef... ids) {
+  public <T extends Obj> T[] fetchMany(@NonNull Class<T> clazz, @NonNull ObjRef... ids) {
     for (var id : ids) {
       if (id != null) {
         retainObject(id);
@@ -203,17 +203,17 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     return persistence.fetchMany(clazz, ids);
   }
 
-  @Nonnull
+  @NonNull
   @Override
-  public <T extends Obj> T write(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T write(@NonNull T obj, @NonNull Class<T> clazz) {
     retainObject(objRef(obj));
     return persistence.write(obj, clazz);
   }
 
   @SafeVarargs
-  @Nonnull
+  @NonNull
   @Override
-  public final <T extends Obj> T[] writeMany(@Nonnull Class<T> clazz, @Nonnull T... objs) {
+  public final <T extends Obj> T[] writeMany(@NonNull Class<T> clazz, @NonNull T... objs) {
     for (var obj : objs) {
       if (obj != null) {
         retainObject(objRef(obj));
@@ -223,18 +223,18 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   }
 
   @Override
-  public void delete(@Nonnull ObjRef id) {
+  public void delete(@NonNull ObjRef id) {
     persistence.delete(id);
   }
 
   @Override
-  public void deleteMany(@Nonnull ObjRef... ids) {
+  public void deleteMany(@NonNull ObjRef... ids) {
     persistence.deleteMany(ids);
   }
 
   @Nullable
   @Override
-  public <T extends Obj> T conditionalInsert(@Nonnull T obj, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T conditionalInsert(@NonNull T obj, @NonNull Class<T> clazz) {
     retainObject(objRef(obj));
     return persistence.conditionalInsert(obj, clazz);
   }
@@ -242,13 +242,13 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   @Nullable
   @Override
   public <T extends Obj> T conditionalUpdate(
-      @Nonnull T expected, @Nonnull T update, @Nonnull Class<T> clazz) {
+      @NonNull T expected, @NonNull T update, @NonNull Class<T> clazz) {
     retainObject(objRef(update));
     return persistence.conditionalUpdate(expected, update, clazz);
   }
 
   @Override
-  public <T extends Obj> boolean conditionalDelete(@Nonnull T expected, Class<T> clazz) {
+  public <T extends Obj> boolean conditionalDelete(@NonNull T expected, Class<T> clazz) {
     retainObject(objRef(expected));
     return persistence.conditionalDelete(expected, clazz);
   }
@@ -275,7 +275,7 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
 
   @Nullable
   @Override
-  public <T extends Obj> T getImmediate(@Nonnull ObjRef id, @Nonnull Class<T> clazz) {
+  public <T extends Obj> T getImmediate(@NonNull ObjRef id, @NonNull Class<T> clazz) {
     retainObject(id);
     return persistence.getImmediate(id, clazz);
   }
@@ -298,22 +298,22 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
   @Override
   public <V> UpdatableIndex<V> buildWriteIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return persistence.buildWriteIndex(indexContainer, indexValueSerializer);
   }
 
   @Override
   public <V> Index<V> buildReadIndex(
       @Nullable IndexContainer<V> indexContainer,
-      @Nonnull IndexValueSerializer<V> indexValueSerializer) {
+      @NonNull IndexValueSerializer<V> indexValueSerializer) {
     return persistence.buildReadIndex(indexContainer, indexValueSerializer);
   }
 
   @Override
   public <REF_OBJ extends BaseCommitObj, RESULT> Committer<REF_OBJ, RESULT> createCommitter(
-      @Nonnull String refName,
-      @Nonnull Class<REF_OBJ> referencedObjType,
-      @Nonnull Class<RESULT> resultType) {
+      @NonNull String refName,
+      @NonNull Class<REF_OBJ> referencedObjType,
+      @NonNull Class<RESULT> resultType) {
     throw new UnsupportedOperationException(
         "Committing operations not supported during retained-objects identification");
   }

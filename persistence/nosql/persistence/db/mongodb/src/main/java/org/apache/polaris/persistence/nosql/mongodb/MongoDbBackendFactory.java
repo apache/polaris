@@ -19,23 +19,23 @@
 package org.apache.polaris.persistence.nosql.mongodb;
 
 import com.mongodb.client.MongoClients;
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.BackendFactory;
+import org.jspecify.annotations.NonNull;
 
 public class MongoDbBackendFactory
     implements BackendFactory<MongoDbBackendConfig, MongoDbConfiguration> {
   public static final String NAME = "MongoDb";
 
   @Override
-  @Nonnull
+  @NonNull
   public String name() {
     return NAME;
   }
 
   @Override
-  @Nonnull
-  public Backend buildBackend(@Nonnull MongoDbBackendConfig backendConfig) {
+  @NonNull
+  public Backend buildBackend(@NonNull MongoDbBackendConfig backendConfig) {
     return new MongoDbBackend(backendConfig);
   }
 

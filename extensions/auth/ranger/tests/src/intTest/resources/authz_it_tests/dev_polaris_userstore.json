@@ -1,0 +1,7 @@
+{
+  "userAttrMapping": {
+    "polcondu1": { "dept": "finance",   "allowedSensitiveLevel": "1" },
+    "polcondu2": { "dept": "audit",     "allowedSensitiveLevel": "10" }
+  },
+  "userStoreVersion": 1
+}

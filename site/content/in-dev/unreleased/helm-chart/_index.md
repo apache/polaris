@@ -23,7 +23,7 @@ type: docs
 weight: 650
 ---
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/search?repo=apache-polaris)
+[![Artifact Hub](/img/artifacthub-badge.svg)](https://artifacthub.io/packages/helm/apache-polaris/polaris)
 
 The Apache Polaris project provides an official Helm chart for deploying Polaris on Kubernetes. The chart supports a wide range of configuration options, including persistence backends, authentication, scaling, observability, and more.
 

@@ -98,10 +98,11 @@ tests:
 
   - it: should configure realm context
     set:
-      realmContext: { type: "custom", realms: [ "realm1", "realm2" ] }
+      realmContext: { type: "custom", realms: [ "realm1", "realm2" ], requireHeader: true }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.type=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.realms=realm1,realm2" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.require-header=true" }
 
   - it: should configure features
     set:

@@ -482,18 +482,23 @@ public record MutationAttempt(
         existingRef = byName.get(originalNameKey);
       }
       if (existingRef != null) {
-        var originalObj =
-            (ObjBase)
-                state
-                    .persistence()
-                    .fetch(
-                        existingRef,
-                        objTypeForPolarisType(entityType, entity.getSubType()).targetClass());
-        if (originalObj != null) {
-          var unchangedCompareObj = objForChangeComparison(entity, Optional.empty(), originalObj);
-          if (unchangedCompareObj.equals(originalObj)) {
-            mutationResults.unchangedEntityResult(entity);
-            return;
+        var existingTypeId = existingRef.type();
+        var expectedTypeId = objTypeForPolarisType(entityType, entity.getSubType()).id();
+
+        if (existingTypeId.equals(expectedTypeId)) {
+          var originalObj =
+              (ObjBase)
+                  state
+                      .persistence()
+                      .fetch(
+                          existingRef,
+                          objTypeForPolarisType(entityType, entity.getSubType()).targetClass());
+          if (originalObj != null) {
+            var unchangedCompareObj = objForChangeComparison(entity, Optional.empty(), originalObj);
+            if (unchangedCompareObj.equals(originalObj)) {
+              mutationResults.unchangedEntityResult(entity);
+              return;
+            }
           }
         }
       }

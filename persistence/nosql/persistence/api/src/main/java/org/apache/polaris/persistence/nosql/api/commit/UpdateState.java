@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.api.commit;
 
-import jakarta.annotation.Nonnull;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.jspecify.annotations.NonNull;
 
 public interface UpdateState {
 
@@ -52,9 +52,9 @@ public interface UpdateState {
    *     if {@code key} was already used in a call to this function or {@link #writeIntent(Object,
    *     Obj)}.
    */
-  <O extends Obj> O writeIfNew(@Nonnull Object key, @Nonnull O obj, @Nonnull Class<O> type);
+  <O extends Obj> O writeIfNew(@NonNull Object key, @NonNull O obj, @NonNull Class<O> type);
 
-  default Obj writeIfNew(@Nonnull Object key, @Nonnull Obj obj) {
+  default Obj writeIfNew(@NonNull Object key, @NonNull Obj obj) {
     return writeIfNew(key, obj, Obj.class);
   }
 
@@ -69,9 +69,9 @@ public interface UpdateState {
    * @param obj object to persist
    * @return returns {@code obj}
    */
-  <O extends Obj> O writeOrReplace(@Nonnull Object key, @Nonnull O obj, @Nonnull Class<O> type);
+  <O extends Obj> O writeOrReplace(@NonNull Object key, @NonNull O obj, @NonNull Class<O> type);
 
-  default Obj writeOrReplace(@Nonnull Object key, @Nonnull Obj obj) {
+  default Obj writeOrReplace(@NonNull Object key, @NonNull Obj obj) {
     return writeOrReplace(key, obj, Obj.class);
   }
 
@@ -81,7 +81,7 @@ public interface UpdateState {
    * @return the already present object or {@code null}, if no object is associated with the {@code
    *     key}
    */
-  Obj getWrittenByKey(@Nonnull Object key);
+  Obj getWrittenByKey(@NonNull Object key);
 
   /**
    * Get an already present object by its {@link ObjRef}.
@@ -108,5 +108,5 @@ public interface UpdateState {
    *     IllegalStateException}, if the {@code key} has already been used.
    * @param obj object to persist
    */
-  void writeIntent(@Nonnull Object key, @Nonnull Obj obj);
+  void writeIntent(@NonNull Object key, @NonNull Obj obj);
 }

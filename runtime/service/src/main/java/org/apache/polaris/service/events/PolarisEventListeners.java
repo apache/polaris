@@ -31,23 +31,69 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.Set;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class PolarisEventListeners {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEventListeners.class);
+
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
+  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
+
   public void onStartup(@Observes StartupEvent event) {
-    Set<String> listenerTypeSet = configuration.types().orElseGet(HashSet::new);
+    var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
     for (String enabledEventListener : listenerTypeSet) {
-      PolarisEventListener listener =
-          eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
-      Handler<Message<PolarisEvent>> handler = e -> listener.onEvent(e.body());
-      eventBus.localConsumer(POLARIS_EVENT_CHANNEL, handler);
+      var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
+      var supportedTypes =
+          listenerConfiguration == null
+                  || (listenerConfiguration.enabledEventCategories().isEmpty()
+                      && listenerConfiguration.enabledEventTypes().isEmpty())
+              ? EnumSet.allOf(PolarisEventType.class)
+              : EnumSet.noneOf(PolarisEventType.class);
+      if (listenerConfiguration != null) {
+        if (listenerConfiguration.enabledEventCategories().isPresent()) {
+          for (var enabledEventCategory : listenerConfiguration.enabledEventCategories().get()) {
+            supportedTypes.addAll(PolarisEventType.typesOfCategory(enabledEventCategory));
+          }
+        }
+        if (listenerConfiguration.enabledEventTypes().isPresent()) {
+          supportedTypes.addAll(listenerConfiguration.enabledEventTypes().get());
+        }
+      }
+      var listener = eventListeners.select(Identifier.Literal.of(enabledEventListener)).get();
+      Handler<Message<PolarisEvent>> handler =
+          message -> deliverEvent(message.body(), enabledEventListener, listener);
+      for (var polarisEventType : supportedTypes) {
+        enabledEventTypes.add(polarisEventType);
+        eventBus.localConsumer(POLARIS_EVENT_CHANNEL + "." + polarisEventType, handler);
+      }
     }
+  }
+
+  private void deliverEvent(
+      PolarisEvent event, String listenerName, PolarisEventListener listener) {
+    LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+    try {
+      listener.onEvent(event);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Error while delivering {} event to listener '{}' ({})",
+          event.type(),
+          listenerName,
+          listener,
+          e);
+    }
+    LOGGER.debug("Delivered {} event to listener '{}' ({})", event.type(), listenerName, listener);
+  }
+
+  public boolean hasListeners(PolarisEventType polarisEventType) {
+    return enabledEventTypes.contains(polarisEventType);
   }
 }

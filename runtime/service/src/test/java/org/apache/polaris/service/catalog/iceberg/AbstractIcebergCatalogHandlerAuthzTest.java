@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.inject.Inject;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -75,8 +77,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -103,7 +104,7 @@ import org.mockito.Mockito;
 @SuppressWarnings("resource")
 public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
-  @Inject CallContextCatalogFactory callContextCatalogFactory;
+  @Inject LocalCatalogFactory localCatalogFactory;
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newHandler() {
@@ -111,19 +112,22 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
-    return newHandler(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
+    return newHandler(activatedPrincipalRoles, CATALOG_NAME, localCatalogFactory);
   }
 
   private IcebergCatalogHandler newHandler(
-      Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
+      Set<String> activatedPrincipalRoles, String catalogName, LocalCatalogFactory factory) {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     IcebergCatalogHandler handler =
         icebergCatalogHandlerFactory.createHandler(catalogName, authenticatedPrincipal);
-    if (factory == callContextCatalogFactory) {
+    if (factory == localCatalogFactory) {
       return handler;
     }
-    return ImmutableIcebergCatalogHandler.builder().from(handler).catalogFactory(factory).build();
+    return ImmutableIcebergCatalogHandler.builder()
+        .from(handler)
+        .localCatalogFactory(factory)
+        .build();
   }
 
   @TestFactory
@@ -599,6 +603,59 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
         .createTests();
+  }
+
+  @TestFactory
+  Stream<DynamicNode> testLoadCredentialsFromEntityPropertiesPrivileges() {
+    return authzTestsBuilder("loadCredentials")
+        .action(() -> newHandler().loadCredentials(TABLE_NS1A_2, Optional.empty()))
+        .shouldPassWith(PolarisPrivilege.TABLE_READ_DATA)
+        .shouldPassWith(PolarisPrivilege.TABLE_WRITE_DATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldFailWith(PolarisPrivilege.TABLE_READ_PROPERTIES)
+        .shouldFailWith(PolarisPrivilege.TABLE_WRITE_PROPERTIES)
+        .createTests();
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesSkipsFileIO() throws Exception {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Wrap the real factory to spy on the catalog it creates
+    LocalCatalogFactory spyFactory =
+        manifest -> Mockito.spy(localCatalogFactory.createCatalog(manifest));
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, spyFactory);
+
+    // Call the optimized credential vending path — authorizeLoadTable inside
+    // will trigger initializeCatalog() which sets baseCatalog via our spy factory
+    handler.loadCredentials(TABLE_NS1A_2, Optional.empty());
+
+    // Retrieve the spied baseCatalog and verify loadTable was never called
+    Field baseCatalogField = IcebergCatalogHandler.class.getDeclaredField("baseCatalog");
+    baseCatalogField.setAccessible(true);
+    Catalog spiedCatalog = (Catalog) baseCatalogField.get(handler);
+    Mockito.verify(spiedCatalog, Mockito.never()).loadTable(Mockito.any());
+  }
+
+  @Test
+  void testLoadCredentialsFromEntityPropertiesFallsBackForExternalCatalog() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE1, PolarisPrivilege.TABLE_WRITE_DATA));
+
+    // Provide a factory that returns a non-IcebergCatalog to simulate an external catalog
+    Catalog mockExternalCatalog = Mockito.mock(Catalog.class);
+    LocalCatalogFactory externalFactory = manifest -> mockExternalCatalog;
+    IcebergCatalogHandler handler = newHandler(Set.of(), CATALOG_NAME, externalFactory);
+
+    // The optimized path should detect the non-IcebergCatalog and fall back,
+    // which calls baseCatalog.loadTable()
+    Assertions.assertThatThrownBy(() -> handler.loadCredentials(TABLE_NS1A_2, Optional.empty()))
+        .isInstanceOf(Exception.class);
+
+    Mockito.verify(mockExternalCatalog).loadTable(TABLE_NS1A_2);
   }
 
   @TestFactory
@@ -1168,7 +1225,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1231,7 +1288,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1280,7 +1337,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1329,7 +1386,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1381,7 +1438,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         "file:///tmp/send_notification_sufficient_privileges_" + System.nanoTime();
 
     createExternalCatalog(externalCatalog, storageLocation);
-    PolarisCallContextCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
+    PolarisLocalCatalogFactory factory = createExternalCatalogFactory(externalCatalog);
 
     Namespace namespace = Namespace.of("extns1", "extns2");
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
@@ -1450,8 +1507,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             externalCatalog, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_CONTENT));
   }
 
-  private PolarisCallContextCatalogFactory createExternalCatalogFactory(String externalCatalog) {
-    return new PolarisCallContextCatalogFactory(
+  private PolarisLocalCatalogFactory createExternalCatalogFactory(String externalCatalog) {
+    return new PolarisLocalCatalogFactory(
         diagServices,
         resolverFactory,
         Mockito.mock(),
@@ -1463,8 +1520,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         callContext,
         authenticatedRoot) {
       @Override
-      public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
-        Catalog catalog = super.createCallContextCatalog(resolvedManifest);
+      public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
+        Catalog catalog = super.createCatalog(resolvedManifest);
         String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
         catalog.initialize(
             externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));

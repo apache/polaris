@@ -23,6 +23,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.Map;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -77,9 +78,11 @@ public class BearerConnectionCredentialVendor implements ConnectionCredentialVen
     // Bearer tokens don't expire from Polaris's perspective - set expiration to Long.MAX_VALUE
     // to indicate infinite validity. The token itself may have an expiration, but that's managed
     // by the token issuer, not Polaris.
-    return ConnectionCredentials.builder()
-        .put(CatalogAccessProperty.BEARER_TOKEN, bearerToken)
-        .put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE))
-        .build();
+    return ConnectionCredentials.of(
+        Map.of(
+            CatalogAccessProperty.BEARER_TOKEN,
+            bearerToken,
+            CatalogAccessProperty.EXPIRES_AT_MS,
+            String.valueOf(Long.MAX_VALUE)));
   }
 }

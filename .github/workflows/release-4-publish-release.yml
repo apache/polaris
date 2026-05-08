@@ -38,15 +38,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version_without_rc: ${{ steps.release-params.outputs.version_without_rc }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
+        with: # zizmor: ignore[artipacked]
           # Fetch full history for proper branch operations
           fetch-depth: 0
-          # Use a token with write permissions
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use a token with write permissions - persist-credentials is required for git push
+          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -57,12 +59,15 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          STAGING_REPO_ID_INPUT: ${{ github.event.inputs.staging_repository_id }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
@@ -71,7 +76,7 @@ jobs:
           fi
 
           # Validate staging repository ID parameter
-          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          staging_repo_id="${STAGING_REPO_ID_INPUT}"
           if [[ -z "${staging_repo_id}" ]]; then
             echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
             exit 1
@@ -84,6 +89,9 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Auto-determine release parameters from branch and Git state
+        id: release-params
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -91,7 +99,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/heads/release/(.+)$ ]]; then
             # Running from a release branch
@@ -163,6 +171,7 @@ jobs:
 
           # Export variables for next steps
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
           echo "rc_tag=${rc_tag}" >> $GITHUB_ENV
           echo "final_release_tag=${final_release_tag}" >> $GITHUB_ENV
           echo "release_branch=${current_branch}" >> $GITHUB_ENV
@@ -179,8 +188,8 @@ jobs:
 
       - name: Copy distribution from SVN dev to release space
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -194,6 +203,9 @@ jobs:
           dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
           release_helm_url="${APACHE_DIST_URL}/release/polaris/helm-chart/${version_without_rc}"
 
+          dev_python_client_url="${APACHE_DIST_URL}/dev/polaris/python-client/${version_without_rc}"
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
+
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_artifacts_url}" "${release_artifacts_url}" \
             -m "Release Apache Polaris ${version_without_rc}"
@@ -202,15 +214,19 @@ jobs:
             "${dev_helm_url}" "${release_helm_url}" \
             -m "Release Apache Polaris Helm chart ${version_without_rc}"
 
+          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${dev_python_client_url}" "${release_python_client_url}" \
+            -m "Release Apache Polaris Python client ${version_without_rc}"
+
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Distribution
-          Artifacts and Helm chart moved from dist dev to dist release
+          Artifacts, Helm chart, and Python client moved from dist dev to dist release
           EOT
 
       - name: Clean up old releases from dist release repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -260,10 +276,31 @@ jobs:
             echo "No old Helm chart versions found to remove" >> $GITHUB_STEP_SUMMARY
           fi
 
+          # List and remove old Python client versions
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client"
+          old_python_client_versions=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_python_client_url}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/$' | sed 's|/$||' | grep -v "^${version_without_rc}$" || true)
+
+          if [[ -n "${old_python_client_versions}" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Removing old Python client versions:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${old_python_client_versions}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            for old_python_client_version in ${old_python_client_versions}; do
+              exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+                "${release_python_client_url}/${old_python_client_version}" \
+                -m "Remove old Python client ${old_python_client_version} (superseded by ${version_without_rc})"
+            done
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No old Python client versions found to remove" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Transfer Helm index and artifacthub-repo.yml from dev to release
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -273,6 +310,21 @@ jobs:
           # Define source and destination URLs
           dev_helm_chart_url="${APACHE_DIST_URL}/dev/polaris/helm-chart"
           release_helm_chart_url="${APACHE_DIST_URL}/release/polaris/helm-chart"
+
+          # Remove any existing index.yaml / artifacthub-repo.yml at the release location before the move.
+          # svn mv to a URL fails with "already exists" if the destination path is present, which is the
+          # case on every release after the first one has put these files under release/polaris/helm-chart/.
+          existing_release_files=$(svn list --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_chart_url}" | grep -E '^(index\.yaml|artifacthub-repo\.yml)$' || true)
+
+          if [[ -n "${existing_release_files}" ]]; then
+            files_to_remove=()
+            for f in ${existing_release_files}; do
+              files_to_remove+=("${release_helm_chart_url}/${f}")
+            done
+            exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+              "${files_to_remove[@]}" \
+              -m "Remove previous Helm index and artifacthub-repo.yml (superseded by ${version_without_rc})"
+          fi
 
           # Move index.yaml and artifacthub-repo.yml from dev to release
           # The index was already properly generated in workflow 3 with relative URLs for the current
@@ -322,8 +374,11 @@ jobs:
 
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }} # zizmor: ignore[secrets-outside-env]
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ghcr.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+          echo "${DOCKERHUB_TOKEN}" | docker login ghcr.io -u "${DOCKERHUB_USER}" --password-stdin
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
@@ -352,9 +407,9 @@ jobs:
 
       - name: Create GitHub release with artifacts
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -415,14 +470,21 @@ jobs:
 
       - name: Release candidate repository on Nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
           # Use the Gradle task to release the Apache staging repository with the specific staging repository ID
           exec_process ./gradlew releaseApacheStagingRepository --staging-repository-id "${STAGING_REPOSITORY_ID}"
 
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Nexus
+          ✅ Nexus staging repository released
+          EOT
+
+      - name: Release summary
+        run: |
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Summary
           🎉 Release published successfully:
@@ -438,4 +500,59 @@ jobs:
           | Nexus repository | ✅ Released |
           | Version | \`${version_without_rc}\` |
           | Final release tag | \`${final_release_tag}\` |
+          EOT
+
+  publish-python-client:
+    name: Publish Python Client to PyPI
+    runs-on: ubuntu-latest
+    needs: [publish-release]
+    permissions:
+      contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
+      id-token: write
+    env:
+      version_without_rc: ${{ needs.publish-release.outputs.version_without_rc }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Download Python wheel from Apache dist release repository
+        env:
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          release_python_client_url="${APACHE_DIST_URL}/release/polaris/python-client/${version_without_rc}"
+
+          exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${release_python_client_url}" dist/
+
+      - name: Publish Python client release to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          packages-dir: dist/
+
+      - name: Update step summary
+        run: |
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Python Client
+          ✅ Python client \`${version_without_rc}\` published to PyPI
           EOT

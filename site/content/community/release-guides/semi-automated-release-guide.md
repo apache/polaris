@@ -202,6 +202,13 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
+Update the binary distribution download link in `[major].[minor].[patch]/getting-started/binary-distribution.md`.
+Replace any old release URL with the correct one for this release. For a non-incubating release the URL format is:
+
+```
+https://downloads.apache.org/polaris/[major].[minor].[patch]/polaris-bin-[major].[minor].[patch].tgz
+```
+
 Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 `site/content/in-dev/release_index.md` and perform the following modifications:
 
@@ -212,6 +219,8 @@ Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
 * Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
 * Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
+
+Update the "latest" redirect in the versioned-docs branch: edit `releases/latest/index.md` (i.e. `site/content/releases/latest/index.md` when using the Git worktree) and update the `redirect_to` parameter in the front matter to point to the new release (e.g., change `redirect_to: '/releases/1.3.0/'` to `redirect_to: '/releases/[major].[minor].[patch]/'`).
 
 Commit and push to your fork:
 
@@ -247,7 +256,17 @@ Create a new directory and file for the release under `site/content/downloads/[m
 Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
 downloads page structure and requirements when adding a new release.
 
+Also edit `site/content/downloads/latest/index.md` and update the `redirect_to` parameter to point to
+the new release (e.g., change `redirect_to: '/downloads/1.3.0/'` to `redirect_to: '/downloads/[major].[minor].[patch]/'`).
+
 Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
 release; remove the oldest release from this list.
+
+Also edit `site/static/.htaccess` and update the version in both `RewriteRule` lines for `releases/latest/` to point to the new release (e.g., change `1.3.0` to `[major].[minor].[patch]`):
+
+```
+RewriteRule ^releases/latest$ /releases/[major].[minor].[patch]/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/[major].[minor].[patch]/$1 [R=302,L]
+```
 
 Then open a PR against the `main` branch with your changes.

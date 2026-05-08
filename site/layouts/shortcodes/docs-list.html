@@ -19,9 +19,6 @@ under the License.
 {{ $releasePages := partial "releasePages.html" (dict "site" .Page.Site) -}}
 
 <ul>
-
-<li>{{ partial "docs-link.html" (dict "version" "unreleased") }}</li>
-
 {{ range $releasePages.active -}}
 <li>{{ partial "docs-link.html" (dict "version" .Params.release_version) }}</li>
 {{ end -}}

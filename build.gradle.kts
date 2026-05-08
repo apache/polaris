@@ -114,6 +114,7 @@ tasks.named<RatTask>("rat").configure {
   // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
+  excludes.add("site/static/img/artifacthub-badge.svg")
   excludes.add("node_modules/**")
 
   // Guides testing
@@ -149,6 +150,9 @@ tasks.named<RatTask>("rat").configure {
 
   // Rat can't scan binary images
   excludes.add("**/*.png")
+
+  // Ignore Polaris.log file(s)
+  excludes.add("**/polaris.log*")
 }
 
 tasks.register<Exec>("buildPythonClient") {

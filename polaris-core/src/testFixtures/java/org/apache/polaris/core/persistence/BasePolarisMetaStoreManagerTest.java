@@ -289,6 +289,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
     polarisTestMetaStoreManager.testLoadResolvedEntitiesGranteeVsSecurableRecords();
   }
 
+  /** test that resolved entities do not include grant records referencing dropped grantees */
+  @Test
+  protected void testLoadResolvedEntitySkipsDroppedGranteeReferences() {
+    polarisTestMetaStoreManager.testLoadResolvedEntitySkipsDroppedGranteeReferences();
+  }
+
+  /**
+   * Test that loadGrantsToGrantee/loadGrantsOnSecurable return only grants where the entity plays
+   * the expected role — regression test for entities that are both grantee and securable.
+   */
+  @Test
+  protected void testLoadGrantsGranteeVsSecurableRecords() {
+    polarisTestMetaStoreManager.testLoadGrantsGranteeVsSecurableRecords();
+  }
+
   /** Test the set of functions for the entity cache */
   @Test
   protected void testEntityCache() {

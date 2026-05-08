@@ -18,14 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.impl.indexes;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Internal index element representation.
@@ -50,12 +47,5 @@ interface InternalIndexElement<V> extends Index.Element<V> {
 
   int contentSerializedSize(IndexValueSerializer<V> ser);
 
-  @Nullable
-  V valueNullable();
-
-  @Override
-  @Nonnull
-  default V value() {
-    return checkNotNull(valueNullable(), key());
-  }
+  @Nullable V valueNullable();
 }

@@ -20,7 +20,6 @@
 package publishing
 
 import asf.AsfProject
-import java.io.File
 import javax.inject.Inject
 import org.gradle.api.Project
 import org.gradle.api.model.ObjectFactory
@@ -82,9 +81,6 @@ constructor(objectFactory: ObjectFactory, project: Project) {
 
   /** List of mailing-lists. */
   val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
-
-  fun distributionFile(ext: String): File =
-    distributionDir.get().file("${baseName.get()}.$ext").asFile
 }
 
 /**

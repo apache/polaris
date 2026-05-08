@@ -24,7 +24,6 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.EntityIdSet.ENTITY_ID_SET_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.coretypes.changes.Change.CHANGE_SERIALIZER;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
@@ -32,6 +31,7 @@ import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Abstracts common {@link ContainerObj#stableIdToName()} and {@link ContainerObj#nameToObjRef()}
@@ -43,11 +43,11 @@ public record CatalogChangeCommitterWrapper<RESULT>(CatalogChangeCommitter<RESUL
     implements CommitRetryable<CatalogStateObj, RESULT> {
 
   @SuppressWarnings("DuplicatedCode")
-  @Nonnull
+  @NonNull
   @Override
   public Optional<CatalogStateObj> attempt(
-      @Nonnull CommitterState<CatalogStateObj, RESULT> state,
-      @Nonnull Supplier<Optional<CatalogStateObj>> refObjSupplier)
+      @NonNull CommitterState<CatalogStateObj, RESULT> state,
+      @NonNull Supplier<Optional<CatalogStateObj>> refObjSupplier)
       throws CommitException {
     var refObj = refObjSupplier.get();
     var byName =

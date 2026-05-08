@@ -32,6 +32,7 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
   public static final String POLARIS_EVENT_CHANNEL = "polaris-events";
 
   @Inject EventBus eventBus;
+  @Inject PolarisEventListeners polarisEventListeners;
 
   /**
    * Dispatches the given Polaris service event to the Vert.x event bus.
@@ -40,6 +41,13 @@ public class PolarisServiceBusEventDispatcher implements PolarisEventDispatcher 
    */
   @Override
   public void dispatch(PolarisEvent event) {
-    eventBus.publish(POLARIS_EVENT_CHANNEL, event);
+    if (hasListeners(event.type())) {
+      eventBus.publish(POLARIS_EVENT_CHANNEL + "." + event.type(), event);
+    }
+  }
+
+  @Override
+  public boolean hasListeners(PolarisEventType polarisEventType) {
+    return polarisEventListeners.hasListeners(polarisEventType);
   }
 }

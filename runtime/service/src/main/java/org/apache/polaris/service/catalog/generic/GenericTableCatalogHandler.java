@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -49,7 +49,7 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
 
   protected abstract PolarisCredentialManager credentialManager();
 
-  protected abstract Instance<ExternalCatalogFactory> externalCatalogFactories();
+  protected abstract Instance<FederatedCatalogFactory> federatedCatalogFactories();
 
   private GenericTableCatalog genericTableCatalog;
 
@@ -70,15 +70,15 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
-      // Use the unified factory pattern for all external catalog types
-      Instance<ExternalCatalogFactory> externalCatalogFactory =
-          externalCatalogFactories()
+      // Use the unified factory pattern for all federated catalog types
+      Instance<FederatedCatalogFactory> federatedCatalogFactory =
+          federatedCatalogFactories()
               .select(Identifier.Literal.of(connectionType.getFactoryIdentifier()));
-      if (externalCatalogFactory.isResolvable()) {
+      if (federatedCatalogFactory.isResolvable()) {
         // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
         Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
         federatedCatalog =
-            externalCatalogFactory
+            federatedCatalogFactory
                 .get()
                 .createGenericCatalog(
                     connectionConfigInfoDpo, credentialManager(), catalogProperties);
