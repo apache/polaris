@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
@@ -28,10 +29,14 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.ErrorResponseParser;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
@@ -136,6 +141,28 @@ public class RateLimiterFilterTest {
     Consumer<Status> requestAsserter2 =
         TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm + "2");
     requestAsserter2.accept(Status.OK);
+  }
+
+  @Test
+  public void testRateLimitedResponseHasIcebergErrorBody() {
+    MockRateLimiter.allowProceed = false;
+    try (Response response =
+        fixture
+            .client
+            .target(String.format("%s/api/management/v1/principal-roles", testEnv.baseUri()))
+            .request("application/json")
+            .header("Authorization", "Bearer " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.TOO_MANY_REQUESTS.getStatusCode());
+      assertThat(response.getMediaType()).isEqualTo(MediaType.APPLICATION_JSON_TYPE);
+
+      String body = response.readEntity(String.class);
+      ErrorResponse parsed = ErrorResponseParser.fromJson(body);
+      assertThat(parsed.code()).isEqualTo(Status.TOO_MANY_REQUESTS.getStatusCode());
+      assertThat(parsed.type()).isEqualTo("RateLimitExceededException");
+      assertThat(parsed.message()).contains("Rate exceeded");
+    }
   }
 
   @Test

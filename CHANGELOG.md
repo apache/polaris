@@ -53,6 +53,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
+- `RateLimiterFilter` now returns an Iceberg-compatible `ErrorResponse` JSON body on HTTP 429, with `Content-Type: application/json`. Previously the body was empty, causing Iceberg REST clients to surface an opaque error.
 
 ### Commits
 
