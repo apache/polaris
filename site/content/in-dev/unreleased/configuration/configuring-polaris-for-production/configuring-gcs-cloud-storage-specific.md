@@ -23,10 +23,58 @@ type: docs
 weight: 600
 ---
 
-This page provides guidance for configuring GCS Cloud Storage provider for use with Polaris. It covers credential vending, IAM roles, ACL requirements, and best practices to ensure secure and reliable integration.
+This guide covers how to configure Google Cloud Storage (GCS) as a storage backend for Polaris catalogs, including credential vending, IAM configuration, and access control.
 
-All catalog operations in Polaris for Google Cloud Storage (GCS)—including listing, reading, and writing objects—are performed using credential vending, which issues scoped (vended) tokens for secure access.
+## Overview
 
-Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if HNS is enabled) to be properly configured. Even with the correct IAM role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
+Polaris uses **credential vending** to securely manage access to GCS objects. When you configure a catalog with GCS storage, Polaris issues scoped (vended) tokens with limited permissions and duration for each operation, rather than using long-lived credentials.
 
-**Note:** HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
+## Storage Configuration
+
+When creating a Polaris catalog with GCS storage, you need to specify:
+
+1. **Storage Type**: `GCS`
+2. **Base Location**: The default GCS path for the catalog (e.g., `gs://your-bucket/catalogs/catalog-name`)
+3. **Allowed Locations**: GCS paths where the catalog can read/write data
+
+## IAM Configuration
+
+### Service Account Permissions
+
+The service account running Polaris (e.g., on Cloud Run) needs appropriate IAM roles to access GCS:
+
+**Required IAM Roles:**
+- `roles/storage.objectAdmin` - For read/write access to objects
+- OR `roles/storage.objectViewer` + `roles/storage.objectCreator` - For more granular control
+
+Grant the role at the bucket level:
+
+```bash
+gsutil iam ch serviceAccount:polaris-sa@project.iam.gserviceaccount.com:roles/storage.objectAdmin gs://your-bucket
+```
+
+### User Access Permissions
+
+In addition to GCS IAM, users need Polaris catalog roles to access tables:
+
+1. Create a catalog role with appropriate privileges:
+   - `TABLE_READ_DATA` - Read table data
+   - `TABLE_WRITE_DATA` - Write table data
+   - `NAMESPACE_FULL_METADATA` - Access namespace/table metadata
+2. Assign the catalog role to a principal role (e.g., `service_admin`)
+
+This two-level permission model ensures both GCS access (via IAM) and Polaris access control (via catalog roles) are properly configured.
+
+## Google Cloud Storage Configuration
+
+### Hierarchical Namespace (HNS) Considerations
+
+GCS storage without hierarchical namespaces has been confirmed by the user community to work fine with Polaris. However, issues have been reported for hierarchical namespaces, so they should be considered with caution in production deployments.
+
+## Troubleshooting
+
+### 403 Forbidden Errors
+
+1. Verify Polaris service account has IAM permissions on the bucket
+2. Check that paths are within catalog's `allowedLocations`
+3. Verify user has appropriate catalog role permissions
