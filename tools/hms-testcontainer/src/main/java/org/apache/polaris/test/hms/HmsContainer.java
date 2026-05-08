@@ -20,6 +20,7 @@ package org.apache.polaris.test.hms;
 
 import com.google.common.base.Preconditions;
 import java.time.Duration;
+import org.apache.polaris.containerspec.ContainerSpecHelper;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
@@ -47,8 +48,8 @@ public final class HmsContainer extends GenericContainer<HmsContainer> implement
   private String s3aSecretKey;
 
   @SuppressWarnings("resource")
-  public HmsContainer(String version) {
-    super("docker.io/apache/hive:" + version);
+  public HmsContainer() {
+    super(ContainerSpecHelper.containerSpecHelper("hms", HmsContainer.class).dockerImageName(null));
     withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(HmsContainer.class)));
     addExposedPort(THRIFT_PORT);
     // The apache/hive image dispatches on this env var:
