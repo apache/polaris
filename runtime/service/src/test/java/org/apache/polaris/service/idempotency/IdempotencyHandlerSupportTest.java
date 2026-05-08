@@ -25,7 +25,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -34,10 +33,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.entity.IdempotencyRecord;
 import org.apache.polaris.core.persistence.IdempotencyPersistence;
 import org.apache.polaris.core.persistence.InMemoryIdempotencyPersistence;
@@ -64,8 +59,6 @@ class IdempotencyHandlerSupportTest {
   private IdempotencyHandlerSupport support;
   private Clock testClock;
   private Function<String, IdempotencyPersistence> persistenceLookup;
-  private Map<String, Object> realmConfigValues;
-  private RealmConfig realmConfig;
 
   @BeforeEach
   void setUp() {
@@ -92,32 +85,29 @@ class IdempotencyHandlerSupportTest {
 
     persistenceLookup = realmId -> persistence;
 
-    realmConfigValues = defaultRealmValues();
-    realmConfig = newRealmConfig(realmConfigValues);
-
-    support = IdempotencyHandlerSupport.forTesting(platformConfig(), persistenceLookup, testClock);
+    support = IdempotencyHandlerSupport.forTesting(testConfig(true), persistenceLookup, testClock);
   }
 
   @Test
   void validatedKeyAcceptsUuidV7AndRejectsOthers() {
     String v7 = uuidV7();
-    assertThat(support.validatedKey(v7, realmConfig)).contains(v7.toLowerCase(Locale.ROOT));
+    assertThat(support.validatedKey(v7)).contains(v7.toLowerCase(Locale.ROOT));
 
     // Empty / null / blank => empty Optional, never an exception.
-    assertThat(support.validatedKey((String) null, realmConfig)).isEmpty();
-    assertThat(support.validatedKey("   ", realmConfig)).isEmpty();
+    assertThat(support.validatedKey((String) null)).isEmpty();
+    assertThat(support.validatedKey("   ")).isEmpty();
 
     // Non-UUID and non-v7 UUIDs are rejected.
-    assertThatThrownBy(() -> support.validatedKey("not-a-uuid", realmConfig))
+    assertThatThrownBy(() -> support.validatedKey("not-a-uuid"))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> support.validatedKey(UUID.randomUUID().toString(), realmConfig))
+    assertThatThrownBy(() -> support.validatedKey(UUID.randomUUID().toString()))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void validatedKeyReturnsEmptyWhenIdempotencyDisabled() {
-    realmConfigValues.put(FeatureConfiguration.IDEMPOTENCY_ENABLED.key(), false);
-    assertThat(support.validatedKey(uuidV7(), realmConfig)).isEmpty();
+    support = IdempotencyHandlerSupport.forTesting(testConfig(false), persistenceLookup, testClock);
+    assertThat(support.validatedKey(uuidV7())).isEmpty();
   }
 
   @Test
@@ -158,7 +148,7 @@ class IdempotencyHandlerSupportTest {
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
 
     IdempotencyHandlerSupport.Outcome outcome =
-        support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+        support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     assertThat(outcome).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
     String executorId = ((IdempotencyHandlerSupport.Outcome.Owned) outcome).executorId();
 
@@ -175,12 +165,12 @@ class IdempotencyHandlerSupportTest {
     String key = uuidV7();
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
 
-    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     String executorId = ((IdempotencyHandlerSupport.Outcome.Owned) first).executorId();
     support.finalizeOwned(REALM, key, executorId, 200, null, null);
 
     nowRef.set(nowRef.get().plusSeconds(1));
-    var second = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+    var second = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     assertThat(second).isInstanceOf(IdempotencyHandlerSupport.Outcome.Duplicate.class);
   }
 
@@ -190,12 +180,11 @@ class IdempotencyHandlerSupportTest {
     String pHashA = support.principalHash(PRINCIPAL_A, REALM);
     String pHashB = support.principalHash(PRINCIPAL_B, REALM);
 
-    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHashA, realmConfig);
+    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHashA);
     String executorId = ((IdempotencyHandlerSupport.Outcome.Owned) first).executorId();
     support.finalizeOwned(REALM, key, executorId, 200, null, null);
 
-    assertThatThrownBy(
-            () -> support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHashB, realmConfig))
+    assertThatThrownBy(() -> support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHashB))
         .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class)
         .hasMessageContaining("different caller");
   }
@@ -205,14 +194,12 @@ class IdempotencyHandlerSupportTest {
     String key = uuidV7();
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
 
-    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     String executorId = ((IdempotencyHandlerSupport.Outcome.Owned) first).executorId();
     support.finalizeOwned(REALM, key, executorId, 200, null, null);
 
     assertThatThrownBy(
-            () ->
-                support.reserveOrWait(
-                    REALM, key, OPERATION, "ns:other-table:none", pHash, realmConfig))
+            () -> support.reserveOrWait(REALM, key, OPERATION, "ns:other-table:none", pHash))
         .isInstanceOf(IdempotencyHandlerSupport.ConflictException.class)
         .hasMessageContaining("different operation/resource");
   }
@@ -222,11 +209,11 @@ class IdempotencyHandlerSupportTest {
     String key = uuidV7();
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
 
-    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+    var first = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     String executorId = ((IdempotencyHandlerSupport.Outcome.Owned) first).executorId();
     support.cancelOwned(REALM, key, executorId);
 
-    var retry = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig);
+    var retry = support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash);
     assertThat(retry).isInstanceOf(IdempotencyHandlerSupport.Outcome.Owned.class);
   }
 
@@ -237,10 +224,11 @@ class IdempotencyHandlerSupportTest {
     // exits. Configure a tiny wait so the test stays fast, but a long lease so we hit the wait
     // timeout (not the stale-lease branch).
     Clock realClock = Clock.systemUTC();
-    realmConfigValues.put(FeatureConfiguration.IDEMPOTENCY_IN_PROGRESS_WAIT_MILLIS.key(), 50L);
     support =
         IdempotencyHandlerSupport.forTesting(
-            platformConfig(Duration.ofMillis(10)), persistenceLookup, realClock);
+            testConfig(true, Duration.ofMillis(50), Duration.ofMillis(10), Duration.ofMinutes(5)),
+            persistenceLookup,
+            realClock);
 
     String key = uuidV7();
     String pHash = support.principalHash(PRINCIPAL_A, REALM);
@@ -249,36 +237,22 @@ class IdempotencyHandlerSupportTest {
     persistence.reserve(
         REALM, key, OPERATION, RESOURCE, pHash, now.plusSeconds(300), "other-executor", now);
 
-    assertThatThrownBy(
-            () -> support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash, realmConfig))
+    assertThatThrownBy(() -> support.reserveOrWait(REALM, key, OPERATION, RESOURCE, pHash))
         .isInstanceOf(IdempotencyHandlerSupport.InProgressTimeoutException.class);
   }
 
-  private Map<String, Object> defaultRealmValues() {
-    Map<String, Object> values = new HashMap<>();
-    values.put(FeatureConfiguration.IDEMPOTENCY_ENABLED.key(), true);
-    values.put(FeatureConfiguration.IDEMPOTENCY_TTL_MILLIS.key(), Duration.ofMinutes(5).toMillis());
-    values.put(FeatureConfiguration.IDEMPOTENCY_TTL_GRACE_MILLIS.key(), 0L);
-    values.put(
-        FeatureConfiguration.IDEMPOTENCY_IN_PROGRESS_WAIT_MILLIS.key(),
-        Duration.ofSeconds(2).toMillis());
-    values.put(
-        FeatureConfiguration.IDEMPOTENCY_LEASE_TTL_MILLIS.key(), Duration.ofSeconds(25).toMillis());
-    values.put(FeatureConfiguration.IDEMPOTENCY_PURGE_ENABLED.key(), false);
-    return values;
+  private IdempotencyConfiguration testConfig(boolean enabled) {
+    return testConfig(enabled, Duration.ofSeconds(2), Duration.ofMillis(50), Duration.ofSeconds(25));
   }
 
-  private RealmConfig newRealmConfig(Map<String, Object> values) {
-    RealmConfigurationSource source = (rc, name) -> values.get(name);
-    return new RealmConfigImpl(source, () -> REALM);
-  }
-
-  private IdempotencyConfiguration platformConfig() {
-    return platformConfig(Duration.ofMillis(50));
-  }
-
-  private IdempotencyConfiguration platformConfig(Duration inProgressPollInterval) {
+  private IdempotencyConfiguration testConfig(
+      boolean enabled, Duration inProgressWait, Duration pollInterval, Duration leaseTtl) {
     return new IdempotencyConfiguration() {
+      @Override
+      public boolean enabled() {
+        return enabled;
+      }
+
       @Override
       public String keyHeader() {
         return "Idempotency-Key";
@@ -295,8 +269,33 @@ class IdempotencyHandlerSupportTest {
       }
 
       @Override
+      public Duration ttl() {
+        return Duration.ofMinutes(5);
+      }
+
+      @Override
+      public Duration ttlGrace() {
+        return Duration.ZERO;
+      }
+
+      @Override
+      public Duration inProgressWait() {
+        return inProgressWait;
+      }
+
+      @Override
+      public Duration leaseTtl() {
+        return leaseTtl;
+      }
+
+      @Override
       public Duration inProgressPollInterval() {
-        return inProgressPollInterval;
+        return pollInterval;
+      }
+
+      @Override
+      public boolean purgeEnabled() {
+        return false;
       }
 
       @Override

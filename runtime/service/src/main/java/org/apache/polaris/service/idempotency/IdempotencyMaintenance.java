@@ -29,9 +29,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfigImpl;
-import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.persistence.IdempotencyPersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
@@ -47,9 +44,8 @@ import org.slf4j.LoggerFactory;
  * overlapping purges if a tick takes longer than the configured interval. The timer is cancelled on
  * {@code ShutdownEvent}.
  *
- * <p>The timer fires for every configured realm, but the per-realm purge is skipped unless that
- * realm has {@link FeatureConfiguration#IDEMPOTENCY_PURGE_ENABLED} set, so each tenant can opt in
- * or out independently.
+ * <p>The timer fires for every configured realm; purge is globally enabled or disabled via
+ * {@link IdempotencyConfiguration#purgeEnabled()}.
  */
 @ApplicationScoped
 public class IdempotencyMaintenance {
@@ -59,7 +55,6 @@ public class IdempotencyMaintenance {
   @Inject IdempotencyConfiguration configuration;
   @Inject RealmContextConfiguration realmContextConfiguration;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject RealmConfigurationSource realmConfigurationSource;
   @Inject Clock clock;
   @Inject Vertx vertx;
 
@@ -67,6 +62,9 @@ public class IdempotencyMaintenance {
   private final AtomicBoolean purgeRunning = new AtomicBoolean(false);
 
   void onStart(@Observes StartupEvent event) {
+    if (!configuration.purgeEnabled()) {
+      return;
+    }
     Optional<String> purgeExecutorId = configuration.purgeExecutorId();
     if (purgeExecutorId.isPresent()) {
       String localExecutorId = IdempotencyHandlerSupport.resolveExecutorId(configuration);
@@ -109,10 +107,6 @@ public class IdempotencyMaintenance {
     Instant cutoff = clock.instant().minus(configuration.purgeGrace());
     for (String realm : realmContextConfiguration.realms()) {
       try {
-        var realmConfig = new RealmConfigImpl(realmConfigurationSource, () -> realm);
-        if (!realmConfig.getConfig(FeatureConfiguration.IDEMPOTENCY_PURGE_ENABLED)) {
-          continue;
-        }
         IdempotencyPersistence persistence =
             metaStoreManagerFactory.getOrCreateSession(() -> realm);
         int purged = persistence.purgeExpired(realm, cutoff);

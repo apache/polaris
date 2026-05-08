@@ -328,10 +328,10 @@ public record TestServices(
 
       IdempotencyConfiguration idempotencyConfiguration =
           Mockito.mock(IdempotencyConfiguration.class);
+      Mockito.when(idempotencyConfiguration.enabled()).thenReturn(false);
       Mockito.when(idempotencyConfiguration.keyHeader()).thenReturn("Idempotency-Key");
-      // Idempotency is disabled in TestServices (IDEMPOTENCY_ENABLED defaults to false in the
-      // realm config), so the persistence lookup is never invoked. We pass a function that always
-      // throws to make any accidental access loud during tests.
+      // Idempotency is disabled in TestServices, so the persistence lookup is never invoked.
+      // We pass a function that always throws to make any accidental access loud during tests.
       java.util.function.Function<
               String, org.apache.polaris.core.persistence.IdempotencyPersistence>
           idempotencyPersistenceLookup =

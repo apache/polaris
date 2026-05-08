@@ -105,7 +105,7 @@ public class IcebergCatalogAdapter
    */
   private Optional<String> readIdempotencyKey() {
     try {
-      return idempotencySupport.validatedKey(httpHeaders, realmConfig);
+      return idempotencySupport.validatedKey(httpHeaders);
     } catch (IllegalArgumentException e) {
       throw new BadRequestException("%s", e.getMessage());
     }

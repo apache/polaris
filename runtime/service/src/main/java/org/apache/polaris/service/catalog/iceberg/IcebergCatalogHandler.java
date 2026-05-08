@@ -505,8 +505,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    if (idempotencyKey.isEmpty()
-        || !idempotencySupport().isEnabled(realmConfig(), getResolvedCatalogEntity())) {
+    if (idempotencyKey.isEmpty() || !idempotencySupport().isEnabled()) {
       return doCreateTableDirect(namespace, request, resolvedMode, refreshCredentialsEndpoint);
     } else {
       return createTableDirectIdempotently(
@@ -549,12 +548,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       outcome =
           idempotencySupport()
               .reserveOrWait(
-                  realmId,
-                  idempotencyKey,
-                  "create-table",
-                  resourceId,
-                  principalHash,
-                  realmConfig());
+                  realmId, idempotencyKey, "create-table", resourceId, principalHash);
     } catch (IdempotencyHandlerSupport.ConflictException e) {
       // Cross-principal or cross-binding reuse of the same Idempotency-Key: the request is
       // well-formed but cannot be processed against the existing reservation. Surface as 422.
