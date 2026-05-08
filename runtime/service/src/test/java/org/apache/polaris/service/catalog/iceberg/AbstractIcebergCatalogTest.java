@@ -124,7 +124,8 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -328,7 +329,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         AwsStorageConfigurationInfo.builder()
             .roleARN("arn:aws:iam::012345678901:role/mock")
             .build();
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
             (destination) -> stsClient,
             config -> Optional.empty(),
@@ -336,7 +337,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             mockAwsConfig,
             callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+        .thenReturn(storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
@@ -1862,10 +1863,10 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     var integration = storageIntegrationProvider.getStorageIntegration(List.of(taskEntity));
     Map<String, String> credentials =
         integration
-            .getSubscopedCreds(
-                true,
-                Set.of(tableMetadata.location()),
-                Set.of(tableMetadata.location()),
+            .getStorageAccessConfig(
+                List.of(
+                    new LocationGrant(
+                        Set.of(tableMetadata.location()), Set.of(PolarisStorageActions.ALL))),
                 Optional.empty(),
                 CredentialVendingContext.empty())
             .credentials();

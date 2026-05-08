@@ -52,12 +52,16 @@ import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
@@ -68,7 +72,7 @@ import reactor.util.retry.Retry;
 
 /** Azure credential vendor that supports generating SAS token */
 public class AzureCredentialsStorageIntegration
-    extends InMemoryStorageIntegration<AzureStorageConfigurationInfo> {
+    extends CachingStorageIntegration<AzureStorageConfigurationInfo> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
@@ -84,7 +88,7 @@ public class AzureCredentialsStorageIntegration
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
       AzureStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
-    super(AzureCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
+    super(cache, realmConfig, storageConfig);
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
@@ -92,8 +96,54 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return buildCacheKey(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  @Override
+  protected StorageAccessConfig generateStorageAccessConfig(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return generateStorageAccessConfig(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  private static boolean allowList(List<LocationGrant> grants) {
+    return grants.stream()
+        .flatMap(g -> g.actions().stream())
+        .anyMatch(a -> a == PolarisStorageActions.LIST || a == PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> readLocations(List<LocationGrant> grants) {
+    return grants.stream().flatMap(g -> g.locations().stream()).collect(Collectors.toSet());
+  }
+
+  private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return grants.stream()
+        .filter(
+            g ->
+                g.actions().contains(PolarisStorageActions.WRITE)
+                    || g.actions().contains(PolarisStorageActions.DELETE)
+                    || g.actions().contains(PolarisStorageActions.ALL))
+        .flatMap(g -> g.locations().stream())
+        .collect(Collectors.toSet());
+  }
+
+  private StorageCredentialCacheKey buildCacheKey(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -101,34 +151,29 @@ public class AzureCredentialsStorageIntegration
         context.realm().orElse(""),
         storageConfig().serialize(),
         allowList,
-        readLocations,
+        locations,
         writeLocations,
         refreshEndpoint);
   }
 
-  @Override
-  public StorageAccessConfig getSubscopedCreds(
+  public StorageAccessConfig generateStorageAccessConfig(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
-    boolean allowListOperation = allowList;
-    Set<String> allowedReadLocations = readLocations;
-    Set<String> allowedWriteLocations = writeLocations;
-    Optional<String> refreshCredentialsEndpoint = refreshEndpoint;
 
     String loc =
-        !allowedWriteLocations.isEmpty()
-            ? allowedWriteLocations.stream().findAny().orElse(null)
-            : allowedReadLocations.stream().findAny().orElse(null);
+        !writeLocations.isEmpty()
+            ? writeLocations.stream().findAny().orElse(null)
+            : locations.stream().findAny().orElse(null);
     if (loc == null) {
       throw new IllegalArgumentException("Expect valid location");
     }
     // schema://<container_name>@<account_name>.<endpoint>/<file_path>
     AzureLocation location = new AzureLocation(loc);
-    validateAccountAndContainer(location, allowedReadLocations, allowedWriteLocations);
+    validateAccountAndContainer(location, locations, writeLocations);
 
     String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
     String filePath = location.getFilePath();
@@ -137,16 +182,16 @@ public class AzureCredentialsStorageIntegration
     // pathSasPermission is for Data lake storage
     PathSasPermission pathSasPermission = new PathSasPermission();
 
-    if (allowListOperation) {
+    if (allowList) {
       // container level
       blobSasPermission.setListPermission(true);
       pathSasPermission.setListPermission(true);
     }
-    if (!allowedReadLocations.isEmpty()) {
+    if (!locations.isEmpty()) {
       blobSasPermission.setReadPermission(true);
       pathSasPermission.setReadPermission(true);
     }
-    if (!allowedWriteLocations.isEmpty()) {
+    if (!writeLocations.isEmpty()) {
       blobSasPermission.setAddPermission(true);
       blobSasPermission.setWritePermission(true);
       blobSasPermission.setDeletePermission(true);
@@ -177,9 +222,9 @@ public class AzureCredentialsStorageIntegration
 
     LOGGER
         .atDebug()
-        .addKeyValue("allowedListAction", allowListOperation)
-        .addKeyValue("allowedReadLoc", allowedReadLocations)
-        .addKeyValue("allowedWriteLoc", allowedWriteLocations)
+        .addKeyValue("allowedListAction", allowList)
+        .addKeyValue("locations", locations)
+        .addKeyValue("writeLocations", writeLocations)
         .addKeyValue("location", loc)
         .addKeyValue("storageAccount", location.getStorageAccount())
         .addKeyValue("endpoint", location.getEndpoint())
@@ -201,10 +246,9 @@ public class AzureCredentialsStorageIntegration
       String path = null;
       if (Boolean.TRUE.equals(azureStorageConfig.isHierarchical())) {
         Preconditions.checkArgument(
-            allowedReadLocations.size() <= 1,
-            "Allowed read locations must not have more that one entry");
+            locations.size() <= 1, "Allowed read locations must not have more that one entry");
         Preconditions.checkArgument(
-            allowedWriteLocations.size() <= 1,
+            writeLocations.size() <= 1,
             "Allowed write locations must not have more that one entry");
         path = location.getFilePath();
       }
@@ -224,8 +268,7 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(
-        sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshCredentialsEndpoint);
+    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshEndpoint);
   }
 
   @VisibleForTesting

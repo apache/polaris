@@ -148,7 +148,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-            .getSubscopedCreds(
+            .generateStorageAccessConfig(
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -196,7 +196,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
-            .getSubscopedCreds(
+            .generateStorageAccessConfig(
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -337,7 +337,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-                .getSubscopedCreds(
+                .generateStorageAccessConfig(
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
@@ -438,7 +438,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-            .getSubscopedCreds(
+            .generateStorageAccessConfig(
                 false,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
@@ -550,7 +550,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-            .getSubscopedCreds(
+            .generateStorageAccessConfig(
                 true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
@@ -634,7 +634,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-            .getSubscopedCreds(
+            .generateStorageAccessConfig(
                 true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -673,7 +673,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-                .getSubscopedCreds(
+                .generateStorageAccessConfig(
                     true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -710,7 +710,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-cn":
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-                .getSubscopedCreds(
+                .generateStorageAccessConfig(
                     true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -720,7 +720,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Assertions.assertThatThrownBy(
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-                        .getSubscopedCreds(
+                        .generateStorageAccessConfig(
                             true,
                             Set.of(),
                             Set.of(),
@@ -767,7 +767,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .kmsUnavailable(true)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithKmsUnavailable, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -799,7 +799,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(
             stsClient, configWithKmsUnavailableReadOnly, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -856,7 +856,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .currentKmsKey(currentKmsKey)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithCurrentKmsKey, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -904,7 +904,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .allowedKmsKeys(allowedKmsKeys)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithAllowedKmsKeys, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -940,7 +940,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .region(region)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configNoKmsReadOnly, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
@@ -973,7 +973,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .region(region)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configNoKmsWrite, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
@@ -1010,7 +1010,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1046,7 +1046,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1082,7 +1082,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
@@ -1138,7 +1138,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1209,7 +1209,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, sessionTagsAndTraceIdEnabledConfig)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1274,7 +1274,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1315,7 +1315,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1370,7 +1370,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1407,7 +1407,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1442,7 +1442,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, realmConfig)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1543,7 +1543,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
-                    .getSubscopedCreds(
+                    .generateStorageAccessConfig(
                         true,
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -1680,7 +1680,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .externalId(externalId)
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
-        .getSubscopedCreds(
+        .generateStorageAccessConfig(
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),

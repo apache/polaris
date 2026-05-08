@@ -428,7 +428,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
         internalProp.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    PolarisStorageIntegration<?> integration;
+    PolarisStorageIntegration integration;
     // storageConfigInfo's presence is needed to create a storage integration
     // and the catalog should not have an internal property of storage identifier or id yet
     if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {

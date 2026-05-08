@@ -34,8 +34,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -56,7 +58,7 @@ import software.amazon.awssdk.services.sts.model.Tag;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
-    extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
+    extends CachingStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>>
       credentialsResolver;
@@ -95,15 +97,61 @@ public class AwsCredentialsStorageIntegration
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
       AwsStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
-    super(AwsCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
+    super(cache, realmConfig, storageConfig);
     this.stsClientProvider = stsClientProvider;
     this.credentialsResolver = credentialsResolver;
   }
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return buildCacheKey(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  @Override
+  protected StorageAccessConfig generateStorageAccessConfig(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return generateStorageAccessConfig(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  private static boolean allowList(List<LocationGrant> grants) {
+    return grants.stream()
+        .flatMap(g -> g.actions().stream())
+        .anyMatch(a -> a == PolarisStorageActions.LIST || a == PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> readLocations(List<LocationGrant> grants) {
+    return grants.stream().flatMap(g -> g.locations().stream()).collect(Collectors.toSet());
+  }
+
+  private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return grants.stream()
+        .filter(
+            g ->
+                g.actions().contains(PolarisStorageActions.WRITE)
+                    || g.actions().contains(PolarisStorageActions.DELETE)
+                    || g.actions().contains(PolarisStorageActions.ALL))
+        .flatMap(g -> g.locations().stream())
+        .collect(Collectors.toSet());
+  }
+
+  private StorageCredentialCacheKey buildCacheKey(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -121,17 +169,16 @@ public class AwsCredentialsStorageIntegration
         context.realm().orElse(""),
         storageConfig().serialize(),
         allowList,
-        readLocations,
+        locations,
         writeLocations,
         refreshEndpoint,
         includePrincipalInCacheKey ? context.principalName() : Optional.empty(),
         contextForCacheKey);
   }
 
-  @Override
-  public StorageAccessConfig getSubscopedCreds(
+  public StorageAccessConfig generateStorageAccessConfig(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -142,10 +189,6 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-
-    boolean allowListOperation = allowList;
-    Set<String> allowedReadLocations = readLocations;
-    Set<String> allowedWriteLocations = writeLocations;
 
     boolean includePrincipalInRoleSessionName =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
@@ -161,12 +204,7 @@ public class AwsCredentialsStorageIntegration
               .roleArn(awsStorageConfig.getRoleARN())
               .roleSessionName(roleSessionName)
               .policy(
-                  policyString(
-                          awsStorageConfig,
-                          allowListOperation,
-                          allowedReadLocations,
-                          allowedWriteLocations,
-                          region)
+                  policyString(awsStorageConfig, allowList, locations, writeLocations, region)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 

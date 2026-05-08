@@ -178,7 +178,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
             gcpConfig,
             EMPTY_REALM_CONFIG);
-    return gcpCredsIntegration.getSubscopedCreds(
+    return gcpCredsIntegration.generateStorageAccessConfig(
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
@@ -356,7 +356,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           }
         };
 
-    integration.getSubscopedCreds(
+    integration.generateStorageAccessConfig(
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),

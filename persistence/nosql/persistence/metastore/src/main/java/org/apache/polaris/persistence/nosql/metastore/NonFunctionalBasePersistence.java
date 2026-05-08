@@ -270,21 +270,20 @@ abstract class NonFunctionalBasePersistence implements BasePersistence, Integrat
   }
 
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+  public void persistStorageIntegrationIfNeeded(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+      @Nullable PolarisStorageIntegration storageIntegration) {
     throw unimplemented();
   }
 
   @Nullable
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+  public PolarisStorageIntegration createStorageIntegration(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     throw unimplemented();
   }
 

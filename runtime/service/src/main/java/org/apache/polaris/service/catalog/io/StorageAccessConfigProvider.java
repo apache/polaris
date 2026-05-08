@@ -37,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -47,8 +48,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Request-scoped entry point for vending scoped storage credentials. Resolves the storage
  * integration for the given entity path via {@link PolarisStorageIntegrationProvider}, builds a
- * {@link CredentialVendingContext} from request-scoped state, and delegates credential vending to
- * the integration.
+ * {@link CredentialVendingContext} from request-scoped state, and delegates to the integration.
  */
 @RequestScoped
 public class StorageAccessConfigProvider {
@@ -117,27 +117,19 @@ public class StorageAccessConfigProvider {
       return StorageAccessConfig.builder().build();
     }
 
-    PolarisStorageIntegration<?> integration =
+    PolarisStorageIntegration integration =
         storageIntegrationProvider.getStorageIntegration(resolvedEntityPath);
     if (integration == null) {
       return StorageAccessConfig.builder().supportsCredentialVending(false).build();
     }
 
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? locations
-            : Set.of();
-
     CredentialVendingContext credentialVendingContext =
         buildCredentialVendingContext(resolvedEntityPath);
 
-    return integration.getOrLoadSubscopedCreds(
-        allowList, locations, writeLocations, refreshCredentialsEndpoint, credentialVendingContext);
+    return integration.getStorageAccessConfig(
+        List.of(new LocationGrant(locations, storageActions)),
+        refreshCredentialsEndpoint,
+        credentialVendingContext);
   }
 
   private CredentialVendingContext buildCredentialVendingContext(

@@ -56,7 +56,6 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -215,7 +214,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         AwsStorageConfigurationInfo.builder()
             .roleARN("arn:aws:iam::012345678901:role/mock")
             .build();
-    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+    AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
             (destination) -> stsClient,
             config -> java.util.Optional.empty(),
@@ -223,7 +222,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             mockAwsConfig,
             callContext.getRealmConfig());
     when(storageIntegrationProvider.getStorageIntegration(Mockito.anyList()))
-        .thenReturn((PolarisStorageIntegration) storageIntegration);
+        .thenReturn(storageIntegration);
 
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);

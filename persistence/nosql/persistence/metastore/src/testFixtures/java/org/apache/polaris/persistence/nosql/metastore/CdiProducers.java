@@ -34,7 +34,7 @@ public class CdiProducers {
   PolarisStorageIntegrationProvider producePolarisStorageIntegrationProvider() {
     return new PolarisStorageIntegrationProvider() {
       @Override
-      public @Nullable PolarisStorageIntegration<?> getStorageIntegration(
+      public @Nullable PolarisStorageIntegration getStorageIntegration(
           java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
         throw new UnsupportedOperationException();
       }

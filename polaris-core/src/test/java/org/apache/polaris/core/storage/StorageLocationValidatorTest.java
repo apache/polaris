@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
@@ -33,26 +32,27 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class InMemoryStorageIntegrationTest {
+class StorageLocationValidatorTest {
 
   private static final RealmContext REALM_CONTEXT = () -> "realm";
 
   @ParameterizedTest
   @CsvSource({"s3,s3", "s3,s3a", "s3a,s3", "s3a,s3a"})
-  public void testValidateAccessToLocations(String allowedScheme, String locationScheme) {
+  public void testValidateAllowedLocations(String allowedScheme, String locationScheme) {
     RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
-    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-        storage.validateAccessToLocations(
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocations(
+                allowedScheme + "://bucket/path/to/warehouse",
+                allowedScheme + "://bucket/anotherpath/to/warehouse",
+                allowedScheme + "://bucket2/warehouse/")
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .region("us-east-2")
+            .build();
+    Map<String, Map<PolarisStorageActions, StorageLocationValidator.ValidationResult>> result =
+        StorageLocationValidator.validateAllowedLocations(
             realmConfig,
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocations(
-                    allowedScheme + "://bucket/path/to/warehouse",
-                    allowedScheme + "://bucket/anotherpath/to/warehouse",
-                    allowedScheme + "://bucket2/warehouse/")
-                .roleARN("arn:aws:iam::012345678901:role/jdoe")
-                .region("us-east-2")
-                .build(),
+            config.getAllowedLocations(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 locationScheme + "://bucket/path/to/warehouse/namespace/table",
@@ -72,14 +72,15 @@ class InMemoryStorageIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"s3", "s3a"})
-  public void testValidateAccessToLocationsWithWildcard(String s3Scheme) {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+  public void testValidateAllowedLocationsWithWildcard(String s3Scheme) {
     Map<String, Object> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
     RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> config.get(name), REALM_CONTEXT);
-    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-        storage.validateAccessToLocations(
+    var fileConfig =
+        FileStorageConfigurationInfo.builder().addAllowedLocations("file://", "*").build();
+    Map<String, Map<PolarisStorageActions, StorageLocationValidator.ValidationResult>> result =
+        StorageLocationValidator.validateAllowedLocations(
             realmConfig,
-            FileStorageConfigurationInfo.builder().addAllowedLocations("file://", "*").build(),
+            fileConfig.getAllowedLocations(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 s3Scheme + "://bucket/path/to/warehouse/namespace/table",
@@ -95,16 +96,17 @@ class InMemoryStorageIntegrationTest {
   }
 
   @Test
-  public void testValidateAccessToLocationsNoAllowedLocations() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+  public void testValidateAllowedLocationsNoAllowedLocations() {
     RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
-    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-        storage.validateAccessToLocations(
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .region("us-east-2")
+            .build();
+    Map<String, Map<PolarisStorageActions, StorageLocationValidator.ValidationResult>> result =
+        StorageLocationValidator.validateAllowedLocations(
             realmConfig,
-            AwsStorageConfigurationInfo.builder()
-                .roleARN("arn:aws:iam::012345678901:role/jdoe")
-                .region("us-east-2")
-                .build(),
+            config.getAllowedLocations(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -123,17 +125,18 @@ class InMemoryStorageIntegrationTest {
   }
 
   @Test
-  public void testValidateAccessToLocationsWithPrefixOfAllowedLocation() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+  public void testValidateAllowedLocationsWithPrefixOfAllowedLocation() {
     RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, REALM_CONTEXT);
-    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-        storage.validateAccessToLocations(
+    var config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation("s3://bucket/path/to/warehouse")
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .region("us-east-2")
+            .build();
+    Map<String, Map<PolarisStorageActions, StorageLocationValidator.ValidationResult>> result =
+        StorageLocationValidator.validateAllowedLocations(
             realmConfig,
-            AwsStorageConfigurationInfo.builder()
-                .addAllowedLocation("s3://bucket/path/to/warehouse")
-                .roleARN("arn:aws:iam::012345678901:role/jdoe")
-                .region("us-east-2")
-                .build(),
+            config.getAllowedLocations(),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
@@ -143,38 +146,11 @@ class InMemoryStorageIntegrationTest {
   }
 
   private void assertValidationResult(
-      Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult> results,
+      Map<PolarisStorageActions, StorageLocationValidator.ValidationResult> results,
       boolean expected) {
     assertThat(results)
         .hasSize(1)
         .extractingByKey(PolarisStorageActions.READ)
-        .returns(expected, PolarisStorageIntegration.ValidationResult::success);
-  }
-
-  private static final class MockInMemoryStorageIntegration
-      extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
-    public MockInMemoryStorageIntegration() {
-      super(MockInMemoryStorageIntegration.class.getName());
-    }
-
-    @Override
-    public StorageAccessConfig getSubscopedCreds(
-        boolean allowList,
-        @Nonnull Set<String> readLocations,
-        @Nonnull Set<String> writeLocations,
-        @Nonnull java.util.Optional<String> refreshEndpoint,
-        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
-      return null;
-    }
-
-    @Override
-    protected org.apache.polaris.core.storage.cache.StorageCredentialCacheKey buildCacheKey(
-        boolean allowList,
-        @Nonnull Set<String> readLocations,
-        @Nonnull Set<String> writeLocations,
-        @Nonnull java.util.Optional<String> refreshEndpoint,
-        @Nonnull org.apache.polaris.core.storage.CredentialVendingContext context) {
-      return null;
-    }
+        .returns(expected, StorageLocationValidator.ValidationResult::success);
   }
 }

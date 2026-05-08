@@ -47,10 +47,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CachingStorageIntegration;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -64,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * input read/write locations
  */
 public class GcpCredentialsStorageIntegration
-    extends InMemoryStorageIntegration<GcpStorageConfigurationInfo> {
+    extends CachingStorageIntegration<GcpStorageConfigurationInfo> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
   public static final String SERVICE_ACCOUNT_PREFIX = "projects/-/serviceAccounts/";
@@ -90,7 +93,7 @@ public class GcpCredentialsStorageIntegration
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
-    super(GcpCredentialsStorageIntegration.class.getName(), cache, realmConfig, storageConfig);
+    super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -100,8 +103,54 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return buildCacheKey(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  @Override
+  protected StorageAccessConfig generateStorageAccessConfig(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context) {
+    return generateStorageAccessConfig(
+        allowList(grants),
+        readLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
+  }
+
+  private static boolean allowList(List<LocationGrant> grants) {
+    return grants.stream()
+        .flatMap(g -> g.actions().stream())
+        .anyMatch(a -> a == PolarisStorageActions.LIST || a == PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> readLocations(List<LocationGrant> grants) {
+    return grants.stream().flatMap(g -> g.locations().stream()).collect(Collectors.toSet());
+  }
+
+  private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return grants.stream()
+        .filter(
+            g ->
+                g.actions().contains(PolarisStorageActions.WRITE)
+                    || g.actions().contains(PolarisStorageActions.DELETE)
+                    || g.actions().contains(PolarisStorageActions.ALL))
+        .flatMap(g -> g.locations().stream())
+        .collect(Collectors.toSet());
+  }
+
+  private StorageCredentialCacheKey buildCacheKey(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -109,22 +158,18 @@ public class GcpCredentialsStorageIntegration
         context.realm().orElse(""),
         storageConfig().serialize(),
         allowList,
-        readLocations,
+        locations,
         writeLocations,
         refreshEndpoint);
   }
 
-  @Override
-  public StorageAccessConfig getSubscopedCreds(
+  public StorageAccessConfig generateStorageAccessConfig(
       boolean allowList,
-      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> locations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     GcpStorageConfigurationInfo gcpStorageConfig = storageConfig();
-    boolean allowListOperation = allowList;
-    Set<String> allowedReadLocations = readLocations;
-    Set<String> allowedWriteLocations = writeLocations;
 
     try {
       sourceCredentials.refresh();
@@ -135,8 +180,7 @@ public class GcpCredentialsStorageIntegration
     GoogleCredentials credentialsToDownscope = getBaseCredentials(gcpStorageConfig);
 
     CredentialAccessBoundary accessBoundary =
-        generateAccessBoundaryRules(
-            allowListOperation, allowedReadLocations, allowedWriteLocations);
+        generateAccessBoundaryRules(allowList, locations, writeLocations);
     DownscopedCredentials credentials =
         DownscopedCredentials.newBuilder()
             .setHttpTransportFactory(transportFactory)
@@ -149,9 +193,9 @@ public class GcpCredentialsStorageIntegration
     } catch (IOException e) {
       LOGGER
           .atError()
-          .addKeyValue("readLocations", allowedReadLocations)
-          .addKeyValue("writeLocations", allowedWriteLocations)
-          .addKeyValue("includesList", allowListOperation)
+          .addKeyValue("locations", locations)
+          .addKeyValue("writeLocations", writeLocations)
+          .addKeyValue("includesList", allowList)
           .addKeyValue("accessBoundary", convertToString(accessBoundary))
           .log("Unable to refresh access credentials", e);
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());

@@ -30,32 +30,20 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.config.RealmConfig;
 
 /**
- * Base class for in-memory implementations of {@link PolarisStorageIntegration}. A basic
- * implementation of {@link #validateAccessToLocations(RealmConfig, PolarisStorageConfigurationInfo,
- * Set, Set)} is provided that checks to see that the list of locations being accessed is among the
- * list of {@link PolarisStorageConfigurationInfo#getAllowedLocations()}. Locations being accessed
- * must be equal to or a subdirectory of at least one of the allowed locations.
- *
- * @param <T>
+ * Utility for checking whether a set of request locations fall within a list of allowed locations.
+ * A request location is considered valid if it is equal to, or a subdirectory of, at least one of
+ * the allowed locations.
  */
-public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigurationInfo>
-    extends PolarisStorageIntegration<T> {
+public final class StorageLocationValidator {
 
-  protected InMemoryStorageIntegration(String identifierOrId) {
-    super(identifierOrId);
-  }
+  private StorageLocationValidator() {}
 
-  protected InMemoryStorageIntegration(
-      String identifierOrId,
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
-      org.apache.polaris.core.config.RealmConfig realmConfig,
-      T storageConfig) {
-    super(identifierOrId, cache, realmConfig, storageConfig);
-  }
+  /** Result of validating a single (location, action) pair. */
+  public record ValidationResult(boolean success, String message) {}
 
   /**
    * Check that the locations being accessed are all equal to or subdirectories of at least one of
-   * the {@link PolarisStorageConfigurationInfo#getAllowedLocations}.
+   * the provided allowed locations.
    *
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
    * @param locations a set of locations to get access to
@@ -123,16 +111,5 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
       resultMap.put(rawLocation, locationResult);
     }
     return resultMap;
-  }
-
-  @Override
-  @Nonnull
-  public Map<String, Map<PolarisStorageActions, ValidationResult>> validateAccessToLocations(
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull T storageConfig,
-      @Nonnull Set<PolarisStorageActions> actions,
-      @Nonnull Set<String> locations) {
-    return validateAllowedLocations(
-        realmConfig, storageConfig.getAllowedLocations(), actions, locations);
   }
 }

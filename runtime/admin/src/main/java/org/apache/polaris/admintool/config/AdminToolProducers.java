@@ -66,7 +66,7 @@ public class AdminToolProducers {
     return new PolarisStorageIntegrationProvider() {
       @Override
       @Nullable
-      public PolarisStorageIntegration<?> getStorageIntegration(
+      public PolarisStorageIntegration getStorageIntegration(
           @jakarta.annotation.Nonnull
               java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
         return null;

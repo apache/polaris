@@ -39,6 +39,5 @@ public interface PolarisStorageIntegrationProvider {
    * configuration, resolve overrides, or consult persistence-side state.
    */
   @Nullable
-  PolarisStorageIntegration<?> getStorageIntegration(
-      @Nonnull List<PolarisEntity> resolvedEntityPath);
+  PolarisStorageIntegration getStorageIntegration(@Nonnull List<PolarisEntity> resolvedEntityPath);
 }

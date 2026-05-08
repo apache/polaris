@@ -418,7 +418,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity catalog,
-      @Nullable PolarisStorageIntegration<?> integration,
+      @Nullable PolarisStorageIntegration integration,
       @Nonnull List<PolarisEntityCore> principalRoles) {
     // validate input
     getDiagnostics().checkNotNull(catalog, "unexpected_null_catalog");
@@ -944,7 +944,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
         internalProp.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    PolarisStorageIntegration<?> integration;
+    PolarisStorageIntegration integration;
     // storageConfigInfo's presence is needed to create a storage integration
     // and the catalog should not have an internal property of storage identifier or id yet
     if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {

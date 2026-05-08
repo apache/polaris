@@ -62,7 +62,7 @@ class MetricsReportPersistenceTest {
     PolarisStorageIntegrationProvider storageProvider =
         new PolarisStorageIntegrationProvider() {
           @Override
-          public PolarisStorageIntegration<?> getStorageIntegration(
+          public PolarisStorageIntegration getStorageIntegration(
               java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
             return null;
           }

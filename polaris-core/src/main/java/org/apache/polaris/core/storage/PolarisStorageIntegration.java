@@ -19,157 +19,34 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 
 /**
- * Abstract of Polaris Storage Integration. Each subclass handles credential vending for a specific
- * cloud storage backend (AWS, GCP, Azure).
+ * SPI for a storage integration bound to a particular storage configuration. An integration vends
+ * scoped storage credentials for requests against its configured backend.
  *
- * <p>Integration instances are fully bound at construction time to a particular {@link
- * PolarisStorageConfigurationInfo} and {@link RealmConfig}. The credential-vending methods ({@link
- * #getOrLoadSubscopedCreds}, {@link #getSubscopedCreds}) read config and realm state from the
- * instance and therefore do not take them as parameters. Instances for different configs are
- * constructed by {@link PolarisStorageIntegrationProvider}.
- *
- * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
+ * <p>Implementations are returned by {@link PolarisStorageIntegrationProvider} given a resolved
+ * entity path; the provider decides how an integration instance is created and cached. The default
+ * cloud integrations (AWS, GCP, Azure) extend {@link CachingStorageIntegration}, which adds
+ * in-memory caching of vended credentials. Other implementations — e.g. persistence-backed
+ * credential pools — may implement this interface directly without extending the caching base
+ * class.
  */
-public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigurationInfo> {
-
-  private final String integrationIdentifierOrId;
-  @Nullable private final StorageCredentialCache cache;
-  @Nullable private final RealmConfig realmConfig;
-  @Nullable private final T storageConfig;
+public interface PolarisStorageIntegration {
 
   /**
-   * Test-only constructor without cache, realm config, or storage config. Instances built this way
-   * must not be used for credential vending — only for {@link #validateAccessToLocations} which
-   * takes all of its inputs as method arguments.
-   */
-  public PolarisStorageIntegration(String identifierOrId) {
-    this(identifierOrId, null, null, null);
-  }
-
-  public PolarisStorageIntegration(
-      String identifierOrId,
-      @Nullable StorageCredentialCache cache,
-      @Nullable RealmConfig realmConfig,
-      @Nullable T storageConfig) {
-    this.integrationIdentifierOrId = identifierOrId;
-    this.cache = cache;
-    this.realmConfig = realmConfig;
-    this.storageConfig = storageConfig;
-  }
-
-  public String getStorageIdentifierOrId() {
-    return integrationIdentifierOrId;
-  }
-
-  /** The storage configuration this integration instance is bound to. */
-  @Nullable
-  public T storageConfig() {
-    return storageConfig;
-  }
-
-  /** The realm configuration this integration instance is bound to. */
-  @Nullable
-  protected RealmConfig realmConfig() {
-    return realmConfig;
-  }
-
-  /**
-   * Get subscoped credentials, using the cache if available. Delegates to {@link #buildCacheKey}
-   * for cache key construction and {@link #getSubscopedCreds} for actual credential vending.
-   */
-  public StorageAccessConfig getOrLoadSubscopedCreds(
-      boolean allowList,
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
-    if (cache != null) {
-      StorageCredentialCacheKey key =
-          buildCacheKey(allowList, readLocations, writeLocations, refreshEndpoint, context);
-      return cache.getOrLoad(
-          key,
-          realmConfig,
-          () ->
-              getSubscopedCreds(
-                  allowList, readLocations, writeLocations, refreshEndpoint, context));
-    }
-    return getSubscopedCreds(allowList, readLocations, writeLocations, refreshEndpoint, context);
-  }
-
-  /**
-   * Build a backend-specific cache key. Each subclass includes only the fields that affect the
-   * vended credentials for that backend.
-   */
-  protected abstract StorageCredentialCacheKey buildCacheKey(
-      boolean allowList,
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context);
-
-  /**
-   * Subscope credentials for the instance's bound storage configuration. Subclasses implement the
-   * actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
-   * generation).
-   */
-  public abstract StorageAccessConfig getSubscopedCreds(
-      boolean allowList,
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context);
-
-  /**
-   * Validate access for the provided operation actions and locations.
+   * Vend a scoped {@link StorageAccessConfig} for the given list of {@link LocationGrant}s.
    *
-   * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
-   * @param locations a set of locations to get access to
-   * @return A Map of string, representing the result of validation, the key value is {@code
-   *     <location, validate result>}. A validate result looks like this
-   *     <pre>
-   * {
-   *   "status" : "failure",
-   *   "actions" : {
-   *     "READ" : {
-   *       "message" : "The specified file was not found",
-   *       "status" : "failure"
-   *     },
-   *     "DELETE" : {
-   *       "message" : "One or more objects could not be deleted (Status Code: 200; Error Code: null)",
-   *       "status" : "failure"
-   *     },
-   *     "LIST" : {
-   *       "status" : "success"
-   *     },
-   *     "WRITE" : {
-   *       "message" : "Access Denied (Status Code: 403; Error Code: AccessDenied)",
-   *       "status" : "failure"
-   *     }
-   *   },
-   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
-   * }
-   * </pre>
+   * @param grants per-location action requests; each grant pairs a set of storage location URIs
+   *     with the operations (READ, WRITE, LIST, DELETE, ALL) the credentials should permit on those
+   *     locations
+   * @param refreshEndpoint optional endpoint URL for clients to refresh credentials
+   * @param context metadata (catalog, principal, roles, trace id, etc.) attached to the vending
+   *     call — used for audit tagging and cache keying
    */
-  @Nonnull
-  public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
-      validateAccessToLocations(
-          @Nonnull RealmConfig realmConfig,
-          @Nonnull T storageConfig,
-          @Nonnull Set<PolarisStorageActions> actions,
-          @Nonnull Set<String> locations);
-
-  /**
-   * Result of calling {@link #validateAccessToLocations(RealmConfig,
-   * PolarisStorageConfigurationInfo, Set, Set)}
-   */
-  public record ValidationResult(boolean success, String message) {}
+  StorageAccessConfig getStorageAccessConfig(
+      @Nonnull List<LocationGrant> grants,
+      @Nonnull Optional<String> refreshEndpoint,
+      @Nonnull CredentialVendingContext context);
 }

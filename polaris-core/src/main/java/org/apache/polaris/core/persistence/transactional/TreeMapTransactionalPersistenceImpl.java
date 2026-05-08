@@ -125,11 +125,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      void persistStorageIntegrationIfNeededInCurrentTxn(
-          @Nonnull PolarisCallContext callContext,
-          @Nonnull PolarisBaseEntity entity,
-          @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public void persistStorageIntegrationIfNeededInCurrentTxn(
+      @Nonnull PolarisCallContext callContext,
+      @Nonnull PolarisBaseEntity entity,
+      @Nullable PolarisStorageIntegration storageIntegration) {
     // not implemented for in-memory store
   }
 
@@ -531,12 +530,11 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+  public @Nullable PolarisStorageIntegration createStorageIntegrationInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     // No-op in OSS: the storage integration is resolved at credential-vending time via
     // PolarisStorageIntegrationProvider.getStorageIntegration(resolvedEntityPath). This hook
     // remains available for custom deployments that need to allocate/lease external state

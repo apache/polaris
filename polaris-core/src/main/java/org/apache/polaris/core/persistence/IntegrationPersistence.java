@@ -125,7 +125,7 @@ public interface IntegrationPersistence {
    * @return a storage integration object
    */
   @Nullable
-  <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
+  PolarisStorageIntegration createStorageIntegration(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
@@ -138,8 +138,8 @@ public interface IntegrationPersistence {
    * @param entity the entity of the object
    * @param storageIntegration the storage integration to persist
    */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+  void persistStorageIntegrationIfNeeded(
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
+      @Nullable PolarisStorageIntegration storageIntegration);
 }

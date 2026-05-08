@@ -28,9 +28,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
@@ -41,7 +39,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
-import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -52,7 +50,6 @@ import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -60,23 +57,22 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 /**
  * Provider that returns a {@link PolarisStorageIntegration} for a resolved entity path.
  *
- * <p>Integration instances are bound to a specific {@link PolarisStorageConfigurationInfo} at
- * construction and cached per-config in an internal map: every unique config gets exactly one
- * integration instance for the lifetime of the provider. Construction is driven by a per-storage-
- * type factory so we can still share expensive request-scope state (STS client provider, GCP
- * credentials supplier, etc.) across all instances of the same backend.
+ * <p>Integration instances are bound to a specific {@link PolarisStorageConfigurationInfo} and
+ * cached per-config in an internal map: every unique config gets exactly one integration instance
+ * for the lifetime of the provider. Construction is driven by a per-storage-type factory so we can
+ * still share expensive request-scope state (STS client provider, GCP credentials supplier, etc.)
+ * across all instances of the same backend.
  */
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final PolarisDiagnostics diagnostics;
-  private final RealmConfig realmConfig;
   private final Function<AwsStorageConfigurationInfo, AwsCredentialsStorageIntegration> awsFactory;
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
       azureFactory;
 
-  private final ConcurrentMap<PolarisStorageConfigurationInfo, PolarisStorageIntegration<?>>
+  private final ConcurrentMap<PolarisStorageConfigurationInfo, PolarisStorageIntegration>
       integrationCache = new ConcurrentHashMap<>();
 
   @SuppressWarnings("CdiInjectionPointsInspection")
@@ -89,7 +85,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StorageCredentialCache cache,
       PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
-    this.realmConfig = realmConfig;
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(
@@ -128,7 +123,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       RealmConfig realmConfig,
       PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
-    this.realmConfig = realmConfig;
     this.awsFactory =
         storageConfig ->
             new AwsCredentialsStorageIntegration(
@@ -147,7 +141,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   }
 
   @Override
-  public @Nullable PolarisStorageIntegration<?> getStorageIntegration(
+  public @Nullable PolarisStorageIntegration getStorageIntegration(
       @Nonnull List<PolarisEntity> resolvedEntityPath) {
     return PolarisStorageConfigurationInfo.findStorageInfoFromHierarchy(resolvedEntityPath)
         .map(entity -> BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity))
@@ -155,57 +149,36 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         .orElse(null);
   }
 
-  private PolarisStorageIntegration<?> getOrCreateIntegration(
+  private PolarisStorageIntegration getOrCreateIntegration(
       PolarisStorageConfigurationInfo storageConfig) {
     return integrationCache.computeIfAbsent(storageConfig, this::createIntegration);
   }
 
-  private PolarisStorageIntegration<?> createIntegration(
+  private PolarisStorageIntegration createIntegration(
       PolarisStorageConfigurationInfo storageConfig) {
     return switch (storageConfig.getStorageType()) {
       case S3 -> awsFactory.apply((AwsStorageConfigurationInfo) storageConfig);
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
-      case FILE -> createFileIntegration(storageConfig, realmConfig);
+      case FILE -> FILE_INTEGRATION;
       default ->
           throw new IllegalArgumentException(
               "Unknown storage type " + storageConfig.getStorageType());
     };
   }
 
-  private static PolarisStorageIntegration<?> createFileIntegration(
-      PolarisStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
-    return new PolarisStorageIntegration<PolarisStorageConfigurationInfo>(
-        "file", null, realmConfig, storageConfig) {
-      @Override
-      protected StorageCredentialCacheKey buildCacheKey(
-          boolean allowList,
-          @Nonnull Set<String> readLocations,
-          @Nonnull Set<String> writeLocations,
-          @Nonnull Optional<String> refreshEndpoint,
-          @Nonnull CredentialVendingContext context) {
-        return null; // FILE does not support credential vending
-      }
-
-      @Override
-      public StorageAccessConfig getSubscopedCreds(
-          boolean allowList,
-          @Nonnull Set<String> readLocations,
-          @Nonnull Set<String> writeLocations,
-          @Nonnull Optional<String> refreshEndpoint,
-          @Nonnull CredentialVendingContext context) {
-        return StorageAccessConfig.builder().supportsCredentialVending(false).build();
-      }
-
-      @Override
-      public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
-          validateAccessToLocations(
-              @Nonnull RealmConfig realmConfig,
-              @Nonnull PolarisStorageConfigurationInfo storageConfig,
-              @Nonnull Set<PolarisStorageActions> actions,
-              @Nonnull Set<String> locations) {
-        return Map.of();
-      }
-    };
-  }
+  /**
+   * Singleton integration for FILE storage. FILE backends do not support credential vending, so
+   * there's no per-config state and no caching to worry about.
+   */
+  private static final PolarisStorageIntegration FILE_INTEGRATION =
+      new PolarisStorageIntegration() {
+        @Override
+        public StorageAccessConfig getStorageAccessConfig(
+            @Nonnull List<LocationGrant> grants,
+            @Nonnull Optional<String> refreshEndpoint,
+            @Nonnull CredentialVendingContext context) {
+          return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+        }
+      };
 }
