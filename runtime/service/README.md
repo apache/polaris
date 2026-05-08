@@ -46,3 +46,11 @@ export INTEGRATION_TEST_GCS_PATH="gs://bucket/subpath"
 export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT="your-service-account"
 ./gradlew :polaris-runtime-service:cloudTest
 ```
+To run the GCP federated catalog test using end-user credentials:
+```shell 
+export INTEGRATION_TEST_GCS_FEDERATED_CATALOG=YOUR_GCS_WAREHOUSE 
+export INTEGRATION_TEST_GCS_FEDERATED_PATH=YOUR_GCS_BUCKET_PATH
+export INTEGRATION_TEST_GCS_FEDERATED_QUOTA_PROJECT=YOUR_PROJECT_ID
+export INTEGRATION_TEST_GCS_SERVICE_ACCOUNT=YOUR_SERVICE_ACCOUNT_USER@YOUR_PROJECT_ID.iam.gserviceaccount.com 
+./gradlew :polaris-runtime-service:cloudTest --tests "org.apache.polaris.service.it.GcpCatalogFederationIntegrationIT"
+```

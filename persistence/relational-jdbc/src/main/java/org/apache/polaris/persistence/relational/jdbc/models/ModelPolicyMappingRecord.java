@@ -156,11 +156,11 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   public PolarisPolicyMappingRecord fromResultSet(ResultSet rs) throws SQLException {
     var modelRecord =
         ModelPolicyMappingRecord.builder()
-            .targetCatalogId(rs.getObject("target_catalog_id", Long.class))
-            .targetId(rs.getObject("target_id", Long.class))
-            .policyTypeCode(rs.getObject("policy_type_code", Integer.class))
-            .policyCatalogId(rs.getObject("policy_catalog_id", Long.class))
-            .policyId(rs.getObject("policy_id", Long.class))
+            .targetCatalogId(rs.getLong("target_catalog_id"))
+            .targetId(rs.getLong("target_id"))
+            .policyTypeCode(rs.getInt("policy_type_code"))
+            .policyCatalogId(rs.getLong("policy_catalog_id"))
+            .policyId(rs.getLong("policy_id"))
             .parameters(rs.getString("parameters"))
             .build();
 

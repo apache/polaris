@@ -76,35 +76,12 @@ public interface IdempotencyStore {
   /**
    * Result of a {@link #reserve(String, String, String, String, Instant, String, Instant)} call,
    * including the outcome and, when applicable, the existing idempotency record.
+   *
+   * @param type outcome of the reservation attempt
+   * @param existing existing idempotency record, when {@link #type ()} is {@link
+   *     ReserveResultType#DUPLICATE}, otherwise {@link Optional#empty()}.
    */
-  final class ReserveResult {
-    private final ReserveResultType type;
-    private final Optional<IdempotencyRecord> existing;
-
-    public ReserveResult(ReserveResultType type, Optional<IdempotencyRecord> existing) {
-      this.type = type;
-      this.existing = existing == null ? Optional.empty() : existing;
-    }
-
-    /**
-     * Returns the outcome of the reservation attempt.
-     *
-     * @return the {@link ReserveResultType}
-     */
-    public ReserveResultType getType() {
-      return type;
-    }
-
-    /**
-     * Returns the existing idempotency record when {@link #getType()} is {@link
-     * ReserveResultType#DUPLICATE}, otherwise {@link Optional#empty()}.
-     *
-     * @return the existing {@link IdempotencyRecord}, if present
-     */
-    public Optional<IdempotencyRecord> getExisting() {
-      return existing;
-    }
-  }
+  record ReserveResult(ReserveResultType type, Optional<IdempotencyRecord> existing) {}
 
   /**
    * Attempts to reserve an idempotency key for a given operation and resource.

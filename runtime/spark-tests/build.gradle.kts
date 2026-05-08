@@ -33,8 +33,29 @@ dependencies {
   }
 
   implementation(project(":polaris-runtime-service"))
+  runtimeOnly(project(":polaris-extensions-federation-hive")) {
+    // Brings shaded parquet 1.10 which conflicts with Iceberg's parquet 1.16 in test code.
+    exclude("org.apache.parquet", "parquet-hadoop-bundle")
+  }
+
+  // Adds hadoop-aws to the Polaris JVM classpath so Hive federation's HiveCatalog can use
+  // HadoopFileIO (its default) against an s3a:// warehouse.
+  runtimeOnly(libs.hadoop.aws) {
+    // Exclude the AWS SDK V2 fat-jar `bundle`: hadoop-aws 3.4.3 pulls bundle:2.35.4, which clashes
+    // with Polaris's individual SDK modules. The required modules (s3, sts, etc.) are already on
+    // the classpath via the awssdk-bom.
+    exclude("software.amazon.awssdk", "bundle")
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("log4j", "log4j")
+  }
+  // hadoop-aws references s3-transfer-manager classes but doesn't declare a direct dependency
+  // (the bundle fat-jar provided them); add it explicitly at the BOM-managed version.
+  runtimeOnly("software.amazon.awssdk:s3-transfer-manager")
 
   testImplementation(project(":polaris-tests"))
+  testImplementation(project(":polaris-rustfs-testcontainer"))
   testImplementation(testFixtures(project(":polaris-runtime-service")))
   testImplementation(project(":polaris-runtime-test-common"))
 

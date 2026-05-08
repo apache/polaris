@@ -46,17 +46,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
 
       - name: Set up environment variables
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+          STAGING_REPO_ID_INPUT: ${{ github.event.inputs.staging_repository_id }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
@@ -65,7 +69,7 @@ jobs:
           fi
 
           # Validate staging repository ID parameter
-          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          staging_repo_id="${STAGING_REPO_ID_INPUT}"
           if [[ -z "${staging_repo_id}" ]]; then
             echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
             exit 1
@@ -78,6 +82,8 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Validate and extract version from RC tag
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -85,7 +91,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
             # Running from a tag
@@ -95,13 +101,13 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-incubating-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           # Validate git tag format and extract version components
           if ! validate_and_extract_git_tag_version "${git_tag}"; then
-            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-rcN." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -121,8 +127,8 @@ jobs:
 
       - name: Drop Apache Nexus staging repository
         env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$NEXUS_PASSWORD"
 
@@ -174,8 +180,8 @@ jobs:
 
       - name: Delete artifacts from Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -183,8 +189,8 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Define URLs for artifacts and Helm chart in dist dev
-          dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
-          dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
+          dev_artifacts_url="${APACHE_DIST_URL}/dev/polaris/${version_without_rc}"
+          dev_helm_url="${APACHE_DIST_URL}/dev/polaris/helm-chart/${version_without_rc}"
 
           # Check if artifacts directory exists and delete it
           if svn ls --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${dev_artifacts_url}" >/dev/null 2>&1; then

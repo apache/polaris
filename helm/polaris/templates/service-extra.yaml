@@ -18,9 +18,8 @@
 */}}
 
 {{- range $i, $svc := .Values.extraServices }}
-{{- if not $svc.nameSuffix }}
-{{- fail (printf "extraServices[%d]: missing required nameSuffix" $i) }}
-{{- else if or (eq $svc.nameSuffix "-mgmt") (eq $svc.nameSuffix "mgmt") }}
+{{- if $svc.nameSuffix }}
+{{- if or (eq $svc.nameSuffix "-mgmt") (eq $svc.nameSuffix "mgmt") }}
 {{- fail (printf "extraServices[%d]: invalid nameSuffix" $i) }}
 {{- end }}
 ---
@@ -66,4 +65,5 @@ spec:
   {{- if and $svc.trafficDistribution (ge (int $.Capabilities.KubeVersion.Minor) 31) }}
   trafficDistribution: {{ $svc.trafficDistribution }}
   {{- end }}
+{{- end }}
 {{- end }}

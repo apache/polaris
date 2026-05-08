@@ -45,18 +45,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
 
       - name: Set up environment variables
         id: set-outputs
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
           echo "## Mode" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          if [[ "${DRY_RUN_INPUT}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "dry_run=1" >> $GITHUB_OUTPUT
             echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
@@ -68,6 +71,8 @@ jobs:
 
       - name: Validate release candidate tag
         id: validate-tag
+        env:
+          GIT_REF: ${{ github.ref }}
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -75,7 +80,7 @@ jobs:
 
           # Extract the ref name from github.ref
           # github.ref format: refs/heads/branch-name or refs/tags/tag-name
-          ref="${{ github.ref }}"
+          ref="${GIT_REF}"
 
           if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
             # Running from a tag
@@ -85,13 +90,13 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-incubating-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           # Validate git tag format and extract version components
           if ! validate_and_extract_git_tag_version "${git_tag}"; then
-            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-rcN." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -131,6 +136,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -152,9 +158,9 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
-          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -171,8 +177,8 @@ jobs:
 
       - name: Stage artifacts to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -185,10 +191,16 @@ jobs:
           exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
           version_dir="${dist_dev_dir}/${version_without_rc}"
+
+          # If the version directory already exists in SVN (e.g. re-running the workflow),
+          # delete it so we can re-add fresh artifacts without "already versioned" errors.
+          if svn info "${version_dir}" &>/dev/null 2>&1; then
+            exec_process svn delete "${version_dir}"
+          fi
+
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
-          exec_process rm -f "${version_dir}/*vote-email{-subject,-body}.txt"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
@@ -203,8 +215,8 @@ jobs:
       - name: Publish and close Apache Nexus staging repository
         id: publish-nexus
         env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }}
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_STAGE_DEPLOYER_USER }} # zizmor: ignore[secrets-outside-env]
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_STAGE_DEPLOYER_PW }} # zizmor: ignore[secrets-outside-env]
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
@@ -257,6 +269,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -329,6 +342,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -339,7 +353,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: 'latest'
 
@@ -349,9 +363,9 @@ jobs:
           sudo apt-get install -y subversion
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
-          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -379,8 +393,8 @@ jobs:
 
       - name: Stage Helm chart to Apache dist dev repository
         env:
-          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -392,11 +406,19 @@ jobs:
           # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
           exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
-          exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
-          exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
+          helm_version_dir="${dist_dev_dir}/helm-chart/${version_without_rc}"
+
+          # If the helm version directory already exists in SVN (e.g. re-running the workflow),
+          # delete it so we can re-add fresh artifacts without "already versioned" errors.
+          if svn info "${helm_version_dir}" &>/dev/null 2>&1; then
+            exec_process svn delete "${helm_version_dir}"
+          fi
+
+          exec_process mkdir -p "${helm_version_dir}"
+          exec_process cp helm/polaris-${version_without_rc}.tgz* "${helm_version_dir}/"
 
           exec_process cd "${dist_dev_dir}"
-          exec_process svn add "helm-chart/${version_without_rc}"
+          exec_process svn add --parents "helm-chart/${version_without_rc}"
 
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
 
@@ -412,8 +434,8 @@ jobs:
 
       - name: Regenerate Helm index with archive versions
         env:
-          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
         run: |
           echo "::add-mask::$SVN_PASSWORD"
 
@@ -422,7 +444,7 @@ jobs:
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
 
           # Base URL for Apache Polaris helm charts archive
-          ARCHIVE_URL="https://archive.apache.org/dist/incubator/polaris/helm-chart"
+          ARCHIVE_URL="https://archive.apache.org/dist/polaris/helm-chart"
 
           # Temporary directory for downloads
           WORK_DIR=$(mktemp -d)
@@ -433,7 +455,7 @@ jobs:
           echo ""
           echo "Discovering chart versions from archive.apache.org..."
           ARCHIVE_VERSIONS=$(curl -sL "$ARCHIVE_URL/" | \
-            grep -oE 'href="[0-9]+\.[0-9]+\.[0-9]+-incubating/"' | \
+            grep -oE 'href="[0-9]+\.[0-9]+\.[0-9]+(-incubating)?/"' | \
             sed 's/href="//;s/\/"//' | \
             sort -V | uniq || echo "")
           echo "Found archive versions: $ARCHIVE_VERSIONS"
@@ -477,9 +499,16 @@ jobs:
           # Copy the updated index.yaml to the dist dev directory
           exec_process cp "$WORK_DIR/index.yaml" "${dist_dev_dir}/helm-chart/index.yaml"
 
-          # Commit the updated index
+          # Copy the artifacthub-repo.yml to the dist dev directory
+          exec_process cp "helm/polaris/artifacthub-repo.yml" "${dist_dev_dir}/helm-chart/artifacthub-repo.yml"
+
           exec_process cd "${dist_dev_dir}"
-          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} RC${rc_number}"
+          # Add index.yaml and artifacthub-repo.yml if not already versioned
+          # (they are removed from dist dev by workflow 4 after each release)
+          exec_process svn add helm-chart/index.yaml || true
+          exec_process svn add helm-chart/artifacthub-repo.yml || true
+          # Commit the updated index and artifacthub-repo.yml
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index and artifacthub-repo.yml for ${version_without_rc} RC${rc_number}"
 
           echo "## Helm Index Summary" >> $GITHUB_STEP_SUMMARY
           ARCHIVE_COUNT=$(echo "$ARCHIVE_VERSIONS" | grep -v '^$' | wc -w | tr -d ' ')
@@ -491,12 +520,132 @@ jobs:
           | Charts from archive.apache.org | ✅ ${ARCHIVE_COUNT} versions indexed |
           | Current RC | ✅ ${version_without_rc} added with relative URL |
           | Helm index | ✅ Committed to dist dev |
+          | Artifact Hub metadata | ✅ Committed to dist dev |
+          EOT
+
+  publish-python-client-rc:
+    name: Publish Python Client RC to PyPI
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks]
+    permissions:
+      contents: read
+      # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI
+      id-token: write
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up JDK for openapi-generator-cli
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }} # zizmor: ignore[secrets-outside-env]
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Build Python client RC for SVN
+        run: |
+          make client-rc-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Sign and checksum Python wheel
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          wheel_file=$(ls client/python/dist/*.whl)
+          calculate_sha512 "${wheel_file}"
+          exec_process gpg --armor --output "${wheel_file}.asc" --detach-sig "${wheel_file}"
+
+      - name: Stage Python wheel to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.POLARIS_SVN_DEV_USERNAME }} # zizmor: ignore[secrets-outside-env]
+          SVN_PASSWORD: ${{ secrets.POLARIS_SVN_DEV_PASSWORD }} # zizmor: ignore[secrets-outside-env]
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+
+          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
+          exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          python_client_version_dir="${dist_dev_dir}/python-client/${version_without_rc}"
+
+          # If the python-client version directory already exists in SVN (e.g. re-running the workflow),
+          # delete it so we can re-add fresh artifacts without "already versioned" errors.
+          if svn info "${python_client_version_dir}" &>/dev/null 2>&1; then
+            exec_process svn delete "${python_client_version_dir}"
+          fi
+
+          exec_process mkdir -p "${python_client_version_dir}"
+          exec_process cp client/python/dist/* "${python_client_version_dir}/"
+
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn add --parents "python-client/${version_without_rc}"
+
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Python client ${version_without_rc} RC${rc_number}"
+
+      - name: Build Python client RC for Test PyPI
+        run: |
+          make client-rc-testpypi-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
+
+      - name: Publish Python client RC to Test PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: client/python/dist/
+
+      - name: Update step summary
+        run: |
+          echo "## Python Client RC" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Python client RC published successfully:
+
+          | Property | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}\` |
+          | Apache dist dev | \`python-client/${version_without_rc}\` |
+          | Registry | Test PyPI |
           EOT
 
   generate-release-email:
     name: Generate Release Email Body
     runs-on: ubuntu-latest
-    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart]
+    needs:
+      - prerequisite-checks
+      - build-and-publish-artifacts
+      - build-docker
+      - build-and-stage-helm-chart
+      - publish-python-client-rc
     permissions:
       contents: read
     env:
@@ -511,6 +660,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
@@ -543,17 +693,23 @@ jobs:
           * https://github.com/apache/polaris/tree/${commit_sha}
 
           The release tarball, signature, and checksums are here:
-          * https://dist.apache.org/repos/dist/dev/incubator/polaris/${version_without_rc}
+          * https://dist.apache.org/repos/dist/dev/polaris/${version_without_rc}
 
           Helm charts are available on:
-          * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/${version_without_rc}
+          * https://dist.apache.org/repos/dist/dev/polaris/helm-chart/${version_without_rc}
 
           NB: you have to build the Docker images locally in order to test Helm charts.
 
-          You can find the KEYS file here:
-          * https://downloads.apache.org/incubator/polaris/KEYS
+          The Python CLI wheel is available on:
+          * https://dist.apache.org/repos/dist/dev/polaris/python-client/${version_without_rc}
 
-          Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
+          The Python CLI is also available on Test PyPI:
+          * https://test.pypi.org/project/apache-polaris/${version_without_rc}rc${rc_number}/
+
+          You can find the KEYS file here:
+          * https://downloads.apache.org/polaris/KEYS
+
+          Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
           * https://repository.apache.org/content/repositories/${staging_repository_id}/
 
           Please download, verify, and test according to the release verification guide, which can be found at:
@@ -561,11 +717,10 @@ jobs:
 
           Please vote in the next 72 hours.
 
-          [ ] +1 Release this as Apache polaris ${version_without_rc}
+          [ ] +1 Release this as Apache Polaris ${version_without_rc}
           [ ] +0
           [ ] -1 Do not release this because...
 
-          Only PPMC members and mentors have binding votes, but other community members are encouraged to cast non-binding votes. This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
-
-          NB: if this vote passes, a new vote has to be started on the Incubator general mailing list.
+          Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+          This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
           EOT

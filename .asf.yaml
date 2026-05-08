@@ -29,6 +29,10 @@ github:
     - polaris
     - iceberg
     - apache
+    - lakehouse
+    - opencatalog
+    - metadata
+    - catalog
 
   enabled_merge_buttons:
     merge: false
@@ -56,6 +60,8 @@ github:
           # "CI/PR" is the name of the workflow _job_ (jobs.ci-pr.name in ci-pr.yml),
           # "Required Checks" is the name of the workflow _job_ in ci.yml.
           - "CI/PR / Required Checks"
+          - "Zizmor"
+          - "CodeQL Analyze"
 
   features:
     wiki: false
@@ -75,7 +81,7 @@ notifications:
   commits:      commits@polaris.apache.org
   issues:       issues@polaris.apache.org
   pullrequests: issues@polaris.apache.org
-  discussions:  issues@polaris.apache.org
+  discussions:  dev@polaris.apache.org
   jira_options: link label
 
 publish:

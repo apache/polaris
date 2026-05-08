@@ -26,6 +26,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -69,7 +70,7 @@ public class DocGenDoclet implements Doclet {
 
         @Override
         public boolean process(String option, List<String> arguments) {
-          outputDirectory = Paths.get(arguments.get(0));
+          outputDirectory = Paths.get(arguments.getFirst());
           return true;
         }
       };
@@ -81,11 +82,13 @@ public class DocGenDoclet implements Doclet {
   public boolean run(DocletEnvironment environment) {
     var propertiesConfigs = new PropertiesConfigs(environment);
     var smallryeConfigs = new SmallRyeConfigs(environment);
+    var polarisConfigs = new PolarisConfigurationConfigs(environment);
 
     for (var includedElement : environment.getIncludedElements()) {
       try {
         includedElement.accept(propertiesConfigs.visitor(), null);
         includedElement.accept(smallryeConfigs.visitor(), null);
+        includedElement.accept(polarisConfigs.visitor(), null);
       } catch (RuntimeException ex) {
         throw new RuntimeException("Failure processing included element " + includedElement, ex);
       }
@@ -94,6 +97,8 @@ public class DocGenDoclet implements Doclet {
     propertiesConfigPages(propertiesConfigs);
 
     smallryeConfigPages(environment, smallryeConfigs);
+
+    polarisConfigPages(polarisConfigs);
 
     return true;
   }
@@ -154,6 +159,51 @@ public class DocGenDoclet implements Doclet {
                 throw new RuntimeException(e);
               }
             });
+  }
+
+  private void polarisConfigPages(PolarisConfigurationConfigs polarisConfigs) {
+    if (polarisConfigs.featureConfigs().isEmpty()
+        && polarisConfigs.behaviorChangeConfigs().isEmpty()) {
+      return;
+    }
+
+    if (!polarisConfigs.featureConfigs().isEmpty()) {
+      System.out.println("... generating polaris feature configurations page");
+      var page =
+          new PolarisConfigurationSectionPage(
+              "Feature configurations for Polaris. These are stable, user-facing settings.");
+
+      polarisConfigs.featureConfigs().stream()
+          .sorted(Comparator.comparing(PolarisConfigurationInfo::propertyName))
+          .forEach(page::addProperty);
+
+      var file = outputDirectory.resolve("flags-polaris_features.md");
+      try (var pw =
+          new PrintWriter(Files.newBufferedWriter(file, UTF_8, CREATE, TRUNCATE_EXISTING))) {
+        page.writeTo(pw);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    if (!polarisConfigs.behaviorChangeConfigs().isEmpty()) {
+      System.out.println("... generating polaris behavior change configurations page");
+      var page =
+          new PolarisConfigurationSectionPage(
+              "Internal behavior change configurations. These are unstable and may be removed.");
+
+      polarisConfigs.behaviorChangeConfigs().stream()
+          .sorted(Comparator.comparing(PolarisConfigurationInfo::propertyName))
+          .forEach(page::addProperty);
+
+      var file = outputDirectory.resolve("flags-polaris_behavior_changes.md");
+      try (var pw =
+          new PrintWriter(Files.newBufferedWriter(file, UTF_8, CREATE, TRUNCATE_EXISTING))) {
+        page.writeTo(pw);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   private void smallryeProcessRootMappingInfo(
@@ -261,15 +311,33 @@ public class DocGenDoclet implements Doclet {
     propertyInfo
         .groupType()
         .ifPresent(
-            groupType ->
-                smallryeProcessPropertyMappingInfo(
-                    logIndent + "  ",
-                    environment,
-                    smallryeConfigs,
-                    effectiveSection,
-                    smallryeConfigs.getConfigMappingInfo(groupType),
-                    fullName,
-                    sectionPages));
+            groupType -> {
+              var groupMappingInfo = smallryeConfigs.getConfigMappingInfo(groupType);
+
+              propertyInfo
+                  .unnamedKey()
+                  .ifPresent(
+                      unnamedKey -> {
+                        var unnamedFullName = concatWithDot(propertyNamePrefix, md.propertyName());
+                        smallryeProcessPropertyMappingInfo(
+                            logIndent + "  ",
+                            environment,
+                            smallryeConfigs,
+                            effectiveSection,
+                            groupMappingInfo,
+                            unnamedFullName,
+                            sectionPages);
+                      });
+
+              smallryeProcessPropertyMappingInfo(
+                  logIndent + "  ",
+                  environment,
+                  smallryeConfigs,
+                  effectiveSection,
+                  groupMappingInfo,
+                  fullName,
+                  sectionPages);
+            });
   }
 
   private String formatPropertyName(

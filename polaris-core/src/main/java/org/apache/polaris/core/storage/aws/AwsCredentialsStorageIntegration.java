@@ -21,13 +21,16 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -36,6 +39,7 @@ import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import org.slf4j.Logger;
@@ -97,8 +101,13 @@ public class AwsCredentialsStorageIntegration
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    List<String> sessionTagFieldNames =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    Set<SessionTagField> enabledSessionTagFields =
+        sessionTagFieldNames.stream()
+            .map(SessionTagField::fromConfigName)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
@@ -121,12 +130,13 @@ public class AwsCredentialsStorageIntegration
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
-      // Add session tags when the feature is enabled.
-      // Note: The trace ID is controlled at the source (StorageAccessConfigProvider).
-      // If INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, the context will contain the trace ID.
-      if (includeSessionTags) {
+      // Add session tags for the configured fields.
+      // Note: trace_id is only present in context when the caller has included it
+      // (StorageAccessConfigProvider populates it when "trace_id" is in enabledSessionTagFields).
+      if (!enabledSessionTagFields.isEmpty()) {
         List<Tag> sessionTags =
-            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
+            buildSessionTags(
+                polarisPrincipal.getName(), credentialVendingContext, enabledSessionTagFields);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support
@@ -228,12 +238,14 @@ public class AwsCredentialsStorageIntegration
         .distinct()
         .forEach(
             location -> {
-              URI uri = URI.create(location);
+              StorageUri uri = StorageUri.parse(location);
+              String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
               allowGetObjectStatementBuilder.addResource(
                   IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
-              final var bucket = arnPrefix + StorageUtil.getBucket(uri);
+                      arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
+              final var bucket = arnPrefix + uri.authority();
               if (allowList) {
+                String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
                 bucketListStatementBuilder
                     .computeIfAbsent(
                         bucket,
@@ -245,7 +257,7 @@ public class AwsCredentialsStorageIntegration
                     .addCondition(
                         IamConditionOperator.STRING_LIKE,
                         "s3:prefix",
-                        StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
+                        StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
               }
               bucketGetLocationStatementBuilder.computeIfAbsent(
                   bucket,
@@ -265,10 +277,11 @@ public class AwsCredentialsStorageIntegration
               .addAction("s3:DeleteObject");
       writeLocations.forEach(
           location -> {
-            URI uri = URI.create(location);
+            StorageUri uri = StorageUri.parse(location);
+            String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
             allowPutObjectStatementBuilder.addResource(
                 IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+                    arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }
@@ -389,10 +402,29 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
-  private static @Nonnull String parseS3Path(URI uri) {
-    String bucket = StorageUtil.getBucket(uri);
-    String path = trimLeadingSlash(uri.getPath());
+  private static @Nonnull String parseS3Path(StorageUri uri) {
+    String bucket = uri.authority();
+    String path = trimLeadingSlash(uri.rawPath());
     return String.join("/", bucket, path);
+  }
+
+  /**
+   * Escapes IAM pattern characters that must remain literal inside object resource ARNs and {@link
+   * IamConditionOperator#STRING_LIKE StringLike} conditions.
+   */
+  @VisibleForTesting
+  static @Nonnull String escapeIamGlobLiteral(String value) {
+    StringBuilder escaped = new StringBuilder(value.length() + 8);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '*' -> escaped.append("${*}");
+        case '?' -> escaped.append("${?}");
+        case '$' -> escaped.append("${$}");
+        default -> escaped.append(c);
+      }
+    }
+    return escaped.toString();
   }
 
   private static @Nonnull String trimLeadingSlash(String path) {

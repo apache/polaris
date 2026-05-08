@@ -21,26 +21,12 @@ package org.apache.polaris.core.persistence.cache;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 
-/** Result of a lookup operation */
-public class EntityCacheLookupResult {
-
-  // if not null, we found the entity and this is the entry. If not found, the entity was dropped or
-  // does not exist
-  private final @Nullable ResolvedPolarisEntity cacheEntry;
-
-  // true if the entity was found in the cache
-  private final boolean cacheHit;
-
-  public EntityCacheLookupResult(@Nullable ResolvedPolarisEntity cacheEntry, boolean cacheHit) {
-    this.cacheEntry = cacheEntry;
-    this.cacheHit = cacheHit;
-  }
-
-  public @Nullable ResolvedPolarisEntity getCacheEntry() {
-    return cacheEntry;
-  }
-
-  public boolean isCacheHit() {
-    return cacheHit;
-  }
-}
+/**
+ * Result of a lookup operation.
+ *
+ * @param cacheEntry if not null, we found the entity and this is the entry. If not found, the
+ *     entity was dropped or does not exist
+ * @param cacheHit true if the entity was found in the cache
+ */
+public record EntityCacheLookupResult(
+    @Nullable ResolvedPolarisEntity cacheEntry, boolean cacheHit) {}

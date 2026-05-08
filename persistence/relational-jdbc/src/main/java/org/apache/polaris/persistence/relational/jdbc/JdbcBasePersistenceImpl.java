@@ -58,6 +58,8 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
+import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -69,11 +71,13 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -777,25 +781,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  /**
-   * Checks if the metrics tables have been bootstrapped by querying the metrics_version table.
-   *
-   * @param datasourceOperations the datasource operations to use for the check
-   * @return true if the metrics_version table exists and contains data, false otherwise
-   */
-  public static boolean metricsTableExists(DatasourceOperations datasourceOperations) {
-    PreparedQuery query = QueryGenerator.generateMetricsVersionQuery();
-    try {
-      List<SchemaVersion> versions = datasourceOperations.executeSelect(query, new SchemaVersion());
-      return versions != null && !versions.isEmpty();
-    } catch (SQLException e) {
-      if (datasourceOperations.isRelationDoesNotExist(e)) {
-        return false;
-      }
-      throw new IllegalStateException("Failed to check if metrics tables exist", e);
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
@@ -1295,5 +1280,60 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @FunctionalInterface
   private interface QueryAction {
     Integer apply(Connection connection, QueryGenerator.PreparedQuery query) throws SQLException;
+  }
+
+  // ============================================================================
+  // MetricsPersistence Implementation
+  // ============================================================================
+
+  /** Returns the datasource operations to use for metrics persistence. */
+  private DatasourceOperations getMetricsDatasource() {
+    return datasourceOperations;
+  }
+
+  @Override
+  public void writeScanReport(@Nonnull ScanMetricsRecord record) {
+    ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
+    writeScanMetricsReport(model);
+  }
+
+  @Override
+  public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+    ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
+    writeCommitMetricsReport(model);
+  }
+
+  // ========== Internal Metrics JDBC methods ==========
+
+  private void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+    DatasourceOperations metricsOps = getMetricsDatasource();
+    try {
+      PreparedQuery pq =
+          QueryGenerator.generateInsertQuery(
+              ModelScanMetricsReport.ALL_COLUMNS,
+              ModelScanMetricsReport.TABLE_NAME,
+              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
+              realmId);
+      metricsOps.executeUpdate(pq);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  private void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+    DatasourceOperations metricsOps = getMetricsDatasource();
+    try {
+      PreparedQuery pq =
+          QueryGenerator.generateInsertQuery(
+              ModelCommitMetricsReport.ALL_COLUMNS,
+              ModelCommitMetricsReport.TABLE_NAME,
+              report.toMap(metricsOps.getDatabaseType()).values().stream().toList(),
+              realmId);
+      metricsOps.executeUpdate(pq);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
+    }
   }
 }

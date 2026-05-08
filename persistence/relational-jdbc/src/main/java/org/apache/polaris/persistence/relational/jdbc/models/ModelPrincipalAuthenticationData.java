@@ -79,11 +79,11 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   public PolarisPrincipalSecrets fromResultSet(ResultSet rs) throws SQLException {
     var modelRecord =
         ModelPrincipalAuthenticationData.builder()
-            .principalId(rs.getObject("principal_id", Long.class))
-            .principalClientId(rs.getObject("principal_client_id", String.class))
-            .mainSecretHash(rs.getObject("main_secret_hash", String.class))
-            .secondarySecretHash(rs.getObject("secondary_secret_hash", String.class))
-            .secretSalt(rs.getObject("secret_salt", String.class))
+            .principalId(rs.getLong("principal_id"))
+            .principalClientId(rs.getString("principal_client_id"))
+            .mainSecretHash(rs.getString("main_secret_hash"))
+            .secondarySecretHash(rs.getString("secondary_secret_hash"))
+            .secretSalt(rs.getString("secret_salt"))
             .build();
 
     return toPrincipalAuthenticationData(modelRecord);

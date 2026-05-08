@@ -23,7 +23,7 @@ type: docs
 weight: 200
 ---
 
-This section provides information about how access control works for Apache Polaris (Incubating).
+This section provides information about how access control works for Apache Polaris.
 
 Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
 and then grants access to resources to principals by assigning catalog roles to principal roles.
@@ -129,6 +129,13 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 | VIEW_READ_PROPERTIES | Enables reading all the view properties. |
 | VIEW_WRITE_PROPERTIES | Enables configuring view properties. |
 | VIEW_FULL_METADATA | Grants all view privileges. |
+
+{{< alert warning >}}
+Table and view properties are readable metadata. Principals with
+`TABLE_READ_PROPERTIES` / `TABLE_FULL_METADATA` or `VIEW_READ_PROPERTIES` /
+`VIEW_FULL_METADATA` can read them. Do not store passwords, tokens, access
+keys, or other secrets in table or view properties.
+{{< /alert >}}
 
 ### Namespace privileges
 

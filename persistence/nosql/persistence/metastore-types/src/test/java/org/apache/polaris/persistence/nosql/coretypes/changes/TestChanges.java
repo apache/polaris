@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -77,5 +78,18 @@ public class TestChanges {
         ChangeRename.builder().renameFrom(key("foo")).build(),
         ChangeRename.builder().renameFrom(key(42L)).build(),
         ChangeUpdate.builder().build());
+  }
+
+  @Test
+  void serializeNullWritesToTarget() {
+    var target = ByteBuffer.allocate(256);
+    var returned = CHANGE_SERIALIZER.serialize(null, target);
+
+    soft.assertThat(returned).isSameAs(target);
+    soft.assertThat(target.position()).isGreaterThan(0);
+
+    target.flip();
+    var deserialized = CHANGE_SERIALIZER.deserialize(target);
+    soft.assertThat(deserialized).isNull();
   }
 }

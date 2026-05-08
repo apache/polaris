@@ -31,7 +31,38 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+### Breaking changes
+- The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
+- The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
+- Entity names (namespaces, tables, views, generic tables) submitted to the REST layer are now rejected with HTTP 400 if they are empty, contain a `/`, or have leading/trailing whitespace. Clients that were previously able to create such entities must rename them before upgrading.
+
+### New Features
+- Added `envFrom` support in Helm chart.
+- Added summarize subcommand to Polaris CLI.
+- Added find and tables options to Polaris CLI.
+- Added support for multiple event listeners. Set `polaris.event-listener.types` to a comma-separated list of event listener types to enable multiple event listeners.
+- Added support for enabling only a subset of event types and event categories per event listener. Set `polaris.event-listener.`_`<name>`_`.enabled-event-types` or `polaris.event-listener.`_`<name>`_`.enabled-event-categories` to the list of event types or categories for the specified event listener to only consume the selected subset of events.
+- Added support for **Apache Ranger** as an external authorizer (Beta).
+
+### Changes
+- Removed unused `PolarisAuthorizableOperation` values: `REVOKE_PRINCIPAL_GRANT_FROM_PRINCIPAL_ROLE`, `REVOKE_PRINCIPAL_ROLE_GRANT_FROM_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_ROOT`, `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL`, `ADD_PRINCIPAL_ROLE_GRANT_TO_PRINCIPAL_ROLE`, `LIST_GRANTS_ON_PRINCIPAL_ROLE`, `ADD_CATALOG_ROLE_GRANT_TO_CATALOG_ROLE`, `REVOKE_CATALOG_ROLE_GRANT_FROM_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG_ROLE`, `LIST_GRANTS_ON_CATALOG`, `LIST_GRANTS_ON_NAMESPACE`, `LIST_GRANTS_ON_TABLE`, `LIST_GRANTS_ON_VIEW`.
+- Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
+
+### Deprecations
+- The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
+
+### Fixes
+
+### Commits
+
+## [1.4.0]
+
+### Upgrade notes
+
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
+- The Helm chart now includes a JSON schema file for easy validation of values files. Because types 
+  are now validated, existing values files may need to be updated to match the new schema.
+  
 
 ### Breaking changes
 
@@ -40,20 +71,26 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
 - The `ExternalCatalogFactory.createCatalog()` and `createGenericCatalog()` method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 - Metrics reporting now requires the `TABLE_READ_DATA` privilege on the target table for read (scan) metrics and `TABLE_WRITE_DATA` for write (commit) metrics.
+- The `REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE` operation no longer requires the `PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE` privilege. Only `CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE` on the catalog role is now required, making revoke symmetric with assign. This allows catalog administrators to fully manage catalog role assignments without requiring elevated privileges on principal roles.
 
 ### New Features
 
+- Added `deploymentAnnotations` support in Helm chart.
 - Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added `topologySpreadConstraints` support in Helm chart.
 - Added `priorityClassName` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
-- Added support for including OpenTelemetry trace IDs in AWS STS session tags. This requires session tags to be enabled via `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and can be toggled with `INCLUDE_TRACE_ID_IN_SESSION_TAGS` (default: false). Note: enabling trace IDs disables credential caching (each request has a unique trace ID), which may increase STS calls and latency.
+- Added per-field selection for AWS STS session tags in credential vending. The new `SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` configuration accepts a comma-separated list of fields to include as session tags (supported: `realm`, `catalog`, `namespace`, `table`, `principal`, `roles`, `trace_id`). This replaces the previous `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and `INCLUDE_TRACE_ID_IN_SESSION_TAGS` boolean flags. Selecting only the fields needed helps avoid AWS STS packed policy size limit errors (2048 characters) caused by long namespace paths. Note: including `trace_id` disables credential caching, which may increase STS calls and latency.
 - Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart.
 - Added `hierarchical` flag to `AzureStorageConfigInfo` to allow more precise SAS token down-scoping in ADLS when
   the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
   feature is enabled in Azure.
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 - Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
+- Added support for storage-scoped AWS credentials, allowing different AWS credentials to be configured per named storage. Enable with the `RESOLVE_CREDENTIALS_BY_STORAGE_NAME` feature flag (default: false). Storage names can be set explicitly via the `storageName` field on storage configuration, or inferred from the first allowed location's host.
+- Added support for persisting Iceberg metrics (ScanReport, CommitReport) to the database. Enable by setting `polaris.iceberg-metrics.reporting.type=persisting` in configuration. Metrics tables are included in the main JDBC schema.
+- Added setup options to Polaris CLI.
+- Added CockroachDB as a supported database for the relational JDBC persistence backend. Set `polaris.persistence.relational.jdbc.database-type` to `cockroachdb` to get started.
 
 ### Changes
 
@@ -73,8 +110,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Fixed error propagation in drop operations (`dropTable`, `dropView`, `dropNamespace`). Server errors now return appropriate HTTP status codes based on persistence result instead of always returning NotFound
 - Enable non-AWS STS role ARNs
-
-### Commits
+- Helm chart: fixed a bug that prevented CORS settings to be properly applied. A new setting `cors.enabled` has been introduced in the chart as part of the fix.
 
 ## [1.3.0-incubating]
 
@@ -264,3 +300,4 @@ Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release
 [0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+[Apache Ranger Authorization]: https://ranger.apache.org/

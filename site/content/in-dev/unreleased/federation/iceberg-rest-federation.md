@@ -33,6 +33,16 @@ REST implementation), enabling a Polaris service to access table and view entiti
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, and AWS
   SigV4 are supported; choose the scheme the remote service expects.
 
+## Feature configuration
+
+The catalog federation feature is disabled by default. Enable the necessary feature flag in your application.properties
+file (or equivalent configuration mechanism such as environment variables or a Kubernetes ConfigMap):
+
+```properties
+# Enables the federation feature itself
+polaris.features."ENABLE_CATALOG_FEDERATION"=true
+```
+
 ## Creating a federated REST catalog
 
 The snippet below registers an external catalog that forwards to a remote Polaris server using OAuth2
@@ -52,7 +62,7 @@ polaris catalogs create \
     --catalog-token-uri "https://remote-polaris.example.com/catalog/v1/oauth/tokens" \
     --catalog-client-id "<remote-client-id>" \
     --catalog-client-secret "<remote-client-secret>" \
-    --catalog-client-scopes "PRINCIPAL_ROLE:ALL" \
+    --catalog-client-scope "PRINCIPAL_ROLE:ALL" \
     analytics_rest
 ```
 
@@ -63,16 +73,20 @@ receive tokens with access to the federated namespace.
 
 ## Outbound HTTP settings
 
-Iceberg REST federation uses Iceberg's HTTP client. You can pass through HTTP settings by adding
-catalog properties when creating or updating the external catalog (via `--property` or
-`--set-property`).
+Iceberg REST federation uses Iceberg's HTTP client. You can pass through non-sensitive HTTP
+settings by adding catalog properties when creating or updating the external catalog (via
+`--property` or `--set-property`).
+
+{{< alert warning >}}
+Catalog properties are returned to authenticated catalog clients as part of the Iceberg REST
+`/config` response. Only place non-sensitive client configuration in catalog properties. Do not put
+passwords, tokens, access keys, or other secrets into catalog properties.
+{{< /alert >}}
 
 Common settings include:
 
 - `rest.client.proxy.hostname`
 - `rest.client.proxy.port`
-- `rest.client.proxy.username`
-- `rest.client.proxy.password`
 - `rest.client.connection-timeout-ms`
 - `rest.client.socket-timeout-ms`
 

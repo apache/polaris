@@ -32,19 +32,21 @@ Usage: $0 [options]
   Mandatory options:
     -s | --git-sha | --sha <GIT_SHA>   Git commit (full, not abbreviated)
                                        Example: b7188a07511935e7c9c64128dc047107c26f97f6
-    -v | --version <version>           Release version, including '-incubating' and RC
-                                       Example: 1.3.0-incubating-rc0
+    -v | --version <version>           Release version, including RC
+                                       Example: 1.4.0-rc0
     -m | --maven-repo-id <staging-ID>  Staging Maven repository staging ID
                                        Example: 1234
                                        This will be prefixed with ${maven_repo_url_prefix}
 
   Optional arguments:
+    -r | --reproducible-builds         Perform reproducible build comparisons (default: off)
+                                       Requires additional tools: helm, zipcmp
     -k | --keep-temp-dir               Keep the temporary directory (default is to purge it once the script exits)
     -h | --help                        Show usage information (exits early)
 
 
 Full example for RC4 of version 9.8.0, staging repo ID 4568.
-  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 9.8.0-incubating-rc4 -m 4568
+  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 9.8.0-rc4 -m 4568
 !
 }
 
@@ -52,6 +54,7 @@ git_sha=""
 version=""
 maven_repo_id=""
 keep_temp_dir=0
+reproducible_builds=0
 
 while [[ $# -gt 0 ]]; do
   arg="$1"
@@ -75,6 +78,9 @@ while [[ $# -gt 0 ]]; do
   -k | --keep-temp-dir)
     keep_temp_dir=1
     ;;
+  -r | --reproducible-builds)
+    reproducible_builds=1
+    ;;
   *)
     usage
     exit 1
@@ -90,7 +96,7 @@ RESET='\033[m'
 # Allow leading characters, but only extract the version and rc.
 VERSION_RC_REGEX="^([a-z-]+)?([0-9]+\.[0-9]+\.[0-9]+(-incubating)?)-rc([0-9]+)$"
 if [[ ! ${version} =~ ${VERSION_RC_REGEX} ]]; then
-  echo "Version '${version}' does not match the version pattern 0.0.0-incubating-rc0" > /dev/stderr
+  echo "Version '${version}' does not match the version pattern 0.0.0-rc0" > /dev/stderr
   exit 1
 fi
 version="${BASH_REMATCH[2]}"
@@ -147,8 +153,8 @@ ulimit -n 16384
 
 failures_file="$(pwd)/${run_id}.log"
 
-dist_url_prefix="https://dist.apache.org/repos/dist/dev/incubator/polaris/"
-keys_file_url="https://downloads.apache.org/incubator/polaris/KEYS"
+dist_url_prefix="https://dist.apache.org/repos/dist/dev/polaris/"
+keys_file_url="https://downloads.apache.org/polaris/KEYS"
 
 git_tag_full="apache-polaris-${version}-rc${rc_num}"
 
@@ -168,6 +174,8 @@ find_excludes=(
   # ignore Maven repository metadata
   '!' '-name' 'maven-metadata*.xml'
   '!' '-name' 'archetype-catalog.xml'
+  # vote email template files do not have signatures or checksums
+  '!' '-name' '*.vote-email-*.txt'
 )
 
 dist_url="${dist_url_prefix}${version}"
@@ -219,14 +227,21 @@ function log_info {
 #   Following arguments: process arguments
 function proc_exec {
   local err_msg
-  local output
+  local output_file
+  local exit_code
   err_msg=$1
   shift
-  output=()
-  IFS=$'\n' read -r -d '' -a output < <( "${@}" 2>&1 && printf '\0' ) || (
-    log_fatal "${err_msg}" "${output[@]}"
+  output_file=$(mktemp)
+  "${@}" > "${output_file}" 2>&1
+  exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    local output
+    output=$(cat "${output_file}")
+    rm -f "${output_file}"
+    log_fatal "${err_msg}" "${output}"
     return 1
-  )
+  fi
+  rm -f "${output_file}"
 }
 
 function mirror {
@@ -381,12 +396,19 @@ function compare_binary_file {
 }
 
 missing_tools=()
-for mandatory_tool in wget gunzip find git helm java gpg md5sum shasum tar curl zipcmp zipinfo ; do
+for mandatory_tool in wget gunzip find git java gpg md5sum shasum tar curl zipinfo ; do
   which "${mandatory_tool}" > /dev/null || missing_tools+=("${mandatory_tool}")
 done
+if [[ $reproducible_builds -eq 1 ]]; then
+  for reproducible_tool in helm zipcmp ; do
+    which "${reproducible_tool}" > /dev/null || missing_tools+=("${reproducible_tool}")
+  done
+fi
 if [[ ${#missing_tools} -ne 0 ]]; then
   log_fatal "Mandatory tools ${missing_tools[*]} are missing, please install those first."
-  log_info " Note for macOS: zipcmp can be installed with brew via libzip"
+  if [[ $reproducible_builds -eq 1 ]]; then
+    log_info " Note for macOS: zipcmp can be installed with brew via libzip"
+  fi
   exit 1
 fi
 if ! which wget2 > /dev/null; then
@@ -433,6 +455,7 @@ Maven repo URL:    ${maven_repo_url}
 Main dist URL:     ${dist_url}
 Helm chart URL:    ${helm_url}
 Verify directory:  ${temp_dir}
+Reproducible builds check: $([[ $reproducible_builds -eq 1 ]] && echo "enabled" || echo "disabled (use --reproducible-builds to enable)")
 
 A verbose log containing the identified issues will be available here:
     ${failures_file}
@@ -462,7 +485,6 @@ log_info "Git commit on tag '${git_tag_full}':   ${git_sha_on_tag}"
 log_part_end
 
 log_part_start "Verify mandatory files in source tree"
-  [[ -e "${worktree_dir}/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in source tree"
   [[ -e "${worktree_dir}/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in source tree"
   [[ -e "${worktree_dir}/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in source tree"
   [[ "$(cat "${worktree_dir}/version.txt")" == "${version}" ]] || log_fatal "version.txt in source tree does not contain expected version"
@@ -491,55 +513,70 @@ mkdir -p "${maven_local_dir}"
 log_part_end
 
 # Check that the the set of locally built Maven artifacts and staged Maven artifacts is the same.
-log_part_start "Comparing Maven build artifacts ..."
+echo "Listing locally built Maven artifacts..."
 (cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
   | sort \
   > "${temp_dir}/maven-local-files"
-(cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
-  | sort \
-  > "${temp_dir}/maven-repo-files"
-proc_exec "List of locally build Maven artifacts and staged artifacts differs!" \
-  diff "${temp_dir}/maven-local-files" "${temp_dir}/maven-repo-files" || true
-log_part_end
+if [[ $reproducible_builds -eq 1 ]]; then
+  log_part_start "Comparing Maven build artifacts ..."
+  (cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
+    | sort \
+    > "${temp_dir}/maven-repo-files"
+  proc_exec "List of locally build Maven artifacts and staged artifacts differs!" \
+    diff "${temp_dir}/maven-local-files" "${temp_dir}/maven-repo-files" || true
+  log_part_end
+fi
 
-# Verify that the locally built Maven artifacts are reproducible (binary equal)
-log_part_start "Comparing Maven repository artifacts, this will take a little while..."
-echo "  Local Maven repo:       ${maven_local_dir}"
-echo "  Downloaded Maven repo:  ${maven_repo_dir}"
-echo "Checking for binary equality..."
-while read -r fn ; do
-  compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
-done < "${temp_dir}/maven-local-files"
+log_part_start "Checking Maven repository artifact content..."
+if [[ $reproducible_builds -eq 1 ]]; then
+  echo "  Local Maven repo:       ${maven_local_dir}"
+  echo "  Downloaded Maven repo:  ${maven_repo_dir}"
+  echo "Checking for binary equality..."
+  while read -r fn ; do
+    compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
+  done < "${temp_dir}/maven-local-files"
+fi
 # verify that the "main" and sources jars contain LICENSE + NOTICE files
+# (Spark JARs are excluded as they do not contain META-INF/LICENSE and META-INF/NOTICE)
 echo "Checking for mandatory jar file content..."
 while read -r fn ; do
   [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] && \
     log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
-done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files")
+done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files" \
+  | grep -v -- "polaris-spark")
 log_part_end
 
-log_part_start "Comparing main distribution artifacts"
-compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
+log_part_start "Checking main distribution artifact content"
+if [[ $reproducible_builds -eq 1 ]]; then
+  compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
+fi
 dist_file_prefix="polaris-bin-${version}"
-compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
-  log_fatal "${dist_file_prefix}.tgz: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
-compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
-  log_fatal "${dist_file_prefix}.zip: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
+if [[ $reproducible_builds -eq 1 ]]; then
+  compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
+fi
+[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 2 ]] && \
+  log_fatal "${dist_file_prefix}.tgz: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
+if [[ $reproducible_builds -eq 1 ]]; then
+  compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
+fi
+[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(LICENSE|NOTICE)$") -ne 2 ]] && \
+  log_fatal "${dist_file_prefix}.zip: Mandatory LICENSE/NOTICE files not in ${dist_file_prefix}/"
 log_part_end
 
-log_part_start "Comparing helm chart artifacts"
+log_part_start "Checking helm chart content"
 mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
-# Prerequisite for reproducible helm packages: file modification time must be deterministic
-# Works with helm since version 4.0.0
-find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
-proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
+if [[ $reproducible_builds -eq 1 ]]; then
+  # Prerequisite for reproducible helm packages: file modification time must be deterministic
+  # Works with helm since version 4.0.0
+  find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
+  proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
+fi
 helm_package_file="polaris-${version}.tgz"
 tar ${tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
-tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
-proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
-[[ -e "${helm_work_dir}/staged/polaris/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in Helm package ${helm_package_file}"
+if [[ $reproducible_builds -eq 1 ]]; then
+  tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
+  proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
+fi
 [[ -e "${helm_work_dir}/staged/polaris/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in Helm package ${helm_package_file}"
 log_part_end
@@ -563,6 +600,9 @@ INSPECT THE CONTENTS OF THE ABOVE FILE _BEFORE_ REPORTING THE RELEASE CONTENTS A
 * Checksum mismatches MUST be treated as fatal.
 * Files being reported as missing MUST be treated as fatal.
 
+!
+  if [[ $reproducible_builds -eq 1 ]]; then
+    cat << !
 The Polaris build is not yet fully reproducible.
 A list of known reproducible build issues is maintained in https://github.com/apache/polaris/issues/2204.
 
@@ -577,6 +617,7 @@ Pending on full support for reproducible builds in Quarkus:
 * Zips and tarballs containing any of the above are not guaranteed to be reproducible.
 
 !
+  fi
   exit 1
 else
   cat << !
@@ -587,7 +628,7 @@ else
 None of the implemented automatic staged release checks reported a mismatch or failure.
 * The source tarball matches the contents at the referenced Git commit.
 * GPG signatures and checksums are valid and correct.
-* The locally built release artifacts are binary equal to the staged release artifacts.
+$([[ $reproducible_builds -eq 1 ]] && echo "* The locally built release artifacts are binary equal to the staged release artifacts.")
 
 The contents of all LICENSE and NOTICE files however MUST be verified manually.
 

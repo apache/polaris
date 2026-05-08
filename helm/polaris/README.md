@@ -19,7 +19,7 @@
 
 # Helm Chart for Apache Polaris
 
-[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/search?repo=apache-polaris)
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/helm/apache-polaris/polaris)
 
 [Apache Polaris](https://polaris.apache.org/) is an open-source, fully-featured catalog for Apache Iceberg™. It 
 implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, 
@@ -27,8 +27,8 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 
 ## Requirements
 
-- Kubernetes 1.32+ cluster
-- Helm 3.0+
+- Kubernetes 1.33+ cluster
+- Helm 3.x or 4.x
 
 ## Features
 
@@ -39,11 +39,11 @@ including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRo
 * Centralized catalog, namespace, and table management
 * Kubernetes-native deployment with support for horizontal scaling, Ingress, and Gateway API
 * Production-ready observability with health checks and metrics
-* Open source and vendor neutral, governed by the Apache Polaris PPMC under the Apache Software Foundation
+* Open source and vendor neutral, governed by the Apache Polaris PMC under the Apache Software Foundation
 
 ## Documentation
 
-Full documentation for Helm Chart lives [on the website](https://polaris.apache.org/in-dev/unreleased/helm/).
+Full documentation for Helm Chart lives [on the website](https://polaris.apache.org/releases/latest/helm-chart/).
 
 ## Contributing
 

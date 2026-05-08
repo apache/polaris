@@ -90,8 +90,7 @@ public class RustfsExtension
       RustfsAccess container =
           context
               .getStore(NAMESPACE)
-              .getOrComputeIfAbsent(
-                  field.toString(), x -> createContainer(rustfs), RustfsAccess.class);
+              .computeIfAbsent(field.toString(), x -> createContainer(rustfs), RustfsAccess.class);
 
       makeAccessible(field).set(context.getTestInstance().orElse(null), container);
     } catch (Throwable t) {
@@ -115,7 +114,7 @@ public class RustfsExtension
       throws ParameterResolutionException {
     return extensionContext
         .getStore(NAMESPACE)
-        .getOrComputeIfAbsent(
+        .computeIfAbsent(
             RustfsExtension.class.getName() + '#' + parameterContext.getParameter().getName(),
             k -> {
               Rustfs rustfs = parameterContext.findAnnotation(Rustfs.class).get();

@@ -23,100 +23,43 @@ import java.time.Instant;
  *
  * <p>This is the persistence-agnostic representation used by higher layers; storage backends map
  * their concrete schemas into this type.
+ *
+ * @param realmId Logical tenant / realm identifier.
+ * @param idempotencyKey Client-provided idempotency key.
+ * @param operationType Logical operation type (e.g. {@code "commit-table"}).
+ * @param normalizedResourceId Request-derived, fully-qualified identifier of the affected resource
+ *     (see {@link #normalizedResourceId ()}).
+ * @param httpStatus HTTP status code returned to the client once finalized; {@code null} while
+ *     in-progress.
+ * @param errorSubtype Optional error subtype/code when the operation failed.
+ * @param responseSummary Minimal serialized representation of the response body for replay.
+ * @param responseHeaders Serialized representation of a small, whitelisted set of response headers
+ *     for replay.
+ * @param finalizedAt Timestamp when the operation was finalized; {@code null} while in-progress.
+ * @param createdAt Timestamp when the record was created.
+ * @param updatedAt Timestamp when the record was last updated.
+ * @param heartbeatAt Timestamp of the most recent heartbeat while in-progress; {@code null} if
+ *     never heartbeated.
+ * @param executorId Identifier of the executor that owns the in-progress reservation; {@code null}
+ *     if not owned.
+ * @param expiresAt Timestamp after which the reservation is considered expired and eligible for
+ *     purging.
  */
-public final class IdempotencyRecord {
-
-  /** Logical tenant / realm identifier. */
-  private final String realmId;
-
-  /** Client-provided idempotency key. */
-  private final String idempotencyKey;
-
-  /** Logical operation type (e.g. {@code "commit-table"}). */
-  private final String operationType;
-
-  /**
-   * Request-derived, fully-qualified identifier of the affected resource (see {@link
-   * #getNormalizedResourceId()}).
-   */
-  private final String normalizedResourceId;
-
-  /** HTTP status code returned to the client once finalized; {@code null} while in-progress. */
-  private final Integer httpStatus;
-
-  /** Optional error subtype/code when the operation failed. */
-  private final String errorSubtype;
-
-  /** Minimal serialized representation of the response body for replay. */
-  private final String responseSummary;
-
-  /** Serialized representation of a small, whitelisted set of response headers for replay. */
-  private final String responseHeaders;
-
-  /** Timestamp when the operation was finalized; {@code null} while in-progress. */
-  private final Instant finalizedAt;
-
-  /** Timestamp when the record was created. */
-  private final Instant createdAt;
-
-  /** Timestamp when the record was last updated. */
-  private final Instant updatedAt;
-
-  /**
-   * Timestamp of the most recent heartbeat while in-progress; {@code null} if never heartbeated.
-   */
-  private final Instant heartbeatAt;
-
-  /**
-   * Identifier of the executor that owns the in-progress reservation; {@code null} if not owned.
-   */
-  private final String executorId;
-
-  /** Timestamp after which the reservation is considered expired and eligible for purging. */
-  private final Instant expiresAt;
-
-  public IdempotencyRecord(
-      String realmId,
-      String idempotencyKey,
-      String operationType,
-      String normalizedResourceId,
-      Integer httpStatus,
-      String errorSubtype,
-      String responseSummary,
-      String responseHeaders,
-      Instant createdAt,
-      Instant updatedAt,
-      Instant finalizedAt,
-      Instant heartbeatAt,
-      String executorId,
-      Instant expiresAt) {
-    this.realmId = realmId;
-    this.idempotencyKey = idempotencyKey;
-    this.operationType = operationType;
-    this.normalizedResourceId = normalizedResourceId;
-    this.httpStatus = httpStatus;
-    this.errorSubtype = errorSubtype;
-    this.responseSummary = responseSummary;
-    this.responseHeaders = responseHeaders;
-    this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
-    this.finalizedAt = finalizedAt;
-    this.heartbeatAt = heartbeatAt;
-    this.executorId = executorId;
-    this.expiresAt = expiresAt;
-  }
-
-  public String getRealmId() {
-    return realmId;
-  }
-
-  public String getIdempotencyKey() {
-    return idempotencyKey;
-  }
-
-  public String getOperationType() {
-    return operationType;
-  }
+public record IdempotencyRecord(
+    String realmId,
+    String idempotencyKey,
+    String operationType,
+    String normalizedResourceId,
+    Integer httpStatus,
+    String errorSubtype,
+    String responseSummary,
+    String responseHeaders,
+    Instant createdAt,
+    Instant updatedAt,
+    Instant finalizedAt,
+    Instant heartbeatAt,
+    String executorId,
+    Instant expiresAt) {
 
   /**
    * Normalized identifier of the resource affected by the operation.
@@ -129,7 +72,8 @@ public final class IdempotencyRecord {
    * scoped to avoid false conflicts (for example, include the catalog/warehouse identifier when
    * applicable).
    */
-  public String getNormalizedResourceId() {
+  @Override
+  public String normalizedResourceId() {
     return normalizedResourceId;
   }
 
@@ -139,7 +83,8 @@ public final class IdempotencyRecord {
    * <p>Remains {@code null} while the record is {@code IN_PROGRESS} and is set only when the
    * operation reaches a terminal 2xx or 4xx state.
    */
-  public Integer getHttpStatus() {
+  @Override
+  public Integer httpStatus() {
     return httpStatus;
   }
 
@@ -149,7 +94,8 @@ public final class IdempotencyRecord {
    * <p>Examples include {@code already_exists}, {@code namespace_not_empty}, or {@code
    * idempotency_replay_failed}.
    */
-  public String getErrorSubtype() {
+  @Override
+  public String errorSubtype() {
     return errorSubtype;
   }
 
@@ -160,7 +106,8 @@ public final class IdempotencyRecord {
    * <p>This is typically a compact JSON string that contains just enough information for the HTTP
    * layer to reconstruct the response for duplicate idempotent requests.
    */
-  public String getResponseSummary() {
+  @Override
+  public String responseSummary() {
     return responseSummary;
   }
 
@@ -170,25 +117,19 @@ public final class IdempotencyRecord {
    * <p>Stored as a JSON string so that the HTTP layer can replay key headers (such as {@code
    * Content-Type}) when serving a duplicate idempotent request.
    */
-  public String getResponseHeaders() {
+  @Override
+  public String responseHeaders() {
     return responseHeaders;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
   }
 
   /**
    * Timestamp indicating when the record was finalized.
    *
-   * <p>Set at the same time as {@link #getHttpStatus()} when the operation completes; {@code null}
+   * <p>Set at the same time as {@link #httpStatus ()} when the operation completes; {@code null}
    * while the record is still {@code IN_PROGRESS}.
    */
-  public Instant getFinalizedAt() {
+  @Override
+  public Instant finalizedAt() {
     return finalizedAt;
   }
 
@@ -198,7 +139,8 @@ public final class IdempotencyRecord {
    * <p>This is updated by the owning executor to signal liveness and is used by reconciliation
    * logic to detect stuck or abandoned in-progress records.
    */
-  public Instant getHeartbeatAt() {
+  @Override
+  public Instant heartbeatAt() {
     return heartbeatAt;
   }
 
@@ -206,12 +148,14 @@ public final class IdempotencyRecord {
    * Identifier of the executor (for example pod or worker id) that currently owns the in-progress
    * reservation.
    */
-  public String getExecutorId() {
+  @Override
+  public String executorId() {
     return executorId;
   }
 
   /** Timestamp after which the reservation is considered expired and eligible for purging. */
-  public Instant getExpiresAt() {
+  @Override
+  public Instant expiresAt() {
     return expiresAt;
   }
 

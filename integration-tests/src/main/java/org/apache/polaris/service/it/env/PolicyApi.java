@@ -26,9 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -56,7 +56,7 @@ public class PolicyApi extends PolarisRestApi {
   }
 
   public List<PolicyIdentifier> listPolicies(String catalog, Namespace namespace, PolicyType type) {
-    String ns = RESTUtil.encodeNamespace(namespace);
+    String ns = NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     Map<String, String> queryParams = new HashMap<>();
     if (type != null) {
       queryParams.put("policyType", type.getName());
@@ -77,7 +77,9 @@ public class PolicyApi extends PolarisRestApi {
   }
 
   public void dropPolicy(String catalog, PolicyIdentifier policyIdentifier, Boolean detachAll) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     Map<String, String> queryParams = new HashMap<>();
     if (detachAll != null) {
       queryParams.put("detach-all", detachAll.toString());
@@ -85,7 +87,7 @@ public class PolicyApi extends PolarisRestApi {
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()),
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()),
                 queryParams)
             .delete()) {
       if (res.getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
@@ -96,11 +98,13 @@ public class PolicyApi extends PolarisRestApi {
   }
 
   public Policy loadPolicy(String catalog, PolicyIdentifier policyIdentifier) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()))
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .get()) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadPolicyResponse.class).getPolicy();
@@ -113,11 +117,13 @@ public class PolicyApi extends PolarisRestApi {
       PolicyType policyType,
       String content,
       String description) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     CreatePolicyRequest request =
         CreatePolicyRequest.builder()
             .setType(policyType.getName())
-            .setName(policyIdentifier.getName())
+            .setName(policyIdentifier.name())
             .setDescription(description)
             .setContent(content)
             .build();
@@ -135,7 +141,9 @@ public class PolicyApi extends PolarisRestApi {
       String newContent,
       String newDescription,
       int currentPolicyVersion) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     UpdatePolicyRequest request =
         UpdatePolicyRequest.builder()
             .setContent(newContent)
@@ -145,7 +153,7 @@ public class PolicyApi extends PolarisRestApi {
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()))
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(LoadPolicyResponse.class).getPolicy();
@@ -157,13 +165,15 @@ public class PolicyApi extends PolarisRestApi {
       PolicyIdentifier policyIdentifier,
       PolicyAttachmentTarget target,
       Map<String, String> parameters) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     AttachPolicyRequest request =
         AttachPolicyRequest.builder().setTarget(target).setParameters(parameters).build();
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()))
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .put(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
@@ -171,12 +181,14 @@ public class PolicyApi extends PolarisRestApi {
 
   public void detachPolicy(
       String catalog, PolicyIdentifier policyIdentifier, PolicyAttachmentTarget target) {
-    String ns = RESTUtil.encodeNamespace(policyIdentifier.getNamespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            policyIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     DetachPolicyRequest request = DetachPolicyRequest.builder().setTarget(target).build();
     try (Response res =
         request(
                 "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings",
-                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.getName()))
+                Map.of("cat", catalog, "ns", ns, "policy", policyIdentifier.name()))
             .post(Entity.json(request))) {
       Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
@@ -184,7 +196,10 @@ public class PolicyApi extends PolarisRestApi {
 
   public List<ApplicablePolicy> getApplicablePolicies(
       String catalog, Namespace namespace, String targetName, PolicyType policyType) {
-    String ns = namespace != null ? RESTUtil.encodeNamespace(namespace) : null;
+    String ns =
+        namespace != null
+            ? NamespaceUtils.joinNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR)
+            : null;
     Map<String, String> queryParams = new HashMap<>();
     if (ns != null) {
       queryParams.put("namespace", ns);

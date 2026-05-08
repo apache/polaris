@@ -18,34 +18,18 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
-/** Class to represent an entity with its path */
-public class EntityWithPath {
-  // path to that entity. Could be null if this entity is top-level
-  private final @Nonnull List<PolarisEntityCore> catalogPath;
-
-  // the base entity itself
-  private final @Nonnull PolarisBaseEntity entity;
-
-  @JsonCreator
-  public EntityWithPath(
-      @JsonProperty("catalogPath") @Nonnull List<PolarisEntityCore> catalogPath,
-      @JsonProperty("entity") @Nonnull PolarisBaseEntity entity) {
-    this.catalogPath = catalogPath;
-    this.entity = entity;
-  }
-
-  public @Nonnull List<PolarisEntityCore> getCatalogPath() {
-    return catalogPath;
-  }
-
-  public @Nonnull PolarisBaseEntity getEntity() {
-    return entity;
-  }
-}
+/**
+ * Class to represent an entity with its path
+ *
+ * @param catalogPath path to that entity. Could be null if this entity is top-level
+ * @param entity the base entity itself
+ */
+public record EntityWithPath(
+    @JsonProperty("catalogPath") @Nonnull List<PolarisEntityCore> catalogPath,
+    @JsonProperty("entity") @Nonnull PolarisBaseEntity entity) {}

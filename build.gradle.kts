@@ -63,12 +63,14 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
 
-  excludes.add("DISCLAIMER_WIP")
-  excludes.add("LICENSE")
-  excludes.add("NOTICE")
+  excludes.add("**/LICENSE*")
+  excludes.add("**/NOTICE*")
+
+  excludes.add("**/no-license-notice-marker")
 
   // Files copied from Docsy (ASLv2 licensed) don't have header
   excludes.add("site/layouts/docs/baseof.html")
+  excludes.add("site/layouts/guides/baseof.html")
   excludes.add("site/layouts/shortcodes/redoc-polaris.html")
   excludes.add("site/layouts/community/list.html")
   excludes.add("site/layouts/partials/navbar.html")
@@ -78,6 +80,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Hugo render hook - HTML comments would appear in rendered output
   excludes.add("site/layouts/_default/_markup/render-heading.html")
+  excludes.add("site/layouts/_default/redirect.html")
 
   // Files copied from OpenAPI Generator (ASLv2 licensed) don't have header
   excludes.add("server-templates/*.mustache")
@@ -111,7 +114,12 @@ tasks.named<RatTask>("rat").configure {
   // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
+  excludes.add("site/static/img/artifacthub-badge.svg")
   excludes.add("node_modules/**")
+
+  // Guides testing
+  excludes.add("site/content/guides/ceph/**/*.keyring")
+  excludes.add("/getting-started") // it's a symlink
 
   // Python
   excludes.add("**/.venv/**")
@@ -136,11 +144,15 @@ tasks.named<RatTask>("rat").configure {
 
   // IntelliJ
   excludes.add(".idea")
+  excludes.add("site/it/.idea")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
 
   // Rat can't scan binary images
   excludes.add("**/*.png")
+
+  // Ignore Polaris.log file(s)
+  excludes.add("**/polaris.log*")
 }
 
 tasks.register<Exec>("buildPythonClient") {

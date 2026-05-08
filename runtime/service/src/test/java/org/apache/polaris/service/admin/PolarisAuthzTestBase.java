@@ -36,13 +36,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -65,13 +63,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -86,10 +82,10 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -108,7 +104,7 @@ public abstract class PolarisAuthzTestBase {
 
     @Override
     public Set<Class<?>> getEnabledAlternatives() {
-      return Set.of(TestPolarisCallContextCatalogFactory.class);
+      return Set.of(TestPolarisLocalCatalogFactory.class);
     }
 
     @Override
@@ -190,7 +186,6 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected ServiceIdentityProvider serviceIdentityProvider;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
-  @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected PolarisEventMetadataFactory eventMetadataFactory;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
@@ -200,6 +195,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
   @Inject protected RealmContextHolder realmContextHolder;
+  @Inject protected PolarisEventDispatcher polarisEventDispatcher;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -490,7 +486,7 @@ public abstract class PolarisAuthzTestBase {
             Mockito.mock(),
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener,
+            polarisEventDispatcher,
             eventMetadataFactory);
     this.baseCatalog.initialize(
         CATALOG_NAME,
@@ -504,22 +500,21 @@ public abstract class PolarisAuthzTestBase {
 
   @Alternative
   @RequestScoped
-  public static class TestPolarisCallContextCatalogFactory
-      extends PolarisCallContextCatalogFactory {
+  public static class TestPolarisLocalCatalogFactory extends PolarisLocalCatalogFactory {
 
     @SuppressWarnings("unused") // Required by CDI
-    protected TestPolarisCallContextCatalogFactory() {
+    protected TestPolarisLocalCatalogFactory() {
       this(null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
-    public TestPolarisCallContextCatalogFactory(
+    public TestPolarisLocalCatalogFactory(
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
         TaskExecutor taskExecutor,
         StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener,
+        PolarisEventDispatcher polarisEventDispatcher,
         PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
@@ -530,7 +525,7 @@ public abstract class PolarisAuthzTestBase {
           taskExecutor,
           accessConfigProvider,
           fileIOFactory,
-          polarisEventListener,
+          polarisEventDispatcher,
           eventMetadataFactory,
           metaStoreManager,
           callContext,
@@ -538,10 +533,10 @@ public abstract class PolarisAuthzTestBase {
     }
 
     @Override
-    public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
+    public Catalog createCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(resolvedManifest);
+      Catalog catalog = super.createCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
@@ -550,155 +545,9 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
-  /**
-   * Tests each "sufficient" privilege individually by invoking {@code grantAction} for each set of
-   * privileges, running the action being tested, revoking after each test set, and also ensuring
-   * that the request fails after each revocation.
-   *
-   * @param sufficientPrivileges each set of concurrent privileges expected to be sufficient
-   *     together.
-   * @param action The operation being tested; could also be multiple operations that should all
-   *     succeed with the sufficient privilege
-   * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
-   *     in case the action has side effects. Called before revoking the sufficient privilege;
-   *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
-   * @param principalName the name expected to appear in forbidden errors
-   * @param grantAction the grantPrivilege action to use for each test privilege that will apply the
-   *     privilege to whatever context is used in the {@code action}
-   * @param revokeAction the revokePrivilege action to clean up after each granted test privilege
-   */
-  protected void doTestSufficientPrivilegeSets(
-      List<Set<PolarisPrivilege>> sufficientPrivileges,
-      Runnable action,
-      Runnable cleanupAction,
-      String principalName,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    for (Set<PolarisPrivilege> privilegeSet : sufficientPrivileges) {
-      for (PolarisPrivilege privilege : privilegeSet) {
-        // Grant the single privilege at a catalog level to cascade to all objects.
-        assertSuccess(grantAction.apply(privilege));
-      }
-
-      // Should run without issues.
-      try {
-        action.run();
-      } catch (Throwable t) {
-        Assertions.fail(
-            String.format(
-                "Expected success with sufficientPrivileges '%s', got throwable instead.",
-                privilegeSet),
-            t);
-      }
-      if (cleanupAction != null) {
-        try {
-          cleanupAction.run();
-        } catch (Throwable t) {
-          Assertions.fail(
-              String.format(
-                  "Running cleanupAction with sufficientPrivileges '%s', got throwable.",
-                  privilegeSet),
-              t);
-        }
-      }
-
-      if (privilegeSet.size() > 1) {
-        // Knockout testing - Revoke single privileges and the same action should throw
-        // NotAuthorizedException.
-        for (PolarisPrivilege privilege : privilegeSet) {
-          assertSuccess(revokeAction.apply(privilege));
-
-          try {
-            Assertions.assertThatThrownBy(() -> action.run())
-                .isInstanceOf(ForbiddenException.class)
-                .hasMessageContaining(principalName)
-                .hasMessageContaining("is not authorized");
-          } catch (Throwable t) {
-            Assertions.fail(
-                String.format(
-                    "Expected failure after revoking sufficientPrivilege '%s' from set '%s'",
-                    privilege, privilegeSet),
-                t);
-          }
-
-          // Grant the single privilege at a catalog level to cascade to all objects.
-          assertSuccess(grantAction.apply(privilege));
-        }
-      }
-
-      // Now remove all the privileges
-      for (PolarisPrivilege privilege : privilegeSet) {
-        assertSuccess(revokeAction.apply(privilege));
-      }
-      try {
-        Assertions.assertThatThrownBy(() -> action.run())
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining(principalName)
-            .hasMessageContaining("is not authorized");
-      } catch (Throwable t) {
-        Assertions.fail(
-            String.format(
-                "Expected failure after revoking all sufficientPrivileges '%s'", privilegeSet),
-            t);
-      }
-    }
-  }
-
-  /**
-   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
-   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
-   */
-  protected void doTestInsufficientPrivileges(
-      List<PolarisPrivilege> insufficientPrivileges,
-      String principalName,
-      Runnable action,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    doTestInsufficientPrivilegeSets(
-        insufficientPrivileges.stream().map(Set::of).toList(),
-        principalName,
-        action,
-        grantAction,
-        revokeAction);
-  }
-
-  /**
-   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
-   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
-   */
-  protected void doTestInsufficientPrivilegeSets(
-      List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
-      String principalName,
-      Runnable action,
-      Function<PolarisPrivilege, PrivilegeResult> grantAction,
-      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
-    for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
-      try {
-        // Grant the whole privilege set at a catalog level to cascade to all objects.
-        for (PolarisPrivilege privilege : privilegeSet) {
-          assertSuccess(grantAction.apply(privilege));
-        }
-
-        // Should be insufficient
-        try {
-          Assertions.assertThatThrownBy(action::run)
-              .isInstanceOf(ForbiddenException.class)
-              .hasMessageContaining(principalName)
-              .hasMessageContaining("is not authorized");
-        } catch (Throwable t) {
-          Assertions.fail(
-              String.format("Expected failure with insufficient privilege set '%s'", privilegeSet),
-              t);
-        }
-
-      } finally {
-        // Revoking only matters in case there are some multi-privilege actions being tested with
-        // only granting individual privileges in isolation.
-        for (PolarisPrivilege privilege : privilegeSet) {
-          assertSuccess(revokeAction.apply(privilege));
-        }
-      }
-    }
+  protected PolarisAuthzTestsFactory.Builder authzTestsBuilder(String operationName) {
+    return PolarisAuthzTestsFactory.builder()
+        .adminService(adminService)
+        .operationName(operationName);
   }
 }

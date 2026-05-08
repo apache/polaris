@@ -26,6 +26,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response.Status;
 import java.util.Map;
@@ -78,14 +79,19 @@ public class RateLimiterFilterTest {
           .put("polaris.realm-context.type", "test")
           .put("polaris.authentication.token-broker.type", "symmetric-key")
           .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
-          .put("polaris.event-listener.type", "test")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
-  @Inject PolarisEventListener polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
+  private TestPolarisEventListener testPolarisEventListener;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -108,6 +114,9 @@ public class RateLimiterFilterTest {
   public void resetMeterRegistry() {
     MockRateLimiter.allowProceed = true;
     meterRegistry.clear();
+
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
   }
 
   @Test
@@ -142,8 +151,7 @@ public class RateLimiterFilterTest {
     }
 
     PolarisEvent event =
-        ((TestPolarisEventListener) polarisEventListener)
-            .getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
     assertThat(event.attributes().getRequired(EventAttributes.HTTP_METHOD)).isEqualTo("GET");
 
     // Examples of expected metrics:

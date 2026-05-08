@@ -500,6 +500,7 @@ public class CatalogEntityTest {
         Arguments.of(b.setEndpoint("http://s3.example.com:1234").build()),
         Arguments.of(b.setStsEndpoint("http://sts.example.com:1234").build()),
         Arguments.of(b.setPathStyleAccess(true).build()),
+        Arguments.of(b.setStorageName("my-storage").build()),
         Arguments.of(a.build()),
         Arguments.of(a.setHierarchical(true).build()));
   }

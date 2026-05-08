@@ -23,7 +23,6 @@ import static org.apache.polaris.persistence.nosql.inmemory.ObjKey.objKey;
 import static org.apache.polaris.persistence.nosql.inmemory.RefKey.refKey;
 
 import com.google.common.collect.Maps;
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +43,7 @@ import org.apache.polaris.persistence.nosql.api.exceptions.ReferenceNotFoundExce
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.impl.PersistenceImplementation;
+import org.jspecify.annotations.NonNull;
 
 final class InMemoryBackend implements Backend {
 
@@ -58,7 +58,7 @@ final class InMemoryBackend implements Backend {
   final ConcurrentMap<ObjKey, SerializedObj> objs = new ConcurrentHashMap<>();
 
   @Override
-  @Nonnull
+  @NonNull
   public String type() {
     return InMemoryBackendFactory.NAME;
   }
@@ -71,11 +71,11 @@ final class InMemoryBackend implements Backend {
   @Override
   public void close() {}
 
-  @Nonnull
+  @NonNull
   @Override
   public Persistence newPersistence(
       Function<Backend, Backend> backendWrapper,
-      @Nonnull PersistenceParams persistenceParams,
+      @NonNull PersistenceParams persistenceParams,
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator) {
@@ -109,7 +109,7 @@ final class InMemoryBackend implements Backend {
 
   @Override
   public void scanBackend(
-      @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer) {
+      @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer) {
     refs.forEach(
         (key, ref) -> referenceConsumer.call(key.realmId(), key.name(), ref.createdAtMicros()));
     objs.forEach(
@@ -138,22 +138,22 @@ final class InMemoryBackend implements Backend {
   }
 
   @Override
-  public boolean createReference(@Nonnull String realmId, @Nonnull Reference newRef) {
+  public boolean createReference(@NonNull String realmId, @NonNull Reference newRef) {
     randomDelay();
     var key = refKey(realmId, newRef.name());
     return refs.putIfAbsent(key, newRef) == null;
   }
 
   @Override
-  public void createReferences(@Nonnull String realmId, @Nonnull List<Reference> newRefs) {
+  public void createReferences(@NonNull String realmId, @NonNull List<Reference> newRefs) {
     newRefs.forEach(ref -> createReference(realmId, ref));
   }
 
   @Override
   public boolean updateReference(
-      @Nonnull String realmId,
-      @Nonnull Reference updatedRef,
-      @Nonnull Optional<ObjRef> expectedPointer) {
+      @NonNull String realmId,
+      @NonNull Reference updatedRef,
+      @NonNull Optional<ObjRef> expectedPointer) {
     randomDelay();
     var key = refKey(realmId, updatedRef.name());
     return refs.compute(
@@ -168,8 +168,8 @@ final class InMemoryBackend implements Backend {
   }
 
   @Override
-  @Nonnull
-  public Reference fetchReference(@Nonnull String realmId, @Nonnull String name) {
+  @NonNull
+  public Reference fetchReference(@NonNull String realmId, @NonNull String name) {
     randomDelay();
     var key = refKey(realmId, name);
     var ref = refs.get(key);
@@ -180,8 +180,8 @@ final class InMemoryBackend implements Backend {
   }
 
   @Override
-  @Nonnull
-  public Map<PersistId, FetchedObj> fetch(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+  @NonNull
+  public Map<PersistId, FetchedObj> fetch(@NonNull String realmId, @NonNull Set<PersistId> ids) {
     randomDelay();
     var r = Maps.<PersistId, FetchedObj>newHashMapWithExpectedSize(ids.size());
     for (var id : ids) {
@@ -202,7 +202,7 @@ final class InMemoryBackend implements Backend {
   }
 
   @Override
-  public void write(@Nonnull String realmId, @Nonnull List<WriteObj> writes) {
+  public void write(@NonNull String realmId, @NonNull List<WriteObj> writes) {
     randomDelay();
     for (var write : writes) {
       var key = objKey(realmId, write.id(), write.part());
@@ -214,7 +214,7 @@ final class InMemoryBackend implements Backend {
   }
 
   @Override
-  public void delete(@Nonnull String realmId, @Nonnull Set<PersistId> ids) {
+  public void delete(@NonNull String realmId, @NonNull Set<PersistId> ids) {
     randomDelay();
     for (var id : ids) {
       var key = objKey(realmId, id.id(), id.part());
@@ -224,12 +224,12 @@ final class InMemoryBackend implements Backend {
 
   @Override
   public boolean conditionalInsert(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String versionToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String versionToken,
+      @NonNull byte[] serializedValue) {
     randomDelay();
     var key = objKey(realmId, persistId.id(), 0);
     var val = new SerializedObj(objTypeId, createdAtMicros, versionToken, serializedValue, 1);
@@ -239,13 +239,13 @@ final class InMemoryBackend implements Backend {
 
   @Override
   public boolean conditionalUpdate(
-      @Nonnull String realmId,
+      @NonNull String realmId,
       String objTypeId,
-      @Nonnull PersistId persistId,
+      @NonNull PersistId persistId,
       long createdAtMicros,
-      @Nonnull String updateToken,
-      @Nonnull String expectedToken,
-      @Nonnull byte[] serializedValue) {
+      @NonNull String updateToken,
+      @NonNull String expectedToken,
+      @NonNull byte[] serializedValue) {
     randomDelay();
     var key = objKey(realmId, persistId);
     var val = new SerializedObj(objTypeId, createdAtMicros, updateToken, serializedValue, 1);
@@ -263,7 +263,7 @@ final class InMemoryBackend implements Backend {
 
   @Override
   public boolean conditionalDelete(
-      @Nonnull String realmId, @Nonnull PersistId persistId, @Nonnull String expectedToken) {
+      @NonNull String realmId, @NonNull PersistId persistId, @NonNull String expectedToken) {
     randomDelay();
     var key = objKey(realmId, persistId);
     var r = new boolean[1];

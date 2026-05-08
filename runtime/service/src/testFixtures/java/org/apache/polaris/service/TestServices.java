@@ -38,7 +38,8 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
@@ -50,6 +51,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -64,6 +66,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.DefaultAccessDelegationModeResolver;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -80,15 +83,14 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.PolarisLocalCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.EventAttributeMap;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.reporting.DefaultMetricsReporter;
@@ -120,7 +122,7 @@ public record TestServices(
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
-    PolarisEventListener polarisEventListener,
+    PolarisEventDispatcher polarisEventDispatcher,
     PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider) {
 
@@ -205,7 +207,7 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              clock, diagnostics, storageIntegrationProvider);
+              clock, diagnostics, storageIntegrationProvider, RootCredentialsSet.EMPTY);
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
@@ -293,20 +295,20 @@ public record TestServices(
           new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal);
+              storageCredentialCache, storageCredentialsVendor, principal, realmContext);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
-      PolarisEventListener polarisEventListener = new TestPolarisEventListener();
-      CallContextCatalogFactory callContextFactory =
-          new PolarisCallContextCatalogFactory(
+      PolarisEventDispatcher polarisEventDispatcher = new InMemoryEventCollector();
+      LocalCatalogFactory localCatalogFactory =
+          new PolarisLocalCatalogFactory(
               diagnostics,
               resolverFactory,
               taskExecutor,
               storageAccessConfigProvider,
               fileIOFactory,
-              polarisEventListener,
+              polarisEventDispatcher,
               eventMetadataFactory,
               metaStoreManager,
               callContext,
@@ -317,9 +319,9 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
       @SuppressWarnings("unchecked")
-      Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
-      Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
+      Instance<FederatedCatalogFactory> federatedCatalogFactory = Mockito.mock(Instance.class);
+      Mockito.when(federatedCatalogFactory.select(any())).thenReturn(federatedCatalogFactory);
+      Mockito.when(federatedCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       EventAttributeMap eventAttributeMap = new EventAttributeMap();
 
@@ -338,15 +340,17 @@ public record TestServices(
                   .resolutionManifestFactory(resolutionManifestFactory)
                   .metaStoreManager(metaStoreManager)
                   .credentialManager(credentialManager)
-                  .catalogFactory(callContextFactory)
+                  .localCatalogFactory(localCatalogFactory)
                   .authorizer(authorizer)
                   .reservedProperties(reservedProperties)
                   .catalogHandlerUtils(catalogHandlerUtils)
-                  .externalCatalogFactories(externalCatalogFactory)
+                  .federatedCatalogFactories(federatedCatalogFactory)
                   .storageAccessConfigProvider(storageAccessConfigProvider)
                   .eventAttributeMap(eventAttributeMap)
                   .metricsReporter(new DefaultMetricsReporter())
                   .clock(clock)
+                  .accessDelegationModeResolver(
+                      new DefaultAccessDelegationModeResolver(realmConfig))
                   .build();
             }
           };
@@ -362,13 +366,13 @@ public record TestServices(
         finalRestCatalogService =
             new IcebergRestCatalogEventServiceDelegator(
                 catalogService,
-                polarisEventListener,
+                polarisEventDispatcher,
                 eventMetadataFactory,
                 new DefaultCatalogPrefixParser(),
                 eventAttributeMap);
         finalRestConfigurationService =
             new IcebergRestConfigurationEventServiceDelegator(
-                catalogService, polarisEventListener, eventMetadataFactory);
+                catalogService, polarisEventDispatcher, eventMetadataFactory);
       }
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
@@ -409,7 +413,7 @@ public record TestServices(
           metaStoreManager,
           fileIOFactory,
           taskExecutor,
-          polarisEventListener,
+          polarisEventDispatcher,
           eventMetadataFactory,
           storageAccessConfigProvider);
     }

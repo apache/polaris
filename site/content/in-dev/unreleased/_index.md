@@ -17,13 +17,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'In Development'
-title: 'Overview'
+title: 'Apache Polaris Documentation (Unreleased)'
+linkTitle: 'Developer Docs'
 type: docs
 weight: 200
 params:
   top_hidden: true
   show_page_toc: false
+menus:
+  main:
+    parent: doc
+    weight: 999999 # last item in the docs dropdown
+    identifier: doc-in-dev
+    name: Developer Docs (unreleased)
 cascade:
   type: docs
   params:
@@ -31,26 +37,20 @@ cascade:
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
 
-{{< alert warning >}}
-These pages refer to the current state of the main branch, which is still under active development.
-
-Functionalities can be changed, removed or added without prior notice.
-{{< /alert >}}
-
-Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
+Apache Polaris is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
 With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
 
-![Conceptual diagram of Apache Polaris (Incubating).](/img/overview.svg "Apache Polaris (Incubating) overview")
+![Conceptual diagram of Apache Polaris.](/img/overview.svg "Apache Polaris overview")
 
 ## Key concepts
 
-This section introduces key concepts associated with using Apache Polaris (Incubating).
+This section introduces key concepts associated with using Apache Polaris.
 
-In the following diagram, a sample [Apache Polaris (Incubating) structure](#catalog) with nested [namespaces](#namespace) is shown for Catalog1. No tables
+In the following diagram, a sample [Apache Polaris structure](#catalog) with nested [namespaces](#namespace) is shown for Catalog1. No tables
 or namespaces have been created yet for Catalog2 or Catalog3.
 
-![Diagram that shows an example Apache Polaris (Incubating) structure.](/img/sample-catalog-structure.svg "Sample Apache Polaris (Incubating) structure")
+![Diagram that shows an example Apache Polaris structure.](/img/sample-catalog-structure.svg "Sample Apache Polaris structure")
 
 ### Catalog
 
@@ -136,7 +136,7 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
     has the privileges to perform this action. Alice
     creates an unmanaged table in Snowflake to read data from Table1.
 
-![Diagram that shows an example workflow for Apache Polaris (Incubating)](/img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
+![Diagram that shows an example workflow for Apache Polaris](/img/example-workflow.svg "Example workflow for Apache Polaris")
 
 ## Security and access control
 
@@ -146,10 +146,9 @@ To secure interactions with service connections, Polaris vends temporary storage
 execution. These credentials allow the query engine to run the query without requiring access to your cloud storage for
 Iceberg tables. This process is called credential vending.
 
-As of now, the following limitation is known regarding Apache Iceberg support:
+The following applies to Apache Iceberg with Apache Spark:
 
-- **remove_orphan_files:** Apache Spark can't use credential vending
-  for this due to a known issue. See [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914) for details.
+- **remove_orphan_files**: By default this procedure lists storage through Spark's Hadoop layer, not Iceberg, so Polaris vended credentials may not apply to that step. From **Iceberg 1.10**, use **`prefix_listing => true`** in `CALL ... remove_orphan_files(...)` (or **`.usePrefixListing(true)`** on `SparkActions.deleteOrphanFiles`) so listing uses Iceberg's file client and vended credentials apply. See [apache/iceberg#12254](https://github.com/apache/iceberg/pull/12254). Note: Listing runs on the driver for this mode and can be slow for very large file sets.
 
 ### Identity and access management (IAM)
 

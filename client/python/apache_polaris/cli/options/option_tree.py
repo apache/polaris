@@ -23,6 +23,7 @@ from apache_polaris.cli.constants import (
     StorageType,
     CatalogType,
     PrincipalType,
+    EntityType,
     Hints,
     Commands,
     Arguments,
@@ -337,6 +338,10 @@ class OptionTree:
                         ],
                         input_name=Arguments.CATALOG,
                     ),
+                    Option(
+                        Subcommands.SUMMARIZE,
+                        input_name=Arguments.CATALOG,
+                    ),
                 ],
             ),
             Option(
@@ -402,6 +407,10 @@ class OptionTree:
                                 Hints.Principals.Reset.CLIENT_SECRET,
                             ),
                         ],
+                        input_name=Arguments.PRINCIPAL,
+                    ),
+                    Option(
+                        Subcommands.SUMMARIZE,
                         input_name=Arguments.PRINCIPAL,
                     ),
                 ],
@@ -480,6 +489,10 @@ class OptionTree:
                                 Hints.PrincipalRoles.Revoke.PRINCIPAL,
                             )
                         ],
+                        input_name=Arguments.PRINCIPAL_ROLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARIZE,
                         input_name=Arguments.PRINCIPAL_ROLE,
                     ),
                 ],
@@ -581,6 +594,15 @@ class OptionTree:
                                 str,
                                 Hints.CatalogRoles.CATALOG_ROLE,
                             ),
+                        ],
+                        input_name=Arguments.CATALOG_ROLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARIZE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            )
                         ],
                         input_name=Arguments.CATALOG_ROLE,
                     ),
@@ -750,6 +772,15 @@ class OptionTree:
                         ],
                         input_name=Arguments.NAMESPACE,
                     ),
+                    Option(
+                        Subcommands.SUMMARIZE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            )
+                        ],
+                        input_name=Arguments.NAMESPACE,
+                    ),
                 ],
             ),
             Option(
@@ -900,5 +931,78 @@ class OptionTree:
                         input_name=Arguments.POLICY,
                     ),
                 ],
+            ),
+            Option(
+                Commands.SETUP,
+                "perform setup",
+                children=[
+                    Option(
+                        Subcommands.APPLY,
+                        args=[Argument(Arguments.DRY_RUN, bool, Hints.Setup.DRY_RUN)],
+                        input_name=Arguments.SETUP_CONFIG,
+                    ),
+                    Option(Subcommands.EXPORT),
+                ],
+            ),
+            Option(
+                Commands.TABLES,
+                "manage tables",
+                children=[
+                    Option(
+                        Subcommands.LIST,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                    ),
+                    Option(
+                        Subcommands.GET,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                        input_name=Arguments.TABLE,
+                    ),
+                    Option(
+                        Subcommands.SUMMARIZE,
+                        hint=Hints.Tables.SUMMARIZE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                        input_name=Arguments.TABLE,
+                    ),
+                    Option(
+                        Subcommands.DELETE,
+                        hint=Hints.Tables.DELETE,
+                        args=[
+                            Argument(
+                                Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME
+                            ),
+                            Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                        ],
+                        input_name=Arguments.TABLE,
+                    ),
+                ],
+            ),
+            Option(
+                Commands.FIND,
+                "find an identifier",
+                args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(
+                        Arguments.TYPE,
+                        str,
+                        Hints.Find.TYPE,
+                        choices=[e.value for e in EntityType],
+                    ),
+                ],
+                input_name=Arguments.IDENTIFIER,
             ),
         ]

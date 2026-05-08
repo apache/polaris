@@ -121,7 +121,9 @@ final class PageTokenUtil {
       @Nullable String requestedPageToken,
       @Nullable Integer requestedPageSize,
       BooleanSupplier shouldDecodeToken) {
-    if (requestedPageToken != null && shouldDecodeToken.getAsBoolean()) {
+    if (requestedPageToken != null
+        && !requestedPageToken.isEmpty()
+        && shouldDecodeToken.getAsBoolean()) {
       var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
       try {
         var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);

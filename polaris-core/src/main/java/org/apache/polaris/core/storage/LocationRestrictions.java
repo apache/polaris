@@ -108,10 +108,10 @@ public class LocationRestrictions {
                     .values()
                     .forEach(
                         result -> {
-                          if (!result.isSuccess()) {
+                          if (!result.success()) {
                             throw new ForbiddenException(
                                 "Invalid locations '%s' for identifier '%s': %s",
-                                requestLocations, identifier, result.getMessage());
+                                requestLocations, identifier, result.message());
                           } else {
                             LOGGER.debug(
                                 "Validated locations '{}' for identifier '{}'",

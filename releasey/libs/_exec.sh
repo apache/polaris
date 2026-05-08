@@ -70,13 +70,15 @@ function exec_process_with_retries {
 
 function calculate_sha512 {
   local source_file="$1"
+  local source_dir source_base
+  source_dir="$(dirname "${source_file}")"
+  source_base="$(basename "${source_file}")"
   local target_file="${source_file}.sha512"
-  # This function is only there for dry-run support.  Because of the
-  # redirection, we cannot use exec_process with the exact command that will be
-  # executed.
+  # Run shasum from the file's directory so the checksum file contains only
+  # the filename, not the full path (required for standard sha512sum -c verification).
   if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-    exec_process shasum -a 512 "${source_file}" > "${target_file}"
+    (cd "${source_dir}" && shasum -a 512 "${source_base}") > "${target_file}"
   else
-    exec_process "shasum -a 512 ${source_file} > ${target_file}"
+    exec_process "cd ${source_dir} && shasum -a 512 ${source_base} > ${target_file}"
   fi
 }

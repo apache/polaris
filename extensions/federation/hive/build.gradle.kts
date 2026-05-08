@@ -32,13 +32,13 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-common")
   // Use iceberg-hive-metastore but exclude conflicting hive dependencies
   implementation("org.apache.iceberg:iceberg-hive-metastore") { exclude(group = "org.apache.hive") }
-  // Add our own Hive 4.1.0 dependencies
   implementation(libs.hive.metastore) {
     exclude("org.slf4j", "slf4j-reload4j")
     exclude("org.slf4j", "slf4j-log4j12")
     exclude("ch.qos.reload4j", "reload4j")
     exclude("log4j", "log4j")
     exclude("org.apache.zookeeper", "zookeeper")
+    exclude("org.ow2.asm", "asm-all")
   }
 
   // Hadoop dependencies

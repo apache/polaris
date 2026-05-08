@@ -23,7 +23,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -33,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.ids.api.SnowflakeIdGenerator;
 import org.apache.polaris.ids.spi.IdGeneratorSource;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementation of a local, per-node generator for so-called "snowflake IDs", which are unique
@@ -286,7 +286,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
   }
 
   @Override
-  public long timeUuidToId(@Nonnull UUID uuid) {
+  public long timeUuidToId(@NonNull UUID uuid) {
     checkArgument(
         uuid.variant() == 2 && uuid.version() == 1, "Must be a version 1 / variant 2 UUID");
     var ts = uuid.timestamp() - idEpoch;

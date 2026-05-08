@@ -76,6 +76,7 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -94,7 +95,6 @@ import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.CatalogConfig;
@@ -121,6 +121,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -285,11 +287,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
 
-    if (!testRuntimeURI.getScheme().equals("file")) {
-      catalogPropsBuilder.addProperty(
-          CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
-    }
-
     Catalog.TypeEnum catalogType =
         IntegrationTestsHelper.extractFromAnnotatedElements(
             testInfo, CatalogConfig.class, CatalogConfig::value, Catalog.TypeEnum.INTERNAL);
@@ -437,6 +434,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   @Override
   protected boolean supportsServerSideRetry() {
     return true;
+  }
+
+  @Override
+  protected boolean supportsNamesWithSlashes() {
+    return false;
   }
 
   @Override
@@ -708,7 +710,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   /**
    * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
    * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
-   * try to fetch vended credentials. Expect a ForbiddenException.
+   * try to fetch vended credentials. Expect an IllegalArgumentException (HTTP 400 Bad Request).
    */
   @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
   @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
@@ -731,8 +733,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       try {
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining("Access Delegation is not enabled for this catalog")
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("is not enabled for this external catalog")
             .hasMessageContaining(
                 FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
       } finally {
@@ -803,6 +805,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
+    }
+  }
+
+  @Test
+  public void testLoadCredentialsEndpoint() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    try {
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns1, "tbl1");
+      Table table = restCatalog.createTable(tableIdentifier, SCHEMA);
+      assertThat(table.location()).isNotNull();
+
+      LoadCredentialsResponse response =
+          catalogApi.loadCredentials(currentCatalogName, tableIdentifier);
+      assertThat(response).isNotNull();
+      assertThat(response.credentials()).isNotEmpty();
+      assertThat(response.credentials().get(0).prefix()).isEqualTo(table.location());
+      assertThat(response.credentials().get(0).config()).isNotEmpty();
+    } finally {
+      catalogApi.purge(currentCatalogName, ns1);
     }
   }
 
@@ -1187,6 +1209,101 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     // committed in the end.
     Schema latestCommittedSchema = catalog().loadTable(identifier).schema();
     assertThat(latestCommittedSchema.asStruct()).isEqualTo(originalSchema.asStruct());
+  }
+
+  @Test
+  public void testCoalescedConflictOnOneTableRollsBackEntireTransaction() {
+    Namespace namespace = Namespace.of("coalescingAtomicNs");
+    TableIdentifier goodId = TableIdentifier.of(namespace, "goodTable");
+    TableIdentifier conflictId = TableIdentifier.of(namespace, "conflictTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().createTable(goodId, SCHEMA);
+    catalog().createTable(conflictId, SCHEMA);
+
+    Schema originalGoodSchema = catalog().loadTable(goodId).schema();
+    Schema originalConflictSchema = catalog().loadTable(conflictId).schema();
+
+    // goodTable: a single non-conflicting schema change
+    Transaction goodTx = catalog().loadTable(goodId).newTransaction();
+    goodTx.updateSchema().addColumn("new_col", Types.LongType.get()).commit();
+
+    // conflictTable: two independent transactions that both rename the same column,
+    // producing two TableCommits for the same table. The first rename succeeds,
+    // but the second conflicts because the schema has already changed.
+    Table conflictTable = catalog().loadTable(conflictId);
+    Transaction conflictTx1 = conflictTable.newTransaction();
+    Transaction conflictTx2 = conflictTable.newTransaction();
+    conflictTx1.updateSchema().renameColumn("data", "renamed-col1").commit();
+    conflictTx2.updateSchema().renameColumn("data", "renamed-col2").commit();
+
+    TableCommit goodCommit =
+        TableCommit.create(
+            goodId,
+            ((BaseTransaction) goodTx).startMetadata(),
+            ((BaseTransaction) goodTx).currentMetadata());
+    TableCommit conflictCommit1 =
+        TableCommit.create(
+            conflictId,
+            ((BaseTransaction) conflictTx1).startMetadata(),
+            ((BaseTransaction) conflictTx1).currentMetadata());
+    TableCommit conflictCommit2 =
+        TableCommit.create(
+            conflictId,
+            ((BaseTransaction) conflictTx2).startMetadata(),
+            ((BaseTransaction) conflictTx2).currentMetadata());
+
+    // The coalescing logic groups conflictCommit1 and conflictCommit2 together.
+    // The first rename succeeds, but the second fails requirement validation
+    // (schema ID changed). This should fail the entire transaction atomically.
+    assertThatThrownBy(
+            () -> restCatalog.commitTransaction(goodCommit, conflictCommit1, conflictCommit2))
+        .isInstanceOf(CommitFailedException.class);
+
+    // Verify atomicity: neither table should have changed.
+    assertThat(catalog().loadTable(goodId).schema().asStruct())
+        .isEqualTo(originalGoodSchema.asStruct());
+    assertThat(catalog().loadTable(conflictId).schema().asStruct())
+        .isEqualTo(originalConflictSchema.asStruct());
+  }
+
+  @Test
+  public void testMultipleNonConflictingUpdatesToSameTableWithSchemaAndProperties() {
+    Namespace namespace = Namespace.of("coalescingMixedNs");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "coalescingMixedTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    // Use a single Iceberg transaction that performs both a schema change and a property update.
+    // This produces a single TableCommit containing multiple metadata updates, verifying
+    // that the server correctly handles multiple update types within a single commit request.
+    Table table = catalog().buildTable(identifier, SCHEMA).create();
+    Transaction transaction = table.newTransaction();
+
+    UpdateSchema updateSchema =
+        transaction.updateSchema().addColumn("new_col", Types.LongType.get());
+    Schema expectedSchema = updateSchema.apply();
+    updateSchema.commit();
+
+    transaction.updateProperties().set("prop-key", "prop-val").commit();
+
+    TableCommit tableCommit =
+        TableCommit.create(
+            identifier,
+            ((BaseTransaction) transaction).startMetadata(),
+            ((BaseTransaction) transaction).currentMetadata());
+
+    restCatalog.commitTransaction(tableCommit);
+
+    // Verify both schema and property updates were applied.
+    Table loaded = catalog().loadTable(identifier);
+    assertThat(loaded.schema().asStruct()).isEqualTo(expectedSchema.asStruct());
+    assertThat(loaded.properties()).containsEntry("prop-key", "prop-val");
   }
 
   @Test
@@ -2301,5 +2418,177 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     nsResponse = catalogApi.listNamespaces(currentCatalogName, namespace, "fake-token", null);
     assertThat(nsResponse.namespaces()).hasSize(5);
     assertThat(nsResponse.nextPageToken()).isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateNamespaceRejectsInvalidName(String badName) {
+    try (Response res =
+        catalogApi
+            .request("v1/{cat}/namespaces", Map.of("cat", currentCatalogName))
+            .post(Entity.json(Map.of("namespace", List.of(badName))))) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(res.readEntity(String.class)).contains("Entity name");
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_create_table_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/tables",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(Entity.json(Map.of("name", badName, "schema", SCHEMA)))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRegisterTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_register_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/register",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      Map.of("name", badName, "metadata-location", "file:/tmp/nowhere.json")))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateViewRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_create_view_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      Map<String, Object> viewVersion =
+          Map.of(
+              "version-id",
+              1,
+              "timestamp-ms",
+              0,
+              "schema-id",
+              0,
+              "summary",
+              Map.of(),
+              "representations",
+              List.of(Map.of("type", "sql", "sql", VIEW_QUERY, "dialect", "spark")),
+              "default-namespace",
+              List.of("ns_create_view_bad"));
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/views",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      Map.of("name", badName, "schema", SCHEMA, "view-version", viewVersion)))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRenameTableRejectsInvalidDestinationName(String badName) {
+    Namespace ns = Namespace.of("ns_rename_table_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      restCatalog.buildTable(TableIdentifier.of(ns, "src_tbl"), SCHEMA).create();
+      try (Response res =
+          catalogApi
+              .request("v1/{cat}/tables/rename", Map.of("cat", currentCatalogName))
+              .post(
+                  Entity.json(
+                      Map.of(
+                          "source", Map.of("namespace", List.of(ns.level(0)), "name", "src_tbl"),
+                          "destination",
+                              Map.of("namespace", List.of(ns.level(0)), "name", badName))))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRenameViewRejectsInvalidDestinationName(String badName) {
+    Namespace ns = Namespace.of("ns_rename_view_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      restCatalog
+          .buildView(TableIdentifier.of(ns, "src_view"))
+          .withSchema(SCHEMA)
+          .withDefaultNamespace(ns)
+          .withQuery("spark", VIEW_QUERY)
+          .create();
+      try (Response res =
+          catalogApi
+              .request("v1/{cat}/views/rename", Map.of("cat", currentCatalogName))
+              .post(
+                  Entity.json(
+                      Map.of(
+                          "source", Map.of("namespace", List.of(ns.level(0)), "name", "src_view"),
+                          "destination",
+                              Map.of("namespace", List.of(ns.level(0)), "name", badName))))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateGenericTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_generic_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          genericTableApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      CreateGenericTableRequest.builder()
+                          .setName(badName)
+                          .setFormat("format")
+                          .build()))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, ns);
+    }
   }
 }

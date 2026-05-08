@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
@@ -52,8 +53,12 @@ import org.apache.polaris.core.policy.PolicyMappingPersistence;
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
+ *
+ * <p>This interface also extends {@link MetricsPersistence} for Iceberg metrics storage. By
+ * default, all metrics operations are no-ops. Implementations that support metrics persistence
+ * (e.g., JDBC) should override these methods to provide actual storage.
  */
-public interface BasePersistence extends PolicyMappingPersistence {
+public interface BasePersistence extends PolicyMappingPersistence, MetricsPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

@@ -19,15 +19,15 @@
 
 package org.apache.polaris.persistence.nosql.api.index;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import static java.util.Collections.emptyIterator;
+
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 final class EmptyIndex {
   private static final Index<?> EMPTY =
-      new Index<Object>() {
+      new Index<>() {
         @Override
         public void prefetchIfNecessary(Iterable<IndexKey> keys) {}
 
@@ -38,22 +38,22 @@ final class EmptyIndex {
 
         @Nullable
         @Override
-        public Object get(@Nonnull IndexKey key) {
+        public Object get(@NonNull IndexKey key) {
           return null;
         }
 
-        @Nonnull
+        @NonNull
         @Override
-        public Iterator<Map.Entry<IndexKey, Object>> iterator(
+        public Iterator<Index.Element<Object>> iterator(
             @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
-          return List.<Map.Entry<IndexKey, Object>>of().iterator();
+          return emptyIterator();
         }
 
-        @Nonnull
+        @NonNull
         @Override
-        public Iterator<Map.Entry<IndexKey, Object>> reverseIterator(
+        public Iterator<Index.Element<Object>> reverseIterator(
             @Nullable IndexKey lower, @Nullable IndexKey higher, boolean prefetch) {
-          return List.<Map.Entry<IndexKey, Object>>of().iterator();
+          return emptyIterator();
         }
       };
 

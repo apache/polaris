@@ -68,16 +68,26 @@ public class DatasourceOperations {
   private final RelationalJdbcConfiguration relationalJdbcConfiguration;
   private final DatabaseType databaseType;
 
-  private final Random random = new Random();
+  private static final Random random = new Random();
 
   public DatasourceOperations(
-      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration)
-      throws SQLException {
+      DataSource datasource, RelationalJdbcConfiguration relationalJdbcConfiguration) {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     try (Connection connection = this.datasource.getConnection()) {
-      String productName = connection.getMetaData().getDatabaseProductName();
-      this.databaseType = DatabaseType.fromDisplayName(productName);
+      // Get explicitly configured database type, if any
+      DatabaseType configuredType =
+          relationalJdbcConfiguration
+              .databaseType()
+              .map(DatabaseType::fromDisplayName)
+              .orElse(null);
+
+      // Infer database type from connection, falling back to configured type
+      this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
+
+      LOGGER.info("Detected database type: {}", databaseType);
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to initialize DatasourceOperations", e);
     }
   }
 
@@ -403,7 +413,7 @@ public class DatasourceOperations {
 
   public boolean isRelationDoesNotExist(SQLException e) {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
-            && databaseType == DatabaseType.POSTGRES)
+            && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
                 || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);

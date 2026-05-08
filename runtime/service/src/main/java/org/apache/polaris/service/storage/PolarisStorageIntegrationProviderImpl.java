@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -54,15 +55,21 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  private final StorageConfiguration storageConfiguration;
+  private final RealmConfig realmConfig;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
-      StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
-    this(
-        stsClientProvider,
-        Optional.ofNullable(storageConfiguration.stsCredentials()),
-        storageConfiguration.gcpCredentialsSupplier(clock));
+      StorageConfiguration storageConfiguration,
+      StsClientProvider stsClientProvider,
+      RealmConfig realmConfig,
+      Clock clock) {
+    this.storageConfiguration = storageConfiguration;
+    this.stsClientProvider = stsClientProvider;
+    this.stsCredentials = Optional.empty();
+    this.gcpCredsProvider = storageConfiguration.gcpCredentialsSupplier(clock);
+    this.realmConfig = realmConfig;
   }
 
   public PolarisStorageIntegrationProviderImpl(
@@ -72,6 +79,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.stsClientProvider = stsClientProvider;
     this.stsCredentials = stsCredentials;
     this.gcpCredsProvider = gcpCredsProvider;
+    this.storageConfiguration = null;
+    this.realmConfig = null;
   }
 
   @Override
@@ -85,12 +94,24 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     PolarisStorageIntegration<T> storageIntegration;
     switch (polarisStorageConfigurationInfo.getStorageType()) {
       case S3:
+        Optional<AwsCredentialsProvider> awsCreds = stsCredentials;
+        if (awsCreds.isEmpty() && storageConfiguration != null) {
+          if (realmConfig != null
+              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            awsCreds =
+                Optional.of(
+                    storageConfiguration.stsCredentials(
+                        polarisStorageConfigurationInfo.getStorageName()));
+          } else {
+            awsCreds = Optional.of(storageConfiguration.stsCredentials());
+          }
+        }
         storageIntegration =
             (PolarisStorageIntegration<T>)
                 new AwsCredentialsStorageIntegration(
                     (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     stsClientProvider,
-                    stsCredentials);
+                    awsCreds);
         break;
       case GCS:
         storageIntegration =

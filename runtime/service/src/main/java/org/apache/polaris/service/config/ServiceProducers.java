@@ -31,11 +31,12 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.RealmConfig;
@@ -43,6 +44,7 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -72,8 +74,6 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
-import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -86,8 +86,12 @@ import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.storage.aws.StsClientsPool;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
+import org.apache.polaris.service.tracing.RequestIdFilter;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
+import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
+import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.http.SdkHttpClient;
@@ -117,6 +121,13 @@ public class ServiceProducers {
     return new PolarisDefaultDiagServiceImpl();
   }
 
+  @Produces
+  @ApplicationScoped
+  public RootCredentialsSet rootCredentialsSet(
+      @ConfigProperty(name = RootCredentialsSet.SYSTEM_PROPERTY) Optional<String> credentials) {
+    return credentials.map(RootCredentialsSet::fromString).orElse(RootCredentialsSet.EMPTY);
+  }
+
   // Polaris core beans - request scope
 
   @Produces
@@ -138,13 +149,6 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  @Identifier("internal")
-  public PolarisAuthorizerFactory defaultPolarisAuthorizerFactory() {
-    return new DefaultPolarisAuthorizerFactory();
-  }
-
-  @Produces
-  @ApplicationScoped
   public PolarisAuthorizerFactory polarisAuthorizerFactory(
       AuthorizationConfiguration authorizationConfig,
       @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
@@ -158,6 +162,12 @@ public class ServiceProducers {
   public PolarisAuthorizer polarisAuthorizer(
       PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
     return factory.create(realmConfig);
+  }
+
+  @Produces
+  @RequestScoped
+  public AuthorizationState authorizationState() {
+    return new AuthorizationState();
   }
 
   @Produces
@@ -191,6 +201,7 @@ public class ServiceProducers {
   // Polaris service beans - selected from @Identifier-annotated beans
 
   @Produces
+  @Singleton // used in instanceof checks
   public RealmContextResolver realmContextResolver(
       RealmContextConfiguration config, @Any Instance<RealmContextResolver> realmContextResolvers) {
     return realmContextResolvers.select(Identifier.Literal.of(config.type())).get();
@@ -204,13 +215,7 @@ public class ServiceProducers {
   }
 
   @Produces
-  public PolarisEventListener polarisEventListener(
-      PolarisEventListenerConfiguration config,
-      @Any Instance<PolarisEventListener> polarisEventListeners) {
-    return polarisEventListeners.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  @Produces
+  @Singleton // used in instanceof checks
   public MetaStoreManagerFactory metaStoreManagerFactory(
       PersistenceConfiguration config,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
@@ -232,6 +237,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public UserSecretsManagerFactory userSecretsManagerFactory(
       SecretsManagerConfiguration config,
       @Any Instance<UserSecretsManagerFactory> userSecretsManagerFactories) {
@@ -275,16 +281,15 @@ public class ServiceProducers {
       @Observes Startup event,
       Bootstrapper bootstrapper,
       PersistenceConfiguration config,
-      RealmContextConfiguration realmContextConfiguration) {
-    var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
+      RealmContextConfiguration realmContextConfiguration,
+      RootCredentialsSet rootCredentialsSet) {
     var rootCredentials = rootCredentialsSet.credentials();
     if (config.isAutoBootstrap()) {
       var realmIds = realmContextConfiguration.realms();
 
       LOGGER.info(
-          "Bootstrapping realm(s) {}, if necessary, from root credentials set provided via the environment variable {} or Java system property {} ...",
+          "Bootstrapping realm(s) {}, if necessary, from root credentials set provided via the {} configuration property ...",
           realmIds.stream().map(r -> "'" + r + "'").collect(Collectors.joining(", ")),
-          RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
       var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
@@ -294,17 +299,13 @@ public class ServiceProducers {
             var principalSecrets = secrets.getPrincipalSecrets();
 
             var log =
-                LOGGER
-                    .atInfo()
-                    .addArgument(realm)
-                    .addArgument(RootCredentialsSet.ENVIRONMENT_VARIABLE)
-                    .addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
+                LOGGER.atInfo().addArgument(realm).addArgument(RootCredentialsSet.SYSTEM_PROPERTY);
             if (rootCredentials.containsKey(realm)) {
               log.log(
-                  "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the environment variable {} or Java system property {}, not printed to stdout.");
+                  "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the {} configuration property, not printed to stdout.");
             } else {
               log.log(
-                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the environment variable {} or Java system property {}, see separate message printed to stdout.");
+                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, see separate message printed to stdout.");
               String msg =
                   String.format(
                       "realm: %1s root principal credentials: %2s:%3s",
@@ -324,30 +325,30 @@ public class ServiceProducers {
       if (!unusedRealmSecrets.isEmpty()) {
         // This is intentionally an error to highlight the importance of the situation.
         LOGGER.error(
-            "The realms {} are already fully bootstrapped but the secrets are still available via the environment variable {} or Java system property {}. "
-                + "Remove this security sensitive information from the environment / Java system properties!",
+            "The realms {} are already fully bootstrapped but the secrets are still available via the {} configuration property. "
+                + "Remove this security sensitive information from the application configuration!",
             unusedRealmSecrets,
-            RootCredentialsSet.ENVIRONMENT_VARIABLE,
             RootCredentialsSet.SYSTEM_PROPERTY);
       }
     } else if (!rootCredentials.isEmpty()) {
       // This is intentionally an error to highlight the importance of the situation.
       LOGGER.error(
-          "Secrets for the realms {} are available via the environment variable {} or Java system property {}. "
-              + "Remove this security sensitive information from the environment / Java system properties!",
+          "Secrets for the realms {} are available via the {} configuration property. "
+              + "Remove this security sensitive information from the application configuration!",
           rootCredentials.keySet(),
-          RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
     }
   }
 
   @Produces
+  @ApplicationScoped
   public RateLimiter rateLimiter(
       RateLimiterFilterConfiguration config, @Any Instance<RateLimiter> rateLimiters) {
     return rateLimiters.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces
+  @ApplicationScoped
   public TokenBucketFactory tokenBucketFactory(
       TokenBucketConfiguration config, @Any Instance<TokenBucketFactory> tokenBucketFactories) {
     return tokenBucketFactories.select(Identifier.Literal.of(config.type())).get();
@@ -414,6 +415,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
   public OidcTenantResolver oidcTenantResolver(
       OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
@@ -429,6 +431,26 @@ public class ServiceProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  /**
+   * Produces a RequestIdSupplier that retrieves the request ID from the current request context.
+   *
+   * <p>The request ID is set by {@link RequestIdFilter} on each incoming request. This producer
+   * provides access to that ID via the {@link RequestIdSupplier} interface for components that need
+   * request correlation without direct dependency on JAX-RS types.
+   */
+  @Produces
+  @RequestScoped
+  public RequestIdSupplier requestIdSupplier() {
+    return () -> {
+      ResteasyReactiveRequestContext context = CurrentRequestManager.get();
+      if (context != null) {
+        return (String)
+            context.getContainerRequestContext().getProperty(RequestIdFilter.REQUEST_ID_KEY);
+      }
+      return null;
+    };
   }
 
   @Produces

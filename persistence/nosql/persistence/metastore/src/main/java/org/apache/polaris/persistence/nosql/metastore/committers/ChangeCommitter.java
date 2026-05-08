@@ -18,21 +18,20 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.committers;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.UpdatableIndex;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
+import org.jspecify.annotations.NonNull;
 
 @FunctionalInterface
 public interface ChangeCommitter<REF_OBJ extends ContainerObj, RESULT> {
-  @Nonnull
-  ChangeResult<RESULT> change(
-      @Nonnull CommitterState<REF_OBJ, RESULT> state,
-      @Nonnull ContainerObj.Builder<REF_OBJ, ?> ref,
-      @Nonnull UpdatableIndex<ObjRef> byName,
-      @Nonnull UpdatableIndex<IndexKey> byId)
+  @NonNull ChangeResult<RESULT> change(
+      @NonNull CommitterState<REF_OBJ, RESULT> state,
+      ContainerObj.@NonNull Builder<REF_OBJ, ?> ref,
+      @NonNull UpdatableIndex<ObjRef> byName,
+      @NonNull UpdatableIndex<IndexKey> byId)
       throws CommitException;
 }

@@ -555,7 +555,7 @@ public class InMemoryEntityCache implements EntityCache {
       PolarisChangeTrackingVersions changeTrackingVersions = changeTrackingIterator.next();
       if (changeTrackingVersions == null) {
         // entity has been purged
-        ResolvedPolarisEntity cachedEntity = getEntityById(entityId.getId());
+        ResolvedPolarisEntity cachedEntity = getEntityById(entityId.id());
         if (cachedEntity != null || resolvedEntities.containsKey(entityId)) {
           LOGGER.debug("Entity {} has been purged, removing from cache", entityId);
           Optional.ofNullable(cachedEntity).ifPresent(this::removeCacheEntry);
@@ -569,12 +569,11 @@ public class InMemoryEntityCache implements EntityCache {
       // grants ahead and some
       // grants behind
       ResolvedPolarisEntity cachedEntity =
-          resolvedEntities.computeIfAbsent(entityId, id -> this.getEntityById(id.getId()));
+          resolvedEntities.computeIfAbsent(entityId, id -> this.getEntityById(id.id()));
       if (cachedEntity == null
-          || cachedEntity.getEntity().getEntityVersion()
-              != changeTrackingVersions.getEntityVersion()
+          || cachedEntity.getEntity().getEntityVersion() != changeTrackingVersions.entityVersion()
           || cachedEntity.getEntity().getGrantRecordsVersion()
-              != changeTrackingVersions.getGrantRecordsVersion()) {
+              != changeTrackingVersions.grantRecordsVersion()) {
         idsToReload.add(entityId);
       } else {
         resolvedEntities.put(entityId, cachedEntity);

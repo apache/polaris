@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
@@ -29,7 +30,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -61,23 +61,16 @@ class InMemoryStorageIntegrationTest {
                 locationScheme + "://bucket/path/to/warehouse/namespace/table",
                 locationScheme + "://bucket2/warehouse",
                 locationScheme + "://arandombucket/path/to/warehouse/namespace/table"));
-    Assertions.assertThat(result)
+    assertThat(result)
         .hasSize(3)
-        .containsEntry(
+        .hasEntrySatisfying(
             locationScheme + "://bucket/path/to/warehouse/namespace/table",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(true, "")))
-        .containsEntry(
-            locationScheme + "://bucket2/warehouse",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(true, "")))
-        .containsEntry(
+            val -> assertValidationResult(val, true))
+        .hasEntrySatisfying(
+            locationScheme + "://bucket2/warehouse", val -> assertValidationResult(val, true))
+        .hasEntrySatisfying(
             locationScheme + "://arandombucket/path/to/warehouse/namespace/table",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(false, "")));
+            val -> assertValidationResult(val, false));
   }
 
   @ParameterizedTest
@@ -95,32 +88,13 @@ class InMemoryStorageIntegrationTest {
                 s3Scheme + "://bucket/path/to/warehouse/namespace/table",
                 "file:///etc/passwd",
                 "a/relative/subdirectory"));
-    Assertions.assertThat(result)
+    assertThat(result)
         .hasSize(3)
         .hasEntrySatisfying(
             s3Scheme + "://bucket/path/to/warehouse/namespace/table",
-            val ->
-                Assertions.assertThat(val)
-                    .hasSize(1)
-                    .containsKey(PolarisStorageActions.READ)
-                    .extractingByKey(PolarisStorageActions.READ)
-                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-        .hasEntrySatisfying(
-            "file:///etc/passwd",
-            val ->
-                Assertions.assertThat(val)
-                    .hasSize(1)
-                    .containsKey(PolarisStorageActions.READ)
-                    .extractingByKey(PolarisStorageActions.READ)
-                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-        .hasEntrySatisfying(
-            "a/relative/subdirectory",
-            val ->
-                Assertions.assertThat(val)
-                    .hasSize(1)
-                    .containsKey(PolarisStorageActions.READ)
-                    .extractingByKey(PolarisStorageActions.READ)
-                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
+            val -> assertValidationResult(val, true))
+        .hasEntrySatisfying("file:///etc/passwd", val -> assertValidationResult(val, true))
+        .hasEntrySatisfying("a/relative/subdirectory", val -> assertValidationResult(val, true));
   }
 
   @Test
@@ -139,23 +113,16 @@ class InMemoryStorageIntegrationTest {
                 "s3://bucket/path/to/warehouse/namespace/table",
                 "s3://bucket2/warehouse/namespace/table",
                 "s3://arandombucket/path/to/warehouse/namespace/table"));
-    Assertions.assertThat(result)
+    assertThat(result)
         .hasSize(3)
-        .containsEntry(
+        .hasEntrySatisfying(
             "s3://bucket/path/to/warehouse/namespace/table",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(false, "")))
-        .containsEntry(
-            "s3://bucket2/warehouse/namespace/table",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(false, "")))
-        .containsEntry(
+            map -> assertValidationResult(map, false))
+        .hasEntrySatisfying(
+            "s3://bucket2/warehouse/namespace/table", map -> assertValidationResult(map, false))
+        .hasEntrySatisfying(
             "s3://arandombucket/path/to/warehouse/namespace/table",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(false, "")));
+            map -> assertValidationResult(map, false));
   }
 
   @Test
@@ -173,13 +140,18 @@ class InMemoryStorageIntegrationTest {
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
-    Assertions.assertThat(result)
+    assertThat(result)
         .hasSize(1)
-        .containsEntry(
-            "s3://bucket/path/to",
-            Map.of(
-                PolarisStorageActions.READ,
-                new PolarisStorageIntegration.ValidationResult(false, "")));
+        .hasEntrySatisfying("s3://bucket/path/to", map -> assertValidationResult(map, false));
+  }
+
+  private void assertValidationResult(
+      Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult> results,
+      boolean expected) {
+    assertThat(results)
+        .hasSize(1)
+        .extractingByKey(PolarisStorageActions.READ)
+        .returns(expected, PolarisStorageIntegration.ValidationResult::success);
   }
 
   private static final class MockInMemoryStorageIntegration

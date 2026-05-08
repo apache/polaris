@@ -27,13 +27,13 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 
 /**
  * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
@@ -166,7 +166,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     public Builder setParentNamespace(Namespace namespace) {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(
-            NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
+            NamespaceEntity.PARENT_NAMESPACE_KEY, PolarisEntityUtils.encodeNamespace(namespace));
       }
       return this;
     }

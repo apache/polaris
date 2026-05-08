@@ -17,6 +17,7 @@ package org.apache.polaris.docs.generator;
 
 import com.sun.source.doctree.DocCommentTree;
 import io.smallrye.config.ConfigMappingInterface.Property;
+import io.smallrye.config.WithUnnamedKey;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -81,9 +82,29 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
     return "";
   }
 
+  /**
+   * Returns the unnamed key value if the property has {@link WithUnnamedKey} annotation. This
+   * indicates that the map property can be accessed without specifying a key name (using the
+   * default/unnamed key).
+   */
+  public Optional<String> unnamedKey() {
+    if (property.isMap()) {
+      var annotation = element.getAnnotation(WithUnnamedKey.class);
+      if (annotation != null) {
+        return Optional.of(annotation.value());
+      }
+    }
+    return Optional.empty();
+  }
+
   @Override
   public String simplifiedTypeName() {
     return simplifiedTypeName(property);
+  }
+
+  @Override
+  public String enumTooltipText() {
+    return enumTooltipText(property);
   }
 
   public boolean isSettableType() {
@@ -156,10 +177,14 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
       var leaf = property.asLeaf();
       var rawType = leaf.getValueRawType();
       if (rawType.isEnum()) {
-        return Arrays.stream(rawType.getEnumConstants())
-            .map(Enum.class::cast)
-            .map(Enum::name)
-            .collect(Collectors.joining(", "));
+        Object[] constants = rawType.getEnumConstants();
+        String firstThree =
+            Arrays.stream(constants)
+                .limit(3)
+                .map(Enum.class::cast)
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
+        return "enum (" + firstThree + (constants.length > 3 ? ", ..." : "") + ")";
       }
       if (property.hasConvertWith()) {
         // A smallrye-config converter always takes a string.
@@ -221,6 +246,31 @@ public class SmallRyeConfigPropertyInfo implements PropertyInfo {
       return "";
     }
     throw new UnsupportedOperationException("Don't know how to handle " + property);
+  }
+
+  public static String enumTooltipText(Property property) {
+    if (property.isOptional()) {
+      return enumTooltipText(property.asOptional().getNestedProperty());
+    }
+    if (property.isCollection()) {
+      return enumTooltipText(property.asCollection().getElement());
+    }
+    if (property.isMap()) {
+      return enumTooltipText(property.asMap().getValueProperty());
+    }
+    if (property.isLeaf()) {
+      var rawType = property.asLeaf().getValueRawType();
+      if (rawType.isEnum()) {
+        Object[] constants = rawType.getEnumConstants();
+        if (constants.length > 3) {
+          return Arrays.stream(constants)
+              .map(Enum.class::cast)
+              .map(Enum::name)
+              .collect(Collectors.joining(", "));
+        }
+      }
+    }
+    return null;
   }
 
   @Override

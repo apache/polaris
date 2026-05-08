@@ -16,8 +16,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from dataclasses import dataclass
-from typing import Dict, Optional, List
+from dataclasses import dataclass, field
+from typing import Dict, Optional, List, cast
 
 from pydantic import StrictStr
 
@@ -31,6 +31,7 @@ from apache_polaris.sdk.management import (
     UpdateCatalogRoleRequest,
     GrantCatalogRoleRequest,
 )
+from apache_polaris.cli.command.utils import format_timestamp
 
 
 @dataclass
@@ -47,18 +48,39 @@ class CatalogRolesCommand(Command):
     """
 
     catalog_roles_subcommand: str
-    catalog_name: str
-    catalog_role_name: str
-    principal_role_name: str
-    properties: Optional[Dict[str, StrictStr]]
-    set_properties: Dict[str, StrictStr]
-    remove_properties: List[str]
+    catalog_name: Optional[str] = None
+    catalog_role_name: Optional[str] = None
+    principal_role_name: Optional[str] = None
+    properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    set_properties: Optional[Dict[str, StrictStr]] = field(default_factory=dict)
+    remove_properties: Optional[List[str]] = None
+
+    def __post_init__(self) -> None:
+        if self.properties is None:
+            self.properties = {}
+        if self.set_properties is None:
+            self.set_properties = {}
 
     def validate(self) -> None:
         if not self.catalog_name:
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
+
+        if self.catalog_roles_subcommand in {
+            Subcommands.CREATE,
+            Subcommands.DELETE,
+            Subcommands.GET,
+            Subcommands.UPDATE,
+            Subcommands.GRANT,
+            Subcommands.REVOKE,
+            Subcommands.SUMMARIZE,
+        }:
+            if not self.catalog_role_name:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG_ROLE)}"
+                )
+
         if self.catalog_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_role_name:
                 raise Exception(
@@ -66,34 +88,31 @@ class CatalogRolesCommand(Command):
                 )
 
     def execute(self, api: PolarisDefaultApi) -> None:
+        catalog_name = cast(str, self.catalog_name)
+        catalog_role_name = cast(str, self.catalog_role_name)
+
         if self.catalog_roles_subcommand == Subcommands.CREATE:
             request = CreateCatalogRoleRequest(
                 catalog_role=CatalogRole(
-                    name=self.catalog_role_name, properties=self.properties
+                    name=catalog_role_name, properties=self.properties
                 )
             )
-            api.create_catalog_role(self.catalog_name, request)
+            api.create_catalog_role(catalog_name, request)
         elif self.catalog_roles_subcommand == Subcommands.DELETE:
-            api.delete_catalog_role(self.catalog_name, self.catalog_role_name)
+            api.delete_catalog_role(catalog_name, catalog_role_name)
         elif self.catalog_roles_subcommand == Subcommands.GET:
-            print(
-                api.get_catalog_role(
-                    self.catalog_name, self.catalog_role_name
-                ).to_json()
-            )
+            print(api.get_catalog_role(catalog_name, catalog_role_name).to_json())
         elif self.catalog_roles_subcommand == Subcommands.LIST:
             if self.principal_role_name:
                 for catalog_role in api.list_catalog_roles_for_principal_role(
-                    self.principal_role_name, self.catalog_name
+                    cast(str, self.principal_role_name), catalog_name
                 ).roles:
                     print(catalog_role.to_json())
             else:
-                for catalog_role in api.list_catalog_roles(self.catalog_name).roles:
+                for catalog_role in api.list_catalog_roles(catalog_name).roles:
                     print(catalog_role.to_json())
         elif self.catalog_roles_subcommand == Subcommands.UPDATE:
-            catalog_role = api.get_catalog_role(
-                self.catalog_name, self.catalog_role_name
-            )
+            catalog_role = api.get_catalog_role(catalog_name, catalog_role_name)
             new_properties = catalog_role.properties or {}
 
             # Add or update all entries specified in set_properties
@@ -109,20 +128,68 @@ class CatalogRolesCommand(Command):
                 current_entity_version=catalog_role.entity_version,
                 properties=new_properties,
             )
-            api.update_catalog_role(self.catalog_name, self.catalog_role_name, request)
+            api.update_catalog_role(catalog_name, catalog_role_name, request)
         elif self.catalog_roles_subcommand == Subcommands.GRANT:
             request = GrantCatalogRoleRequest(
-                catalog_role=CatalogRole(name=self.catalog_role_name),
+                catalog_role=CatalogRole(name=catalog_role_name),
                 properties=self.properties,
             )
             api.assign_catalog_role_to_principal_role(
-                self.principal_role_name, self.catalog_name, request
+                cast(str, self.principal_role_name), catalog_name, request
             )
         elif self.catalog_roles_subcommand == Subcommands.REVOKE:
             api.revoke_catalog_role_from_principal_role(
-                self.principal_role_name, self.catalog_name, self.catalog_role_name
+                cast(str, self.principal_role_name), catalog_name, catalog_role_name
             )
+        elif self.catalog_roles_subcommand == Subcommands.SUMMARIZE:
+            self._generate_summary(api)
         else:
             raise Exception(
                 f"{self.catalog_roles_subcommand} is not supported in the CLI"
             )
+
+    def _generate_summary(self, api: PolarisDefaultApi) -> None:
+        catalog_name = cast(str, self.catalog_name)
+        catalog_role_name = cast(str, self.catalog_role_name)
+        grants = (
+            api.list_grants_for_catalog_role(catalog_name, catalog_role_name).grants
+            or []
+        )
+        print(f"Catalog Role: {catalog_role_name} [Catalog: {catalog_name}]")
+        print("-" * 80)
+        # Metadata
+        role = api.get_catalog_role(catalog_name, catalog_role_name)
+        print("Metadata")
+        print(f"  {'Created:':<30} {format_timestamp(role.create_timestamp)}")
+        print(f"  {'Modified:':<30} {format_timestamp(role.last_update_timestamp)}")
+        print(f"  {'Version:':<30} {role.entity_version}")
+
+        # Assignments
+        principal_roles = (
+            api.list_assignee_principal_roles_for_catalog_role(
+                catalog_name, catalog_role_name
+            ).roles
+            or []
+        )
+        print("\nAssignments")
+        print(f"  {'Assigned Principal Roles:':<30} {len(principal_roles)}")
+        print(f"  {'Total Grants:':<30} {len(grants)}")
+
+        # Privileges
+        print("\nPrivileges")
+        if not grants:
+            print("  No grants found")
+        else:
+            for grant in sorted(
+                grants, key=lambda x: (str(x.privilege), str(x.namespace))
+            ):
+                privilege = grant.privilege.value
+                resource = ""
+                if grant.type == "namespace":
+                    resource = f" on {'.'.join(grant.namespace)}"
+                elif grant.type == "table":
+                    resource = f" on {'.'.join(grant.namespace)}.{grant.table}"
+                elif grant.type == "view":
+                    resource = f" on {'.'.join(grant.namespace)}.{grant.view}"
+                print(f"  - {privilege}{resource}")
+        print("-" * 80)

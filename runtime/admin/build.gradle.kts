@@ -21,7 +21,7 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  // id("polaris-license-report")
+  id("polaris-license-report")
 }
 
 dependencies {
@@ -35,12 +35,25 @@ dependencies {
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
 
+  implementation(project(":polaris-persistence-nosql-api"))
+  implementation(project(":polaris-persistence-nosql-maintenance-api"))
+  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
+  runtimeOnly(project(":polaris-persistence-nosql-metastore-maintenance"))
+
+  runtimeOnly("io.quarkus:quarkus-mongodb-client")
+
   implementation("io.quarkus:quarkus-jdbc-postgresql")
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation(project(":polaris-runtime-common"))
+
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
@@ -52,6 +65,7 @@ dependencies {
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:testcontainers-postgresql")
+  testFixturesImplementation(testFixtures(project(":polaris-persistence-nosql-mongodb")))
 
   testRuntimeOnly("org.postgresql:postgresql")
 }
@@ -80,7 +94,14 @@ val distributionElements by
     isCanBeResolved = false
   }
 
+val licenseNoticeElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
 // Register the quarkus app directory as an artifact
 artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
+  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }

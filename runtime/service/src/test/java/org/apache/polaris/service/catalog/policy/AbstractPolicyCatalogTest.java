@@ -81,7 +81,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
-import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.InMemoryEventCollector;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.ApplicablePolicy;
@@ -204,7 +204,6 @@ public abstract class AbstractPolicyCatalogTest {
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
                     .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -251,7 +250,7 @@ public abstract class AbstractPolicyCatalogTest {
             taskExecutor,
             storageAccessConfigProvider,
             fileIOFactory,
-            new NoOpPolarisEventListener(),
+            new InMemoryEventCollector(),
             eventMetadataFactory);
     this.icebergCatalog.initialize(
         CATALOG_NAME,
@@ -521,7 +520,7 @@ public abstract class AbstractPolicyCatalogTest {
     var applicablePolicies = policyCatalog.getApplicablePolicies(NS, null, null);
     assertThat(applicablePolicies.size()).isEqualTo(1);
     assertThat(applicablePolicies.getFirst().getName())
-        .isEqualTo(POLICY2.getName())
+        .isEqualTo(POLICY2.name())
         .as("Namespace level policy overwrite the catalog level policy with the same type");
   }
 

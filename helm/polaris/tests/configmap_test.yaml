@@ -98,10 +98,11 @@ tests:
 
   - it: should configure realm context
     set:
-      realmContext: { type: "custom", realms: [ "realm1", "realm2" ] }
+      realmContext: { type: "custom", realms: [ "realm1", "realm2" ], requireHeader: true }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.type=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.realms=realm1,realm2" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.require-header=true" }
 
   - it: should configure features
     set:
@@ -168,12 +169,6 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.type=mixed" }
 
-  - it: should fail on invalid authentication type
-    set: { authentication: { type: invalid } }
-    asserts:
-      - failedTemplate:
-          errorMessage: "authentication.type: invalid authentication type"
-
   - it: should configure default authenticator
     set: { authentication: { authenticator: { type: default } } }
     asserts:
@@ -238,8 +233,8 @@ tests:
 
   - it: should derive HTTP ports from service configuration
     set:
-      service: { ports: [ { port: 8080 } ] }
-      managementService: { ports: [ { port: 8081 } ] }
+      service: { ports: [ { name: polaris-http, port: 8080 } ] }
+      managementService: { ports: [ { name: polaris-mgmt, port: 8081 } ] }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.port=8080" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.management.port=8081" }
@@ -376,10 +371,18 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
         not: true
 
+  - it: should not include any CORS properties when cors.enabled is false
+    set:
+      cors: { enabled: false, allowedOrigins: [ "http://localhost:3000" ], allowedMethods: [ "GET" ], allowedHeaders: [ "X-Custom" ], exposedHeaders: [ "X-Exposed" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: true }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
+        not: true
+
   - it: should include CORS configuration if defined
     set:
-      cors: { allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
+      cors: { enabled: true, allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
     asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.enabled=true" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.origins=http://localhost:3000,https://localhost:4000" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.methods=GET,POST" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.headers=X-Custom1,X-Custom2" }

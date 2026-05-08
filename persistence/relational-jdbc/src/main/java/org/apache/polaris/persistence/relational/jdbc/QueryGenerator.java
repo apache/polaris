@@ -126,8 +126,8 @@ public class QueryGenerator {
     String placeholders = entityIds.stream().map(e -> "(?, ?)").collect(Collectors.joining(", "));
     List<Object> params = new ArrayList<>();
     for (PolarisEntityId id : entityIds) {
-      params.add(id.getCatalogId());
-      params.add(id.getId());
+      params.add(id.catalogId());
+      params.add(id.id());
     }
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
@@ -369,13 +369,6 @@ public class QueryGenerator {
         List.of());
   }
 
-  @VisibleForTesting
-  static PreparedQuery generateMetricsVersionQuery() {
-    return new PreparedQuery(
-        "SELECT version_value FROM POLARIS_SCHEMA.metrics_version WHERE version_key = 'metrics_version'",
-        List.of());
-  }
-
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so
@@ -429,7 +422,7 @@ public class QueryGenerator {
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
-  private static String getFullyQualifiedTableName(String tableName) {
+  static String getFullyQualifiedTableName(String tableName) {
     // TODO: make schema name configurable.
     return "POLARIS_SCHEMA." + tableName;
   }

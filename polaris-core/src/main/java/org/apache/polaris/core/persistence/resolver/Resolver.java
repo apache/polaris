@@ -238,6 +238,24 @@ public class Resolver {
    *     getResolvedXYZ() method can be called.
    */
   public ResolverStatus resolveAll() {
+    return resolveWithPlan(ResolvePlan.all(referenceCatalogName));
+  }
+
+  /**
+   * Run the resolution process for a subset of resolvables.
+   *
+   * @param selections explicit selection of resolvables to resolve
+   * @return the status of the resolver. If success, the requested entities have been resolved and
+   *     the corresponding getResolvedXYZ() methods can be called.
+   */
+  public ResolverStatus resolveSelections(@Nonnull Set<Resolvable> selections) {
+    diagnostics.checkNotNull(selections, "resolver_selections_is_null");
+    diagnostics.check(!selections.isEmpty(), "resolver_selections_is_empty");
+    return resolveWithPlan(
+        ResolvePlan.fromSelections(selections, referenceCatalogName, hasRequestedCatalogRoles()));
+  }
+
+  private ResolverStatus resolveWithPlan(ResolvePlan plan) {
     // can only be called if the resolver has not yet been called
     this.diagnostics.check(resolverStatus == null, "resolver_called");
 
@@ -247,9 +265,9 @@ public class Resolver {
     int count = 0;
     ResolverStatus status;
     do {
-      status = runResolvePass();
+      status = runResolvePass(plan);
       count++;
-    } while (status == null && ++count < 1000);
+    } while (status == null && count < 1000);
 
     // assert if status is null
     this.diagnostics.checkNotNull(status, "cannot_resolve_all_entities");
@@ -274,6 +292,7 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
+    this.diagnostics.check(resolvedCallerPrincipal != null, "caller_principal_not_resolved");
 
     return resolvedCallerPrincipal;
   }
@@ -287,7 +306,6 @@ public class Resolver {
     this.diagnostics.check(
         resolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS,
         "resolver_must_be_successful");
-
     return resolvedCallerPrincipalRoles;
   }
 
@@ -382,6 +400,7 @@ public class Resolver {
     if (entityType.isTopLevel()) {
       return this.resolvedEntriesByName.get(new EntityCacheByNameKey(entityType, entityName));
     } else {
+      diagnostics.checkNotNull(resolvedReferenceCatalog, "reference_catalog_not_resolved");
       long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
       return this.resolvedEntriesByName.get(
           new EntityCacheByNameKey(catalogId, catalogId, entityType, entityName));
@@ -393,7 +412,7 @@ public class Resolver {
    *
    * @return status of the resolve pass
    */
-  private ResolverStatus runResolvePass() {
+  private ResolverStatus runResolvePass(ResolvePlan plan) {
 
     // we will resolve those again
     this.resolvedCallerPrincipal = null;
@@ -409,23 +428,32 @@ public class Resolver {
     List<ResolvedPolarisEntity> toValidate = new ArrayList<>();
 
     // first resolve the principal and determine the set of activated principal roles
-    ResolverStatus status = this.resolveCallerPrincipalAndPrincipalRoles(toValidate);
+    ResolverStatus status =
+        plan.resolveCallerPrincipal()
+            ? this.resolveCallerPrincipalAndPrincipalRoles(
+                toValidate, plan.resolveCallerPrincipalRoles())
+            : new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
 
     // if success, continue resolving
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
       // then resolve the reference catalog if one was specified
-      if (this.referenceCatalogName != null) {
-        status = this.resolveReferenceCatalog(toValidate, this.referenceCatalogName);
+      if (plan.resolveReferenceCatalog()) {
+        this.diagnostics.checkNotNull(this.referenceCatalogName, "reference_catalog_expected");
+        status =
+            this.resolveReferenceCatalog(
+                toValidate, this.referenceCatalogName, plan.resolveCallerCatalogRoles());
       }
 
       // if success, continue resolving
       if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
         // then resolve all the additional entities we were asked to resolve
-        status = this.resolveEntities(toValidate, this.entitiesToResolve);
+        if (plan.resolveRequestedTopLevelEntities()) {
+          status = this.resolveEntities(toValidate, this.entitiesToResolve);
+        }
 
         // if success, continue resolving
         if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS
-            && this.referenceCatalogName != null) {
+            && plan.resolveRequestedPaths()) {
           // finally, resolve all paths we need to resolve
           status = this.resolvePaths(toValidate, this.pathsToResolve);
         }
@@ -445,6 +473,15 @@ public class Resolver {
 
     // if success, we are done, simply return the status.
     return validationSuccess ? status : null;
+  }
+
+  private boolean hasRequestedCatalogRoles() {
+    for (ResolverEntityName entityName : this.entitiesToResolve) {
+      if (entityName.entityType() == PolarisEntityType.CATALOG_ROLE) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -560,8 +597,8 @@ public class Resolver {
         // refresh the resolved entity if the entity or grant records version is different
         final ResolvedPolarisEntity refreshedResolvedEntity;
         if (versions == null
-            || entity.getEntityVersion() != versions.getEntityVersion()
-            || entity.getGrantRecordsVersion() != versions.getGrantRecordsVersion()) {
+            || entity.getEntityVersion() != versions.entityVersion()
+            || entity.getGrantRecordsVersion() != versions.grantRecordsVersion()) {
           // if null version we need to invalidate the cached entry since it has probably been
           // dropped
           if (versions == null) {
@@ -576,8 +613,8 @@ public class Resolver {
                   this.cache.getAndRefreshIfNeeded(
                       this.polarisCallContext,
                       entity,
-                      versions.getEntityVersion(),
-                      versions.getGrantRecordsVersion());
+                      versions.entityVersion(),
+                      versions.grantRecordsVersion());
             } else {
               ResolvedEntityResult result =
                   this.polarisMetaStoreManager.refreshResolvedEntity(
@@ -654,13 +691,13 @@ public class Resolver {
     for (ResolverEntityName entityName : entitiesToResolve) {
       // resolve that entity
       ResolvedPolarisEntity resolvedEntity =
-          this.resolveByName(toValidate, entityName.getEntityType(), entityName.getEntityName());
+          this.resolveByName(toValidate, entityName.entityType(), entityName.entityName());
 
       // if not found, we can exit unless the entity is optional
       // TODO: Consider how this interacts with CATALOG_ROLE in the isPassthroughFacade case.
-      if (!entityName.isOptional()
+      if (!entityName.optional()
           && (resolvedEntity == null || resolvedEntity.getEntity().isDropped())) {
-        return new ResolverStatus(entityName.getEntityType(), entityName.getEntityName());
+        return new ResolverStatus(entityName.entityType(), entityName.entityName());
       }
     }
 
@@ -679,7 +716,6 @@ public class Resolver {
    */
   private ResolverStatus resolvePaths(
       List<ResolvedPolarisEntity> toValidate, List<ResolverPath> pathsToResolve) {
-
     // id of the catalog for all these paths
     final long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
 
@@ -693,14 +729,14 @@ public class Resolver {
       long parentId = catalogId;
 
       // resolve each segment
-      Iterator<String> pathIt = path.getEntityNames().iterator();
-      for (int segmentIndex = 0; segmentIndex < path.getEntityNames().size(); segmentIndex++) {
+      Iterator<String> pathIt = path.entityNames().iterator();
+      for (int segmentIndex = 0; segmentIndex < path.entityNames().size(); segmentIndex++) {
         // get segment name
         String segmentName = pathIt.next();
 
         // determine the segment type
         PolarisEntityType segmentType =
-            pathIt.hasNext() ? PolarisEntityType.NAMESPACE : path.getLastEntityType();
+            pathIt.hasNext() ? PolarisEntityType.NAMESPACE : path.lastEntityType();
 
         // resolve that entity
         ResolvedPolarisEntity segment =
@@ -710,7 +746,7 @@ public class Resolver {
         if (segment == null || segment.getEntity().isDropped()) {
           // If we've determined the catalog is a passthrough facade, treat all paths as
           // optional.
-          if (path.isOptional() || this.isPassthroughFacade) {
+          if (path.optional() || this.isPassthroughFacade) {
             // we have resolved as much as what we could have
             break;
           } else {
@@ -742,7 +778,7 @@ public class Resolver {
    * @return the status of resolution
    */
   private ResolverStatus resolveCallerPrincipalAndPrincipalRoles(
-      List<ResolvedPolarisEntity> toValidate) {
+      List<ResolvedPolarisEntity> toValidate, boolean resolvePrincipalRoles) {
 
     // resolve the principal, by name or id
     this.resolvedCallerPrincipal =
@@ -755,10 +791,14 @@ public class Resolver {
     }
 
     // activate all principal roles specified in the authenticated principal
-    resolvedCallerPrincipalRoles =
-        this.polarisPrincipal.getRoles().isEmpty()
-            ? resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal)
-            : resolvePrincipalRolesByName(toValidate, this.polarisPrincipal.getRoles());
+    if (resolvePrincipalRoles) {
+      resolvedCallerPrincipalRoles =
+          this.polarisPrincipal.getRoles().isEmpty()
+              ? resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal)
+              : resolvePrincipalRolesByName(toValidate, this.polarisPrincipal.getRoles());
+    } else {
+      resolvedCallerPrincipalRoles = new ArrayList<>();
+    }
 
     // total success
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
@@ -800,18 +840,21 @@ public class Resolver {
   }
 
   /**
-   * Resolve the reference catalog and determine all activated role. The principal and principal
-   * roles should have already been resolved
+   * Resolve the reference catalog and optionally determine all caller-activated catalog roles. The
+   * principal and principal roles should have already been resolved.
    *
    * @param toValidate all entities we have resolved incrementally, possibly with some entries
    *     coming from cache, hence we will have to verify that these entities have not changed in the
    *     backend
-   * @param referenceCatalogName name of the reference catalog to resolve, along with all catalog
-   *     roles which are activated
+   * @param referenceCatalogName name of the reference catalog to resolve
+   * @param resolveCallerCatalogRoles whether to resolve caller-activated catalog roles for the
+   *     reference catalog
    * @return the status of resolution
    */
   private ResolverStatus resolveReferenceCatalog(
-      @Nonnull List<ResolvedPolarisEntity> toValidate, @Nonnull String referenceCatalogName) {
+      @Nonnull List<ResolvedPolarisEntity> toValidate,
+      @Nonnull String referenceCatalogName,
+      boolean resolveCallerCatalogRoles) {
     // resolve the catalog
     this.resolvedReferenceCatalog =
         this.resolveByName(toValidate, PolarisEntityType.CATALOG, referenceCatalogName);
@@ -822,26 +865,28 @@ public class Resolver {
       return new ResolverStatus(PolarisEntityType.CATALOG, this.referenceCatalogName);
     }
 
-    // determine the set of catalog roles which have been activated
-    long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
-    for (ResolvedPolarisEntity principalRole : resolvedCallerPrincipalRoles) {
-      for (PolarisGrantRecord grantRecord : principalRole.getGrantRecordsAsGrantee()) {
-        // the securable is a catalog role belonging to
-        if (grantRecord.getPrivilegeCode() == PolarisPrivilege.CATALOG_ROLE_USAGE.getCode()
-            && grantRecord.getSecurableCatalogId() == catalogId) {
-          // the id of the catalog role
-          long catalogRoleId = grantRecord.getSecurableId();
+    if (resolveCallerCatalogRoles) {
+      // determine the set of catalog roles which have been activated
+      long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
+      for (ResolvedPolarisEntity principalRole : resolvedCallerPrincipalRoles) {
+        for (PolarisGrantRecord grantRecord : principalRole.getGrantRecordsAsGrantee()) {
+          // the securable is a catalog role belonging to
+          if (grantRecord.getPrivilegeCode() == PolarisPrivilege.CATALOG_ROLE_USAGE.getCode()
+              && grantRecord.getSecurableCatalogId() == catalogId) {
+            // the id of the catalog role
+            long catalogRoleId = grantRecord.getSecurableId();
 
-          // skip if it has already been added
-          if (!this.resolvedCatalogRoles.containsKey(catalogRoleId)) {
-            // see if this catalog can be resolved
-            ResolvedPolarisEntity catalogRole =
-                this.resolveById(
-                    toValidate, PolarisEntityType.CATALOG_ROLE, catalogId, catalogRoleId);
+            // skip if it has already been added
+            if (!this.resolvedCatalogRoles.containsKey(catalogRoleId)) {
+              // see if this catalog can be resolved
+              ResolvedPolarisEntity catalogRole =
+                  this.resolveById(
+                      toValidate, PolarisEntityType.CATALOG_ROLE, catalogId, catalogRoleId);
 
-            // if found and not dropped, add it to the list of activated catalog roles
-            if (catalogRole != null && !catalogRole.getEntity().isDropped()) {
-              this.resolvedCatalogRoles.put(catalogRoleId, catalogRole);
+              // if found and not dropped, add it to the list of activated catalog roles
+              if (catalogRole != null && !catalogRole.getEntity().isDropped()) {
+                this.resolvedCatalogRoles.put(catalogRoleId, catalogRole);
+              }
             }
           }
         }
@@ -854,6 +899,58 @@ public class Resolver {
 
     // all good
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  private static record ResolvePlan(
+      boolean resolveCallerPrincipal,
+      boolean resolveCallerPrincipalRoles,
+      boolean resolveReferenceCatalog,
+      boolean resolveCallerCatalogRoles,
+      boolean resolveRequestedTopLevelEntities,
+      boolean resolveRequestedPaths) {
+
+    private static ResolvePlan all(@Nullable String referenceCatalogName) {
+      boolean hasReferenceCatalog = referenceCatalogName != null;
+      return new ResolvePlan(
+          true, true, hasReferenceCatalog, hasReferenceCatalog, true, hasReferenceCatalog);
+    }
+
+    private static ResolvePlan fromSelections(
+        Set<Resolvable> selections,
+        @Nullable String referenceCatalogName,
+        boolean hasRequestedCatalogRoles) {
+      boolean resolveRequestedPaths = selections.contains(Resolvable.REQUESTED_PATHS);
+      boolean resolveRequestedTopLevelEntities =
+          selections.contains(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
+      boolean resolveCallerCatalogRoles = selections.contains(Resolvable.CALLER_CATALOG_ROLES);
+      // Principal roles depend on resolving the caller principal, and catalog roles depend on
+      // principal roles. Only those selections require caller principal resolution.
+      boolean resolveCallerPrincipalRoles =
+          selections.contains(Resolvable.CALLER_PRINCIPAL_ROLES) || resolveCallerCatalogRoles;
+      // Reference catalog is required for path resolution and catalog role expansion.
+      boolean resolveReferenceCatalog =
+          selections.contains(Resolvable.REFERENCE_CATALOG)
+              || resolveRequestedPaths
+              || resolveCallerCatalogRoles
+              || (resolveRequestedTopLevelEntities && hasRequestedCatalogRoles);
+      boolean resolveCallerPrincipal =
+          selections.contains(Resolvable.CALLER_PRINCIPAL) || resolveCallerPrincipalRoles;
+
+      boolean hasReferenceCatalog = referenceCatalogName != null;
+      if (!hasReferenceCatalog && resolveReferenceCatalog) {
+        throw new IllegalArgumentException(
+            "Reference-catalog-dependent selections were requested, but no reference catalog name "
+                + "was provided");
+      }
+
+      return new ResolvePlan(
+          resolveCallerPrincipal,
+          resolveCallerPrincipalRoles,
+          resolveReferenceCatalog,
+          resolveCallerCatalogRoles,
+          resolveRequestedTopLevelEntities,
+          resolveRequestedPaths);
+    }
   }
 
   /**
@@ -904,7 +1001,7 @@ public class Resolver {
         "reference_catalog_must_be_specified");
 
     // one more to resolve
-    this.entitiesToResolve.add(new ResolverEntityName(entityType, entityName, optional));
+    this.entitiesToResolve.add(ImmutableResolverEntityName.of(entityType, entityName, optional));
   }
 
   /**
@@ -981,18 +1078,18 @@ public class Resolver {
       if (lookupResult == null) {
         // not found
         return null;
-      } else if (lookupResult.isCacheHit()) {
+      } else if (lookupResult.cacheHit()) {
         // found in the cache, we will have to validate this entity
-        toValidate.add(lookupResult.getCacheEntry());
+        toValidate.add(lookupResult.cacheEntry());
       } else {
         // entry cannot be null
-        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        this.diagnostics.checkNotNull(lookupResult.cacheEntry(), "cache_entry_is_null");
         // if not found in cache, it was loaded from backend, hence it has been resolved
-        this.addToResolved(lookupResult.getCacheEntry());
+        this.addToResolved(lookupResult.cacheEntry());
       }
 
       // return the cache entry
-      return lookupResult.getCacheEntry();
+      return lookupResult.cacheEntry();
     } else {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =
@@ -1037,19 +1134,19 @@ public class Resolver {
       // if not found, return null
       if (lookupResult == null) {
         return null;
-      } else if (lookupResult.isCacheHit()) {
+      } else if (lookupResult.cacheHit()) {
         // found in the cache, we will have to validate this entity
-        toValidate.add(lookupResult.getCacheEntry());
+        toValidate.add(lookupResult.cacheEntry());
       } else {
         // entry cannot be null
-        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        this.diagnostics.checkNotNull(lookupResult.cacheEntry(), "cache_entry_is_null");
 
         // if not found in cache, it was loaded from backend, hence it has been resolved
-        this.addToResolved(lookupResult.getCacheEntry());
+        this.addToResolved(lookupResult.cacheEntry());
       }
 
       // return the cache entry
-      return lookupResult.getCacheEntry();
+      return lookupResult.cacheEntry();
     } else {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =

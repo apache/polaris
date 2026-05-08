@@ -21,11 +21,9 @@ package org.apache.polaris.service.it.test;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import java.lang.reflect.Method;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
@@ -36,7 +34,6 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
@@ -54,7 +51,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -88,6 +84,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   private RESTCatalog restCatalog;
   private StorageConfigInfo storageConfig;
+  private String defaultBaseLocation;
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
@@ -115,7 +112,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     String catalogName = client.newEntityName(method.getName());
 
     storageConfig = getStorageConfigInfo();
-    String defaultBaseLocation =
+    defaultBaseLocation =
         storageConfig.getAllowedLocations().getFirst()
             + "/"
             + System.getenv("USER")
@@ -123,8 +120,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     CatalogProperties props =
         CatalogProperties.builder(defaultBaseLocation)
-            .addProperty(
-                CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:")
             .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
@@ -195,19 +190,11 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
-  @Override
   @Test
-  public void createViewWithCustomMetadataLocation() {
-    Assertions.assertThatThrownBy(super::createViewWithCustomMetadataLocation)
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Forbidden: Invalid locations");
-  }
-
-  @Test
-  public void createViewWithCustomMetadataLocationUsingPolaris(@TempDir Path tempDir) {
+  public void createViewWithCustomMetadataLocationUsingPolaris() {
     TableIdentifier identifier = TableIdentifier.of("ns", "view");
 
-    String location = Paths.get(tempDir.toUri().toString()).toString();
+    String location = defaultBaseLocation + "/custom-view-location";
     String customLocation =
         Paths.get(storageConfig.getAllowedLocations().getFirst(), "/custom-location1").toString();
 

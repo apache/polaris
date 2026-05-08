@@ -20,8 +20,12 @@
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
+import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.XmlReportRenderer
-import java.util.*
+import com.github.jk1.license.task.ReportTask
+import licenses.LicenseFileValidation
+import licenses.NoticeFileLicenseFilter
+import licenses.QuarkusAppDependencyFilter
 
 plugins { id("com.github.jk1.dependency-license-report") }
 
@@ -29,32 +33,41 @@ afterEvaluate {
   licenseReport {
     filters =
       arrayOf(
+        QuarkusAppDependencyFilter(),
         LicenseBundleNormalizer(
           "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
           false,
         ),
+        NoticeFileLicenseFilter(),
         LicenseFileValidation(),
       )
     allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
     renderers =
-      arrayOf(InventoryHtmlReportRenderer("index.html"), JsonReportRenderer(), XmlReportRenderer())
+      arrayOf<ReportRenderer>(
+        InventoryHtmlReportRenderer("index.html"),
+        JsonReportRenderer(),
+        XmlReportRenderer(),
+      )
     excludeBoms = true
     outputDir = "${project.layout.buildDirectory.get()}/reports/dependency-license"
+    configurations = arrayOf("quarkusProdRuntimeClasspathConfiguration")
   }
 }
 
 val generateLicenseReport =
-  tasks.named("generateLicenseReport") {
+  tasks.named<ReportTask>("generateLicenseReport") {
+    dependsOn("quarkusBuild")
     inputs
       .files(
         rootProject.projectDir.resolve("gradle/license/normalizer-bundle.json"),
         rootProject.projectDir.resolve("gradle/license/allowed-licenses.json"),
+        project.layout.buildDirectory.file("quarkus-app/quarkus-app-dependencies.txt"),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.property("renderersHash", Arrays.hashCode(licenseReport.renderers))
-    inputs.property("filtersHash", Arrays.hashCode(licenseReport.filters))
-    inputs.property("excludesHash", Arrays.hashCode(licenseReport.excludes))
-    inputs.property("excludeGroupsHash", Arrays.hashCode(licenseReport.excludeGroups))
+    inputs.property("renderersHash", licenseReport.renderers.contentHashCode())
+    inputs.property("filtersHash", licenseReport.filters.contentHashCode())
+    inputs.property("excludesHash", licenseReport.excludes.contentHashCode())
+    inputs.property("excludeGroupsHash", licenseReport.excludeGroups.contentHashCode())
   }
 
 val licenseReportZip =

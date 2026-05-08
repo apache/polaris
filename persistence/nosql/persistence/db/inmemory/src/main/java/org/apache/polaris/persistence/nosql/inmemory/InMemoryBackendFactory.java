@@ -18,23 +18,23 @@
  */
 package org.apache.polaris.persistence.nosql.inmemory;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.BackendFactory;
+import org.jspecify.annotations.NonNull;
 
 public class InMemoryBackendFactory
     implements BackendFactory<InMemoryBackendConfig, InMemoryConfiguration> {
   public static final String NAME = "InMemory";
 
   @Override
-  @Nonnull
+  @NonNull
   public String name() {
     return NAME;
   }
 
   @Override
-  @Nonnull
-  public Backend buildBackend(@Nonnull InMemoryBackendConfig backendConfig) {
+  @NonNull
+  public Backend buildBackend(@NonNull InMemoryBackendConfig backendConfig) {
     return new InMemoryBackend();
   }
 

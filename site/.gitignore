@@ -23,5 +23,6 @@ content/releases/
 
 # Created/generated when running Hugo on the local host
 .hugo_build.lock
+hugo.direct.sum
 public/
 resources/_gen/

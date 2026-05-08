@@ -41,14 +41,14 @@ Instructions how to verify a release candidate are available [here](../release-v
 To create a release candidate, you will need:
 
 * your Apache credentials (for repository.apache.org and dist.apache.org repositories)
-* a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) file
+* a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/polaris/KEYS) file
 
 ### Publish your GPG key
 
 If you haven't published your GPG key yet, you must publish it before starting the release process:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
+svn checkout https://dist.apache.org/repos/dist/release/polaris polaris-dist-release
 cd polaris-dist-release
 echo "" >> KEYS # append a new line
 gpg --list-sigs <YOUR KEY ID HERE> >> KEYS # append signatures
@@ -120,7 +120,6 @@ This step can be useful to gather ongoing patches that the community thinks shou
 The communication can be started via a `[DISCUSS]` mail on the dev@polaris.apache.org mailing list and the desired tickets can be added to the github milestone of the next release.
 
 Note, creating a milestone in github requires a committer. However, a non-committer can assign tasks to a milestone if added to the list of collaborators in [.asf.yaml](https://github.com/apache/polaris/blob/main/.asf.yaml).
-Also note since Polaris is an incubating project, make sure what every branch / tag you are creating is suffixed with `-incubating`.
 
 ### Create release branch
 
@@ -140,13 +139,25 @@ echo "x.y.z" > version.txt
 
 and update the version in the Helm Chart in:
 
-* `helm/polaris/Chart.yaml`
+* `helm/polaris/Chart.yaml` 
+  - update `version` and `appVersion` fields
+  - update the `Documentation` link in the `artifacthub.io/links` annotation to point to 
+    `https://polaris.apache.org/releases/x.y.z/`
 * `helm/polaris/README.md`
+* `helm/polaris/values.yaml` 
+  - update the `image.tag` field from `"latest"` to `"x.y.z"`
+
+and update the documentation URLs in `helm/polaris/values.yaml` and `helm/polaris/values.schema.json` to point to the released documentation.
+Replace `/in-dev/unreleased/` with `/releases/x.y.z/` in all documentation URLs, for example:
+
+```bash
+sed -i~ 's|/in-dev/unreleased/|/releases/x.y.z/|g' helm/polaris/values.yaml helm/polaris/values.schema.json
+```
 
 and commit/push the version bump:
 
 ```
-git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml
+git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml helm/polaris/values.schema.json
 ```
 
 Update `CHANGELOG.md`:
@@ -213,7 +224,7 @@ The binary distributions (for convenience) are available in:
 Now, we can stage the artifacts to dist dev repository:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
+svn checkout https://dist.apache.org/repos/dist/dev/polaris polaris-dist-dev
 cd polaris-dist-dev
 mkdir x.y.z
 cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
@@ -249,13 +260,17 @@ cp ../helm/*.tgz*  helm-chart/x.y.z
 svn add helm-chart/x.y.z
 ```
 
-You can now update the Helm index:
+You can now update the Helm index and copy the Artifact Hub metadata:
 
 ```
 cd helm-chart
 helm repo index .
 svn add index.yaml
+cp /path/to/polaris/github/clone/repo/helm/polaris/artifacthub-repo.yml .
+svn add artifacthub-repo.yml
 ```
+
+Note: `artifacthub-repo.yml` only needs to be added with `svn add` on the first release. On subsequent releases, it will already be versioned and the `cp` command will update it.
 
 Dist repository is now "complete" and we can push/commit:
 
@@ -285,7 +300,7 @@ Next, you have to close the staging repository:
 
 The last step for a release candidate is to create a VOTE thread on the dev mailing list.
 
-A generated email template is available in the `build/distribution` folder.
+A generated email template is available in the `build/email-templates` folder.
 
 Example title subject:
 
@@ -298,43 +313,37 @@ Example content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official
-Apache Polaris x.y.z release.
+I propose that we release the following RC as the official Apache Polaris x.y.z release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
+This corresponds to the tag: apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
+* https://dist.apache.org/repos/dist/dev/polaris/x.y.z
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
+* https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z
+
 NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
-* https://downloads.apache.org/incubator/polaris/KEYS
+* https://downloads.apache.org/polaris/KEYS
 
-Convenience binary artifacts are staged on Nexus. The Maven
-repositories URLs are:
+Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.
+Please download, verify, and test according to the release verification guide, which can be found at:
+* https://polaris.apache.org/community/release-guides/release-verification-guide/
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache Polaris x.y.z
 [ ] +0
 [ ] -1 Do not release this because...
 
-Only PPMC members and mentors have binding votes, but other community
-members are
-encouraged to cast non-binding votes. This vote will pass if there are
-3 binding +1 votes and more binding +1 votes than -1 votes.
-
-NB: if this vote passes, a new vote has to be started on the Incubator
-general mailing
-list.
+Only PMC members have binding votes, but other community members are encouraged to cast non-binding votes.
+This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
 ```
 
 When a candidate is passed or rejected, reply with the vote result:
@@ -352,75 +361,7 @@ The vote result is:
 +0: c (binding), d (non-binding)
 -1: e (binding), f (non-binding)
 
-A new vote is starting in the Apache Incubator general mailing list.
-```
-
-### Start a new vote on the Incubator general mailing list
-
-As Polaris is an Apache Incubator project, you now have to start a new vote on the Apache Incubator general mailing list.
-
-You have to send this email to general@incubator.apache.org:
-
-```
-[VOTE] Release Apache Polaris x.y.z (rci)
-```
-
-```
-Hello everyone,
-
-The Apache Polaris community has voted and approved the release of Apache Polaris x.y.z (rci).
-We now kindly request the IPMC members review and vote for this release.
-
-Polaris community vote thread:
-* https://lists.apache.org/thread/<VOTE THREAD>
-
-Vote result thread:
-* https://lists.apache.org/thread/<VOTE RESULT>
-
-The release candidate:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
-
-Git tag for the release:
-* https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z-rci
-
-Git commit for the release:
-* https://github.com/apache/polaris/commit/<COMMIT>
-
-Maven staging repository:
-* https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
-
-Please download, verify and test.
-
-Please vote in the next 72 hours.
-
-[ ] +1 approve
-[ ] +0 no opinion
-[ ] -1 disapprove with the reason
-
-To learn more about apache Polaris, please see https://polaris.apache.org/
-
-Checklist for reference:
-
-[ ] Download links are valid.
-[ ] Checksums and signatures.
-[ ] LICENSE/NOTICE files exist
-[ ] No unexpected binary files
-[ ] All source files have ASF headers
-[ ] Can compile from source
-```
-
-Binding votes are the votes from the IPMC members. Similar to the previous vote, send the result on the Incubator general mailing list:
-
-```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
-```
-
-```
-Hi everyone,
-
-This vote passed with the following result:
-
-
+We will proceed with publishing the approved artifacts and sending out the announcement soon.
 ```
 
 ## Finishing the release
@@ -432,18 +373,17 @@ After the release votes passed, you need to release the last candidate's artifac
 First, copy the distribution from the dist dev space to the dist release space:
 
 ```
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart
+svn mv https://dist.apache.org/repos/dist/dev/polaris/x.y.z https://dist.apache.org/repos/dist/release/polaris
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/polaris/helm-chart
 ```
 
-Then, update the Helm Chart repository index on https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart/index.yaml:
+Then, transfer the Helm index and Artifact Hub metadata from dist dev to dist release:
 
 ```
-svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart polaris-dist-release-helm-chart
-cd polaris-dist-release-helm-chart
-helm repo index .
-svn add index.yaml
-svn commit -m "Update Helm index for x.y.z release"
+svn mv https://dist.apache.org/repos/dist/dev/polaris/helm-chart/index.yaml \
+  https://dist.apache.org/repos/dist/dev/polaris/helm-chart/artifacthub-repo.yml \
+  https://dist.apache.org/repos/dist/release/polaris/helm-chart/ \
+  -m "Transfer Helm index and artifacthub-repo.yml for x.y.z release"
 ```
 
 Next, add a release tag to the git repository based on the candidate tag:
@@ -471,7 +411,7 @@ Now that the release artifacts have been published, the next step is to publish 
 First, checkout the release tag:
 
 ```
-git checkout apache-polaris-[major].[minor].[patch]-incubating
+git checkout apache-polaris-[major].[minor].[patch]
 ```
 
 Set up a worktree for the versioned docs and create a new branch:
@@ -489,9 +429,25 @@ Copy the documentation from the release tag:
 cp -r ../../content/in-dev/unreleased/* [major].[minor].[patch]/
 ```
 
-Edit the file `[major].[minor].[patch]/_index.md` and perform the following modifications:
-* Change the title from `In Development` to `[major].[minor].[patch]`.
+Update the binary distribution download link in `[major].[minor].[patch]/getting-started/binary-distribution.md`.
+Replace any old release URL with the correct one for this release. For a non-incubating release the URL format is:
+
+```
+https://downloads.apache.org/polaris/[major].[minor].[patch]/polaris-bin-[major].[minor].[patch].tgz
+```
+
+Edit the file `[major].[minor].[patch]/_index.md`. Compare with template
+`site/content/in-dev/release_index.md` and perform the following modifications:
+
+* Change the `title` from `Apache Polaris Documentation (Unreleased)` to `Apache Polaris [major].[minor].[patch] Documentation`.
+* Change the `linkTitle` from `In Development` to `[major].[minor].[patch]`.
+* Change the `weight` accordingly, e.g. for a version 1.2.3 use weight -10203.
+* Set the `release_version` parameter everywhere: `release_version: '[major].[minor].[patch]'`
+* Adjust the `menus` section to register this release in the Documentation dropdown menu (see existing releases for examples).
+* Adjust the `cascade` section accordingly.
 * Remove the `alert warning` block that warns that the documentation is for the main branch.
+
+Update the "latest" redirect in the versioned-docs branch: edit `releases/latest/index.md` (i.e. `site/content/releases/latest/index.md` when using the Git worktree) and update the `redirect_to` parameter in the front matter to point to the new release (e.g., change `redirect_to: '/releases/1.3.0/'` to `redirect_to: '/releases/[major].[minor].[patch]/'`).
 
 Commit and push to your fork:
 
@@ -517,21 +473,27 @@ The final step is to update the "Download" page on Polaris website with links to
 git checkout -b main-site-download-links-[major].[minor].[patch] main
 ```
 
-Edit the file `site/content/downloads/_index.md` and add a new section for the release.  The section should contain the following information:
+Create a new directory and file for the release under `site/content/downloads/[major].[minor].[patch]/index.md`. The file should contain the following information:
 
+* Front matter with appropriate metadata (title, weight, etc.)
 * A table with links to each of the artifacts, its PGP signature and associated checksum. All links in this section MUST point to `https://dlcdn.apache.org/` or `https://downloads.apache.org/`.
 * The release date.
 * A paragraph with the release notes.
 
-Then update the section of the previous release so that it references `https://archive.apache.org` instead of `https://dlcdn.apache.org/` and `https://downloads.apache.org/`.
+Refer to the `README.md` file under `site/content/downloads/README.md` for a full description of the
+downloads page structure and requirements when adding a new release.
 
-Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new release.  Also add a menu item under `menu.main`, **after** the `In Development` menu item, with have the following format:
+Also edit `site/content/downloads/latest/index.md` and update the `redirect_to` parameter to point to
+the new release (e.g., change `redirect_to: '/downloads/1.3.0/'` to `redirect_to: '/downloads/[major].[minor].[patch]/'`).
+
+Finally, edit the file `site/hugo.yaml`.  Add a new bullet point under `active_releases` for the new
+release; remove the oldest release from this list.
+
+Also edit `site/static/.htaccess` and update the version in both `RewriteRule` lines for `releases/latest/` to point to the new release (e.g., change `1.3.0` to `[major].[minor].[patch]`):
 
 ```
-    - name: "[major].[minor].[patch]"
-      url: "/releases/[major].[minor].[patch]/"
-      parent: "doc"
-      weight: [previous release weight - 1]
+RewriteRule ^releases/latest$ /releases/[major].[minor].[patch]/ [R=302,L]
+RewriteRule ^releases/latest/(.*)$ /releases/[major].[minor].[patch]/$1 [R=302,L]
 ```
 
 Then open a PR against the `main` branch with your changes.
@@ -551,7 +513,7 @@ The Apache Polaris team is pleased to announce Apache Polaris x.y.z.
 
 <Add Quick Description of the Release>
 
-This release can be downloaded https://www.apache.org/dyn/closer.cgi/incubator/polaris/apache-polaris-x.y.z.
+This release can be downloaded https://www.apache.org/dyn/closer.cgi/polaris/apache-polaris-x.y.z.
 
 Artifacts are available on Maven Central.
 
@@ -579,7 +541,7 @@ After downloading the distributions archives, signatures, checksums, and KEYS fi
 First, import the keys in your local keyring:
 
 ```
-curl https://downloads.apache.org/incubator/polaris/KEYS -o KEYS
+curl https://downloads.apache.org/polaris/KEYS -o KEYS
 gpg --import KEYS
 ```
 
@@ -607,5 +569,5 @@ In the source distribution:
 
 Votes are cast by replying on the vote email on the dev mailing list, with either `+1`, `0`, `-1`.
 
-In addition to your vote, it's customary to specify if your vote is binding or non-binding. Only members of the PPMC and mentors have formally binding votes, and IPMC on the vote on the Incubator general mailing list. 
+In addition to your vote, it's customary to specify if your vote is binding or non-binding. Only members of the PMC have formally binding votes. 
 If you're unsure, you can specify that your vote is non-binding. You can find more details on https://www.apache.org/foundation/voting.html.

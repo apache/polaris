@@ -181,29 +181,9 @@ public class SparkSessionBuilder {
     }
   }
 
-  private static class ConfigPair {
-    final String key;
-    final String value;
-
-    ConfigPair(String key, String value) {
-      this.key = key;
-      this.value = value;
-    }
-  }
+  private record ConfigPair(String key, String value) {}
 
   /** Configuration for a single catalog. */
-  private static class CatalogConfig {
-    final String catalogName;
-    final String catalogImplClass;
-    final PolarisApiEndpoints endpoints;
-    final String token;
-
-    CatalogConfig(
-        String catalogName, String catalogImplClass, PolarisApiEndpoints endpoints, String token) {
-      this.catalogName = catalogName;
-      this.catalogImplClass = catalogImplClass;
-      this.endpoints = endpoints;
-      this.token = token;
-    }
-  }
+  private record CatalogConfig(
+      String catalogName, String catalogImplClass, PolarisApiEndpoints endpoints, String token) {}
 }

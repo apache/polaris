@@ -79,7 +79,7 @@ public class TestPolarisVersion {
 
     soft.assertThat(polarisVersionString()).isEqualTo(System.getProperty("polarisVersion"));
     soft.assertThat(isReleaseBuild()).isTrue();
-    soft.assertThat(getBuildReleasedVersion()).contains("0.1.2-incubating-SNAPSHOT");
+    soft.assertThat(getBuildReleasedVersion()).contains("0.1.2-SNAPSHOT");
     soft.assertThat(getBuildGitHead()).contains("27cf81929cbb08e545c8fcb1ed27a53d7ef1af79");
     soft.assertThat(getBuildGitTag()).contains("foo-tag-bar");
     soft.assertThat(getBuildJavaSpecificationVersion()).contains("21");

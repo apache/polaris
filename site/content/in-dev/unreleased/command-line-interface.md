@@ -53,6 +53,9 @@ options:
 7. profiles
 8. policies
 9. repair
+10. setup
+11. find
+12. tables
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -61,12 +64,15 @@ Some example full invocations:
 ```
 polaris principals list
 polaris catalogs delete some_catalog_name
-polaris catalogs update --property foo=bar some_other_catalog
-polaris catalogs update another_catalog --property k=v
+polaris catalogs update --set-property foo=bar some_other_catalog
+polaris catalogs update another_catalog --set-property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
 polaris policies list --catalog some_catalog --namespace some.schema
 polaris repair
+polaris setup apply setup-config.yaml
+polaris find some_table
+polaris tables list --catalog my_catalog --namespace ns1
 ```
 
 ### Authentication
@@ -90,7 +96,7 @@ Alternatively, the `--base-url` option can be used instead of `--host` and `--po
 If your Polaris server is configured to use a realm other than the default, you can use the `--realm` option to specify a realm. If `--realm` is not provided, the CLI will check the `REALM` environment variable. If neither is provided, the CLI will not send the realm context header.
 Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
 
-Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris server to work with multiple realms. 
+Read [here]({{% ref "configuration/configuring-polaris.md" %}}) more about configuring polaris server to work with multiple realms.
 
 ### PATH
 
@@ -118,9 +124,12 @@ To find details on the options that can be provided to a particular command or s
 polaris catalogs --help
 polaris principals create --help
 polaris profiles --help
+polaris setup --help
+polaris find --help
+polaris tables --help
 ```
 
-### catalogs
+### Catalogs
 
 The `catalogs` command is used to create, discover, and otherwise manage catalogs within Polaris.
 
@@ -131,6 +140,7 @@ The `catalogs` command is used to create, discover, and otherwise manage catalog
 3. get
 4. list
 5. update
+6. summarize
 
 #### create
 
@@ -265,6 +275,24 @@ polaris catalogs list
 polaris catalogs list --principal-role some_user
 ```
 
+#### summarize
+
+The `summarize` subcommand is used to display summary for a catalog.
+
+```
+input: polaris catalogs summarize --help
+options:
+  summarize
+    Positional arguments:
+      catalog
+```
+
+##### Examples
+
+```
+polaris catalogs summarize some_catalog
+```
+
 #### update
 
 The `update` subcommand is used to update a catalog. Currently, this command supports changing the properties of a catalog or updating its storage configuration.
@@ -286,7 +314,7 @@ options:
 ##### Examples
 
 ```
-polaris catalogs update --property tag=new_value my_catalog
+polaris catalogs update --set-property tag=new_value my_catalog
 
 polaris catalogs update --default-base-location s3://new-bucket/my_data my_catalog
 ```
@@ -466,6 +494,24 @@ polaris principals reset --new-client-secret ${NEW_CLIENT_SECRET} some_user
 polaris principals reset --new-client-id ${NEW_CLIENT_ID} --new-client-secret ${NEW_CLIENT_SECRET} some_user
 ```
 
+#### summarize
+
+The `summarize` subcommand is used to display summary for a principal.
+
+```
+input: polaris principals summarize --help
+options:
+  summarize
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals summarize some_user
+```
+
 ### Principal Roles
 
 The `principal-roles` command is used to create, discover, and manage principal roles within Polaris. Additionally, this command can identify principals or catalog roles associated with a principal role, and can be used to grant a principal role to a principal.
@@ -479,6 +525,7 @@ The `principal-roles` command is used to create, discover, and manage principal 
 5. update
 6. grant
 7. revoke
+8. summarize
 
 #### create
 
@@ -632,6 +679,24 @@ polaris principal-roles revoke --principal former.employee data_engineer
 polaris principal-roles revoke data_scientist --principal changed.role
 ```
 
+#### summarize
+
+The `summarize` subcommand is used to display summary for a principal role.
+
+```
+input: polaris principal-roles summarize --help
+options:
+  summarize
+    Positional arguments:
+      principal_role
+```
+
+##### Examples
+
+```
+polaris principal-roles summarize data_engineer
+```
+
 ### Catalog Roles
 
 The catalog-roles command is used to create, discover, and manage catalog roles within Polaris. Additionally, this command can be used to grant a catalog role to a principal role.
@@ -645,6 +710,7 @@ The catalog-roles command is used to create, discover, and manage catalog roles 
 5. update
 6. grant
 7. revoke
+8. summarize
 
 #### create
 
@@ -805,6 +871,26 @@ polaris catalog-roles revoke sensitive_data --catalog some_catalog --principal-r
 polaris catalog-roles revoke --catalog sales_data contains_cc_info_catalog_role --principal-role financial_analyst_role
 ```
 
+#### summarize
+
+The `summarize` subcommand is used to display summary for a catalog role.
+
+```
+input: polaris catalog-roles summarize --help
+options:
+  summarize
+    Named arguments:
+      --catalog  The name of an existing catalog
+    Positional arguments:
+      catalog_role
+```
+
+##### Examples
+
+```
+polaris catalog-roles summarize --catalog some_catalog some_catalog_role
+```
+
 ### Namespaces
 
 The `namespaces` command is used to manage namespaces within Polaris.
@@ -815,6 +901,7 @@ The `namespaces` command is used to manage namespaces within Polaris.
 2. delete
 3. get
 4. list
+5. summarize
 
 #### create
 
@@ -907,6 +994,26 @@ polaris namespaces list --catalog my_catalog
 polaris namespaces list --catalog my_catalog --parent a
 
 polaris namespaces list --catalog my_catalog --parent a.b
+```
+
+#### summarize
+
+The `summarize` subcommand is used to display summary for a namespace.
+
+```
+input: polaris namespaces summarize --help
+options:
+  summarize
+    Named arguments:
+      --catalog  The name of an existing catalog
+    Positional arguments:
+      namespace
+```
+
+##### Examples
+
+```
+polaris namespaces summarize --catalog my_catalog a.b
 ```
 
 ### Privileges
@@ -1135,7 +1242,7 @@ polaris privileges \
   VIEW_FULL_METADATA
 ```
 
-### profiles
+### Profiles
 
 The `profiles` command is used to manage stored authentication profiles in Polaris. Profiles allow authentication credentials to be saved and reused, eliminating the need to pass credentials with every command.
 
@@ -1421,9 +1528,161 @@ polaris policies update --catalog some_catalog --namespace some.schema --policy-
 polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json --policy-description "Updated policy description" my_policy
 ```
 
-### repair
+### Repair
 
 The `repair` command is a bash script wrapper used to regenerate Python client code and update necessary dependencies, ensuring the Polaris client remains up-to-date and functional. **Please note that this command does not support any options and its usage information is not available via a `--help` flag.**
+
+### Setup
+
+The `setup` command is used to automate the creation of various entities in Polaris, such as principals, roles, catalogs, namespaces, privileges, and policies, based on a configuration file. This simplifies the process of setting up a Polaris environment.
+
+`setup` supports the following subcommands:
+
+1. apply
+2. export
+
+#### apply
+
+The `apply` subcommand reads a configuration file and creates the specified entities in Polaris. The configuration file must be in YAML format and define the entities to be created.
+
+```
+input: polaris setup apply --help
+options:
+  apply
+    Named arguments:
+      --dry-run  If specified, the command will only print the actions to be taken without executing them.
+    Positional arguments:
+      setup_config
+```
+
+##### Examples
+
+```
+polaris setup apply setup-config.yaml
+```
+
+#### export
+
+The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
+
+```
+input: polaris setup export --help
+options:
+  export
+```
+
+##### Examples
+
+```
+polaris setup export
+```
+
+### Find
+
+The `find` command is used to searches for an identifier across global entities (principals, roles, catalogs)
+and catalog entities (namespaces, tables, views) using fuzzy matching.
+
+##### Examples
+
+```
+polaris find my_table
+polaris find ns1.ns2
+polaris find --catalog my_catalog my_table
+polaris find my_table --type table
+```
+
+### Tables
+
+The `tables` command is used to manage Iceberg tables within a Polaris Catalog.
+
+`tables` supports the following subcommands:
+
+1. list
+2. get
+3. summarize
+4. delete
+
+#### list
+
+The `list` subcommand is used to list tables within a namesace from a given catalog.
+
+```
+input: polaris tables list --help
+options:
+  list
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+```
+
+##### Examples
+
+```
+polaris tables list
+```
+
+#### get
+
+The `get` subcommand retrieves the table metadata for a specific table.
+
+```
+input: polaris tables get --help
+options:
+  get
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables get my_table --catalog my_catalog --namespace ns1
+```
+
+#### summarize
+
+The `summarize` subcommand provides a detail overview of a table.
+
+```
+input: polaris tables summarize --help
+options:
+  summarize
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables summarize my_table --catalog my_catalog --namespace ns1
+```
+
+#### delete
+
+The `delete` subcommand de-registers a table from catalog (metadata-only deletion).
+
+```
+input: polaris tables delete --help
+options:
+  delete
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      table
+```
+
+##### Examples
+
+```
+polaris tables delete my_table --catalog my_catalog --namespace ns1
+```
 
 ## Examples
 

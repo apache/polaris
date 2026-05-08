@@ -34,6 +34,9 @@
       "moduleLicense": "Common Development and Distribution License (CDDL) v1.0"
     },
     {
+      "moduleLicense": "Common Development and Distribution License (CDDL) v1.1"
+    },
+    {
       "moduleLicense": "Creative Commons 1.0 Universal"
     },
     {
@@ -91,6 +94,11 @@
       "moduleLicense": null,
       "moduleName": "javax.servlet.jsp:jsp-api",
       "moduleVersion": "2.1"
+    },
+    {
+       "moduleLicense": "Unicode/ICU License",
+       "moduleName": "org.graalvm.shadowed:icu4j",
+       "moduleVersion": "25.0.2"
     }
   ]
 }

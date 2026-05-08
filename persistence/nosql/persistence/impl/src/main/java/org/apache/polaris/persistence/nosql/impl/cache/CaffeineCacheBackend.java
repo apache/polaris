@@ -54,7 +54,6 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -74,6 +73,7 @@ import org.apache.polaris.persistence.nosql.api.cache.ImmutableCacheSizing;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,8 +136,8 @@ class CaffeineCacheBackend implements CacheBackend {
                 new Expiry<CacheKeyValue, CacheKeyValue>() {
                   @Override
                   public long expireAfterCreate(
-                      @Nonnull CacheKeyValue key,
-                      @Nonnull CacheKeyValue value,
+                      @NonNull CacheKeyValue key,
+                      @NonNull CacheKeyValue value,
                       long currentTimeNanos) {
                     var expire = key.expiresAtNanosEpoch;
                     if (expire == CACHE_UNLIMITED) {
@@ -152,8 +152,8 @@ class CaffeineCacheBackend implements CacheBackend {
 
                   @Override
                   public long expireAfterUpdate(
-                      @Nonnull CacheKeyValue key,
-                      @Nonnull CacheKeyValue value,
+                      @NonNull CacheKeyValue key,
+                      @NonNull CacheKeyValue value,
                       long currentTimeNanos,
                       long currentDurationNanos) {
                     return expireAfterCreate(key, value, currentTimeNanos);
@@ -161,8 +161,8 @@ class CaffeineCacheBackend implements CacheBackend {
 
                   @Override
                   public long expireAfterRead(
-                      @Nonnull CacheKeyValue key,
-                      @Nonnull CacheKeyValue value,
+                      @NonNull CacheKeyValue key,
+                      @NonNull CacheKeyValue value,
                       long currentTimeNanos,
                       long currentDurationNanos) {
                     return currentDurationNanos;
@@ -231,7 +231,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public Persistence wrap(@Nonnull Persistence persist) {
+  public Persistence wrap(@NonNull Persistence persist) {
     return new CachingPersistenceImpl(persist, this);
   }
 
@@ -242,7 +242,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public Obj get(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public Obj get(@NonNull String realmId, @NonNull ObjRef id) {
     var key = cacheKeyValueObjRead(realmId, id);
     var value = cache.getIfPresent(key);
     if (value == null) {
@@ -255,7 +255,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void put(@Nonnull String realmId, @Nonnull Obj obj) {
+  public void put(@NonNull String realmId, @NonNull Obj obj) {
     putLocal(realmId, obj);
   }
 
@@ -284,7 +284,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void putLocal(@Nonnull String realmId, @Nonnull Obj obj) {
+  public void putLocal(@NonNull String realmId, @NonNull Obj obj) {
     long expiresAt =
         obj.type()
             .cachedObjectExpiresAtMicros(
@@ -300,7 +300,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void putNegative(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public void putNegative(@NonNull String realmId, @NonNull ObjRef id) {
     var type = objTypeById(id.type());
     var expiresAt =
         type.negativeCacheExpiresAtMicros(
@@ -318,12 +318,12 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void remove(@Nonnull String realmId, @Nonnull ObjRef id) {
+  public void remove(@NonNull String realmId, @NonNull ObjRef id) {
     cache.invalidate(cacheKeyValueObjRead(realmId, id));
   }
 
   @Override
-  public void clear(@Nonnull String realmId) {
+  public void clear(@NonNull String realmId) {
     cache.asMap().keySet().removeIf(k -> k.realmId.equals(realmId));
   }
 
@@ -338,7 +338,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void removeReference(@Nonnull String realmId, @Nonnull String name) {
+  public void removeReference(@NonNull String realmId, @NonNull String name) {
     if (refCacheTtlNanos <= 0L) {
       return;
     }
@@ -346,12 +346,12 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void putReference(@Nonnull String realmId, @Nonnull Reference reference) {
+  public void putReference(@NonNull String realmId, @NonNull Reference reference) {
     putReferenceLocal(realmId, reference);
   }
 
   @Override
-  public void putReferenceLocal(@Nonnull String realmId, @Nonnull Reference reference) {
+  public void putReferenceLocal(@NonNull String realmId, @NonNull Reference reference) {
     if (refCacheTtlNanos <= 0L) {
       return;
     }
@@ -361,7 +361,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public void putReferenceNegative(@Nonnull String realmId, @Nonnull String name) {
+  public void putReferenceNegative(@NonNull String realmId, @NonNull String name) {
     if (refCacheNegativeTtlNanos <= 0L) {
       return;
     }
@@ -374,7 +374,7 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @Override
-  public Reference getReference(@Nonnull String realmId, @Nonnull String name) {
+  public Reference getReference(@NonNull String realmId, @NonNull String name) {
     if (refCacheTtlNanos <= 0L) {
       return null;
     }
@@ -390,13 +390,13 @@ class CaffeineCacheBackend implements CacheBackend {
 
   @VisibleForTesting
   static CacheKeyValue cacheKeyValueObj(
-      @Nonnull String realmId, @Nonnull Obj obj, long expiresAtNanos) {
+      @NonNull String realmId, @NonNull Obj obj, long expiresAtNanos) {
     var serialized = serializeObj(obj);
     return new CacheKeyValue(realmId, cacheKeyObj(obj), expiresAtNanos, serialized);
   }
 
   @VisibleForTesting
-  static CacheKeyValue cacheKeyValueObjRead(@Nonnull String realmId, @Nonnull ObjRef id) {
+  static CacheKeyValue cacheKeyValueObjRead(@NonNull String realmId, @NonNull ObjRef id) {
     return new CacheKeyValue(realmId, cacheKeyObjId(id), 0L, null);
   }
 
@@ -411,24 +411,24 @@ class CaffeineCacheBackend implements CacheBackend {
   }
 
   @VisibleForTesting
-  static CacheKeyValue cacheKeyValueReferenceRead(@Nonnull String realmId, @Nonnull String name) {
+  static CacheKeyValue cacheKeyValueReferenceRead(@NonNull String realmId, @NonNull String name) {
     return new CacheKeyValue(realmId, cacheKeyReference(name), 0L, null);
   }
 
   @VisibleForTesting
   static CacheKeyValue cacheKeyValueNegative(
-      @Nonnull String realmId, @Nonnull byte[] key, long expiresAtNanosEpoch) {
+      @NonNull String realmId, @NonNull byte[] key, long expiresAtNanosEpoch) {
     return new CacheKeyValue(realmId, key, expiresAtNanosEpoch, null);
   }
 
   @VisibleForTesting
-  static byte[] cacheKeyObj(@Nonnull Obj obj) {
+  static byte[] cacheKeyObj(@NonNull Obj obj) {
     return cacheKeyObjId(
         obj.type().id(), obj.id(), obj.numParts(), obj.createdAtMicros(), obj.versionToken());
   }
 
   @VisibleForTesting
-  static byte[] cacheKeyObjId(@Nonnull ObjRef id) {
+  static byte[] cacheKeyObjId(@NonNull ObjRef id) {
     return cacheKeyObjId(id.type(), id.id(), id.numParts(), 0L, null);
   }
 

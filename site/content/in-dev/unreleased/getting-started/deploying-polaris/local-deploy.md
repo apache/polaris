@@ -80,7 +80,7 @@ Run the following command to start Polaris server:
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [io.quarkus] [,] [,,,] (main) Apache Polaris Server (incubating) <version> on JVM (powered by Quarkus <version>) started in 1.911s. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (main) Apache Polaris Server <version> on JVM (powered by Quarkus <version>) started in 1.911s. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (main) Profile prod activated.
 INFO  [io.quarkus] [,] [,,,] (main) Installed features: [...]
 ```
@@ -88,7 +88,7 @@ INFO  [io.quarkus] [,] [,,,] (main) Installed features: [...]
 At this point, Polaris is running.
 
 When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down.
-For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../../configuring-polaris-for-production" %}}).
+For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../../configuration/configuring-polaris-for-production" %}}).
 
 When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `s3cr3t` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
 

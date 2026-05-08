@@ -77,6 +77,24 @@ class ServiceIdentityType(Enum):
     AWS_IAM = "aws_iam"
 
 
+class EntityType(Enum):
+    """
+    Represents the type of entities that can be searched or managed in the CLI
+    """
+
+    CATALOG = "catalog"
+    CATALOG_ROLE = "catalog-role"
+    NAMESPACE = "namespace"
+    PRINCIPAL = "principal"
+    PRINCIPAL_ROLE = "principal-role"
+    TABLE = "table"
+    VIEW = "view"
+
+    def __str__(self) -> str:
+        # Transforms 'catalog-role' tp 'Catalog Role'
+        return self.value.replace("-", " ").title()
+
+
 class Commands:
     """
     Represents the various commands available in the CLI
@@ -90,6 +108,9 @@ class Commands:
     NAMESPACES = "namespaces"
     PROFILES = "profiles"
     POLICIES = "policies"
+    SETUP = "setup"
+    TABLES = "tables"
+    FIND = "find"
 
 
 class Subcommands:
@@ -114,6 +135,9 @@ class Subcommands:
     RESET = "reset"
     ATTACH = "attach"
     DETACH = "detach"
+    APPLY = "apply"
+    EXPORT = "export"
+    SUMMARIZE = "summarize"
 
 
 class Actions:
@@ -209,8 +233,11 @@ class Arguments:
     APPLICABLE = "applicable"
     ATTACHMENT_TYPE = "attachment_type"
     ATTACHMENT_PATH = "attachment_path"
+    SETUP_CONFIG = "setup_config"
+    DRY_RUN = "dry_run"
     REALM = "realm"
     HEADER = "header"
+    IDENTIFIER = "identifier"
 
 
 class Hints:
@@ -235,6 +262,9 @@ class Hints:
         " the same update command then the list of removals is applied last. Multiple"
         " can be provided by specifying this option more than once"
     )
+
+    class Setup:
+        DRY_RUN = "If specified, the command will only print the actions to be taken without executing them."
 
     class Catalogs:
         GRANT = "Grant a catalog role to a catalog"
@@ -412,6 +442,14 @@ class Hints:
         APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
         ATTACHMENT_TYPE = "The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like."
         ATTACHMENT_PATH = "The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment."
+
+    class Find:
+        IDENTIFIER = "The name of the entity to find."
+        TYPE = "Filter results by entity type (e.g. principal, principal-role, catalog, catalog-role, namespace, table, view)"
+
+    class Tables:
+        SUMMARIZE = "Display summary for a table."
+        DELETE = "De-register a table from catalog (metadata-only delete)."
 
 
 UNIT_SEPARATOR = chr(0x1F)

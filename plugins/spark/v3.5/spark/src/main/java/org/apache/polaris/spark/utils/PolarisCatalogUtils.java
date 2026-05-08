@@ -84,7 +84,7 @@ public class PolarisCatalogUtils {
    */
   private static Map<String, String> normalizeTablePropertiesForLoadSparkTable(
       GenericTable genericTable) {
-    Map<String, String> properties = genericTable.getProperties();
+    Map<String, String> properties = genericTable.properties();
     boolean hasLocationClause = properties.get(TableCatalog.PROP_LOCATION) != null;
     boolean hasPathClause = properties.get(TABLE_PATH_KEY) != null;
     Map<String, String> tableProperties = Maps.newHashMap();
@@ -94,8 +94,8 @@ public class PolarisCatalogUtils {
       // doesn't create the corresponding path property if the path keyword is not
       // provided by user when location is provided. Here, we duplicate the location
       // property as path to make sure the table can be loaded.
-      if (genericTable.getBaseLocation() != null && !genericTable.getBaseLocation().isEmpty()) {
-        tableProperties.put(TABLE_PATH_KEY, genericTable.getBaseLocation());
+      if (genericTable.baseLocation() != null && !genericTable.baseLocation().isEmpty()) {
+        tableProperties.put(TABLE_PATH_KEY, genericTable.baseLocation());
       } else if (hasLocationClause) {
         tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
       }
@@ -112,7 +112,7 @@ public class PolarisCatalogUtils {
   public static Table loadV2SparkTable(GenericTable genericTable) {
     SparkSession sparkSession = SparkSession.active();
     TableProvider provider =
-        DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
+        DataSource.lookupDataSourceV2(genericTable.format(), sparkSession.sessionState().conf())
             .get();
     Map<String, String> tableProperties = normalizeTablePropertiesForLoadSparkTable(genericTable);
     return DataSourceV2Utils.getTableFromProvider(
@@ -146,6 +146,7 @@ public class PolarisCatalogUtils {
     // for now we will fill the parameters we have from polaris catalog, and let underlying client
     // resolve the rest within its catalog implementation
     org.apache.spark.sql.types.StructType emptySchema = new org.apache.spark.sql.types.StructType();
+    @SuppressWarnings("deprecation")
     scala.collection.immutable.Seq<String> emptyStringSeq =
         scala.collection.JavaConverters.asScalaBuffer(new java.util.ArrayList<String>()).toList();
     CatalogTable catalogTable =
@@ -154,10 +155,10 @@ public class PolarisCatalogUtils {
             CatalogTableType.EXTERNAL(),
             storage,
             emptySchema,
-            Option.apply(genericTable.getFormat()),
+            Option.apply(genericTable.format()),
             emptyStringSeq,
             scala.Option.empty(),
-            genericTable.getProperties().get(TableCatalog.PROP_OWNER),
+            genericTable.properties().get(TableCatalog.PROP_OWNER),
             System.currentTimeMillis(),
             -1L,
             "",

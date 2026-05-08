@@ -45,47 +45,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
  */
 public class PolarisEntity extends PolarisBaseEntity {
 
-  public static class NameAndId {
-    private final String name;
-    private final long id;
-
-    public NameAndId(String name, long id) {
-      this.name = name;
-      this.id = id;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public long getId() {
-      return id;
-    }
-  }
-
-  public static class TypeSubTypeAndName {
-    private final PolarisEntityType type;
-    private final PolarisEntitySubType subType;
-    private final String name;
-
-    public TypeSubTypeAndName(PolarisEntityType type, PolarisEntitySubType subType, String name) {
-      this.type = type;
-      this.subType = subType;
-      this.name = name;
-    }
-
-    public PolarisEntityType getType() {
-      return type;
-    }
-
-    public PolarisEntitySubType getSubType() {
-      return subType;
-    }
-
-    public String getName() {
-      return name;
-    }
-  }
+  public record NameAndId(String name, long id) {}
 
   @JsonCreator
   private PolarisEntity(

@@ -38,8 +38,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -94,19 +94,17 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.util.LocationUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -119,16 +117,13 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -144,9 +139,10 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
-import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventDispatcher;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -210,6 +206,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.test.rootAugmentor.enabled", "true")
+          .put("polaris.event-listener.types", "test")
           .build();
     }
   }
@@ -217,6 +214,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
   public static final String CATALOG_NAME = "polaris-catalog";
+  public static final String STORAGE_LOCATION = "s3://my-bucket/path/to/data";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
@@ -240,28 +238,32 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject PolarisEventListener polarisEventListener;
+
+  @Inject
+  @Identifier("test")
+  PolarisEventListener polarisEventListener;
+
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
-  @Inject UserSecretsManager userSecretsManager;
   @Inject CallContext callContext;
   @Inject RealmConfig realmConfig;
+  @Inject RealmContextHolder realmContextHolder;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
   @Inject TaskFileIOSupplier taskFileIOSupplier;
   @Inject PolarisPrincipal authenticatedRoot;
+  @Inject PolarisAdminService adminService;
+  @Inject ResolverFactory resolverFactory;
+  @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private IcebergCatalog catalog;
   private String realmName;
   private PolarisCallContext polarisContext;
-  private PolarisAdminService adminService;
-  private ResolverFactory resolverFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
 
   private TestPolarisEventListener testPolarisEventListener;
-  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -269,12 +271,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
-
-  @Nullable
-  protected abstract EntityCache createEntityCache(
-      PolarisDiagnostics diagnostics,
-      RealmConfig realmConfig,
-      PolarisMetaStoreManager metaStoreManager);
 
   protected void bootstrapRealm(String realmName) {}
 
@@ -289,52 +285,23 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     bootstrapRealm(realmName);
 
-    RealmContext realmContext = () -> realmName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    realmContextHolder.set(() -> realmName);
     polarisContext = callContext.getPolarisCallContext();
 
-    EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
-    resolverFactory =
-        (principal, referenceCatalogName) ->
-            new Resolver(
-                diagServices,
-                polarisContext,
-                metaStoreManager,
-                principal,
-                entityCache,
-                referenceCatalogName);
-    QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
-
-    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
-    reservedProperties = new ReservedProperties() {};
-
-    adminService =
-        new PolarisAdminService(
-            polarisContext,
-            resolutionManifestFactory,
-            metaStoreManager,
-            userSecretsManager,
-            serviceIdentityProvider,
-            authenticatedRoot,
-            authorizer,
-            reservedProperties);
-
-    String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .setAllowedLocations(List.of(STORAGE_LOCATION, "s3://externally-owned-bucket"))
             .build();
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
                 new CatalogEntity.Builder()
                     .setName(CATALOG_NAME)
-                    .setDefaultBaseLocation(storageLocation)
-                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .setDefaultBaseLocation(STORAGE_LOCATION)
                     .addProperty(
                         FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                     .addProperty(
@@ -342,7 +309,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, STORAGE_LOCATION)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
@@ -419,6 +386,22 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     return true;
   }
 
+  @Override
+  protected String baseTableLocation(TableIdentifier identifier) {
+    // Override the file:/tmp default used by CatalogTests so inherited tests pass locations that
+    // fall inside this catalog's allowed S3 locations.
+    return STORAGE_LOCATION
+        + "/baseTableLocation/"
+        + String.join("/", identifier.namespace().levels())
+        + "/"
+        + identifier.name();
+  }
+
+  @Override
+  protected boolean supportsNamesWithSlashes() {
+    return false;
+  }
+
   protected boolean supportsNotifications() {
     return true;
   }
@@ -448,7 +431,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener,
+        polarisEventDispatcher,
         eventMetadataFactory);
   }
 
@@ -1931,7 +1914,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new CatalogEntity.Builder()
                 .setName(noPurgeCatalogName)
                 .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                 .addProperty(
                     FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
@@ -2486,6 +2468,73 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         table -> String.valueOf(table.sortOrder().orderId()));
   }
 
+  @Test
+  public void testUpdatePropertiesRejectsOutOfTableWriteMetadataLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+
+    String metadataDirectory =
+        "%s/table-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String metadataPrefix = metadataDirectory + "/";
+
+    Assertions.assertThatThrownBy(
+            () ->
+                table
+                    .updateProperties()
+                    .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+                    .commit())
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+
+    Assertions.assertThat(inMemoryFilesUnderPrefix(metadataPrefix)).isEmpty();
+    Assertions.assertThat(catalog.loadTable(TABLE).properties())
+        .doesNotContainKey(TableProperties.WRITE_METADATA_LOCATION);
+  }
+
+  @Test
+  public void testUpdatePropertiesAcceptsInTableWriteMetadataLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(
+            FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false",
+            FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+
+    String metadataDirectory =
+        "%s/custom-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(table.location()), UUID.randomUUID());
+    String metadataPrefix = metadataDirectory + "/";
+    table
+        .updateProperties()
+        .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+        .commit();
+
+    Table updatedTable = catalog.loadTable(TABLE);
+    String metadataFileLocation =
+        ((BaseTable) updatedTable).operations().current().metadataFileLocation();
+
+    Assertions.assertThat(metadataFileLocation).startsWith(metadataPrefix);
+    Assertions.assertThat(fileIO.fileExists(metadataFileLocation)).isTrue();
+    Assertions.assertThat(inMemoryFilesUnderPrefix(metadataPrefix)).contains(metadataFileLocation);
+    Assertions.assertThat(updatedTable.properties())
+        .containsEntry(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory);
+  }
+
   private void validatePropertiesUpdated(
       EntityResult schemaResult, String key, Function<Table, String> expectedValue) {
     Table afterUpdate = catalog.loadTable(TABLE);
@@ -2502,6 +2551,32 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .extracting(PolarisEntity::getInternalPropertiesAsMap)
         .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
         .containsEntry(key, expectedValue.apply(afterUpdate));
+  }
+
+  private void updateCatalogProperties(Map<String, String> properties) {
+    CatalogEntity.Builder builder = new CatalogEntity.Builder(CatalogEntity.of(catalogEntity));
+    properties.forEach(builder::addProperty);
+
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext, List.of(PolarisEntity.toCore(catalogEntity)), builder.build());
+
+    Assertions.assertThat(result).returns(true, EntityResult::isSuccess);
+    catalogEntity = PolarisEntity.of(result.getEntity());
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> inMemoryFilesUnderPrefix(String prefix) {
+    try {
+      var field = InMemoryFileIO.class.getDeclaredField("IN_MEMORY_FILES");
+      field.setAccessible(true);
+      Map<String, byte[]> files = (Map<String, byte[]>) field.get(null);
+      return files.keySet().stream()
+          .filter(location -> location.startsWith(prefix))
+          .collect(Collectors.toSet());
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("Unable to inspect in-memory file contents", e);
+    }
   }
 
   @Test

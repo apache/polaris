@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Apache Polaris (incubating)
+# Apache Polaris
 
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
@@ -37,10 +37,10 @@ for contribution guidelines.
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Polaris Overview
-Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
+Click [here](https://polaris.apache.org/releases/latest/) for a quick overview of Polaris.
 
 ## Quickstart
-Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
+Click [here](https://polaris.apache.org/releases/latest/getting-started/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
 ## Project Structure
 
@@ -86,8 +86,8 @@ Apache Polaris is organized into the following modules:
 In addition to modules, there are:
 - [API specifications](./spec/README.md) - The OpenAPI specifications
 - [Python client](./client/python/README.md) - The Python client
-- [codestyle](./codestyle/README.md) - The code style guidelines
-- [getting-started](./getting-started/README.md) - A collection of getting started examples
+- [codestyle](./codestyle) - The code style guidelines
+- [getting-started](https://polaris.apache.org/releases/latest/getting-started/) - A collection of getting started examples
 - [gradle](./gradle) - The Gradle wrapper and Gradle configuration files including banned dependencies
 - [helm](./helm) - The Helm charts for Polaris.
 - [Spark Plugin](./plugins/spark/README.md) - The Polaris Spark plugin
@@ -152,7 +152,8 @@ make build-server
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 The Polaris codebase contains some docker compose examples to quickly get started with Polaris,
-using different configurations. Check the `./getting-started` directory for more information.
+using different configurations. See the [Quickstart](https://polaris.apache.org/releases/latest/getting-started/quick-start/)
+for more information.
 
 #### Running in Kubernetes
 
@@ -161,7 +162,7 @@ using different configurations. Check the `./getting-started` directory for more
 #### Configuring Polaris
 
 Polaris Servers can be configured using a variety of ways.
-Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
+Please see the [Configuration Guide](https://polaris.apache.org/releases/latest/configuration/)
 for more information.
 
 Default configuration values can be found in `runtime/defaults/src/main/resources/application.properties`.
@@ -208,9 +209,3 @@ Advanced configuration options for publishing build scans (only local and non-`a
 ## License
 
 Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENSE).
-
-## ASF Incubator disclaimer
-
-Apache Polaris&trade; is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
- 
-<sub>Apache&reg;, Apache Polaris&trade;, Apache Iceberg&trade;, Apache Spark&trade; are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</sub>

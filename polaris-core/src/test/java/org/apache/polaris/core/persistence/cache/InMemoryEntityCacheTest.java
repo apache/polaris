@@ -121,11 +121,11 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    assertThat(lookup.isCacheHit()).isFalse();
-    assertThat(lookup.getCacheEntry()).isNotNull();
+    assertThat(lookup.cacheHit()).isFalse();
+    assertThat(lookup.cacheEntry()).isNotNull();
 
     // validate the cache entry
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
     assertThat(catalog).isNotNull();
     assertThat(catalog.getType()).isEqualTo(PolarisEntityType.CATALOG);
 
@@ -134,17 +134,17 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    assertThat(lookup.isCacheHit()).isTrue();
+    assertThat(lookup.cacheHit()).isTrue();
 
     // do it again by id, should be found in the cache
     lookup =
         cache.getOrLoadEntityById(
             this.callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getType());
     assertThat(lookup).isNotNull();
-    assertThat(lookup.isCacheHit()).isTrue();
-    assertThat(lookup.getCacheEntry()).isNotNull();
-    assertThat(lookup.getCacheEntry().getEntity()).isNotNull();
-    assertThat(lookup.getCacheEntry().getGrantRecordsAsSecurable()).isNotNull();
+    assertThat(lookup.cacheHit()).isTrue();
+    assertThat(lookup.cacheEntry()).isNotNull();
+    assertThat(lookup.cacheEntry().getEntity()).isNotNull();
+    assertThat(lookup.cacheEntry().getGrantRecordsAsSecurable()).isNotNull();
 
     // get N1
     PolarisBaseEntity N1 =
@@ -160,7 +160,7 @@ public class InMemoryEntityCacheTest {
     // try to find it in the cache by id. Should not be there, i.e. no cache hit
     lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId(), N1.getType());
     assertThat(lookup).isNotNull();
-    assertThat(lookup.isCacheHit()).isFalse();
+    assertThat(lookup.cacheHit()).isFalse();
 
     // should be there now, by name
     cacheEntry = cache.getEntityByName(N1_name);
@@ -194,7 +194,7 @@ public class InMemoryEntityCacheTest {
         new EntityCacheByNameKey(catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2");
     lookup = cache.getOrLoadEntityByName(callCtx, N2_name);
     assertThat(lookup).isNotNull();
-    ResolvedPolarisEntity cacheEntry_N1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_N1 = lookup.cacheEntry();
     assertThat(cacheEntry_N1).isNotNull();
     assertThat(cacheEntry_N1.getEntity()).isNotNull();
     assertThat(cacheEntry_N1.getGrantRecordsAsSecurable()).isNotNull();
@@ -205,7 +205,7 @@ public class InMemoryEntityCacheTest {
             catalog.getId(), catalog.getId(), PolarisEntityType.CATALOG_ROLE, "R1");
     lookup = cache.getOrLoadEntityByName(callCtx, R1_name);
     assertThat(lookup).isNotNull();
-    ResolvedPolarisEntity cacheEntry_R1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_R1 = lookup.cacheEntry();
     assertThat(cacheEntry_R1).isNotNull();
     assertThat(cacheEntry_R1.getEntity()).isNotNull();
     assertThat(cacheEntry_R1.getGrantRecordsAsSecurable()).isNotNull();
@@ -243,7 +243,7 @@ public class InMemoryEntityCacheTest {
         new EntityCacheByNameKey(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
     lookup = cache.getOrLoadEntityByName(callCtx, PR1_name);
     assertThat(lookup).isNotNull();
-    ResolvedPolarisEntity cacheEntry_PR1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_PR1 = lookup.cacheEntry();
     assertThat(cacheEntry_PR1).isNotNull();
     assertThat(cacheEntry_PR1.getEntity()).isNotNull();
     assertThat(cacheEntry_PR1.getGrantRecordsAsSecurable()).isNotNull();
@@ -281,11 +281,11 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    assertThat(lookup.isCacheHit()).isFalse();
+    assertThat(lookup.cacheHit()).isFalse();
 
     // the catalog
-    assertThat(lookup.getCacheEntry()).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    assertThat(lookup.cacheEntry()).isNotNull();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
     assertThat(catalog).isNotNull();
     assertThat(catalog.getType()).isEqualTo(PolarisEntityType.CATALOG);
 
@@ -396,7 +396,7 @@ public class InMemoryEntityCacheTest {
             new EntityCacheByNameKey(
                 catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2"));
     assertThat(lookup).isNotNull();
-    cacheEntry = lookup.getCacheEntry();
+    cacheEntry = lookup.cacheEntry();
     assertThat(cacheEntry).isNotNull();
     assertThat(cacheEntry.getEntity()).isNotNull();
     assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
@@ -425,8 +425,8 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    assertThat(lookup.getCacheEntry()).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    assertThat(lookup.cacheEntry()).isNotNull();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     PolarisBaseEntity N1 =
         this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
@@ -437,7 +437,7 @@ public class InMemoryEntityCacheTest {
         new EntityCacheByNameKey(N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_name);
     assertThat(lookup).isNotNull();
-    ResolvedPolarisEntity cacheEntry_T4 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_T4 = lookup.cacheEntry();
     assertThat(cacheEntry_T4).isNotNull();
     assertThat(cacheEntry_T4.getEntity()).isNotNull();
     assertThat(cacheEntry_T4.getGrantRecordsAsSecurable()).isNotNull();
@@ -452,7 +452,7 @@ public class InMemoryEntityCacheTest {
             N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4_renamed");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_renamed);
     assertThat(lookup).isNotNull();
-    ResolvedPolarisEntity cacheEntry_T4_renamed = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_T4_renamed = lookup.cacheEntry();
     assertThat(cacheEntry_T4_renamed).isNotNull();
     PolarisBaseEntity T4_renamed_entity = cacheEntry_T4_renamed.getEntity();
 
@@ -460,8 +460,8 @@ public class InMemoryEntityCacheTest {
     EntityCacheLookupResult lookupResult =
         cache.getOrLoadEntityById(callCtx, T4.getCatalogId(), T4.getId(), T4.getType());
     assertThat(lookupResult).isNotNull();
-    assertThat(lookupResult.getCacheEntry()).isNotNull();
-    assertThat(lookupResult.getCacheEntry().getEntity().getName()).isEqualTo("T4_renamed");
+    assertThat(lookupResult.cacheEntry()).isNotNull();
+    assertThat(lookupResult.cacheEntry().getEntity().getName()).isEqualTo("T4_renamed");
 
     // old name is gone, replaced by new name
     // Assertions.assertNull(cache.getOrLoadEntityByName(callCtx, T4_name));
@@ -514,7 +514,7 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get some entities that exist in the test setup
     PolarisBaseEntity N1 =
@@ -542,14 +542,14 @@ public class InMemoryEntityCacheTest {
     assertThat(results.get(2)).isNotNull(); // N5_N6 - was loaded
 
     // Verify the entities are correct
-    assertThat(results.get(0).getCacheEntry().getEntity().getId()).isEqualTo(N1.getId());
-    assertThat(results.get(1).getCacheEntry().getEntity().getId()).isEqualTo(N5.getId());
-    assertThat(results.get(2).getCacheEntry().getEntity().getId()).isEqualTo(N5_N6.getId());
+    assertThat(results.get(0).cacheEntry().getEntity().getId()).isEqualTo(N1.getId());
+    assertThat(results.get(1).cacheEntry().getEntity().getId()).isEqualTo(N5.getId());
+    assertThat(results.get(2).cacheEntry().getEntity().getId()).isEqualTo(N5_N6.getId());
 
     // All should be cache hits now since they were loaded in the previous call
-    assertThat(results.get(0).isCacheHit()).isTrue();
-    assertThat(results.get(1).isCacheHit()).isTrue();
-    assertThat(results.get(2).isCacheHit()).isTrue();
+    assertThat(results.get(0).cacheHit()).isTrue();
+    assertThat(results.get(1).cacheHit()).isTrue();
+    assertThat(results.get(2).cacheHit()).isTrue();
 
     // Test with a non-existent entity ID
     List<PolarisEntityId> nonExistentIds =
@@ -575,7 +575,7 @@ public class InMemoryEntityCacheTest {
 
     assertThat(tableResults).hasSize(1);
     assertThat(tableResults.get(0)).isNotNull();
-    assertThat(tableResults.get(0).getCacheEntry().getEntity().getId()).isEqualTo(T6.getId());
+    assertThat(tableResults.get(0).cacheEntry().getEntity().getId()).isEqualTo(T6.getId());
   }
 
   @Test
@@ -588,7 +588,7 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get table T6 that we can update
     PolarisBaseEntity N5 =
@@ -632,7 +632,7 @@ public class InMemoryEntityCacheTest {
     assertThat(results).hasSize(1);
     assertThat(results.get(0)).isNotNull();
 
-    ResolvedPolarisEntity reloadedT6 = results.get(0).getCacheEntry();
+    ResolvedPolarisEntity reloadedT6 = results.get(0).cacheEntry();
     assertThat(reloadedT6.getEntity().getId()).isEqualTo(T6v2.getId());
     assertThat(reloadedT6.getEntity().getEntityVersion()).isEqualTo(T6v2.getEntityVersion());
 
@@ -652,7 +652,7 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get entities we'll work with
     PolarisBaseEntity N1 =
@@ -691,7 +691,7 @@ public class InMemoryEntityCacheTest {
     assertThat(results).hasSize(1);
     assertThat(results.get(0)).isNotNull();
 
-    ResolvedPolarisEntity reloadedN2 = results.get(0).getCacheEntry();
+    ResolvedPolarisEntity reloadedN2 = results.get(0).cacheEntry();
     assertThat(reloadedN2.getEntity().getId()).isEqualTo(N2Updated.getId());
     assertThat(reloadedN2.getEntity().getGrantRecordsVersion())
         .isEqualTo(N2Updated.getGrantRecordsVersion());
@@ -718,7 +718,7 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get entities that we can work with
     PolarisBaseEntity N1 =
@@ -772,12 +772,12 @@ public class InMemoryEntityCacheTest {
     assertThat(results).hasSize(3);
     assertThat(results)
         .doesNotContainNull()
-        .extracting(EntityCacheLookupResult::getCacheEntry)
+        .extracting(EntityCacheLookupResult::cacheEntry)
         .doesNotContainNull()
         .extracting(e -> e.getEntity().getId())
         .containsExactly(catalog.getId(), N1.getId(), N2.getId());
 
-    ResolvedPolarisEntity reloadedN2 = results.get(2).getCacheEntry();
+    ResolvedPolarisEntity reloadedN2 = results.get(2).cacheEntry();
     assertThat(reloadedN2.getEntity().getId()).isEqualTo(N2v3.getId());
     assertThat(reloadedN2.getEntity().getEntityVersion()).isEqualTo(N2v3.getEntityVersion());
 
@@ -799,7 +799,7 @@ public class InMemoryEntityCacheTest {
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get entities that we can work with
     PolarisBaseEntity N1 =
@@ -859,7 +859,7 @@ public class InMemoryEntityCacheTest {
             .getOrLoadEntityByName(
                 this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
+    PolarisBaseEntity catalog = lookup.cacheEntry().getEntity();
 
     // Get multiple entities to create a larger list for concurrent processing
     PolarisBaseEntity N1 =
@@ -1043,20 +1043,20 @@ public class InMemoryEntityCacheTest {
       assertThat(client2Results).doesNotContainNull();
 
       // Verify that client1 got the older version of N2 (index 1 in the list)
-      ResolvedPolarisEntity client1N2 = client1Results.get(1).getCacheEntry();
+      ResolvedPolarisEntity client1N2 = client1Results.get(1).cacheEntry();
       assertThat(client1N2.getEntity().getId()).isEqualTo(N2.getId());
       assertThat(client1N2.getEntity().getEntityVersion()).isEqualTo(N2v2.getEntityVersion());
 
       // Verify that client2 got the newer version of N2
-      ResolvedPolarisEntity client2N2 = client2Results.get(1).getCacheEntry();
+      ResolvedPolarisEntity client2N2 = client2Results.get(1).cacheEntry();
       assertThat(client2N2.getEntity().getId()).isEqualTo(N2.getId());
       assertThat(client2N2.getEntity().getEntityVersion()).isEqualTo(N2v3.getEntityVersion());
 
       // Verify that both clients got consistent versions for other entities
       for (int i = 0; i < 5; i++) {
         if (i != 1) { // Skip N2 which we expect to be different
-          ResolvedPolarisEntity client1Entity = client1Results.get(i).getCacheEntry();
-          ResolvedPolarisEntity client2Entity = client2Results.get(i).getCacheEntry();
+          ResolvedPolarisEntity client1Entity = client1Results.get(i).cacheEntry();
+          ResolvedPolarisEntity client2Entity = client2Results.get(i).cacheEntry();
 
           assertThat(client1Entity.getEntity().getId())
               .isEqualTo(client2Entity.getEntity().getId());
@@ -1066,7 +1066,7 @@ public class InMemoryEntityCacheTest {
               .isEqualTo(client2Entity.getEntity().getGrantRecordsVersion());
         }
       }
-      assertThat(entityIds).extracting(id -> cache.getEntityById(id.getId())).doesNotContainNull();
+      assertThat(entityIds).extracting(id -> cache.getEntityById(id.id())).doesNotContainNull();
     } finally {
       executorService.shutdown();
     }

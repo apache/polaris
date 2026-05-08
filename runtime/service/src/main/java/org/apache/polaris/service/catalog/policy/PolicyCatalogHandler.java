@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.policy;
 
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
+
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import java.util.Arrays;
@@ -25,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -33,6 +34,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
@@ -73,11 +75,11 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   public LoadPolicyResponse createPolicy(Namespace namespace, CreatePolicyRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_POLICY;
     PolicyIdentifier identifier =
-        PolicyIdentifier.builder().setNamespace(namespace).setName(request.getName()).build();
+        PolicyIdentifier.builder().namespace(namespace).name(request.getName()).build();
 
     // authorize the creating policy under namespace operation
     authorizeBasicNamespaceOperationOrThrow(
-        op, identifier.getNamespace(), null, null, List.of(identifier));
+        op, identifier.namespace(), null, null, List.of(identifier));
 
     return LoadPolicyResponse.builder()
         .setPolicy(
@@ -139,13 +141,14 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
-            PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
+            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
-            true /* optional */),
-        identifier);
+            true /* optional */));
     resolutionManifest.resolveAll();
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(identifier, true);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()), true);
     if (target == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
@@ -209,18 +212,16 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
-            PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
+            PolarisCatalogHelpers.identifierToList(identifier.namespace(), identifier.name()),
             PolarisEntityType.POLICY,
-            true /* optional */),
-        identifier);
+            true /* optional */));
 
     switch (target.getType()) {
       case CATALOG -> {}
       case NAMESPACE -> {
         Namespace targetNamespace = Namespace.of(target.getPath().toArray(new String[0]));
         resolutionManifest.addPath(
-            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE),
-            targetNamespace);
+            new ResolverPath(Arrays.asList(targetNamespace.levels()), PolarisEntityType.NAMESPACE));
       }
       case TABLE_LIKE -> {
         TableIdentifier targetIdentifier =
@@ -228,8 +229,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
         resolutionManifest.addPath(
             new ResolverPath(
                 PolarisCatalogHelpers.tableIdentifierToList(targetIdentifier),
-                PolarisEntityType.TABLE_LIKE),
-            targetIdentifier);
+                PolarisEntityType.TABLE_LIKE));
       }
       default -> throw new IllegalArgumentException("Unsupported target type: " + target.getType());
     }
@@ -240,7 +240,8 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
 
     PolarisResolvedPathWrapper policyWrapper =
         resolutionManifest.getPassthroughResolvedPath(
-            identifier, PolarisEntityType.POLICY, PolarisEntitySubType.NULL_SUBTYPE);
+            ResolvedPathKey.ofPolicy(identifier.namespace(), identifier.name()),
+            PolarisEntitySubType.NULL_SUBTYPE);
     if (policyWrapper == null) {
       throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
     }
@@ -289,17 +290,15 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   private void throwNotFoundExceptionIfFailToResolve(
       ResolverStatus status, PolicyIdentifier identifier) {
     if ((status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED)) {
-      switch (status.getFailedToResolvePath().getLastEntityType()) {
+      switch (status.getFailedToResolvePath().lastEntityType()) {
         case PolarisEntityType.TABLE_LIKE ->
             throw new NoSuchTableException(
                 "Table or view does not exist: %s",
                 PolarisCatalogHelpers.listToTableIdentifier(
-                    status.getFailedToResolvePath().getEntityNames()));
+                    status.getFailedToResolvePath().entityNames()));
         case PolarisEntityType.NAMESPACE ->
-            throw new NoSuchNamespaceException(
-                "Namespace does not exist: %s",
-                Namespace.of(
-                    status.getFailedToResolvePath().getEntityNames().toArray(new String[0])));
+            throw noSuchNamespaceException(
+                Namespace.of(status.getFailedToResolvePath().entityNames().toArray(new String[0])));
         case PolarisEntityType.POLICY ->
             throw new NoSuchPolicyException(String.format("Policy does not exist: %s", identifier));
         default -> throw new IllegalStateException("Cannot resolve");

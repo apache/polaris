@@ -24,18 +24,11 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  // id("polaris-license-report")
+  id("polaris-license-report")
 }
 
 val quarkusRunner by
   configurations.creating { description = "Used to reference the generated runner-jar" }
-
-// Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
 
 dependencies {
   implementation(project(":polaris-runtime-service"))
@@ -45,13 +38,21 @@ dependencies {
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
+  runtimeOnly(project(":polaris-extensions-auth-ranger"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
   }
 
+  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("BIGQUERY") == true) {
+    runtimeOnly(project(":polaris-extensions-federation-bigquery"))
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "com.google.protobuf", module = "protobuf-java")
+    exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+  }
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
@@ -92,6 +93,19 @@ tasks.named<QuarkusRun>("quarkusRun") {
 
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
+// Configuration to expose distribution artifacts
+val distributionElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
+val licenseNoticeElements by
+  configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+  }
+
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
@@ -99,4 +113,5 @@ artifacts {
     builtBy(quarkusBuild)
   }
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
+  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }

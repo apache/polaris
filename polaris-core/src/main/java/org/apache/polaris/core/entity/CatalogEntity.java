@@ -63,21 +63,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // catalog, stored in the "properties" map.
   public static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
 
-  /**
-   * Test-only property that specifies a prefix that will be replaced with the catalog's
-   * default-base-location whenever it matches a specified new table or view location.
-   *
-   * <p>For example, if the catalog base location is "s3://my-bucket/base/location" and the prefix
-   * specified here is "file:/tmp" then any new table attempting to specify a base location of
-   * "file:/tmp/ns1/ns2/table1" will be translated into
-   * "s3://my-bucket/base/location/ns1/ns2/table1".
-   *
-   * <p><strong>WARNING:</strong> This property is intended for testing purposes only and should not
-   * be used in production environments.
-   */
-  public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
-      "replace-new-location-prefix-with-catalog-default";
-
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
     Preconditions.checkState(
@@ -164,6 +149,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setAllowedKmsKeys(awsConfig.getAllowedKmsKeys())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
+            .setStorageName(awsConfig.getStorageName())
             .setRegion(awsConfig.getRegion())
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
@@ -180,6 +166,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setConsentUrl(azureConfig.getConsentUrl())
             .setStorageType(AZURE)
             .setAllowedLocations(azureConfig.getAllowedLocations())
+            .setStorageName(azureConfig.getStorageName())
             .setHierarchical(azureConfig.isHierarchical())
             .build();
       }
@@ -188,11 +175,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setGcsServiceAccount(gcpConfigModel.getGcpServiceAccount())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(gcpConfigModel.getAllowedLocations())
+            .setStorageName(gcpConfigModel.getStorageName())
             .build();
       }
       if (configInfo instanceof FileStorageConfigurationInfo fileConfigModel) {
-        return new FileStorageConfigInfo(
-            StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
+        return FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(fileConfigModel.getAllowedLocations())
+            .setStorageName(fileConfigModel.getStorageName())
+            .build();
       }
       return null;
     }
@@ -212,10 +203,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   @Override
   public String getBaseLocation() {
     return getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY);
-  }
-
-  public String getReplaceNewLocationPrefixWithCatalogDefault() {
-    return getPropertiesAsMap().get(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY);
   }
 
   public @Nullable PolarisStorageConfigurationInfo getStorageConfigurationInfo() {
@@ -279,12 +266,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
       return this;
     }
 
-    public Builder setReplaceNewLocationPrefixWithCatalogDefault(String value) {
-      // Note that this member lives in the main 'properties' map rather than internalProperties.
-      properties.put(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, value);
-      return this;
-    }
-
     public Builder setStorageConfigurationInfo(
         RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
@@ -307,6 +288,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             AwsStorageConfigurationInfo awsConfig =
                 AwsStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .roleARN(awsConfigModel.getRoleArn())
                     .currentKmsKey(awsConfigModel.getCurrentKmsKey())
                     .allowedKmsKeys(awsConfigModel.getAllowedKmsKeys())
@@ -326,6 +308,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             config =
                 AzureStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .tenantId(azureConfigModel.getTenantId())
                     .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
                     .consentUrl(azureConfigModel.getConsentUrl())
@@ -336,13 +319,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             config =
                 GcpStorageConfigurationInfo.builder()
                     .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
                     .gcpServiceAccount(
                         ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
                     .build();
             break;
           case FILE:
             config =
-                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
+                FileStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
+                    .build();
             break;
           default:
             throw new IllegalStateException(

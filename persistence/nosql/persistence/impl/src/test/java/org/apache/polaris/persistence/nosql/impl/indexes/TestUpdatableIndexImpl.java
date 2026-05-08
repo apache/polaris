@@ -42,6 +42,7 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.ImmutableIndexContainer;
+import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexStripe;
@@ -80,7 +81,8 @@ public class TestUpdatableIndexImpl {
 
     soft.assertThat(updatable.asKeyList()).containsExactly(bar, baz, foo);
     soft.assertThat(updatable)
-        .containsExactly(Map.entry(bar, id2), Map.entry(baz, id3), Map.entry(foo, id1));
+        .containsExactly(
+            Index.Element.of(bar, id2), Index.Element.of(baz, id3), Index.Element.of(foo, id1));
 
     soft.assertThat(updatable.remove(baz)).isTrue();
 
@@ -88,7 +90,8 @@ public class TestUpdatableIndexImpl {
 
     var indexed = updatable.toIndexed("idx-", (name, obj) -> soft.fail("Unexpected obj persist"));
     var reserialized = indexed.indexForRead(persistence, OBJ_REF_SERIALIZER);
-    soft.assertThat(reserialized).containsExactly(Map.entry(bar, id2), Map.entry(foo, id1));
+    soft.assertThat(reserialized)
+        .containsExactly(Index.Element.of(bar, id2), Index.Element.of(foo, id1));
   }
 
   @Test
@@ -151,14 +154,14 @@ public class TestUpdatableIndexImpl {
     var id3 = randomObjId();
     var ref = Map.of(foo, id1, bar, id2, baz, id3);
 
-    var updatable =
-        updatableIndexForTest(Map.of(foo, id1, bar, id2, baz, id3), Map.of(), OBJ_REF_SERIALIZER);
+    var updatable = updatableIndexForTest(ref, Map.of(), OBJ_REF_SERIALIZER);
 
     soft.assertThat(updatable.embedded.asKeyList()).isEmpty();
 
     soft.assertThat(updatable.asKeyList()).containsExactly(bar, baz, foo);
     soft.assertThat(updatable)
-        .containsExactly(Map.entry(bar, id2), Map.entry(baz, id3), Map.entry(foo, id1));
+        .containsExactly(
+            Index.Element.of(bar, id2), Index.Element.of(baz, id3), Index.Element.of(foo, id1));
 
     soft.assertThat(updatable.remove(baz)).isTrue();
 
@@ -170,10 +173,10 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(updatable.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(updatable.embedded.getElement(baz))
         .isNotNull()
-        .extracting(IndexElement::getValue)
+        .extracting(InternalIndexElement::valueNullable)
         .isNull();
     soft.assertThat(updatable.reference.getElement(baz))
-        .extracting(IndexElement::getKey, IndexElement::getValue)
+        .extracting(InternalIndexElement::key, InternalIndexElement::valueNullable)
         .containsExactly(baz, id3);
 
     // re-serialize
@@ -185,7 +188,7 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
         .isNotNull()
-        .extracting(IndexElement::getValue)
+        .extracting(InternalIndexElement::valueNullable)
         .isNull();
     soft.assertThat(deserialized.reference.asKeyList()).containsExactly(bar, baz, foo);
   }
@@ -220,11 +223,25 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(updatable.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(updatable.embedded.getElement(baz))
         .isNotNull()
-        .extracting(IndexElement::getValue)
+        .extracting(InternalIndexElement::valueNullable)
         .isNull();
     soft.assertThat(updatable.reference.getElement(baz))
-        .extracting(IndexElement::getKey, IndexElement::getValue)
+        .extracting(InternalIndexElement::key, InternalIndexElement::valueNullable)
         .containsExactly(baz, id3);
+
+    soft.assertThat(updatable.embedded.elementIterator())
+        .toIterable()
+        .extracting(InternalIndexElement::valueNullable)
+        .containsNull()
+        .hasSize(1);
+    soft.assertThat(updatable.embedded.reverseElementIterator())
+        .toIterable()
+        .map(InternalIndexElement.class::cast)
+        .extracting(InternalIndexElement::valueNullable)
+        .containsNull()
+        .hasSize(1);
+    soft.assertThat(updatable.embedded.iterator()).toIterable().isEmpty();
+    soft.assertThat(updatable.embedded.reverseIterator()).toIterable().isEmpty();
 
     // re-serialize
 
@@ -235,9 +252,23 @@ public class TestUpdatableIndexImpl {
     soft.assertThat(deserialized.embedded.asKeyList()).containsExactly(baz);
     soft.assertThat(deserialized.embedded.getElement(baz))
         .isNotNull()
-        .extracting(IndexElement::getValue)
+        .extracting(InternalIndexElement::valueNullable)
         .isNull();
     soft.assertThat(deserialized.reference.asKeyList()).containsExactly(bar, baz, foo);
+
+    soft.assertThat(deserialized.embedded.elementIterator())
+        .toIterable()
+        .extracting(InternalIndexElement::valueNullable)
+        .containsNull()
+        .hasSize(1);
+    soft.assertThat(deserialized.embedded.reverseElementIterator())
+        .toIterable()
+        .map(InternalIndexElement.class::cast)
+        .extracting(InternalIndexElement::valueNullable)
+        .containsNull()
+        .hasSize(1);
+    soft.assertThat(deserialized.embedded.iterator()).toIterable().isEmpty();
+    soft.assertThat(deserialized.embedded.reverseIterator()).toIterable().isEmpty();
   }
 
   @Test
@@ -259,11 +290,11 @@ public class TestUpdatableIndexImpl {
     toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
 
     var deserialized = indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER);
-    soft.assertThat(Streams.stream(deserialized).map(Map.Entry::getKey))
+    soft.assertThat(Streams.stream(deserialized).map(Index.Element::key))
         .containsExactlyElementsOf(keyList);
 
     var fromIndexed = indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
-    soft.assertThat(Streams.stream(fromIndexed).map(Map.Entry::getKey))
+    soft.assertThat(Streams.stream(fromIndexed).map(Index.Element::key))
         .containsExactlyElementsOf(keyList);
 
     indexed =
@@ -286,11 +317,11 @@ public class TestUpdatableIndexImpl {
     toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
 
     deserialized = indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER);
-    soft.assertThat(Streams.stream(deserialized).map(Map.Entry::getKey))
+    soft.assertThat(Streams.stream(deserialized).map(Index.Element::key))
         .containsExactlyElementsOf(keyList2);
 
     fromIndexed = indexed.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
-    soft.assertThat(Streams.stream(fromIndexed).map(Map.Entry::getKey))
+    soft.assertThat(Streams.stream(fromIndexed).map(Index.Element::key))
         .containsExactlyElementsOf(keyList2);
 
     indexed =
@@ -310,8 +341,8 @@ public class TestUpdatableIndexImpl {
             OBJ_TEST_SERIALIZER);
     stripeObj.asKeyList().forEach(updatable::remove);
 
-    // Index did NOT spill-out yet, the removes are in the embedded index, shadowing the reference
-    // index
+    // Index was NOT spilled-out yet.
+    // The removals are in the embedded index, shadowing the reference index.
     var indexed2 =
         updatable.toIndexed("idx-", (n, o) -> soft.fail("Unexpected obj persist %s / %s", n, o));
     soft.assertThat(indexed2.stripes()).containsExactlyElementsOf(indexed.stripes());
@@ -327,7 +358,7 @@ public class TestUpdatableIndexImpl {
         .allMatch(
             k -> {
               var el = deserializedRemoved.getElement(k);
-              return el != null && el.getValue() == null;
+              return el != null && el.valueNullable() == null;
             },
             "getElement(k)");
 
@@ -359,8 +390,8 @@ public class TestUpdatableIndexImpl {
   }
 
   <V> UpdatableIndexImpl<V> updatableIndexForTest(
-      List<IndexElement<V>> referenceContents,
-      List<IndexElement<V>> embeddedContents,
+      List<InternalIndexElement<V>> referenceContents,
+      List<InternalIndexElement<V>> embeddedContents,
       IndexValueSerializer<V> serializer) {
     var embedded = newStoreIndex(serializer);
     embeddedContents.forEach(embedded::add);

@@ -44,6 +44,17 @@ dependencies {
     exclude("ch.qos.reload4j", "reload4j")
     exclude("log4j", "log4j")
     exclude("org.apache.zookeeper", "zookeeper")
+    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
+    exclude("io.dropwizard.metrics", "metrics-core")
+    exclude("jakarta.servlet.jsp", "jakarta.servlet.jsp-api")
+    exclude("com.sun.istack", "istack-commons-runtime")
+    exclude(group = "org.glassfish.jersey.core")
+    exclude(group = "org.glassfish.jersey.containers")
+    exclude(group = "org.glassfish.jersey.inject")
+    exclude(group = "org.glassfish.hk2")
+    exclude(group = "org.glassfish.hk2.external")
+    exclude(group = "org.glassfish.jaxb")
+    exclude(group = "org.eclipse.jetty")
   }
 
   implementation(libs.auth0.jwt)
@@ -58,6 +69,8 @@ dependencies {
     exclude("org.slf4j", "jul-to-slf4j")
   }
 
+  implementation(libs.jakarta.ws.rs.api)
+
   implementation(platform(libs.junit.bom))
   implementation("org.junit.jupiter:junit-jupiter")
   implementation("org.junit.jupiter:junit-jupiter-api")
@@ -69,6 +82,7 @@ dependencies {
   implementation(project(":polaris-runtime-test-common"))
   implementation(project(":polaris-minio-testcontainer"))
   implementation(project(":polaris-rustfs-testcontainer"))
+  implementation(project(":polaris-hms-testcontainer"))
 }
 
 copiedCodeChecks {

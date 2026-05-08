@@ -171,20 +171,12 @@ public class TreeMapMetaStore {
     }
   }
 
-  /** Transaction on the tree-map store */
-  private static class Transaction {
-    // if true, we have open a read/write transaction
-    private final boolean isWrite;
-
-    /** Constructor */
-    private Transaction(boolean isWrite) {
-      this.isWrite = isWrite;
-    }
-
-    public boolean isWrite() {
-      return isWrite;
-    }
-  }
+  /**
+   * Transaction on the tree-map store
+   *
+   * @param write if true, we have open a read/write transaction
+   */
+  private record Transaction(boolean write) {}
 
   // synchronization lock to ensure that only one transaction can be started
   private final Object lock;
@@ -400,7 +392,7 @@ public class TreeMapMetaStore {
   /** Ensure that a read/write FDB transaction has been started */
   private void ensureReadWriteTr() {
     this.diagnosticServices.check(
-        this.tr != null && this.tr.isWrite(), "no_write_transaction_started");
+        this.tr != null && this.tr.write(), "no_write_transaction_started");
   }
 
   /** Ensure that a read FDB transaction has been started */

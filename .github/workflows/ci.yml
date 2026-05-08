@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: &setup-java-vars
@@ -49,18 +51,25 @@ jobs:
           GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
           DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
           DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
             -x intTest \
             --continue
+      - name: Verify configuration reference is up to date
+        run: |
+          ./gradlew :polaris-config-docs-site:copyConfigSectionsToSite
+          if ! git diff --exit-code site/content/in-dev/unreleased/configuration/config-sections/; then
+            echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
+            exit 1
+          fi
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -76,6 +85,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -89,7 +100,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -103,6 +114,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -114,7 +127,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -128,6 +141,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -139,7 +154,7 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
@@ -153,6 +168,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -170,21 +187,24 @@ jobs:
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: upload-${{ github.job }}-artifacts
           path: *test-archive-path
 
-  helm-tests:
-    name: Helm Tests
+  docker-image-build:
+    name: Polaris Docker Image Build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -192,12 +212,129 @@ jobs:
         uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
-      - name: Set up Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - name: Image build
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-server:assemble -Dquarkus.container-image.build=true
+      - name: Save image to tar
+        run: |
+          docker save apache/polaris:latest | zstd -T0 > polaris-image.tar.zst
+      - name: Upload image artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          version: 'v3.16.0'
+          name: polaris-image
+          path: polaris-image.tar.zst
+          retention-days: 1
+
+  docker-image-scan:
+    name: Polaris Docker Image Scan
+    runs-on: ubuntu-latest
+    needs:
+      - docker-image-build
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Download image artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: polaris-image
+      - name: Load image
+        run: zstd -d -c polaris-image.tar.zst | docker load
+      - name: Cache Trivy vulnerability DB
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: trivy-db-${{ runner.os }}
+      # lhotari/sandboxed-trivy-action is the ASF-approved fork of
+      # aquasecurity/trivy-action; it runs Trivy inside a hardened container.
+      - name: Run Trivy scan (table, logged)
+        uses: lhotari/sandboxed-trivy-action@f01374b6cc3bf7264ab238293e94f6db7ada6dd0 # v1.0.2
+        with:
+          scan-type: image
+          scan-ref: apache/polaris:latest
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'true'
+          exit-code: '0'
+      - name: Run Trivy scan (SARIF)
+        uses: lhotari/sandboxed-trivy-action@f01374b6cc3bf7264ab238293e94f6db7ada6dd0 # v1.0.2
+        with:
+          scan-type: image
+          scan-ref: apache/polaris:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: 'true'
+          exit-code: '0'
+      - name: Upload SARIF to GitHub Code Scanning
+        if: ${{ startsWith(github.ref, 'refs/heads/') }}
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image
+      - name: Upload SARIF as workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: trivy-results-sarif
+          path: trivy-results.sarif
+          retention-days: 7
+
+  helm-tests:
+    name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
+    runs-on: ubuntu-latest
+    needs:
+      - docker-image-build
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - helm-version: 'v3.20.0'
+            kubernetes-version: 'v1.33.8'
+          - helm-version: 'v4.0.5'
+            kubernetes-version: 'v1.34.4'
+          - helm-version: 'v4.1.1'
+            kubernetes-version: 'v1.35.1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: ${{ matrix.helm-version }}
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        run: |
+          CT_VERSION=3.14.0
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64) ARCH=amd64 ;;
+            aarch64|arm64) ARCH=arm64 ;;
+          esac
+          curl -sSLo ct.tar.gz "https://github.com/helm/chart-testing/releases/download/v${CT_VERSION}/chart-testing_${CT_VERSION}_linux_${ARCH}.tar.gz"
+          sudo tar -xzf ct.tar.gz -C /usr/local/bin ct
+          mkdir -p .ct
+          tar -xzf ct.tar.gz --strip-components=1 -C .ct etc
+          rm ct.tar.gz
+          pip install yamllint yamale
+      - name: Set up helm-docs
+        run: |
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Install Helm plugins
+        run: make helm-install-plugins
+      - name: Verify Helm schema is up to date
+        run: make helm-schema-verify
+      - name: Verify Helm documentation is up to date
+        run: make helm-doc-verify
       - name: Run 'helm template' validation
         run: |
           cd helm/polaris
@@ -207,48 +344,51 @@ jobs:
             echo "::endgroup::"
           done
       - name: Run Helm unit tests
-        run: |
-          # Pin version to 1.0.2 due to https://github.com/helm-unittest/helm-unittest/issues/790
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          helm unittest helm/polaris
+        run: make helm-unittest
       - name: Run chart-testing (lint)
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
+        env:
+          DEFAULT_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
+        run: ct lint --target-branch "${DEFAULT_BRANCH}" --debug --charts ./helm/polaris --validate-maintainers=false
       - name: Set up Minikube
         uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
-      - name: Print Docker info
+        with:
+          kubernetes-version: ${{ matrix.kubernetes-version }}
+      - name: Download image artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: polaris-image
+      - name: Load image into Minikube
         run: |
-          docker -v
-          minikube docker-env
-      - name: Image build
-        env: *gradle_env_vars
-        run: |
-          eval $(minikube -p minikube docker-env)
-          ./gradlew \
-            :polaris-server:assemble \
-            :polaris-server:quarkusAppPartsBuild --rerun \
-            :polaris-admin:assemble \
-            :polaris-admin:quarkusAppPartsBuild --rerun \
-            -Dquarkus.container-image.build=true
+          zstd -d -c polaris-image.tar.zst | minikube image load -
+          APP_VERSION=$(grep '^appVersion:' helm/polaris/Chart.yaml | awk '{print $2}')
+          minikube image tag apache/polaris:latest apache/polaris:${APP_VERSION}
+          echo "Available images:"
           minikube image ls
       - name: Install fixtures
         run: |
           kubectl create namespace polaris-ns
           kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures
       - name: Run chart-testing (install)
+        env:
+          DEFAULT_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
         run: |
-          ct install --target-branch ${{ github.event.repository.default_branch }} \
+          ct install --target-branch "${DEFAULT_BRANCH}" \
             --namespace polaris-ns \
             --debug --charts ./helm/polaris
 
   python-client:
     name: Polaris Python Client Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -279,6 +419,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Free disk space
         uses: ./.github/actions/free-disk-space
       - name: Set up JDK 21
@@ -300,8 +442,8 @@ jobs:
               -Dquarkus.container-image.build=true
       - name: Regression Test
         env:
-          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+          AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}} # zizmor: ignore[secrets-outside-env]
+          AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}} # zizmor: ignore[secrets-outside-env]
         run: docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Spark Plugin Regression Test
         # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration
@@ -312,10 +454,15 @@ jobs:
 
   markdown-link-check:
     name: "Markdown Link Check"
+    if: github.repository == 'apache/polaris'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup test environment
         uses: ./.github/actions/setup-test-env
       - name: Markdown link check
@@ -329,14 +476,19 @@ jobs:
   site:
     name: "Site Generation"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Checkout Versioned Docs
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: "versioned-docs"
           path: site/content/releases
+          persist-credentials: false
         # Do not let this step fail when the versioned-docs branch does not exist, as on most forks
         continue-on-error: true
       - name: Setup test environment
@@ -348,6 +500,8 @@ jobs:
             -o /usr/local/bin/docker-compose
           sudo chmod 755 /usr/local/bin/docker-compose
           sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      - name: Verify release-doc link policy
+        run: site/bin/check-release-doc-links.sh
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
 
@@ -355,6 +509,8 @@ jobs:
     name: Store Gradle Cache
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - build-checks
@@ -365,6 +521,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Set up JDK 21
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with: *setup-java-vars
@@ -372,6 +530,15 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-prepare
         with:
           cache-read-only: false
+
+  asf-allowlist-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      # Intentionally unpinned to always use the latest allowlist from the ASF.
+      - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
 
   required-checks:
     # Do not rename this job, this is referenced in .asf.yaml!
@@ -382,11 +549,28 @@ jobs:
       - runtime-service-int-tests
       - admin-tool-tests
       - integration-tests
+      - docker-image-build
+      - docker-image-scan
       - helm-tests
       - python-client
       - regtest
       - markdown-link-check
       - site
+      - asf-allowlist-check
+    # Always run this job, even if a "needed" job fails. Without this one, GitHub will not run
+    # this job and that yields "Success" to the branch protection rule, which is wrong.
+    # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
+    # We consider `success` and `skipped` as "ok", `failure` and `cancelled` as "not ok".
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
+    permissions: {}
     steps:
-      - run: echo "All checks passed"
+      - env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          if [[ "${NEEDS_RESULTS}" =~ .*(failure|cancelled).* ]]; then
+            echo "At least one check failed"
+            exit 1
+          else
+            echo "All checks passed"
+          fi

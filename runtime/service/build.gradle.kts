@@ -39,6 +39,8 @@ dependencies {
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
+  compileOnly(project(":polaris-config-docs-annotations"))
+
   runtimeOnly(project(":polaris-persistence-nosql-metastore"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
   runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
@@ -112,6 +114,9 @@ dependencies {
 
   runtimeOnly(project(":polaris-async-vertx"))
 
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-3.5_2.12")
@@ -173,8 +178,10 @@ dependencies {
   testFixturesImplementation(libs.jakarta.ws.rs.api)
 
   testFixturesImplementation(platform(libs.quarkus.bom))
+  testFixturesImplementation("io.quarkus:quarkus-junit-config")
   testFixturesImplementation("io.quarkus:quarkus-rest-client")
   testFixturesImplementation("io.quarkus:quarkus-rest-client-jackson")
+  testFixturesImplementation("io.quarkus:quarkus-test-common")
 
   testFixturesImplementation(platform(libs.iceberg.bom))
   testFixturesImplementation("org.apache.iceberg:iceberg-api")

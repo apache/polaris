@@ -858,6 +858,7 @@ components:
           description: The name of the catalog
         properties:
           type: object
+          x-polaris-skip-valid-annotation: true
           properties:
             default-base-location:
               type: string
@@ -917,6 +918,7 @@ components:
             - ICEBERG_REST
             - HADOOP
             - HIVE
+            - BIGQUERY
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -925,6 +927,11 @@ components:
           $ref: "#/components/schemas/AuthenticationParameters"
         serviceIdentity:
           $ref: '#/components/schemas/ServiceIdentityInfo'
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional connection properties
       required:
         - connectionType
       discriminator:
@@ -933,6 +940,7 @@ components:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
           HIVE: "#/components/schemas/HiveConnectionConfigInfo"
+          BIGQUERY: "#/components/schemas/BigQueryMetastoreConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -965,6 +973,16 @@ components:
         warehouse:
           type: string
           description: The warehouse location for the hive catalog.
+    
+    BigQueryMetastoreConnectionConfigInfo:
+      type: object
+      description: |
+        Configuration necessary for connecting to a BigQuery Metastore Catalog.
+        Required properties in the properties map:
+        - gcp.bigquery.project-id: The GCP project ID
+        - warehouse: The warehouse location for the BigQuery Metastore Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
 
     AuthenticationParameters:
       type: object
@@ -977,6 +995,7 @@ components:
             - BEARER
             - SIGV4
             - IMPLICIT
+            - GCP
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -987,6 +1006,13 @@ components:
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
           IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
+          GCP: "#/components/schemas/GcpAuthenticationParameters"
+
+    GcpAuthenticationParameters:
+      type: object
+      description: Uses GCP authentication from the Iceberg codebase
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
 
     OAuthClientCredentialsParameters:
       type: object
@@ -1075,6 +1101,9 @@ components:
           items:
             type: string
           example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
+        storageName:
+          type: string
+          description: An optional name referencing a server-side storage configuration
       required:
         - storageType
       discriminator:
