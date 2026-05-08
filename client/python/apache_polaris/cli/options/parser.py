@@ -108,7 +108,7 @@ class Parser(object):
                 # values already set in the namespace by parent parsers.
                 if is_subparser:
                     kwargs["default"] = argparse.SUPPRESS
-                elif arg.default:
+                elif arg.default is not None:
                     kwargs["default"] = arg.default
 
                 if arg.metavar:
