@@ -155,15 +155,19 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       List.<String>of("realm", "catalog", "namespace", "table", "principal");
 
   /**
-   * Ordered list of fields to include in the STS role session name for AWS credential vending.
-   * Fields are joined with {@code -} and prefixed with {@code p-} by default. The result is
-   * truncated to the AWS 64-character session name limit; any budget unused by a short field is
-   * carried forward to subsequent fields.
+   * Ordered list of fields to include in the STS role session name during credential vending.
+   * Currently only applied to AWS credential vending. Fields are joined with {@code -} and prefixed
+   * with {@code p-} by default. The result is truncated to the AWS 64-character session name limit;
+   * any budget unused by a short field is carried forward to subsequent fields.
    *
    * <p>When empty (default), falls back to {@link #INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL}
    * behaviour for backward compatibility.
    *
    * <p>Supported fields: realm, catalog, namespace, table, principal.
+   *
+   * <p><b>Field order is significant.</b> The fields appear in the session name in the order they
+   * are listed. Changing the order changes the session name structure, which affects CloudTrail
+   * queries and log correlation.
    *
    * <p>The prefix can be customised by including a {@code prefix-X} token anywhere in the list
    * (e.g. {@code ["prefix-myorg", "catalog", "principal"]} → {@code myorg-catalog-principal}).
@@ -180,7 +184,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           PolarisConfiguration.<List<String>>builder()
               .key("SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL")
               .description(
-                  "Ordered list of fields to include in the STS role session name for AWS credential vending.\n"
+                  "Ordered list of fields to include in the STS role session name during credential vending.\n"
+                      + "Currently only applied to AWS credential vending.\n"
                       + "Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to\n"
                       + "64 characters (the AWS STS session name limit); budget unused by a short field flows to\n"
                       + "subsequent fields.\n"
@@ -189,6 +194,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                       + "Supported fields: "
                       + String.join(", ", SUPPORTED_SESSION_NAME_FIELDS)
                       + "\n"
+                      + "\n"
+                      + "Field order is significant: fields appear in the session name in the order listed.\n"
+                      + "Changing the order changes the session name structure and will affect CloudTrail queries.\n"
                       + "\n"
                       + "To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix\n"
                       + "to 'myorg-'). Defaults to 'p-'.\n"

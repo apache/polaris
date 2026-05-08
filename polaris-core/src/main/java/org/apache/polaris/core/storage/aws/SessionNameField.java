@@ -59,6 +59,13 @@ enum SessionNameField {
       return context.tableName().orElse("");
     }
   },
+  /**
+   * The name of the principal requesting credentials. Note that only the principal name is
+   * included, not its active roles or attributes; two requests from the same principal with
+   * different roles will produce the same session name. To include role information in the
+   * credential identity, use {@code SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL} with the {@code roles}
+   * field instead.
+   */
   PRINCIPAL("principal") {
     @Override
     public String getValue(String principalName, CredentialVendingContext context) {
