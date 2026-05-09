@@ -774,7 +774,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(1)
                             .satisfiesExactlyInAnyOrder(
                                 statement ->
                                     assertThat(statement)
@@ -790,17 +790,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                     String.format(
                                                         "arn:aws:kms:%s:%s:key/*",
                                                         region, accountId))),
-                                            IamStatement::resources),
-                                statement ->
-                                    assertThat(statement)
-                                        .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .satisfies(
-                                            st -> assertThat(st.resources()).containsExactly())
-                                        .returns(
-                                            List.of(
-                                                IamAction.create("s3:GetObject"),
-                                                IamAction.create("s3:GetObjectVersion")),
-                                            IamStatement::actions));
+                                            IamStatement::resources));
                       });
               return ASSUME_ROLE_RESPONSE;
             });

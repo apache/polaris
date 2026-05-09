@@ -307,9 +307,10 @@ public class AwsCredentialsStorageIntegration
    * Generate an IamPolicy honoring per-action grants: {@code readLocations} get GetObject /
    * GetObjectVersion, {@code listLocations} get ListBucket with prefix conditions, {@code
    * writeLocations} get PutObject / DeleteObject. Buckets that appear in any set get
-   * GetBucketLocation. If all three sets are empty, a non-empty policy is still generated (with a
-   * resource-less GetObject statement) so we don't send an empty policy to AWS and inadvertently
-   * assume the role with full privileges.
+   * GetBucketLocation. If the resulting policy would have no statements (e.g. all three location
+   * sets are empty and no KMS configuration applies), a single explicit {@code Deny *} statement is
+   * emitted so we don't send an empty policy to AWS and inadvertently assume the role with full
+   * privileges.
    */
   private IamPolicy policyString(
       AwsStorageConfigurationInfo storageConfigurationInfo,
@@ -373,6 +374,7 @@ public class AwsCredentialsStorageIntegration
                           .addResource(key));
             });
 
+    int statementCount = 0;
     boolean canWrite = !writeLocations.isEmpty();
     if (canWrite) {
       IamStatement.Builder allowPutObjectStatementBuilder =
@@ -389,27 +391,45 @@ public class AwsCredentialsStorageIntegration
                     arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
+      statementCount++;
     }
     if (shouldUseKms(storageConfigurationInfo)) {
-      addKmsKeyPolicy(
+      if (addKmsKeyPolicy(
           currentKmsKey,
           allowedKmsKeys,
           policyBuilder,
           canWrite,
           region,
-          storageConfigurationInfo.getAwsAccountId());
+          storageConfigurationInfo.getAwsAccountId())) {
+        statementCount++;
+      }
     }
-    bucketListStatementBuilder
-        .values()
-        .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
+    for (IamStatement.Builder statementBuilder : bucketListStatementBuilder.values()) {
+      policyBuilder.addStatement(statementBuilder.build());
+      statementCount++;
+    }
+    for (IamStatement.Builder statementBuilder : bucketGetLocationStatementBuilder.values()) {
+      policyBuilder.addStatement(statementBuilder.build());
+      statementCount++;
+    }
 
-    bucketGetLocationStatementBuilder
-        .values()
-        .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+    // Only emit the GetObject statement when there are read locations to bind it to; an
+    // ALLOW statement with no Resource is rejected as a malformed policy by STS.
+    if (!readLocations.isEmpty()) {
+      policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
+      statementCount++;
+    }
+    if (statementCount == 0) {
+      // Avoid sending an empty policy to STS, which would cause the assumed role to fall back
+      // to its full privileges. An explicit deny-everything yields a well-formed but useless
+      // credential.
+      policyBuilder.addStatement(
+          IamStatement.builder().effect(IamEffect.DENY).addAction("*").addResource("*").build());
+    }
+    return policyBuilder.build();
   }
 
-  private static void addKmsKeyPolicy(
+  private static boolean addKmsKeyPolicy(
       String kmsKeyArn,
       List<String> allowedKmsKeys,
       IamPolicy.Builder policyBuilder,
@@ -423,7 +443,7 @@ public class AwsCredentialsStorageIntegration
 
     // Nothing to do if no keys are configured and not AWS S3
     if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {
-      return;
+      return false;
     }
 
     IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
@@ -446,7 +466,9 @@ public class AwsCredentialsStorageIntegration
 
     if (hasCurrentKey || hasAllowedKeys || shouldAddWildcard) {
       policyBuilder.addStatement(allowKms.build());
+      return true;
     }
+    return false;
   }
 
   private static IamStatement.Builder buildBaseKmsStatement(boolean canEncrypt) {
