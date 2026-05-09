@@ -38,6 +38,12 @@ public interface PolarisStorageIntegration {
   /**
    * Vend a scoped {@link StorageAccessConfig} for the given list of {@link LocationGrant}s.
    *
+   * <p>The AWS and GCP implementations honor per-grant action separation: a grant of {@code (loc,
+   * {WRITE})} does not cause {@code loc} to receive read or list permissions in the resulting
+   * credentials. The Azure implementation cannot fully honor per-grant per-prefix separation
+   * because a SAS token is monolithic at the container (or, for hierarchical ADLS, single-path)
+   * level; its action flags reflect the union of requested actions across all grants.
+   *
    * @param grants per-location action requests; each grant pairs a set of storage location URIs
    *     with the operations (READ, WRITE, LIST, DELETE, ALL) the credentials should permit on those
    *     locations

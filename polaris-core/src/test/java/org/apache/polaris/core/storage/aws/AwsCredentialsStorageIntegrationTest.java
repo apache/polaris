@@ -147,7 +147,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
             .generateStorageAccessConfig(
-                true,
+                Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Optional.of("/namespace/table/credentials"),
@@ -195,7 +195,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
             .generateStorageAccessConfig(
-                true,
+                Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Optional.of("/namespace/table/credentials"),
@@ -336,7 +336,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
                 .generateStorageAccessConfig(
-                    true,
+                    Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
                     Optional.empty(),
@@ -433,7 +433,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(specialLocation),
             Set.of(specialLocation),
             Set.of(specialLocation),
             Optional.empty(),
@@ -518,7 +518,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(specialLocation),
             Set.of(specialLocation),
             Set.of(specialLocation),
             Optional.empty(),
@@ -625,8 +625,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
             .generateStorageAccessConfig(
-                false,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
+                Set.of(),
                 Set.of(s3Path(bucket, firstPath)),
                 Optional.empty(),
                 CredentialVendingContext.empty());
@@ -737,7 +737,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
             .generateStorageAccessConfig(
-                true,
+                Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
                 Optional.empty(),
@@ -774,7 +774,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(2)
                             .satisfiesExactlyInAnyOrder(
                                 statement ->
                                     assertThat(statement)
@@ -791,13 +791,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                                         "arn:aws:kms:%s:%s:key/*",
                                                         region, accountId))),
                                             IamStatement::resources),
-                                statement ->
-                                    assertThat(statement)
-                                        .returns(IamEffect.ALLOW, IamStatement::effect)
-                                        .returns(List.of(), IamStatement::resources)
-                                        .returns(
-                                            List.of(IamAction.create("s3:ListBucket")),
-                                            IamStatement::actions),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -821,7 +814,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
             .generateStorageAccessConfig(
-                true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
+                Set.of(), Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -860,7 +853,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
                 .generateStorageAccessConfig(
-                    true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
+                    Set.of(),
+                    Set.of(),
+                    Set.of(),
+                    Optional.empty(),
+                    CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -897,7 +894,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
                 .generateStorageAccessConfig(
-                    true, Set.of(), Set.of(), Optional.empty(), CredentialVendingContext.empty());
+                    Set.of(),
+                    Set.of(),
+                    Set.of(),
+                    Optional.empty(),
+                    CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -907,7 +908,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
                         .generateStorageAccessConfig(
-                            true,
+                            Set.of(),
                             Set.of(),
                             Set.of(),
                             Optional.empty(),
@@ -954,7 +955,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithKmsUnavailable, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Optional.empty(),
@@ -986,7 +987,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     new AwsCredentialsStorageIntegration(
             stsClient, configWithKmsUnavailableReadOnly, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
             Optional.empty(),
@@ -1043,7 +1044,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithCurrentKmsKey, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Optional.empty(),
@@ -1091,7 +1092,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configWithAllowedKmsKeys, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
             Optional.empty(),
@@ -1127,7 +1128,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configNoKmsReadOnly, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
             Optional.empty(),
@@ -1160,7 +1161,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, configNoKmsWrite, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Optional.empty(),
@@ -1197,7 +1198,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Optional.of("/namespace/table/credentials"),
@@ -1233,7 +1234,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Optional.of("/namespace/table/credentials"),
@@ -1269,7 +1270,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, PRINCIPAL_INCLUDER_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
             Optional.of("/namespace/table/credentials"),
@@ -1325,7 +1326,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1396,7 +1397,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, sessionTagsAndTraceIdEnabledConfig)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1461,7 +1462,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1502,7 +1503,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1557,7 +1558,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1594,7 +1595,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1629,7 +1630,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, realmConfig)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Optional.empty(),
@@ -1730,7 +1731,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             () ->
                 new AwsCredentialsStorageIntegration(stsClient, config, SESSION_TAGS_ENABLED_CONFIG)
                     .generateStorageAccessConfig(
-                        true,
+                        Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         Set.of(s3Path(bucket, warehouseKeyPrefix)),
                         Optional.empty(),
@@ -1747,7 +1748,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1758,7 +1759,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1776,7 +1777,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1787,7 +1788,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1814,7 +1815,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1825,7 +1826,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AwsStorageCredentialCacheKey.of(
             "testRealm",
             null,
-            true,
+            Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Set.of("s3://bucket/path"),
             Optional.empty(),
@@ -1867,7 +1868,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .build();
     new AwsCredentialsStorageIntegration(stsClient, config, EMPTY_REALM_CONFIG)
         .generateStorageAccessConfig(
-            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
             Optional.empty(),

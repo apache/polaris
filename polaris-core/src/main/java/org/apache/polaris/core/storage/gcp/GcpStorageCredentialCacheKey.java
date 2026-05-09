@@ -40,10 +40,10 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String storageConfigSerializedStr();
 
   @Value.Parameter(order = 3)
-  boolean allowedListAction();
+  Set<String> allowedReadLocations();
 
   @Value.Parameter(order = 4)
-  Set<String> allowedReadLocations();
+  Set<String> allowedListLocations();
 
   @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
@@ -54,15 +54,15 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   static GcpStorageCredentialCacheKey of(
       String realmId,
       @Nullable String storageConfigSerializedStr,
-      boolean allowedListAction,
       Set<String> allowedReadLocations,
+      Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
-        allowedListAction,
         allowedReadLocations,
+        allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint);
   }

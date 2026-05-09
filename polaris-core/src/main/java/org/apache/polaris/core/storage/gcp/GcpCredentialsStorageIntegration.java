@@ -39,8 +39,9 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -106,7 +107,11 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return buildCacheKey(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
   }
 
   @Override
@@ -115,48 +120,56 @@ public class GcpCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return generateStorageAccessConfig(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
-  }
-
-  private static boolean allowList(List<LocationGrant> grants) {
-    return grants.stream()
-        .flatMap(g -> g.actions().stream())
-        .anyMatch(a -> a == PolarisStorageActions.LIST || a == PolarisStorageActions.ALL);
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
   }
 
   private static Set<String> readLocations(List<LocationGrant> grants) {
-    return grants.stream().flatMap(g -> g.locations().stream()).collect(Collectors.toSet());
+    return locationsFor(grants, PolarisStorageActions.READ, PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> listLocations(List<LocationGrant> grants) {
+    return locationsFor(grants, PolarisStorageActions.LIST, PolarisStorageActions.ALL);
   }
 
   private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return locationsFor(
+        grants,
+        PolarisStorageActions.WRITE,
+        PolarisStorageActions.DELETE,
+        PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> locationsFor(
+      List<LocationGrant> grants, PolarisStorageActions... wantedActions) {
+    Set<PolarisStorageActions> wanted = Set.of(wantedActions);
     return grants.stream()
-        .filter(
-            g ->
-                g.actions().contains(PolarisStorageActions.WRITE)
-                    || g.actions().contains(PolarisStorageActions.DELETE)
-                    || g.actions().contains(PolarisStorageActions.ALL))
+        .filter(g -> g.actions().stream().anyMatch(wanted::contains))
         .flatMap(g -> g.locations().stream())
         .collect(Collectors.toSet());
   }
 
   private StorageCredentialCacheKey buildCacheKey(
-      boolean allowList,
-      @Nonnull Set<String> locations,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> listLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
-        allowList,
-        locations,
+        readLocations,
+        listLocations,
         writeLocations,
         refreshEndpoint);
   }
 
   public StorageAccessConfig generateStorageAccessConfig(
-      boolean allowList,
-      @Nonnull Set<String> locations,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> listLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -171,7 +184,7 @@ public class GcpCredentialsStorageIntegration
     GoogleCredentials credentialsToDownscope = getBaseCredentials(gcpStorageConfig);
 
     CredentialAccessBoundary accessBoundary =
-        generateAccessBoundaryRules(allowList, locations, writeLocations);
+        generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
     DownscopedCredentials credentials =
         DownscopedCredentials.newBuilder()
             .setHttpTransportFactory(transportFactory)
@@ -184,9 +197,9 @@ public class GcpCredentialsStorageIntegration
     } catch (IOException e) {
       LOGGER
           .atError()
-          .addKeyValue("locations", locations)
+          .addKeyValue("readLocations", readLocations)
+          .addKeyValue("listLocations", listLocations)
           .addKeyValue("writeLocations", writeLocations)
-          .addKeyValue("includesList", allowList)
           .addKeyValue("accessBoundary", convertToString(accessBoundary))
           .log("Unable to refresh access credentials", e);
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
@@ -257,42 +270,61 @@ public class GcpCredentialsStorageIntegration
     }
   }
 
+  /**
+   * Generate a {@link CredentialAccessBoundary} honoring per-action grants. The {@code
+   * legacyObjectReader} permission is granted on locations from {@code allowedReadLocations} (and
+   * also on {@code allowedListLocations}, since GCS list requires bucket-level read); the {@code
+   * objectViewer} permission is added on buckets that have any location in {@code
+   * allowedListLocations}; write access only on {@code allowedWriteLocations}. CEL conditions are
+   * de-duplicated so a path that appears in both the read and list sets contributes a single {@code
+   * resourceNameStartsWith} expression.
+   */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
-      boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedListLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    Map<String, List<String>> readConditionsMap = new HashMap<>();
-    Map<String, List<String>> writeConditionsMap = new HashMap<>();
+    Map<String, LinkedHashSet<String>> readConditionsByBucket = new LinkedHashMap<>();
+    Map<String, LinkedHashSet<String>> writeConditionsByBucket = new LinkedHashMap<>();
+    HashSet<String> bucketsWithList = new HashSet<>();
 
-    HashSet<String> readBuckets = new HashSet<>();
-    HashSet<String> writeBuckets = new HashSet<>();
-    Stream.concat(allowedReadLocations.stream(), allowedWriteLocations.stream())
+    Stream.concat(allowedReadLocations.stream(), allowedListLocations.stream())
         .distinct()
         .forEach(
             location -> {
               StorageUri uri = StorageUri.parse(location);
               String bucket = uri.authority();
-              readBuckets.add(bucket);
               String path = uri.rawPath().substring(1);
-              List<String> resourceExpressions =
-                  readConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-              resourceExpressions.add(resourceNameStartsWithExpression(bucket, path));
-              if (allowListOperation) {
-                resourceExpressions.add(objectListPrefixStartsWithExpression(path));
-              }
-              if (allowedWriteLocations.contains(location)) {
-                writeBuckets.add(bucket);
-                List<String> writeExpressions =
-                    writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-                writeExpressions.add(resourceNameStartsWithExpression(bucket, path));
-              }
+              readConditionsByBucket
+                  .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+                  .add(resourceNameStartsWithExpression(bucket, path));
             });
+
+    allowedListLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          String bucket = uri.authority();
+          String path = uri.rawPath().substring(1);
+          readConditionsByBucket
+              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+              .add(objectListPrefixStartsWithExpression(path));
+          bucketsWithList.add(bucket);
+        });
+
+    allowedWriteLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          String bucket = uri.authority();
+          String path = uri.rawPath().substring(1);
+          writeConditionsByBucket
+              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+              .add(resourceNameStartsWithExpression(bucket, path));
+        });
+
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
-    readBuckets.forEach(
-        bucket -> {
-          List<String> readConditions = readConditionsMap.get(bucket);
-          if (readConditions == null || readConditions.isEmpty()) {
+    readConditionsByBucket.forEach(
+        (bucket, conditions) -> {
+          if (conditions.isEmpty()) {
             return;
           }
           CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
@@ -300,18 +332,17 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailableResource(bucketResource(bucket));
           builder.setAvailabilityCondition(
               CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", readConditions))
+                  .setExpression(String.join(" || ", conditions))
                   .build());
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyObjectReader"));
-          if (allowListOperation) {
+          if (bucketsWithList.contains(bucket)) {
             builder.addAvailablePermission("inRole:roles/storage.objectViewer");
           }
           accessBoundaryBuilder.addRule(builder.build());
         });
-    writeBuckets.forEach(
-        bucket -> {
-          List<String> writeConditions = writeConditionsMap.get(bucket);
-          if (writeConditions == null || writeConditions.isEmpty()) {
+    writeConditionsByBucket.forEach(
+        (bucket, conditions) -> {
+          if (conditions.isEmpty()) {
             return;
           }
           CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
@@ -319,7 +350,7 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailableResource(bucketResource(bucket));
           builder.setAvailabilityCondition(
               CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", writeConditions))
+                  .setExpression(String.join(" || ", conditions))
                   .build());
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
           accessBoundaryBuilder.addRule(builder.build());

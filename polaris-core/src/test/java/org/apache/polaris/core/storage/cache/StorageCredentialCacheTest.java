@@ -142,7 +142,7 @@ public class StorageCredentialCacheTest {
         AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
             null,
-            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),
@@ -154,7 +154,7 @@ public class StorageCredentialCacheTest {
         AwsStorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
             null,
-            true,
+            Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
             Optional.empty(),

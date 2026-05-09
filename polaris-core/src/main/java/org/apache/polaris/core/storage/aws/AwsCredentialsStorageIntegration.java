@@ -110,7 +110,11 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return buildCacheKey(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
   }
 
   @Override
@@ -119,33 +123,44 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return generateStorageAccessConfig(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
-  }
-
-  private static boolean allowList(List<LocationGrant> grants) {
-    return grants.stream()
-        .flatMap(g -> g.actions().stream())
-        .anyMatch(a -> a == PolarisStorageActions.LIST || a == PolarisStorageActions.ALL);
+        readLocations(grants),
+        listLocations(grants),
+        writeLocations(grants),
+        refreshEndpoint,
+        context);
   }
 
   private static Set<String> readLocations(List<LocationGrant> grants) {
-    return grants.stream().flatMap(g -> g.locations().stream()).collect(Collectors.toSet());
+    return locationsFor(grants, PolarisStorageActions.READ, PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> listLocations(List<LocationGrant> grants) {
+    return locationsFor(grants, PolarisStorageActions.LIST, PolarisStorageActions.ALL);
   }
 
   private static Set<String> writeLocations(List<LocationGrant> grants) {
+    return locationsFor(
+        grants,
+        PolarisStorageActions.WRITE,
+        PolarisStorageActions.DELETE,
+        PolarisStorageActions.ALL);
+  }
+
+  private static Set<String> locationsFor(
+      List<LocationGrant> grants, PolarisStorageActions... wantedActions) {
+    EnumSet<PolarisStorageActions> wanted = EnumSet.noneOf(PolarisStorageActions.class);
+    for (PolarisStorageActions a : wantedActions) {
+      wanted.add(a);
+    }
     return grants.stream()
-        .filter(
-            g ->
-                g.actions().contains(PolarisStorageActions.WRITE)
-                    || g.actions().contains(PolarisStorageActions.DELETE)
-                    || g.actions().contains(PolarisStorageActions.ALL))
+        .filter(g -> g.actions().stream().anyMatch(wanted::contains))
         .flatMap(g -> g.locations().stream())
         .collect(Collectors.toSet());
   }
 
   private StorageCredentialCacheKey buildCacheKey(
-      boolean allowList,
-      @Nonnull Set<String> locations,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> listLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -162,8 +177,8 @@ public class AwsCredentialsStorageIntegration
     return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
-        allowList,
-        locations,
+        readLocations,
+        listLocations,
         writeLocations,
         refreshEndpoint,
         includePrincipalInCacheKey ? context.principalName() : Optional.empty(),
@@ -171,8 +186,8 @@ public class AwsCredentialsStorageIntegration
   }
 
   public StorageAccessConfig generateStorageAccessConfig(
-      boolean allowList,
-      @Nonnull Set<String> locations,
+      @Nonnull Set<String> readLocations,
+      @Nonnull Set<String> listLocations,
       @Nonnull Set<String> writeLocations,
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
@@ -198,7 +213,8 @@ public class AwsCredentialsStorageIntegration
               .roleArn(awsStorageConfig.getRoleARN())
               .roleSessionName(roleSessionName)
               .policy(
-                  policyString(awsStorageConfig, allowList, locations, writeLocations, region)
+                  policyString(
+                          awsStorageConfig, readLocations, listLocations, writeLocations, region)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
@@ -288,16 +304,17 @@ public class AwsCredentialsStorageIntegration
   }
 
   /**
-   * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
-   * support. Credentials will be scoped to exactly the resources provided. If read and write
-   * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
-   * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
-   * and just assuming the role with full privileges.
+   * Generate an IamPolicy honoring per-action grants: {@code readLocations} get GetObject /
+   * GetObjectVersion, {@code listLocations} get ListBucket with prefix conditions, {@code
+   * writeLocations} get PutObject / DeleteObject. Buckets that appear in any set get
+   * GetBucketLocation. If all three sets are empty, a non-empty policy is still generated (with a
+   * resource-less GetObject statement) so we don't send an empty policy to AWS and inadvertently
+   * assume the role with full privileges.
    */
   private IamPolicy policyString(
       AwsStorageConfigurationInfo storageConfigurationInfo,
-      boolean allowList,
       Set<String> readLocations,
+      Set<String> listLocations,
       Set<String> writeLocations,
       String region) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
@@ -312,31 +329,41 @@ public class AwsCredentialsStorageIntegration
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
     String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
     List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
-    Stream.concat(readLocations.stream(), writeLocations.stream())
+
+    readLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
+          allowGetObjectStatementBuilder.addResource(
+              IamResource.create(
+                  arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
+        });
+
+    listLocations.forEach(
+        location -> {
+          StorageUri uri = StorageUri.parse(location);
+          final var bucket = arnPrefix + uri.authority();
+          String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
+          bucketListStatementBuilder
+              .computeIfAbsent(
+                  bucket,
+                  (String key) ->
+                      IamStatement.builder()
+                          .effect(IamEffect.ALLOW)
+                          .addAction("s3:ListBucket")
+                          .addResource(key))
+              .addCondition(
+                  IamConditionOperator.STRING_LIKE,
+                  "s3:prefix",
+                  StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
+        });
+
+    Stream.of(readLocations, listLocations, writeLocations)
+        .flatMap(Set::stream)
         .distinct()
         .forEach(
             location -> {
-              StorageUri uri = StorageUri.parse(location);
-              String escapedObjectPrefix = escapeIamGlobLiteral(parseS3Path(uri));
-              allowGetObjectStatementBuilder.addResource(
-                  IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(escapedObjectPrefix, "*", "/")));
-              final var bucket = arnPrefix + uri.authority();
-              if (allowList) {
-                String escapedListPrefix = escapeIamGlobLiteral(trimLeadingSlash(uri.rawPath()));
-                bucketListStatementBuilder
-                    .computeIfAbsent(
-                        bucket,
-                        (String key) ->
-                            IamStatement.builder()
-                                .effect(IamEffect.ALLOW)
-                                .addAction("s3:ListBucket")
-                                .addResource(key))
-                    .addCondition(
-                        IamConditionOperator.STRING_LIKE,
-                        "s3:prefix",
-                        StorageUtil.concatFilePrefixes(escapedListPrefix, "*", "/"));
-              }
+              final var bucket = arnPrefix + StorageUri.parse(location).authority();
               bucketGetLocationStatementBuilder.computeIfAbsent(
                   bucket,
                   key ->
@@ -372,15 +399,9 @@ public class AwsCredentialsStorageIntegration
           region,
           storageConfigurationInfo.getAwsAccountId());
     }
-    if (!bucketListStatementBuilder.isEmpty()) {
-      bucketListStatementBuilder
-          .values()
-          .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    } else if (allowList) {
-      // add list privilege with 0 resources
-      policyBuilder.addStatement(
-          IamStatement.builder().effect(IamEffect.ALLOW).addAction("s3:ListBucket").build());
-    }
+    bucketListStatementBuilder
+        .values()
+        .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
 
     bucketGetLocationStatementBuilder
         .values()

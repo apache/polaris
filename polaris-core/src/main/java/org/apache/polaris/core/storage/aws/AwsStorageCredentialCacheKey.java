@@ -41,10 +41,10 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String storageConfigSerializedStr();
 
   @Value.Parameter(order = 3)
-  boolean allowedListAction();
+  Set<String> allowedReadLocations();
 
   @Value.Parameter(order = 4)
-  Set<String> allowedReadLocations();
+  Set<String> allowedListLocations();
 
   @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
@@ -62,8 +62,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   static AwsStorageCredentialCacheKey of(
       String realmId,
       @Nullable String storageConfigSerializedStr,
-      boolean allowedListAction,
       Set<String> allowedReadLocations,
+      Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       Optional<String> principalName,
@@ -71,8 +71,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
-        allowedListAction,
         allowedReadLocations,
+        allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
         principalName,

@@ -181,8 +181,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             gcpConfig,
             EMPTY_REALM_CONFIG);
     return gcpCredsIntegration.generateStorageAccessConfig(
-        allowListAction,
         new HashSet<>(allowedReadLoc),
+        allowListAction ? new HashSet<>(allowedReadLoc) : Set.of(),
         new HashSet<>(allowedWriteLoc),
         Optional.of(REFRESH_ENDPOINT),
         org.apache.polaris.core.storage.CredentialVendingContext.empty());
@@ -198,7 +198,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundary() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/path/to/data"), Set.of("gs://bucket1/path/to/data"));
+            Set.of("gs://bucket1/path/to/data"),
+            Set.of("gs://bucket1/path/to/data"),
+            Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
@@ -215,7 +217,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithMultipleBuckets() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true,
+            Set.of(
+                "gs://bucket1/normal/path/to/data",
+                "gs://bucket1/awesome/path/to/data",
+                "gs://bucket2/a/super/path/to/data"),
             Set.of(
                 "gs://bucket1/normal/path/to/data",
                 "gs://bucket1/awesome/path/to/data",
@@ -238,8 +243,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutList() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            false,
             Set.of("gs://bucket1/path/to/data", "gs://bucket1/another/path/to/data"),
+            Set.of(),
             Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = JsonMapper.builder().build();
@@ -257,8 +262,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutWrites() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            false,
             Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
+            Set.of(),
             Set.of());
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = JsonMapper.builder().build();
@@ -277,7 +282,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String path = "a'b\"c\\d";
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/" + path), Set.of("gs://bucket1/" + path));
+            Set.of("gs://bucket1/" + path),
+            Set.of("gs://bucket1/" + path),
+            Set.of("gs://bucket1/" + path));
 
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
@@ -369,7 +376,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-                    true, Set.of("gs://bucket1/a\u001fb"), Set.of()))
+                    Set.of("gs://bucket1/a\u001fb"), Set.of("gs://bucket1/a\u001fb"), Set.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported control character");
   }
@@ -378,7 +385,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public void testGenerateAccessBoundaryPreservesLiteralQuestionMarksInPath() {
     CredentialAccessBoundary credentialAccessBoundary =
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
-            true, Set.of("gs://bucket1/path/to/data?with?question"), Set.of());
+            Set.of("gs://bucket1/path/to/data?with?question"),
+            Set.of("gs://bucket1/path/to/data?with?question"),
+            Set.of());
 
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
@@ -481,7 +490,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         };
 
     integration.generateStorageAccessConfig(
-        true,
+        Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
         Optional.empty(),
