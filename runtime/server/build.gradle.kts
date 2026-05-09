@@ -18,7 +18,7 @@
  */
 
 import io.quarkus.gradle.tasks.QuarkusBuild
-import io.quarkus.gradle.tasks.QuarkusRun
+import io.quarkus.gradle.tasks.QuarkusDev
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -76,10 +76,10 @@ quarkus {
 tasks.register("run") {
   group = "application"
   description = "Runs the Apache Polaris server application"
-  dependsOn("quarkusRun")
+  dependsOn("quarkusDev")
 }
 
-tasks.named<QuarkusRun>("quarkusRun") {
+tasks.named<QuarkusDev>("quarkusDev") {
   jvmArgs =
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
