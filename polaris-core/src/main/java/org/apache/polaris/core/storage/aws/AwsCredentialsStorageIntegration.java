@@ -110,11 +110,7 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return buildCacheKey(
-        allowList(grants),
-        readLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
+        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
   }
 
   @Override
@@ -123,11 +119,7 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Optional<String> refreshEndpoint,
       @Nonnull CredentialVendingContext context) {
     return generateStorageAccessConfig(
-        allowList(grants),
-        readLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
+        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
   }
 
   private static boolean allowList(List<LocationGrant> grants) {
