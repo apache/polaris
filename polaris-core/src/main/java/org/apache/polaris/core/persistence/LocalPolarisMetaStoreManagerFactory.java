@@ -127,7 +127,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      TransactionalPersistence session = getOrCreateSession(realmContext);
+      TransactionalPersistence session = getOrCreateBasePersistence(realmContext);
 
       PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
       BaseResult result = metaStoreManager.purge(callContext);
@@ -151,7 +151,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
+  public synchronized TransactionalPersistence getOrCreateBasePersistence(
+      RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       initializeForRealm(realmContext, null);
     }

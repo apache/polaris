@@ -27,7 +27,7 @@ import org.jspecify.annotations.NonNull;
 public interface PolarisEventManager {
   default void writeEvents(
       @NonNull PolarisCallContext callCtx, @NonNull List<PolarisEvent> polarisEvents) {
-    BasePersistence ms = callCtx.getMetaStore();
+    BasePersistence ms = callCtx.getBasePersistence();
     ms.writeEvents(polarisEvents);
   }
 }

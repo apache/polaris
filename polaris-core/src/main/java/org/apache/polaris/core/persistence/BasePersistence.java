@@ -54,11 +54,13 @@ import org.jspecify.annotations.Nullable;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  *
- * <p>This interface also extends {@link MetricsPersistence} for Iceberg metrics storage. By
- * default, all metrics operations are no-ops. Implementations that support metrics persistence
- * (e.g., JDBC) should override these methods to provide actual storage.
+ * <p>{@link BasePersistence} is one of several disjoint top-level persistence SPIs. Concrete
+ * backends multi-inherit the SPIs they support (for example, a transactional backend implements
+ * {@link BasePersistence}, {@link MetricsPersistence}, {@link PolicyMappingPersistence}, and {@link
+ * IntegrationPersistence} together). Callers ask for the specific SPI they need rather than relying
+ * on {@link BasePersistence} as an aggregator.
  */
-public interface BasePersistence extends PolicyMappingPersistence, MetricsPersistence {
+public interface BasePersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

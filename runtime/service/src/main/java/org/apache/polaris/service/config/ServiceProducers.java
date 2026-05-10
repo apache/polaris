@@ -136,7 +136,8 @@ public class ServiceProducers {
       RealmContext realmContext,
       RealmConfigurationSource configurationSource,
       MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    BasePersistence metaStoreSession =
+        metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
     return new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
   }
 

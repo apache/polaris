@@ -71,7 +71,7 @@ public class TestNoSqlResolver extends BaseResolverTest {
           List.of(realmId), RootCredentialsSet.fromEnvironment());
 
       metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-      var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
+      var session = metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
 
       callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 

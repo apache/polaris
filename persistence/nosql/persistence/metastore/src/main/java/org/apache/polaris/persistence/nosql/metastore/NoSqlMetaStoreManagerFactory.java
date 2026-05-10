@@ -132,7 +132,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public BasePersistence getOrCreateSession(RealmContext realmContext) {
+  public BasePersistence getOrCreateBasePersistence(RealmContext realmContext) {
     return newPersistenceMetaStore(initializedRealmPersistence(realmContext.getRealmIdentifier()));
   }
 

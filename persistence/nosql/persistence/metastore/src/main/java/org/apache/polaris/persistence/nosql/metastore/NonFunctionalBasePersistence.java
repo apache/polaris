@@ -35,9 +35,11 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.jspecify.annotations.NonNull;
@@ -45,7 +47,11 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract class NonFunctionalBasePersistence implements BasePersistence, IntegrationPersistence {
+abstract class NonFunctionalBasePersistence
+    implements BasePersistence,
+        IntegrationPersistence,
+        MetricsPersistence,
+        PolicyMappingPersistence {
   private static final Logger LOGGER = LoggerFactory.getLogger(NonFunctionalBasePersistence.class);
 
   @Override

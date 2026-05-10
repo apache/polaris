@@ -3254,10 +3254,14 @@ public class PolarisTestMetaStoreManager {
     // Drop N1_N2_T1, the corresponding policy mapping should be cleaned-up
     this.dropEntity(List.of(catalog, N1, N1_N2), N1_N2_T3);
 
-    BasePersistence ms = polarisCallContext.getMetaStore();
     Assertions.assertThat(
-            ms.loadAllTargetsOnPolicy(
-                polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
+            polarisCallContext
+                .getPolicyMappingPersistence()
+                .loadAllTargetsOnPolicy(
+                    polarisCallContext,
+                    N1_P1.getCatalogId(),
+                    N1_P1.getId(),
+                    N1_P1.getPolicyTypeCode()))
         .isEmpty();
 
     attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P2);

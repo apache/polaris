@@ -97,7 +97,7 @@ public class TestIndexedContainerAccess {
     var realmContext = (RealmContext) () -> realmId;
     callContext =
         new PolarisCallContext(
-            realmContext, metaStoreManagerFactory.getOrCreateSession(realmContext));
+            realmContext, metaStoreManagerFactory.getOrCreateBasePersistence(realmContext));
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 

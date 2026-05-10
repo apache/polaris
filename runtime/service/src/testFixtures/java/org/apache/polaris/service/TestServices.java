@@ -224,7 +224,8 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
+      BasePersistence metaStoreSession =
+          metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
       CallContext callContext =
           new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
       RealmConfig realmConfig = callContext.getRealmConfig();
@@ -464,7 +465,7 @@ public record TestServices(
   }
 
   public PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
     return new PolarisCallContext(realmContext, metaStore, configurationSource);
   }
 }

@@ -235,7 +235,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public BasePersistence getOrCreateSession(RealmContext realmContext) {
+  public BasePersistence getOrCreateBasePersistence(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     RealmConfig realmConfig = new RealmConfigImpl(realmConfigurationSource, realmContext);
     boolean fallbackOnDne =

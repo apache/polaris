@@ -108,7 +108,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   protected void flush(String realmId, List<PolarisEvent> events) {
     RealmContext realmContext = () -> realmId;
     var metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    var basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var basePersistence = metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
     var callContext = new PolarisCallContext(realmContext, basePersistence);
     metaStoreManager.writeEvents(callContext, events);
   }
