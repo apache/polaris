@@ -97,6 +97,12 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+        required: false
+      rustfs:
+        condition: service_healthy
+        required: false
     environment:
       <<: *aws-client-creds
       AWS_TEST_ENABLED: $AWS_TEST_ENABLED

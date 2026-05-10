@@ -20,7 +20,7 @@
 
 set -e
 
-# This script initializes an S3-compatible bakcend for testing
+# This script initializes an S3-compatible backend for testing
 # It creates the test bucket and configures access
 
 AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://s3.local:9000}

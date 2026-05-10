@@ -103,7 +103,6 @@ def catalog_client(polaris_catalog_url):
 
 @pytest.fixture
 def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
-  s3_backend = os.getenv('S3_TEST_BACKEND', '').lower()
   aws_test_enabled = os.getenv('AWS_TEST_ENABLED', 'false').lower() == 'true'
   # Force local mode if not explicitly real AWS
   if not aws_test_enabled:

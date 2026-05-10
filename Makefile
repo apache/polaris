@@ -404,9 +404,9 @@ regtest-rustfs: check-dependencies ## Run regression tests with RustFS
 regtest-cleanup: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-cleanup
 regtest-cleanup: check-dependencies ## Stop and remove regression test containers, networks, and volumes
-	@echo "--- Cleaning up regression tests with MinIO ---"
+	@echo "--- Cleaning up all regression tests resources ---"
 	@$(DOCKER) compose --profile minio --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
-	@echo "--- Regression tests cleanup completed ---"
+	@echo "--- All regression resources cleanup completed ---"
 
 ##@ Pre-commit
 
