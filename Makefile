@@ -397,9 +397,9 @@ regtest-minio: check-dependencies ## Run regression tests with MinIO
 regtest-rustfs: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-rustfs
 regtest-rustfs: check-dependencies ## Run regression tests with RustFS
-	@echo "--- Running regression tests with MinIO ---"
+	@echo "--- Running regression tests with RustFS ---"
 	@S3_TEST_BACKEND=rustfs $(DOCKER) compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-	@echo "--- Regression tests with MinIO completed ---"
+	@echo "--- Regression tests with RustFS completed ---"
 
 regtest-cleanup: DEPENDENCIES := $(DOCKER)
 .PHONY: regtest-cleanup
