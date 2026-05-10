@@ -97,6 +97,7 @@ class TestProfilesCommand(CLITestBase):
         with patch("sys.stdout", new_callable=io.StringIO):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
         mock_exit.assert_called_once_with(1)
+
     @patch("apache_polaris.cli.command.profiles.os.path.exists")
     @patch(
         "apache_polaris.cli.command.profiles.open",
