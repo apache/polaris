@@ -68,6 +68,12 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
 
+  /** Returns the reference catalog name. */
+  @Nullable
+  public String getCatalogName() {
+    return catalogName;
+  }
+
   private boolean isResolveAllSucceeded() {
     diagnostics.checkNotNull(
         primaryResolverStatus,

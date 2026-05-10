@@ -22,6 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import java.util.EnumSet;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -567,9 +572,9 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void resolveAuthorizationInputsResolvesAll() {
-    // resolveAll() is intentionally used for compatibility and is expected
-    // to be narrowed in a future refactoring.
+  void resolveAuthorizationInputsUsesCatalogSelectionsWhenCatalogScoped() {
+    // For catalog-scoped operations the manifest has a non-null catalog name, so both
+    // REQUESTED_TOP_LEVEL_ENTITIES and REQUESTED_PATHS should be resolved.
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
             URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
@@ -577,12 +582,94 @@ public class OpaPolarisAuthorizerTest {
             JsonMapper.builder().build(),
             null);
     PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    when(resolutionManifest.getCatalogName()).thenReturn("catalog-1");
     AuthorizationState authzState = new AuthorizationState();
     authzState.setResolutionManifest(resolutionManifest);
 
     authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget());
 
-    verify(resolutionManifest).resolveAll();
+    verify(resolutionManifest)
+        .resolveSelections(EnumSet.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES, Resolvable.REQUESTED_PATHS));
+  }
+
+  @Test
+  void resolveAuthorizationInputsUsesTopLevelSelectionsOnlyWhenNonCatalogScoped() {
+    // For non-catalog-scoped operations the manifest has a null catalog name.
+    // REQUESTED_PATHS must be omitted because path resolution requires a catalog context.
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null);
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    when(resolutionManifest.getCatalogName()).thenReturn(null);
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+
+    authorizer.resolveAuthorizationInputs(authzState, requestWithCatalogTarget());
+
+    verify(resolutionManifest)
+        .resolveSelections(EnumSet.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES));
+  }
+
+  @Test
+  void authorizeDeniesPrincipalTargetWithoutCallingOpa() {
+    // Operations targeting any type in EXTERNALLY_MANAGED_ENTITY_TYPES are denied
+    // without calling OPA.
+    CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mockHttpClient,
+            JsonMapper.builder().build(),
+            null);
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+
+    List<AuthorizationRequest> blockedRequests =
+        List.of(
+            AuthorizationRequest.of(
+                PolarisPrincipal.of("alice", Map.of(), Set.of()),
+                PolarisAuthorizableOperation.GET_PRINCIPAL,
+                List.of(
+                    AuthorizationTargetBinding.of(
+                        PolarisSecurable.of(
+                            new PathSegment(PolarisEntityType.PRINCIPAL, "principal1")),
+                        null))),
+            AuthorizationRequest.of(
+                PolarisPrincipal.of("alice", Map.of(), Set.of()),
+                PolarisAuthorizableOperation.GET_PRINCIPAL_ROLE,
+                List.of(
+                    AuthorizationTargetBinding.of(
+                        PolarisSecurable.of(
+                            new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "role1")),
+                        null))),
+            AuthorizationRequest.of(
+                PolarisPrincipal.of("alice", Map.of(), Set.of()),
+                PolarisAuthorizableOperation.GET_CATALOG_ROLE,
+                List.of(
+                    AuthorizationTargetBinding.of(
+                        PolarisSecurable.of(
+                            new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                            new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role1")),
+                        null))));
+
+    for (AuthorizationRequest request : blockedRequests) {
+      AuthorizationDecision decision = authorizer.authorize(authzState, request);
+
+      assertThat(decision.isAllowed())
+          .as("authorize() should deny for request %s", request.getOperation())
+          .isFalse();
+      assertThat(decision.getMessage())
+          .isPresent()
+          .get()
+          .asString()
+          .contains("OPA authorizer does not support principal and role management operations");
+    }
+
+    verifyNoInteractions(mockHttpClient);
   }
 
   @Test

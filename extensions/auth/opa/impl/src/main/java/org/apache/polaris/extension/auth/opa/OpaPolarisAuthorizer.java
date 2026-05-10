@@ -26,9 +26,12 @@ import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolver.Resolvable;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -50,6 +53,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
@@ -79,6 +83,18 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final ObjectMapper objectMapper;
 
   /**
+   * Entity types representing principal/role management resources.
+   *
+   * <p>When using OPA Polaris Authorizer, principals are expected to be managed externally.
+   * Therefore, operations targeting these entity types are blocked.
+   */
+  static final PolarisEntityType[] EXTERNALLY_MANAGED_ENTITY_TYPES = {
+    PolarisEntityType.PRINCIPAL,
+    PolarisEntityType.PRINCIPAL_ROLE,
+    PolarisEntityType.CATALOG_ROLE
+  };
+
+  /**
    * Public constructor that accepts a complete policy URI.
    *
    * @param policyUri The required URI for the OPA endpoint. For example, {@code
@@ -102,21 +118,36 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Resolves authorization inputs using {@code resolveAll()} for backward compatibility.
-   *
-   * <p>This scope is intentionally broad for now and will be narrowed in a future refactoring to
-   * resolve only the selections required by OPA authorization.
+   * Resolves authorization inputs using a targeted selection set.
+   * 
+   * <p>This method is called during the authorization process to determine which entities and paths
+   * should be included in the OPA input. It could be removed in the future if OPA input is constructed 
+   * directly from the originalrequest context without relying on Polaris's resolution manifest. 
+   * 
+   * @param authzState the current authorization state containing the resolution manifest
+   * @param request the authorization request with details about the operation and targets
    */
   @Override
   public void resolveAuthorizationInputs(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
+    PolarisResolutionManifest manifest = authzState.getResolutionManifest();
+    EnumSet<Resolvable> selections = EnumSet.of(Resolvable.REQUESTED_TOP_LEVEL_ENTITIES);
+    if (manifest.getCatalogName() != null) {
+      selections.add(Resolvable.REQUESTED_PATHS);
+    }
+    manifest.resolveSelections(selections);
   }
 
   @Override
   @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+    if (request.hasSecurableType(EXTERNALLY_MANAGED_ENTITY_TYPES)) {
+      return AuthorizationDecision.deny(
+          "OPA authorizer does not support principal and role management operations; "
+              + "Operation: "
+              + request.getOperation().name());
+    }
     boolean allowed =
         queryOpa(
             buildOpaAuthorizationInput(
