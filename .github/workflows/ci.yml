@@ -412,10 +412,14 @@ jobs:
         run: ./polaris --help
 
   regtest:
-    name: Regression Tests
+    name: Regression Tests (${{ matrix.s3-backend }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        s3-backend: ["minio", "rustfs"]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -444,7 +448,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}} # zizmor: ignore[secrets-outside-env]
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}} # zizmor: ignore[secrets-outside-env]
-        run: docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
+          S3_TEST_BACKEND: ${{ matrix.s3-backend }}
+        run: docker compose --profile ${{ matrix.s3-backend }} -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Spark Plugin Regression Test
         # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration
         # tests runs with the existing gradle.yml, which only runs on Java 21. Since spark Java compatibility

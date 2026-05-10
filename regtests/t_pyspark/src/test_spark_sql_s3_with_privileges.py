@@ -256,9 +256,9 @@ def reader_catalog_client(polaris_catalog_url, reader):
                                                           host=polaris_catalog_url)))
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, snowman, reader):
   """
   Basic spark test - using snowman, create namespaces and a table. Insert into the table and read records back.
@@ -320,9 +320,9 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
     spark.sql('DROP NAMESPACE db1')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url,
                                                             snowman, reader):
   """
@@ -352,9 +352,9 @@ def test_spark_cannot_create_table_outside_of_namespace_dir(root_client, snowfla
       assert "is not in the list of allowed locations" in e.java_exception.getMessage()
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                      reader):
   """
@@ -392,9 +392,9 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
         spark.sql('DROP TABLE table_in_custom_namespace_location PURGE')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                       reader):
   """
@@ -423,9 +423,9 @@ def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_cat
     spark.sql("drop table iceberg_table_outside_namespace PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                     reader):
   """
@@ -458,9 +458,9 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
     spark.sql("drop table my_iceberg_table PURGE")
 
 
-@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and
-                    os.environ.get('MINIO_TEST_ENABLED', 'false').lower() != 'true',
-                    reason='AWS_TEST_ENABLED or MINIO_TEST_ENABLED is not set or is false')
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true' and not
+                    os.environ.get('S3_TEST_ENABLED') in ['minio', 'rustfs'],
+                    reason='AWS_TEST_ENABLED or S3_TEST_ENABLED is not set minio or rustfs')
 def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """

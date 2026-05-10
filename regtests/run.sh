@@ -65,27 +65,30 @@ export PYTHONDONTWRITEBYTECODE=1
 NUM_FAILURES=0
 NUM_SUCCESSES=0
 
-# Detect test mode: AWS or MinIO
-if [ -z "${MINIO_TEST_ENABLED}" ]; then
-  # Auto-detect: use MinIO if AWS tests not enabled
+# Determine test mode (default to MinIO for local S3)
+if [ -z "${S3_TEST_BACKEND}" ]; then
+  # Use MinIO as the default local backend if AWS tests are not enabled
   if [ "${AWS_TEST_ENABLED}" == "true" ]; then
-    export MINIO_TEST_ENABLED=false
+    export S3_TEST_BACKEND=aws
     loginfo "AWS tests enabled, using AWS mode"
   else
-    export MINIO_TEST_ENABLED=true
+    export S3_TEST_BACKEND=minio
     export AWS_TEST_ENABLED=false
-    loginfo "AWS tests not enabled, enabling MinIO mode"
+    loginfo "AWS tests not enabled, defaulting to MinIO mode"
   fi
 fi
 
-# Run MinIO setup if in MinIO mode
-if [ "${MINIO_TEST_ENABLED}" == "true" ]; then
-  loginfo "Setting up MinIO for tests"
-  if ! ${REGTEST_HOME}/minio-setup.sh; then
-    logred "MinIO setup failed; aborting regression tests"
+# Run S3 backend setup if not in real AWS mode
+if [ "${S3_TEST_BACKEND}" == "minio" ] || [ "${S3_TEST_BACKEND}" == "rustfs" ] ; then
+  loginfo "Setting up ${S3_TEST_BACKEND} for tests"
+
+  export AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://s3.local:9000}
+
+  if ! ${REGTEST_HOME}/s3-setup.sh; then
+    logred "${S3_TEST_BACKEND} setup failed; aborting regression tests"
     exit 1
   fi
-  loginfo "MinIO mode enabled"
+  loginfo "${S3_TEST_BACKEND} mode enabled"
 else
   loginfo "AWS mode enabled"
 fi
@@ -168,7 +171,8 @@ for TEST_FILE in ${TEST_LIST}; do
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
-      if  [ -z "$AWS_TEST_ENABLED" ] || [ "$AWS_TEST_ENABLED" != "true" ] || [ -z "$AWS_TEST_BASE" ] ; then
+      # Run if real AWS is enabled or if a local s3-compatible backend is enabled
+      if [[ "$AWS_TEST_ENABLED" != "true" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
           loginfo "AWS tests not enabled, skip running test ${TEST_FILE}"
           continue
       fi

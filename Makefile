@@ -385,6 +385,28 @@ minikube-stop-cluster: check-dependencies ## Stop the Minikube cluster
 		echo "--- Minikube cluster is already stopped or does not exist. Skipping stop ---"; \
 	fi
 
+##@ Regression Tests
+
+regtest-minio: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-minio
+regtest-minio: check-dependencies ## Run regression tests with MinIO
+	@echo "--- Running regression tests with MinIO ---"
+	@S3_TEST_BACKEND=minio $(DOCKER) compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+	@echo "--- Regression tests with MinIO completed ---"
+
+regtest-rustfs: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-rustfs
+regtest-rustfs: check-dependencies ## Run regression tests with RustFS
+	@echo "--- Running regression tests with MinIO ---"
+	@S3_TEST_BACKEND=rustfs $(DOCKER) compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+	@echo "--- Regression tests with MinIO completed ---"
+
+regtest-cleanup: DEPENDENCIES := $(DOCKER)
+.PHONY: regtest-cleanup
+regtest-cleanup: check-dependencies ## Stop and remove regression test containers, networks, and volumes
+	@echo "--- Cleaning up regression tests with MinIO ---"
+	@$(DOCKER) compose --profile minio --profile rustfs -f ./regtests/docker-compose.yml down --volumes --remove-orphans
+	@echo "--- Regression tests cleanup completed ---"
 
 ##@ Pre-commit
 
