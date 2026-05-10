@@ -1077,6 +1077,16 @@ public class PolarisAdminService {
       throw new ValidationException(
           "Cannot reset credentials for a federated principal: %s", principalName);
     }
+    if (customClientId != null) {
+      PolarisPrincipalSecrets collidingSecrets =
+          metaStoreManager
+              .loadPrincipalSecrets(getCurrentPolarisContext(), customClientId)
+              .getPrincipalSecrets();
+      if (collidingSecrets != null
+          && collidingSecrets.getPrincipalId() != currentPrincipalEntity.getId()) {
+        throw new AlreadyExistsException("Client ID already in used: %s", customClientId);
+      }
+    }
     PolarisPrincipalSecrets currentSecrets =
         metaStoreManager
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
