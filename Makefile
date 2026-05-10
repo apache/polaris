@@ -228,7 +228,7 @@ client-unit-test: client-setup-env ## Run client unit tests
 ##@ Helm
 
 .PHONY: helm
-helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run all Helm targets (schema, docs, unittest, lint)
+helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run most Helm targets (schema, docs, unittest, lint) excluding integration tests
 
 helm-doc-generate: DEPENDENCIES := helm-docs
 .PHONY: helm-doc-generate
@@ -329,9 +329,6 @@ helm-integration-test: build minikube-load-images helm-fixtures check-dependenci
 	@echo "--- Running Helm chart integration tests ---"
 	@ct install --namespace polaris --charts ./helm/polaris
 	@echo "--- Helm chart integration tests complete ---"
-
-.PHONY: helm
-helm: helm-schema-generate helm-doc-generate helm-lint helm-unittest ## Run most Helm targets (schema, docs, unittest, lint) excluding integration tests
 
 ##@ Minikube
 
