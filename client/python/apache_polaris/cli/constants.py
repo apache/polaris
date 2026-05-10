@@ -242,9 +242,7 @@ class Arguments:
 
 class Hints:
     """
-    Constants used as hints by the various --help outputs. These are arranged within subclasses for readability, but
-    there is no strict mapping between these subclasses and commands. For example, the hint for the `--catalog`
-    parameter used by `catalog-roles create` and `catalog-roles delete` may be the same.
+    Constants used as hints by the various --help outputs.
     """
 
     PROPERTY = (
@@ -258,198 +256,84 @@ class Hints:
     )
     REMOVE_PROPERTY = (
         "A key to remove from a properties map. If the key already does not exist then"
-        " no action is takn for the specified key. If properties are also being set in"
-        " the same update command then the list of removals is applied last. Multiple"
-        " can be provided by specifying this option more than once"
+        " no action is taken for the specified key. Multiple can be provided by specifying"
+        " this option more than once"
     )
 
-    class Setup:
-        DRY_RUN = "If specified, the command will only print the actions to be taken without executing them."
+    # Entities Hints
+    CATALOG = "The name of a catalog"
+    CATALOG_ROLE = "The name of a catalog role"
+    PRINCIPAL = "The name of a principal"
+    PRINCIPAL_ROLE = "The name of a principal role"
+    NAMESPACE = "A period-delimited namespace"
+    TABLE = "The name of a table"
+    VIEW = "The name of a view"
 
-    class Catalogs:
-        GRANT = "Grant a catalog role to a catalog"
-        REVOKE = "Revoke a catalog role from a catalog"
+    # Storage Hints
+    ## S3
+    S3_ROLE_ARN = "A role ARN to use when connecting to S3"
+    S3_EXTERNAL_ID = "The external ID to use when connecting to S3"
+    S3_REGION = "The region to use when connecting to S3"
+    S3_USER_ARN = "A user ARN to use when connecting to S3"
+    S3_ENDPOINT = "The S3 endpoint to use when connecting to S3"
+    S3_ENDPOINT_INTERNAL = "The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use"
+    S3_STS_ENDPOINT = "The STS endpoint to use when connecting to STS"
+    S3_STS_UNAVAILABLE = (
+        "Indicates that Polaris should not use STS (e.g. if STS is not available)"
+    )
+    S3_KMS_UNAVAILABLE = (
+        "Indicates that Polaris should not use KMS (e.g. if KMS is not available)"
+    )
+    S3_PATH_STYLE_ACCESS = "Whether to use path-style-access for S3"
+    S3_KMS_KEY_CURRENT = "The AWS KMS key ARN to be used for encrypting new S3 data"
+    S3_KMS_KEY_ALLOWED = "AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)"
+    ## Azure
+    AZURE_TENANT_ID = "(Required) A tenant ID to use when connecting to Azure Storage"
+    AZURE_MULTI_TENANT_APP_NAME = "The app name to use when connecting to Azure Storage"
+    AZURE_HIERARCHICAL = "Indicates whether the referenced Azure storage location(s) support hierarchical namespaces"
+    AZURE_CONSENT_URL = (
+        "A consent URL granting permissions for the Azure Storage location"
+    )
+    ## GCP
+    GCS_SERVICE_ACCOUNT = "The service account to use when connecting to GCS"
 
-        class Create:
-            TYPE = "The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default."
-            DEFAULT_BASE_LOCATION = "(Required) Default base location of the catalog"
-            STORAGE_TYPE = "(Required) The type of storage to use for the catalog"
-            ALLOWED_LOCATION = (
-                "An allowed location for files tracked by the catalog. "
-                "Multiple locations can be provided by specifying this option more than once."
-            )
+    # Federation Hints
+    EXTERNAL_CATALOG_URI = "The URI of the external catalog"
+    HADOOP_WAREHOUSE = "The warehouse to use when federating to a HADOOP catalog"
+    HIVE_WAREHOUSE = "The warehouse to use when federating to a HIVE catalog"
+    ICEBERG_REMOTE_CATALOG_NAME = (
+        "The remote catalog name when federating to an Iceberg REST catalog"
+    )
+    ## OAuth
+    OAUTH_TOKEN_URI = "Token server URI"
+    OAUTH_CLIENT_ID = "OAuth client ID"
+    OAUTH_CLIENT_SECRET = "OAuth client secret (input-only)"
+    OAUTH_CLIENT_SCOPE = (
+        "OAuth scopes to specify when exchanging for a short-lived access token. "
+        "Multiple can be provided by specifying this option more than once"
+    )
+    ## Bearer
+    BEARER_TOKEN = "Bearer token (input-only)"
+    ## SigV4
+    SIGV4_ROLE_ARN = "The AWS IAM role ARN assumed by Polaris when signing requests"
+    SIGV4_ROLE_SESSION_NAME = (
+        "The role session name to be used by the SigV4 protocol for signing requests"
+    )
+    SIGV4_EXTERNAL_ID = (
+        "An optional external ID used to establish a AWS trust relationship"
+    )
+    SIGV4_SIGNING_REGION = (
+        "Region to be used by the SigV4 protocol for signing requests"
+    )
+    SIGV4_SIGNING_NAME = (
+        "The service name to be used by the SigV4 protocol for signing requests"
+    )
 
-            ROLE_ARN = "(Only for AWS S3) A role ARN to use when connecting to S3"
-            EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
-            REGION = "(Only for S3) The region to use when connecting to S3"
-            USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"
-            ENDPOINT = "(Only for S3) The S3 endpoint to use when connecting to S3"
-            ENDPOINT_INTERNAL = "(Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use"
-            STS_ENDPOINT = (
-                "(Only for S3) The STS endpoint to use when connecting to STS"
-            )
-            STS_UNAVAILABLE = "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
-            KMS_UNAVAILABLE = "(Only for S3) Indicates that Polaris should not use KMS (e.g. if KMS is not available)"
-            PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
-            KMS_KEY_CURRENT = "(Only for AWS S3) The AWS KMS key ARN to be used for encrypting new S3 data"
-            KMS_KEY_ALLOWED = "(Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)"
-
-            TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
-            MULTI_TENANT_APP_NAME = (
-                "(Only for Azure) The app name to use when connecting to Azure Storage"
-            )
-            HIERARCHICAL = "(Only for Azure) Indicates whether the referenced Azure storage location(s) support hierarchical namespaces"
-            CONSENT_URL = "(Only for Azure) A consent URL granting permissions for the Azure Storage location"
-
-            SERVICE_ACCOUNT = (
-                "(Only for GCS) The service account to use when connecting to GCS"
-            )
-
-        class Update:
-            DEFAULT_BASE_LOCATION = "A new default base location for the catalog"
-
-        class External:
-            CATALOG_CONNECTION_TYPE = (
-                "The type of external catalog in [ICEBERG-REST, HADOOP, HIVE]."
-            )
-            CATALOG_AUTHENTICATION_TYPE = (
-                "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
-            )
-            CATALOG_SERVICE_IDENTITY_TYPE = "The type of service identity in [AWS_IAM]"
-
-            CATALOG_SERVICE_IDENTITY_IAM_ARN = (
-                "When using the AWS_IAM service identity type, this is the ARN "
-                "of the IAM user or IAM role Polaris uses to assume roles and "
-                "then access external resources."
-            )
-
-            CATALOG_URI = "The URI of the external catalog"
-            HADOOP_WAREHOUSE = (
-                "The warehouse to use when federating to a HADOOP catalog"
-            )
-            HIVE_WAREHOUSE = "The warehouse to use when federating to a HIVE catalog"
-            ICEBERG_REMOTE_CATALOG_NAME = (
-                "The remote catalog name when federating to an Iceberg REST catalog"
-            )
-
-            CATALOG_TOKEN_URI = "(For authentication type OAUTH) Token server URI"
-            CATALOG_CLIENT_ID = "(For authentication type OAUTH) oauth client id"
-            CATALOG_CLIENT_SECRET = (
-                "(For authentication type OAUTH) oauth client secret (input-only)"
-            )
-            CATALOG_CLIENT_SCOPE = (
-                "(For authentication type OAUTH) oauth scopes to specify when exchanging "
-                "for a short-lived access token. Multiple can be provided by specifying"
-                " this option more than once"
-            )
-
-            CATALOG_BEARER_TOKEN = (
-                "(For authentication type BEARER) Bearer token (input-only)"
-            )
-
-            CATALOG_ROLE_ARN = (
-                "(For authentication type SIGV4) The aws IAM role arn assumed by polaris "
-                "userArn when signing requests"
-            )
-            CATALOG_ROLE_SESSION_NAME = (
-                "(For authentication type SIGV4) The role session name to be used "
-                "by the SigV4 protocol for signing requests"
-            )
-            CATALOG_EXTERNAL_ID = (
-                "(For authentication type SIGV4) An optional external id used to establish "
-                "a trust relationship with AWS in the trust policy"
-            )
-            CATALOG_SIGNING_REGION = (
-                "(For authentication type SIGV4) Region to be used by the SigV4 protocol "
-                "for signing requests"
-            )
-            CATALOG_SIGNING_NAME = (
-                "(For authentication type SIGV4) The service name to be used by the SigV4 "
-                'protocol for signing requests, the default signing name is "execute-api" '
-                "is if not provided"
-            )
-
-    class Principals:
-        class Create:
-            TYPE = "The type of principal to create in [SERVICE]"
-            NAME = "The principal name"
-            CLIENT_ID = "The output-only OAuth clientId associated with this principal if applicable"
-
-        class Revoke:
-            PRINCIPAL_ROLE = "A principal role to revoke from this principal"
-
-        class Reset:
-            CLIENT_ID = "The new client ID for the principal"
-            CLIENT_SECRET = "The new client secret for the principal"
-
-    class PrincipalRoles:
-        PRINCIPAL_ROLE = "The name of a principal role"
-        LIST = (
-            "List principal roles, optionally limited to those held a given principal"
-        )
-
-        GRANT = "Grant a principal role to a principal"
-        REVOKE = "Revoke a principal role from a principal"
-
-        class Grant:
-            PRINCIPAL = "A principal to grant this principal role to"
-
-        class Revoke:
-            PRINCIPAL = "A principal to revoke this principal role from"
-
-        class List:
-            CATALOG_ROLE = (
-                "The name of a catalog role. If provided, show only principal roles assigned to this"
-                " catalog role."
-            )
-            PRINCIPAL_NAME = (
-                "The name of a principal. If provided, show only principal roles assigned to this"
-                " principal."
-            )
-
-    class CatalogRoles:
-        CATALOG_NAME = "The name of an existing catalog"
-        CATALOG_ROLE = "The name of a catalog role"
-        LIST = (
-            "List catalog roles within a catalog. Optionally, specify a principal role."
-        )
-        REVOKE_CATALOG_ROLE = "Revoke a catalog role from a principal role"
-        GRANT_CATALOG_ROLE = "Grant a catalog role to a principal role"
-
-    class Grant:
-        CATALOG_NAME = "The name of a catalog"
-        CATALOG_ROLE = "The name of a catalog role"
-        PRIVILEGE = "The privilege to grant or revoke"
-        NAMESPACE = "A period-delimited namespace"
-        TABLE = "The name of a table"
-        VIEW = "The name of a view"
-        CASCADE = "When revoking privileges, additionally revoke privileges that depend on the specified privilege"
-
-    class Namespaces:
-        LOCATION = "If specified, the location at which to store the namespace and entities inside it"
-        PARENT = "If specified, list namespaces inside this parent namespace"
-
-    class Policies:
-        POLICY = "The name of a policy"
-        POLICY_FILE = "The path to a JSON file containing the policy definition"
-        POLICY_TYPE = "The type of the policy, e.g., 'system.data-compaction'"
-        POLICY_DESCRIPTION = "An optional description for the policy."
-        TARGET_NAME = (
-            "The name of the target entity (e.g., table name, namespace name)."
-        )
-        PARAMETERS = "Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times."
-        DETACH_ALL = "When set to true, the policy will be deleted along with all its attached mappings."
-        APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
-        ATTACHMENT_TYPE = "The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like."
-        ATTACHMENT_PATH = "The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment."
-
-    class Find:
-        IDENTIFIER = "The name of the entity to find."
-        TYPE = "Filter results by entity type (e.g. principal, principal-role, catalog, catalog-role, namespace, table, view)"
-
-    class Tables:
-        SUMMARIZE = "Display summary for a table."
-        DELETE = "De-register a table from catalog (metadata-only delete)."
+    # AWS IAM Identity Options
+    AWS_IAM_ARN = (
+        "The ARN of the IAM user or IAM role Polaris uses to assume roles and "
+        "then access external resources."
+    )
 
 
 UNIT_SEPARATOR = chr(0x1F)

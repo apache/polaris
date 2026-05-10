@@ -41,6 +41,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -354,6 +355,196 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
     }
+  }
+
+  @Test
+  public void testGetSubscopedCredsInlinePolicyEscapesIamSpecialCharacters() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String specialLocation = "s3://bucket/" + warehouseKeyPrefix + "/ns*?$/tb$?*";
+    String escapedSpecialPath = "path/to/warehouse/ns${*}${?}${$}/tb${$}${?}${*}";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:PutObject"),
+                                      IamAction.create("s3:DeleteObject")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(IamAction.create("s3:ListBucket")), IamStatement::actions)
+                              .returns(
+                                  List.of(IamResource.create(s3Arn(AWS_PARTITION, bucket, null))),
+                                  IamStatement::resources)
+                              .satisfies(
+                                  st ->
+                                      assertThat(st.conditions())
+                                          .containsExactly(
+                                              IamCondition.builder()
+                                                  .operator(IamConditionOperator.STRING_LIKE)
+                                                  .key("s3:prefix")
+                                                  .value(escapedSpecialPath + "/*")
+                                                  .build())));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:GetObject"),
+                                      IamAction.create("s3:GetObjectVersion")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region("us-east-1")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(specialLocation),
+            Set.of(specialLocation),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testGetSubscopedCredsInlinePolicyPreservesLiteralQuestionMarksInLocation() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String specialLocation = "s3://bucket/" + warehouseKeyPrefix + "/ns?/tb?*";
+    String escapedSpecialPath = "path/to/warehouse/ns${?}/tb${?}${*}";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:PutObject"),
+                                      IamAction.create("s3:DeleteObject")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(IamAction.create("s3:ListBucket")), IamStatement::actions)
+                              .returns(
+                                  List.of(IamResource.create(s3Arn(AWS_PARTITION, bucket, null))),
+                                  IamStatement::resources)
+                              .satisfies(
+                                  st ->
+                                      assertThat(st.conditions())
+                                          .containsExactly(
+                                              IamCondition.builder()
+                                                  .operator(IamConditionOperator.STRING_LIKE)
+                                                  .key("s3:prefix")
+                                                  .value(escapedSpecialPath + "/*")
+                                                  .build())));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:GetObject"),
+                                      IamAction.create("s3:GetObjectVersion")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region("us-east-1")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(specialLocation),
+            Set.of(specialLocation),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "plain, plain",
+    "'*', '${*}'",
+    "'?', '${?}'",
+    "'$', '${$}'",
+    "'abc $ def * ghi ? jkl', 'abc ${$} def ${*} ghi ${?} jkl'",
+    "'path/*/file', 'path/${*}/file'",
+    "'path/?/file', 'path/${?}/file'",
+    "'path/$/file', 'path/${$}/file'",
+    "'*?$', '${*}${?}${$}'",
+    "'path/*?$/$?*/file', 'path/${*}${?}${$}/${$}${?}${*}/file'",
+  })
+  public void testEscapeIamGlobLiteral(String input, String expectedOutput) {
+    assertThat(AwsCredentialsStorageIntegration.escapeIamGlobLiteral(input))
+        .isEqualTo(expectedOutput);
   }
 
   @Test

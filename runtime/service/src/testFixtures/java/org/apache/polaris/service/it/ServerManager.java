@@ -18,12 +18,13 @@
  */
 package org.apache.polaris.service.it;
 
+import io.quarkus.test.common.ListeningAddress;
+import io.quarkus.test.config.ValueRegistryInjector;
 import java.net.URI;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class ServerManager implements PolarisServerManager {
@@ -34,7 +35,7 @@ public class ServerManager implements PolarisServerManager {
 
       @Override
       public URI baseUri() {
-        return URI.create(String.format("http://localhost:%d", getQuarkusTestPort()));
+        return URI.create(String.format("http://localhost:%d", getQuarkusTestPort(context)));
       }
 
       @Override
@@ -51,8 +52,8 @@ public class ServerManager implements PolarisServerManager {
     };
   }
 
-  private static int getQuarkusTestPort() {
-    var quarkusHttpPort = ConfigProvider.getConfig().getConfigValue("quarkus.http.port");
-    return Integer.parseInt(quarkusHttpPort.getValue());
+  private static int getQuarkusTestPort(ExtensionContext context) {
+    var registry = ValueRegistryInjector.get(context);
+    return registry.get(ListeningAddress.HTTP_PORT);
   }
 }

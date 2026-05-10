@@ -114,6 +114,7 @@ tasks.named<RatTask>("rat").configure {
   // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
+  excludes.add("site/static/img/artifacthub-badge.svg")
   excludes.add("node_modules/**")
 
   // Guides testing

@@ -59,7 +59,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.service.it.env.CatalogConfig;
@@ -182,11 +181,6 @@ public class PolarisPolicyServiceIntegrationTest {
         IntegrationTestsHelper.mergeFromAnnotatedElements(
             testInfo, CatalogConfig.class, CatalogConfig::properties);
     catalogPropsBuilder.putAll(catalogProperties);
-
-    if (!s3BucketBase.getScheme().equals("file")) {
-      catalogPropsBuilder.addProperty(
-          CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
-    }
 
     Catalog.TypeEnum catalogType =
         IntegrationTestsHelper.extractFromAnnotatedElements(

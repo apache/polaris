@@ -37,10 +37,10 @@ for contribution guidelines.
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Polaris Overview
-Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
+Click [here](https://polaris.apache.org/releases/latest/) for a quick overview of Polaris.
 
 ## Quickstart
-Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
+Click [here](https://polaris.apache.org/releases/latest/getting-started/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
 ## Project Structure
 
@@ -87,7 +87,7 @@ In addition to modules, there are:
 - [API specifications](./spec/README.md) - The OpenAPI specifications
 - [Python client](./client/python/README.md) - The Python client
 - [codestyle](./codestyle) - The code style guidelines
-- [getting-started](https://polaris.apache.org/in-dev/unreleased/getting-started/) - A collection of getting started examples
+- [getting-started](https://polaris.apache.org/releases/latest/getting-started/) - A collection of getting started examples
 - [gradle](./gradle) - The Gradle wrapper and Gradle configuration files including banned dependencies
 - [helm](./helm) - The Helm charts for Polaris.
 - [Spark Plugin](./plugins/spark/README.md) - The Polaris Spark plugin
@@ -152,7 +152,7 @@ make build-server
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 The Polaris codebase contains some docker compose examples to quickly get started with Polaris,
-using different configurations. See the [Quickstart](https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/)
+using different configurations. See the [Quickstart](https://polaris.apache.org/releases/latest/getting-started/quick-start/)
 for more information.
 
 #### Running in Kubernetes
@@ -162,7 +162,7 @@ for more information.
 #### Configuring Polaris
 
 Polaris Servers can be configured using a variety of ways.
-Please see the [Configuration Guide](https://polaris.apache.org/in-dev/unreleased/configuration/)
+Please see the [Configuration Guide](https://polaris.apache.org/releases/latest/configuration/)
 for more information.
 
 Default configuration values can be found in `runtime/defaults/src/main/resources/application.properties`.

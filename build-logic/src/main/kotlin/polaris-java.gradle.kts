@@ -284,9 +284,11 @@ class BannedDependencies(
   val quarkusProdBanned: List<BannedDependency>,
 ) {
   fun applyTo(configuration: Configuration) {
-    globallyBanned.forEach { it.exclude(configuration) }
-    if (configuration.name.startsWith("quarkusProd")) {
-      quarkusProdBanned.forEach { it.exclude(configuration) }
+    if (configuration.state == Configuration.State.UNRESOLVED) {
+      globallyBanned.forEach { it.exclude(configuration) }
+      if (configuration.name.startsWith("quarkusProd")) {
+        quarkusProdBanned.forEach { it.exclude(configuration) }
+      }
     }
   }
 

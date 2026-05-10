@@ -293,6 +293,37 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
+  public ProductionReadinessCheck checkSkipCredentialSubscopingIndirection(
+      FeaturesConfiguration featureConfiguration) {
+    var flag = FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION;
+    var message =
+        "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION is enabled. This flag is test/dev-only and returns "
+            + "the Polaris server's ambient credentials to every client, breaking defense-in-depth. "
+            + "For S3-compatible storage without STS, set stsUnavailable: true on the storage "
+            + "config instead.";
+    var errors = new ArrayList<Error>();
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+      errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
+    }
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if (Boolean.parseBoolean(overrides.overrides().get(flag.key()))) {
+                errors.add(
+                    Error.of(
+                        message,
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, flag.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
   public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
       FeaturesConfiguration featureConfiguration) {
     var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;

@@ -19,14 +19,12 @@
 package org.apache.polaris.service.it.test;
 
 import com.google.common.base.Strings;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
 public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
@@ -70,8 +68,4 @@ public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
   @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
   @Override
   public void updateViewLocation() {}
-
-  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
-  @Override
-  public void createViewWithCustomMetadataLocationUsingPolaris(@TempDir Path tempDir) {}
 }

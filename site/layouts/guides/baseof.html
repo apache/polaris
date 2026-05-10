@@ -44,12 +44,18 @@
             {{ if not .Site.Params.ui.breadcrumb_disable }}{{ partial "breadcrumb.html" . }}{{ end }}
             <h1>{{ .Title }}</h1>
             {{ $res := .Resources -}}
-            {{ $pageRelPermalink := .RelPermalink }}
             {{ if $res }}
               <div class="alert alert-primary">
                 <p class="alert-heading">
-                  ℹ️ Assets for this guide can be accessed from the <a href="https://github.com/apache/polaris/tree/main/site/content{{ $pageRelPermalink }}">Apache Polaris Git repository</a>
+                  ℹ️ Guide assets:
                 </p>
+                <ul class="mb-0">
+                  {{ range $res }}
+                    {{ if not (hasPrefix .Name ".") }}
+                      <li><a href="{{ .RelPermalink }}">{{ .Name }}</a></li>
+                    {{ end }}
+                  {{ end }}
+                </ul>
               </div>
             {{ end }}
             {{ block "main" . }}{{ end }}

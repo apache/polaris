@@ -205,7 +205,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
                 null /*Service Identity Info*/,
-                icebergRestConfigModel.getRemoteCatalogName());
+                icebergRestConfigModel.getRemoteCatalogName(),
+                icebergRestConfigModel.getProperties());
         break;
       case HADOOP:
         HadoopConnectionConfigInfo hadoopConfigModel =

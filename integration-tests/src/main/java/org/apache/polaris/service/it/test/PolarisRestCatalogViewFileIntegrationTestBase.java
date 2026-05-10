@@ -18,29 +18,31 @@
  */
 package org.apache.polaris.service.it.test;
 
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.List;
+import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
 public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
-  static String baseLocation;
-
-  @BeforeAll
-  public static void setUp(@TempDir Path tempDir) {
-    String baseUri = tempDir.toAbsolutePath().toUri().toString();
-    if (baseUri.endsWith("/")) {
-      baseUri = baseUri.substring(0, baseUri.length() - 1);
-    }
-    baseLocation = baseUri;
-  }
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
+    Path tempDir;
+    try {
+      Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
+      field.setAccessible(true);
+      tempDir = (Path) field.get(this);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    String baseLocation = tempDir.toAbsolutePath().toUri().toString();
+    if (baseLocation.endsWith("/")) {
+      baseLocation = baseLocation.substring(0, baseLocation.length() - 1);
+    }
     return FileStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
         .setAllowedLocations(List.of(baseLocation))

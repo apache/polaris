@@ -63,21 +63,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // catalog, stored in the "properties" map.
   public static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
 
-  /**
-   * Test-only property that specifies a prefix that will be replaced with the catalog's
-   * default-base-location whenever it matches a specified new table or view location.
-   *
-   * <p>For example, if the catalog base location is "s3://my-bucket/base/location" and the prefix
-   * specified here is "file:/tmp" then any new table attempting to specify a base location of
-   * "file:/tmp/ns1/ns2/table1" will be translated into
-   * "s3://my-bucket/base/location/ns1/ns2/table1".
-   *
-   * <p><strong>WARNING:</strong> This property is intended for testing purposes only and should not
-   * be used in production environments.
-   */
-  public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
-      "replace-new-location-prefix-with-catalog-default";
-
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
     Preconditions.checkState(
@@ -220,10 +205,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY);
   }
 
-  public String getReplaceNewLocationPrefixWithCatalogDefault() {
-    return getPropertiesAsMap().get(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY);
-  }
-
   public @Nullable PolarisStorageConfigurationInfo getStorageConfigurationInfo() {
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
@@ -282,12 +263,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     public Builder setDefaultBaseLocation(String defaultBaseLocation) {
       // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation);
-      return this;
-    }
-
-    public Builder setReplaceNewLocationPrefixWithCatalogDefault(String value) {
-      // Note that this member lives in the main 'properties' map rather than internalProperties.
-      properties.put(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, value);
       return this;
     }
 

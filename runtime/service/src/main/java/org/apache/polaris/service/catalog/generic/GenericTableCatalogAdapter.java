@@ -32,6 +32,7 @@ import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -74,13 +75,15 @@ public class GenericTableCatalogAdapter
       String polarisGenericTableAccessDelegation,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    TableIdentifier identifier =
+        TableIdentifier.of(
+            NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
+            createGenericTableRequest.getName());
+    EntityNameValidator.validateIdentifier(identifier);
     GenericTableCatalogHandler handler = newHandler(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
-            TableIdentifier.of(
-                NamespaceUtils.splitNamespace(
-                    namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR),
-                createGenericTableRequest.getName()),
+            identifier,
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getBaseLocation(),
             createGenericTableRequest.getDoc(),

@@ -51,6 +51,12 @@ class PolarisCli:
 
     @staticmethod
     def execute(args: Optional[List[str]] = None) -> None:
+        # Print helper message if no argument provided
+        if args is None:
+            args = sys.argv[1:]
+        if not args:
+            Parser.build_parser().print_help()
+            return
         options = Parser.parse(args)
         if options.command == Commands.PROFILES:
             from apache_polaris.cli.command import Command

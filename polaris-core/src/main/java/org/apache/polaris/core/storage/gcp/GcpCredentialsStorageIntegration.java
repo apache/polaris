@@ -36,7 +36,6 @@ import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
-import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,7 +54,7 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.core.storage.StorageUri;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,30 +208,21 @@ public class GcpCredentialsStorageIntegration
         .distinct()
         .forEach(
             location -> {
-              URI uri = URI.create(location);
-              String bucket = StorageUtil.getBucket(uri);
+              StorageUri uri = StorageUri.parse(location);
+              String bucket = uri.authority();
               readBuckets.add(bucket);
-              String path = uri.getPath().substring(1);
+              String path = uri.rawPath().substring(1);
               List<String> resourceExpressions =
                   readConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-              resourceExpressions.add(
-                  String.format(
-                      "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
-                      bucket, path));
+              resourceExpressions.add(resourceNameStartsWithExpression(bucket, path));
               if (allowListOperation) {
-                resourceExpressions.add(
-                    String.format(
-                        "api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('%s')",
-                        path));
+                resourceExpressions.add(objectListPrefixStartsWithExpression(path));
               }
               if (allowedWriteLocations.contains(location)) {
                 writeBuckets.add(bucket);
                 List<String> writeExpressions =
                     writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
-                writeExpressions.add(
-                    String.format(
-                        "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
-                        bucket, path));
+                writeExpressions.add(resourceNameStartsWithExpression(bucket, path));
               }
             });
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -286,6 +276,55 @@ public class GcpCredentialsStorageIntegration
         IamCredentialsSettings.newBuilder()
             .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
             .build());
+  }
+
+  @VisibleForTesting
+  static String resourceNameStartsWithExpression(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String objectListPrefixStartsWithExpression(String path) {
+    return String.format(
+        "api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('%s')",
+        escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String escapeCelLiteral(String value) {
+    StringBuilder escaped = new StringBuilder(value.length() * 3 / 2);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '\'' -> escaped.append("\\'");
+        case '"' -> escaped.append("\\\"");
+        case '\\' -> escaped.append("\\\\");
+        case '\b' -> escaped.append("\\b");
+        case '\f' -> escaped.append("\\f");
+        case '\n' -> escaped.append("\\n");
+        case '\r' -> escaped.append("\\r");
+        case '\t' -> escaped.append("\\t");
+        default -> {
+          if (Character.isSurrogate(c)) {
+            if (!Character.isHighSurrogate(c)
+                || i + 1 >= value.length()
+                || !Character.isLowSurrogate(value.charAt(i + 1))) {
+              throw new IllegalArgumentException(
+                  "Unsupported unpaired surrogate in GCS credential access boundary input");
+            }
+            escaped.append(c).append(value.charAt(++i));
+          } else if (Character.isISOControl(c)) {
+            throw new IllegalArgumentException(
+                "Unsupported control character in GCS credential access boundary input");
+          } else {
+            escaped.append(c);
+          }
+        }
+      }
+    }
+    return escaped.toString();
   }
 
   private static String bucketResource(String bucket) {

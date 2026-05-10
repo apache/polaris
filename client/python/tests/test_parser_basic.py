@@ -78,10 +78,6 @@ class TestParserBasic(CLITestBase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
-            Parser.parse(["principals", "update", "name", "--client-id", "something"])
-        self.assertEqual(cm.exception.code, INVALID_ARGS)
-
-        with self.assertRaises(SystemExit) as cm:
             Parser.parse(["find"])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
@@ -152,32 +148,11 @@ class TestParserBasic(CLITestBase):
             lambda: Parser.parse(["catalogs", "create", "something", "--help"])
         )
 
-    def test_extended_usage(self) -> None:
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(["--help"], "input:")
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(["catalogs", "--help"], "input:")
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["catalogs", "create", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["catalogs", "create", "c", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["privileges", "table", "grant", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser.parse(["catalogs", "create", "something", "--help"]),
-            "input:",
-        )
+    def test_global_flag_anywhere(self) -> None:
+        # Test that global flags work when placed after subcommands
+        options = Parser.parse(["catalogs", "list", "--host", "my-host"])
+        self.assertEqual(options.host, "my-host")
+        self.assertEqual(options.command, "catalogs")
 
     def test_parse_argparse_valid_commands(self) -> None:
         # These commands are valid for parsing, but may cause errors within the command itself

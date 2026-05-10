@@ -36,6 +36,7 @@ import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.ErrorHandler;
 import org.apache.iceberg.rest.ErrorHandlers;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
+import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
@@ -149,6 +150,19 @@ public class CatalogApi extends PolarisRestApi {
             .get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class);
+    }
+  }
+
+  public void renameTable(String catalog, TableIdentifier source, TableIdentifier destination) {
+    try (Response res =
+        request("v1/{cat}/tables/rename", Map.of("cat", catalog))
+            .post(
+                Entity.json(
+                    RenameTableRequest.builder()
+                        .withSource(source)
+                        .withDestination(destination)
+                        .build()))) {
+      assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
   }
 
