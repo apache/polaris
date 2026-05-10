@@ -54,9 +54,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>All configuration (whether the feature is on, header name, executor identity, TTLs,
  * in-progress wait, lease TTL) comes from {@link IdempotencyConfiguration} via CDI as a single
- * deployment-wide source. Per-realm or per-catalog overrides are intentionally not modelled in
- * this iteration; if operators need them later they can be added without changing handler-side
- * call shapes.
+ * deployment-wide source. Per-realm or per-catalog overrides are intentionally not modelled in this
+ * iteration; if operators need them later they can be added without changing handler-side call
+ * shapes.
  *
  * <p>The actual persistence is sourced per-realm from {@link MetaStoreManagerFactory}, since {@link
  * org.apache.polaris.core.persistence.BasePersistence} extends {@link IdempotencyPersistence}: the

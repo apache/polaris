@@ -547,8 +547,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       outcome =
           idempotencySupport()
-              .reserveOrWait(
-                  realmId, idempotencyKey, "create-table", resourceId, principalHash);
+              .reserveOrWait(realmId, idempotencyKey, "create-table", resourceId, principalHash);
     } catch (IdempotencyHandlerSupport.ConflictException e) {
       // Cross-principal or cross-binding reuse of the same Idempotency-Key: the request is
       // well-formed but cannot be processed against the existing reservation. Surface as 422.

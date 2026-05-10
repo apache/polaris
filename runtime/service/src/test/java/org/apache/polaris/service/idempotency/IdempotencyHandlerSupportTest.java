@@ -242,7 +242,8 @@ class IdempotencyHandlerSupportTest {
   }
 
   private IdempotencyConfiguration testConfig(boolean enabled) {
-    return testConfig(enabled, Duration.ofSeconds(2), Duration.ofMillis(50), Duration.ofSeconds(25));
+    return testConfig(
+        enabled, Duration.ofSeconds(2), Duration.ofMillis(50), Duration.ofSeconds(25));
   }
 
   private IdempotencyConfiguration testConfig(

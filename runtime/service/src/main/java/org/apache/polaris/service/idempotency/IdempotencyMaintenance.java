@@ -44,8 +44,8 @@ import org.slf4j.LoggerFactory;
  * overlapping purges if a tick takes longer than the configured interval. The timer is cancelled on
  * {@code ShutdownEvent}.
  *
- * <p>The timer fires for every configured realm; purge is globally enabled or disabled via
- * {@link IdempotencyConfiguration#purgeEnabled()}.
+ * <p>The timer fires for every configured realm; purge is globally enabled or disabled via {@link
+ * IdempotencyConfiguration#purgeEnabled()}.
  */
 @ApplicationScoped
 public class IdempotencyMaintenance {

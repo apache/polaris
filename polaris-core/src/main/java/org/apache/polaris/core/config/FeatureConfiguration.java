@@ -573,5 +573,4 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "configured, but existing values cannot be changed to different ones.")
           .defaultValue(false)
           .buildFeatureConfiguration();
-
 }

@@ -30,9 +30,9 @@ import java.util.Optional;
  * org.apache.polaris.core.persistence.IdempotencyPersistence}, which sits on the realm's {@link
  * org.apache.polaris.core.persistence.BasePersistence}.
  *
- * <p>All settings here are deployment-wide constants read from the Quarkus configuration tree.
- * They do not vary per-realm or per-catalog. Per-realm or per-catalog overrides can be introduced
- * in a follow-up if/when there is a concrete operator request for it.
+ * <p>All settings here are deployment-wide constants read from the Quarkus configuration tree. They
+ * do not vary per-realm or per-catalog. Per-realm or per-catalog overrides can be introduced in a
+ * follow-up if/when there is a concrete operator request for it.
  *
  * <h2>Single-node vs multi-node deployments</h2>
  *
@@ -48,8 +48,8 @@ import java.util.Optional;
 public interface IdempotencyConfiguration {
 
   /**
-   * Whether handler-level idempotency is enabled. When {@code false} the handlers ignore the
-   * {@code Idempotency-Key} header entirely and never read or write the idempotency store.
+   * Whether handler-level idempotency is enabled. When {@code false} the handlers ignore the {@code
+   * Idempotency-Key} header entirely and never read or write the idempotency store.
    */
   @WithDefault("false")
   boolean enabled();
@@ -114,8 +114,8 @@ public interface IdempotencyConfiguration {
   Duration inProgressPollInterval();
 
   /**
-   * Whether the background purge timer is enabled. In multi-node deployments, enabling purge on
-   * all replicas may cause unnecessary contention; set {@link #purgeExecutorId()} to pin purge to a
+   * Whether the background purge timer is enabled. In multi-node deployments, enabling purge on all
+   * replicas may cause unnecessary contention; set {@link #purgeExecutorId()} to pin purge to a
    * single replica.
    */
   @WithDefault("false")
