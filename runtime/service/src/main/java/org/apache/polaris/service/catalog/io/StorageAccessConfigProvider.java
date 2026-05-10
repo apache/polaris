@@ -126,8 +126,14 @@ public class StorageAccessConfigProvider {
     CredentialVendingContext credentialVendingContext =
         buildCredentialVendingContext(resolvedEntityPath);
 
+    // Non-delegated loadTable still calls in here to fetch storage extra-properties
+    // (endpoint/region/path-style) and passes no actions; treat that as a READ grant so
+    // the integration emits a well-formed inline policy rather than calling STS empty-handed.
+    Set<PolarisStorageActions> effectiveActions =
+        storageActions.isEmpty() ? Set.of(PolarisStorageActions.READ) : storageActions;
+
     return integration.getStorageAccessConfig(
-        List.of(new LocationGrant(locations, storageActions)),
+        List.of(new LocationGrant(locations, effectiveActions)),
         refreshCredentialsEndpoint,
         credentialVendingContext);
   }
