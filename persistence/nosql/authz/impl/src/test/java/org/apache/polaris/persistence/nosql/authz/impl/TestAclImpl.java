@@ -42,10 +42,9 @@ public class TestAclImpl {
 
   @BeforeAll
   static void setUp() {
-    mapper = JsonMapper.builder().findAndAddModules().build();
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
-    JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
+    mapper = JsonMapper.builder().addModule(new JacksonPrivilegesModule(() -> privileges)).build();
   }
 
   @ParameterizedTest

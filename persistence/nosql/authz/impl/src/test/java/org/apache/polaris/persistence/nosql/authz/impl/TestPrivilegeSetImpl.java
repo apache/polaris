@@ -23,6 +23,7 @@ import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSIO
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -38,6 +39,7 @@ import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -57,15 +59,14 @@ public class TestPrivilegeSetImpl {
 
   @BeforeAll
   static void setUp() {
+    privileges =
+        new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
     mapper =
         JsonMapper.builder()
-            .findAndAddModules()
+            .addModule(new JacksonPrivilegesModule(() -> privileges))
             .disable(FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(DEFAULT_VIEW_INCLUSION)
             .build();
-    privileges =
-        new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
-    JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
   }
 
   @SuppressWarnings("RedundantCollectionOperation")
@@ -166,6 +167,13 @@ public class TestPrivilegeSetImpl {
         privileges.all().stream()
             .map(p -> privileges.newPrivilegesSetBuilder().addPrivilege(p).build()),
         Stream.of(privileges.newPrivilegesSetBuilder().addPrivileges(privileges.all()).build()));
+  }
+
+  @Test
+  public void nameDeserializationRejectsNonStringArrayMembers() {
+    soft.assertThatThrownBy(() -> mapper.readValue("[\"zero\",1]", PrivilegeSet.class))
+        .isInstanceOf(JsonMappingException.class)
+        .hasMessageContaining("Unexpected JSON token VALUE_NUMBER_INT in privilege array");
   }
 
   @ParameterizedTest
