@@ -20,6 +20,7 @@ import argparse
 from typing import List, Optional, Dict, Any, Union
 
 from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
 
 
@@ -213,11 +214,11 @@ class Parser(object):
         results = dict()
         for property in properties:
             if "=" not in property:
-                raise Exception(f"Could not parse property `{property}`")
+                raise CliError(f"Could not parse property `{property}`")
             key, value = property.split("=", 1)
             if not value:
-                raise Exception(f"Could not parse property `{property}`")
+                raise CliError(f"Could not parse property `{property}`")
             if key in results:
-                raise Exception(f"Duplicate property key `{key}`")
+                raise CliError(f"Duplicate property key `{key}`")
             results[key] = value
         return results

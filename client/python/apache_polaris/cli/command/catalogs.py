@@ -18,6 +18,7 @@
 #
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     StorageType,
     CatalogType,
@@ -140,19 +141,19 @@ class CatalogsCommand(Command):
             Subcommands.SUMMARIZE,
         }:
             if not self.catalog_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
                 )
 
         if self.catalogs_subcommand == Subcommands.CREATE:
             if self.catalog_type != CatalogType.EXTERNAL.value:
                 if not self.storage_type:
-                    raise Exception(
+                    raise CliError(
                         f"Missing required argument:"
                         f" {Argument.to_flag_name(Arguments.STORAGE_TYPE)}"
                     )
                 if not self.default_base_location:
-                    raise Exception(
+                    raise CliError(
                         f"Missing required argument:"
                         f" {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}"
                     )
@@ -165,7 +166,7 @@ class CatalogsCommand(Command):
                         or not self.catalog_client_scopes
                         or len(self.catalog_client_scopes) == 0
                     ):
-                        raise Exception(
+                        raise CliError(
                             f"Authentication type 'OAUTH' requires"
                             f" {Argument.to_flag_name(Arguments.CATALOG_TOKEN_URI)},"
                             f" {Argument.to_flag_name(Arguments.CATALOG_CLIENT_ID)},"
@@ -176,41 +177,41 @@ class CatalogsCommand(Command):
                     self.catalog_authentication_type == AuthenticationType.BEARER.value
                 ):
                     if not self.catalog_bearer_token:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for authentication type 'BEARER':"
                             f" {Argument.to_flag_name(Arguments.CATALOG_BEARER_TOKEN)}"
                         )
                 elif self.catalog_authentication_type == AuthenticationType.SIGV4.value:
                     if not self.catalog_role_arn or not self.catalog_signing_region:
-                        raise Exception(
+                        raise CliError(
                             f"Authentication type 'SIGV4' requires"
                             f" {Argument.to_flag_name(Arguments.CATALOG_ROLE_ARN)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_SIGNING_REGION)}"
                         )
                 if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
                     if not self.hadoop_warehouse or not self.catalog_uri:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for connection type 'hadoop':"
                             f" {Argument.to_flag_name(Arguments.HADOOP_WAREHOUSE)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}"
                         )
                 elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
                     if not self.hive_warehouse or not self.catalog_uri:
-                        raise Exception(
+                        raise CliError(
                             f"Missing required argument for connection type 'hive':"
                             f" {Argument.to_flag_name(Arguments.HIVE_WAREHOUSE)}"
                             f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}"
                         )
         if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
             if not self.catalog_service_identity_iam_arn:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument for service identity type 'AWS_IAM':"
                     f" {Argument.to_flag_name(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN)}"
                 )
 
         if self.storage_type == StorageType.S3.value:
             if self._has_azure_storage_info() or self._has_gcs_storage_info():
-                raise Exception(
+                raise CliError(
                     f"Storage type 's3' supports the options"
                     f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
                     f" {Argument.to_flag_name(Arguments.REGION)},"
@@ -227,12 +228,12 @@ class CatalogsCommand(Command):
                 )
         elif self.storage_type == StorageType.AZURE.value:
             if not self.tenant_id:
-                raise Exception(
+                raise CliError(
                     "Missing required argument for storage type 'azure': "
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)}"
                 )
             if self._has_aws_storage_info() or self._has_gcs_storage_info():
-                raise Exception(
+                raise CliError(
                     "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
                     f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}, and"
@@ -240,7 +241,7 @@ class CatalogsCommand(Command):
                 )
         elif self.storage_type == StorageType.GCS.value:
             if self._has_aws_storage_info() or self._has_azure_storage_info():
-                raise Exception(
+                raise CliError(
                     "Storage type 'gcs' supports the storage credential"
                     f" {Argument.to_flag_name(Arguments.SERVICE_ACCOUNT)}"
                 )
@@ -250,7 +251,7 @@ class CatalogsCommand(Command):
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
             ):
-                raise Exception(
+                raise CliError(
                     "Storage type 'file' does not support any additional options"
                 )
 
@@ -360,8 +361,8 @@ class CatalogsCommand(Command):
                 authentication_type=self.catalog_authentication_type.upper()
             )
         elif self.catalog_authentication_type is not None:
-            raise Exception(
-                "Unknown authentication type:", self.catalog_authentication_type
+            raise CliError(
+                f"Unknown authentication type: {self.catalog_authentication_type}"
             )
 
         service_identity = None
@@ -371,8 +372,8 @@ class CatalogsCommand(Command):
                 iam_arn=self.catalog_service_identity_iam_arn,
             )
         elif self.catalog_service_identity_type is not None:
-            raise Exception(
-                "Unknown service identity type:", self.catalog_service_identity_type
+            raise CliError(
+                f"Unknown service identity type: {self.catalog_service_identity_type}"
             )
 
         config = None
@@ -401,8 +402,8 @@ class CatalogsCommand(Command):
                 warehouse=self.hive_warehouse,
             )
         elif self.catalog_connection_type is not None:
-            raise Exception(
-                "Unknown catalog connection type:", self.catalog_connection_type
+            raise CliError(
+                f"Unknown catalog connection type: {self.catalog_connection_type}"
             )
         return config
 
@@ -504,7 +505,7 @@ class CatalogsCommand(Command):
                     # is uppercase but we defined the StorageType enums as lowercase.
                     storage_type = updated_storage_info.storage_type
                     if storage_type.lower() != StorageType.S3.value:
-                        raise Exception(
+                        raise CliError(
                             f"--region requires S3 storage_type, got: {storage_type}"
                         )
                     updated_storage_info.region = self.region
@@ -524,7 +525,7 @@ class CatalogsCommand(Command):
         elif self.catalogs_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
-            raise Exception(f"{self.catalogs_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.catalogs_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, api: PolarisDefaultApi) -> None:
         catalog_name = cast(str, self.catalog_name)

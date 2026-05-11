@@ -53,7 +53,7 @@ class Argument:
 
     def __post_init__(self) -> None:
         if self.name.startswith("--"):
-            raise Exception(
+            raise ValueError(
                 f"Argument name {self.name} starts with `--`: should this be a flag_name?"
             )
 

@@ -19,8 +19,9 @@
 
 import unittest
 from cli_test_utils import CLITestBase, INVALID_ARGS
-from apache_polaris.cli.options.parser import Parser
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.options.parser import Parser
 
 
 class TestParserBasic(CLITestBase):
@@ -89,19 +90,19 @@ class TestParserBasic(CLITestBase):
             Parser.parse(["table"])  # missing subcommand
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
-        with self.assertRaises(Exception) as cm_exc:
+        with self.assertRaises(CliError) as cm_exc:
             options = Parser.parse(
                 ["find", " ", "--catalog", "my_catalog"]
             )  # empty identifier
             Command.from_options(options)
         self.assertIn("The search identifier cannot be empty", str(cm_exc.exception))
 
-        with self.assertRaises(Exception) as cm_missing:
+        with self.assertRaises(CliError) as cm_missing:
             options = Parser.parse(["tables", "list"])  # missing catalog/namespace
             Command.from_options(options)
         self.assertIn("Missing required argument", str(cm_missing.exception))
 
-        with self.assertRaises(Exception) as cm_exc:
+        with self.assertRaises(CliError) as cm_exc:
             options = Parser.parse(
                 ["tables", "get", " ", "--catalog", "my_catalog", "--namespace", "ns"]
             )  # empty table name

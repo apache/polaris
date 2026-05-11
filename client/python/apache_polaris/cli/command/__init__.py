@@ -21,6 +21,7 @@ from abc import ABC
 from typing import Callable, Optional, Any
 
 from apache_polaris.cli.constants import Commands, Arguments
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -244,7 +245,7 @@ class Command(ABC):
             command.validate()
             return command
         else:
-            raise Exception(
+            raise CliError(
                 "Please specify a command or run ./polaris --help to view the available commands"
             )
 
@@ -252,11 +253,11 @@ class Command(ABC):
         """
         Execute a given command and, where applicable, print the response as JSON.
         """
-        raise Exception("`execute` called on abstract `Command`")
+        raise NotImplementedError("`execute` called on abstract `Command`")
 
     def validate(self) -> None:
         """
         Used to validate a command. Should always be called before `execute`. The arg parser will catch many issues
         with options, but this is used to apply additional constraints that the arg parser can't currently handle.
         """
-        raise Exception("`validate` called on abstract `Command`")
+        raise NotImplementedError("`validate` called on abstract `Command`")
