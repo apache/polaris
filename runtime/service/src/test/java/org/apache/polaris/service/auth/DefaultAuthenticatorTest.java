@@ -303,11 +303,44 @@ public class DefaultAuthenticatorTest {
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
   }
 
+  @Test
+  void testUserDefinedPropertiesArePreservedOnAuthenticatedPrincipal() {
+    // Given: a principal created via the management API with user-defined properties
+    String name = "principal-with-attrs";
+    PrincipalEntity created =
+        createPrincipal(name, Map.of("region", "northamerica", "department", "finance"));
+    PolarisCredential credentials =
+        PolarisCredential.of(null, name, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(credentials);
+
+    // Then: user-defined properties from the management API are exposed alongside
+    // system-managed internal properties (client_id) — this is what authorizers such
+    // as OPA and Ranger consume as user attributes for policy evaluation.
+    assertThat(result).isNotNull();
+    assertThat(result.getName()).isEqualTo(name);
+    assertThat(result.getProperties())
+        .containsEntry("region", "northamerica")
+        .containsEntry("department", "finance")
+        .containsKey(PolarisEntityConstants.getClientIdPropertyName());
+    // Sanity check the entity itself carried those properties.
+    assertThat(created.getPropertiesAsMap())
+        .containsEntry("region", "northamerica")
+        .containsEntry("department", "finance");
+  }
+
   private PrincipalEntity createPrincipal(String name, String... roles) {
+    return createPrincipal(name, Map.of(), roles);
+  }
+
+  private PrincipalEntity createPrincipal(
+      String name, Map<String, String> properties, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
         adminService
-            .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
+            .createPrincipal(
+                new PrincipalEntity.Builder().setName(name).setProperties(properties).build())
             .getCredentials();
 
     metaStoreManager.rotatePrincipalSecrets(

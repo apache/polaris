@@ -53,6 +53,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
+- Fixed `PolarisPrincipal` construction from a `PrincipalEntity` to expose the principal's user-defined properties (alongside internal properties) so external authorizers such as OPA and Ranger can use them for policy evaluation. Internal properties win on key collision so that system-managed values such as `client_id` cannot be shadowed by user input.
 
 ### Commits
 

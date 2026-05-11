@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,26 +35,26 @@ public interface PolarisPrincipal extends Principal {
    * Creates a new instance of {@link PolarisPrincipal} from the given {@link PrincipalEntity} and
    * roles.
    *
-   * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
+   * <p>The created principal will have the same name as the {@link PrincipalEntity}, and its
+   * properties will be the merger of the entity's user-defined properties and its internal
+   * properties. If a key appears in both maps, the internal-property value wins, so that
+   * system-managed values (for example the {@code client_id}) cannot be shadowed by user input.
    *
    * @param principalEntity the principal entity representing the user or service
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles) {
-    return of(
-        principalEntity.getName(),
-        principalEntity.getInternalPropertiesAsMap(),
-        roles,
-        Optional.empty());
+    return of(principalEntity, roles, Optional.empty());
   }
 
   /**
    * Creates a new instance of {@link PolarisPrincipal} from the given {@link PrincipalEntity} and
    * roles.
    *
-   * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
-   * properties will be derived from the internal properties of the entity.
+   * <p>The created principal will have the same name as the {@link PrincipalEntity}, and its
+   * properties will be the merger of the entity's user-defined properties and its internal
+   * properties. If a key appears in both maps, the internal-property value wins, so that
+   * system-managed values (for example the {@code client_id}) cannot be shadowed by user input.
    *
    * @param principalEntity the principal entity representing the user or service
    * @param roles the set of roles associated with the principal
@@ -61,8 +62,18 @@ public interface PolarisPrincipal extends Principal {
    */
   static PolarisPrincipal of(
       PrincipalEntity principalEntity, Set<String> roles, Optional<String> token) {
-    return of(
-        principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
+    return of(principalEntity.getName(), mergeEntityProperties(principalEntity), roles, token);
+  }
+
+  /**
+   * Merges the user-defined and internal property maps of a {@link PrincipalEntity}. On key
+   * collision the internal value wins, so that system-managed properties (for example {@code
+   * client_id}) cannot be shadowed by user-supplied properties.
+   */
+  private static Map<String, String> mergeEntityProperties(PrincipalEntity principalEntity) {
+    Map<String, String> merged = new HashMap<>(principalEntity.getPropertiesAsMap());
+    merged.putAll(principalEntity.getInternalPropertiesAsMap());
+    return merged;
   }
 
   /**
