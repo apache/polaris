@@ -920,8 +920,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               realmId));
     } catch (SQLException e) {
       if (datasourceOperations.isConstraintViolation(e)) {
-        throw new AlreadyExistsException(
-            String.format("Client ID already in used: %s", resolvedClientId), e);
+        throw new AlreadyExistsException(e.getMessage(), e);
       }
       LOGGER.error(
           "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",

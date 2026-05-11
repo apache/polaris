@@ -497,7 +497,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
     // check if already exists
     PolarisPrincipalSecrets existing = this.store.getSlicePrincipalSecrets().read(resolvedClientId);
-    if (existing != null && existing.getPrincipalId() == principalId) {
+    if (existing != null) {
       throw new AlreadyExistsException("Client ID already in used: %s", resolvedClientId);
     }
 

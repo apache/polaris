@@ -1087,17 +1087,17 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testResetCredentialsClientIdCollision() {
-    PrincipalWithCredentials victimCreds =
-        managementApi.createPrincipal(client.newEntityName(("victim-principal")));
-    String victimClientId = victimCreds.getCredentials().getClientId();
-    PrincipalWithCredentials attackerCreds =
-        managementApi.createPrincipal(client.newEntityName(("attacker-principal")));
-    String attackerName = attackerCreds.getPrincipal().getName();
+    PrincipalWithCredentials principalA =
+        managementApi.createPrincipal(client.newEntityName(("principal-a")));
+    String principalAClientId = principalA.getCredentials().getClientId();
+    PrincipalWithCredentials principalB =
+        managementApi.createPrincipal(client.newEntityName(("principal-b")));
+    String principalBName = principalB.getPrincipal().getName();
     Map<String, String> collidingBody =
-        Map.of("clientId", victimClientId, "clientSecret", victimClientId);
+        Map.of("clientId", principalAClientId, "clientSecret", "new-secret");
     try (Response response =
         managementApi
-            .request("v1/principals/{p}/reset", Map.of("p", attackerName))
+            .request("v1/principals/{p}/reset", Map.of("p", principalBName))
             .post(Entity.json(collidingBody))) {
       assertThat(response).returns(Response.Status.CONFLICT.getStatusCode(), Response::getStatus);
     }
