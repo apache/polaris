@@ -66,6 +66,7 @@ import org.apache.polaris.persistence.nosql.api.commit.Committer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.ObjTypes;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
+import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInProgressException;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
@@ -188,7 +189,7 @@ class MaintenanceServiceImpl implements MaintenanceService {
   @Override
   @NonNull
   public MaintenanceRunInformation performMaintenance(
-      @NonNull MaintenanceRunSpec maintenanceRunSpec) {
+      @NonNull MaintenanceRunSpec maintenanceRunSpec, @NonNull OptionalLong overrideRunId) {
     LOGGER.info(
         "Triggering maintenance run with {} realms to purge and {} realms to process",
         maintenanceRunSpec.realmsToPurge().size(),
@@ -210,12 +211,9 @@ class MaintenanceServiceImpl implements MaintenanceService {
     var config = maintenanceConfig;
     checkConfig(config);
 
-    // TODO follow-up: some safeguard that checks the run-log for an unfinished run, outside of this
-    //  function!
-
     var allRetained = constructAllRetained(config);
 
-    var runObj = initMaintenanceRunObj();
+    var runObj = initMaintenanceRunObj(overrideRunId);
     var runInfo = MaintenanceRunInformation.builder().from(runObj.runInformation());
 
     var maxCreatedAtMicros = calcMaxCreatedAtMicros(config);
@@ -569,11 +567,23 @@ class MaintenanceServiceImpl implements MaintenanceService {
     return any;
   }
 
-  private MaintenanceRunObj initMaintenanceRunObj() {
+  private MaintenanceRunObj initMaintenanceRunObj(OptionalLong overrideRunId) {
     return committer
         .commitRuntimeException(
             (state, refObjSupplier) -> {
               var refObj = refObjSupplier.get();
+              refObj
+                  .map(MaintenanceRunsObj::maintenanceRunId)
+                  .map(id -> state.persistence().fetch(id, MaintenanceRunObj.class))
+                  .filter(run -> run != null && run.runInformation().finished().isEmpty())
+                  .ifPresent(
+                      run -> {
+                        if (overrideRunId.isEmpty() || overrideRunId.getAsLong() != run.id()) {
+                          throw new MaintenanceRunInProgressException(
+                              run.id(), run.runInformation());
+                        }
+                      });
+
               var res = MaintenanceRunsObj.builder();
 
               var ro =

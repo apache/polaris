@@ -16,18 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
+package org.apache.polaris.persistence.nosql.maintenance.api;
 
-import java.util.concurrent.Callable;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
+import static java.lang.String.format;
 
-public abstract class BaseCommand implements Callable<Integer> {
+public class MaintenanceRunInProgressException extends RuntimeException {
+  private final long runId;
+  private final MaintenanceRunInformation runInformation;
 
-  public static final int EXIT_CODE_USAGE = 2;
-  public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
-  public static final int EXIT_CODE_PURGE_ERROR = 4;
-  public static final int EXIT_CODE_MAINTENANCE_ERROR = 5;
+  public MaintenanceRunInProgressException(long runId, MaintenanceRunInformation runInformation) {
+    super(
+        format(
+            "Maintenance run %d started at %s has not finished", runId, runInformation.started()));
+    this.runId = runId;
+    this.runInformation = runInformation;
+  }
 
-  @Spec protected CommandSpec spec;
+  public long runId() {
+    return runId;
+  }
+
+  public MaintenanceRunInformation runInformation() {
+    return runInformation;
+  }
 }
