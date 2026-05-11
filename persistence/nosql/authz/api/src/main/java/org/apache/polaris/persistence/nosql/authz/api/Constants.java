@@ -22,6 +22,7 @@ import static java.util.Collections.emptyIterator;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Set;
 import org.jspecify.annotations.NonNull;
 
 final class Constants {
@@ -59,7 +60,7 @@ final class Constants {
 
         @Override
         public boolean containsAll(@NonNull Collection<?> c) {
-          return false;
+          return c.isEmpty();
         }
 
         @Override
@@ -87,9 +88,10 @@ final class Constants {
         @Override
         @NonNull
         public <T> T[] toArray(T[] a) {
-          @SuppressWarnings("unchecked")
-          var r = (T[]) new Object[a.length];
-          return r;
+          if (a.length > 0) {
+            a[0] = null;
+          }
+          return a;
         }
 
         @Override
@@ -124,15 +126,15 @@ final class Constants {
 
         @Override
         public boolean equals(Object obj) {
-          if (obj instanceof PrivilegeSet privilegeSet) {
-            return privilegeSet.isEmpty();
+          if (obj instanceof Set<?> set) {
+            return set.isEmpty();
           }
           return false;
         }
 
         @Override
         public int hashCode() {
-          return -1;
+          return 0;
         }
 
         @Override
