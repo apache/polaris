@@ -56,12 +56,12 @@ final class CommitsImpl implements Commits {
     var head = headOpt.get();
     var type = head.type().id();
 
-    // find commit with Obj.id() == offset, memoize visited commits
-
-    // Contains the seen IDs, without the 'offset', in _natural_ order (most recent commit ID first)
+    // Resolve the exclusive offset via a linear walk from the current head. Callers that require
+    // a hard bound on this work must enforce it outside this API.
+    //
+    // Contains the seen IDs, without the 'offset', in _natural_ order (most recent commit ID
+    // first).
     var visited = new LongArrayList();
-
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
 
     // Only walk, if the most recent commit ID is != offset
     if (head.id() == offset) {
@@ -147,10 +147,12 @@ final class CommitsImpl implements Commits {
     var head = headOpt.get();
     var type = head.type().id();
 
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
-
     if (offset.isPresent()) {
       var off = offset.getAsLong();
+
+      // Resolve the inclusive offset via a linear walk from the current head. If the offset is
+      // not encountered while scanning visible history, attempt to continue directly from the
+      // commit object identified by the offset.
 
       // Only walk, if the most recent commit ID is != offset
       if (head.id() == off) {

@@ -28,12 +28,32 @@ public interface Commits {
   /**
    * Retrieves the commit log in the natural, chronologically reverse order - most recent commit
    * first.
+   *
+   * <p>If {@code offset} is empty, iteration starts at the current head of {@code refName}.
+   *
+   * <p>If {@code offset} is present, the returned iterator is inclusive of that commit ID.
+   * Resolving the offset intentionally performs a linear walk from the current head toward older
+   * commits until the offset is encountered or visible history ends. This lookup is not internally
+   * bounded; callers that require a hard limit must enforce it themselves.
+   *
+   * <p>If the offset is not encountered while walking the visible history, the implementation
+   * attempts to resume directly from the commit object identified by the offset. If that commit
+   * object is not available either, iteration resumes from the oldest still-visible commit reached
+   * by the scan, if any.
    */
   <C extends BaseCommitObj> Iterator<C> commitLog(
       String refName, OptionalLong offset, Class<C> clazz);
 
   /**
-   * Retrieves the commit log in chronological order starting at the given offset.
+   * Retrieves the commit log in chronological order starting after the given offset.
+   *
+   * <p>The supplied {@code offset} is exclusive. Resolving the offset intentionally performs a
+   * linear walk from the current head toward older commits until the offset is encountered or
+   * visible history ends. This lookup is not internally bounded; callers that require a hard limit
+   * must enforce it themselves.
+   *
+   * <p>If the offset is not encountered in the visible history, the full visible history is
+   * returned in chronological order.
    *
    * <p>This function is useful when retrieving commits to serve events/notification use cases.
    */
