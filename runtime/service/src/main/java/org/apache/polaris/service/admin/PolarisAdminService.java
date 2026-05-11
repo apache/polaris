@@ -1084,7 +1084,7 @@ public class PolarisAdminService {
               .getPrincipalSecrets();
       if (collidingSecrets != null
           && collidingSecrets.getPrincipalId() != currentPrincipalEntity.getId()) {
-        throw new AlreadyExistsException("Client ID already in used: %s", customClientId);
+        throw new AlreadyExistsException("Client ID already in use: %s", customClientId);
       }
     }
     PolarisPrincipalSecrets currentSecrets =

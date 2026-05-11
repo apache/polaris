@@ -1086,6 +1086,24 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testResetCredentialsClientIdCollision() {
+    PrincipalWithCredentials victimCreds =
+        managementApi.createPrincipal(client.newEntityName(("victim-principal")));
+    String victimClientId = victimCreds.getCredentials().getClientId();
+    PrincipalWithCredentials attackerCreds =
+        managementApi.createPrincipal(client.newEntityName(("attacker-principal")));
+    String attackerName = attackerCreds.getPrincipal().getName();
+    Map<String, String> collidingBody =
+        Map.of("clientId", victimClientId, "clientSecret", victimClientId);
+    try (Response response =
+        managementApi
+            .request("v1/principals/{p}/reset", Map.of("p", attackerName))
+            .post(Entity.json(collidingBody))) {
+      assertThat(response).returns(Response.Status.CONFLICT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
   public void testCreateFederatedPrincipalRoleSucceeds() {
     // Create a federated Principal Role
     PrincipalRole federatedPrincipalRole =

@@ -29,11 +29,9 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -45,18 +43,14 @@ import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
-import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -773,42 +767,5 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getResolvedPath(
             eq(ResolvedPathKey.of(List.of(namespace.levels()), PolarisEntityType.NAMESPACE))))
         .thenReturn(resolvedPathWrapper);
-  }
-
-  @Test
-  void testResetCredentialsClientIdCollision() {
-    String principalName = "quickstart_user";
-    String collidingClientId = "root";
-
-    PolarisResolvedPathWrapper principalWrapper = mock(PolarisResolvedPathWrapper.class);
-    ResolvedPolarisEntity principalEntity = mock(ResolvedPolarisEntity.class);
-    PrincipalEntity principal =
-        new PrincipalEntity.Builder()
-            .setName(principalName)
-            .setClientId("a35358218e1a5458")
-            .setId(2L)
-            .build();
-
-    when(principalWrapper.getResolvedLeafEntity()).thenReturn(principalEntity);
-    when(principalWrapper.getRawLeafEntity()).thenReturn(principal);
-    when(principalEntity.getEntity()).thenReturn(principal);
-
-    when(resolutionManifest.getResolvedTopLevelEntity(
-            eq(principalName), eq(PolarisEntityType.PRINCIPAL)))
-        .thenReturn(principalWrapper);
-
-    PolarisPrincipalSecrets rootPrincipalSecrets =
-        new PolarisPrincipalSecrets(1L, collidingClientId, "secret");
-    when(metaStoreManager.loadPrincipalSecrets(any(), eq(collidingClientId)))
-        .thenReturn(new PrincipalSecretsResult(rootPrincipalSecrets));
-
-    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_CREDENTIAL_RESET)).thenReturn(true);
-
-    ResetPrincipalRequest resetRequest =
-        ResetPrincipalRequest.builder().setClientId(collidingClientId).build();
-
-    assertThatThrownBy(() -> adminService.resetCredentials(principalName, resetRequest))
-        .isInstanceOf(AlreadyExistsException.class)
-        .hasMessageContaining("Client ID already in used: " + collidingClientId);
   }
 }
