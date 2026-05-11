@@ -165,11 +165,11 @@ public class PersistenceTestExtension
   }
 
   private void assertValidFieldCandidate(Field field) {
-    if (!field.getType().isAssignableFrom(SnowflakeIdGenerator.class)
-        && !field.getType().isAssignableFrom(MonotonicClock.class)
-        && !field.getType().isAssignableFrom(Persistence.class)
-        && !field.getType().isAssignableFrom(Backend.class)
-        && !field.getType().isAssignableFrom(BackendTestFactory.class)) {
+    if (!IdGenerator.class.isAssignableFrom(field.getType())
+        && !MonotonicClock.class.isAssignableFrom(field.getType())
+        && !Persistence.class.isAssignableFrom(field.getType())
+        && !Backend.class.isAssignableFrom(field.getType())
+        && !BackendTestFactory.class.isAssignableFrom(field.getType())) {
       throw new ExtensionConfigurationException(
           "Unsupported field type " + field.getType().getName());
     }
@@ -216,7 +216,7 @@ public class PersistenceTestExtension
   private BackendTestFactory getOrCreateBackendTestFactory(
       ExtensionContext extensionContext, BackendSpec backendSpec) {
     var store = extensionContext.getRoot().getStore(NAMESPACE);
-    var existingResource = store.get(KEY_BACKEND, WrappedResource.class);
+    var existingResource = store.get(KEY_BACKEND_TEST_FACTORY, WrappedResource.class);
     var existing =
         existingResource != null ? existingResource.<BackendTestFactory>resource() : null;
     if (existing != null) {
