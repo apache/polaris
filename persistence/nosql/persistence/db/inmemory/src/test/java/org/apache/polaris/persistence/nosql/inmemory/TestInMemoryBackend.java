@@ -18,16 +18,29 @@
  */
 package org.apache.polaris.persistence.nosql.inmemory;
 
-import java.util.Arrays;
+import static org.apache.polaris.persistence.nosql.api.backend.PersistId.persistId;
+import static org.assertj.core.api.Assertions.assertThat;
 
-record SerializedObj(
-    String type, long createdAtMicros, String versionToken, byte[] serializedValue, int partNum) {
-  SerializedObj {
-    serializedValue = Arrays.copyOf(serializedValue, serializedValue.length);
-  }
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
-  @Override
-  public byte[] serializedValue() {
-    return Arrays.copyOf(serializedValue, serializedValue.length);
+public class TestInMemoryBackend {
+  @Test
+  public void serializedValuesAreCopiedOnWriteAndRead() {
+    var backend = new InMemoryBackend();
+    var id = persistId(1234L, 0);
+    var serialized = new byte[] {1, 2, 3};
+
+    assertThat(backend.conditionalInsert("realm", "type", id, 42L, "v1", serialized)).isTrue();
+
+    serialized[0] = 9;
+
+    var fetched = backend.fetch("realm", Set.of(id)).get(id);
+    assertThat(fetched.serialized()).containsExactly(1, 2, 3);
+
+    fetched.serialized()[1] = 8;
+
+    var fetchedAgain = backend.fetch("realm", Set.of(id)).get(id);
+    assertThat(fetchedAgain.serialized()).containsExactly(1, 2, 3);
   }
 }
