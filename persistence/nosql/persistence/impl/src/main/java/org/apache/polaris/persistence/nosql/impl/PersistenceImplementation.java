@@ -104,6 +104,8 @@ public final class PersistenceImplementation implements Persistence {
       String realmId,
       MonotonicClock monotonicClock,
       IdGenerator idGenerator) {
+    checkArgument(
+        params.referencePreviousHeadCount() > 0, "referencePreviousHeadCount must be positive");
 
     this.backend = backend;
     this.params = params;
