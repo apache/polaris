@@ -307,7 +307,6 @@ This product includes code from Project Nessie.
 * tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceOne.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceThree.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/InterfaceTwo.java
-* tools/config-docs/generator/src/test/java/tests/smallrye/LargeEnum.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/MappedA.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/NestedA.java
 * tools/config-docs/generator/src/test/java/tests/smallrye/NestedA1.java
