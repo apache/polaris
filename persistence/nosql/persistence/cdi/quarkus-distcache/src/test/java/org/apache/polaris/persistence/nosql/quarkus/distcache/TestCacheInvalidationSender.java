@@ -47,6 +47,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -383,6 +384,55 @@ public class TestCacheInvalidationSender {
     soft.assertThat(received).containsExactlyInAnyOrderElementsOf(expected);
   }
 
+  @Test
+  public void sendInvalidationsUsesConfiguredBatchSize() throws Exception {
+    var senderId = ServerInstanceId.of("senderId");
+    var config =
+        buildConfig(
+            singletonList("token"),
+            Optional.of(singletonList("service-name")),
+            Duration.ofSeconds(10),
+            Duration.ofSeconds(10),
+            2);
+    var resolvedServiceNames = singletonList("service-name-resolved");
+
+    var sem = new Semaphore(0);
+    var batchSizes = new CopyOnWriteArrayList<Integer>();
+
+    var sender =
+        new CacheInvalidationSender(vertx, config, senderId) {
+          private volatile int managementPort;
+
+          @Override
+          Future<List<String>> resolveServiceNames(List<String> serviceNames) {
+            return succeededFuture(resolvedServiceNames);
+          }
+
+          @Override
+          List<Future<Map.Entry<HttpClientResponse, Buffer>>> submit(
+              List<CacheInvalidation> batch, List<String> resolvedAddresses, int httpPort) {
+            batchSizes.add(batch.size());
+            sem.release(batch.size());
+            return null;
+          }
+
+          @Override
+          int quarkusManagementPort() {
+            return managementPort;
+          }
+        };
+
+    for (var i = 0; i < 5; i++) {
+      sender.evictObj("repo", ObjRef.objRef("foo", i));
+    }
+
+    sender.managementPort = 42;
+    sender.evictObj("repo", ObjRef.objRef("foo", 5));
+
+    assertThat(sem.tryAcquire(6, 30, TimeUnit.SECONDS)).isTrue();
+    soft.assertThat(batchSizes).containsExactly(2, 2, 2);
+  }
+
   @ParameterizedTest
   @MethodSource("invalidations")
   public void sendSingleInvalidation(
@@ -570,11 +620,20 @@ public class TestCacheInvalidationSender {
       Optional<List<String>> serviceName,
       Duration interval,
       Duration requestTimeout) {
+    return buildConfig(tokens, serviceName, interval, requestTimeout, 10);
+  }
+
+  private static QuarkusDistributedCacheInvalidationsConfig buildConfig(
+      List<String> tokens,
+      Optional<List<String>> serviceName,
+      Duration interval,
+      Duration requestTimeout,
+      int batchSize) {
     var config = mock(QuarkusDistributedCacheInvalidationsConfig.class);
     when(config.cacheInvalidationValidTokens()).thenReturn(Optional.of(tokens));
     when(config.cacheInvalidationServiceNames()).thenReturn(serviceName);
     when(config.cacheInvalidationServiceNameLookupInterval()).thenReturn(interval);
-    when(config.cacheInvalidationBatchSize()).thenReturn(10);
+    when(config.cacheInvalidationBatchSize()).thenReturn(batchSize);
     when(config.cacheInvalidationUri()).thenReturn("/foo/bar/");
     when(config.cacheInvalidationRequestTimeout()).thenReturn(Optional.of(requestTimeout));
     when(config.dnsQueryTimeout()).thenReturn(Duration.ofSeconds(5));
