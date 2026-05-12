@@ -204,7 +204,7 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeBatchEvaluatesHomogeneousRequestsSequentially() {
+  void authorizeSingleOperationBatchEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
     AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
@@ -257,7 +257,7 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeBatchFallsBackToSequentialEvaluationForMixedOperations() {
+  void authorizeMultiOperationBatchEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
     AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);

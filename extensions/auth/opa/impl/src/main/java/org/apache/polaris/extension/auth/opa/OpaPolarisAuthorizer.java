@@ -144,8 +144,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
         : AuthorizationDecision.deny(
             "OPA denied authorization for principal="
                 + polarisPrincipal.getName()
-                + " "
-                + request.formatForAuthorizationMessage());
+                + " operation="
+                + request.getOperation());
   }
 
   @Override
@@ -157,7 +157,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     Preconditions.checkArgument(
         !requests.isEmpty(), "Authorization request batch must contain at least one request");
     // Batch OPA evaluation remains sequential for backward compatibility until OPA adopts a
-    // batch-native payload schema for both homogeneous and heterogeneous request sets.
+    // batch-native payload schema.
     return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
   }
 

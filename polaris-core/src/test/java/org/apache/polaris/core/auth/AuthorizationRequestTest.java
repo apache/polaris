@@ -33,6 +33,7 @@ public class AuthorizationRequestTest {
             PolarisAuthorizableOperation.LOAD_TABLE,
             PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")));
 
+    assertThat(request).isInstanceOf(SingleTargetAuthorizationRequest.class);
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL)).isTrue();
   }
 
@@ -45,6 +46,7 @@ public class AuthorizationRequestTest {
             PolarisSecurable.of(
                 new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")));
 
+    assertThat(request).isInstanceOf(PairwiseTargetAuthorizationRequest.class);
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isTrue();
   }
 
@@ -76,6 +78,7 @@ public class AuthorizationRequestTest {
     AuthorizationRequest request =
         AuthorizationRequest.of(PolarisAuthorizableOperation.LIST_CATALOGS);
 
+    assertThat(request).isInstanceOf(UntargetedAuthorizationRequest.class);
     assertThat(request.getTargets()).isEmpty();
     assertThat(request.getSecondaries()).isEmpty();
   }
@@ -85,7 +88,23 @@ public class AuthorizationRequestTest {
     assertThatThrownBy(
             () -> AuthorizationRequest.of(PolarisAuthorizableOperation.GET_CATALOG, null, null))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("must contain a target or secondary");
+        .hasMessageContaining(
+            "PairwiseTargetAuthorizationRequest must contain a target or secondary");
+  }
+
+  @Test
+  void threeArgFactoryAlwaysCreatesPairwiseRequest() {
+    AuthorizationRequest request =
+        AuthorizationRequest.of(
+            PolarisAuthorizableOperation.GET_CATALOG,
+            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
+            null);
+
+    assertThat(request).isInstanceOf(PairwiseTargetAuthorizationRequest.class);
+    assertThat(request.getTargets())
+        .containsExactly(
+            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")));
+    assertThat(request.getSecondaries()).isEmpty();
   }
 
   @Test

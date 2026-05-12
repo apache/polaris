@@ -21,7 +21,6 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
@@ -47,13 +46,6 @@ public sealed interface AuthorizationRequest
       @Nonnull PolarisAuthorizableOperation operation,
       @Nullable PolarisSecurable target,
       @Nullable PolarisSecurable secondary) {
-    if (target == null && secondary == null) {
-      throw new IllegalStateException(
-          "Targeted AuthorizationRequest must contain a target or secondary");
-    }
-    if (target != null && secondary == null) {
-      return new SingleTargetAuthorizationRequest(operation, target);
-    }
     return new PairwiseTargetAuthorizationRequest(operation, target, secondary);
   }
 
@@ -68,24 +60,6 @@ public sealed interface AuthorizationRequest
   /** Returns secondary securables, if any. */
   @Nonnull
   List<PolarisSecurable> getSecondaries();
-
-  /**
-   * Returns a stable debug string for authorization messages.
-   *
-   * <p>Includes the operation, formatted targets, and formatted secondaries.
-   */
-  @Nonnull
-  default String formatForAuthorizationMessage() {
-    return String.format(
-        "operation=%s targets=%s secondaries=%s",
-        getOperation(), formatSecurables(getTargets()), formatSecurables(getSecondaries()));
-  }
-
-  private static String formatSecurables(List<PolarisSecurable> securables) {
-    return securables.stream()
-        .map(PolarisSecurable::formatForAuthorizationMessage)
-        .collect(Collectors.joining(", ", "[", "]"));
-  }
 
   default boolean hasSecurableType(PolarisEntityType... types) {
     for (PolarisSecurable target : getTargets()) {

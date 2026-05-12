@@ -48,7 +48,7 @@ public interface PolarisAuthorizer {
    * principal.
    *
    * <p>Implementations must define their own batch pre-resolution behavior explicitly because
-   * merged manifest registration is authorizer-specific.
+   * manifest registration is authorizer-specific.
    */
   void resolveAuthorizationInputs(
       @Nonnull AuthorizationState authzState,
@@ -72,8 +72,8 @@ public interface PolarisAuthorizer {
    * Core authorization entry point for a batch of requests that share one principal.
    *
    * <p>The default behavior preserves semantics by evaluating requests independently in order and
-   * returning the first denial. Implementations may override this to batch homogeneous requests
-   * into a single downstream authorization call.
+   * returning the first denial. Implementations may override this to use a single batched
+   * downstream authorization call.
    */
   @Nonnull
   default AuthorizationDecision authorize(

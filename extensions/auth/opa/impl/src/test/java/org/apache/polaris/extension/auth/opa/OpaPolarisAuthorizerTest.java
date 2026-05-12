@@ -931,7 +931,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void authorizeBatchEvaluatesHomogeneousRequestsSequentially() throws Exception {
+  void authorizeSingleOperationBatchEvaluatesSequentially() throws Exception {
     final List<String> capturedRequestBodies = new ArrayList<>();
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
@@ -1011,7 +1011,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void authorizeBatchFallsBackToSequentialEvaluationForMixedOperations() throws Exception {
+  void authorizeMultiOperationBatchEvaluatesSequentially() throws Exception {
     final int[] requestCount = new int[1];
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
