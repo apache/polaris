@@ -39,6 +39,14 @@ Global Options:
 &lt;/h2&gt;
 &lt;p&gt;A catalog is a top-level entity in Polaris that may contain other entities like &lt;a href="#namespace"&gt;namespaces&lt;/a&gt; and &lt;a href="#table"&gt;tables&lt;/a&gt;. These map directly to &lt;a href="https://iceberg.apache.org/terms/#catalog"&gt;Apache Iceberg catalogs&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see &lt;a href="https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml"&gt;the CreateCatalogRequest OpenAPI&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
+ ⚠️ Warning&lt;/p&gt;
+ Catalog properties are client-visible configuration values. Polaris returns them to authenticated
+catalog clients through the Iceberg REST &lt;code&gt;/config&lt;/code&gt; response. Use catalog properties only for
+non-sensitive client configuration. Do not store passwords, tokens, access keys, or other secrets
+in catalog properties.
+&lt;/div&gt;
+
 &lt;h3 id="storage-type" id="storage-type"&gt;Storage Type&lt;a class="heading-anchor" href="#storage-type" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
 &lt;p&gt;All catalogs in Polaris are associated with a &lt;em&gt;storage type&lt;/em&gt;. Valid Storage Types are &lt;code&gt;S3&lt;/code&gt;, &lt;code&gt;Azure&lt;/code&gt;, and &lt;code&gt;GCS&lt;/code&gt;. The &lt;code&gt;FILE&lt;/code&gt; type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.&lt;/p&gt;</description></item><item><title>Policy</title><link>https://polaris.apache.org/in-dev/unreleased/policy/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/policy/</guid><description>&lt;p&gt;The Polaris Policy framework empowers organizations to centrally define, manage, and enforce fine-grained governance, lifecycle, and operational rules across all data resources in the catalog.&lt;/p&gt;
