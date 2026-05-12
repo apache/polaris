@@ -802,10 +802,15 @@ final class IndexImpl<V> implements IndexSpi<V> {
     /** The materialized key or {@code null}. */
     private IndexKey key;
 
-    /** The materialized content or {@code null}. */
-    private V content;
+    /**
+     * Holds either one of the {@code VALUE_STATE_*} sentinels or a materialized non-{@code null}
+     * content value.
+     */
+    private volatile Object contentState = VALUE_STATE_UNMATERIALIZED;
 
-    private boolean hasContent;
+    private static final Object VALUE_STATE_UNMATERIALIZED = new Object();
+    private static final Object VALUE_STATE_NULL = new Object();
+    private static final Object VALUE_STATE_NON_NULL = new Object();
 
     LazyIndexElement(
         LazyIndexElement predecessor,
@@ -905,25 +910,42 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
+    public boolean hasNonNullValue() {
+      var state = contentState;
+      if (state == VALUE_STATE_NULL) {
+        return false;
+      }
+      if (state != VALUE_STATE_UNMATERIALIZED) {
+        return true;
+      }
+      var nonNull =
+          !serializer.isNullSerialized(
+              serializedThreadSafe().limit(endOffset).position(valueOffset));
+      if (contentState == VALUE_STATE_UNMATERIALIZED) {
+        contentState = nonNull ? VALUE_STATE_NON_NULL : VALUE_STATE_NULL;
+      }
+      return nonNull;
+    }
+
+    @Override
     @Nullable
     public V valueNullable() {
-      var c = content;
-      if (c == null) {
-        if (!hasContent) {
-          c =
-              content =
-                  serializer.deserialize(
-                      serializedThreadSafe().limit(endOffset).position(valueOffset));
-          hasContent = true;
-        }
+      var state = contentState;
+      if (state == VALUE_STATE_NULL) {
+        return null;
       }
+      if (state != VALUE_STATE_UNMATERIALIZED && state != VALUE_STATE_NON_NULL) {
+        return materializedContent(state);
+      }
+      var c = serializer.deserialize(serializedThreadSafe().limit(endOffset).position(valueOffset));
+      contentState = c == null ? VALUE_STATE_NULL : c;
       return c;
     }
 
     @Override
     public String toString() {
       var k = key;
-      var c = content;
+      var c = materializedContent();
       if (k != null && c != null) {
         return super.toString();
       }
@@ -942,6 +964,22 @@ final class IndexImpl<V> implements IndexSpi<V> {
       }
 
       return sb.toString();
+    }
+
+    @Nullable
+    private V materializedContent() {
+      return materializedContent(contentState);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Nullable
+    private V materializedContent(Object state) {
+      if (state == VALUE_STATE_UNMATERIALIZED
+          || state == VALUE_STATE_NULL
+          || state == VALUE_STATE_NON_NULL) {
+        return null;
+      }
+      return (V) state;
     }
   }
 

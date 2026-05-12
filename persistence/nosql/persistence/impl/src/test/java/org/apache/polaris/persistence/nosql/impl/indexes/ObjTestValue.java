@@ -85,6 +85,11 @@ final class ObjTestValue {
         }
 
         @Override
+        public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+          return VarInt.readVarInt(buffer.duplicate()) == 0;
+        }
+
+        @Override
         @NonNull
         public ByteBuffer serialize(@Nullable ObjTestValue value, @NonNull ByteBuffer target) {
           if (value == null) {

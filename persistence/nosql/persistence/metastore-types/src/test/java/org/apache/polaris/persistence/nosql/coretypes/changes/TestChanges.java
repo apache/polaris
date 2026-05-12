@@ -51,6 +51,11 @@ public class TestChanges {
         .containsExactly(serSize + 10, 0);
 
     buffer.flip();
+    var nullProbe = buffer.duplicate();
+    soft.assertThat(CHANGE_SERIALIZER.isNullSerialized(nullProbe)).isEqualTo(mapping == null);
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, serSize + 10);
 
     soft.assertThat(buffer)
         .extracting(ByteBuffer::position, ByteBuffer::remaining)

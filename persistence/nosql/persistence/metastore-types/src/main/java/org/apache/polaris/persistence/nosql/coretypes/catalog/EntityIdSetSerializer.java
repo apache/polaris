@@ -83,6 +83,11 @@ final class EntityIdSetSerializer implements IndexValueSerializer<EntityIdSet> {
   }
 
   @Override
+  public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+    return readVarInt(buffer.duplicate()) == 0;
+  }
+
+  @Override
   public void skip(@NonNull ByteBuffer buffer) {
     var num = readVarInt(buffer);
     for (int i = 0; i < num; i++) {

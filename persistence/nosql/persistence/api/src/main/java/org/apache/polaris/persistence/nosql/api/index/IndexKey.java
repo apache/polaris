@@ -96,6 +96,14 @@ public final class IndexKey implements Comparable<IndexKey> {
         }
 
         @Override
+        public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+          var position = buffer.position();
+          return buffer.remaining() >= 2
+              && buffer.get(position) == ESC
+              && buffer.get(position + 1) == NULL_ESCAPED;
+        }
+
+        @Override
         public void skip(@NonNull ByteBuffer buffer) {
           IndexKey.skip(buffer);
         }
