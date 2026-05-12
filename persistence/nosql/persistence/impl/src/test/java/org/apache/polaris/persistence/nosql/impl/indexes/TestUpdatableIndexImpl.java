@@ -573,6 +573,86 @@ public class TestUpdatableIndexImpl {
   }
 
   @Test
+  public void legacyOversizedMultiElementReferenceStripeCanBeRepartitionedDuringLaterSpillOut() {
+    var firstKey = key("a");
+    var largeKey = key("b");
+    var lastLegacyKey = key("c");
+    var secondStripeKey = key("y");
+    var forceSpillKey = key("zz");
+    var firstValue = objTestValueFromString("cafe");
+    var lastLegacyValue = objTestValueFromString("babe");
+    var secondStripeValue = objTestValueFromString("dead");
+    var targetStripeSize = persistence.params().maxIndexStripeSize().asLong();
+    var largeValue =
+        objTestValueOfSize(
+            smallestValueSizeAboveActualSingleEntrySerializedSize(largeKey, targetStripeSize));
+    var forceSpillValue =
+        objTestValueOfSize(
+            valueSizeAroundUpperBound(
+                forceSpillKey,
+                persistence.params().maxEmbeddedIndexSize().asLong()
+                    / UpdatableIndexImpl.FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR,
+                1));
+
+    var legacyOversizedStripe = newStoreIndex(OBJ_TEST_SERIALIZER);
+    legacyOversizedStripe.add(indexElement(firstKey, firstValue));
+    legacyOversizedStripe.add(indexElement(largeKey, largeValue));
+    legacyOversizedStripe.add(indexElement(lastLegacyKey, lastLegacyValue));
+
+    soft.assertThat((long) legacyOversizedStripe.serialize().remaining())
+        .isGreaterThan(targetStripeSize);
+
+    var legacySmallStripe = newStoreIndex(OBJ_TEST_SERIALIZER);
+    legacySmallStripe.add(indexElement(secondStripeKey, secondStripeValue));
+
+    var oversizedStripeObj =
+        persistence.write(
+            IndexStripeObj.indexStripeObj(
+                persistence.generateId(), legacyOversizedStripe.serialize()),
+            IndexStripeObj.class);
+    var smallStripeObj =
+        persistence.write(
+            IndexStripeObj.indexStripeObj(persistence.generateId(), legacySmallStripe.serialize()),
+            IndexStripeObj.class);
+
+    var legacyIndexContainer =
+        ImmutableIndexContainer.<ObjTestValue>builder()
+            .embedded(newStoreIndex(OBJ_TEST_SERIALIZER).serialize())
+            .addStripe(IndexStripe.indexStripe(firstKey, lastLegacyKey, objRef(oversizedStripeObj)))
+            .addStripe(
+                IndexStripe.indexStripe(secondStripeKey, secondStripeKey, objRef(smallStripeObj)))
+            .build();
+
+    var updatable =
+        (UpdatableIndexImpl<ObjTestValue>)
+            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    updatable.put(forceSpillKey, forceSpillValue);
+
+    var toPersist = new ArrayList<Map.Entry<String, Obj>>();
+    var indexed = updatable.toIndexed("idx-", (n, o) -> toPersist.add(Map.entry(n, o)));
+
+    soft.assertThat(toPersist).hasSizeGreaterThan(1);
+    soft.assertThat(indexed.stripes()).hasSizeGreaterThan(2);
+    soft.assertThat(indexed.stripes())
+        .anySatisfy(
+            stripe -> {
+              assertThat(stripe.firstKey()).isEqualTo(largeKey);
+              assertThat(stripe.lastKey()).isEqualTo(largeKey);
+            });
+
+    toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
+
+    var readIndex = indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER);
+    soft.assertThat(Streams.stream(readIndex).map(Index.Element::key))
+        .containsExactly(firstKey, largeKey, lastLegacyKey, secondStripeKey, forceSpillKey);
+    soft.assertThat(readIndex.get(firstKey)).isEqualTo(firstValue);
+    soft.assertThat(readIndex.get(largeKey)).isEqualTo(largeValue);
+    soft.assertThat(readIndex.get(lastLegacyKey)).isEqualTo(lastLegacyValue);
+    soft.assertThat(readIndex.get(secondStripeKey)).isEqualTo(secondStripeValue);
+    soft.assertThat(readIndex.get(forceSpillKey)).isEqualTo(forceSpillValue);
+  }
+
+  @Test
   public void allowEntryThatExceedsPersistedObjectSizeViaMultipartPersistence() {
     var updatable = updatableIndexForTest(Map.of(), Map.of(), OBJ_TEST_SERIALIZER);
     var key = key("reject-too-large-for-persist");
