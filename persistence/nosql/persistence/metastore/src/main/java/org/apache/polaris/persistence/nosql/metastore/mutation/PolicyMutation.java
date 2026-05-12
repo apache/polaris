@@ -143,6 +143,8 @@ public record PolicyMutation(
                 }
 
                 if (changed) {
+                  // Replacing this inline index leaves older mapping objects and stripes stale
+                  // until a later maintenance purge.
                   builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
                   return state.commitResult(result, builder, refObj);
                 }

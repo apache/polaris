@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore.privs;
 
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
+import org.apache.polaris.persistence.nosql.coretypes.acl.GrantTriplet;
 
 /**
  * Holds IDs needed during ACL/grants loading, before those are exploded into many {@link

@@ -84,6 +84,12 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     return this;
   }
 
+  @NonNull
+  @Override
+  public Persistence nonRecordingRealmPersistence() {
+    return persistence;
+  }
+
   @Override
   public void retainObject(@NonNull ObjRef objRef) {
     if (!currentNesting.add(objRef.id())) {
