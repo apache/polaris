@@ -52,11 +52,13 @@ import org.slf4j.LoggerFactory;
 final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements UpdatableIndex<V> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdatableIndexImpl.class);
+  static final int FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR = 4;
 
   private final IndexContainer<V> indexContainer;
   private final PersistenceParams params;
   private final LongSupplier idGenerator;
   private final IndexValueSerializer<V> serializer;
+  private boolean hasOversizedEmbeddedEntry;
   private boolean finalized;
 
   UpdatableIndexImpl(
@@ -81,7 +83,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
 
     var indexContainerBuilder = ImmutableIndexContainer.<V>builder();
 
-    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()) {
+    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
+        || hasOversizedEmbeddedEntry) {
       // The serialized representation of the embedded index is probably bigger than the configured
       // limit. Spill out the embedded index.
       spillOutEmbedded(prefix, persistObj, indexContainerBuilder);
@@ -181,7 +184,11 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       // Only use stripe if it (still) has elements.
       if (stripe.hasElements()) {
         var serSize = stripe.estimatedSerializedSize();
-        var desiredSplits = checkedCast(serSize / params.maxIndexStripeSize().asLong() + 1);
+        var maxStripeSize = params.maxIndexStripeSize().asLong();
+        var desiredSplits = checkedCast((serSize - 1L) / maxStripeSize + 1L);
+        if (desiredSplits > 1) {
+          desiredSplits = Math.min(desiredSplits, stripe.asKeyList().size());
+        }
         if (desiredSplits > 1) {
           // The stripe became too big, needs to be split further
           LOGGER.debug(
@@ -212,7 +219,8 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
       var last = stripe.last();
       ObjRef id;
       if (stripe.isModified()) {
-        var obj = indexStripeObj(idGenerator.getAsLong(), stripe.serialize());
+        var serialized = stripe.serialize();
+        var obj = indexStripeObj(idGenerator.getAsLong(), serialized);
         // Persist updated stripes
         persistObj.accept(first.toSafeString(prefix), obj);
         id = objRef(obj);
@@ -230,6 +238,16 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
   @Override
   public boolean add(@NonNull InternalIndexElement<V> element) {
     checkNotFinalized();
+
+    var maxEmbeddedIndexSize = params.maxEmbeddedIndexSize().asLong();
+    var maxEmbeddedEntrySizeBeforeForcedSpill =
+        Math.max(1L, maxEmbeddedIndexSize / FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR);
+    var entrySerializedSizeUpperBound =
+        IndexImpl.singleEntrySerializedSizeUpperBound(
+            element.key(), element.contentSerializedSize(serializer));
+
+    hasOversizedEmbeddedEntry |=
+        entrySerializedSizeUpperBound > maxEmbeddedEntrySizeBeforeForcedSpill;
     var added = embedded.add(element);
     if (added) {
       return !reference.containsElement(element.key());

@@ -104,6 +104,7 @@ import org.jspecify.annotations.Nullable;
  */
 final class IndexImpl<V> implements IndexSpi<V> {
 
+  static final int INDEX_SERIALIZATION_HEADER_SIZE = 2;
   static final int MAX_KEY_BYTES = 4096;
 
   /**
@@ -242,6 +243,13 @@ final class IndexImpl<V> implements IndexSpi<V> {
       return buf;
     }
     return newKeyBuffer();
+  }
+
+  static long singleEntrySerializedSizeUpperBound(IndexKey key, int valueSerializedSize) {
+    return (long) INDEX_SERIALIZATION_HEADER_SIZE
+        + key.serializedSize()
+        + ASSUMED_PER_ENTRY_OVERHEAD
+        + valueSerializedSize;
   }
 
   static void releaseScratchKeyBuffer(ByteBuffer buf) {
