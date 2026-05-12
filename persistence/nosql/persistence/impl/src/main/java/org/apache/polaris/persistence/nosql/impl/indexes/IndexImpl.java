@@ -354,35 +354,67 @@ final class IndexImpl<V> implements IndexSpi<V> {
       return List.of(this);
     }
 
-    var result = new ArrayList<IndexSpi<V>>();
-    var currentElements = new ArrayList<InternalIndexElement<V>>();
-    long currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
-
-    for (var element : elements) {
-      var elementSerializedSize =
-          addElementDiff(element, element.contentSerializedSize(serializer));
-      if (!currentElements.isEmpty()
-          && currentSerializedSize + elementSerializedSize > targetSerializedSize) {
-        result.add(newSplitPart(currentElements, currentSerializedSize));
-        currentElements = new ArrayList<>();
-        currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
-      }
-
-      currentElements.add(element);
-      currentSerializedSize += elementSerializedSize;
-
-      if (currentElements.size() == 1 && currentSerializedSize > targetSerializedSize) {
-        result.add(newSplitPart(currentElements, currentSerializedSize));
-        currentElements = new ArrayList<>();
-        currentSerializedSize = INDEX_SERIALIZATION_HEADER_SIZE;
-      }
+    final class SplitState {
+      private final List<IndexSpi<V>> result = new ArrayList<>();
+      private List<InternalIndexElement<V>> currentElements = new ArrayList<>();
+      private long currentSerializedBodySize;
+      private ByteBuffer previousSplitKey;
     }
 
-    if (!currentElements.isEmpty()) {
-      result.add(newSplitPart(currentElements, currentSerializedSize));
+    var splitState = new SplitState();
+
+    walkSerializedElements(
+        (element, keyBuf, previousMaterializationKey) -> {
+          var valueSerializedSize = element.contentSerializedSize(serializer);
+          var entrySerializedSize =
+              serializedEntrySize(splitState.previousSplitKey, keyBuf, valueSerializedSize);
+          var candidateSerializedSize =
+              splitSerializedSize(
+                  splitState.currentElements.size() + 1,
+                  splitState.currentSerializedBodySize + entrySerializedSize);
+
+          if (!splitState.currentElements.isEmpty()
+              && candidateSerializedSize > targetSerializedSize) {
+            splitState.result.add(
+                newSplitPart(
+                    splitState.currentElements,
+                    splitSerializedSize(
+                        splitState.currentElements.size(), splitState.currentSerializedBodySize)));
+            splitState.currentElements = new ArrayList<>();
+            splitState.currentSerializedBodySize = 0L;
+            splitState.previousSplitKey = null;
+            entrySerializedSize = serializedEntrySize(null, keyBuf, valueSerializedSize);
+            candidateSerializedSize = splitSerializedSize(1, entrySerializedSize);
+          }
+
+          splitState.currentElements.add(element);
+          splitState.currentSerializedBodySize += entrySerializedSize;
+          splitState.previousSplitKey = copyKey(splitState.previousSplitKey, keyBuf);
+
+          if (splitState.currentElements.size() == 1
+              && candidateSerializedSize > targetSerializedSize) {
+            splitState.result.add(
+                newSplitPart(splitState.currentElements, candidateSerializedSize));
+            splitState.currentElements = new ArrayList<>();
+            splitState.currentSerializedBodySize = 0L;
+            splitState.previousSplitKey = null;
+          }
+
+          return copyKey(previousMaterializationKey, keyBuf);
+        });
+
+    if (splitState.result.isEmpty()) {
+      return List.of(this);
+    }
+    if (!splitState.currentElements.isEmpty()) {
+      splitState.result.add(
+          newSplitPart(
+              splitState.currentElements,
+              splitSerializedSize(
+                  splitState.currentElements.size(), splitState.currentSerializedBodySize)));
     }
 
-    return result;
+    return splitState.result;
   }
 
   private IndexSpi<V> newSplitPart(
@@ -394,6 +426,15 @@ final class IndexImpl<V> implements IndexSpi<V> {
             + varIntLen(partElements.size());
     return new IndexImpl<>(
         partElements, checkedCast(adjustedEstimatedSerializedSize), serializer, true);
+  }
+
+  private static long splitSerializedSize(int elementCount, long serializedBodySize) {
+    return 1L + varIntLen(elementCount) + serializedBodySize;
+  }
+
+  private static long serializedEntrySize(
+      @Nullable ByteBuffer previousKey, ByteBuffer keyBuf, int valueSerializedSize) {
+    return (long) serializedKeyDelta(previousKey, keyBuf).serializedSize() + valueSerializedSize;
   }
 
   @Override
@@ -628,55 +669,14 @@ final class IndexImpl<V> implements IndexSpi<V> {
       // Serialized segment index version
       target.put(CURRENT_STORE_INDEX_VERSION);
       putVarInt(target, elements.size());
+      var serializeTarget = target;
 
-      ByteBuffer previousKey = null;
-
-      var scratchKeyBuffer = acquireScratchKeyBuffer();
-      try {
-        boolean onlyLazy;
-        InternalIndexElement<V> previous = null;
-        for (var el : elements) {
-          ByteBuffer keyBuf = null;
-          if (isLazyElementImpl(el)) {
-            var lazyEl = (LazyIndexElement<V>) el;
-            // The purpose of this 'if'-branch is to determine whether it can serialize the
-            // 'IndexKey' by _not_ fully materializing the `IndexKey`. This is possible if (and
-            // only if!) the current and the previous element are `LazyStoreIndexElement`s, where
-            // the previous element is exactly the one that has been deserialized.
-            //noinspection RedundantIfStatement
-            if (lazyEl.prefixLen == 0 || lazyEl.previous == previous) {
-              // Can use the optimized serialization in `LazyStoreIndexElement` if the current
-              // element has no prefix of if the previously serialized element was also a
-              // `LazyStoreIndexElement`. In other words, no intermediate `LazyStoreIndexElement`
-              // has been removed and no new element has been added.
-              onlyLazy = true;
-            } else {
-              // This if-branch detects whether an element has been removed from the index. In that
-              // case, serialization has to materialize the `IndexKey` for serialization.
-              onlyLazy = false;
-            }
-            if (onlyLazy) {
-              // Key serialization via 'LazyStoreIndexElement' is much cheaper (CPU and heap) than
-              // having to first materialize and then serialize it.
-              keyBuf = lazyEl.serializeKey(scratchKeyBuffer, previousKey);
-            }
-          } else {
-            onlyLazy = false;
-          }
-
-          if (!onlyLazy) {
-            // Either 'el' is not a 'LazyStoreIndexElement' or the previous element of a
-            // 'LazyStoreIndexElement' is not suitable (see above).
-            keyBuf = serializeIndexKeyString(el.key(), scratchKeyBuffer);
-          }
-
-          previousKey = serializeKey(keyBuf, previousKey, target);
-          el.serializeContent(serializer, target);
-          previous = el;
-        }
-      } finally {
-        releaseScratchKeyBuffer(scratchKeyBuffer);
-      }
+      walkSerializedElements(
+          (element, keyBuf, previousMaterializationKey) -> {
+            var previousKey = serializeKey(keyBuf, previousMaterializationKey, serializeTarget);
+            element.serializeContent(serializer, serializeTarget);
+            return previousKey;
+          });
 
       target = target.flip();
     } else {
@@ -690,25 +690,120 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return el.getClass() == LazyIndexElement.class;
   }
 
-  private ByteBuffer serializeKey(ByteBuffer keyBuf, ByteBuffer previousKey, ByteBuffer target) {
-    var keyPos = keyBuf.position();
-    if (previousKey != null) {
-      var mismatch = previousKey.mismatch(keyBuf);
-      checkState(mismatch != -1, "Previous and current keys must not be equal");
-      var strip = previousKey.remaining() - mismatch;
-      putVarInt(target, strip);
-      keyBuf.position(keyPos + mismatch);
+  @FunctionalInterface
+  private interface SerializedElementVisitor<V> {
+    ByteBuffer visit(
+        InternalIndexElement<V> element,
+        ByteBuffer keyBuf,
+        @Nullable ByteBuffer previousMaterializationKey);
+  }
+
+  private void walkSerializedElements(SerializedElementVisitor<V> visitor) {
+    ByteBuffer previousMaterializationKey = null;
+
+    var scratchKeyBuffer = acquireScratchKeyBuffer();
+    try {
+      InternalIndexElement<V> previous = null;
+      for (var el : elements) {
+        var keyBuf =
+            materializeSerializedKey(el, previous, previousMaterializationKey, scratchKeyBuffer);
+        previousMaterializationKey = visitor.visit(el, keyBuf, previousMaterializationKey);
+        previous = el;
+      }
+    } finally {
+      releaseScratchKeyBuffer(scratchKeyBuffer);
+    }
+  }
+
+  private ByteBuffer materializeSerializedKey(
+      InternalIndexElement<V> el,
+      @Nullable InternalIndexElement<V> previous,
+      @Nullable ByteBuffer previousKey,
+      ByteBuffer scratchKeyBuffer) {
+    boolean onlyLazy;
+    ByteBuffer keyBuf = null;
+    if (isLazyElementImpl(el)) {
+      var lazyEl = (LazyIndexElement<V>) el;
+      // The purpose of this 'if'-branch is to determine whether it can serialize the
+      // 'IndexKey' by _not_ fully materializing the `IndexKey`. This is possible if (and
+      // only if!) the current and the previous element are `LazyStoreIndexElement`s, where
+      // the previous element is exactly the one that has been deserialized.
+      //noinspection RedundantIfStatement
+      if (lazyEl.prefixLen == 0 || lazyEl.previous == previous) {
+        // Can use the optimized serialization in `LazyStoreIndexElement` if the current
+        // element has no prefix of if the previously serialized element was also a
+        // `LazyStoreIndexElement`. In other words, no intermediate `LazyStoreIndexElement`
+        // has been removed and no new element has been added.
+        onlyLazy = true;
+      } else {
+        // This if-branch detects whether an element has been removed from the index. In that
+        // case, serialization has to materialize the `IndexKey` for serialization.
+        onlyLazy = false;
+      }
+      if (onlyLazy) {
+        // Key serialization via 'LazyStoreIndexElement' is much cheaper (CPU and heap) than
+        // having to first materialize and then serialize it.
+        keyBuf = lazyEl.serializeKey(scratchKeyBuffer, previousKey);
+      }
     } else {
+      onlyLazy = false;
+    }
+
+    if (!onlyLazy) {
+      // Either 'el' is not a 'LazyStoreIndexElement' or the previous element of a
+      // 'LazyStoreIndexElement' is not suitable (see above).
+      keyBuf = serializeIndexKeyString(el.key(), scratchKeyBuffer);
+    }
+
+    return keyBuf;
+  }
+
+  private static ByteBuffer serializeKey(
+      ByteBuffer keyBuf, ByteBuffer previousKey, ByteBuffer target) {
+    var keyDelta = serializedKeyDelta(previousKey, keyBuf);
+    if (previousKey == null) {
       previousKey = newKeyBuffer();
+    } else {
+      putVarInt(target, keyDelta.strip());
+      keyBuf.position(keyDelta.suffixPosition());
     }
     target.put(keyBuf);
 
     previousKey.clear();
-    keyBuf.position(keyPos);
+    keyBuf.position(keyDelta.keyPosition());
     previousKey.put(keyBuf).flip();
 
     return previousKey;
   }
+
+  private static KeyDelta serializedKeyDelta(@Nullable ByteBuffer previousKey, ByteBuffer keyBuf) {
+    var keyPosition = keyBuf.position();
+    if (previousKey == null) {
+      return new KeyDelta(keyPosition, keyPosition, 0, keyBuf.remaining());
+    }
+
+    var mismatch = previousKey.mismatch(keyBuf);
+    checkState(mismatch != -1, "Previous and current keys must not be equal");
+    var strip = previousKey.remaining() - mismatch;
+    return new KeyDelta(
+        keyPosition,
+        keyPosition + mismatch,
+        strip,
+        (int) (varIntLen(strip) + (long) keyBuf.remaining() - mismatch));
+  }
+
+  private static ByteBuffer copyKey(@Nullable ByteBuffer previousKey, ByteBuffer keyBuf) {
+    if (previousKey == null) {
+      previousKey = newKeyBuffer();
+    }
+    previousKey.clear();
+    var keyPosition = keyBuf.position();
+    previousKey.put(keyBuf).flip();
+    keyBuf.position(keyPosition);
+    return previousKey;
+  }
+
+  private record KeyDelta(int keyPosition, int suffixPosition, int strip, int serializedSize) {}
 
   static <V> IndexSpi<V> deserializeStoreIndex(ByteBuffer serialized, IndexValueSerializer<V> ser) {
     return new IndexImpl<>(serialized, ser);
@@ -750,7 +845,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
       // It has no predecessor that would be needed to re-construct (aka materialize) the full key.
       var elementPredecessor = prefixLen > 0 ? predecessor : null;
       var element =
-          new LazyIndexElement<V>(
+          new LazyIndexElement<>(
               this, elementPredecessor, previous, keyOffset, prefixLen, valueOffset, endOffset);
       if (elementPredecessor == null) {
         predecessor = element;

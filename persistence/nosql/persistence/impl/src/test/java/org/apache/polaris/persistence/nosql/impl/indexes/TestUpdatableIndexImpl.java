@@ -573,6 +573,86 @@ public class TestUpdatableIndexImpl {
   }
 
   @Test
+  public void persistedCommonPrefixStripeStaysUnsplitDuringLaterSpillOut() {
+    var targetStripeSize = persistence.params().maxIndexStripeSize().asLong();
+    var sharedValue = objTestValueFromString("cafe");
+    var keyPrefix = "catalog/" + "shared-prefix/".repeat(32);
+    var prefixStripe = newStoreIndex(OBJ_TEST_SERIALIZER);
+    IndexKey middlePrefixKey = null;
+    for (var i = 0; i < 512; i++) {
+      var key = key(keyPrefix + "table-%03d".formatted(i));
+      prefixStripe.add(indexElement(key, sharedValue));
+      if (i == 256) {
+        middlePrefixKey = key;
+      }
+    }
+    var firstPrefixKey = requireNonNull(prefixStripe.first());
+    var lastPrefixKey = requireNonNull(prefixStripe.last());
+
+    soft.assertThat((long) prefixStripe.serialize().remaining())
+        .isLessThanOrEqualTo(targetStripeSize);
+    soft.assertThat((long) prefixStripe.estimatedSerializedSize()).isGreaterThan(targetStripeSize);
+
+    var secondStripeKey = key("zzz-base");
+    var secondStripeValue = objTestValueFromString("dead");
+    var forceSpillKey = key("zzzz-trigger");
+    var forceSpillValue =
+        objTestValueOfSize(
+            valueSizeAroundUpperBound(
+                forceSpillKey,
+                persistence.params().maxEmbeddedIndexSize().asLong()
+                    / UpdatableIndexImpl.FORCE_SPILL_MAX_EMBEDDED_ENTRY_DIVISOR,
+                1));
+    var secondStripe = newStoreIndex(OBJ_TEST_SERIALIZER);
+    secondStripe.add(indexElement(secondStripeKey, secondStripeValue));
+
+    var prefixStripeObj =
+        persistence.write(
+            IndexStripeObj.indexStripeObj(persistence.generateId(), prefixStripe.serialize()),
+            IndexStripeObj.class);
+    var secondStripeObj =
+        persistence.write(
+            IndexStripeObj.indexStripeObj(persistence.generateId(), secondStripe.serialize()),
+            IndexStripeObj.class);
+
+    var legacyIndexContainer =
+        ImmutableIndexContainer.<ObjTestValue>builder()
+            .embedded(newStoreIndex(OBJ_TEST_SERIALIZER).serialize())
+            .addStripe(
+                IndexStripe.indexStripe(firstPrefixKey, lastPrefixKey, objRef(prefixStripeObj)))
+            .addStripe(
+                IndexStripe.indexStripe(secondStripeKey, secondStripeKey, objRef(secondStripeObj)))
+            .build();
+
+    var updatable =
+        (UpdatableIndexImpl<ObjTestValue>)
+            legacyIndexContainer.asUpdatableIndex(persistence, OBJ_TEST_SERIALIZER);
+    updatable.put(forceSpillKey, forceSpillValue);
+
+    var toPersist = new ArrayList<Map.Entry<String, Obj>>();
+    var indexed = updatable.toIndexed("idx-", (n, o) -> toPersist.add(Map.entry(n, o)));
+
+    soft.assertThat(toPersist).hasSize(1);
+    soft.assertThat(indexed.stripes()).hasSize(2);
+    soft.assertThat(indexed.stripes())
+        .anySatisfy(
+            stripe -> {
+              assertThat(stripe.firstKey()).isEqualTo(firstPrefixKey);
+              assertThat(stripe.lastKey()).isEqualTo(lastPrefixKey);
+              assertThat(stripe.segment()).isEqualTo(objRef(prefixStripeObj));
+            });
+
+    toPersist.stream().map(Map.Entry::getValue).forEach(o -> persistence.write(o, Obj.class));
+
+    var readIndex = indexed.indexForRead(persistence, OBJ_TEST_SERIALIZER);
+    soft.assertThat(readIndex.get(firstPrefixKey)).isEqualTo(sharedValue);
+    soft.assertThat(readIndex.get(requireNonNull(middlePrefixKey))).isEqualTo(sharedValue);
+    soft.assertThat(readIndex.get(lastPrefixKey)).isEqualTo(sharedValue);
+    soft.assertThat(readIndex.get(secondStripeKey)).isEqualTo(secondStripeValue);
+    soft.assertThat(readIndex.get(forceSpillKey)).isEqualTo(forceSpillValue);
+  }
+
+  @Test
   public void legacyOversizedMultiElementReferenceStripeCanBeRepartitionedDuringLaterSpillOut() {
     var firstKey = key("a");
     var largeKey = key("b");

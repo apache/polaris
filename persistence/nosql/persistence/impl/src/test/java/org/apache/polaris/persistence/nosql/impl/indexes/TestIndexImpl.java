@@ -840,6 +840,28 @@ public class TestIndexImpl {
   }
 
   @Test
+  public void splitByTargetSizeReturnsSameMultiElementInstanceWhenAlreadyWithinTarget() {
+    var index = basicIndexTestSet().keyIndex();
+    var targetSize = index.serialize().remaining();
+
+    soft.assertThat(index.splitByTargetSize(targetSize)).containsExactly(index);
+  }
+
+  @Test
+  public void splitByTargetSizeUsesActualSerializedKeySizeForLongCommonPrefixes() {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var keyPrefix = "catalog/" + "shared-prefix/".repeat(32);
+    for (var i = 0; i < 64; i++) {
+      index.put(key(keyPrefix + format("table-%03d", i)), randomObjId());
+    }
+
+    var actualSerializedSize = index.serialize().remaining();
+
+    soft.assertThat(index.estimatedSerializedSize()).isGreaterThan(actualSerializedSize);
+    soft.assertThat(index.splitByTargetSize(actualSerializedSize)).containsExactly(index);
+  }
+
+  @Test
   public void stateRelated() {
     var indexTestSet = basicIndexTestSet();
     var index = indexTestSet.keyIndex();
