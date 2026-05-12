@@ -466,16 +466,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Long> SIBLING_TIMEOUT_MILLIS =
-      PolarisConfiguration.<Long>builder()
-          .key("SIBLING_TIMEOUT_MILLIS")
-          .description(
-              "Timeout in milliseconds for ordinary sibling location overlap checks. "
-                  + "When Polaris is unable to load a coherent set of sibling entities during location overlap "
-                  + "checks, it will retry for up to this amount of time. The default value is 5000.")
-          .defaultValue(5000L)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED")
