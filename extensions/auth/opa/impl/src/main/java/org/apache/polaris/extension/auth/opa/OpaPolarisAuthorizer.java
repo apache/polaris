@@ -21,6 +21,7 @@ package org.apache.polaris.extension.auth.opa;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
@@ -116,6 +117,16 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    Preconditions.checkArgument(
+        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+    authzState.getResolutionManifest().resolveAll();
+  }
+
+  @Override
   @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState,
@@ -135,6 +146,19 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
                 + polarisPrincipal.getName()
                 + " "
                 + request.formatForAuthorizationMessage());
+  }
+
+  @Override
+  @Nonnull
+  public AuthorizationDecision authorize(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    Preconditions.checkArgument(
+        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+    // Batch OPA evaluation remains sequential for backward compatibility until OPA adopts a
+    // batch-native payload schema for both homogeneous and heterogeneous request sets.
+    return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
   }
 
   /**

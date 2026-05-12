@@ -25,6 +25,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -200,6 +201,128 @@ public class PolarisAuthorizerImplTest {
             eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
             eq(List.of(namespaceWrapper)),
             eq(null));
+  }
+
+  @Test
+  void authorizeBatchEvaluatesHomogeneousRequestsSequentially() {
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper firstCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisResolvedPathWrapper secondCatalogWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedTopLevelEntity("catalog1", PolarisEntityType.CATALOG))
+        .thenReturn(firstCatalogWrapper);
+    when(manifest.getResolvedTopLevelEntity("catalog2", PolarisEntityType.CATALOG))
+        .thenReturn(secondCatalogWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            eq(PolarisAuthorizableOperation.GET_CATALOG),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationDecision decision =
+        authorizer.authorize(
+            authzState,
+            principal,
+            List.of(
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog1"))),
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog2")))));
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(authorizer, times(1))
+        .authorizeOrThrow(
+            eq(principal),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.GET_CATALOG),
+            eq(List.of(firstCatalogWrapper)),
+            eq(null));
+    verify(authorizer, times(1))
+        .authorizeOrThrow(
+            eq(principal),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.GET_CATALOG),
+            eq(List.of(secondCatalogWrapper)),
+            eq(null));
+  }
+
+  @Test
+  void authorizeBatchFallsBackToSequentialEvaluationForMixedOperations() {
+    PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
+    AuthorizationState authzState = new AuthorizationState();
+    PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
+    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+
+    authzState.setResolutionManifest(manifest);
+    when(manifest.getResolvedTopLevelEntity("catalog", PolarisEntityType.CATALOG))
+        .thenReturn(catalogWrapper);
+    when(manifest.getResolvedPath(
+            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
+        .thenReturn(namespaceWrapper);
+    when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
+    doNothing()
+        .when(authorizer)
+        .authorizeOrThrow(
+            any(PolarisPrincipal.class),
+            ArgumentMatchers.any(),
+            any(PolarisAuthorizableOperation.class),
+            ArgumentMatchers.any(),
+            ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
+
+    AuthorizationDecision decision =
+        authorizer.authorize(
+            authzState,
+            principal,
+            List.of(
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.LIST_NAMESPACES,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+
+    assertThat(decision.isAllowed()).isTrue();
+    verify(authorizer, times(1))
+        .authorizeOrThrow(
+            eq(principal),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.GET_CATALOG),
+            eq(List.of(catalogWrapper)),
+            eq(null));
+    verify(authorizer, times(1))
+        .authorizeOrThrow(
+            eq(principal),
+            eq(Set.of()),
+            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
+            eq(List.of(namespaceWrapper)),
+            eq(null));
+  }
+
+  @Test
+  void authorizeBatchThrowsWhenEmpty() {
+    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(mock(RealmConfig.class));
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(mock(PolarisResolutionManifest.class));
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> authorizer.authorize(authzState, principal, List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must contain at least one request");
   }
 
   @Test

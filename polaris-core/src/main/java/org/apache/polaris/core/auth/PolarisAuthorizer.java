@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -43,16 +44,52 @@ public interface PolarisAuthorizer {
       @Nonnull AuthorizationRequest request);
 
   /**
+   * Resolve authorizer-specific inputs for a batch of authorization requests that share one
+   * principal.
+   *
+   * <p>Implementations must define their own batch pre-resolution behavior explicitly because
+   * merged manifest registration is authorizer-specific.
+   */
+  void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests);
+
+  /**
    * Core authorization entry point for the new SPI.
    *
    * <p>Implementations should rely on any required state in {@link AuthorizationState} and the
-   * intent captured by {@link AuthorizationRequest} (principal, operation, and target securables).
+   * intent captured by {@link AuthorizationRequest} (operation and target securables), together
+   * with the explicit {@link PolarisPrincipal} argument.
    */
   @Nonnull
   AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState,
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull AuthorizationRequest request);
+
+  /**
+   * Core authorization entry point for a batch of requests that share one principal.
+   *
+   * <p>The default behavior preserves semantics by evaluating requests independently in order and
+   * returning the first denial. Implementations may override this to batch homogeneous requests
+   * into a single downstream authorization call.
+   */
+  @Nonnull
+  default AuthorizationDecision authorize(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    Preconditions.checkArgument(
+        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+    for (AuthorizationRequest request : requests) {
+      AuthorizationDecision decision = authorize(authzState, polarisPrincipal, request);
+      if (!decision.isAllowed()) {
+        return decision;
+      }
+    }
+    return AuthorizationDecision.allow();
+  }
 
   /**
    * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
@@ -64,6 +101,23 @@ public interface PolarisAuthorizer {
       @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull AuthorizationRequest request) {
     AuthorizationDecision decision = authorize(authzState, polarisPrincipal, request);
+    if (!decision.isAllowed()) {
+      String message = decision.getMessage().orElse("Authorization denied");
+      throw new ForbiddenException("%s", message);
+    }
+  }
+
+  /**
+   * Convenience method that throws when any request in the batch is denied.
+   *
+   * <p>The default behavior delegates to {@link #authorize(AuthorizationState, PolarisPrincipal,
+   * List)}.
+   */
+  default void authorizeOrThrow(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    AuthorizationDecision decision = authorize(authzState, polarisPrincipal, requests);
     if (!decision.isAllowed()) {
       String message = decision.getMessage().orElse("Authorization denied");
       throw new ForbiddenException("%s", message);

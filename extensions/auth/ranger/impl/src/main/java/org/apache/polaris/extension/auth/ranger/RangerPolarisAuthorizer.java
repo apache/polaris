@@ -89,6 +89,15 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    throw new UnsupportedOperationException(
+        "Batch resolveAuthorizationInputs is not implemented yet");
+  }
+
+  @Override
   public @Nonnull AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState,
       @Nonnull PolarisPrincipal polarisPrincipal,

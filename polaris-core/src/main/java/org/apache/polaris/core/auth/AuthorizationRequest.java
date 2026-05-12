@@ -48,7 +48,8 @@ public sealed interface AuthorizationRequest
       @Nullable PolarisSecurable target,
       @Nullable PolarisSecurable secondary) {
     if (target == null && secondary == null) {
-      return new UntargetedAuthorizationRequest(operation);
+      throw new IllegalStateException(
+          "Targeted AuthorizationRequest must contain a target or secondary");
     }
     if (target != null && secondary == null) {
       return new SingleTargetAuthorizationRequest(operation, target);
@@ -71,7 +72,7 @@ public sealed interface AuthorizationRequest
   /**
    * Returns a stable debug string for authorization messages.
    *
-   * <p>Includes the operation, principal name, formatted targets, and formatted secondaries.
+   * <p>Includes the operation, formatted targets, and formatted secondaries.
    */
   @Nonnull
   default String formatForAuthorizationMessage() {

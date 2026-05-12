@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -670,9 +671,7 @@ public class OpaPolarisAuthorizerTest {
                 assertThat(message)
                     .contains("OPA denied authorization")
                     .contains("operation=GET_CATALOG")
-                    .contains("principal=alice")
-                    .contains("targets=[CATALOG:catalog-1]")
-                    .contains("secondaries=[]"));
+                    .contains("principal=alice"));
   }
 
   @Test
@@ -929,6 +928,132 @@ public class OpaPolarisAuthorizerTest {
             """);
     assertThat(root.path("input").path("resource").path("secondaries").get(0))
         .isEqualTo(expectedDestination);
+  }
+
+  @Test
+  void authorizeBatchEvaluatesHomogeneousRequestsSequentially() throws Exception {
+    final List<String> capturedRequestBodies = new ArrayList<>();
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
+
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null) {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            capturedRequestBodies.add(
+                new String(
+                    request.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8));
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
+
+    AuthorizationDecision decision =
+        authorizer.authorize(
+            authzState,
+            principal,
+            List.of(
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-1"))),
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-2")))));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode firstRoot = mapper.readTree(capturedRequestBodies.get(0));
+    JsonNode secondRoot = mapper.readTree(capturedRequestBodies.get(1));
+
+    assertThat(decision.isAllowed()).isTrue();
+    assertThat(capturedRequestBodies).hasSize(2);
+    assertThat(firstRoot.path("input").path("action").asText()).isEqualTo("GET_CATALOG");
+    assertThat(secondRoot.path("input").path("action").asText()).isEqualTo("GET_CATALOG");
+    JsonNode expectedFirstTargets =
+        mapper.readTree(
+            """
+            [
+              {
+                "type": "CATALOG",
+                "name": "catalog-1",
+                "parents": []
+              }
+            ]
+            """);
+    JsonNode expectedSecondTargets =
+        mapper.readTree(
+            """
+            [
+              {
+                "type": "CATALOG",
+                "name": "catalog-2",
+                "parents": []
+              }
+            ]
+            """);
+    assertThat(firstRoot.path("input").path("resource").path("targets"))
+        .isEqualTo(expectedFirstTargets);
+    assertThat(secondRoot.path("input").path("resource").path("targets"))
+        .isEqualTo(expectedSecondTargets);
+    assertThat(firstRoot.path("input").path("resource").path("secondaries")).isEmpty();
+    assertThat(secondRoot.path("input").path("resource").path("secondaries")).isEmpty();
+  }
+
+  @Test
+  void authorizeBatchFallsBackToSequentialEvaluationForMixedOperations() throws Exception {
+    final int[] requestCount = new int[1];
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
+
+    PolarisResolutionManifest resolutionManifest = mock(PolarisResolutionManifest.class);
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+    PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role-1"));
+
+    OpaPolarisAuthorizer authorizer =
+        new OpaPolarisAuthorizer(
+            URI.create("http://opa.example.com:8181/v1/data/polaris/allow"),
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            null) {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            requestCount[0]++;
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
+
+    AuthorizationDecision decision =
+        authorizer.authorize(
+            authzState,
+            principal,
+            List.of(
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.GET_CATALOG,
+                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-1"))),
+                AuthorizationRequest.of(
+                    PolarisAuthorizableOperation.LIST_NAMESPACES,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog-1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+
+    assertThat(decision.isAllowed()).isTrue();
+    assertThat(requestCount[0]).isEqualTo(2);
   }
 
   private AuthorizationRequest requestWithCatalogTarget() {

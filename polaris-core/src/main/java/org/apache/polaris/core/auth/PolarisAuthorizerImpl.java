@@ -757,6 +757,16 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   @Override
+  public void resolveAuthorizationInputs(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    Preconditions.checkArgument(
+        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+    authzState.getResolutionManifest().resolveAll();
+  }
+
+  @Override
   @Nonnull
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState,
@@ -798,6 +808,19 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           e);
       return AuthorizationDecision.deny(e.getMessage());
     }
+  }
+
+  @Override
+  @Nonnull
+  public AuthorizationDecision authorize(
+      @Nonnull AuthorizationState authzState,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull List<AuthorizationRequest> requests) {
+    Preconditions.checkArgument(
+        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+    // RBAC has no external batch payload contract to preserve, so batch authorization remains a
+    // sequential evaluation of single-request checks.
+    return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
   }
 
   private List<PolarisResolvedPathWrapper> getResolvedSecurables(
