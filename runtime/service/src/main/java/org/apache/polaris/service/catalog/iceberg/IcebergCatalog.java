@@ -1186,6 +1186,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    validateNoLocationOverlapViaResolver(location, name, parentPath);
+  }
+
+  private void validateNoLocationOverlapViaResolver(
+      String location, String name, List<PolarisEntity> parentPath) {
+    Long timeoutMillis = realmConfig.getConfig(FeatureConfiguration.SIBLING_TIMEOUT_MILLIS);
+    Tasks.foreach(1)
+        .retry(Integer.MAX_VALUE)
+        .exponentialBackoff(10, 10, timeoutMillis, .0)
+        .throwFailureWhenFinished()
+        .shouldRetryTest(ex -> ex instanceof UnableToCheckSiblingLocationsException)
+        .run(x -> tryValidateNoLocationOverlapViaResolver(location, name, parentPath));
+  }
+
+  private void tryValidateNoLocationOverlapViaResolver(
+      String location, String name, List<PolarisEntity> parentPath) {
     // if the entity path has more than just the catalog, check for tables as well as other
     // namespaces
     Optional<NamespaceEntity> parentNamespace =
@@ -1264,12 +1280,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE)));
     ResolverStatus status = resolutionManifest.resolveAll();
     if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      String message =
-          "Unable to resolve sibling entities to validate location - " + status.getStatus();
-      if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
-        message += ". Could not resolve entity: " + status.getFailedToResolvedEntityName();
-      }
-      throw new IllegalStateException(message);
+      throw new UnableToCheckSiblingLocationsException(status);
     }
 
     StorageLocation targetLocation = StorageLocation.of(location);
@@ -2724,5 +2735,38 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private int getMaxMetadataRefreshRetries() {
     return realmConfig.getConfig(FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
+  }
+
+  /**
+   * Sub-classing {@link CommitFailedException} to cause Conflict (409) errors at the REST API level
+   * if this exceptio escaped, instead of Server Error (500).
+   */
+  @VisibleForTesting
+  static class UnableToCheckSiblingLocationsException extends CommitFailedException {
+
+    private final ResolverStatus status;
+
+    UnableToCheckSiblingLocationsException(ResolverStatus status) {
+      super("");
+      this.status = status;
+    }
+
+    @Override
+    public String getMessage() {
+      String message =
+          "Unable to resolve sibling entities to validate location - " + status.getStatus();
+      if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
+        message += ". Could not resolve entity: " + status.getFailedToResolvedEntityName();
+      }
+
+      if (status.getStatus().equals(ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED)) {
+        ResolverPath path = status.getFailedToResolvePath();
+        if (path != null) {
+          message += ". path: " + String.join(".", path.entityNames());
+          message += ", failed index: " + status.getFailedToResolvedEntityIndex();
+        }
+      }
+      return message;
+    }
   }
 }
