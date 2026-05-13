@@ -52,6 +52,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
+  final Map<String, IdempotencyPersistence> idempotencyPersistenceMap = new HashMap<>();
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
@@ -159,6 +160,13 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
     checkPolarisServiceBootstrappedForRealm(realmContext);
     return sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+  }
+
+  @Override
+  public synchronized IdempotencyPersistence getOrCreateIdempotencyPersistence(
+      RealmContext realmContext) {
+    return idempotencyPersistenceMap.computeIfAbsent(
+        realmContext.getRealmIdentifier(), k -> new InMemoryIdempotencyPersistence());
   }
 
   @Override

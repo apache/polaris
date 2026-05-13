@@ -34,6 +34,14 @@ public interface MetaStoreManagerFactory {
 
   BasePersistence getOrCreateSession(RealmContext realmContext);
 
+  /**
+   * Returns the per-realm {@link IdempotencyPersistence}. Implementations are free to back this
+   * with the same storage as {@link #getOrCreateSession(RealmContext)} or with a different one
+   * (e.g. an in-memory store for dev mode). Backends that do not support handler-level idempotency
+   * should throw {@link UnsupportedOperationException}.
+   */
+  IdempotencyPersistence getOrCreateIdempotencyPersistence(RealmContext realmContext);
+
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(

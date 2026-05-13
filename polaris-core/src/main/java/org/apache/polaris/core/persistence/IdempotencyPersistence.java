@@ -27,9 +27,10 @@ import org.apache.polaris.core.entity.IdempotencyRecord;
  * <p>This interface lives at the same layer as {@link BasePersistence}, {@link
  * org.apache.polaris.core.policy.PolicyMappingPersistence}, and {@link
  * org.apache.polaris.core.persistence.metrics.MetricsPersistence}: a backend that wants to support
- * handler-level idempotency implements these methods on its existing persistence class. {@link
- * BasePersistence} extends this interface so that any code already holding a {@link
- * BasePersistence} can also drive idempotency on backends that support it.
+ * handler-level idempotency implements these methods on its existing persistence class. Callers
+ * obtain it independently from {@link
+ * org.apache.polaris.core.persistence.MetaStoreManagerFactory#getOrCreateIdempotencyPersistence(org.apache.polaris.core.context.RealmContext)},
+ * so an admin is free to back it with a different storage technology than {@link BasePersistence}.
  *
  * <p>An {@link IdempotencyPersistence} is responsible for:
  *

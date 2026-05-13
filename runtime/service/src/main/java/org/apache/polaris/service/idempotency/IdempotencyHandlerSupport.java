@@ -58,10 +58,10 @@ import org.slf4j.LoggerFactory;
  * iteration; if operators need them later they can be added without changing handler-side call
  * shapes.
  *
- * <p>The actual persistence is sourced per-realm from {@link MetaStoreManagerFactory}, since {@link
- * org.apache.polaris.core.persistence.BasePersistence} extends {@link IdempotencyPersistence}: the
- * same per-realm session that handlers already use for catalog data also serves as the idempotency
- * persistence.
+ * <p>The actual persistence is sourced per-realm from {@link
+ * MetaStoreManagerFactory#getOrCreateIdempotencyPersistence(org.apache.polaris.core.context.RealmContext)},
+ * which each backend implements independently of {@link
+ * org.apache.polaris.core.persistence.BasePersistence}.
  *
  * <p>The handler decides what to do on each {@link Outcome}: for {@link Outcome#owned()} it
  * executes the operation and finalizes; for {@link Outcome#duplicate(IdempotencyRecord)} it
@@ -304,15 +304,14 @@ public class IdempotencyHandlerSupport {
 
   /**
    * Resolves the per-realm {@link IdempotencyPersistence}. In production this delegates to {@link
-   * MetaStoreManagerFactory#getOrCreateSession} (whose return type implements {@link
-   * IdempotencyPersistence} via {@link org.apache.polaris.core.persistence.BasePersistence}); in
-   * unit tests it goes through the lookup function passed to {@link #forTesting}.
+   * MetaStoreManagerFactory#getOrCreateIdempotencyPersistence}; in unit tests it goes through the
+   * lookup function passed to {@link #forTesting}.
    */
   IdempotencyPersistence persistenceFor(String realmId) {
     if (testPersistenceLookup != null) {
       return testPersistenceLookup.apply(realmId);
     }
-    return metaStoreManagerFactory.getOrCreateSession(() -> realmId);
+    return metaStoreManagerFactory.getOrCreateIdempotencyPersistence(() -> realmId);
   }
 
   private Outcome validateAndWait(

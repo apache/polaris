@@ -43,6 +43,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -134,6 +135,12 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
     return newPersistenceMetaStore(initializedRealmPersistence(realmContext.getRealmIdentifier()));
+  }
+
+  @Override
+  public IdempotencyPersistence getOrCreateIdempotencyPersistence(RealmContext realmContext) {
+    throw new UnsupportedOperationException(
+        "NoSQL backend does not currently implement IdempotencyPersistence");
   }
 
   @Override

@@ -44,6 +44,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
@@ -117,7 +118,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   /** Creates a new stateless {@link JdbcBasePersistenceImpl} for the given realm. */
-  private BasePersistence createSession(
+  private JdbcBasePersistenceImpl createSession(
       String realmId, @Nullable RootCredentialsSet rootCredentialsSet, boolean fallbackOnDne) {
     int schemaVersion = getOrLoadSchemaVersion(realmId, fallbackOnDne);
     return new JdbcBasePersistenceImpl(
@@ -233,6 +234,15 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public BasePersistence getOrCreateSession(RealmContext realmContext) {
+    return getOrCreateJdbcPersistence(realmContext);
+  }
+
+  @Override
+  public IdempotencyPersistence getOrCreateIdempotencyPersistence(RealmContext realmContext) {
+    return getOrCreateJdbcPersistence(realmContext);
+  }
+
+  private JdbcBasePersistenceImpl getOrCreateJdbcPersistence(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     RealmConfig realmConfig = new RealmConfigImpl(realmConfigurationSource, realmContext);
     boolean fallbackOnDne =

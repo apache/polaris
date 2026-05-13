@@ -59,6 +59,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.IdempotencyPersistence;
 import org.apache.polaris.core.persistence.IdempotencyPersistenceException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -90,7 +91,8 @@ import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
+public class JdbcBasePersistenceImpl
+    implements BasePersistence, IntegrationPersistence, IdempotencyPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 

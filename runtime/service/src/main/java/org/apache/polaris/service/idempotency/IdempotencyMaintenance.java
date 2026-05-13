@@ -108,13 +108,13 @@ public class IdempotencyMaintenance {
     for (String realm : realmContextConfiguration.realms()) {
       try {
         IdempotencyPersistence persistence =
-            metaStoreManagerFactory.getOrCreateSession(() -> realm);
+            metaStoreManagerFactory.getOrCreateIdempotencyPersistence(() -> realm);
         int purged = persistence.purgeExpired(realm, cutoff);
         if (purged > 0) {
           LOGGER.debug("Purged {} expired idempotency records for realm {}", purged, realm);
         }
       } catch (UnsupportedOperationException e) {
-        // Backend (e.g. in-memory dev mode) does not support idempotency persistence; skip.
+        // Backend does not support idempotency persistence; skip.
         LOGGER.debug(
             "Skipping idempotency purge for realm {}: backend does not support idempotency", realm);
       } catch (Exception e) {
