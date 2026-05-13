@@ -43,12 +43,15 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
+import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
@@ -133,6 +136,25 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public BasePersistence getOrCreateBasePersistence(RealmContext realmContext) {
+    return newNoSqlMetaStore(realmContext);
+  }
+
+  @Override
+  public PolicyMappingPersistence getOrCreatePolicyMappingPersistence(RealmContext realmContext) {
+    return newNoSqlMetaStore(realmContext);
+  }
+
+  @Override
+  public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
+    return newNoSqlMetaStore(realmContext);
+  }
+
+  @Override
+  public IntegrationPersistence getOrCreateIntegrationPersistence(RealmContext realmContext) {
+    return newNoSqlMetaStore(realmContext);
+  }
+
+  private NoSqlMetaStore newNoSqlMetaStore(RealmContext realmContext) {
     return newPersistenceMetaStore(initializedRealmPersistence(realmContext.getRealmIdentifier()));
   }
 

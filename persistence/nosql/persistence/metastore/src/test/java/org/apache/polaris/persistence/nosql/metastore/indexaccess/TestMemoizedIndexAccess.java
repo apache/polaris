@@ -92,7 +92,12 @@ public class TestMemoizedIndexAccess {
     var realmContext = (RealmContext) () -> realmId;
     callContext =
         new PolarisCallContext(
-            realmContext, metaStoreManagerFactory.getOrCreateBasePersistence(realmContext));
+            realmContext,
+            metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
+            metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+            metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
+            org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
     memoized = MemoizedIndexedAccess.newMemoizedIndexedAccess(persistence);

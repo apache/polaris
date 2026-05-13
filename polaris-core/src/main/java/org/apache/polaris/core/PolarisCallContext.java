@@ -32,86 +32,94 @@ import org.jspecify.annotations.NonNull;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
- * low-level services required to process that request
+ * low-level services required to process that request.
+ *
+ * <p>Each modular persistence SPI is carried as a separately typed reference. Backends are free to
+ * back them with the same underlying instance (JDBC, NoSQL, and the in-memory TreeMap impl all do
+ * so today) or with distinct instances, but the SPIs are not coupled by inheritance at this layer.
  */
 public class PolarisCallContext implements CallContext {
 
-  // base persistence used to persist Polaris entity metadata. Concrete backends typically also
-  // implement other modular SPIs ({@link PolicyMappingPersistence}, {@link MetricsPersistence},
-  // {@link IntegrationPersistence}); the typed accessors below resolve those views from the same
-  // underlying instance.
   private final BasePersistence basePersistence;
+  private final PolicyMappingPersistence policyMappingPersistence;
+  private final MetricsPersistence metricsPersistence;
+  private final IntegrationPersistence integrationPersistence;
   private final RealmConfigurationSource configurationSource;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
 
-  /**
-   * @deprecated Use {@link PolarisCallContext#PolarisCallContext(RealmContext, BasePersistence,
-   *     RealmConfigurationSource)}.
-   */
-  @SuppressWarnings("removal")
-  @Deprecated(forRemoval = true)
+  /** Primary constructor — each modular persistence SPI is supplied separately. */
   public PolarisCallContext(
       @NonNull RealmContext realmContext,
       @NonNull BasePersistence basePersistence,
-      @NonNull PolarisConfigurationStore configurationStore) {
-    this(realmContext, basePersistence, configurationStore::getConfiguration);
-  }
-
-  public PolarisCallContext(
-      @NonNull RealmContext realmContext,
-      @NonNull BasePersistence basePersistence,
+      @NonNull PolicyMappingPersistence policyMappingPersistence,
+      @NonNull MetricsPersistence metricsPersistence,
+      @NonNull IntegrationPersistence integrationPersistence,
       @NonNull RealmConfigurationSource configurationSource) {
     this.realmContext = realmContext;
     this.basePersistence = basePersistence;
+    this.policyMappingPersistence = policyMappingPersistence;
+    this.metricsPersistence = metricsPersistence;
+    this.integrationPersistence = integrationPersistence;
     this.configurationSource = configurationSource;
     this.realmConfig = new RealmConfigImpl(this.configurationSource, this.realmContext);
   }
 
-  public PolarisCallContext(
-      @NonNull RealmContext realmContext, @NonNull BasePersistence basePersistence) {
-    this(realmContext, basePersistence, RealmConfigurationSource.EMPTY_CONFIG);
+  /**
+   * Convenience constructor for backends whose concrete persistence type satisfies all four SPIs
+   * (the common in-tree case). The generic bounds enforce the relationship at compile time, so no
+   * runtime cast is involved.
+   */
+  public <
+          P extends
+              BasePersistence & PolicyMappingPersistence & MetricsPersistence
+                  & IntegrationPersistence>
+      PolarisCallContext(
+          @NonNull RealmContext realmContext,
+          @NonNull P persistence,
+          @NonNull RealmConfigurationSource configurationSource) {
+    this(realmContext, persistence, persistence, persistence, persistence, configurationSource);
+  }
+
+  /** Convenience constructor that defaults to {@link RealmConfigurationSource#EMPTY_CONFIG}. */
+  public <
+          P extends
+              BasePersistence & PolicyMappingPersistence & MetricsPersistence
+                  & IntegrationPersistence>
+      PolarisCallContext(@NonNull RealmContext realmContext, @NonNull P persistence) {
+    this(realmContext, persistence, RealmConfigurationSource.EMPTY_CONFIG);
+  }
+
+  /**
+   * @deprecated Use a {@link RealmConfigurationSource}-based constructor instead.
+   */
+  @SuppressWarnings("removal")
+  @Deprecated(forRemoval = true)
+  public <
+          P extends
+              BasePersistence & PolicyMappingPersistence & MetricsPersistence
+                  & IntegrationPersistence>
+      PolarisCallContext(
+          @NonNull RealmContext realmContext,
+          @NonNull P persistence,
+          @NonNull PolarisConfigurationStore configurationStore) {
+    this(realmContext, persistence, configurationStore::getConfiguration);
   }
 
   public BasePersistence getBasePersistence() {
     return basePersistence;
   }
 
-  /**
-   * Returns the {@link PolicyMappingPersistence} view of the per-realm persistence. Throws {@link
-   * UnsupportedOperationException} if the backend does not implement {@link
-   * PolicyMappingPersistence}.
-   */
   public PolicyMappingPersistence getPolicyMappingPersistence() {
-    return castPersistence(PolicyMappingPersistence.class);
+    return policyMappingPersistence;
   }
 
-  /**
-   * Returns the {@link MetricsPersistence} view of the per-realm persistence. Throws {@link
-   * UnsupportedOperationException} if the backend does not implement {@link MetricsPersistence}.
-   */
   public MetricsPersistence getMetricsPersistence() {
-    return castPersistence(MetricsPersistence.class);
+    return metricsPersistence;
   }
 
-  /**
-   * Returns the {@link IntegrationPersistence} view of the per-realm persistence. Throws {@link
-   * UnsupportedOperationException} if the backend does not implement {@link
-   * IntegrationPersistence}.
-   */
   public IntegrationPersistence getIntegrationPersistence() {
-    return castPersistence(IntegrationPersistence.class);
-  }
-
-  private <T> T castPersistence(Class<T> type) {
-    if (type.isInstance(basePersistence)) {
-      return type.cast(basePersistence);
-    }
-    throw new UnsupportedOperationException(
-        "Persistence backend "
-            + basePersistence.getClass().getName()
-            + " does not implement "
-            + type.getName());
+    return integrationPersistence;
   }
 
   @Override
@@ -138,6 +146,12 @@ public class PolarisCallContext implements CallContext {
     // copy of the RealmContext to ensure the access during the task executor.
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    return new PolarisCallContext(realmContext, this.basePersistence, this.configurationSource);
+    return new PolarisCallContext(
+        realmContext,
+        this.basePersistence,
+        this.policyMappingPersistence,
+        this.metricsPersistence,
+        this.integrationPersistence,
+        this.configurationSource);
   }
 }

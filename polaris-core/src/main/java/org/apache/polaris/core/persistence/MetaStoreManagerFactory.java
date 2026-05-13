@@ -34,51 +34,17 @@ public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  /**
-   * Returns the per-realm {@link BasePersistence}. Backends implement this on the same concrete
-   * class as the other modular persistences (such as {@link PolicyMappingPersistence}, {@link
-   * MetricsPersistence}, and {@link IntegrationPersistence}); the corresponding typed accessors
-   * below default to casting that same instance.
-   */
+  /** Returns the per-realm {@link BasePersistence}. */
   BasePersistence getOrCreateBasePersistence(RealmContext realmContext);
 
-  /**
-   * Returns the per-realm {@link PolicyMappingPersistence}. The default implementation returns the
-   * same instance produced by {@link #getOrCreateBasePersistence(RealmContext)} when it also
-   * implements {@link PolicyMappingPersistence}.
-   */
-  default PolicyMappingPersistence getOrCreatePolicyMappingPersistence(RealmContext realmContext) {
-    return cast(getOrCreateBasePersistence(realmContext), PolicyMappingPersistence.class);
-  }
+  /** Returns the per-realm {@link PolicyMappingPersistence}. */
+  PolicyMappingPersistence getOrCreatePolicyMappingPersistence(RealmContext realmContext);
 
-  /**
-   * Returns the per-realm {@link MetricsPersistence}. The default implementation returns the same
-   * instance produced by {@link #getOrCreateBasePersistence(RealmContext)} when it also implements
-   * {@link MetricsPersistence}.
-   */
-  default MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return cast(getOrCreateBasePersistence(realmContext), MetricsPersistence.class);
-  }
+  /** Returns the per-realm {@link MetricsPersistence}. */
+  MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext);
 
-  /**
-   * Returns the per-realm {@link IntegrationPersistence}. The default implementation returns the
-   * same instance produced by {@link #getOrCreateBasePersistence(RealmContext)} when it also
-   * implements {@link IntegrationPersistence}.
-   */
-  default IntegrationPersistence getOrCreateIntegrationPersistence(RealmContext realmContext) {
-    return cast(getOrCreateBasePersistence(realmContext), IntegrationPersistence.class);
-  }
-
-  private static <T> T cast(BasePersistence base, Class<T> type) {
-    if (type.isInstance(base)) {
-      return type.cast(base);
-    }
-    throw new UnsupportedOperationException(
-        "Persistence backend "
-            + base.getClass().getName()
-            + " does not implement "
-            + type.getName());
-  }
+  /** Returns the per-realm {@link IntegrationPersistence}. */
+  IntegrationPersistence getOrCreateIntegrationPersistence(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 

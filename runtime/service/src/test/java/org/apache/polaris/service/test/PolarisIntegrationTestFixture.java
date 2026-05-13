@@ -37,7 +37,6 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.auth.internal.broker.TokenUtils;
@@ -104,10 +103,14 @@ public class PolarisIntegrationTestFixture {
             .toCompletableFuture()
             .join();
 
-    BasePersistence metaStoreSession =
-        helper.metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
     PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStoreSession, helper.configurationSource);
+        new PolarisCallContext(
+            realmContext,
+            helper.metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
+            helper.metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+            helper.metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+            helper.metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
+            helper.configurationSource);
     PolarisMetaStoreManager metaStoreManager =
         helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

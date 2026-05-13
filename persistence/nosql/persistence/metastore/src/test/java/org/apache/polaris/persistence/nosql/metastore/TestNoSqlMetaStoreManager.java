@@ -93,9 +93,15 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     metaStoreManagerFactory.bootstrapRealms(List.of(realmId), RootCredentialsSet.fromEnvironment());
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    var session = metaStoreManagerFactory.getOrCreateBasePersistence(realmContext);
 
-    var callCtx = new PolarisCallContext(realmContext, session, configurationSource);
+    var callCtx =
+        new PolarisCallContext(
+            realmContext,
+            metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
+            metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
+            metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
+            configurationSource);
 
     return new PolarisTestMetaStoreManager(manager, callCtx, startTime, false);
   }
