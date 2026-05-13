@@ -162,7 +162,6 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
                   throw new AlreadyExistsException(
                       String.format("Client ID already in use: %s", clientId));
                 }
-                ;
               });
 
       state.writeOrReplace("principal", updatedPrincipal);
