@@ -65,6 +65,9 @@ import org.slf4j.LoggerFactory;
 class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(NoSqlMetaStoreManagerFactory.class);
 
+  // Stateless no-op; reused for every realm since NoSQL does not implement metrics persistence.
+  private static final MetricsPersistence NO_OP_METRICS_PERSISTENCE = new MetricsPersistence() {};
+
   private final Map<String, Persistence> realmPersistenceMap = new ConcurrentHashMap<>();
   private final RealmManagement realmManagement;
   private final RealmPersistenceFactory realmPersistenceFactory;
@@ -141,7 +144,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
     // NoSQL backend does not implement metrics persistence.
-    return new MetricsPersistence() {};
+    return NO_OP_METRICS_PERSISTENCE;
   }
 
   @Override
@@ -283,7 +286,7 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
         new PolarisCallContext(
             () -> realmId,
             metaStore,
-            new MetricsPersistence() {},
+            NO_OP_METRICS_PERSISTENCE,
             RealmConfigurationSource.EMPTY_CONFIG);
     var secretsResult = createPolarisPrincipalForRealm(metaStoreManager, ctx);
 
