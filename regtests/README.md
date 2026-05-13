@@ -110,7 +110,7 @@ Create a .env file that contains the following variables:
 
 ```
 # AWS variables
-AWS_TEST_ENABLED=true
+S3_TEST_BACKEND=aws
 AWS_ACCESS_KEY_ID=<your_access_key>
 AWS_SECRET_ACCESS_KEY=<your_secret_key>
 AWS_STORAGE_BUCKET=<your_s3_bucket>

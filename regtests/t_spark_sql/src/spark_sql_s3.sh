@@ -19,16 +19,16 @@
 # under the License.
 #
 
-# Run if real AWS is enabled or if a local s3-compatible backend is enabled
-if [[ "$AWS_TEST_ENABLED" != "true" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
-  echo "AWS and local S3 tests not enabled. Skipping test."
+# Run if any S3-compatible backend is configured
+if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
+  echo "S3 backend not configured. Skipping test."
   exit 0
 fi
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 # Detect base location and storage configuration
-if [[ "${AWS_TEST_ENABLED}" == "true" ]]; then
+if [[ "${S3_TEST_BACKEND}" == "aws" ]]; then
   BASE_LOCATION="${AWS_TEST_BASE}"
   STORAGE_CONF="{\"storageType\": \"S3\", \"allowedLocations\": [\"${AWS_TEST_BASE}/polaris_test/\"], \"roleArn\": \"${AWS_ROLE_ARN}\"}"
 else

@@ -67,15 +67,8 @@ NUM_SUCCESSES=0
 
 # Determine test mode (default to MinIO for local S3)
 if [ -z "${S3_TEST_BACKEND}" ]; then
-  # Use MinIO as the default local backend if AWS tests are not enabled
-  if [ "${AWS_TEST_ENABLED}" == "true" ]; then
-    export S3_TEST_BACKEND=aws
-    loginfo "AWS tests enabled, using AWS mode"
-  else
-    export S3_TEST_BACKEND=minio
-    export AWS_TEST_ENABLED=false
-    loginfo "AWS tests not enabled, defaulting to MinIO mode"
-  fi
+  export S3_TEST_BACKEND=minio
+  loginfo "S3_TEST_BACKEND not set, defaulting to minio"
 fi
 
 # Run S3 backend setup if not in real AWS mode
@@ -171,10 +164,9 @@ for TEST_FILE in ${TEST_LIST}; do
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
-      # Run if real AWS is enabled or if a local s3-compatible backend is enabled
-      if [[ "$AWS_TEST_ENABLED" != "true" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
-          loginfo "AWS tests not enabled, skip running test ${TEST_FILE}"
-          continue
+      # Run if any S3-compatible backend is configured
+      if [[ "${S3_TEST_BACKEND}" != "aws" ]] && [[ "${S3_TEST_BACKEND}" != "minio" ]] && [[ "${S3_TEST_BACKEND}" != "rustfs" ]] ; then
+          loginfo "S3 backend not configured, skip running test ${TEST_FILE}"
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.gcp.sh ]]; then
