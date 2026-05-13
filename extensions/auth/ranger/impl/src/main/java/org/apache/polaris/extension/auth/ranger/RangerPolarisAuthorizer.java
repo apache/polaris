@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationPreConditions;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -35,7 +36,6 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.extension.auth.ranger.utils.RangerUtils;
 import org.apache.ranger.authz.api.RangerAuthzException;
@@ -136,14 +136,8 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     try {
-      if (enforceCredentialRotationRequiredState
-          && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
-          && polarisPrincipal
-              .getProperties()
-              .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
-        throw new ForbiddenException(
-            OPERATION_NOT_ALLOWED_FOR_USER_ERROR, polarisPrincipal.getName(), authzOp.name());
-      }
+      AuthorizationPreConditions.checkCredentialRotationRequired(
+          polarisPrincipal, authzOp, enforceCredentialRotationRequiredState);
 
       if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
         throw new ForbiddenException(
