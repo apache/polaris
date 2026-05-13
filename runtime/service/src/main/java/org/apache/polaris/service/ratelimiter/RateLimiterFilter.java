@@ -82,7 +82,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
               .entity(
                   ErrorResponse.builder()
                       .responseCode(Response.Status.TOO_MANY_REQUESTS.getStatusCode())
-                      .withType("RateLimitExceededException")
+                      .withType("TooManyRequestsException")
                       .withMessage("Rate exceeded")
                       .build())
               .build());

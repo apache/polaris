@@ -160,7 +160,7 @@ public class RateLimiterFilterTest {
       String body = response.readEntity(String.class);
       ErrorResponse parsed = ErrorResponseParser.fromJson(body);
       assertThat(parsed.code()).isEqualTo(Status.TOO_MANY_REQUESTS.getStatusCode());
-      assertThat(parsed.type()).isEqualTo("RateLimitExceededException");
+      assertThat(parsed.type()).isEqualTo("TooManyRequestsException");
       assertThat(parsed.message()).contains("Rate exceeded");
     }
   }
