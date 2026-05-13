@@ -465,8 +465,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    request.validate();
-
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
@@ -508,8 +506,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private TableMetadata stageTableCreateHelper(Namespace namespace, CreateTableRequest request) {
-    request.validate();
-
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(ident)) {
       throw alreadyExistsExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);

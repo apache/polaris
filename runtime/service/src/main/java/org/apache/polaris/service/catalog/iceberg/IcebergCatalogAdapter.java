@@ -232,6 +232,7 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    updateNamespacePropertiesRequest.validate();
     validateIcebergProperties(realmConfig, updateNamespacePropertiesRequest.updates());
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
@@ -264,6 +265,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    createTableRequest.validate();
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
@@ -413,6 +415,7 @@ public class IcebergCatalogAdapter
       RegisterTableRequest registerTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    registerTableRequest.validate();
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerTableRequest.name()));
@@ -486,6 +489,7 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    createViewRequest.validate();
     validateIcebergProperties(realmConfig, createViewRequest.properties());
 
     CreateViewRequest revisedRequest =
