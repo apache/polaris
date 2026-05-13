@@ -973,11 +973,10 @@ public class OpaPolarisAuthorizerTest {
                     PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-2")))));
 
     ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode firstRoot = mapper.readTree(capturedRequestBodies.get(0));
-    JsonNode secondRoot = mapper.readTree(capturedRequestBodies.get(1));
-
     assertThat(decision.isAllowed()).isTrue();
     assertThat(capturedRequestBodies).hasSize(2);
+    JsonNode firstRoot = mapper.readTree(capturedRequestBodies.get(0));
+    JsonNode secondRoot = mapper.readTree(capturedRequestBodies.get(1));
     assertThat(firstRoot.path("input").path("action").asText()).isEqualTo("GET_CATALOG");
     assertThat(secondRoot.path("input").path("action").asText()).isEqualTo("GET_CATALOG");
     JsonNode expectedFirstTargets =
