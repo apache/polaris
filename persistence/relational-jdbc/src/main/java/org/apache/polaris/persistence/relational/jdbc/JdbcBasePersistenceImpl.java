@@ -65,7 +65,6 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
-import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -86,10 +85,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class JdbcBasePersistenceImpl
-    implements BasePersistence,
-        IntegrationPersistence,
-        MetricsPersistence,
-        PolicyMappingPersistence {
+    implements BasePersistence, IntegrationPersistence, MetricsPersistence {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 

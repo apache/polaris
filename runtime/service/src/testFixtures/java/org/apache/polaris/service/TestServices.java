@@ -226,10 +226,8 @@ public record TestServices(
       CallContext callContext =
           new PolarisCallContext(
               realmContext,
-              metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-              metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+              metaStoreManagerFactory.getOrCreateSession(realmContext),
               metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-              metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
               configurationSource);
       RealmConfig realmConfig = callContext.getRealmConfig();
 
@@ -470,10 +468,8 @@ public record TestServices(
   public PolarisCallContext newCallContext() {
     return new PolarisCallContext(
         realmContext,
-        metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-        metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+        metaStoreManagerFactory.getOrCreateSession(realmContext),
         metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-        metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
         configurationSource);
   }
 }

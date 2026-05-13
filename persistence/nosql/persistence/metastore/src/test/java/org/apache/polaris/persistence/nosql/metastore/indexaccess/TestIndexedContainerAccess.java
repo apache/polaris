@@ -98,11 +98,8 @@ public class TestIndexedContainerAccess {
     callContext =
         new PolarisCallContext(
             realmContext,
-            metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-            metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
-            org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG);
+            metaStoreManagerFactory.getOrCreateSession(realmContext),
+            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext));
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 

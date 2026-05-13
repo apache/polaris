@@ -34,7 +34,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyMappingPersistence;
@@ -54,13 +53,12 @@ import org.jspecify.annotations.Nullable;
  * the underlying data store. The goal is to make it really easy to back this using databases like
  * Postgres or simpler KV store.
  *
- * <p>{@link BasePersistence} is one of several disjoint top-level persistence SPIs. Concrete
- * backends multi-inherit the SPIs they support (for example, a transactional backend implements
- * {@link BasePersistence}, {@link MetricsPersistence}, {@link PolicyMappingPersistence}, and {@link
- * IntegrationPersistence} together). Callers ask for the specific SPI they need rather than relying
- * on {@link BasePersistence} as an aggregator.
+ * <p>Metrics-related persistence is intentionally decoupled and lives in {@code
+ * MetricsPersistence}. A concrete backend may implement both SPIs on the same class, but callers
+ * that only need metrics persistence should depend on {@code MetricsPersistence} directly rather
+ * than on {@link BasePersistence}.
  */
-public interface BasePersistence {
+public interface BasePersistence extends PolicyMappingPersistence {
   /**
    * The returned id must be fully unique within a realm and never reused once generated, whether or
    * not anything ends up committing an entity with the generated id.

@@ -168,7 +168,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   @Override
   public @NonNull GenerateEntityIdResult generateNewEntityId(@NonNull PolarisCallContext callCtx) {
     // get meta store we should be using
-    BasePersistence ms = callCtx.getBasePersistence();
+    BasePersistence ms = callCtx.getMetaStore();
 
     return new GenerateEntityIdResult(ms.generateNewId(callCtx));
   }

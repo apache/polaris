@@ -36,7 +36,6 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
-import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -129,7 +128,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      TransactionalPersistence session = getOrCreateBasePersistence(realmContext);
+      TransactionalPersistence session = getOrCreateSession(realmContext);
 
       PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
       BaseResult result = metaStoreManager.purge(callContext);
@@ -153,8 +152,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public synchronized TransactionalPersistence getOrCreateBasePersistence(
-      RealmContext realmContext) {
+  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       initializeForRealm(realmContext, null);
     }
@@ -163,18 +161,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public PolicyMappingPersistence getOrCreatePolicyMappingPersistence(RealmContext realmContext) {
-    return getOrCreateBasePersistence(realmContext);
-  }
-
-  @Override
   public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return getOrCreateBasePersistence(realmContext);
-  }
-
-  @Override
-  public IntegrationPersistence getOrCreateIntegrationPersistence(RealmContext realmContext) {
-    return getOrCreateBasePersistence(realmContext);
+    return getOrCreateSession(realmContext);
   }
 
   @Override

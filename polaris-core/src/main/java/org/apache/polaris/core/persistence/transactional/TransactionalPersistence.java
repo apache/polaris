@@ -38,7 +38,6 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -54,7 +53,6 @@ public interface TransactionalPersistence
     extends BasePersistence,
         IntegrationPersistence,
         MetricsPersistence,
-        PolicyMappingPersistence,
         TransactionalPolicyMappingPersistence {
 
   /**

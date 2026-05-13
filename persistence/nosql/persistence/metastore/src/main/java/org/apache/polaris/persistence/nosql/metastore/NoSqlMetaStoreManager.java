@@ -88,7 +88,7 @@ record NoSqlMetaStoreManager(
     implements PolarisMetaStoreManager {
 
   NoSqlMetaStore ms(PolarisCallContext callContext) {
-    var existing = callContext.getBasePersistence();
+    var existing = callContext.getMetaStore();
     checkArgument(existing instanceof NoSqlMetaStore, "No meta store found in call context");
     return (NoSqlMetaStore) existing;
   }

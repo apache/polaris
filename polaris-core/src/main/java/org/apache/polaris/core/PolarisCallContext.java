@@ -25,101 +25,91 @@ import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.jspecify.annotations.NonNull;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
  * low-level services required to process that request.
  *
- * <p>Each modular persistence SPI is carried as a separately typed reference. Backends are free to
- * back them with the same underlying instance (JDBC, NoSQL, and the in-memory TreeMap impl all do
- * so today) or with distinct instances, but the SPIs are not coupled by inheritance at this layer.
+ * <p>{@link BasePersistence} continues to carry the bulk of the metastore SPI surface (and still
+ * extends {@code PolicyMappingPersistence} / acts as the {@code IntegrationPersistence} via a
+ * runtime cast for now). {@link MetricsPersistence} is intentionally decoupled and supplied
+ * separately so callers that only need metrics persistence do not have to depend on {@link
+ * BasePersistence}.
  */
 public class PolarisCallContext implements CallContext {
 
-  private final BasePersistence basePersistence;
-  private final PolicyMappingPersistence policyMappingPersistence;
+  // meta store which is used to persist Polaris entity metadata
+  private final BasePersistence metaStore;
   private final MetricsPersistence metricsPersistence;
-  private final IntegrationPersistence integrationPersistence;
   private final RealmConfigurationSource configurationSource;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
 
-  /** Primary constructor — each modular persistence SPI is supplied separately. */
+  /**
+   * @deprecated Use {@link PolarisCallContext#PolarisCallContext(RealmContext, BasePersistence,
+   *     MetricsPersistence, RealmConfigurationSource)}.
+   */
+  @SuppressWarnings("removal")
+  @Deprecated(forRemoval = true)
   public PolarisCallContext(
       @NonNull RealmContext realmContext,
-      @NonNull BasePersistence basePersistence,
-      @NonNull PolicyMappingPersistence policyMappingPersistence,
+      @NonNull BasePersistence metaStore,
+      @NonNull PolarisConfigurationStore configurationStore) {
+    this(
+        realmContext, metaStore, new MetricsPersistence() {}, configurationStore::getConfiguration);
+  }
+
+  /**
+   * Convenience constructor for backends whose {@link BasePersistence} implementation also
+   * implements {@link MetricsPersistence} (the common in-tree case). Callers that need to wire a
+   * distinct metrics implementation should use {@link #PolarisCallContext(RealmContext,
+   * BasePersistence, MetricsPersistence, RealmConfigurationSource)}.
+   */
+  public <P extends BasePersistence & MetricsPersistence> PolarisCallContext(
+      @NonNull RealmContext realmContext,
+      @NonNull P metaStore,
+      @NonNull RealmConfigurationSource configurationSource) {
+    this(realmContext, metaStore, metaStore, configurationSource);
+  }
+
+  /** Primary constructor — {@link MetricsPersistence} is supplied separately from the metastore. */
+  public PolarisCallContext(
+      @NonNull RealmContext realmContext,
+      @NonNull BasePersistence metaStore,
       @NonNull MetricsPersistence metricsPersistence,
-      @NonNull IntegrationPersistence integrationPersistence,
       @NonNull RealmConfigurationSource configurationSource) {
     this.realmContext = realmContext;
-    this.basePersistence = basePersistence;
-    this.policyMappingPersistence = policyMappingPersistence;
+    this.metaStore = metaStore;
     this.metricsPersistence = metricsPersistence;
-    this.integrationPersistence = integrationPersistence;
     this.configurationSource = configurationSource;
     this.realmConfig = new RealmConfigImpl(this.configurationSource, this.realmContext);
   }
 
-  /**
-   * Convenience constructor for backends whose concrete persistence type satisfies all four SPIs
-   * (the common in-tree case). The generic bounds enforce the relationship at compile time, so no
-   * runtime cast is involved.
-   */
-  public <
-          P extends
-              BasePersistence & PolicyMappingPersistence & MetricsPersistence
-                  & IntegrationPersistence>
-      PolarisCallContext(
-          @NonNull RealmContext realmContext,
-          @NonNull P persistence,
-          @NonNull RealmConfigurationSource configurationSource) {
-    this(realmContext, persistence, persistence, persistence, persistence, configurationSource);
-  }
-
   /** Convenience constructor that defaults to {@link RealmConfigurationSource#EMPTY_CONFIG}. */
-  public <
-          P extends
-              BasePersistence & PolicyMappingPersistence & MetricsPersistence
-                  & IntegrationPersistence>
-      PolarisCallContext(@NonNull RealmContext realmContext, @NonNull P persistence) {
-    this(realmContext, persistence, RealmConfigurationSource.EMPTY_CONFIG);
+  public PolarisCallContext(
+      @NonNull RealmContext realmContext,
+      @NonNull BasePersistence metaStore,
+      @NonNull MetricsPersistence metricsPersistence) {
+    this(realmContext, metaStore, metricsPersistence, RealmConfigurationSource.EMPTY_CONFIG);
   }
 
   /**
-   * @deprecated Use a {@link RealmConfigurationSource}-based constructor instead.
+   * Convenience constructor for callers whose persistence type satisfies both SPIs and who do not
+   * have a {@link RealmConfigurationSource}.
    */
-  @SuppressWarnings("removal")
-  @Deprecated(forRemoval = true)
-  public <
-          P extends
-              BasePersistence & PolicyMappingPersistence & MetricsPersistence
-                  & IntegrationPersistence>
-      PolarisCallContext(
-          @NonNull RealmContext realmContext,
-          @NonNull P persistence,
-          @NonNull PolarisConfigurationStore configurationStore) {
-    this(realmContext, persistence, configurationStore::getConfiguration);
+  public <P extends BasePersistence & MetricsPersistence> PolarisCallContext(
+      @NonNull RealmContext realmContext, @NonNull P metaStore) {
+    this(realmContext, metaStore, metaStore, RealmConfigurationSource.EMPTY_CONFIG);
   }
 
-  public BasePersistence getBasePersistence() {
-    return basePersistence;
-  }
-
-  public PolicyMappingPersistence getPolicyMappingPersistence() {
-    return policyMappingPersistence;
+  public BasePersistence getMetaStore() {
+    return metaStore;
   }
 
   public MetricsPersistence getMetricsPersistence() {
     return metricsPersistence;
-  }
-
-  public IntegrationPersistence getIntegrationPersistence() {
-    return integrationPersistence;
   }
 
   @Override
@@ -147,11 +137,6 @@ public class PolarisCallContext implements CallContext {
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
-        realmContext,
-        this.basePersistence,
-        this.policyMappingPersistence,
-        this.metricsPersistence,
-        this.integrationPersistence,
-        this.configurationSource);
+        realmContext, this.metaStore, this.metricsPersistence, this.configurationSource);
   }
 }

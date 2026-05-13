@@ -137,10 +137,8 @@ public class ServiceProducers {
       MetaStoreManagerFactory metaStoreManagerFactory) {
     return new PolarisCallContext(
         realmContext,
-        metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-        metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
+        metaStoreManagerFactory.getOrCreateSession(realmContext),
         metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-        metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
         configurationSource);
   }
 

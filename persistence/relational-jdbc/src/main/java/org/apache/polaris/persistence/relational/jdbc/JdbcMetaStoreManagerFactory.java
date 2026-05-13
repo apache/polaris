@@ -43,7 +43,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
@@ -57,7 +56,6 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
-import org.apache.polaris.core.policy.PolicyMappingPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -135,7 +133,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         schemaVersion);
   }
 
-  private JdbcBasePersistenceImpl getOrCreateJdbcPersistence(RealmContext realmContext) {
+  private JdbcBasePersistenceImpl createJdbcPersistence(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     RealmConfig realmConfig = new RealmConfigImpl(realmConfigurationSource, realmContext);
     boolean fallbackOnDne =
@@ -251,23 +249,13 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public BasePersistence getOrCreateBasePersistence(RealmContext realmContext) {
-    return getOrCreateJdbcPersistence(realmContext);
-  }
-
-  @Override
-  public PolicyMappingPersistence getOrCreatePolicyMappingPersistence(RealmContext realmContext) {
-    return getOrCreateJdbcPersistence(realmContext);
+  public BasePersistence getOrCreateSession(RealmContext realmContext) {
+    return createJdbcPersistence(realmContext);
   }
 
   @Override
   public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return getOrCreateJdbcPersistence(realmContext);
-  }
-
-  @Override
-  public IntegrationPersistence getOrCreateIntegrationPersistence(RealmContext realmContext) {
-    return getOrCreateJdbcPersistence(realmContext);
+    return createJdbcPersistence(realmContext);
   }
 
   @Override

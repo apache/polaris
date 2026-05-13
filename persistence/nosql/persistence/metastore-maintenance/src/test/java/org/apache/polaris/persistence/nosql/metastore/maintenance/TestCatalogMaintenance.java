@@ -568,14 +568,9 @@ public class TestCatalogMaintenance {
     metaStoreManagerFactory.bootstrapRealms(List.of(realmId), RootCredentialsSet.fromEnvironment());
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    var callCtx =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-            metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
-            configurationSource);
+    var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var metrics = metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
+    var callCtx = new PolarisCallContext(realmContext, session, metrics, configurationSource);
     var persistence =
         realmPersistenceFactory.newBuilder().realmId(realmId).skipDecorators().build();
 
@@ -931,14 +926,9 @@ public class TestCatalogMaintenance {
     purgeBackendCache(step);
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    var callCtx =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateBasePersistence(realmContext),
-            metaStoreManagerFactory.getOrCreatePolicyMappingPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext),
-            metaStoreManagerFactory.getOrCreateIntegrationPersistence(realmContext),
-            configurationSource);
+    var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
+    var metrics = metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
+    var callCtx = new PolarisCallContext(realmContext, session, metrics, configurationSource);
 
     for (var e : entities) {
       var result =
