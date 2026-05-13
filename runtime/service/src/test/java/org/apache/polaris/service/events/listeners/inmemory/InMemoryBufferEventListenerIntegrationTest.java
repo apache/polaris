@@ -224,7 +224,7 @@ class InMemoryBufferEventListenerIntegrationTest {
         .containsEntry("catalog_name", catalogName)
         .containsEntry("table_name", "t1")
         .containsKey("namespace")
-      .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
+        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
         .containsEntry("otel.sampled", "true")
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));

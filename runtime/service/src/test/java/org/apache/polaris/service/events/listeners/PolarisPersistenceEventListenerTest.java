@@ -38,12 +38,15 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.events.AttributeKey;
+import org.apache.polaris.service.events.EventAttributeFilter;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.EventPayloadPruner;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
@@ -113,9 +116,10 @@ class PolarisPersistenceEventListenerTest {
     }
 
     assertThat(additionalProperties(listener.persistedEvent(PolarisEventType.AFTER_UPDATE_TABLE)))
-        .containsKey(EventAttributes.TABLE_METADATA.name());
+        .containsKey("table_uuid");
     assertThat(additionalProperties(listener.persistedEvent(PolarisEventType.BEFORE_RENAME_TABLE)))
-        .containsKey(EventAttributes.RENAME_TABLE_REQUEST.name());
+        .containsKey("rename_source")
+        .containsKey("rename_destination");
   }
 
   @Test
@@ -139,36 +143,39 @@ class PolarisPersistenceEventListenerTest {
         .containsKey(EventAttributes.NAMESPACE.name())
         .containsEntry("otel.trace_id", "trace-123")
         .containsEntry("otel.span_id", "span-456")
-        .doesNotContainKeys(EventAttributes.PRINCIPAL_NAME.name(), EventAttributes.HTTP_METHOD.name());
+        .doesNotContainKeys(
+            EventAttributes.PRINCIPAL_NAME.name(), EventAttributes.HTTP_METHOD.name());
   }
 
-      @Test
-      void shouldApplyConfiguredAllowlistFromAttributeNames() {
-      Set<AttributeKey<?>> configuredAllowlist =
-        PolarisPersistenceEventListener.resolveConfiguredAllowlist(
-          Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.NAMESPACE.name()));
-      CapturingPersistenceListener listener = new CapturingPersistenceListener(configuredAllowlist);
+  @Test
+  void shouldApplyConfiguredAllowlistFromAttributeNames() {
+    Set<AttributeKey<?>> configuredAllowlist =
+        DefaultEventAttributeFilter.resolveConfiguredAllowlist(
+            Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.NAMESPACE.name()));
+    EventAttributeFilter filter = configuredAllowlist::contains;
+    CapturingPersistenceListener listener =
+        new CapturingPersistenceListener(filter, new DefaultEventPayloadPruner());
 
-      listener.onEvent(beforeListTablesEvent(metadataWithOpenTelemetry()));
+    listener.onEvent(beforeListTablesEvent(metadataWithOpenTelemetry()));
 
-      Map<String, String> properties =
+    Map<String, String> properties =
         additionalProperties(listener.persistedEvent(PolarisEventType.BEFORE_LIST_TABLES));
-      assertThat(properties)
+    assertThat(properties)
         .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
         .containsKey(EventAttributes.NAMESPACE.name())
         .containsEntry("otel.trace_id", "trace-123")
         .containsEntry("otel.span_id", "span-456");
-      }
+  }
 
-      @Test
-      void shouldRejectSensitiveAttributesInConfiguredAllowlist() {
-      assertThatThrownBy(
-          () ->
-            PolarisPersistenceEventListener.resolveConfiguredAllowlist(
-              Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.PRINCIPAL.name())))
+  @Test
+  void shouldRejectSensitiveAttributesInConfiguredAllowlist() {
+    assertThatThrownBy(
+            () ->
+                DefaultEventAttributeFilter.resolveConfiguredAllowlist(
+                    Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.PRINCIPAL.name())))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(EventAttributes.PRINCIPAL.name());
-      }
+  }
 
   @Test
   void shouldPersistCatalogEventUsingCatalogAttributeWhenCatalogNameMissing() {
@@ -238,29 +245,10 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
-  void shouldWrapJsonSerializationFailures() {
-    CapturingPersistenceListener listener = new CapturingPersistenceListener();
-
-    EventAttributeMap attributes =
-        new EventAttributeMap()
-            .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
-            .put(EventAttributes.NAMESPACE, NAMESPACE)
-            .put(EventAttributes.TABLE_NAME, TABLE_NAME);
-    putUntyped(attributes, EventAttributes.TABLE_METADATA, new Object());
-
-    assertThatThrownBy(
-            () ->
-                listener.onEvent(
-                    new PolarisEvent(PolarisEventType.BEFORE_UPDATE_TABLE, metadata(), attributes)))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("table_metadata")
-        .hasMessageContaining(PolarisEventType.BEFORE_UPDATE_TABLE.name());
-  }
-
-  @Test
   void shouldPropagateProcessEventErrors() {
     PolarisPersistenceEventListener listener =
-        new PolarisPersistenceEventListener() {
+        new PolarisPersistenceEventListener(
+            new DefaultEventAttributeFilter(), new DefaultEventPayloadPruner()) {
           @Override
           protected void processEvent(
               String realmId, org.apache.polaris.core.entity.PolarisEvent event) {
@@ -271,6 +259,102 @@ class PolarisPersistenceEventListenerTest {
     assertThatThrownBy(() -> listener.onEvent(beforeListTablesEvent(metadata())))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("persist failure");
+  }
+
+  @Test
+  void shouldPruneTableMetadataFromLoadTableResponse() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+
+    LoadTableResponse response =
+        LoadTableResponse.builder().withTableMetadata(TABLE_METADATA).build();
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_CREATE_TABLE,
+            metadata(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.TABLE_NAME, TABLE_NAME)
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, response)));
+
+    Map<String, String> properties =
+        additionalProperties(listener.persistedEvent(PolarisEventType.AFTER_CREATE_TABLE));
+    assertThat(properties)
+        .containsKey("table_uuid")
+        .containsKey("table_location")
+        .containsKey("table_format_version")
+        .containsKey("table_current_snapshot_id")
+        .containsKey("table_schema")
+        .containsKey("table_last_updated_ms")
+        .doesNotContainKey(EventAttributes.LOAD_TABLE_RESPONSE.name());
+  }
+
+  @Test
+  void shouldResolveViewRenameIdentifier() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+
+    TableIdentifier viewSource = TableIdentifier.of(NAMESPACE, "view_source");
+    TableIdentifier viewDest = TableIdentifier.of(NAMESPACE, "view_dest");
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_RENAME_VIEW,
+            metadata(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(
+                    EventAttributes.RENAME_TABLE_REQUEST,
+                    RenameTableRequest.builder()
+                        .withSource(viewSource)
+                        .withDestination(viewDest)
+                        .build())));
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_RENAME_VIEW,
+            metadata(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(
+                    EventAttributes.RENAME_TABLE_REQUEST,
+                    RenameTableRequest.builder()
+                        .withSource(viewSource)
+                        .withDestination(viewDest)
+                        .build())));
+
+    org.apache.polaris.core.entity.PolarisEvent beforeEvent =
+        listener.persistedEvent(PolarisEventType.BEFORE_RENAME_VIEW);
+    assertThat(beforeEvent.getResourceType())
+        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.VIEW);
+    assertThat(beforeEvent.getResourceIdentifier()).isEqualTo(viewSource.toString());
+
+    org.apache.polaris.core.entity.PolarisEvent afterEvent =
+        listener.persistedEvent(PolarisEventType.AFTER_RENAME_VIEW);
+    assertThat(afterEvent.getResourceType())
+        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.VIEW);
+    assertThat(afterEvent.getResourceIdentifier()).isEqualTo(viewDest.toString());
+  }
+
+  @Test
+  void shouldResolveGenericTableResourceType() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
+
+    listener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
+            metadata(),
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
+                .put(EventAttributes.NAMESPACE, NAMESPACE)
+                .put(EventAttributes.TABLE_NAME, "generic_tbl")));
+
+    org.apache.polaris.core.entity.PolarisEvent persisted =
+        listener.persistedEvent(PolarisEventType.AFTER_CREATE_GENERIC_TABLE);
+    assertThat(persisted.getResourceType())
+        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.TABLE);
+    assertThat(persisted.getResourceIdentifier())
+        .isEqualTo(TableIdentifier.of(NAMESPACE, "generic_tbl").toString());
   }
 
   private static PolarisEvent tableEvent(PolarisEventType eventType) {
@@ -390,21 +474,17 @@ class PolarisPersistenceEventListenerTest {
     return event.getAdditionalPropertiesAsMap();
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  private static void putUntyped(
-      EventAttributeMap attributes, AttributeKey key, Object value) {
-    attributes.put(key, value);
-  }
-
   private static final class CapturingPersistenceListener extends PolarisPersistenceEventListener {
     private final Map<PolarisEventType, org.apache.polaris.core.entity.PolarisEvent>
         persistedEventsByType = new LinkedHashMap<>();
     private final Map<PolarisEventType, String> persistedRealmsByType = new LinkedHashMap<>();
 
-    private CapturingPersistenceListener() {}
+    private CapturingPersistenceListener() {
+      super(new DefaultEventAttributeFilter(), new DefaultEventPayloadPruner());
+    }
 
-    private CapturingPersistenceListener(Set<AttributeKey<?>> allowlistForPersistence) {
-      super(allowlistForPersistence);
+    private CapturingPersistenceListener(EventAttributeFilter filter, EventPayloadPruner pruner) {
+      super(filter, pruner);
     }
 
     @Override

@@ -246,41 +246,41 @@ public final class EventAttributes {
   public static final AttributeKey<GetApplicablePoliciesResponse> GET_APPLICABLE_POLICIES_RESPONSE =
       new AttributeKey<>("get_applicable_policies_response", GetApplicablePoliciesResponse.class);
 
-    public static Optional<AttributeKey<?>> findByName(String name) {
-        return Optional.ofNullable(AttributeLookupHolder.ALL_BY_NAME.get(name));
-    }
+  public static Optional<AttributeKey<?>> findByName(String name) {
+    return Optional.ofNullable(AttributeLookupHolder.ALL_BY_NAME.get(name));
+  }
 
-    public static Map<String, AttributeKey<?>> allByName() {
-        return AttributeLookupHolder.ALL_BY_NAME;
-    }
+  public static Map<String, AttributeKey<?>> allByName() {
+    return AttributeLookupHolder.ALL_BY_NAME;
+  }
 
-    private static Map<String, AttributeKey<?>> collectAllByName() {
-        Map<String, AttributeKey<?>> byName = new LinkedHashMap<>();
-        for (Field field : EventAttributes.class.getDeclaredFields()) {
-            if (!Modifier.isPublic(field.getModifiers())
-                    || !Modifier.isStatic(field.getModifiers())
-                    || !AttributeKey.class.isAssignableFrom(field.getType())) {
-                continue;
-            }
+  private static Map<String, AttributeKey<?>> collectAllByName() {
+    Map<String, AttributeKey<?>> byName = new LinkedHashMap<>();
+    for (Field field : EventAttributes.class.getDeclaredFields()) {
+      if (!Modifier.isPublic(field.getModifiers())
+          || !Modifier.isStatic(field.getModifiers())
+          || !AttributeKey.class.isAssignableFrom(field.getType())) {
+        continue;
+      }
 
-            try {
-                AttributeKey<?> key = (AttributeKey<?>) field.get(null);
-                AttributeKey<?> previous = byName.putIfAbsent(key.name(), key);
-                if (previous != null) {
-                    throw new IllegalStateException("Duplicate event attribute name: " + key.name());
-                }
-            } catch (IllegalAccessException ex) {
-                throw new IllegalStateException(
-                        "Failed to read event attribute key from field " + field.getName(), ex);
-            }
+      try {
+        AttributeKey<?> key = (AttributeKey<?>) field.get(null);
+        AttributeKey<?> previous = byName.putIfAbsent(key.name(), key);
+        if (previous != null) {
+          throw new IllegalStateException("Duplicate event attribute name: " + key.name());
         }
-
-        return Collections.unmodifiableMap(byName);
+      } catch (IllegalAccessException ex) {
+        throw new IllegalStateException(
+            "Failed to read event attribute key from field " + field.getName(), ex);
+      }
     }
 
-    private static final class AttributeLookupHolder {
-        private static final Map<String, AttributeKey<?>> ALL_BY_NAME = collectAllByName();
+    return Collections.unmodifiableMap(byName);
+  }
 
-        private AttributeLookupHolder() {}
-    }
+  private static final class AttributeLookupHolder {
+    private static final Map<String, AttributeKey<?>> ALL_BY_NAME = collectAllByName();
+
+    private AttributeLookupHolder() {}
+  }
 }
