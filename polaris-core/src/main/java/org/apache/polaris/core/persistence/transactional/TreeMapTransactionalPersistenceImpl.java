@@ -28,7 +28,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -44,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
@@ -498,7 +498,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     // check if already exists
     PolarisPrincipalSecrets existing = this.store.getSlicePrincipalSecrets().read(resolvedClientId);
     if (existing != null) {
-      throw new AlreadyExistsException("Client ID already in used: %s", resolvedClientId);
+      throw new AlreadyExistsException(
+          String.format("Client ID already in use: %s", resolvedClientId));
     }
 
     // write back new secrets
