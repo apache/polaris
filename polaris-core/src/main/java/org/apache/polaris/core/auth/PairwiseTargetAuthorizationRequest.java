@@ -21,7 +21,6 @@ package org.apache.polaris.core.auth;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.List;
 
 /**
  * Authorization request for operations that may carry both a primary target and a related secondary
@@ -48,12 +47,12 @@ public record PairwiseTargetAuthorizationRequest(
   }
 
   @Override
-  public @Nonnull List<PolarisSecurable> getTargets() {
-    return target == null ? List.of() : List.of(target);
+  public @Nullable PolarisSecurable getTarget() {
+    return target;
   }
 
   @Override
-  public @Nonnull List<PolarisSecurable> getSecondaries() {
-    return secondary == null ? List.of() : List.of(secondary);
+  public @Nullable PolarisSecurable getSecondary() {
+    return secondary;
   }
 }

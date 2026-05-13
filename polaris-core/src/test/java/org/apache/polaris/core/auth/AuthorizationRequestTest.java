@@ -79,8 +79,8 @@ public class AuthorizationRequestTest {
         AuthorizationRequest.of(PolarisAuthorizableOperation.LIST_CATALOGS);
 
     assertThat(request).isInstanceOf(UntargetedAuthorizationRequest.class);
-    assertThat(request.getTargets()).isEmpty();
-    assertThat(request.getSecondaries()).isEmpty();
+    assertThat(request.getTarget()).isNull();
+    assertThat(request.getSecondary()).isNull();
   }
 
   @Test
@@ -94,17 +94,14 @@ public class AuthorizationRequestTest {
 
   @Test
   void threeArgFactoryAlwaysCreatesPairwiseRequest() {
+    PolarisSecurable target =
+        PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"));
     AuthorizationRequest request =
-        AuthorizationRequest.of(
-            PolarisAuthorizableOperation.GET_CATALOG,
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-            null);
+        AuthorizationRequest.of(PolarisAuthorizableOperation.GET_CATALOG, target, null);
 
     assertThat(request).isInstanceOf(PairwiseTargetAuthorizationRequest.class);
-    assertThat(request.getTargets())
-        .containsExactly(
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")));
-    assertThat(request.getSecondaries()).isEmpty();
+    assertThat(request.getTarget()).isEqualTo(target);
+    assertThat(request.getSecondary()).isNull();
   }
 
   @Test

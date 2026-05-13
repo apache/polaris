@@ -137,8 +137,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
             buildOpaAuthorizationInput(
                 polarisPrincipal,
                 request.getOperation(),
-                toResourceEntitiesFromSecurables(request.getTargets()),
-                toResourceEntitiesFromSecurables(request.getSecondaries())));
+                toResourceEntitiesFromSecurable(request.getTarget()),
+                toResourceEntitiesFromSecurable(request.getSecondary())));
     return allowed
         ? AuthorizationDecision.allow()
         : AuthorizationDecision.deny(
@@ -393,16 +393,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   @Nonnull
-  private List<ResourceEntity> toResourceEntitiesFromSecurables(
-      @Nullable List<PolarisSecurable> securables) {
-    if (securables == null || securables.isEmpty()) {
-      return List.of();
-    }
-
-    List<ResourceEntity> entities = new ArrayList<>();
-    for (PolarisSecurable securable : securables) {
-      entities.add(buildResourceEntity(securable));
-    }
-    return entities;
+  private List<ResourceEntity> toResourceEntitiesFromSecurable(
+      @Nullable PolarisSecurable securable) {
+    return securable == null ? List.of() : List.of(buildResourceEntity(securable));
   }
 }

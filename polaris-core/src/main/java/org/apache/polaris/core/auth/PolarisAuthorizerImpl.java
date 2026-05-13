@@ -776,21 +776,22 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
-      List<PolarisSecurable> targets = request.getTargets();
       List<PolarisResolvedPathWrapper> resolvedTargets;
-      if (targets.isEmpty()) {
+      PolarisSecurable target = request.getTarget();
+      if (target == null) {
         resolvedTargets =
             prependRootContainer
                 ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
                 : null;
       } else {
-        resolvedTargets = getResolvedSecurables(resolutionManifest, targets, prependRootContainer);
+        resolvedTargets =
+            List.of(getResolvedSecurable(resolutionManifest, target, prependRootContainer));
       }
-      List<PolarisSecurable> secondaries = request.getSecondaries();
+      PolarisSecurable secondary = request.getSecondary();
       List<PolarisResolvedPathWrapper> resolvedSecondaries =
-          semantics.secondaryPrivileges().isEmpty() || secondaries.isEmpty()
+          semantics.secondaryPrivileges().isEmpty() || secondary == null
               ? null
-              : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
+              : List.of(getResolvedSecurable(resolutionManifest, secondary, prependRootContainer));
       authorizeOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
@@ -803,8 +804,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           "Authorization denied for principalName {} operation {} targets {} secondaries {}",
           polarisPrincipal.getName(),
           request.getOperation(),
-          request.getTargets(),
-          request.getSecondaries(),
+          request.getTarget(),
+          request.getSecondary(),
           e);
       return AuthorizationDecision.deny(e.getMessage());
     }
@@ -823,38 +824,25 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
   }
 
-  private List<PolarisResolvedPathWrapper> getResolvedSecurables(
-      PolarisResolutionManifest resolutionManifest,
-      List<PolarisSecurable> securables,
-      boolean prependRootContainer) {
-    return securables.stream()
-        .map(
-            securable -> {
-              PolarisResolvedPathWrapper resolvedSecurable =
-                  getResolvedSecurable(resolutionManifest, securable, prependRootContainer);
-              Preconditions.checkState(
-                  resolvedSecurable != null,
-                  "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
-                  securable.getLeaf().entityType(),
-                  securable.getLeaf(),
-                  securable.getParents());
-              return resolvedSecurable;
-            })
-        .toList();
-  }
-
   private PolarisResolvedPathWrapper getResolvedSecurable(
       PolarisResolutionManifest resolutionManifest,
       PolarisSecurable securable,
       boolean prependRootContainer) {
-    if (securable.getLeaf().entityType().isTopLevel()) {
-      // Ignore prependRootContainer for top-level entities.
-      return resolutionManifest.getResolvedTopLevelEntity(
-          securable.getLeaf().name(), securable.getLeaf().entityType());
-    }
-    return resolutionManifest.getResolvedPath(
-        ResolvedPathKey.of(getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
-        prependRootContainer);
+    PolarisResolvedPathWrapper resolvedSecurable =
+        securable.getLeaf().entityType().isTopLevel()
+            ? resolutionManifest.getResolvedTopLevelEntity(
+                securable.getLeaf().name(), securable.getLeaf().entityType())
+            : resolutionManifest.getResolvedPath(
+                ResolvedPathKey.of(
+                    getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+                prependRootContainer);
+    Preconditions.checkState(
+        resolvedSecurable != null,
+        "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
+        securable.getLeaf().entityType(),
+        securable.getLeaf(),
+        securable.getParents());
+    return resolvedSecurable;
   }
 
   private List<String> getPathNamesWithinCatalog(PolarisSecurable securable) {

@@ -20,14 +20,12 @@ package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
  * Authorization request inputs for pre-authorization and core authorization.
  *
- * <p>This hierarchy makes the target shape explicit on the request itself while preserving the
- * normalized compatibility accessors used by current authorizer implementations.
+ * <p>This hierarchy makes the target shape explicit on the request itself.
  */
 public sealed interface AuthorizationRequest
     permits UntargetedAuthorizationRequest,
@@ -53,24 +51,20 @@ public sealed interface AuthorizationRequest
   @Nonnull
   PolarisAuthorizableOperation getOperation();
 
-  /** Returns the primary target securables, if any. */
-  @Nonnull
-  List<PolarisSecurable> getTargets();
+  /** Returns the primary target securable, if any. */
+  @Nullable
+  PolarisSecurable getTarget();
 
-  /** Returns secondary securables, if any. */
-  @Nonnull
-  List<PolarisSecurable> getSecondaries();
+  /** Returns the secondary securable, if any. */
+  @Nullable
+  PolarisSecurable getSecondary();
 
   default boolean hasSecurableType(PolarisEntityType... types) {
-    for (PolarisSecurable target : getTargets()) {
-      if (containsType(target, types)) {
-        return true;
-      }
+    if (getTarget() != null && containsType(getTarget(), types)) {
+      return true;
     }
-    for (PolarisSecurable secondary : getSecondaries()) {
-      if (containsType(secondary, types)) {
-        return true;
-      }
+    if (getSecondary() != null && containsType(getSecondary(), types)) {
+      return true;
     }
     return false;
   }

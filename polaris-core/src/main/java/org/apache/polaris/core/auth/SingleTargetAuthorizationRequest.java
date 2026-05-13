@@ -20,7 +20,7 @@ package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
-import java.util.List;
+import jakarta.annotation.Nullable;
 
 /** Authorization request for operations with one explicit target. */
 public record SingleTargetAuthorizationRequest(
@@ -37,12 +37,12 @@ public record SingleTargetAuthorizationRequest(
   }
 
   @Override
-  public @Nonnull List<PolarisSecurable> getTargets() {
-    return List.of(target);
+  public @Nonnull PolarisSecurable getTarget() {
+    return target;
   }
 
   @Override
-  public @Nonnull List<PolarisSecurable> getSecondaries() {
-    return List.of();
+  public @Nullable PolarisSecurable getSecondary() {
+    return null;
   }
 }
