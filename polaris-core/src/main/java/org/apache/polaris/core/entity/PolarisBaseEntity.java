@@ -133,7 +133,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     private long lastUpdateTimestamp;
     private String properties;
     private String internalProperties;
-    private int grantRecordsVersion;
+    private int grantRecordsVersion = -1;
 
     public Builder() {}
 
@@ -227,7 +227,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     this.lastUpdateTimestamp = builder.lastUpdateTimestamp;
     this.properties = builder.properties;
     this.internalProperties = builder.internalProperties;
-    this.grantRecordsVersion = builder.grantRecordsVersion == 0 ? 1 : builder.grantRecordsVersion;
+    this.grantRecordsVersion = builder.grantRecordsVersion < 0 ? 1 : builder.grantRecordsVersion;
   }
 
   /** Build the DTO for a new entity */
