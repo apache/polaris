@@ -144,6 +144,9 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
   @VisibleForTesting
   void taskTrackedHook(Cancelable<?> cancelable) {}
 
+  @VisibleForTesting
+  void taskSubmissionRejectedHook(Cancelable<?> cancelable) {}
+
   @PreDestroy
   @Override
   public void close() {
@@ -277,6 +280,7 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
         runningFuture.set(f);
         VertxAsyncExec.this.taskSubmittedHook(f);
       } catch (Throwable e) {
+        VertxAsyncExec.this.taskSubmissionRejectedHook(this);
         if (cancelledOrShutdown()) {
           if (periodic) {
             running.set(false);
