@@ -62,10 +62,10 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       insertMap.put(ModelIdempotencyRecord.IDEMPOTENCY_KEY, idempotencyKey);
       insertMap.put(ModelIdempotencyRecord.OPERATION_TYPE, operationType);
       insertMap.put(ModelIdempotencyRecord.RESOURCE_ID, normalizedResourceId);
+      insertMap.put(ModelIdempotencyRecord.PRINCIPAL_HASH, "");
       insertMap.put(ModelIdempotencyRecord.HTTP_STATUS, null);
       insertMap.put(ModelIdempotencyRecord.ERROR_SUBTYPE, null);
       insertMap.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, null);
-      insertMap.put(ModelIdempotencyRecord.RESPONSE_HEADERS, null);
       insertMap.put(ModelIdempotencyRecord.FINALIZED_AT, null);
       insertMap.put(ModelIdempotencyRecord.CREATED_AT, Timestamp.from(now));
       insertMap.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(now));
@@ -197,14 +197,12 @@ public class RelationalJdbcIdempotencyStore implements IdempotencyStore {
       Integer httpStatus,
       String errorSubtype,
       String responseSummary,
-      String responseHeaders,
       Instant finalizedAt) {
     // Use ordered/set maps so we can include nullable values (Map.of disallows nulls).
     Map<String, Object> setClause = new LinkedHashMap<>();
     setClause.put(ModelIdempotencyRecord.HTTP_STATUS, httpStatus);
     setClause.put(ModelIdempotencyRecord.ERROR_SUBTYPE, errorSubtype);
     setClause.put(ModelIdempotencyRecord.RESPONSE_SUMMARY, responseSummary);
-    setClause.put(ModelIdempotencyRecord.RESPONSE_HEADERS, responseHeaders);
     setClause.put(ModelIdempotencyRecord.FINALIZED_AT, Timestamp.from(finalizedAt));
     setClause.put(ModelIdempotencyRecord.UPDATED_AT, Timestamp.from(finalizedAt));
 

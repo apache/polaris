@@ -87,9 +87,9 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     try (InputStream is =
         Thread.currentThread()
             .getContextClassLoader()
-            .getResourceAsStream("postgres/schema-v4.sql")) {
+            .getResourceAsStream("postgres/schema-v5.sql")) {
       if (is == null) {
-        throw new IllegalStateException("schema-v4.sql not found on classpath");
+        throw new IllegalStateException("schema-v5.sql not found on classpath");
       }
       ops.executeScript(is);
     }
@@ -138,27 +138,11 @@ public class RelationalJdbcIdempotencyStorePostgresIT {
     HeartbeatResult hb = store.updateHeartbeat(realm, key, "A", now.plusSeconds(1));
     assertThat(hb).isEqualTo(HeartbeatResult.UPDATED);
 
-    boolean fin =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(2));
+    boolean fin = store.finalizeRecord(realm, key, 201, null, "{\"ok\":true}", now.plusSeconds(2));
     assertThat(fin).isTrue();
 
     // finalize again should be a no-op
-    boolean fin2 =
-        store.finalizeRecord(
-            realm,
-            key,
-            201,
-            null,
-            "{\"ok\":true}",
-            "{\"Content-Type\":\"application/json\"}",
-            now.plusSeconds(3));
+    boolean fin2 = store.finalizeRecord(realm, key, 201, null, "{\"ok\":true}", now.plusSeconds(3));
     assertThat(fin2).isFalse();
 
     Optional<IdempotencyRecord> rec = store.load(realm, key);
