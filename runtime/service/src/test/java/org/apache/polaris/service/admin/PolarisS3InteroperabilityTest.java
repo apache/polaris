@@ -249,7 +249,7 @@ public class PolarisS3InteroperabilityTest {
                     "tbl2",
                     table2Scheme,
                     makeTableLocation(catalogName, "ns1", "tbl1", table2Scheme)));
-    assertThat(ex.getMessage()).contains("Unable to create table at location");
+    assertThat(ex.getMessage()).contains("Unable to create entity at location");
     assertThat(ex.getMessage()).contains(table1Scheme);
     assertThat(ex.getMessage()).contains(table2Scheme);
   }
