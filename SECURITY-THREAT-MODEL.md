@@ -67,7 +67,7 @@ models, and trust boundaries:
 | --- | --- | --- | --- |
 | Polaris server and runtime | Management APIs, catalog APIs, service runtime | Long-running service | In scope for authentication, authorization, metadata, persistence, storage, policy, and credential-handling decisions. |
 | Polaris admin tool | Administrative CLI commands and generated local profiles | Operator tool | In scope when handling credentials, configuration, administration, logs, or generated artifacts. |
-| Python CLI under `client/` | Client commands, local configuration, command output | User or operator CLI | In scope when handling credentials, tokens, catalog metadata, local profiles, logs, or generated artifacts. |
+| Python CLI under `client/python/` | Client commands, local configuration, command output | User or operator CLI | In scope when handling credentials, tokens, catalog metadata, local profiles, logs, or generated artifacts. |
 | Release artifacts | Source release, runnable tarballs, container images, Helm charts | Distribution and deployment | In scope for packaged defaults, included modules, enabled features, generated configuration, and documented deployment paths. |
 | Reusable modules | `polaris-core`, `polaris-runtime-service`, extension modules, and selected Gradle project combinations | Embedded or customized downstream use | In scope when Polaris code makes security decisions; downstream-only integration code is evaluated separately. |
 | Optional integrations | Persistence backends, authentication modes, authorization services, storage providers, federation, and optional extensions | Runtime-selected or build-enabled features | In scope for coherent supported configurations; findings must identify the active variant and relevant configuration. |
