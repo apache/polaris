@@ -24,6 +24,7 @@ import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSes
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -149,9 +150,7 @@ public class AwsCredentialsStorageIntegration
   private static Set<String> locationsFor(
       List<LocationGrant> grants, PolarisStorageActions... wantedActions) {
     EnumSet<PolarisStorageActions> wanted = EnumSet.noneOf(PolarisStorageActions.class);
-    for (PolarisStorageActions a : wantedActions) {
-      wanted.add(a);
-    }
+    Collections.addAll(wanted, wantedActions);
     return grants.stream()
         .filter(g -> g.actions().stream().anyMatch(wanted::contains))
         .flatMap(g -> g.locations().stream())

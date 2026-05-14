@@ -21,11 +21,13 @@ package org.apache.polaris.persistence.relational.jdbc;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -63,7 +65,7 @@ class MetricsReportPersistenceTest {
         new PolarisStorageIntegrationProvider() {
           @Override
           public PolarisStorageIntegration getStorageIntegration(
-              java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
+              List<PolarisEntity> resolvedEntityPath) {
             return null;
           }
         };

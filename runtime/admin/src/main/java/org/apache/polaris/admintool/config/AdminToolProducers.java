@@ -19,18 +19,21 @@
 package org.apache.polaris.admintool.config;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -67,8 +70,7 @@ public class AdminToolProducers {
       @Override
       @Nullable
       public PolarisStorageIntegration getStorageIntegration(
-          @jakarta.annotation.Nonnull
-              java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
+          @Nonnull List<PolarisEntity> resolvedEntityPath) {
         return null;
       }
     };

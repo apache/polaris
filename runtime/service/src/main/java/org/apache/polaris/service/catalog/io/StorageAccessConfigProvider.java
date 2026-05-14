@@ -114,7 +114,7 @@ public class StorageAccessConfigProvider {
             .getRealmConfig()
             .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
-      return StorageAccessConfig.builder().build();
+      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
     }
 
     PolarisStorageIntegration integration =

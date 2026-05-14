@@ -21,9 +21,11 @@ package org.apache.polaris.persistence.nosql.metastore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
+import java.util.List;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfigurationSource;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.jspecify.annotations.Nullable;
@@ -35,7 +37,7 @@ public class CdiProducers {
     return new PolarisStorageIntegrationProvider() {
       @Override
       public @Nullable PolarisStorageIntegration getStorageIntegration(
-          java.util.List<org.apache.polaris.core.entity.PolarisEntity> resolvedEntityPath) {
+          List<PolarisEntity> resolvedEntityPath) {
         throw new UnsupportedOperationException();
       }
     };
