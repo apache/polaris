@@ -43,10 +43,10 @@
 &lt;/h4&gt;
 &lt;p&gt;This release fixes 4 security issues:&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;a href="../../community/security-advisories/CVE-2026-42809/"&gt;CVE-2026-42809&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="../../community/security-advisories/CVE-2026-42810/"&gt;CVE-2026-42810&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="../../community/security-advisories/CVE-2026-42811/"&gt;CVE-2026-42811&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="../../community/security-advisories/CVE-2026-42812/"&gt;CVE-2026-42812&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="../../community/security-advisories/cve-2026-42809/"&gt;CVE-2026-42809&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="../../community/security-advisories/cve-2026-42810/"&gt;CVE-2026-42810&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="../../community/security-advisories/cve-2026-42811/"&gt;CVE-2026-42811&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="../../community/security-advisories/cve-2026-42812/"&gt;CVE-2026-42812&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;</description></item><item><title>Apache Polaris 1.4.0</title><link>https://polaris.apache.org/downloads/1.4.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/downloads/1.4.0/</guid><description>&lt;p&gt;Released on April 21st, 2026.&lt;/p&gt;
 &lt;h3 id="downloads" id="downloads"&gt;Downloads&lt;a class="heading-anchor" href="#downloads" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
