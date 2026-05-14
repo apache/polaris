@@ -17,8 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: "Apache Polaris"
-title: "Getting Started"
+linkTitle: "Quickstart"
+title: "Quickstart"
 weight: 10
 cascade:
     type: guides
@@ -65,8 +65,8 @@ docker compose -p polaris-quickstart logs
 
 ### Useful URLs
 
-- Polaris REST API: http://localhost:8181
-- RustFS Console: http://localhost:9001
+- Polaris REST API: [http://localhost:8181](http://localhost:8181)
+- RustFS Console: [http://localhost:9001](http://localhost:9001)
 
 To stop the services:
 
