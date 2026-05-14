@@ -72,6 +72,12 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
+import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerFactory;
+import org.apache.polaris.service.catalog.generic.ImmutableGenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
@@ -107,6 +113,7 @@ public record TestServices(
     Clock clock,
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
+    PolarisCatalogGenericTableApi genericTableApi,
     IcebergRestConfigurationApi restConfigurationApi,
     IcebergCatalogAdapter catalogAdapter,
     RealmConfigurationSource configurationSource,
@@ -379,6 +386,35 @@ public record TestServices(
       IcebergRestConfigurationApi restConfigurationApi =
           new IcebergRestConfigurationApi(finalRestConfigurationService);
 
+      GenericTableCatalogHandlerFactory genericHandlerFactory =
+          new GenericTableCatalogHandlerFactory() {
+            @Override
+            public GenericTableCatalogHandler createHandler(
+                String catalogName, PolarisPrincipal principal) {
+              return ImmutableGenericTableCatalogHandler.builder()
+                  .catalogName(catalogName)
+                  .polarisPrincipal(principal)
+                  .callContext(callContext)
+                  .resolutionManifestFactory(resolutionManifestFactory)
+                  .metaStoreManager(metaStoreManager)
+                  .authorizer(authorizer)
+                  .credentialManager(credentialManager)
+                  .federatedCatalogFactories(federatedCatalogFactory)
+                  .build();
+            }
+          };
+      PolarisCatalogGenericTableApiService genericTableCatalogAdapter =
+          new GenericTableCatalogAdapter(
+              callContext,
+              new DefaultCatalogPrefixParser(),
+              reservedProperties,
+              genericHandlerFactory);
+      if (useEventDelegator) {
+        throw new UnsupportedOperationException();
+      }
+      PolarisCatalogGenericTableApi genericTableApi =
+          new PolarisCatalogGenericTableApi(genericTableCatalogAdapter);
+
       PolarisAdminService adminService =
           new PolarisAdminService(
               callContext,
@@ -398,6 +434,7 @@ public record TestServices(
           clock,
           catalogsApi,
           restApi,
+          genericTableApi,
           restConfigurationApi,
           catalogService,
           configurationSource,

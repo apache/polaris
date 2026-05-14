@@ -109,6 +109,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -1259,20 +1260,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     StorageLocation targetLocation = StorageLocation.of(location);
     for (PolarisEntity entityToCheck :
         resolveOptionalPaths(pathsToResolve, parentPath.getFirst().getName())) {
-      String loc =
-          entityToCheck.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-      if (loc == null) {
-        continue;
-      }
-
-      StorageLocation siblingLocation = StorageLocation.of(loc);
-
-      if (targetLocation.isChildOf(siblingLocation) || siblingLocation.isChildOf(targetLocation)) {
-        throw new ForbiddenException(
-            "Unable to create table at location '%s' because it conflicts with existing table or namespace at "
-                + "location '%s'",
-            targetLocation, siblingLocation);
-      }
+      PolarisEntityUtils.asLocationBasedEntity(entityToCheck)
+          .map(LocationBasedEntity::getBaseLocation)
+          .map(StorageLocation::of)
+          .ifPresent(
+              siblingLocation -> {
+                if (targetLocation.isChildOf(siblingLocation)
+                    || siblingLocation.isChildOf(targetLocation)) {
+                  throw new ForbiddenException(
+                      "Unable to create table at location '%s' because it conflicts with existing table or namespace at "
+                          + "location '%s'",
+                      targetLocation, siblingLocation);
+                }
+              });
     }
   }
 
