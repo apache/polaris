@@ -29,8 +29,6 @@ import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -55,13 +53,10 @@ import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
- * Provider that returns a {@link PolarisStorageIntegration} for a resolved entity path.
- *
- * <p>Integration instances are bound to a specific {@link PolarisStorageConfigurationInfo} and
- * cached per-config in an internal map: every unique config gets exactly one integration instance
- * for the lifetime of the provider. Construction is driven by a per-storage-type factory so we can
- * still share expensive request-scope state (STS client provider, GCP credentials supplier, etc.)
- * across all instances of the same backend.
+ * Provider that returns a {@link PolarisStorageIntegration} for a resolved entity path. A fresh
+ * integration is constructed per call; the per-config state inside each integration is a thin
+ * wrapper over shared, application-scoped resources (STS client provider, GCP credentials supplier,
+ * Google HTTP transport factory, request-scope realm config).
  */
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
@@ -71,9 +66,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final Function<GcpStorageConfigurationInfo, GcpCredentialsStorageIntegration> gcpFactory;
   private final Function<AzureStorageConfigurationInfo, AzureCredentialsStorageIntegration>
       azureFactory;
-
-  private final ConcurrentMap<PolarisStorageConfigurationInfo, PolarisStorageIntegration>
-      integrationCache = new ConcurrentHashMap<>();
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -102,15 +94,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 realmConfig);
     Supplier<GoogleCredentials> gcpCredsProvider =
         storageConfiguration.gcpCredentialsSupplier(clock);
+    HttpTransportFactory gcpTransportFactory =
+        ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new);
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(),
-                ServiceOptions.getFromServiceLoader(
-                    HttpTransportFactory.class, NetHttpTransport::new),
-                cache,
-                storageConfig,
-                realmConfig);
+                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
   }
@@ -127,15 +116,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageConfig ->
             new AwsCredentialsStorageIntegration(
                 stsClientProvider, config -> stsCredentials, cache, storageConfig, realmConfig);
+    HttpTransportFactory gcpTransportFactory =
+        ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new);
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(),
-                ServiceOptions.getFromServiceLoader(
-                    HttpTransportFactory.class, NetHttpTransport::new),
-                cache,
-                storageConfig,
-                realmConfig);
+                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
     this.azureFactory =
         storageConfig -> new AzureCredentialsStorageIntegration(cache, storageConfig, realmConfig);
   }
@@ -145,13 +131,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       @Nonnull List<PolarisEntity> resolvedEntityPath) {
     return PolarisStorageConfigurationInfo.findStorageInfoFromHierarchy(resolvedEntityPath)
         .map(entity -> BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity))
-        .map(this::getOrCreateIntegration)
+        .map(this::createIntegration)
         .orElse(null);
-  }
-
-  private PolarisStorageIntegration getOrCreateIntegration(
-      PolarisStorageConfigurationInfo storageConfig) {
-    return integrationCache.computeIfAbsent(storageConfig, this::createIntegration);
   }
 
   private PolarisStorageIntegration createIntegration(
