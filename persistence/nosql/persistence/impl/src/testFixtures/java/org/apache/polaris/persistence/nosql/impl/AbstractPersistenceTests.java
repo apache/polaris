@@ -164,10 +164,12 @@ public abstract class AbstractPersistenceTests {
 
     soft.assertThat(existingRefNames).allSatisfy(refName -> persistence().fetchReference(refName));
 
-    var allRefNames =
+    var newRefNames =
         IntStream.range(numExisting, numRefs)
             .mapToObj(i -> refNamePrefix + "_all_" + i)
             .collect(Collectors.toSet());
+    var allRefNames = new HashSet<>(existingRefNames);
+    allRefNames.addAll(newRefNames);
 
     persistence().createReferencesSilent(allRefNames);
 
