@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.generic;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -47,6 +48,21 @@ public class CatalogGenericTableEventServiceDelegator
   @Inject PolarisEventDispatcher polarisEventDispatcher;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+
+  // Default constructor for CDI
+  public CatalogGenericTableEventServiceDelegator() {}
+
+  @VisibleForTesting
+  public CatalogGenericTableEventServiceDelegator(
+      GenericTableCatalogAdapter delegate,
+      PolarisEventDispatcher polarisEventDispatcher,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      CatalogPrefixParser prefixParser) {
+    this.delegate = delegate;
+    this.polarisEventDispatcher = polarisEventDispatcher;
+    this.eventMetadataFactory = eventMetadataFactory;
+    this.prefixParser = prefixParser;
+  }
 
   @Override
   public Response createGenericTable(

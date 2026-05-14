@@ -74,6 +74,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApi;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
+import org.apache.polaris.service.catalog.generic.CatalogGenericTableEventServiceDelegator;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogAdapter;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerFactory;
@@ -403,17 +404,23 @@ public record TestServices(
                   .build();
             }
           };
-      PolarisCatalogGenericTableApiService genericTableCatalogAdapter =
+      GenericTableCatalogAdapter genericTableCatalogAdapter =
           new GenericTableCatalogAdapter(
               callContext,
               new DefaultCatalogPrefixParser(),
               reservedProperties,
               genericHandlerFactory);
+      PolarisCatalogGenericTableApiService genericTableService = genericTableCatalogAdapter;
       if (useEventDelegator) {
-        throw new UnsupportedOperationException();
+        genericTableService =
+            new CatalogGenericTableEventServiceDelegator(
+                genericTableCatalogAdapter,
+                polarisEventDispatcher,
+                eventMetadataFactory,
+                new DefaultCatalogPrefixParser());
       }
       PolarisCatalogGenericTableApi genericTableApi =
-          new PolarisCatalogGenericTableApi(genericTableCatalogAdapter);
+          new PolarisCatalogGenericTableApi(genericTableService);
 
       PolarisAdminService adminService =
           new PolarisAdminService(
