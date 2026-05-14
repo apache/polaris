@@ -503,28 +503,25 @@ that they, run following SQL statement under &lt;code&gt;POLARIS_SCHEMA&lt;/code
 &lt;/table&gt;
 &lt;h3 id="release-notes" id="release-notes"&gt;Release Notes&lt;a class="heading-anchor" href="#release-notes" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
-&lt;p&gt;Apache Polaris 0.9.0 was the first Polaris release. Only the source distribution is available for this release.&lt;/p&gt;</description></item><item><title>Getting Started</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;p&gt;Please see the &lt;a href="https://polaris.apache.org/releases/latest/getting-started/"&gt;quickstart guide&lt;/a&gt; for more information.&lt;/p&gt;
-&lt;!--
+&lt;p&gt;Apache Polaris 0.9.0 was the first Polaris release. Only the source distribution is available for this release.&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;!--
 ```shell
 cd "$SITE_TEST_GUIDE_DIR"
 docker compose up
 ```
---&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
+--&gt;
+&lt;p&gt;Welcome to Apache Polaris! This guide helps you quickly get Polaris running locally for evaluation and development purposes.&lt;br&gt;
+&lt;strong&gt;This setup is not intended for production use.&lt;/strong&gt;&lt;/p&gt;
 &lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;ul&gt;
-&lt;li&gt;Have Docker (with Docker Compose v2) installed &amp;amp; running on your machine&lt;/li&gt;
+&lt;li&gt;Docker and Docker Compose v2 installed and running.&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h2 id="running" id="running"&gt;Running&lt;a class="heading-anchor" href="#running" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;h2 id="running-the-quickstart" id="running-the-quickstart"&gt;Running the Quickstart&lt;a class="heading-anchor" href="#running-the-quickstart" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;Run the following command:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -f - up
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will:&lt;/p&gt;
-&lt;ol&gt;
-&lt;li&gt;Create a Catalog named &lt;code&gt;quickstart_catalog&lt;/code&gt; with RustFS-backed storage.&lt;/li&gt;
-&lt;li&gt;Create a user principal &lt;code&gt;quickstart_user&lt;/code&gt; with full access to the catalog.&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;Once the command has been run, you will see examples on how to interact with this Polaris server in the logs.&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -p polaris-quickstart -f - up -d
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/getting-started/quick-start/</guid><description>&lt;p&gt;Use the &lt;strong&gt;&lt;a href="https://polaris.apache.org/guides/quickstart/"&gt;Quickstart guide&lt;/a&gt;&lt;/strong&gt; for running Polaris locally with Docker Compose: prerequisites, the one-liner command, default catalog and principal, service URLs, and suggested next steps.&lt;/p&gt;
+&lt;p&gt;This setup is not intended for production use.&lt;/p&gt;</description></item><item><title>Quickstart</title><link>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/1.3.0/getting-started/quick-start/</guid><description>&lt;p&gt;Use this guide to quickly start running Polaris. This is not intended for production use.&lt;/p&gt;
 &lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;ul&gt;

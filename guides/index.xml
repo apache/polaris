@@ -1,10 +1,21 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Guides on Apache Polaris</title><link>https://polaris.apache.org/guides/</link><description>Recent content in Apache Polaris Guides on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/guides/index.xml" rel="self" type="application/rss+xml"/><item><title>Getting Started</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;p&gt;Please see the &lt;a href="https://polaris.apache.org/releases/latest/getting-started/"&gt;quickstart guide&lt;/a&gt; for more information.&lt;/p&gt;
-&lt;!--
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Apache Polaris Guides on Apache Polaris</title><link>https://polaris.apache.org/guides/</link><description>Recent content in Apache Polaris Guides on Apache Polaris</description><generator>Hugo</generator><language>en-us</language><copyright>&lt;a href="https://www.apache.org/"&gt;Copyright © 2026 The Apache Software Foundation&lt;/a&gt;.&lt;br&gt;Licensed under the &lt;a href="https://www.apache.org/licenses/LICENSE-2.0"&gt;Apache License, Version 2.0&lt;/a&gt;.</copyright><atom:link href="https://polaris.apache.org/guides/index.xml" rel="self" type="application/rss+xml"/><item><title>Quickstart</title><link>https://polaris.apache.org/guides/quickstart/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/quickstart/</guid><description>&lt;!--
 ```shell
 cd "$SITE_TEST_GUIDE_DIR"
 docker compose up
 ```
---&gt;</description></item><item><title>Getting Started with Apache Polaris, External Authentication and Keycloak</title><link>https://polaris.apache.org/guides/keycloak/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+--&gt;
+&lt;p&gt;Welcome to Apache Polaris! This guide helps you quickly get Polaris running locally for evaluation and development purposes.&lt;br&gt;
+&lt;strong&gt;This setup is not intended for production use.&lt;/strong&gt;&lt;/p&gt;
+&lt;h2 id="prerequisites" id="prerequisites"&gt;Prerequisites&lt;a class="heading-anchor" href="#prerequisites" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Docker and Docker Compose v2 installed and running.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="running-the-quickstart" id="running-the-quickstart"&gt;Running the Quickstart&lt;a class="heading-anchor" href="#running-the-quickstart" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Run the following command:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"&gt;1&lt;/span&gt;&lt;span&gt;curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml &lt;span style="color:#000;font-weight:bold"&gt;|&lt;/span&gt; docker compose -p polaris-quickstart -f - up -d
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This command will start Polaris + RustFS and automatically create:&lt;/p&gt;</description></item><item><title>Getting Started with Apache Polaris, External Authentication and Keycloak</title><link>https://polaris.apache.org/guides/keycloak/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/guides/keycloak/</guid><description>&lt;h2 id="overview" id="overview"&gt;Overview&lt;a class="heading-anchor" href="#overview" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;This example uses Keycloak as an &lt;strong&gt;external&lt;/strong&gt; identity provider for Polaris. The &amp;ldquo;iceberg&amp;rdquo; realm is automatically
 created and configured from the &lt;code&gt;iceberg-realm.json&lt;/code&gt; file.&lt;/p&gt;
