@@ -22,6 +22,7 @@ from typing import Dict, Optional, List, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import Subcommands, Arguments
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import (
     PolarisDefaultApi,
@@ -71,19 +72,19 @@ class PrincipalRolesCommand(Command):
             Subcommands.SUMMARIZE,
         }:
             if not self.principal_role_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}"
                 )
 
         if self.principal_roles_subcommand == Subcommands.LIST:
             if self.principal_name and self.catalog_role_name:
-                raise Exception(
+                raise CliError(
                     f"You may provide either {Argument.to_flag_name(Arguments.PRINCIPAL)} or"
                     f" {Argument.to_flag_name(Arguments.CATALOG_ROLE)}, but not both"
                 )
         if self.principal_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument for {self.principal_roles_subcommand}:"
                     f" {Argument.to_flag_name(Arguments.PRINCIPAL)}"
                 )
@@ -146,7 +147,7 @@ class PrincipalRolesCommand(Command):
         elif self.principal_roles_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
-            raise Exception(
+            raise CliError(
                 f"{self.principal_roles_subcommand} is not supported in the CLI"
             )
 

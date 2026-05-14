@@ -17,8 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: "Apache Polaris"
-title: "Getting Started"
+linkTitle: "Quickstart"
+title: "Quickstart"
 weight: 10
 cascade:
     type: guides
@@ -28,11 +28,53 @@ menus:
         weight: 2
 ---
 
-Please see the [quickstart guide](/releases/latest/getting-started/) for more information.
-
 <!--
 ```shell
 cd "$SITE_TEST_GUIDE_DIR"
 docker compose up
 ```
 -->
+
+Welcome to Apache Polaris! This guide helps you quickly get Polaris running locally for evaluation and development purposes.  
+**This setup is not intended for production use.**
+
+## Prerequisites
+
+- Docker and Docker Compose v2 installed and running.
+
+## Running the Quickstart
+
+Run the following command:
+
+```bash
+curl -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/site/content/guides/quickstart/docker-compose.yml | docker compose -p polaris-quickstart -f - up -d
+```
+
+This command will start Polaris + RustFS and automatically create:
+
+- Catalog: `quickstart_catalog`
+- Principal: `quickstart_user` (with full access)
+
+Check the logs for credentials and example commands:
+
+```bash
+docker compose -p polaris-quickstart logs
+```
+
+### Useful URLs
+
+- Polaris REST API: [http://localhost:8181](http://localhost:8181)
+- RustFS Console: [http://localhost:9001](http://localhost:9001)
+
+To stop the services:
+
+```bash
+docker compose -p polaris-quickstart down
+```
+
+## Next Steps
+
+- [Binary Distribution](/releases/latest/getting-started/binary-distribution)
+- [Setup Tools](/releases/latest/getting-started/setup-tools)
+- [Spark Integration](/guides/spark)
+- [Full Documentation](/releases/latest/)

@@ -19,20 +19,13 @@
 package org.apache.polaris.test.hms;
 
 import com.google.common.base.Preconditions;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Objects;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Test container that starts an Apache Hive Metastore (HMS) in standalone mode, backed by an
@@ -47,7 +40,6 @@ import org.testcontainers.utility.DockerImageName;
 public final class HmsContainer extends GenericContainer<HmsContainer> implements AutoCloseable {
 
   private static final int THRIFT_PORT = 9083;
-  private static final String DOCKERFILE_RESOURCE = "Dockerfile-hms-version";
 
   private String hostPort;
   private String thriftUri;
@@ -56,22 +48,22 @@ public final class HmsContainer extends GenericContainer<HmsContainer> implement
   private String s3aSecretKey;
 
   @SuppressWarnings("resource")
-  public HmsContainer(String image) {
-    super(buildImage(image));
+  public HmsContainer() {
+    super(ContainerSpecHelper.containerSpecHelper("hms", HmsContainer.class).dockerImageName(null));
     withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(HmsContainer.class)));
     addExposedPort(THRIFT_PORT);
     // The apache/hive image dispatches on this env var:
     //   metastore  -> launches HiveMetaStore (Thrift on 9083)
     //   hiveserver2 -> launches HiveServer2
     withEnv("SERVICE_NAME", "metastore");
+    // The apache/hive images do not ship hadoop-aws or the AWS SDK in /opt/hive/lib,
+    // but in /opt/hadoop/share/hadoop/tools/lib/, which is not added to HADOOP_CLASSPATH by
+    // default.
+    withEnv("HADOOP_CLASSPATH", "/opt/hadoop/share/hadoop/tools/lib/*");
     // Wait until the Thrift port inside the container is listening. The apache/hive
     // entrypoint runs schema initialization (Derby) before launching the metastore, which
     // can take ~30s on a cold start.
     setWaitStrategy(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(3)));
-  }
-
-  public HmsContainer() {
-    this(null);
   }
 
   /**
@@ -84,24 +76,6 @@ public final class HmsContainer extends GenericContainer<HmsContainer> implement
     this.s3aAccessKey = accessKey;
     this.s3aSecretKey = secretKey;
     return this;
-  }
-
-  private static ImageFromDockerfile buildImage(String image) {
-    DockerImageName base =
-        ContainerSpecHelper.containerSpecHelper("hms", HmsContainer.class).dockerImageName(image);
-    String dockerfile =
-        readDockerfile().replaceFirst("(?m)^FROM .*$", "FROM " + base.asCanonicalNameString());
-    return new ImageFromDockerfile("polaris-hms-with-aws", false)
-        .withFileFromString("Dockerfile", dockerfile);
-  }
-
-  private static String readDockerfile() {
-    try (InputStream in = HmsContainer.class.getResourceAsStream(DOCKERFILE_RESOURCE)) {
-      Objects.requireNonNull(in, DOCKERFILE_RESOURCE + " not found on classpath");
-      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 
   public String hostPort() {

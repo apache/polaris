@@ -26,7 +26,9 @@ from typing import Optional, List, Any, cast
 import urllib3
 
 from apache_polaris.cli.api_client_builder import ApiClientBuilder
+from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import Commands
+from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 from apache_polaris.sdk.management.exceptions import ApiException
@@ -57,31 +59,37 @@ class PolarisCli:
         if not args:
             Parser.build_parser().print_help()
             return
-        options = Parser.parse(args)
-        if options.command == Commands.PROFILES:
-            from apache_polaris.cli.command import Command
-
-            command = Command.from_options(options)
-            command = cast(ProfilesCommand, command)
-            command.execute()
-        else:
-            api_client = ApiClientBuilder(
-                options, direct_authentication=PolarisCli.DIRECT_AUTHENTICATION_ENABLED
-            ).get_api_client()
-            try:
-                from apache_polaris.cli.command import Command
-
+        try:
+            options = Parser.parse(args)
+            if options.command == Commands.PROFILES:
+                command = Command.from_options(options)
+                command = cast(ProfilesCommand, command)
+                command.execute()
+            else:
+                api_client = ApiClientBuilder(
+                    options,
+                    direct_authentication=PolarisCli.DIRECT_AUTHENTICATION_ENABLED,
+                ).get_api_client()
                 admin_api = PolarisDefaultApi(api_client)
                 command = Command.from_options(options)
                 if options.debug:
                     PolarisCli._enable_api_request_logging()
                 command.execute(admin_api)
-            except ApiException as e:
-                PolarisCli._try_print_exception(e)
-                sys.exit(1)
-            except Exception as e:
-                sys.stderr.write(f"An unexpected error occurred: {e}{os.linesep}")
-                sys.exit(1)
+        # Handlers from most specific to least: ApiException (OpenAPI client), CliError
+        # (expected user/config failures with their own exit codes), NotImplementedError
+        # (abstract Command misuse), then generic bugs.
+        except ApiException as e:
+            PolarisCli._try_print_exception(e)
+            sys.exit(CLI_ERROR_EXIT_CODE)
+        except CliError as e:
+            sys.stderr.write(f"{e}{os.linesep}")
+            sys.exit(e.exit_code)
+        except NotImplementedError as e:
+            sys.stderr.write(f"Internal error: {e}{os.linesep}")
+            sys.exit(CLI_ERROR_EXIT_CODE)
+        except Exception as e:
+            sys.stderr.write(f"An unexpected error occurred: {e}{os.linesep}")
+            sys.exit(CLI_ERROR_EXIT_CODE)
 
     @staticmethod
     def _enable_api_request_logging() -> None:

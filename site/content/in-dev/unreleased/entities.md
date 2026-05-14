@@ -30,6 +30,13 @@ A catalog is a top-level entity in Polaris that may contain other entities like 
 
 For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the CreateCatalogRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
+{{< alert warning >}}
+Catalog properties are client-visible configuration values. Polaris returns them to authenticated
+catalog clients through the Iceberg REST `/config` response. Use catalog properties only for
+non-sensitive client configuration. Do not store passwords, tokens, access keys, or other secrets
+in catalog properties.
+{{< /alert >}}
+
 ### Storage Type
 
 All catalogs in Polaris are associated with a _storage type_. Valid Storage Types are `S3`, `Azure`, and `GCS`. The `FILE` type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.

@@ -151,3 +151,89 @@ class TestPoliciesCommand(CLITestBase):
                 kwargs["update_policy_request"].description, "dummy policy"
             )
             self.assertEqual(kwargs["update_policy_request"].current_policy_version, 1)
+
+    @patch("apache_polaris.cli.command.policies.PolicyAPI")
+    def test_policy_create(self, mock_policy_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api = mock_policy_api_class.return_value
+
+        with patch(
+            "builtins.open",
+            unittest.mock.mock_open(
+                read_data='{"version": "2025-02-03", "enable": true}'
+            ),
+        ):
+            self.mock_execute(
+                mock_client,
+                [
+                    "policies",
+                    "create",
+                    "my-policy",
+                    "--catalog",
+                    "my-catalog",
+                    "--namespace",
+                    "ns1",
+                    "--policy-file",
+                    "dummy.json",
+                    "--policy-type",
+                    "system.data-compaction",
+                    "--policy-description",
+                    "my policy description",
+                ],
+            )
+            mock_policy_api.create_policy.assert_called_once()
+            _, kwargs = mock_policy_api.create_policy.call_args
+            self.assertEqual(kwargs["prefix"], "my-catalog")
+            self.assertEqual(kwargs["namespace"], "ns1")
+            self.assertEqual(kwargs["create_policy_request"].name, "my-policy")
+            self.assertEqual(
+                kwargs["create_policy_request"].type, "system.data-compaction"
+            )
+            self.assertEqual(
+                kwargs["create_policy_request"].description, "my policy description"
+            )
+
+    @patch("apache_polaris.cli.command.policies.PolicyAPI")
+    def test_policy_delete(self, mock_policy_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api = mock_policy_api_class.return_value
+        self.mock_execute(
+            mock_client,
+            [
+                "policies",
+                "delete",
+                "my-policy",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+            ],
+        )
+        mock_policy_api.drop_policy.assert_called_once()
+        _, kwargs = mock_policy_api.drop_policy.call_args
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], "ns1")
+        self.assertEqual(kwargs["policy_name"], "my-policy")
+
+    @patch("apache_polaris.cli.command.policies.PolicyAPI")
+    def test_policy_get(self, mock_policy_api_class: MagicMock) -> None:
+        mock_client = self.build_mock_client()
+        mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.load_policy.return_value.to_json.return_value = "{}"
+        self.mock_execute(
+            mock_client,
+            [
+                "policies",
+                "get",
+                "my-policy",
+                "--catalog",
+                "my-catalog",
+                "--namespace",
+                "ns1",
+            ],
+        )
+        mock_policy_api.load_policy.assert_called_once()
+        _, kwargs = mock_policy_api.load_policy.call_args
+        self.assertEqual(kwargs["prefix"], "my-catalog")
+        self.assertEqual(kwargs["namespace"], "ns1")
+        self.assertEqual(kwargs["policy_name"], "my-policy")

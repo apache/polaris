@@ -53,7 +53,7 @@ class Argument:
 
     def __post_init__(self) -> None:
         if self.name.startswith("--"):
-            raise Exception(
+            raise ValueError(
                 f"Argument name {self.name} starts with `--`: should this be a flag_name?"
             )
 
@@ -346,7 +346,7 @@ class OptionTree:
                         Argument(
                             Arguments.PROPERTY,
                             str,
-                            Hints.PROPERTY,
+                            Hints.CATALOG_PROPERTY,
                             allow_repeats=True,
                         ),
                     ]
@@ -401,7 +401,7 @@ class OptionTree:
                         Argument(
                             Arguments.SET_PROPERTY,
                             str,
-                            Hints.SET_PROPERTY,
+                            Hints.CATALOG_SET_PROPERTY,
                             allow_repeats=True,
                         ),
                         Argument(

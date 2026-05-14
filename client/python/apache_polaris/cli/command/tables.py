@@ -21,6 +21,7 @@ from typing import List, Optional, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI
@@ -53,11 +54,11 @@ class TableCommand(Command):
 
     def validate(self) -> None:
         if not self.catalog_name:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
         if not self.namespace:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
         if (
@@ -66,7 +67,7 @@ class TableCommand(Command):
             or self.table_subcommand == Subcommands.DELETE
         ):
             if not self.table_name or not self.table_name.strip():
-                raise Exception("The table name cannot be empty.")
+                raise CliError("The table name cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = IcebergCatalogAPI(get_catalog_api_client(api))

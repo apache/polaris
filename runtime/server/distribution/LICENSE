@@ -214,7 +214,7 @@ This product bundles and includes code from Apache Iceberg.
 
 Copyright: Copyright 2017-2025 The Apache Software Foundation
 Home page: https://iceberg.apache.org
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ This product bundles and includes code from Netty.
 
 Copyright: Copyright © 2025 The Netty project
 Home page: https://netty.io/
-License: https://www.apache.org/licenses/LICENSE-2.0
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
@@ -653,7 +653,7 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-This product bundles Google Storage APIs.
+This product bundles Google Cloud Storage APIs.
 
 * Maven group:artifact IDs: com.google.api.grpc:gapic-google-cloud-storage-v2
 * Maven group:artifact IDs: com.google.api.grpc:grpc-google-cloud-storage-v2
@@ -781,7 +781,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Google j2objc.
+This product bundles Google j2objc annotations.
 
 * Maven group:artifact IDs: com.google.j2objc:j2objc-annotations
 
@@ -1223,12 +1223,12 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-This product bundles Jakarta Activation APi.
+This product bundles Jakarta Activation API.
 
 * Maven group:artifact IDs: jakarta.activation:jakarta.activation-api
 
 Project URL: https://github.com/jakartaee/jaf-api
-License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
+License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
@@ -1237,7 +1237,7 @@ This product bundles Jakarta Annotation API.
 * Maven group:artifact IDs: jakarta.annotation:jakarta.annotation-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.ca
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1246,7 +1246,7 @@ This product bundles Jakarta EL API.
 * Maven group:artifact IDs: jakarta.el:jakarta.el-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.el
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1282,7 +1282,7 @@ This product bundles Jakarta Interceptor API.
 * Maven group:artifact IDs: jakarta.interceptor:jakarta.interceptor-api
 
 Project URL: https://github.com/jakartaee/interceptors
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1300,7 +1300,7 @@ This product bundles Jakarta Resource API.
 * Maven group:artifact IDs: jakarta.resource:jakarta.resource-api
 
 Project URL: https://jakarta.ee/specifications/connectors/
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1309,7 +1309,7 @@ This product bundles Jakarta Servlet API.
 * Maven group:artifact IDs: jakarta.servlet:jakarta.servlet-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.servlet
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1318,7 +1318,7 @@ This product bundles Jakarta Transaction API.
 * Maven group:artifact IDs: jakarta.transaction:jakarta.transaction-api
 
 Project URL: https://projects.eclipse.org/projects/ee4j.jta
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1336,7 +1336,7 @@ This product bundles Jakarta RESTful Web Services.
 * Maven group:artifact IDs: jakarta.ws.rs:jakarta.ws.rs-api
 
 Project URL: https://github.com/eclipse-ee4j/jaxrs-api
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -1532,7 +1532,7 @@ This product bundles animal-sniffer-annotations.
 * Maven group:artifact IDs: org.codehaus.mojo:animal-sniffer-annotations
 
 Project URL: https://www.mojohaus.org/animal-sniffer
-License: MIT license
+License: MIT License
 | The MIT License
 | 
 | Copyright (c) 2009 codehaus.org.
@@ -1630,7 +1630,7 @@ This product bundles expressly.
 * Maven group:artifact IDs: org.glassfish.expressly:expressly
 
 Project URL: https://projects.eclipse.org/projects/ee4j
-License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
+License: Eclipse Public License 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
@@ -2181,13 +2181,85 @@ This product bundles GraalVM libraries.
 * Maven group:artifact IDs: org.graalvm.sdk:jniutils
 * Maven group:artifact IDs: org.graalvm.sdk:nativeimage
 * Maven group:artifact IDs: org.graalvm.sdk:word
-* Maven group:artifact IDs: org.graalvm.shadowed:icu4j
 * Maven group:artifact IDs: org.graalvm.shadowed:xz
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-api
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-compiler
 * Maven group:artifact IDs: org.graalvm.truffle:truffle-runtime
 
 Home page: https://github.com/oracle/graal/
-License: The GNU General Public License (GPL) - https://github.com/oracle/graal/blob/master/LICENSE
+License: Universal Permissive License (UPL) 1.0 - https://github.com/oracle/graal/blob/master/LICENSE
+
+--------------------------------------------------------------------------------
+
+This product bundles GraalVM shadowed ICU4J.
+
+* Maven group:artifact IDs: org.graalvm.shadowed:icu4j
+
+Home page: https://unicode-org.github.io/icu/userguide/icu4j/
+License: Unicode/ICU License
+| UNICODE LICENSE V3
+|
+| COPYRIGHT AND PERMISSION NOTICE
+|
+| Copyright © 2016-2025 Unicode, Inc.
+|
+| NOTICE TO USER: Carefully read the following legal agreement. BY
+| DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+| SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+| TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+| DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+|
+| Permission is hereby granted, free of charge, to any person obtaining a
+| copy of data files and any associated documentation (the "Data Files") or
+| software and any associated documentation (the "Software") to deal in the
+| Data Files or Software without restriction, including without limitation
+| the rights to use, copy, modify, merge, publish, distribute, and/or sell
+| copies of the Data Files or Software, and to permit persons to whom the
+| Data Files or Software are furnished to do so, provided that either (a)
+| this copyright and permission notice appear with all copies of the Data
+| Files or Software, or (b) this copyright and permission notice appear in
+| associated Documentation.
+|
+| THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+| KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+| MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+| THIRD PARTY RIGHTS.
+|
+| IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+| BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+| OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+| WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+| ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+| FILES OR SOFTWARE.
+|
+| Except as contained in this notice, the name of a copyright holder shall
+| not be used in advertising or otherwise to promote the sale, use or other
+| dealings in these Data Files or Software without prior written
+| authorization of the copyright holder.
+|
+| SPDX-License-Identifier: Unicode-3.0
+
+--------------------------------------------------------------------------------
+
+This product bundles XZ for Java shaded by GraalVM.
+
+* Maven group:artifact IDs: org.graalvm.shadowed:xz
+
+Home page: https://tukaani.org/xz/java.html
+License: BSD 0-Clause
+Note: GraalVM licensing documentation identifies this shaded code as XZ for Java 1.10, which is in XZ for Java's 0BSD-licensed release line.
+|  Copyright (C) The XZ for Java authors and contributors
+|  
+|  Permission to use, copy, modify, and/or distribute this
+|  software for any purpose with or without fee is hereby granted.
+|  
+|  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+|  WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+|  WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
+|  THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+|  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+|  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+|  NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+|  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------

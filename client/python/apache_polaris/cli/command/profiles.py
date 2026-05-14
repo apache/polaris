@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, cast
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     Subcommands,
     Arguments,
@@ -152,7 +153,7 @@ class ProfilesCommand(Command):
             Subcommands.GET,
         }:
             if not self.profile_name:
-                raise Exception("Missing required argument: profile_name")
+                raise CliError("Missing required argument: profile_name")
 
     def execute(self, api: Optional[PolarisDefaultApi] = None) -> None:
         if self.profiles_subcommand == Subcommands.CREATE:
@@ -177,4 +178,4 @@ class ProfilesCommand(Command):
             for profile_name in profiles:
                 print(f" - {profile_name}")
         else:
-            raise Exception(f"{self.profiles_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.profiles_subcommand} is not supported in the CLI")

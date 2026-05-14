@@ -145,6 +145,13 @@ The `catalogs` command is used to create, discover, and otherwise manage catalog
 5. update
 6. summarize
 
+{{< alert warning >}}
+Catalog properties configured with `--property` or `--set-property` are client-visible defaults.
+Polaris returns them to authenticated catalog clients through the Iceberg REST `/config` response.
+Use catalog properties only for non-sensitive client configuration. Do not store passwords, tokens,
+access keys, or other secrets in catalog properties.
+{{< /alert >}}
+
 #### create
 
 The `create` subcommand is used to create a catalog.
@@ -163,7 +170,7 @@ Command Options:
   --storage-type {s3,azure,gcs,file}                                   (Required) The storage type [S3, AZURE, GCS, FILE]
   --default-base-location DEFAULT_BASE_LOCATION                        (Required) Default base location for the catalog
   --allowed-location ALLOWED_LOCATION                                  An allowed location for files tracked by the catalog
-  --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
+  --property PROPERTY                                                  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
 
 AWS S3 Storage Options:
   --endpoint ENDPOINT                                                  The S3 endpoint to use when connecting to S3
@@ -339,7 +346,7 @@ options:
 Command Options:
   --default-base-location DEFAULT_BASE_LOCATION  A new default base location for the catalog
   --allowed-location ALLOWED_LOCATION            An additional allowed location for files
-  --set-property SET_PROPERTY                    A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once
+  --set-property SET_PROPERTY                    A key/value pair such as: tag=value. Merges the specified key/value into an existing properties map by updating the value if the key already exists or creating a new entry if not. Multiple can be provided by specifying this option more than once. Do not put passwords, tokens, access keys, or other secrets into the client-visible catalog properties.
   --remove-property REMOVE_PROPERTY              A key to remove from a properties map. If the key already does not exist then no action is taken for the specified key. Multiple can be provided by specifying this option more than once
 
 AWS S3 Storage Options:

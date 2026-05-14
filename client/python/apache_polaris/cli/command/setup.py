@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, List, Any, Set
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import (
     PrincipalType,
     Subcommands,
@@ -518,7 +519,7 @@ class SetupCommand(Command):
     def validate(self) -> None:
         """Validate the command arguments."""
         if self.setup_subcommand == Subcommands.APPLY and self.setup_config is None:
-            raise Exception("`setup_config` is required for the `apply` subcommand")
+            raise CliError("`setup_config` is required for the `apply` subcommand")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         """Execute the setup command based on the subcommand (apply or export)."""
@@ -578,7 +579,7 @@ class SetupCommand(Command):
         elif self.setup_subcommand == Subcommands.EXPORT:
             self._export_config(api)
         else:
-            raise Exception(f"Unsupported subcommand: {self.setup_subcommand}")
+            raise CliError(f"Unsupported subcommand: {self.setup_subcommand}")
 
     def _log_dry_run(
         self,

@@ -22,6 +22,7 @@ from typing import Dict, Optional, List, cast
 from pydantic import StrictStr
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import (
@@ -63,7 +64,7 @@ class CatalogRolesCommand(Command):
 
     def validate(self) -> None:
         if not self.catalog_name:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
 
@@ -77,13 +78,13 @@ class CatalogRolesCommand(Command):
             Subcommands.SUMMARIZE,
         }:
             if not self.catalog_role_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG_ROLE)}"
                 )
 
         if self.catalog_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_role_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}"
                 )
 
@@ -144,7 +145,7 @@ class CatalogRolesCommand(Command):
         elif self.catalog_roles_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
-            raise Exception(
+            raise CliError(
                 f"{self.catalog_roles_subcommand} is not supported in the CLI"
             )
 

@@ -249,10 +249,22 @@ class Hints:
         "A key/value pair such as: tag=value. Multiple can be provided by specifying this option"
         " more than once"
     )
+    CATALOG_PROPERTY = (
+        "A key/value pair such as: tag=value. Multiple can be provided by specifying this option"
+        " more than once. Catalog properties are client-visible defaults. Do not put passwords,"
+        " tokens, access keys, or other secrets in them."
+    )
     SET_PROPERTY = (
         "A key/value pair such as: tag=value. Merges the specified key/value into an existing"
         " properties map by updating the value if the key already exists or creating a new"
         " entry if not. Multiple can be provided by specifying this option more than once"
+    )
+    CATALOG_SET_PROPERTY = (
+        "A key/value pair such as: tag=value. Merges the specified key/value into an existing"
+        " properties map by updating the value if the key already exists or creating a new"
+        " entry if not. Multiple can be provided by specifying this option more than once."
+        " Catalog properties are client-visible defaults. Do not put passwords, tokens, access"
+        " keys, or other secrets in them."
     )
     REMOVE_PROPERTY = (
         "A key to remove from a properties map. If the key already does not exist then"
