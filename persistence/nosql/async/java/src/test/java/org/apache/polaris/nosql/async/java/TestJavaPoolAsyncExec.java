@@ -20,11 +20,9 @@ package org.apache.polaris.nosql.async.java;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -129,7 +127,7 @@ public class TestJavaPoolAsyncExec extends AsyncExecTestBase {
   }
 
   @Test
-  public void immediateTaskRejectedWhenThreadPoolIsSaturated() throws Exception {
+  public void immediateTaskRetriesWhenThreadPoolIsSaturated() throws Exception {
     var started = new CountDownLatch(1);
     var release = new Semaphore(0);
 
@@ -143,11 +141,12 @@ public class TestJavaPoolAsyncExec extends AsyncExecTestBase {
               });
 
       assertThat(started.await(5_000, MILLISECONDS)).isTrue();
-      assertThatThrownBy(() -> executor.submit(() -> "rejected"))
-          .isInstanceOf(RejectedExecutionException.class);
+      var delayed = executor.submit(() -> "delayed").completionStage().toCompletableFuture();
+      assertThat(delayed).isNotDone();
 
       release.release();
       assertThat(blocker.completionStage()).succeedsWithin(Duration.ofSeconds(5));
+      assertThat(delayed).succeedsWithin(Duration.ofSeconds(5)).isEqualTo("delayed");
     }
   }
 }
