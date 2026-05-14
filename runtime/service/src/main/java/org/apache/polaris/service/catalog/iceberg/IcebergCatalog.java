@@ -1268,7 +1268,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 if (targetLocation.isChildOf(siblingLocation)
                     || siblingLocation.isChildOf(targetLocation)) {
                   throw new ForbiddenException(
-                      "Unable to create table at location '%s' because it conflicts with existing table or namespace at "
+                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
                           + "location '%s'",
                       targetLocation, siblingLocation);
                 }
