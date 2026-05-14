@@ -2002,6 +2002,51 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testAddGrantIsIdempotent() {
+    String catalogName = client.newEntityName("mycatalog_addgrant_idempotent");
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    managementApi.createCatalog(catalog);
+
+    String catalogRoleName = client.newEntityName("mycr_addgrant_idempotent");
+    managementApi.createCatalogRole(catalogName, catalogRoleName);
+
+    CatalogGrant grant =
+        new CatalogGrant(CatalogPrivilege.TABLE_WRITE_DATA, GrantResource.TypeEnum.CATALOG);
+    Map<String, String> pathVars = Map.of("cat", catalogName, "role", catalogRoleName);
+
+    // First PUT creates the grant.
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}/catalog-roles/{role}/grants", pathVars)
+            .put(Entity.json(grant))) {
+      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Second PUT of the same grant must succeed idempotently (previously returned 500
+    // due to a leaked unique-constraint violation from the JDBC persistence layer).
+    try (Response response =
+        managementApi
+            .request("v1/catalogs/{cat}/catalog-roles/{role}/grants", pathVars)
+            .put(Entity.json(grant))) {
+      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // The grant should appear exactly once.
+    assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
+        .filteredOn(
+            g ->
+                g instanceof CatalogGrant cg
+                    && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
+        .hasSize(1);
+  }
+
+  @Test
   public void testServiceAdminCanTransferCatalogAdmin() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role

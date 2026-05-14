@@ -258,6 +258,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           QueryGenerator.generateInsertQuery(
               ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
     } catch (SQLException e) {
+      if (datasourceOperations.isConstraintViolation(e)) {
+        LOGGER.debug("Grant record already exists; treating as no-op: {}", grantRec);
+        return;
+      }
       throw new RuntimeException(
           String.format("Failed to write to grant records due to %s", e.getMessage()), e);
     }
