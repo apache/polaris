@@ -55,8 +55,6 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   public static final String SERVICE_TYPE = "polaris";
 
-  private static final String OPERATION_NOT_ALLOWED_FOR_USER_ERROR =
-      "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE";
   private static final String RANGER_AUTH_FAILED_ERROR =
       "Principal '%s' is not authorized for op '%s'";
 
