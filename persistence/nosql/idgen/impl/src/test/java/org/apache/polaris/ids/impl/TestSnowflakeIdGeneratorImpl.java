@@ -525,6 +525,7 @@ public class TestSnowflakeIdGeneratorImpl {
     }
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   @Test
   public void miscUuid() {
     var clockSource = new AtomicLong(ID_EPOCH_MILLIS + TimeUnit.DAYS.toMillis(365));
@@ -558,6 +559,12 @@ public class TestSnowflakeIdGeneratorImpl {
                     new UUID(
                         timeUuidMsbReal(tsUuidHighest),
                         timeUuidLsb(seqUuidHighest, nodeUuidHighest))))
+        .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                unixMillisFromTimeUuidTimestamp(
+                    timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS) + 1))
         .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
 
     soft.assertThatCode(

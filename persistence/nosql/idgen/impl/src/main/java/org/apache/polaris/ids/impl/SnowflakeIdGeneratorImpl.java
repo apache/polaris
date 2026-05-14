@@ -54,6 +54,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   // TODO add a specialized implementation using hard-coded values for the standardized parameters
 
+  // Number of 100ns ticks between the UUID epoch (1582-10-15) and the Unix epoch.
   @VisibleForTesting static final long TIME_UUID_EPOCH_OFFSET_100NS = 0x01b21dd213814000L;
   private static final long TIME_UUID_TICKS_PER_MILLISECOND = 10_000L;
 
