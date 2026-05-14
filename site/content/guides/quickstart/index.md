@@ -28,8 +28,6 @@ menus:
         weight: 2
 ---
 
-# Quickstart
-
 <!--
 ```shell
 cd "$SITE_TEST_GUIDE_DIR"
