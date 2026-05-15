@@ -50,7 +50,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
-  final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
 
   private static final Logger LOGGER =
@@ -134,7 +133,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
-      backingStoreMap.remove(realm);
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
     }
