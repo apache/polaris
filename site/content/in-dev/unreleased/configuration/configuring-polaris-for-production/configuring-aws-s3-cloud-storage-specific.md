@@ -117,16 +117,41 @@ KMS-related session permissions:
 
 ## S3-compatible endpoints
 
-Polaris can also be pointed at S3-compatible object stores (MinIO, Ceph RGW, Apache Ozone S3
-gateway). Two additional fields are relevant:
+Polaris can be pointed at S3-compatible object stores (MinIO, Ceph RGW, Apache Ozone S3 gateway).
+The available fields are:
 
 - `endpoint` — the S3 API endpoint Polaris and its clients should call.
 - `endpointInternal` — optional, used by the Polaris server when the in-cluster endpoint differs
   from the one returned to clients.
 - `pathStyleAccess` — set to `true` for backends that do not support virtual-host-style addressing.
 - `stsEndpoint` — STS endpoint; defaults to `endpointInternal` then `endpoint` when not set.
-- `stsUnavailable` — set to `true` when the backend does not implement STS. Polaris then skips
-  credential vending and clients fall back to long-lived credentials.
+- `stsUnavailable` — set to `true` when the backend does not implement STS.
+
+How clients receive credentials depends on whether the backend implements STS.
+
+### Backends with STS support (e.g. AWS S3, MinIO)
+
+Leave `stsUnavailable` unset (or `false`). Polaris will assume the role and vend short-lived,
+subscoped credentials to the client at table-load time when the client sends
+`X-Iceberg-Access-Delegation: vended-credentials`. This is the recommended deployment for AWS S3
+and any compatible backend that exposes the STS API.
+
+```json
+"storageConfigInfo": {
+  "storageType": "S3",
+  "endpoint": "https://s3.internal.example.com",
+  "pathStyleAccess": true,
+  "region": "us-east-1"
+}
+```
+
+### Backends without STS support (e.g. Apache Ozone S3 gateway, Ceph RGW without STS enabled)
+
+Set `stsUnavailable: true`. Polaris will then skip subscoped credential vending, and clients must
+authenticate to the object store directly with long-lived credentials. Because the vended-credential
+path is disabled, the client must omit the `X-Iceberg-Access-Delegation` header and supply its own
+access key / secret to the underlying FileIO. The Polaris guides for [Apache Ozone][ozone-guide]
+and [Ceph][ceph-guide] show this pattern.
 
 ```json
 "storageConfigInfo": {
@@ -137,6 +162,9 @@ gateway). Two additional fields are relevant:
   "region": "us-east-1"
 }
 ```
+
+[ozone-guide]: ../../../../guides/ozone/
+[ceph-guide]: ../../../../guides/ceph/
 
 ## Client configuration
 
@@ -164,9 +192,9 @@ The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls
 hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback
 is slated for removal in a future Iceberg release.
 
-For Trino, use the Iceberg connector with the REST catalog. The properties below match what the
-[local Ozone + Polaris + Trino blog post](../../../../blog/2026/04/04/local-open-data-lakehouse-k3d-ozone-polaris-trino)
-uses against Polaris:
+For Trino, use the Iceberg connector with the REST catalog. Two groups of properties are
+required: the REST/OAuth2 settings for talking to Polaris, and the native S3 filesystem settings
+that Trino uses to read the vended credentials.
 
 ```properties
 connector.name=iceberg
@@ -177,11 +205,41 @@ iceberg.rest-catalog.security=OAUTH2
 iceberg.rest-catalog.oauth2.credential=<client-id>:<client-secret>
 iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
 iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
+iceberg.rest-catalog.vended-credentials-enabled=true
+fs.native-s3.enabled=true
+s3.region=us-east-1
 ```
 
-For PyIceberg, use the `rest` catalog type. Polaris returns the vended S3 properties
-(`s3.access-key-id`, `s3.secret-access-key`, `s3.session-token`) to the client at table-load time,
-so static credentials should not be configured on the PyIceberg side.
+When pointing at an S3-compatible endpoint, also set:
+
+```properties
+s3.endpoint=https://s3.internal.example.com
+s3.path-style-access=true
+```
+
+For PyIceberg, use the `rest` catalog type. The same Polaris-side properties (`uri`, `warehouse`,
+`credential`, `scope`, `oauth2-server-uri`) apply, and the vended-credential header must be
+forwarded as a REST header:
+
+```python
+from pyiceberg.catalog.rest import RestCatalog
+
+cat = RestCatalog(
+    name="polaris",
+    **{
+        "uri": "https://<polaris-host>/api/catalog",
+        "warehouse": "warehouse_s3",
+        "credential": "<client-id>:<client-secret>",
+        "scope": "PRINCIPAL_ROLE:ALL",
+        "oauth2-server-uri": "https://<polaris-host>/api/catalog/v1/oauth/tokens",
+        "header.X-Iceberg-Access-Delegation": "vended-credentials",
+    },
+)
+```
+
+Polaris returns the vended S3 properties (`s3.access-key-id`, `s3.secret-access-key`,
+`s3.session-token`) to the client at table-load time, so static credentials should not be
+configured on the PyIceberg side.
 
 ## Verifying the setup
 

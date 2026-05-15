@@ -163,10 +163,28 @@ iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
 iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
 ```
 
-For PyIceberg, use the `rest` catalog type. Polaris vends per-account SAS tokens to the FileIO at
-table-load time. The credentials are returned under keys of the form
-`adls.sas-token.<storage-account>` (with optional `dfs.core.windows.net` /
-`blob.core.windows.net` suffixes when scoping requires it), as defined in
+For PyIceberg, use the `rest` catalog type and forward the vended-credential header as a REST
+header:
+
+```python
+from pyiceberg.catalog.rest import RestCatalog
+
+cat = RestCatalog(
+    name="polaris",
+    **{
+        "uri": "https://<polaris-host>/api/catalog",
+        "warehouse": "warehouse_azure",
+        "credential": "<client-id>:<client-secret>",
+        "scope": "PRINCIPAL_ROLE:ALL",
+        "oauth2-server-uri": "https://<polaris-host>/api/catalog/v1/oauth/tokens",
+        "header.X-Iceberg-Access-Delegation": "vended-credentials",
+    },
+)
+```
+
+Polaris vends per-account SAS tokens to the FileIO at table-load time. The credentials are
+returned under keys of the form `adls.sas-token.<storage-account>` (with optional
+`dfs.core.windows.net` / `blob.core.windows.net` suffixes when scoping requires it), as defined in
 `StorageAccessProperty`. The PyIceberg client picks these up directly; no static account key or
 SAS token needs to be configured.
 
@@ -184,7 +202,13 @@ If any operation fails:
 - Errors from Azure AD (`AADSTS*`) usually mean the service principal credentials in
   `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` are wrong, the secret has expired,
   or the principal has no role assignment on the storage account.
-- 403 from `dfs.core.windows.net` paths typically points at an HNS ACL mismatch on the base
-  location, or the role assignment is at a narrower scope than the path being accessed.
+- `Failed to get subscoped credentials` with `Status code 403` and an
+  `AuthorizationPermissionMismatch` Azure error body means the service principal does not have a
+  data-plane role (`Storage Blob Data Contributor` or equivalent) at a scope that covers the path
+  being accessed. Granting the role on the storage account — or the specific container — and
+  waiting for RBAC propagation resolves it.
+- 403 from `dfs.core.windows.net` paths with no Azure error code typically points at an HNS ACL
+  mismatch on the base location when HNS is enabled and a narrow ACL is in place on the
+  directory.
 - 404 on container-level operations indicates that the container does not yet exist; Polaris does
   not create containers, only directories and blobs underneath them.
