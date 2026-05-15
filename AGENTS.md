@@ -66,6 +66,30 @@ assumptions and running with them without checking.
 
 ---
 
+## Do Not Treat Issues As Specifications [DISCIPLINE]
+
+A GitHub issue is a starting point for investigation, not an implementation plan.
+Before making an issue-driven change, verify that the requested behavior is still
+missing and that the proposed fix actually addresses the stated problem.
+
+Required workflow:
+
+1. Trace the current code path related to the issue.
+2. Search for existing validation, tests, build tasks, or runtime behavior that may
+   already cover the requested case.
+3. Compare the issue's requested failure modes with the change you intend to make.
+   If the change only addresses part of the issue, use `Related to #NNN`, not
+   `Fixes #NNN`.
+4. Do not add redundant checks. If existing code already fails, validates, or tests
+   the scenario, explain that finding instead of opening a code-change PR.
+5. Do not materialize unbounded inputs just to perform existence checks. Prefer
+   streaming, short-circuiting, indexed lookups, or existing APIs. If collecting is
+   necessary, the bound must be obvious from the code or explained in the PR.
+6. If the issue is outdated, ambiguous, or inconsistent with the current code, stop
+   and ask for clarification before coding.
+
+---
+
 ## Hard Gates
 
 These MUST pass before you open a pull request or declare a task complete. Treat any
@@ -194,6 +218,9 @@ Use the PR template (`.github/pull_request_template.md`). At minimum:
    for the right category.
 6. If your change affects user-facing behavior or configuration, check whether
    `site/content/in-dev/unreleased/` needs updates.
+
+For issue-driven work, the PR description must explain the current behavior that
+was verified in the codebase and why existing checks do not already cover it.
 
 ---
 
