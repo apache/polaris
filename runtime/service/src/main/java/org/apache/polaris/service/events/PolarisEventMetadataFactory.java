@@ -28,15 +28,19 @@ import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.tracing.RequestIdFilter;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
 import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
 import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class PolarisEventMetadataFactory {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEventMetadataFactory.class);
 
   @Inject Clock clock;
   @Inject CurrentIdentityAssociation currentIdentityAssociation;
@@ -92,11 +96,29 @@ public class PolarisEventMetadataFactory {
    * taken place, e.g. in pre-authentication filters.
    */
   private Optional<PolarisPrincipal> getUser() {
-    SecurityIdentity identity =
-        currentIdentityAssociation.getDeferredIdentity().subscribeAsCompletionStage().getNow(null);
-    return identity == null || identity.isAnonymous()
-        ? Optional.empty()
-        : Optional.of(identity.getPrincipal(PolarisPrincipal.class));
+    return getSecurityIdentity()
+        .filter(identity -> !identity.isAnonymous())
+        .map(identity -> identity.getPrincipal(PolarisPrincipal.class));
+  }
+
+  /**
+   * Resolves the current security identity if available.
+   *
+   * <p>Returns {@link Optional#empty()} if the identity has not been resolved yet, or if the
+   * deferred identity resolution failed (e.g. on unauthenticated endpoints where the auth pipeline
+   * throws when triggered).
+   */
+  private Optional<SecurityIdentity> getSecurityIdentity() {
+    try {
+      return Optional.ofNullable(
+          currentIdentityAssociation
+              .getDeferredIdentity()
+              .subscribeAsCompletionStage()
+              .getNow(null));
+    } catch (CompletionException e) {
+      LOGGER.debug("Failed to resolve security identity", e);
+      return Optional.empty();
+    }
   }
 
   /**
