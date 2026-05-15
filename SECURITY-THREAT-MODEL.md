@@ -114,7 +114,7 @@ Polaris treats the following as security-sensitive:
 - Principal, role, privilege, and policy metadata.
 - Principal, principal-role, and catalog-role names when a deployment treats
   identity or role names as sensitive or personal data.
-- Catalog, namespace, table, and view metadata where access is restricted by
+- Catalog, namespace, table, and view metadata whose visibility is governed by
   Polaris authorization.
 - Storage locations, table locations, metadata locations, manifest locations,
   statistics locations, and other URI-bearing metadata that define where
@@ -348,10 +348,11 @@ Custom distributions can change the effective threat model. When evaluating a
 finding, determine whether the behavior is present in:
 
 - An official Polaris release artifact.
+- An official Polaris source release built with documented build options.
 - An official Polaris container image.
 - An official Polaris Helm chart.
 - The Polaris CLI.
-- A reusable Polaris module.
+- A reusable production or library module intended for external consumption.
 - An optional extension or dependency enabled by build configuration.
 - Downstream-only integration code or deployment packaging.
 
@@ -520,8 +521,9 @@ dependency usage, upgrade guidance, and examples.
 
 Security-relevant documentation findings are not automatically Polaris
 vulnerabilities and do not automatically require an advisory or CVE. They should
-still be reported as hardening or operator-safety findings when clearer
-documentation could prevent realistic misuse.
+still be reported as hardening or operator-safety findings when unclear
+documentation, examples, defaults, or missing warnings could create a realistic
+path to unsafe use or realistic user misunderstanding.
 
 ASF security guidance remains authoritative for whether a finding should be
 handled as an undisclosed vulnerability, advisory, CVE, normal bug, or
@@ -589,13 +591,15 @@ When evaluating a potential finding:
     that the finding is common across variants.
 15. For documentation findings, separate security-relevant documentation issues
     from confirmed vulnerabilities. Report unclear docs, examples, defaults, or
-    missing warnings when they could reasonably lead to unsafe deployment,
+    missing warnings when they create a realistic path to unsafe deployment,
     credential handling, authorization, storage, integration, upgrade, or
-    operational choices.
+    operational choices, or a realistic user misunderstanding.
 
 Do not report an issue solely because code, configuration, or documentation is
-security-adjacent. A useful finding should explain a realistic path to impact or
-a realistic user misunderstanding. Avoid over-reporting dependency entries that
+security-adjacent. For documentation, a useful finding should meet the same
+realistic unsafe-use or realistic user-misunderstanding bar. For code and
+configuration, a useful finding should explain a realistic path to impact. Avoid
+over-reporting dependency entries that
 are not reachable through Polaris, intentional local-development defaults,
 test-only or demo-only code, admin-only behavior that matches this model,
 downstream-only customization errors, and documentation preferences that do not
