@@ -27,6 +27,16 @@ A human author is responsible for every change an agent produces. See
 [CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-assisted-contributions) for the
 full AI-assisted contribution policy.
 
+If AI assistance was used to prepare a change, include this disclosure in the PR
+description:
+
+> AI assistance was used to prepare this change. I have reviewed and understand
+> the full diff, and I take responsibility for the contribution.
+
+Do not describe AI tools as authors or co-authors. Do not include model names,
+model versions, prompts, or reasoning settings unless a maintainer explicitly asks
+for them during review. The human PR author is responsible for the contribution.
+
 This document has two types of rules:
 - **Hard gate** — mechanically verifiable, blocking. If it fails, do not submit.
 - **Discipline** — behavioral rule for how you work. Not mechanically verifiable,
