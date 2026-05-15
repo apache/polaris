@@ -24,27 +24,36 @@ weight: 620
 ---
 
 This page covers configuring Azure Blob Storage and Azure Data Lake Storage Gen2 (ADLS Gen2) as
-the storage backend for a Polaris catalog. Polaris vends short-lived SAS tokens to clients after
-authenticating itself against a customer Azure AD tenant; the multi-tenant application that
-represents Polaris must be admitted to that tenant before catalog operations succeed.
+the storage backend for a Polaris catalog. Polaris authenticates against Azure with the credentials
+of a service principal that has data-plane access to the target storage account, and then vends
+short-lived SAS tokens to clients on each table-load request.
 
-## Tenant admission
+## Service principal and Polaris credentials
 
-Polaris runs as a multi-tenant Azure AD application. Before it can vend credentials for a bucket
-in a customer tenant, an Azure AD administrator of that tenant must consent to the application.
-On catalog creation Polaris returns a `consentUrl` that points at the standard Microsoft consent
-endpoint; opening that URL with an account that has tenant-admin privileges grants the application
-the role assignments required to read and write the storage account.
+Polaris uses the Azure SDK's `DefaultAzureCredential` chain, which by default reads the
+service-principal credentials from environment variables. Create a service principal with data
+access to the storage account and pass its credentials to the Polaris process:
 
-The same fields are surfaced by `AzureStorageConfigurationInfo`:
+```bash
+# Replace <subscription>, <resource-group>, <storage-account> with your values.
+az ad sp create-for-rbac \
+  --name polaris-storage \
+  --role "Storage Blob Data Contributor" \
+  --scopes "/subscriptions/<subscription>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account>"
+```
 
-- `tenantId` — the Azure AD tenant that owns the storage account.
-- `multiTenantAppName` — the application identifier Polaris will use; provided by your Polaris
-  deployment.
-- `consentUrl` — the URL the tenant admin must visit.
+The command prints `appId`, `password`, and `tenant`. Set these on the Polaris server:
 
-Until consent has been granted, `loadTable` and similar operations will fail with an Azure AD
-`AADSTS65001` or `AADSTS700016` error.
+```bash
+export AZURE_TENANT_ID=<tenant>
+export AZURE_CLIENT_ID=<appId>
+export AZURE_CLIENT_SECRET=<password>
+```
+
+In a container deployment, set the same three variables on the Polaris container/pod. The
+`Storage Blob Data Contributor` role at storage-account scope is what allows Polaris to issue SAS
+tokens for any container under that account; you can scope the role narrower (single container)
+when you need to confine a single Polaris catalog to one container.
 
 ## Storage account requirements
 
@@ -54,44 +63,52 @@ The storage account that backs the catalog should be configured with:
   for directory-aware operations (rename, recursive list) that Iceberg relies on for atomic
   metadata commits. If HNS is disabled, set `hierarchical: false` so Polaris will request flat-blob
   permissions only and avoid scoping SAS tokens to non-existent directory ACLs.
-- **Storage Blob Data Contributor** role granted to the Polaris application on the account (or on
-  the specific container if you want to scope access narrowly). Polaris cannot vend a token wider
-  than the role assignment it holds.
+- A **container** that will hold the catalog's namespaces and tables (for example `warehouse`).
+  Polaris does not create the container itself.
 - **Firewall** rules that permit traffic from the Polaris control plane and from the engines that
   will read the data. SAS tokens do not bypass storage-account firewalls.
 
 ## Catalog storage configuration
+
+With the service principal in place on the server, create the catalog with the storage account's
+tenant ID and the `abfss://` location:
 
 ```bash
 curl -X POST https://<polaris-host>/management/v1/catalogs \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-        "type": "INTERNAL",
-        "name": "warehouse_azure",
-        "storageConfigInfo": {
-          "storageType": "AZURE",
-          "tenantId": "00000000-0000-0000-0000-000000000000",
-          "multiTenantAppName": "polaris-storage",
-          "hierarchical": true
-        },
-        "properties": {
-          "default-base-location": "abfss://warehouse@example.dfs.core.windows.net/prod/"
+        "catalog": {
+          "type": "INTERNAL",
+          "name": "warehouse_azure",
+          "properties": {
+            "default-base-location": "abfss://warehouse@example.dfs.core.windows.net/prod/"
+          },
+          "storageConfigInfo": {
+            "storageType": "AZURE",
+            "tenantId": "00000000-0000-0000-0000-000000000000",
+            "hierarchical": true,
+            "allowedLocations": [
+              "abfss://warehouse@example.dfs.core.windows.net/"
+            ]
+          }
         }
       }'
 ```
 
-The response includes `consentUrl`. Send it to the tenant administrator and wait for consent
-before issuing further requests against the catalog.
-
 `default-base-location` must use the `abfss://` scheme together with the ADLS Gen2 endpoint
 (`<account>.dfs.core.windows.net`). The `wasbs://` scheme is not supported.
+
+`AzureStorageConfigurationInfo` also accepts `multiTenantAppName` and `consentUrl`. These are
+used by managed Polaris deployments that present a single multi-tenant Azure AD application to
+many customer tenants; in a self-hosted deployment that authenticates with its own service
+principal they can be omitted.
 
 ## SAS token scoping and HNS ACLs
 
 When HNS is enabled (`hierarchical: true`), Polaris narrows each vended SAS token to the directory
 that backs the requested namespace or table. The ADLS Gen2 ACL on that directory must include the
-Polaris application as well as any extra principals that should read the data outside of vended
+service principal as well as any extra principals that should read the data outside of vended
 credentials.
 
 A common failure mode is a token that grants object-level permissions but is denied by a
@@ -105,7 +122,7 @@ restrict cross-namespace access.
 ## Client configuration
 
 Engines call Polaris through the Iceberg REST API and receive SAS-token properties at table-load
-time; they do not need static Azure credentials when consent is in place.
+time; they do not need static Azure credentials on the client side.
 
 Spark example, matching the property names used by the existing MinIO / RustFS guides:
 
@@ -155,8 +172,6 @@ SAS token needs to be configured.
 
 ## Verifying the setup
 
-After consent has been granted:
-
 ```sql
 CREATE NAMESPACE warehouse_azure.demo;
 CREATE TABLE warehouse_azure.demo.t (id BIGINT, name STRING) USING iceberg;
@@ -166,8 +181,10 @@ SELECT * FROM warehouse_azure.demo.t;
 
 If any operation fails:
 
-- `AADSTS` errors usually mean consent has not been granted or `tenantId` is wrong.
+- Errors from Azure AD (`AADSTS*`) usually mean the service principal credentials in
+  `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` are wrong, the secret has expired,
+  or the principal has no role assignment on the storage account.
 - 403 from `dfs.core.windows.net` paths typically points at an HNS ACL mismatch on the base
-  location.
+  location, or the role assignment is at a narrower scope than the path being accessed.
 - 404 on container-level operations indicates that the container does not yet exist; Polaris does
   not create containers, only directories and blobs underneath them.
