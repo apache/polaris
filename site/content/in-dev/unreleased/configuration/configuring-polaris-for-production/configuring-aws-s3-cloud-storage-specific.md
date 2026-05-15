@@ -143,28 +143,45 @@ gateway). Two additional fields are relevant:
 Engines connect through the Iceberg REST API and let Polaris vend credentials at table-load time;
 they do not need static AWS credentials when STS is available.
 
-Spark example:
+Spark example, matching the property names used by the existing MinIO / RustFS guides:
 
-```properties
-spark.sql.catalog.warehouse_s3=org.apache.iceberg.spark.SparkCatalog
-spark.sql.catalog.warehouse_s3.type=rest
-spark.sql.catalog.warehouse_s3.uri=https://<polaris-host>/api/catalog
-spark.sql.catalog.warehouse_s3.warehouse=warehouse_s3
-spark.sql.catalog.warehouse_s3.header.X-Iceberg-Access-Delegation=vended-credentials
+```shell
+bin/spark-sql \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
+    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
+    --conf spark.sql.catalog.polaris.type=rest \
+    --conf spark.sql.catalog.polaris.uri=https://<polaris-host>/api/catalog \
+    --conf spark.sql.catalog.polaris.oauth2-server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens \
+    --conf spark.sql.catalog.polaris.token-refresh-enabled=false \
+    --conf spark.sql.catalog.polaris.warehouse=warehouse_s3 \
+    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
+    --conf spark.sql.catalog.polaris.credential=<client-id>:<client-secret> \
+    --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 ```
 
-Trino connector properties:
+The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls back to a
+hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback
+is slated for removal in a future Iceberg release.
+
+For Trino, use the Iceberg connector with the REST catalog. The properties below match what the
+[local Ozone + Polaris + Trino blog post](../../../../blog/2026/04/04/local-open-data-lakehouse-k3d-ozone-polaris-trino)
+uses against Polaris:
 
 ```properties
 connector.name=iceberg
 iceberg.catalog.type=rest
 iceberg.rest-catalog.uri=https://<polaris-host>/api/catalog
 iceberg.rest-catalog.warehouse=warehouse_s3
-iceberg.rest-catalog.vended-credentials-enabled=true
+iceberg.rest-catalog.security=OAUTH2
+iceberg.rest-catalog.oauth2.credential=<client-id>:<client-secret>
+iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
+iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
 ```
 
-For PyIceberg, use `rest` catalog type and rely on the vended `s3.access-key-id`,
-`s3.secret-access-key`, and `s3.session-token` properties returned by Polaris.
+For PyIceberg, use the `rest` catalog type. Polaris returns the vended S3 properties
+(`s3.access-key-id`, `s3.secret-access-key`, `s3.session-token`) to the client at table-load time,
+so static credentials should not be configured on the PyIceberg side.
 
 ## Verifying the setup
 

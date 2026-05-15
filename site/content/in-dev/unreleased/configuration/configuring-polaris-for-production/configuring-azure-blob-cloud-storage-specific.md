@@ -107,32 +107,51 @@ restrict cross-namespace access.
 Engines call Polaris through the Iceberg REST API and receive SAS-token properties at table-load
 time; they do not need static Azure credentials when consent is in place.
 
-Spark with the Azure file-system driver:
+Spark example, matching the property names used by the existing MinIO / RustFS guides:
 
-```properties
-spark.sql.catalog.warehouse_azure=org.apache.iceberg.spark.SparkCatalog
-spark.sql.catalog.warehouse_azure.type=rest
-spark.sql.catalog.warehouse_azure.uri=https://<polaris-host>/api/catalog
-spark.sql.catalog.warehouse_azure.warehouse=warehouse_azure
-spark.sql.catalog.warehouse_azure.header.X-Iceberg-Access-Delegation=vended-credentials
-spark.sql.catalog.warehouse_azure.io-impl=org.apache.iceberg.azure.adlsv2.ADLSFileIO
+```shell
+bin/spark-sql \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-azure-bundle:1.10.1 \
+    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
+    --conf spark.sql.catalog.polaris.type=rest \
+    --conf spark.sql.catalog.polaris.uri=https://<polaris-host>/api/catalog \
+    --conf spark.sql.catalog.polaris.oauth2-server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens \
+    --conf spark.sql.catalog.polaris.token-refresh-enabled=false \
+    --conf spark.sql.catalog.polaris.warehouse=warehouse_azure \
+    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
+    --conf spark.sql.catalog.polaris.credential=<client-id>:<client-secret> \
+    --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
+    --conf spark.sql.catalog.polaris.io-impl=org.apache.iceberg.azure.adlsv2.ADLSFileIO
 ```
 
-The Spark application must include `iceberg-azure` (or `iceberg-azure-bundle`) and
-`hadoop-azure` on the classpath; Polaris itself does not ship these jars to the engine.
+The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls back to a
+hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback
+is slated for removal in a future Iceberg release.
 
-Trino:
+The Spark application must include the Iceberg Azure bundle (or `iceberg-azure` and the matching
+Hadoop / Azure jars) on the classpath; Polaris does not ship these jars to the engine.
+
+For Trino, use the Iceberg connector with the REST catalog, in the same shape as the AWS S3
+example on the sibling page:
 
 ```properties
 connector.name=iceberg
 iceberg.catalog.type=rest
 iceberg.rest-catalog.uri=https://<polaris-host>/api/catalog
 iceberg.rest-catalog.warehouse=warehouse_azure
-iceberg.rest-catalog.vended-credentials-enabled=true
+iceberg.rest-catalog.security=OAUTH2
+iceberg.rest-catalog.oauth2.credential=<client-id>:<client-secret>
+iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
+iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
 ```
 
-For PyIceberg, use the `rest` catalog type and rely on the `adls.sas-token` property returned by
-Polaris.
+For PyIceberg, use the `rest` catalog type. Polaris vends per-account SAS tokens to the FileIO at
+table-load time. The credentials are returned under keys of the form
+`adls.sas-token.<storage-account>` (with optional `dfs.core.windows.net` /
+`blob.core.windows.net` suffixes when scoping requires it), as defined in
+`StorageAccessProperty`. The PyIceberg client picks these up directly; no static account key or
+SAS token needs to be configured.
 
 ## Verifying the setup
 
