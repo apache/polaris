@@ -19,6 +19,7 @@
 import argparse
 from typing import List, Optional, Dict, Any, Union
 
+from apache_polaris import __version__
 from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
@@ -146,6 +147,11 @@ class Parser(object):
             prog="polaris",
             usage="polaris [-h] [options] COMMAND ...",
             formatter_class=PolarisHelpFormatter,
+        )
+        parser.add_argument(
+            "--version",
+            action="version",
+            version=f"%(prog)s {__version__}",
         )
         Parser._add_arguments(parser, Parser._ROOT_ARGUMENTS, "Global Options")
 
