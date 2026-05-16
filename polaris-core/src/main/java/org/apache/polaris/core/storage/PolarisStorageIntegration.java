@@ -55,4 +55,14 @@ public interface PolarisStorageIntegration {
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context);
+
+  /**
+   * Hook invoked before a table is created to pre-materialize storage locations that the underlying
+   * storage system requires to exist before files can be written into them.
+   *
+   * <p>The default is a no-op. Storage types that need explicit folder creation (e.g. GCS with
+   * Hierarchical Namespace enabled) override this. Passed locations include the table location and
+   * its metadata/data subpaths.
+   */
+  default void prepareLocations(@NonNull List<String> locations) {}
 }

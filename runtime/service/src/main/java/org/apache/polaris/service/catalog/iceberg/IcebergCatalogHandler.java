@@ -115,6 +115,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -207,6 +209,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
+  protected abstract PolarisStorageIntegrationProvider storageIntegrationProvider();
+
   protected abstract EventAttributeMap eventAttributeMap();
 
   protected abstract PolarisMetricsReporter metricsReporter();
@@ -238,6 +242,68 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
     diagnostics().checkNotNull(catalogEntity, "No catalog available");
     return catalogEntity;
+  }
+
+  /**
+   * Pre-createTable hook: asks the storage integration to materialize any folders that must exist
+   * before the table's files can be written (e.g. GCS HNS folder objects). For storage types
+   * without this requirement the underlying call is a no-op.
+   *
+   * <p>Resolves the effective table location from the create request, then includes the table's
+   * metadata and data sub-paths (taking explicit overrides from properties when set).
+   */
+  private void prepareStorageForTable(
+      CatalogEntity catalog,
+      TableIdentifier tableIdentifier,
+      @Nullable String requestLocation,
+      @Nullable Map<String, String> tableProperties) {
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
+    if (resolvedStoragePath == null) {
+      return;
+    }
+    PolarisStorageIntegration integration =
+        storageIntegrationProvider().getStorageIntegration(resolvedStoragePath.getRawFullPath());
+    if (integration == null) {
+      return;
+    }
+    String effectiveLocation = resolveTableLocation(catalog, tableIdentifier, requestLocation);
+    if (effectiveLocation == null) {
+      return;
+    }
+    Map<String, String> props = tableProperties != null ? tableProperties : Map.of();
+    integration.prepareLocations(resolveStorageLocations(effectiveLocation, props));
+  }
+
+  private @Nullable String resolveTableLocation(
+      CatalogEntity catalog, TableIdentifier tableIdentifier, @Nullable String requestLocation) {
+    if (requestLocation != null) {
+      return requestLocation;
+    }
+    String baseLocation = catalog.getBaseLocation();
+    if (baseLocation == null) {
+      return null;
+    }
+    String base =
+        baseLocation.endsWith("/")
+            ? baseLocation.substring(0, baseLocation.length() - 1)
+            : baseLocation;
+    String namespacePath = String.join("/", tableIdentifier.namespace().levels());
+    return base + "/" + namespacePath + "/" + tableIdentifier.name();
+  }
+
+  private List<String> resolveStorageLocations(
+      String tableLocation, Map<String, String> tableProperties) {
+    String metadataPath =
+        Optional.ofNullable(
+                tableProperties.get(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+            .orElse(tableLocation + "/metadata");
+    String dataPath =
+        Optional.ofNullable(
+                tableProperties.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))
+            .orElse(tableLocation + "/data");
+    return List.of(tableLocation, metadataPath, dataPath);
   }
 
   private boolean shouldDecodeToken() {
@@ -470,6 +536,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), tableIdentifier, request.location(), request.properties());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
           tableIdentifier, PolarisEntitySubType.ICEBERG_TABLE);
@@ -591,6 +659,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
+    prepareStorageForTable(
+        getResolvedCatalogEntity(), ident, request.location(), request.properties());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
