@@ -192,9 +192,9 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body.get("metricType")).isEqualTo("scan");
-    assertThat((List<?>) body.get("reports")).hasSize(1);
+    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
+    assertThat(body.metricType()).isEqualTo("scan");
+    assertThat(body.reports()).hasSize(1);
   }
 
   @Test
@@ -226,9 +226,8 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body).containsKey("nextPageToken");
-    assertThat(body.get("nextPageToken")).isNull();
+    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
+    assertThat(body.nextPageToken()).isNull();
   }
 
   // ── commit ────────────────────────────────────────────────────────────────
@@ -263,9 +262,9 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    assertThat(body.get("metricType")).isEqualTo("commit");
-    assertThat((List<?>) body.get("reports")).hasSize(1);
+    MetricsListResponse<?> body = (MetricsListResponse<?>) response.getEntity();
+    assertThat(body.metricType()).isEqualTo("commit");
+    assertThat(body.reports()).hasSize(1);
   }
 
   // ── bad requests ──────────────────────────────────────────────────────────
@@ -561,25 +560,19 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    Map<String, Object> report = (Map<String, Object>) ((List<?>) body.get("reports")).get(0);
+    @SuppressWarnings("unchecked")
+    MetricsListResponse<ScanMetricsReport> body =
+        (MetricsListResponse<ScanMetricsReport>) response.getEntity();
+    ScanMetricsReport report = body.reports().get(0);
 
-    assertThat(report.get("id")).isEqualTo("r-envelope");
-    assertThat(report).containsKey("timestampMs");
-    assertThat(report.get("actor")).isInstanceOf(Map.class);
-    assertThat(((Map<String, Object>) report.get("actor")).get("principalName")).isEqualTo("alice");
-    assertThat(report.get("request")).isInstanceOf(Map.class);
-    assertThat(((Map<String, Object>) report.get("request")).get("requestId")).isEqualTo("req-1");
-    assertThat(report.get("object")).isInstanceOf(Map.class);
-    assertThat(report.get("payload")).isInstanceOf(Map.class);
-    Map<String, Object> payload = (Map<String, Object>) report.get("payload");
-    assertThat(payload.get("type")).isEqualTo("iceberg.metrics.scan");
-    assertThat(payload.get("version")).isEqualTo(1);
-    assertThat(payload.get("data")).isInstanceOf(Map.class);
-    // Flat fields must NOT appear at the top level
-    assertThat(report).doesNotContainKey("reportId");
-    assertThat(report).doesNotContainKey("principalName");
-    assertThat(report).doesNotContainKey("resultDataFiles");
+    assertThat(report.id()).isEqualTo("r-envelope");
+    assertThat(report.timestampMs()).isPositive();
+    assertThat(report.actor().principalName()).isEqualTo("alice");
+    assertThat(report.request().requestId()).isEqualTo("req-1");
+    assertThat(report.object()).isNotNull();
+    assertThat(report.payload().type()).isEqualTo("iceberg.metrics.scan");
+    assertThat(report.payload().version()).isEqualTo(1);
+    assertThat(report.payload().data()).isNotNull();
   }
 
   @Test
@@ -605,23 +598,18 @@ class MetricsReportsServiceTest {
             securityContext);
 
     assertThat(response.getStatus()).isEqualTo(200);
-    Map<String, Object> body = (Map<String, Object>) response.getEntity();
-    Map<String, Object> report = (Map<String, Object>) ((List<?>) body.get("reports")).get(0);
+    @SuppressWarnings("unchecked")
+    MetricsListResponse<CommitMetricsReport> body =
+        (MetricsListResponse<CommitMetricsReport>) response.getEntity();
+    CommitMetricsReport report = body.reports().get(0);
 
-    assertThat(report.get("id")).isEqualTo("c-envelope");
-    assertThat(report.get("actor")).isInstanceOf(Map.class);
-    assertThat(report.get("request")).isInstanceOf(Map.class);
-    Map<String, Object> object = (Map<String, Object>) report.get("object");
-    assertThat(object.get("snapshotId")).isEqualTo(42L);
-    Map<String, Object> payload = (Map<String, Object>) report.get("payload");
-    assertThat(payload.get("type")).isEqualTo("iceberg.metrics.commit");
-    assertThat(payload.get("version")).isEqualTo(1);
-    Map<String, Object> data = (Map<String, Object>) payload.get("data");
-    assertThat(data.get("operation")).isEqualTo("append");
-    // Flat fields must NOT appear at the top level
-    assertThat(report).doesNotContainKey("reportId");
-    assertThat(report).doesNotContainKey("snapshotId");
-    assertThat(report).doesNotContainKey("operation");
+    assertThat(report.id()).isEqualTo("c-envelope");
+    assertThat(report.actor()).isNotNull();
+    assertThat(report.request()).isNotNull();
+    assertThat(report.object().snapshotId()).isEqualTo(42L);
+    assertThat(report.payload().type()).isEqualTo("iceberg.metrics.commit");
+    assertThat(report.payload().version()).isEqualTo(1);
+    assertThat(report.payload().data().operation()).isEqualTo("append");
   }
 
   // ── authorization (403) ───────────────────────────────────────────────────

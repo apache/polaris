@@ -34,6 +34,9 @@ dependencies {
   implementation(libs.jakarta.ws.rs.api)
   compileOnly(libs.jakarta.annotation.api)
 
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)

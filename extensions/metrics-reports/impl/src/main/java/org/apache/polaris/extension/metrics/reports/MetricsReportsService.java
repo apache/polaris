@@ -24,10 +24,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -124,8 +121,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
                 timestampFrom,
                 timestampTo,
                 token);
-        yield Response.ok(buildResponse("scan", page, MetricsReportsService::scanRecordToMap))
-            .build();
+        yield Response.ok(buildScanResponse(page)).build();
       }
       case "commit" -> {
         Page<CommitMetricsRecord> page =
@@ -138,8 +134,7 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
                 timestampFrom,
                 timestampTo,
                 token);
-        yield Response.ok(buildResponse("commit", page, MetricsReportsService::commitRecordToMap))
-            .build();
+        yield Response.ok(buildCommitResponse(page)).build();
       }
       default ->
           throw new IllegalArgumentException(
@@ -195,117 +190,88 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
     return Namespace.of(levels);
   }
 
-  private static <T> Map<String, Object> buildResponse(
-      String metricType, Page<T> page, Function<T, Map<String, Object>> toMap) {
-    List<Map<String, Object>> reports = page.items().stream().map(toMap).toList();
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("metricType", metricType);
-    response.put("nextPageToken", page.encodedResponseToken());
-    response.put("reports", reports);
-    return response;
+  private static MetricsListResponse<ScanMetricsReport> buildScanResponse(
+      Page<ScanMetricsRecord> page) {
+    List<ScanMetricsReport> reports =
+        page.items().stream().map(MetricsReportsService::toScanReport).toList();
+    return new MetricsListResponse<>("scan", page.encodedResponseToken(), reports);
   }
 
-  private static Map<String, Object> scanRecordToMap(ScanMetricsRecord r) {
-    Map<String, Object> actor = new LinkedHashMap<>();
-    actor.put("principalName", r.principalName());
-
-    Map<String, Object> request = new LinkedHashMap<>();
-    request.put("requestId", r.requestId());
-    request.put("otelTraceId", r.otelTraceId());
-    request.put("otelSpanId", r.otelSpanId());
-
-    Map<String, Object> object = new LinkedHashMap<>();
-    r.snapshotId().ifPresent(v -> object.put("snapshotId", v));
-
-    Map<String, Object> data = new LinkedHashMap<>();
-    r.schemaId().ifPresent(v -> data.put("schemaId", v));
-    r.filterExpression().ifPresent(v -> data.put("filterExpression", v));
-    if (!r.projectedFieldIds().isEmpty()) {
-      data.put(
-          "projectedFieldIds",
-          r.projectedFieldIds().stream().map(Object::toString).collect(Collectors.joining(",")));
-    }
-    if (!r.projectedFieldNames().isEmpty()) {
-      data.put("projectedFieldNames", String.join(",", r.projectedFieldNames()));
-    }
-    data.put("resultDataFiles", r.resultDataFiles());
-    data.put("resultDeleteFiles", r.resultDeleteFiles());
-    data.put("totalFileSizeBytes", r.totalFileSizeBytes());
-    data.put("totalDataManifests", r.totalDataManifests());
-    data.put("totalDeleteManifests", r.totalDeleteManifests());
-    data.put("scannedDataManifests", r.scannedDataManifests());
-    data.put("scannedDeleteManifests", r.scannedDeleteManifests());
-    data.put("skippedDataManifests", r.skippedDataManifests());
-    data.put("skippedDeleteManifests", r.skippedDeleteManifests());
-    data.put("skippedDataFiles", r.skippedDataFiles());
-    data.put("skippedDeleteFiles", r.skippedDeleteFiles());
-    data.put("totalPlanningDurationMs", r.totalPlanningDurationMs());
-    data.put("equalityDeleteFiles", r.equalityDeleteFiles());
-    data.put("positionalDeleteFiles", r.positionalDeleteFiles());
-    data.put("indexedDeleteFiles", r.indexedDeleteFiles());
-    data.put("totalDeleteFileSizeBytes", r.totalDeleteFileSizeBytes());
-
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("type", "iceberg.metrics.scan");
-    payload.put("version", 1);
-    payload.put("data", data);
-
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("id", r.reportId());
-    m.put("timestampMs", r.timestamp().toEpochMilli());
-    m.put("actor", actor);
-    m.put("request", request);
-    m.put("object", object);
-    m.put("payload", payload);
-    return m;
+  private static MetricsListResponse<CommitMetricsReport> buildCommitResponse(
+      Page<CommitMetricsRecord> page) {
+    List<CommitMetricsReport> reports =
+        page.items().stream().map(MetricsReportsService::toCommitReport).toList();
+    return new MetricsListResponse<>("commit", page.encodedResponseToken(), reports);
   }
 
-  private static Map<String, Object> commitRecordToMap(CommitMetricsRecord r) {
-    Map<String, Object> actor = new LinkedHashMap<>();
-    actor.put("principalName", r.principalName());
+  private static ScanMetricsReport toScanReport(ScanMetricsRecord r) {
+    MetricsReportActor actor = new MetricsReportActor(r.principalName());
+    MetricsReportRequest request =
+        new MetricsReportRequest(r.requestId(), r.otelTraceId(), r.otelSpanId());
+    ScanMetricsReport.TableObject object =
+        new ScanMetricsReport.TableObject(r.snapshotId().orElse(null));
+    ScanMetricsReport.Payload.Data data =
+        new ScanMetricsReport.Payload.Data(
+            r.schemaId().orElse(null),
+            r.filterExpression().orElse(null),
+            r.projectedFieldIds().isEmpty()
+                ? null
+                : r.projectedFieldIds().stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(",")),
+            r.projectedFieldNames().isEmpty() ? null : String.join(",", r.projectedFieldNames()),
+            r.resultDataFiles(),
+            r.resultDeleteFiles(),
+            r.totalFileSizeBytes(),
+            r.totalDataManifests(),
+            r.totalDeleteManifests(),
+            r.scannedDataManifests(),
+            r.scannedDeleteManifests(),
+            r.skippedDataManifests(),
+            r.skippedDeleteManifests(),
+            r.skippedDataFiles(),
+            r.skippedDeleteFiles(),
+            r.totalPlanningDurationMs(),
+            r.equalityDeleteFiles(),
+            r.positionalDeleteFiles(),
+            r.indexedDeleteFiles(),
+            r.totalDeleteFileSizeBytes());
+    ScanMetricsReport.Payload payload =
+        new ScanMetricsReport.Payload("iceberg.metrics.scan", 1, data);
+    return new ScanMetricsReport(
+        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
+  }
 
-    Map<String, Object> request = new LinkedHashMap<>();
-    request.put("requestId", r.requestId());
-    request.put("otelTraceId", r.otelTraceId());
-    request.put("otelSpanId", r.otelSpanId());
-
-    Map<String, Object> object = new LinkedHashMap<>();
-    object.put("snapshotId", r.snapshotId());
-
-    Map<String, Object> data = new LinkedHashMap<>();
-    r.sequenceNumber().ifPresent(v -> data.put("sequenceNumber", v));
-    data.put("operation", r.operation());
-    data.put("addedDataFiles", r.addedDataFiles());
-    data.put("removedDataFiles", r.removedDataFiles());
-    data.put("totalDataFiles", r.totalDataFiles());
-    data.put("addedDeleteFiles", r.addedDeleteFiles());
-    data.put("removedDeleteFiles", r.removedDeleteFiles());
-    data.put("totalDeleteFiles", r.totalDeleteFiles());
-    data.put("addedEqualityDeleteFiles", r.addedEqualityDeleteFiles());
-    data.put("removedEqualityDeleteFiles", r.removedEqualityDeleteFiles());
-    data.put("addedPositionalDeleteFiles", r.addedPositionalDeleteFiles());
-    data.put("removedPositionalDeleteFiles", r.removedPositionalDeleteFiles());
-    data.put("addedRecords", r.addedRecords());
-    data.put("removedRecords", r.removedRecords());
-    data.put("totalRecords", r.totalRecords());
-    data.put("addedFileSizeBytes", r.addedFileSizeBytes());
-    data.put("removedFileSizeBytes", r.removedFileSizeBytes());
-    data.put("totalFileSizeBytes", r.totalFileSizeBytes());
-    r.totalDurationMs().ifPresent(v -> data.put("totalDurationMs", v));
-    data.put("attempts", r.attempts());
-
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("type", "iceberg.metrics.commit");
-    payload.put("version", 1);
-    payload.put("data", data);
-
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("id", r.reportId());
-    m.put("timestampMs", r.timestamp().toEpochMilli());
-    m.put("actor", actor);
-    m.put("request", request);
-    m.put("object", object);
-    m.put("payload", payload);
-    return m;
+  private static CommitMetricsReport toCommitReport(CommitMetricsRecord r) {
+    MetricsReportActor actor = new MetricsReportActor(r.principalName());
+    MetricsReportRequest request =
+        new MetricsReportRequest(r.requestId(), r.otelTraceId(), r.otelSpanId());
+    CommitMetricsReport.TableObject object = new CommitMetricsReport.TableObject(r.snapshotId());
+    CommitMetricsReport.Payload.Data data =
+        new CommitMetricsReport.Payload.Data(
+            r.sequenceNumber().orElse(null),
+            r.operation(),
+            r.addedDataFiles(),
+            r.removedDataFiles(),
+            r.totalDataFiles(),
+            r.addedDeleteFiles(),
+            r.removedDeleteFiles(),
+            r.totalDeleteFiles(),
+            r.addedEqualityDeleteFiles(),
+            r.removedEqualityDeleteFiles(),
+            r.addedPositionalDeleteFiles(),
+            r.removedPositionalDeleteFiles(),
+            r.addedRecords(),
+            r.removedRecords(),
+            r.totalRecords(),
+            r.addedFileSizeBytes(),
+            r.removedFileSizeBytes(),
+            r.totalFileSizeBytes(),
+            r.totalDurationMs().orElse(null),
+            r.attempts());
+    CommitMetricsReport.Payload payload =
+        new CommitMetricsReport.Payload("iceberg.metrics.commit", 1, data);
+    return new CommitMetricsReport(
+        r.reportId(), r.timestamp().toEpochMilli(), actor, request, object, payload);
   }
 }
