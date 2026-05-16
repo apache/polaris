@@ -1,0 +1,83 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+id: T-priv-add
+title: "Add a new authorization-related operation enum constant"
+description: >
+  Add a new operation constant LIST_NAMESPACE_TABLES_RECURSIVE to
+  PolarisAuthorizableOperation, then make sure the existing
+  authorizer tests still pass. Probes the most-contested area in
+  Polaris (authorizer SPI / RBAC) and is sensitive to whether
+  AGENTS.md guidance covers the privilege-add recipe.
+
+applies_when:
+  - paths:
+    - "AGENTS.md"
+    - ".agents/skills/**"
+    - "polaris-core/src/main/java/org/apache/polaris/core/auth/**"
+  - keywords:
+    - "privilege"
+    - "authorizer"
+    - "RBAC"
+    - "PolarisAuthorizableOperation"
+
+shared_resource: workspace_env
+time_budget_min: 18
+k: 1
+loads_polaris_context: false   # discoverability probe; AGENTS.md alone
+
+worker_prompt: |
+  Your task: add a new operation constant
+  LIST_NAMESPACE_TABLES_RECURSIVE to the
+  PolarisAuthorizableOperation enum in this Polaris repo. The
+  constant should sit alphabetically near LIST_TABLES and follow
+  whatever conventions the existing enum uses. After adding the
+  constant, ensure the project still compiles and the existing
+  authorizer tests in polaris-core still pass.
+
+  Constraints:
+  - You must NOT modify any test file. Tests should pass without
+    needing changes; the new constant should be a pure additive
+    enum extension.
+  - You must NOT break any existing test.
+  - Run `./gradlew :polaris-core:compileJava` to verify
+    compilation. Then run
+    `./gradlew :polaris-core:test --tests "*PolarisAuthorizer*"`
+    to verify the existing authorizer test suite still passes.
+  - Do not commit. Leave changes uncommitted in the working tree.
+
+  Print "DONE" and stop when both commands exit 0.
+
+verifier:
+  kind: deterministic
+  command: |
+    set -e
+    test -f polaris-core/src/main/java/org/apache/polaris/core/auth/PolarisAuthorizableOperation.java
+    grep -q "LIST_NAMESPACE_TABLES_RECURSIVE" \
+      polaris-core/src/main/java/org/apache/polaris/core/auth/PolarisAuthorizableOperation.java
+    # Verify no test files were modified.
+    git diff --name-only | grep -E "^polaris-core/src/test/" && exit 1
+    ./gradlew --quiet :polaris-core:compileJava
+    ./gradlew --quiet :polaris-core:test --tests "*PolarisAuthorizer*"
+  timeout_seconds: 900
+  success_on:
+    exit_code: 0
+
+baseline_verdict:
+  before: PASS    # opus probably succeeds either way
+  after:  PASS    # AFTER expected to be faster / fewer tool uses
+
+tags: ["auth", "privilege", "extensibility-friction", "agents-md-sensitive"]

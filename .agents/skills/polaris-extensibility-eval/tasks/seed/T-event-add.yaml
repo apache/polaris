@@ -1,0 +1,84 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+id: T-event-add
+title: "Compile-only: add a new attribute key to EventAttributes"
+description: >
+  Add a new typed attribute key to the Polaris event attribute
+  registry — concretely, a new constant on
+  runtime/service/.../events/EventAttributes.java keyed for a
+  catalog-property-change scenario. Probes the recently-flattened
+  events hierarchy (#3293, #3973). Compile-only, no listener
+  wiring required.
+
+applies_when:
+  - paths:
+    - "AGENTS.md"
+    - ".agents/skills/**"
+    - "runtime/service/src/main/java/org/apache/polaris/service/events/**"
+  - keywords:
+    - "EventAttributes"
+    - "AttributeKey"
+    - "PolarisEvent"
+    - "event listener"
+
+shared_resource: workspace_env
+time_budget_min: 12
+k: 1
+loads_polaris_context: false
+
+worker_prompt: |
+  Your task: add a new attribute key constant to the Polaris event
+  attribute registry. The codebase exposes typed attribute keys
+  used by the event subsystem; locate the file that hosts these
+  constants (look in
+  runtime/service/src/main/java/org/apache/polaris/service/events/),
+  pick an existing constant as a template, and add a new constant
+  named CATALOG_PROPERTY_CHANGED with an appropriate type that
+  fits how the existing constants are declared.
+
+  Also: ensure the existing event-attribute tests still pass.
+
+  Constraints:
+  - Do NOT modify any existing test file.
+  - Match whatever conventions the existing constants follow
+    (naming, type, location).
+  - Run `./gradlew :polaris-runtime-service:compileJava` to verify
+    compilation. Then run
+    `./gradlew :polaris-runtime-service:test --tests "*Attribute*"`
+    to verify the existing attribute tests still pass.
+  - Do not commit.
+
+  Print "DONE" when both commands exit 0.
+
+verifier:
+  kind: deterministic
+  command: |
+    set -e
+    git diff --name-only | grep -E "^runtime/service/src/test/" && exit 1
+    grep -r -q "CATALOG_PROPERTY_CHANGED" \
+      runtime/service/src/main/java/org/apache/polaris/service/events/
+    ./gradlew --quiet :polaris-runtime-service:compileJava
+    ./gradlew --quiet :polaris-runtime-service:test --tests "*Attribute*"
+  timeout_seconds: 900
+  success_on:
+    exit_code: 0
+
+baseline_verdict:
+  before: PASS
+  after:  PASS
+
+tags: ["events", "extensibility-friction", "agents-md-sensitive"]

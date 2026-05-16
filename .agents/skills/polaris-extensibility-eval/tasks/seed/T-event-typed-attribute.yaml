@@ -1,0 +1,111 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+id: T-event-typed-attribute
+title: "Add a parameterized AttributeKey<List<String>> and a unit test exercising it"
+description: >
+  Discriminating task for model spread. Adds a strongly-typed event
+  attribute whose Java type carries generic parameters
+  (List<String>), and a unit test that round-trips a value through
+  EventAttributeMap. Discriminates haiku/sonnet/opus because Java
+  generic-type erasure means you cannot use
+  `new AttributeKey<>("...", List.class)` — you must construct a
+  capturing TypeToken with an anonymous subclass.
+
+applies_when:
+  - paths:
+    - "AGENTS.md"
+    - ".agents/skills/**"
+    - "runtime/service/src/main/java/org/apache/polaris/service/events/**"
+    - "runtime/service/src/test/java/org/apache/polaris/service/events/**"
+  - keywords:
+    - "AttributeKey"
+    - "EventAttributes"
+    - "TypeToken"
+    - "event listener"
+
+shared_resource: workspace_env
+time_budget_min: 18
+k: 1
+loads_polaris_context: false
+
+worker_prompt: |
+  Your task: Polaris's event subsystem exposes typed attribute keys
+  on runtime/service/src/main/java/org/apache/polaris/service/events/EventAttributes.java.
+  Each key is an `AttributeKey<T>` carrying an explicit Java type.
+
+  Add a new public constant to EventAttributes named
+  CATALOG_PROPERTY_KEYS_AFFECTED whose type is
+  `AttributeKey<List<String>>` — a list of catalog property keys
+  affected by an event. Place it alphabetically reasonably; pick
+  a placement near other CATALOG_-prefixed keys if possible.
+
+  The naming convention: lower_snake_case for the wire name. Use
+  "catalog_property_keys_affected".
+
+  Then add a new unit test class
+  CatalogPropertyKeysAffectedAttributeTest under
+  runtime/service/src/test/java/org/apache/polaris/service/events/
+  with TWO @Test methods using AssertJ:
+
+  1. testPutAndGetRequired: put a non-empty List<String> on a fresh
+     EventAttributeMap using the new key, then assert that
+     getRequired(key) returns the same list contents (use
+     containsExactly or isEqualTo).
+  2. testGetReturnsEmptyWhenAbsent: on a fresh EventAttributeMap,
+     assert that get(key) returns an Optional that isEmpty().
+
+  Constraints:
+  - The new test class MUST compile and pass.
+  - The new attribute key MUST type-check with the existing
+    AttributeKey<T> validation (see AllowedAttributeTypes if you
+    need to know what's allowed).
+  - You MUST NOT modify any existing test file. You may only add
+    a single new test class.
+  - Match the naming style and AssertJ idiom of the existing
+    AttributeMapTest in the same directory.
+  - Do not commit. Run:
+      ./gradlew :polaris-runtime-service:compileJava
+      ./gradlew :polaris-runtime-service:compileTestJava
+      ./gradlew :polaris-runtime-service:test --tests "*CatalogPropertyKeysAffectedAttributeTest*"
+    All three must exit 0.
+
+  Print "DONE" when all three commands exit 0.
+
+verifier:
+  kind: deterministic
+  command: |
+    set -e
+    grep -q "CATALOG_PROPERTY_KEYS_AFFECTED" \
+      runtime/service/src/main/java/org/apache/polaris/service/events/EventAttributes.java
+    test -f runtime/service/src/test/java/org/apache/polaris/service/events/CatalogPropertyKeysAffectedAttributeTest.java
+    # Verify no existing test file was touched
+    git diff --name-only \
+      | grep -E "^runtime/service/src/test/java/.*Test\.java$" \
+      | grep -v "CatalogPropertyKeysAffectedAttributeTest" && exit 1
+    ./gradlew --quiet :polaris-runtime-service:compileJava
+    ./gradlew --quiet :polaris-runtime-service:compileTestJava
+    ./gradlew --quiet :polaris-runtime-service:test \
+      --tests "*CatalogPropertyKeysAffectedAttributeTest*"
+  timeout_seconds: 1200
+  success_on:
+    exit_code: 0
+
+baseline_verdict:
+  before: PARTIAL    # haiku/sonnet expected to struggle with TypeToken<List<String>>
+  after:  PASS       # with hint, even smaller models should pass
+
+tags: ["events", "generics", "discriminating", "agents-md-sensitive"]
