@@ -393,7 +393,8 @@ public record TestServices(
               metaStoreManager,
               callContext,
               principal,
-              idempotencyRequestContext);
+              idempotencyRequestContext,
+              storageIntegrationProvider);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -457,6 +458,7 @@ public record TestServices(
                         .catalogHandlerUtils(catalogHandlerUtils)
                         .federatedCatalogFactories(federatedCatalogFactory)
                         .storageAccessConfigProvider(storageAccessConfigProvider)
+                        .storageIntegrationProvider(storageIntegrationProvider)
                         .eventAttributeMap(eventAttributeMap)
                         .metricsReporter(new DefaultMetricsReporter())
                         .clock(clock)
