@@ -93,7 +93,6 @@ For more details on available MongoDB configuration options, please refer to the
 ## Bootstrapping Polaris
 
 Before using Polaris with the MongoDB backend, you must bootstrap the metastore to create the necessary collections and initial realm. This is done using the [Admin Tool]({{% ref "../admin-tool" %}}).
-
 Using Docker:
 
 ```bash
