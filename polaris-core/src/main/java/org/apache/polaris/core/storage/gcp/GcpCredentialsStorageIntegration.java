@@ -28,6 +28,10 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
+import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
@@ -43,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.StructuredLogKeys;
@@ -55,6 +60,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageLocationPreparer;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
@@ -83,6 +89,7 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
   private final GcpCredentialOps credentialOps;
   private final Optional<GcpAttributionParams> attributionParams;
+  private final StorageLocationPreparer folderPreparer;
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
@@ -96,7 +103,8 @@ public class GcpCredentialsStorageIntegration
         storageConfig,
         realmConfig,
         GcpCredentialOps.DEFAULT,
-        resolveAttributionParams(realmConfig));
+        resolveAttributionParams(realmConfig),
+        locations -> {});
   }
 
   public GcpCredentialsStorageIntegration(
@@ -112,7 +120,8 @@ public class GcpCredentialsStorageIntegration
         storageConfig,
         realmConfig,
         GcpCredentialOps.DEFAULT,
-        resolveAttributionParams(realmConfig));
+        resolveAttributionParams(realmConfig),
+        locations -> {});
   }
 
   public GcpCredentialsStorageIntegration(
@@ -128,7 +137,8 @@ public class GcpCredentialsStorageIntegration
         storageConfig,
         realmConfig,
         credentialOps,
-        resolveAttributionParams(realmConfig));
+        resolveAttributionParams(realmConfig),
+        locations -> {});
   }
 
   public GcpCredentialsStorageIntegration(
@@ -145,7 +155,45 @@ public class GcpCredentialsStorageIntegration
         storageConfig,
         realmConfig,
         credentialOps,
-        resolveAttributionParams(realmConfig));
+        resolveAttributionParams(realmConfig),
+        locations -> {});
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      @NonNull StorageLocationPreparer folderPreparer) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        GcpCredentialOps.DEFAULT,
+        resolveAttributionParams(realmConfig),
+        folderPreparer);
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps,
+      @NonNull StorageLocationPreparer folderPreparer) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        resolveAttributionParams(realmConfig),
+        folderPreparer);
   }
 
   /**
@@ -161,6 +209,26 @@ public class GcpCredentialsStorageIntegration
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps,
       Optional<GcpAttributionParams> attributionParams) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        credentialOps,
+        attributionParams,
+        locations -> {});
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps,
+      Optional<GcpAttributionParams> attributionParams,
+      @NonNull StorageLocationPreparer folderPreparer) {
     super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
@@ -169,6 +237,7 @@ public class GcpCredentialsStorageIntegration
     this.transportFactory = transportFactory;
     this.credentialOps = credentialOps;
     this.attributionParams = attributionParams;
+    this.folderPreparer = Objects.requireNonNull(folderPreparer, "folderPreparer");
   }
 
   /**
@@ -209,6 +278,11 @@ public class GcpCredentialsStorageIntegration
             realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE),
             realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE),
             realmConfig.getConfig(FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_ID)));
+  }
+
+  @Override
+  public void prepareLocations(@NonNull List<String> locations) {
+    folderPreparer.prepareLocations(locations);
   }
 
   @Override
@@ -312,7 +386,11 @@ public class GcpCredentialsStorageIntegration
         resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
-        generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
+        generateAccessBoundaryRules(
+            readLocations,
+            listLocations,
+            writeLocations,
+            bucket -> isHnsBucket(bucket, credentialsToDownscope));
     DownscopedCredentials credentials =
         DownscopedCredentials.newBuilder()
             .setHttpTransportFactory(transportFactory)
@@ -387,7 +465,7 @@ public class GcpCredentialsStorageIntegration
    * Returns the credential to be used as the source for downscoping. If a specific service account
    * is configured, it impersonates that account first.
    */
-  private static GoogleCredentials getBaseCredentials(
+  public static GoogleCredentials getBaseCredentials(
       GcpStorageConfigurationInfo storageConfig,
       GoogleCredentials sourceCredentials,
       GcpCredentialOps credentialOps) {
@@ -451,8 +529,32 @@ public class GcpCredentialsStorageIntegration
       @NonNull Set<String> allowedReadLocations,
       @NonNull Set<String> allowedListLocations,
       @NonNull Set<String> allowedWriteLocations) {
+    return generateAccessBoundaryRules(
+        allowedReadLocations, allowedListLocations, allowedWriteLocations, bucket -> false);
+  }
+
+  @VisibleForTesting
+  public static CredentialAccessBoundary generateAccessBoundaryRules(
+      boolean allowListOperation,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull Predicate<String> isHnsBucket) {
+    return generateAccessBoundaryRules(
+        allowedReadLocations,
+        allowListOperation ? allowedReadLocations : Set.of(),
+        allowedWriteLocations,
+        isHnsBucket);
+  }
+
+  @VisibleForTesting
+  public static CredentialAccessBoundary generateAccessBoundaryRules(
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedListLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull Predicate<String> isHnsBucket) {
     Map<String, LinkedHashSet<String>> readConditionsByBucket = new LinkedHashMap<>();
     Map<String, LinkedHashSet<String>> writeConditionsByBucket = new LinkedHashMap<>();
+    Map<String, LinkedHashSet<String>> folderConditionsByBucket = new LinkedHashMap<>();
     HashSet<String> bucketsWithList = new HashSet<>();
 
     Stream.concat(allowedReadLocations.stream(), allowedListLocations.stream())
@@ -490,6 +592,9 @@ public class GcpCredentialsStorageIntegration
           writeConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(resourceNameStartsWithExpression(bucket, path));
+          folderConditionsByBucket
+              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+              .add(folderNameStartsWithExpression(bucket, path));
         });
 
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -526,13 +631,61 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
           accessBoundaryBuilder.addRule(builder.build());
         });
+    folderConditionsByBucket.forEach(
+        (bucket, conditions) -> {
+          if (conditions.isEmpty() || !isHnsBucket.test(bucket)) {
+            return;
+          }
+          CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
+              CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
+          builder.setAvailableResource(bucketResource(bucket));
+          builder.setAvailabilityCondition(
+              CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
+                  .setExpression(String.join(" || ", conditions))
+                  .build());
+          builder.setAvailablePermissions(List.of("inRole:roles/storage.folderAdmin"));
+          accessBoundaryBuilder.addRule(builder.build());
+        });
     return accessBoundaryBuilder.build();
+  }
+
+  @VisibleForTesting
+  static boolean isHnsBucket(String bucket, GoogleCredentials sourceCredentials) {
+    try {
+      Storage storage = newStorageClient(sourceCredentials);
+      Bucket bucketMetadata =
+          storage.get(
+              bucket, Storage.BucketGetOption.fields(Storage.BucketField.HIERARCHICAL_NAMESPACE));
+      if (bucketMetadata == null) {
+        return false;
+      }
+      BucketInfo.HierarchicalNamespace hns = bucketMetadata.getHierarchicalNamespace();
+      return hns != null && Boolean.TRUE.equals(hns.getEnabled());
+    } catch (RuntimeException e) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("bucket", bucket)
+          .log("Failed to determine HNS status; defaulting to non-HNS", e);
+      return false;
+    }
+  }
+
+  @VisibleForTesting
+  static Storage newStorageClient(GoogleCredentials sourceCredentials) {
+    return StorageOptions.newBuilder().setCredentials(sourceCredentials).build().getService();
   }
 
   @VisibleForTesting
   static String resourceNameStartsWithExpression(String bucket, String path) {
     return String.format(
         "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+        escapeCelLiteral(bucket), escapeCelLiteral(path));
+  }
+
+  @VisibleForTesting
+  static String folderNameStartsWithExpression(String bucket, String path) {
+    return String.format(
+        "resource.name.startsWith('projects/_/buckets/%s/folders/%s')",
         escapeCelLiteral(bucket), escapeCelLiteral(path));
   }
 
