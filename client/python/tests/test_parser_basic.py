@@ -285,6 +285,7 @@ class TestParserBasic(CLITestBase):
                 "ns1.ns2",
             ]
         )
+        Parser.parse(["repl"])
 
 
 if __name__ == "__main__":
