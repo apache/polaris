@@ -50,19 +50,28 @@ export AZURE_CLIENT_ID=<appId>
 export AZURE_CLIENT_SECRET=<password>
 ```
 
-In a container deployment, set the same three variables on the Polaris container/pod. The
-`Storage Blob Data Contributor` role at storage-account scope is what allows Polaris to issue SAS
-tokens for any container under that account; you can scope the role narrower (single container)
-when you need to confine a single Polaris catalog to one container.
+In a Kubernetes deployment, do not embed `AZURE_CLIENT_SECRET` in the pod spec as plain text.
+Store the client secret in a Kubernetes `Secret` (or an external secret store referenced by an
+operator like the Azure Key Vault provider) and project it into the Polaris container with
+`envFrom`/`valueFrom: secretKeyRef`. The same applies to the bootstrap credentials in
+`POLARIS_BOOTSTRAP_CREDENTIALS`.
+
+The `Storage Blob Data Contributor` role at storage-account scope lets Polaris issue SAS tokens
+for any container under that account; scope the role narrower (single container) when you want to
+confine a single Polaris catalog to one container.
 
 ## Storage account requirements
 
 The storage account that backs the catalog should be configured with:
 
-- **Hierarchical namespace (HNS)** enabled — this turns the account into ADLS Gen2 and is required
-  for directory-aware operations (rename, recursive list) that Iceberg relies on for atomic
-  metadata commits. If HNS is disabled, set `hierarchical: false` so Polaris will request flat-blob
-  permissions only and avoid scoping SAS tokens to non-existent directory ACLs.
+- **Hierarchical namespace (HNS)** is not strictly required by Polaris or Iceberg for table
+  operations themselves. Its main effect is on how narrowly Polaris can scope a vended SAS token:
+  with HNS enabled, Polaris can downscope a token to the directory (folder) that backs the
+  requested namespace or table; without HNS the token can only be scoped at the container level.
+  Production deployments that need per-namespace isolation should enable HNS.
+- The `hierarchical` field in `storageConfigInfo` must match the actual state of the storage
+  account. If they disagree, vended tokens are scoped against directory ACLs that do not exist
+  on the storage side and runtime access errors result.
 - A **container** that will hold the catalog's namespaces and tables (for example `warehouse`).
   Polaris does not create the container itself.
 - **Firewall** rules that permit traffic from the Polaris control plane and from the engines that
@@ -99,10 +108,10 @@ curl -X POST https://<polaris-host>/management/v1/catalogs \
 `default-base-location` must use the `abfss://` scheme together with the ADLS Gen2 endpoint
 (`<account>.dfs.core.windows.net`). The `wasbs://` scheme is not supported.
 
-`AzureStorageConfigurationInfo` also accepts `multiTenantAppName` and `consentUrl`. These are
-used by managed Polaris deployments that present a single multi-tenant Azure AD application to
-many customer tenants; in a self-hosted deployment that authenticates with its own service
-principal they can be omitted.
+`AzureStorageConfigurationInfo` also accepts `multiTenantAppName` and `consentUrl`. Current
+Apache Polaris code does not use these fields when communicating with Azure APIs; they are
+informational and can be omitted in self-hosted deployments that authenticate with a service
+principal as described above.
 
 ## SAS token scoping and HNS ACLs
 

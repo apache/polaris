@@ -17,16 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring AWS S3 Cloud Storage
-linkTitle: Configuring AWS S3 Cloud Storage
+title: Configuring S3 Storage
+linkTitle: Configuring S3 Storage
 type: docs
 weight: 610
 ---
 
-This page covers configuring AWS S3 as the storage backend for a Polaris catalog. All read and write
-operations against S3 are performed using credential vending, in which Polaris assumes an IAM role
-on behalf of the client and returns scoped, short-lived credentials. The IAM role, its trust policy,
+This page covers configuring AWS S3, and S3-compatible object stores (MinIO, Apache Ozone S3
+gateway, Ceph RGW, and similar), as the storage backend for a Polaris catalog. On AWS S3, all read
+and write operations are performed using credential vending: Polaris assumes a customer IAM role
+via STS and returns scoped, short-lived credentials to the client. The IAM role, its trust policy,
 and the bucket itself must be set up before the catalog is created.
+
+This page is limited to native Polaris authentication. External identity providers are also
+supported but are not yet covered here; the configuration patterns below remain otherwise the same.
 
 ## IAM role and trust policy
 
@@ -37,10 +41,11 @@ must:
    (`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` and, if encryption is in use,
    the relevant `kms:*` actions).
 2. Trust the Polaris service principal — typically the IAM role that the Polaris server runs as.
-   Polaris fills the `sts:AssumeRole` request with the configured `userArn` and, when supplied, an
-   `externalId`. The trust policy must accept both.
+   Polaris fills the `sts:AssumeRole` request with an `externalId` when one is configured. The
+   trust policy must accept the same external ID.
 
-A minimal trust policy looks like:
+Using `externalId` is recommended for cross-account or hosted Polaris deployments to mitigate the
+confused-deputy problem. A minimal trust policy looks like:
 
 ```json
 {
@@ -58,29 +63,29 @@ A minimal trust policy looks like:
 }
 ```
 
-If you do not require an external ID, omit the `Condition` block and the matching `externalId`
-field in the storage config.
-
 ## Catalog storage configuration
 
-Provide the role ARN and region when creating the catalog. `userArn` is the identity Polaris
-itself uses (typically the role ARN of the server); `externalId` matches the trust policy above.
+Provide the role ARN, region, and `externalId` when creating the catalog. The token in the
+`Authorization` header below is the Polaris admin bearer token obtained from
+`/api/catalog/v1/oauth/tokens` (see [Configuring Polaris for Production]({{% relref "." %}}) for
+how to bootstrap and issue admin tokens).
 
 ```bash
 curl -X POST https://<polaris-host>/management/v1/catalogs \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-        "type": "INTERNAL",
-        "name": "warehouse_s3",
-        "storageConfigInfo": {
-          "storageType": "S3",
-          "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access",
-          "userArn": "arn:aws:iam::123456789012:role/polaris-server",
-          "externalId": "polaris-prod",
-          "region": "us-east-1"
-        },
-        "properties": { "default-base-location": "s3://warehouse-bucket/prod/" }
+        "catalog": {
+          "type": "INTERNAL",
+          "name": "warehouse_s3",
+          "properties": { "default-base-location": "s3://warehouse-bucket/prod/" },
+          "storageConfigInfo": {
+            "storageType": "S3",
+            "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access",
+            "externalId": "polaris-prod",
+            "region": "us-east-1"
+          }
+        }
       }'
 ```
 
@@ -89,8 +94,10 @@ ill-formed ARN is rejected at catalog creation time.
 
 ## Server-side encryption with KMS
 
-When the bucket uses SSE-KMS, supply the key Polaris should use for writes and the full set of
-keys it is allowed to read from:
+When the bucket uses SSE-KMS, supply both `currentKmsKey` (the key Polaris should use for writes)
+and `allowedKmsKeys` (every key the catalog is allowed to read from). The two fields are processed
+independently in `AwsCredentialsStorageIntegration`, so the write key must be included in
+`allowedKmsKeys` as well if you want it readable through vended credentials:
 
 ```json
 "storageConfigInfo": {
@@ -105,8 +112,9 @@ keys it is allowed to read from:
 }
 ```
 
-The IAM role's policy must include `kms:GenerateDataKey` and `kms:Decrypt` on every key listed in
-`allowedKmsKeys`, and the key policy must grant the same to the role principal.
+The IAM role's policy must include `kms:GenerateDataKey` and `kms:Decrypt` on `currentKmsKey` and
+`kms:Decrypt` on every key listed in `allowedKmsKeys`, and each key policy must grant the same to
+the role principal.
 
 If the deployment does not use KMS, set `kmsUnavailable` to `true` so Polaris will not request
 KMS-related session permissions:
@@ -127,14 +135,9 @@ The available fields are:
 - `stsEndpoint` — STS endpoint; defaults to `endpointInternal` then `endpoint` when not set.
 - `stsUnavailable` — set to `true` when the backend does not implement STS.
 
-How clients receive credentials depends on whether the backend implements STS.
-
-### Backends with STS support (e.g. AWS S3, MinIO)
-
-Leave `stsUnavailable` unset (or `false`). Polaris will assume the role and vend short-lived,
-subscoped credentials to the client at table-load time when the client sends
-`X-Iceberg-Access-Delegation: vended-credentials`. This is the recommended deployment for AWS S3
-and any compatible backend that exposes the STS API.
+The credential-vending guarantee at the top of this page assumes that the backend implements STS.
+For AWS S3 and S3-compatible backends that expose the STS API (such as MinIO), leave
+`stsUnavailable` unset (or `false`) and the vended-credentials flow described above works as is.
 
 ```json
 "storageConfigInfo": {
@@ -145,13 +148,11 @@ and any compatible backend that exposes the STS API.
 }
 ```
 
-### Backends without STS support (e.g. Apache Ozone S3 gateway, Ceph RGW without STS enabled)
-
-Set `stsUnavailable: true`. Polaris will then skip subscoped credential vending, and clients must
-authenticate to the object store directly with long-lived credentials. Because the vended-credential
-path is disabled, the client must omit the `X-Iceberg-Access-Delegation` header and supply its own
-access key / secret to the underlying FileIO. The Polaris guides for [Apache Ozone][ozone-guide]
-and [Ceph][ceph-guide] show this pattern.
+For S3-compatible backends without STS (Apache Ozone S3 gateway, or Ceph RGW without STS enabled),
+set `stsUnavailable: true`. Polaris will then skip subscoped credential vending entirely, and the
+client must omit `X-Iceberg-Access-Delegation: vended-credentials` and authenticate to the object
+store directly. The Polaris guides for [Apache Ozone][ozone-guide] and [Ceph][ceph-guide] show
+this pattern end-to-end.
 
 ```json
 "storageConfigInfo": {
@@ -192,9 +193,11 @@ The `oauth2-server-uri` is recommended: without it the Iceberg REST client falls
 hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the automatic fallback
 is slated for removal in a future Iceberg release.
 
-For Trino, use the Iceberg connector with the REST catalog. Two groups of properties are
-required: the REST/OAuth2 settings for talking to Polaris, and the native S3 filesystem settings
-that Trino uses to read the vended credentials.
+For Trino, use the Iceberg connector with the REST catalog. The REST/OAuth2 properties talk to
+Polaris; the native S3 filesystem properties consume the vended credentials. Polaris itself
+returns `endpoint`, `path-style-access`, and `region` in the catalog config response, so the
+client-side `s3.*` block below is only needed where Trino requires it to be explicit (for
+example, on S3-compatible endpoints where the default AWS endpoint resolver does not apply).
 
 ```properties
 connector.name=iceberg
@@ -210,7 +213,7 @@ fs.native-s3.enabled=true
 s3.region=us-east-1
 ```
 
-When pointing at an S3-compatible endpoint, also set:
+For S3-compatible endpoints, set the endpoint and path-style flag explicitly on the Trino side:
 
 ```properties
 s3.endpoint=https://s3.internal.example.com
