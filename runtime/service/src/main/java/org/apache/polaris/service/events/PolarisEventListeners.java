@@ -90,8 +90,8 @@ public class PolarisEventListeners {
     // listeners that need access to the raw, unsanitized event. When implemented, skip
     // sanitization for listeners that opt in to raw access.
     // see https://lists.apache.org/thread/w3mszmog7llyn5spw7rv9tq7r0qp0p6w
-    PolarisEvent sanitizedEvent = sanitize(event);
     try {
+      PolarisEvent sanitizedEvent = sanitize(event);
       executor.execute(
           () -> {
             LOGGER.debug(

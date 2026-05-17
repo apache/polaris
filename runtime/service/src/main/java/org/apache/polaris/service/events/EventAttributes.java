@@ -19,6 +19,7 @@
 package org.apache.polaris.service.events;
 
 import com.google.common.reflect.TypeToken;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
@@ -71,6 +72,7 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
  * Standard attribute keys for Polaris events. These keys provide type-safe access to common event
  * attributes and enable automatic pruning/filtering logic.
  */
+@RegisterForReflection
 public final class EventAttributes {
   private EventAttributes() {}
 
