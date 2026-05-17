@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 public class PolarisEvent {
   public static final String EMPTY_MAP_STRING = "{}";
+  public static final String REALM_SCOPED = "__realm__";
 
   // to serialize/deserialize properties
   // TODO: Look into using the CDI-managed `ObjectMapper` object
@@ -147,6 +148,7 @@ public class PolarisEvent {
     CATALOG,
     NAMESPACE,
     TABLE,
-    VIEW
+    VIEW,
+    REALM
   }
 }

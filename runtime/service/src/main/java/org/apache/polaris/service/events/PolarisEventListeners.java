@@ -34,6 +34,7 @@ import jakarta.inject.Inject;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.concurrent.Executor;
+import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,7 +139,7 @@ public class PolarisEventListeners {
       event
           .attributes()
           .get(EventAttributes.CATALOG)
-          .map(org.apache.polaris.core.admin.model.Catalog::getName)
+          .map(Catalog::getName)
           .filter(name -> !name.isBlank())
           .ifPresent(name -> filtered.put(EventAttributes.CATALOG_NAME, name));
     }

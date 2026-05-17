@@ -36,8 +36,6 @@ import org.apache.polaris.service.events.PolarisEventType;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
-  private static final String UNKNOWN_CATALOG = "unknown";
-
   @Inject EventPayloadPruner payloadPruner;
 
   protected PolarisPersistenceEventListener() {}
@@ -73,7 +71,10 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String resolveCatalogName(PolarisEvent event) {
-    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(UNKNOWN_CATALOG);
+    return event
+        .attributes()
+        .get(EventAttributes.CATALOG_NAME)
+        .orElse(org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED);
   }
 
   private static org.apache.polaris.core.entity.PolarisEvent.ResourceType resolveResourceType(
@@ -82,7 +83,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       case TABLE, GENERIC_TABLE -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.TABLE;
       case VIEW -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.VIEW;
       case NAMESPACE -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.NAMESPACE;
-      default -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG;
+      case CATALOG -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG;
+      default -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.REALM;
     };
   }
 
@@ -95,6 +97,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
       case VIEW -> resolveViewResourceIdentifier(event, catalogName);
       case NAMESPACE -> resolveNamespaceResourceIdentifier(event, catalogName);
       case CATALOG -> resolveCatalogResourceIdentifier(event, catalogName);
+      case REALM -> resolveRealmResourceIdentifier(event);
     };
   }
 
@@ -219,8 +222,12 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
+  private static String resolveRealmResourceIdentifier(PolarisEvent event) {
+    return event.type().name();
+  }
+
   private static String fallbackResourceIdentifier(PolarisEvent event, String catalogName) {
-    if (!catalogName.equals(UNKNOWN_CATALOG)) {
+    if (!org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED.equals(catalogName)) {
       return catalogName;
     }
     return event.type().name();

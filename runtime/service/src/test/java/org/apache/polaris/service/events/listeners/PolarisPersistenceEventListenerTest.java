@@ -196,9 +196,10 @@ class PolarisPersistenceEventListenerTest {
 
     org.apache.polaris.core.entity.PolarisEvent persisted =
         listener.persistedEvent(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
-    assertThat(persisted.getCatalogId()).isEqualTo("unknown");
+    assertThat(persisted.getCatalogId())
+        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED);
     assertThat(persisted.getResourceType())
-        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG);
+        .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.REALM);
     assertThat(persisted.getResourceIdentifier())
         .isEqualTo(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE.name());
     assertThat(additionalProperties(persisted)).isEmpty();
