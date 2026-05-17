@@ -58,7 +58,7 @@ class ReplCommand(Command):
         try:
             PolarisRepl(api, profile=self.profile).cmdloop()
         except KeyboardInterrupt:
-            sys.stdout.write(f"{os.linesep}Exiting REPL session.{os.linesep}")
+            sys.stdout.write(f"\nExiting REPL session.\n")
 
 
 class PolarisRepl(Cmd):
@@ -93,7 +93,7 @@ class PolarisRepl(Cmd):
             args = shlex.split(line)
             options = Parser.parse(args)
             if options.command == Commands.REPL:
-                sys.stderr.write(f"Already in REPL session.{os.linesep}")
+                sys.stderr.write(f"Already in REPL session.\n")
                 return
             command = Command.from_options(options)
             if isinstance(command, ProfilesCommand):
@@ -103,15 +103,15 @@ class PolarisRepl(Cmd):
         except SystemExit:
             pass
         except KeyboardInterrupt:
-            sys.stderr.write(f"Session interrupted. Type 'exit' to quit.{os.linesep}")
+            sys.stderr.write(f"Session interrupted. Type 'exit' to quit.\n")
         except ApiException as e:
             PolarisCli._try_print_exception(e)
         except CliError as e:
-            sys.stderr.write(f"{e}{os.linesep}")
+            sys.stderr.write(f"{e}\n")
         except NotImplementedError as e:
-            sys.stderr.write(f"Internal error: {e}{os.linesep}")
+            sys.stderr.write(f"Internal error: {e}\n")
         except Exception as e:
-            sys.stderr.write(f"An unexpected error occurred: {e}{os.linesep}")
+            sys.stderr.write(f"An unexpected error occurred: {e}\n")
 
     def do_help(self, arg: str) -> None:
         if arg:
@@ -119,15 +119,20 @@ class PolarisRepl(Cmd):
             return
         sys.stdout.write(f"Polaris commands:{os.linesep}")
         for option in OptionTree.get_tree():
-            sys.stdout.write(f" {option.name:<15} {option.hint or ''}{os.linesep}")
+            sys.stdout.write(f" {option.name:<15} {option.hint or ''}\n")
         sys.stdout.write(
             f"{os.linesep}".join(
                 [
-                    f"REPL built-ins: exit, help, Ctrl-D{os.linesep}",
-                    f"Use 'help <command>' or '<command --help>' for command details.{os.linesep}",
+                    f"REPL built-ins: exit, help, Ctrl-D\n",
+                    f"Use 'help <command>' or '<command --help>' for command details.\n",
                 ]
             )
         )
+
+    def do_exit(self, args: str) -> bool:
+        return True
+
+    do_EOF = do_exit
 
     def emptyline(self) -> bool:
         return False
