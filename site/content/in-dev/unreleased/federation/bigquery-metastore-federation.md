@@ -65,8 +65,11 @@ container (typically at `/deployment/config/application.properties`).
 - **BigQuery API access:** The Polaris deployment must be able to reach the BigQuery API
   (`bigquery.googleapis.com`) over HTTPS.
 - **Authentication:** BigQuery Metastore federation only supports `IMPLICIT` authentication, meaning
-  Polaris uses Google Application Default Credentials resolved at process startup. Ensure the
-  Polaris process has valid ADC available before starting the server.
+  Polaris uses Google Application Default Credentials (ADC) resolved at process startup. ADC is
+  resolved from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable, an attached service
+  account on GCP compute, or local `gcloud` credentials during development. See Google's
+  [Application Default Credentials documentation](https://cloud.google.com/docs/authentication/application-default-credentials)
+  for details. Ensure valid credentials are available before starting the server.
 - **IAM:** The identity used by Polaris must have read access to BigQuery datasets in the target
   project and read access to the GCS warehouse bucket (read/write if Polaris will commit table
   metadata).
@@ -85,8 +88,7 @@ curl -X POST https://<polaris-host>/management/v1/catalogs \
         "type": "EXTERNAL",
         "name": "analytics_bigquery",
         "storageConfigInfo": {
-          "storageType": "GCS",
-          "allowedLocations": ["gs://analytics-bucket/warehouse/"]
+          "storageType": "GCS"
         },
         "properties": {
           "default-base-location": "gs://analytics-bucket/warehouse/"
