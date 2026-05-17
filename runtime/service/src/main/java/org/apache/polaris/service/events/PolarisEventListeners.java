@@ -45,6 +45,7 @@ public class PolarisEventListeners {
   @Inject EventBus eventBus;
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
+  @Inject EventAttributeFilter attributeFilter;
 
   @Inject
   @Identifier("event-listener-executor")
@@ -85,13 +86,18 @@ public class PolarisEventListeners {
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
     LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
+    // TODO: Add an opt-in mechanism (e.g., a marker interface or annotation) for specialized
+    // listeners that need access to the raw, unsanitized event. When implemented, skip
+    // sanitization for listeners that opt in to raw access.
+    // see https://lists.apache.org/thread/w3mszmog7llyn5spw7rv9tq7r0qp0p6w
+    PolarisEvent sanitizedEvent = sanitize(event);
     try {
       executor.execute(
           () -> {
             LOGGER.debug(
                 "Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
             try {
-              listener.onEvent(event);
+              listener.onEvent(sanitizedEvent);
             } catch (Exception e) {
               LOGGER.error(
                   "Error while delivering {} event to listener '{}' ({})",
@@ -111,6 +117,36 @@ public class PolarisEventListeners {
           listener,
           e);
     }
+  }
+
+  private PolarisEvent sanitize(PolarisEvent event) {
+    EventAttributeMap filtered = new EventAttributeMap();
+    event
+        .attributes()
+        .forEach(
+            (key, value) -> {
+              if (attributeFilter.isAllowed(key)) {
+                putUnchecked(filtered, key, value);
+              }
+            });
+    extractDerivedAttributes(event, filtered);
+    return new PolarisEvent(event.type(), event.metadata(), filtered);
+  }
+
+  private static void extractDerivedAttributes(PolarisEvent event, EventAttributeMap filtered) {
+    if (!filtered.contains(EventAttributes.CATALOG_NAME)) {
+      event
+          .attributes()
+          .get(EventAttributes.CATALOG)
+          .map(org.apache.polaris.core.admin.model.Catalog::getName)
+          .filter(name -> !name.isBlank())
+          .ifPresent(name -> filtered.put(EventAttributes.CATALOG_NAME, name));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> void putUnchecked(EventAttributeMap map, AttributeKey<T> key, Object value) {
+    map.put(key, (T) value);
   }
 
   public boolean hasListeners(PolarisEventType polarisEventType) {

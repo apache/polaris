@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.listeners;
+package org.apache.polaris.service.events;
 
 import io.quarkus.arc.DefaultBean;
 import jakarta.annotation.PostConstruct;
@@ -29,13 +29,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.polaris.service.events.AttributeKey;
-import org.apache.polaris.service.events.EventAttributeFilter;
-import org.apache.polaris.service.events.EventAttributes;
 
 @ApplicationScoped
 @DefaultBean
-class DefaultEventAttributeFilter implements EventAttributeFilter {
+public class DefaultEventAttributeFilter implements EventAttributeFilter {
 
   private static final Set<AttributeKey<?>> CONFIGURATION_DENYLIST =
       Set.of(
@@ -61,7 +58,7 @@ class DefaultEventAttributeFilter implements EventAttributeFilter {
           EventAttributes.NAMESPACE_NAME,
           EventAttributes.GENERIC_TABLE_NAME);
 
-  @Inject PolarisPersistenceEventListenerConfiguration configuration;
+  @Inject PolarisEventListenerConfiguration configuration;
 
   private Set<AttributeKey<?>> allowlist;
 
@@ -90,7 +87,7 @@ class DefaultEventAttributeFilter implements EventAttributeFilter {
     return allowlist.contains(key);
   }
 
-  static Set<AttributeKey<?>> resolveConfiguredAllowlist(Set<String> configuredNames) {
+  public static Set<AttributeKey<?>> resolveConfiguredAllowlist(Set<String> configuredNames) {
     if (configuredNames.isEmpty()) {
       return DEFAULT_ALLOWLIST;
     }
@@ -104,7 +101,7 @@ class DefaultEventAttributeFilter implements EventAttributeFilter {
 
     if (!unknown.isEmpty()) {
       throw new IllegalArgumentException(
-          "Unknown event attributes in persistence allowlist configuration: " + unknown);
+          "Unknown event attributes in allowlist configuration: " + unknown);
     }
 
     return validateAllowlist(resolved);
@@ -118,7 +115,7 @@ class DefaultEventAttributeFilter implements EventAttributeFilter {
 
     if (!denied.isEmpty()) {
       throw new IllegalArgumentException(
-          "Sensitive attributes are not allowed in persistence allowlist configuration: "
+          "Sensitive attributes are not allowed in allowlist configuration: "
               + denied.stream().map(AttributeKey::name).toList());
     }
 

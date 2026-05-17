@@ -22,13 +22,10 @@ package org.apache.polaris.service.events;
 import java.util.Map;
 
 /**
- * Reduces large attribute values to bounded, safe representations suitable for persistence or
- * external transmission. While {@link EventAttributeFilter} decides <em>which</em> keys pass, this
- * interface decides <em>how much</em> of a passing value is retained.
- *
- * <p>This interface is intentionally placed at the event pipeline level so that it can be promoted
- * to a global pre-delivery pruner once community consensus is reached on applying payload
- * sanitization before all listeners, not just persistence.
+ * Reduces large attribute values to bounded, safe string representations suitable for persistence
+ * or external transmission. While {@link EventAttributeFilter} decides <em>which</em> keys pass
+ * globally, this interface decides <em>how</em> a passing value is serialized, and is applied
+ * per-listener as a serialization concern.
  */
 public interface EventPayloadPruner {
 

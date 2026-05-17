@@ -27,10 +27,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
-import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.AttributeKey;
-import org.apache.polaris.service.events.EventAttributeFilter;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.EventPayloadPruner;
@@ -41,14 +38,11 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
   private static final String UNKNOWN_CATALOG = "unknown";
 
-  @Inject EventAttributeFilter attributeFilter;
   @Inject EventPayloadPruner payloadPruner;
 
   protected PolarisPersistenceEventListener() {}
 
-  PolarisPersistenceEventListener(
-      EventAttributeFilter attributeFilter, EventPayloadPruner payloadPruner) {
-    this.attributeFilter = attributeFilter;
+  PolarisPersistenceEventListener(EventPayloadPruner payloadPruner) {
     this.payloadPruner = payloadPruner;
   }
 
@@ -79,17 +73,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private static String resolveCatalogName(PolarisEvent event) {
-    return event
-        .attributes()
-        .get(EventAttributes.CATALOG_NAME)
-        .or(
-            () ->
-                event
-                    .attributes()
-                    .get(EventAttributes.CATALOG)
-                    .map(Catalog::getName)
-                    .filter(name -> !name.isBlank()))
-        .orElse(UNKNOWN_CATALOG);
+    return event.attributes().get(EventAttributes.CATALOG_NAME).orElse(UNKNOWN_CATALOG);
   }
 
   private static org.apache.polaris.core.entity.PolarisEvent.ResourceType resolveResourceType(
@@ -232,13 +216,6 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return event
         .attributes()
         .get(EventAttributes.CATALOG_NAME)
-        .or(
-            () ->
-                event
-                    .attributes()
-                    .get(EventAttributes.CATALOG)
-                    .map(Catalog::getName)
-                    .filter(name -> !name.isBlank()))
         .orElseGet(() -> fallbackResourceIdentifier(event, catalogName));
   }
 
@@ -252,16 +229,10 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   private Map<String, String> buildAdditionalProperties(PolarisEvent event) {
     Map<String, String> additionalProperties =
         new LinkedHashMap<>(event.metadata().openTelemetryContext());
-    event.attributes().forEach((key, value) -> addIfAllowed(key, value, additionalProperties));
+    event
+        .attributes()
+        .forEach((key, value) -> additionalProperties.putAll(payloadPruner.prune(key, value)));
     return additionalProperties;
-  }
-
-  private void addIfAllowed(
-      AttributeKey<?> key, Object value, Map<String, String> additionalProperties) {
-    if (!attributeFilter.isAllowed(key)) {
-      return;
-    }
-    additionalProperties.putAll(payloadPruner.prune(key, value));
   }
 
   protected abstract void processEvent(

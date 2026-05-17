@@ -40,13 +40,10 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
-import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.service.events.AttributeKey;
-import org.apache.polaris.service.events.EventAttributeFilter;
+import org.apache.polaris.service.events.DefaultEventAttributeFilter;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
-import org.apache.polaris.service.events.EventPayloadPruner;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventType;
@@ -123,7 +120,7 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
-  void shouldSerializeAllowlistedAttributesAndIgnoreSensitiveOnes() {
+  void shouldSerializeAllAttributesReceivedAfterGlobalFiltering() {
     CapturingPersistenceListener listener = new CapturingPersistenceListener();
 
     listener.onEvent(
@@ -132,9 +129,7 @@ class PolarisPersistenceEventListenerTest {
             metadataWithOpenTelemetry(),
             new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, CATALOG_NAME)
-                .put(EventAttributes.NAMESPACE, NAMESPACE)
-                .put(EventAttributes.PRINCIPAL_NAME, "alice")
-                .put(EventAttributes.HTTP_METHOD, "GET")));
+                .put(EventAttributes.NAMESPACE, NAMESPACE)));
 
     Map<String, String> properties =
         additionalProperties(listener.persistedEvent(PolarisEventType.BEFORE_LIST_TABLES));
@@ -142,19 +137,12 @@ class PolarisPersistenceEventListenerTest {
         .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME)
         .containsKey(EventAttributes.NAMESPACE.name())
         .containsEntry("otel.trace_id", "trace-123")
-        .containsEntry("otel.span_id", "span-456")
-        .doesNotContainKeys(
-            EventAttributes.PRINCIPAL_NAME.name(), EventAttributes.HTTP_METHOD.name());
+        .containsEntry("otel.span_id", "span-456");
   }
 
   @Test
-  void shouldApplyConfiguredAllowlistFromAttributeNames() {
-    Set<AttributeKey<?>> configuredAllowlist =
-        DefaultEventAttributeFilter.resolveConfiguredAllowlist(
-            Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.NAMESPACE.name()));
-    EventAttributeFilter filter = configuredAllowlist::contains;
-    CapturingPersistenceListener listener =
-        new CapturingPersistenceListener(filter, new DefaultEventPayloadPruner());
+  void shouldPruneAllReceivedAttributesWithoutFiltering() {
+    CapturingPersistenceListener listener = new CapturingPersistenceListener();
 
     listener.onEvent(beforeListTablesEvent(metadataWithOpenTelemetry()));
 
@@ -168,7 +156,7 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
-  void shouldRejectSensitiveAttributesInConfiguredAllowlist() {
+  void shouldRejectSensitiveAttributesInGlobalAllowlistConfiguration() {
     assertThatThrownBy(
             () ->
                 DefaultEventAttributeFilter.resolveConfiguredAllowlist(
@@ -178,17 +166,14 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
-  void shouldPersistCatalogEventUsingCatalogAttributeWhenCatalogNameMissing() {
+  void shouldPersistCatalogEventWithDerivedCatalogName() {
     CapturingPersistenceListener listener = new CapturingPersistenceListener();
-
-    Catalog catalog = mock(Catalog.class);
-    when(catalog.getName()).thenReturn(CATALOG_NAME);
 
     listener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_CATALOG,
             metadata(),
-            new EventAttributeMap().put(EventAttributes.CATALOG, catalog)));
+            new EventAttributeMap().put(EventAttributes.CATALOG_NAME, CATALOG_NAME)));
 
     org.apache.polaris.core.entity.PolarisEvent persisted =
         listener.persistedEvent(PolarisEventType.AFTER_CREATE_CATALOG);
@@ -197,7 +182,8 @@ class PolarisPersistenceEventListenerTest {
     assertThat(persisted.getResourceType())
         .isEqualTo(org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG);
     assertThat(persisted.getResourceIdentifier()).isEqualTo(CATALOG_NAME);
-    assertThat(additionalProperties(persisted)).isEmpty();
+    assertThat(additionalProperties(persisted))
+        .containsEntry(EventAttributes.CATALOG_NAME.name(), CATALOG_NAME);
   }
 
   @Test
@@ -206,11 +192,7 @@ class PolarisPersistenceEventListenerTest {
 
     listener.onEvent(
         new PolarisEvent(
-            PolarisEventType.BEFORE_LIMIT_REQUEST_RATE,
-            metadata(),
-            new EventAttributeMap()
-                .put(EventAttributes.HTTP_METHOD, "GET")
-                .put(EventAttributes.REQUEST_URI, "/v1/catalogs")));
+            PolarisEventType.BEFORE_LIMIT_REQUEST_RATE, metadata(), new EventAttributeMap()));
 
     org.apache.polaris.core.entity.PolarisEvent persisted =
         listener.persistedEvent(PolarisEventType.BEFORE_LIMIT_REQUEST_RATE);
@@ -247,8 +229,7 @@ class PolarisPersistenceEventListenerTest {
   @Test
   void shouldPropagateProcessEventErrors() {
     PolarisPersistenceEventListener listener =
-        new PolarisPersistenceEventListener(
-            new DefaultEventAttributeFilter(), new DefaultEventPayloadPruner()) {
+        new PolarisPersistenceEventListener(new DefaultEventPayloadPruner()) {
           @Override
           protected void processEvent(
               String realmId, org.apache.polaris.core.entity.PolarisEvent event) {
@@ -480,11 +461,7 @@ class PolarisPersistenceEventListenerTest {
     private final Map<PolarisEventType, String> persistedRealmsByType = new LinkedHashMap<>();
 
     private CapturingPersistenceListener() {
-      super(new DefaultEventAttributeFilter(), new DefaultEventPayloadPruner());
-    }
-
-    private CapturingPersistenceListener(EventAttributeFilter filter, EventPayloadPruner pruner) {
-      super(filter, pruner);
+      super(new DefaultEventPayloadPruner());
     }
 
     @Override

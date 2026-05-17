@@ -20,13 +20,9 @@
 package org.apache.polaris.service.events;
 
 /**
- * Determines which event attributes are safe to pass downstream for persistence or external
- * consumption. Implementations decide which {@link AttributeKey}s from an {@link EventAttributeMap}
- * should be retained.
- *
- * <p>This interface is intentionally placed at the event pipeline level (not within a specific
- * listener package) so that it can be promoted to a global pre-delivery filter once community
- * consensus is reached on applying sanitization before all listeners, not just persistence.
+ * Global event attribute filter applied before delivery to all listeners. Determines which {@link
+ * AttributeKey}s from an {@link EventAttributeMap} are safe to pass downstream. Sensitive
+ * attributes are stripped globally so all listeners receive only sanitized events by default.
  */
 public interface EventAttributeFilter {
 
