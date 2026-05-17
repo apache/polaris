@@ -70,6 +70,11 @@ serviceAccount:
 # @section -- Pod Configuration
 podAnnotations: {}
 
+# @schema type:[boolean, null]
+# -- (bool) Specifies whether a pod should use the host's user namespace. See [User Namespaces](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/).
+# @section -- Pod Configuration
+hostUsers: ~
+
 # @schema additionalProperties: {type: string}
 # -- Additional Labels to apply to polaris pods.
 # @section -- Pod Configuration

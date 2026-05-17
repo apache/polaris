@@ -280,6 +280,21 @@ tests:
           path: spec.template.spec.priorityClassName
           value: polaris-high-priority
 
+  # spec.template.spec.hostUsers
+  - it: should not set hostUsers by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.hostUsers
+  - it: should set hostUsers
+    template: deployment.yaml
+    set:
+      hostUsers: false
+    asserts:
+      - equal:
+          path: spec.template.spec.hostUsers
+          value: false
+
   # spec.template.spec.securityContext
   - it: should set securityContext by default
     template: deployment.yaml
