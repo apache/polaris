@@ -55,13 +55,15 @@ public class CatalogSerializationTest {
   @Test
   public void testJsonFormat() throws JsonProcessingException {
     Catalog catalog =
-        new Catalog(
-            Catalog.TypeEnum.INTERNAL,
-            TEST_CATALOG_NAME,
-            new CatalogProperties(TEST_LOCATION),
-            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setRoleArn(TEST_ROLE_ARN)
-                .build());
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(TEST_CATALOG_NAME)
+            .setProperties(new CatalogProperties(TEST_LOCATION))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn(TEST_ROLE_ARN)
+                    .build())
+            .build();
 
     String json = mapper.writeValueAsString(catalog);
 
@@ -82,14 +84,16 @@ public class CatalogSerializationTest {
   @Test
   public void testJsonFormatWithKmsProperties() throws JsonProcessingException {
     Catalog catalog =
-        new Catalog(
-            Catalog.TypeEnum.INTERNAL,
-            TEST_CATALOG_NAME,
-            new CatalogProperties(TEST_LOCATION),
-            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                .setRoleArn(TEST_ROLE_ARN)
-                .setCurrentKmsKey(KMS_KEY)
-                .build());
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(TEST_CATALOG_NAME)
+            .setProperties(new CatalogProperties(TEST_LOCATION))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn(TEST_ROLE_ARN)
+                    .setCurrentKmsKey(KMS_KEY)
+                    .build())
+            .build();
 
     String json = mapper.writeValueAsString(catalog);
 
@@ -108,53 +112,91 @@ public class CatalogSerializationTest {
                 + "}}");
   }
 
+  @Test
+  public void testExternalCatalogWithoutStorageConfig() throws JsonProcessingException {
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(TEST_CATALOG_NAME)
+            .setProperties(new CatalogProperties(TEST_LOCATION))
+            .build();
+
+    String json = mapper.writeValueAsString(catalog);
+    Catalog deserialized = mapper.readValue(json, Catalog.class);
+
+    assertThat(deserialized).usingRecursiveComparison().isEqualTo(catalog);
+    assertThat(json).doesNotContain("storageConfigInfo");
+  }
+
   private static Stream<Arguments> catalogTestCases() {
     Stream<Arguments> basicCases =
         Stream.of(
             Arguments.of(
                 "Basic catalog",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL,
-                    TEST_CATALOG_NAME,
-                    new CatalogProperties(TEST_LOCATION),
-                    AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                        .setRoleArn(TEST_ROLE_ARN)
-                        .build())),
-            Arguments.of("Null fields", new Catalog(Catalog.TypeEnum.INTERNAL, null, null, null)),
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName(TEST_CATALOG_NAME)
+                    .setProperties(new CatalogProperties(TEST_LOCATION))
+                    .setStorageConfigInfo(
+                        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setRoleArn(TEST_ROLE_ARN)
+                            .build())
+                    .build()),
+            Arguments.of(
+                "Null fields",
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName(null)
+                    .setProperties(null)
+                    .build()),
             Arguments.of(
                 "Long name",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL,
-                    "a".repeat(1000),
-                    new CatalogProperties(TEST_LOCATION),
-                    null)),
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName("a".repeat(1000))
+                    .setProperties(new CatalogProperties(TEST_LOCATION))
+                    .build()),
             Arguments.of(
                 "Unicode characters",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL, "测试目录", new CatalogProperties(TEST_LOCATION), null)),
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName("测试目录")
+                    .setProperties(new CatalogProperties(TEST_LOCATION))
+                    .build()),
             Arguments.of(
                 "Empty strings",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL,
-                    "",
-                    new CatalogProperties(""),
-                    new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))),
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName("")
+                    .setProperties(new CatalogProperties(""))
+                    .setStorageConfigInfo(
+                        new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
+                    .build()),
             Arguments.of(
                 "Special characters",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL,
-                    "test\"catalog",
-                    new CatalogProperties(TEST_LOCATION),
-                    AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                        .setRoleArn(TEST_ROLE_ARN)
-                        .build())),
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName("test\"catalog")
+                    .setProperties(new CatalogProperties(TEST_LOCATION))
+                    .setStorageConfigInfo(
+                        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                            .setRoleArn(TEST_ROLE_ARN)
+                            .build())
+                    .build()),
             Arguments.of(
                 "Whitespace",
-                new Catalog(
-                    Catalog.TypeEnum.INTERNAL,
-                    "  test  catalog  ",
-                    new CatalogProperties("  " + TEST_LOCATION + "  "),
-                    null)));
+                PolarisCatalog.builder()
+                    .setType(Catalog.TypeEnum.INTERNAL)
+                    .setName("  test  catalog  ")
+                    .setProperties(new CatalogProperties("  " + TEST_LOCATION + "  "))
+                    .build()),
+            Arguments.of(
+                "External catalog without storage config",
+                ExternalCatalog.builder()
+                    .setType(Catalog.TypeEnum.EXTERNAL)
+                    .setName(TEST_CATALOG_NAME)
+                    .setProperties(new CatalogProperties(TEST_LOCATION))
+                    .build()));
 
     Stream<Arguments> arnCases =
         Stream.of(
@@ -165,13 +207,15 @@ public class CatalogSerializationTest {
                 arn ->
                     Arguments.of(
                         "ARN: " + arn,
-                        new Catalog(
-                            Catalog.TypeEnum.INTERNAL,
-                            TEST_CATALOG_NAME,
-                            new CatalogProperties(TEST_LOCATION),
-                            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
-                                .setRoleArn(arn)
-                                .build())));
+                        PolarisCatalog.builder()
+                            .setType(Catalog.TypeEnum.INTERNAL)
+                            .setName(TEST_CATALOG_NAME)
+                            .setProperties(new CatalogProperties(TEST_LOCATION))
+                            .setStorageConfigInfo(
+                                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                                    .setRoleArn(arn)
+                                    .build())
+                            .build()));
 
     return Stream.concat(basicCases, arnCases);
   }

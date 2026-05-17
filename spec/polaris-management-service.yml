@@ -882,7 +882,6 @@ components:
       required:
         - name
         - type
-        - storageConfigInfo
         - properties
       discriminator:
         propertyName: type
@@ -895,6 +894,8 @@ components:
       type: object
       allOf:
         - $ref: "#/components/schemas/Catalog"
+      required:
+        - storageConfigInfo
       description: The base catalog type - this contains all the fields necessary to construct an INTERNAL catalog
 
     ExternalCatalog:

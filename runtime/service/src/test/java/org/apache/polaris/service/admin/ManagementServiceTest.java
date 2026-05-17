@@ -111,6 +111,54 @@ public class ManagementServiceTest {
   }
 
   @Test
+  public void testCreateInternalCatalogWithoutStorageConfigFails() {
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("internal-no-storage")
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .createCatalog(
+                        new CreateCatalogRequest(catalog),
+                        services.realmContext(),
+                        services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Invalid value: createCatalog.arg0.catalog.storageConfigInfo: must not be null");
+  }
+
+  @Test
+  public void testCreateExternalCatalogWithoutStorageConfig() {
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("external-no-storage")
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
+    }
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(
+                "external-no-storage", services.realmContext(), services.securityContext())) {
+      Catalog fetched = response.readEntity(Catalog.class);
+      assertThat(fetched.getStorageConfigInfo()).isNull();
+    }
+  }
+
+  @Test
   public void testCreateCatalogWithDisallowedS3Endpoints() {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()

@@ -121,3 +121,4 @@ application-local.properties
 .cursor/
 .opencode/
 skills-lock.json
+CLAUDE.md

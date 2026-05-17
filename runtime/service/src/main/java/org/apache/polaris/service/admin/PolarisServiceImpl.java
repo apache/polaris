@@ -127,7 +127,13 @@ public class PolarisServiceImpl
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     Catalog catalog = request.getCatalog();
-    validateStorageConfig(catalog.getStorageConfigInfo());
+    if (catalog.getType() == Catalog.TypeEnum.INTERNAL && catalog.getStorageConfigInfo() == null) {
+      throw new IllegalArgumentException(
+          "Invalid value: createCatalog.arg0.catalog.storageConfigInfo: must not be null");
+    }
+    if (catalog.getStorageConfigInfo() != null) {
+      validateStorageConfig(catalog.getStorageConfigInfo());
+    }
     validateExternalCatalog(catalog);
     validateCatalogProperties(catalog.getProperties());
     Catalog newCatalog =

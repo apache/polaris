@@ -399,6 +399,29 @@ public class PolarisManagementServiceIntegrationTest {
   }
 
   @Test
+  public void testCreateExternalCatalogWithoutStorageConfig() {
+    String catalogName = client.newEntityName("testCreateExternalCatalogWithoutStorageConfig");
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
+            .build();
+    try (Response response =
+        managementApi.request("v1/catalogs").post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+    }
+    try (Response response =
+        managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalogName)).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog fetched = response.readEntity(Catalog.class);
+      assertThat(fetched.getName()).isEqualTo(catalogName);
+      assertThat(fetched.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
+      assertThat(fetched.getStorageConfigInfo()).isNull();
+    }
+  }
+
+  @Test
   public void testCreateCatalogWithUnparsableJson() {
     String catalogString = "{\"catalog\": {{\"bad data}";
     try (Response response =

@@ -567,12 +567,15 @@ public class PolarisAdminService {
   /** Get all locations where data for a `CatalogEntity` may be stored */
   private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
     HashSet<String> catalogLocations = new HashSet<>();
-    catalogLocations.add(terminateWithSlash(catalogEntity.getBaseLocation()));
+    String baseLocation = terminateWithSlash(catalogEntity.getBaseLocation());
+    if (baseLocation != null) {
+      catalogLocations.add(baseLocation);
+    }
     if (catalogEntity.getStorageConfigurationInfo() != null) {
-      catalogLocations.addAll(
-          catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
-              .map(this::terminateWithSlash)
-              .toList());
+      catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
+          .map(this::terminateWithSlash)
+          .filter(Objects::nonNull)
+          .forEach(catalogLocations::add);
     }
     return catalogLocations;
   }
@@ -596,6 +599,12 @@ public class PolarisAdminService {
     boolean allowOverlappingCatalogUrls =
         realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
     if (allowOverlappingCatalogUrls) {
+      return false;
+    }
+
+    if (catalogEntity.isExternal()
+        && catalogEntity.getStorageConfigurationInfo() == null
+        && catalogEntity.getBaseLocation() == null) {
       return false;
     }
 
