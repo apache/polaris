@@ -58,7 +58,7 @@ class ReplCommand(Command):
         try:
             PolarisRepl(api, profile=self.profile).cmdloop()
         except KeyboardInterrupt:
-            sys.stdout.write(f"\nExiting REPL session.\n")
+            sys.stdout.write("\nExiting REPL session.\n")
 
 
 class PolarisRepl(Cmd):
@@ -93,7 +93,7 @@ class PolarisRepl(Cmd):
             args = shlex.split(line)
             options = Parser.parse(args)
             if options.command == Commands.REPL:
-                sys.stderr.write(f"Already in REPL session.\n")
+                sys.stderr.write("Already in REPL session.\n")
                 return
             command = Command.from_options(options)
             if isinstance(command, ProfilesCommand):
@@ -103,7 +103,7 @@ class PolarisRepl(Cmd):
         except SystemExit:
             pass
         except KeyboardInterrupt:
-            sys.stderr.write(f"Session interrupted. Type 'exit' to quit.\n")
+            sys.stderr.write("Session interrupted. Type 'exit' to quit.\n")
         except ApiException as e:
             PolarisCli._try_print_exception(e)
         except CliError as e:
@@ -123,8 +123,8 @@ class PolarisRepl(Cmd):
         sys.stdout.write(
             f"{os.linesep}".join(
                 [
-                    f"REPL built-ins: exit, help, Ctrl-D\n",
-                    f"Use 'help <command>' or '<command --help>' for command details.\n",
+                    "REPL built-ins: exit, help, Ctrl-D\n",
+                    "Use 'help <command>' or '<command --help>' for command details.\n",
                 ]
             )
         )
