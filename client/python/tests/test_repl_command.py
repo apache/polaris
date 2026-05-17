@@ -46,16 +46,6 @@ class TestReplCommand(CLITestBase):
         mock_from_options.assert_called()
         mock_command.execute.assert_called_with(mock_client)
 
-    def test_repl_exit_commands(self) -> None:
-        repl = PolarisRepl(self.build_mock_client())
-        self.assertTrue(repl.do_exit(""))
-
-    def test_repl_eof_exits(self) -> None:
-        repl = PolarisRepl(self.build_mock_client())
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            self.assertTrue(repl.do_EOF(""))
-        self.assertIn("\n", mock_stdout.getvalue())
-
     @patch(
         "apache_polaris.cli.options.parser.Parser.parse",
         side_effect=RuntimeError("boom"),

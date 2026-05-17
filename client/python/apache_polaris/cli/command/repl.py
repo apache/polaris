@@ -129,13 +129,6 @@ class PolarisRepl(Cmd):
             )
         )
 
-    def do_exit(self, args: str) -> bool:
-        return True
-
-    def do_EOF(self, args: str) -> bool:
-        sys.stdout.write(os.linesep)
-        return True
-
     def emptyline(self) -> bool:
         return False
 
