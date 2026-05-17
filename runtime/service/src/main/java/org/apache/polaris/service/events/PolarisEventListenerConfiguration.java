@@ -48,11 +48,11 @@ public interface PolarisEventListenerConfiguration {
   Optional<Set<String>> types();
 
   /**
-   * Comma-separated list of EventAttributes key names that are safe to pass downstream. If unset,
-   * the default safe allowlist in DefaultEventAttributeFilter is used.
+   * Comma-separated list of additional EventAttributes key names to deny from downstream listeners.
+   * These are added to the built-in denylist in DefaultEventAttributeFilter.
    */
-  @WithName("allowlisted-attributes")
-  Optional<Set<String>> allowlistedAttributes();
+  @WithName("denylisted-attributes")
+  Optional<Set<String>> denylistedAttributes();
 
   /** Configuration of each event listener type. */
   @WithParentName

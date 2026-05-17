@@ -71,6 +71,9 @@ class GlobalEventSanitizationTest {
   void shouldStripNonAllowlistedAttributesBeforeDelivery() {
     var testListener = (SanitizationTestListener) listener;
 
+    Catalog sensitiveCatalog = mock(Catalog.class);
+    when(sensitiveCatalog.getName()).thenReturn("my-catalog");
+
     eventDispatcher.dispatch(
         new PolarisEvent(
             PolarisEventType.AFTER_CREATE_NAMESPACE,
@@ -78,7 +81,7 @@ class GlobalEventSanitizationTest {
             new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, "my-catalog")
                 .put(EventAttributes.NAMESPACE, Namespace.of("ns1"))
-                .put(EventAttributes.PRINCIPAL_NAME, "alice")
+                .put(EventAttributes.CATALOG, sensitiveCatalog)
                 .put(EventAttributes.HTTP_METHOD, "POST")));
 
     await().until(() -> testListener.events.size() == 1);
@@ -86,8 +89,8 @@ class GlobalEventSanitizationTest {
     PolarisEvent delivered = testListener.events.getFirst();
     assertThat(delivered.attributes().contains(EventAttributes.CATALOG_NAME)).isTrue();
     assertThat(delivered.attributes().contains(EventAttributes.NAMESPACE)).isTrue();
-    assertThat(delivered.attributes().contains(EventAttributes.PRINCIPAL_NAME)).isFalse();
-    assertThat(delivered.attributes().contains(EventAttributes.HTTP_METHOD)).isFalse();
+    assertThat(delivered.attributes().contains(EventAttributes.HTTP_METHOD)).isTrue();
+    assertThat(delivered.attributes().contains(EventAttributes.CATALOG)).isFalse();
   }
 
   @Test

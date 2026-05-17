@@ -156,13 +156,13 @@ class PolarisPersistenceEventListenerTest {
   }
 
   @Test
-  void shouldRejectSensitiveAttributesInGlobalAllowlistConfiguration() {
+  void shouldRejectUnknownAttributesInGlobalDenylistConfiguration() {
     assertThatThrownBy(
             () ->
-                DefaultEventAttributeFilter.resolveConfiguredAllowlist(
-                    Set.of(EventAttributes.CATALOG_NAME.name(), EventAttributes.PRINCIPAL.name())))
+                DefaultEventAttributeFilter.resolveAdditionalDenylist(
+                    Set.of("NONEXISTENT_ATTRIBUTE")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(EventAttributes.PRINCIPAL.name());
+        .hasMessageContaining("NONEXISTENT_ATTRIBUTE");
   }
 
   @Test

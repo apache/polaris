@@ -28,46 +28,33 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @DefaultBean
 public class DefaultEventAttributeFilter implements EventAttributeFilter {
 
-  private static final Set<AttributeKey<?>> CONFIGURATION_DENYLIST =
+  // These carry full domain objects containing credentials or internal secrets:
+  // PRINCIPAL - may contain client IDs, internal identity metadata
+  // UPDATE_PRINCIPAL_REQUEST - credential rotation data, secret changes
+  // CATALOG - includes StorageConfigInfo with cloud credentials (AWS keys, Azure tokens, etc.)
+  // NOTIFICATION_REQUEST - contains metadata file locations and potentially signed URLs
+  static final Set<AttributeKey<?>> DEFAULT_DENYLIST =
       Set.of(
           EventAttributes.PRINCIPAL,
           EventAttributes.UPDATE_PRINCIPAL_REQUEST,
           EventAttributes.CATALOG,
           EventAttributes.NOTIFICATION_REQUEST);
 
-  static final Set<AttributeKey<?>> DEFAULT_ALLOWLIST =
-      Set.of(
-          EventAttributes.CATALOG_NAME,
-          EventAttributes.NAMESPACE,
-          EventAttributes.NAMESPACE_FQN,
-          EventAttributes.PARENT_NAMESPACE_FQN,
-          EventAttributes.TABLE_NAME,
-          EventAttributes.TABLE_IDENTIFIER,
-          EventAttributes.TABLE_METADATA,
-          EventAttributes.LOAD_TABLE_RESPONSE,
-          EventAttributes.RENAME_TABLE_REQUEST,
-          EventAttributes.PURGE_REQUESTED,
-          EventAttributes.VIEW_NAME,
-          EventAttributes.VIEW_IDENTIFIER,
-          EventAttributes.NAMESPACE_NAME,
-          EventAttributes.GENERIC_TABLE_NAME);
-
   @Inject PolarisEventListenerConfiguration configuration;
 
-  private Set<AttributeKey<?>> allowlist;
+  private Set<AttributeKey<?>> denylist;
 
   DefaultEventAttributeFilter() {
-    this(DEFAULT_ALLOWLIST);
+    this(DEFAULT_DENYLIST);
   }
 
-  DefaultEventAttributeFilter(Set<AttributeKey<?>> allowlist) {
-    this.allowlist = validateAllowlist(allowlist);
+  DefaultEventAttributeFilter(Set<AttributeKey<?>> denylist) {
+    this.denylist = Set.copyOf(denylist);
   }
 
   @PostConstruct
@@ -76,23 +63,19 @@ public class DefaultEventAttributeFilter implements EventAttributeFilter {
       return;
     }
     Set<String> configuredNames =
-        configuration.allowlistedAttributes().orElse(Collections.emptySet());
+        configuration.denylistedAttributes().orElse(Collections.emptySet());
     if (!configuredNames.isEmpty()) {
-      this.allowlist = resolveConfiguredAllowlist(configuredNames);
+      this.denylist = resolveAdditionalDenylist(configuredNames);
     }
   }
 
   @Override
   public boolean isAllowed(AttributeKey<?> key) {
-    return allowlist.contains(key);
+    return !denylist.contains(key);
   }
 
-  public static Set<AttributeKey<?>> resolveConfiguredAllowlist(Set<String> configuredNames) {
-    if (configuredNames.isEmpty()) {
-      return DEFAULT_ALLOWLIST;
-    }
-
-    Set<AttributeKey<?>> resolved = new LinkedHashSet<>();
+  public static Set<AttributeKey<?>> resolveAdditionalDenylist(Set<String> configuredNames) {
+    Set<AttributeKey<?>> resolved = new LinkedHashSet<>(DEFAULT_DENYLIST);
     List<String> unknown = new ArrayList<>();
 
     for (String name : configuredNames) {
@@ -101,24 +84,9 @@ public class DefaultEventAttributeFilter implements EventAttributeFilter {
 
     if (!unknown.isEmpty()) {
       throw new IllegalArgumentException(
-          "Unknown event attributes in allowlist configuration: " + unknown);
+          "Unknown event attributes in denylist configuration: " + unknown);
     }
 
-    return validateAllowlist(resolved);
-  }
-
-  private static Set<AttributeKey<?>> validateAllowlist(Set<AttributeKey<?>> allowlist) {
-    Set<AttributeKey<?>> denied =
-        allowlist.stream()
-            .filter(CONFIGURATION_DENYLIST::contains)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-
-    if (!denied.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Sensitive attributes are not allowed in allowlist configuration: "
-              + denied.stream().map(AttributeKey::name).toList());
-    }
-
-    return Set.copyOf(allowlist);
+    return Set.copyOf(resolved);
   }
 }
