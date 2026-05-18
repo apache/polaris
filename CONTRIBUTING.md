@@ -126,7 +126,13 @@ Contributors may use a variety of tools when preparing changes to Polaris, inclu
 * Regardless of how a change is produced, the individual submitting the pull request is considered the author of the contribution and is fully responsible for it.
 * The pull request author **must understand the implementation end-to-end** and be able to **explain and justify the design and code** during review.
 * Tools, including AI systems, **are not** considered contributors. **Responsibility and authorship remain with the human** submitting the change.
+  Do not list AI tools as authors or co-authors, and do not include model names,
+  model versions, prompts, or reasoning settings unless a maintainer explicitly asks
+  for them during review.
 * Contributors are encouraged to **disclose** significant AI assistance in the pull request description for transparency.
+  A suitable disclosure is:
+  > AI assistance was used to prepare this change. I have reviewed and understand
+  > the full diff, and I take responsibility for the contribution.
 * **Respect ASF policy**. Contributors are responsible for ensuring generated code can be contributed to Polaris under ASF license and [ASF Generative Tooling Guidance](https://www.apache.org/legal/generative-tooling.html).
 
 ## Java version requirements
