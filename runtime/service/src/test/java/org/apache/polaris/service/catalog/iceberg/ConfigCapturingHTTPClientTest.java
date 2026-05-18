@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.iceberg.CapturedConfigHolder.TABLE_ID_CONFIG_KEY;
+import static org.apache.polaris.service.catalog.iceberg.CapturedConfigHolder.S3TABLES_TABLE_ID_CONFIG_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -57,7 +57,7 @@ class ConfigCapturingHTTPClientTest {
             .withTableMetadata(metadata)
             .addAllConfig(
                 Map.of(
-                    TABLE_ID_CONFIG_KEY, "73031312-6e6f-432c-ab35-ae23561f6472",
+                    S3TABLES_TABLE_ID_CONFIG_KEY, "73031312-6e6f-432c-ab35-ae23561f6472",
                     "tableBucketId", "d7290d06"))
             .build();
 

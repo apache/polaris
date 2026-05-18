@@ -32,8 +32,11 @@ import org.slf4j.LoggerFactory;
 /**
  * A delegating wrapper around the Iceberg {@link RESTClient} that intercepts responses to extract
  * the {@code config} section from loadTable responses. When a {@link LoadTableResponse} is
- * received, the config map (containing {@code tableId} for S3 Tables) is captured and stored in the
- * request-scoped {@link CapturedConfigHolder}.
+ * received, the config map is captured and stored in the request-scoped {@link
+ * CapturedConfigHolder}.
+ *
+ * <p>TODO: Remove this workaround once Iceberg natively exposes server-assigned metadata in the
+ * RESTCatalog client API. See https://github.com/apache/iceberg/issues/16399
  */
 public class ConfigCapturingHTTPClient implements RESTClient {
 

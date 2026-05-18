@@ -115,6 +115,26 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                     stsClientProvider,
                     awsCreds);
         break;
+      case S3_TABLES:
+        Optional<AwsCredentialsProvider> s3TablesCreds = stsCredentials;
+        if (s3TablesCreds.isEmpty() && storageConfiguration != null) {
+          if (realmConfig != null
+              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
+            s3TablesCreds =
+                Optional.of(
+                    storageConfiguration.stsCredentials(
+                        polarisStorageConfigurationInfo.getStorageName()));
+          } else {
+            s3TablesCreds = Optional.of(storageConfiguration.stsCredentials());
+          }
+        }
+        storageIntegration =
+            (PolarisStorageIntegration<T>)
+                new AwsS3TablesCredentialsStorageIntegration(
+                    (AwsS3TablesStorageConfigurationInfo) polarisStorageConfigurationInfo,
+                    stsClientProvider,
+                    s3TablesCreds);
+        break;
       case GCS:
         storageIntegration =
             (PolarisStorageIntegration<T>)
@@ -156,26 +176,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 return Map.of();
               }
             };
-        break;
-      case S3_TABLES:
-        Optional<AwsCredentialsProvider> s3TablesCreds = stsCredentials;
-        if (s3TablesCreds.isEmpty() && storageConfiguration != null) {
-          if (realmConfig != null
-              && realmConfig.getConfig(FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME)) {
-            s3TablesCreds =
-                Optional.of(
-                    storageConfiguration.stsCredentials(
-                        polarisStorageConfigurationInfo.getStorageName()));
-          } else {
-            s3TablesCreds = Optional.of(storageConfiguration.stsCredentials());
-          }
-        }
-        storageIntegration =
-            (PolarisStorageIntegration<T>)
-                new AwsS3TablesCredentialsStorageIntegration(
-                    (AwsS3TablesStorageConfigurationInfo) polarisStorageConfigurationInfo,
-                    stsClientProvider,
-                    s3TablesCreds);
         break;
       default:
         throw new IllegalArgumentException(

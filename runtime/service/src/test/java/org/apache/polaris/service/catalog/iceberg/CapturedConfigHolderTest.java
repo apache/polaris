@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.service.catalog.iceberg.CapturedConfigHolder.TABLE_ID_CONFIG_KEY;
+import static org.apache.polaris.service.catalog.iceberg.CapturedConfigHolder.S3TABLES_TABLE_ID_CONFIG_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
@@ -37,7 +37,7 @@ class CapturedConfigHolderTest {
     CapturedConfigHolder holder = new CapturedConfigHolder();
     holder.setCapturedConfig(
         Map.of(
-            TABLE_ID_CONFIG_KEY, "73031312-6e6f-432c-ab35-ae23561f6472",
+            S3TABLES_TABLE_ID_CONFIG_KEY, "73031312-6e6f-432c-ab35-ae23561f6472",
             "tableBucketId", "d7290d06-163c-4d10-a193-8d920e9a0cf0"));
     assertThat(holder.getTableId()).hasValue("73031312-6e6f-432c-ab35-ae23561f6472");
   }
@@ -52,7 +52,7 @@ class CapturedConfigHolderTest {
   @Test
   void clearResetsState() {
     CapturedConfigHolder holder = new CapturedConfigHolder();
-    holder.setCapturedConfig(Map.of(TABLE_ID_CONFIG_KEY, "abc123"));
+    holder.setCapturedConfig(Map.of(S3TABLES_TABLE_ID_CONFIG_KEY, "abc123"));
     assertThat(holder.getTableId()).hasValue("abc123");
     holder.clear();
     assertThat(holder.getTableId()).isEmpty();

@@ -18,22 +18,16 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
-
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.net.URI;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
@@ -41,7 +35,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -51,9 +44,6 @@ import software.amazon.awssdk.policybuilder.iam.IamPolicy;
 import software.amazon.awssdk.policybuilder.iam.IamResource;
 import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
-import software.amazon.awssdk.services.sts.model.Tag;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
@@ -93,90 +83,42 @@ public class AwsCredentialsStorageIntegration
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
       @Nonnull CredentialVendingContext credentialVendingContext) {
-    int storageCredentialDurationSeconds =
-        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
-    boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    List<String> sessionTagFieldNames =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    Set<SessionTagField> enabledSessionTagFields =
-        sessionTagFieldNames.stream()
-            .map(SessionTagField::fromConfigName)
-            .flatMap(Optional::stream)
-            .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
-
-    String roleSessionName =
-        includePrincipalNameInSubscopedCredential
-            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName())
-            : "PolarisAwsCredentialsStorageIntegration";
-
     if (shouldUseSts(storageConfig)) {
-      AssumeRoleRequest.Builder request =
-          AssumeRoleRequest.builder()
-              .externalId(storageConfig.getExternalId())
-              .roleArn(storageConfig.getRoleARN())
-              .roleSessionName(roleSessionName)
-              .policy(
-                  policyString(
-                          storageConfig,
-                          allowListOperation,
-                          allowedReadLocations,
-                          allowedWriteLocations,
-                          region)
-                      .toJson())
-              .durationSeconds(storageCredentialDurationSeconds);
+      String policyJson =
+          policyString(
+                  storageConfig,
+                  allowListOperation,
+                  allowedReadLocations,
+                  allowedWriteLocations,
+                  region)
+              .toJson();
 
-      // Add session tags for the configured fields.
-      // Note: trace_id is only present in context when the caller has included it
-      // (StorageAccessConfigProvider populates it when "trace_id" is in enabledSessionTagFields).
-      if (!enabledSessionTagFields.isEmpty()) {
-        List<Tag> sessionTags =
-            buildSessionTags(
-                polarisPrincipal.getName(), credentialVendingContext, enabledSessionTagFields);
-        if (!sessionTags.isEmpty()) {
-          request.tags(sessionTags);
-          // Mark all tags as transitive for role chaining support
-          request.transitiveTagKeys(
-              sessionTags.stream().map(Tag::key).collect(java.util.stream.Collectors.toList()));
-        }
+      AwsStsUtil.assumeRoleAndPopulateConfig(
+          accessConfig,
+          realmConfig,
+          storageConfig.getRoleARN(),
+          storageConfig.getExternalId(),
+          storageConfig.getStsEndpointUri(),
+          region,
+          policyJson,
+          "PolarisAwsCredentialsStorageIntegration",
+          polarisPrincipal,
+          credentialVendingContext,
+          credentialsProvider,
+          stsClientProvider,
+          refreshCredentialsEndpoint);
+    } else {
+      if (region != null) {
+        accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
       }
-
-      credentialsProvider.ifPresent(
-          cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
-
-      @SuppressWarnings("resource")
-      // Note: stsClientProvider returns "thin" clients that do not need closing
-      StsClient stsClient =
-          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
-
-      AssumeRoleResponse response = stsClient.assumeRole(request.build());
-      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-      accessConfig.put(
-          StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-      accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
-      Optional.ofNullable(response.credentials().expiration())
-          .ifPresent(
-              i -> {
-                accessConfig.put(
-                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                accessConfig.put(
-                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                    String.valueOf(i.toEpochMilli()));
-              });
+      refreshCredentialsEndpoint.ifPresent(
+          endpoint ->
+              accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
     }
-
-    if (region != null) {
-      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
-    }
-
-    refreshCredentialsEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
 
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {

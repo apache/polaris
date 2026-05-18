@@ -35,7 +35,7 @@ import java.util.Optional;
 public class CapturedConfigHolder {
 
   /** Config key for the S3 Tables table identifier in the loadTable response config section. */
-  public static final String TABLE_ID_CONFIG_KEY = "tableId";
+  public static final String S3TABLES_TABLE_ID_CONFIG_KEY = "tableId";
 
   private volatile Map<String, String> capturedConfig;
 
@@ -46,7 +46,7 @@ public class CapturedConfigHolder {
   public Optional<String> getTableId() {
     Map<String, String> config = this.capturedConfig;
     if (config != null) {
-      return Optional.ofNullable(config.get(TABLE_ID_CONFIG_KEY));
+      return Optional.ofNullable(config.get(S3TABLES_TABLE_ID_CONFIG_KEY));
     }
     return Optional.empty();
   }

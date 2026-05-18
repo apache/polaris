@@ -496,8 +496,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              refreshCredentialsEndpoint,
-              Optional.empty())
+              refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -603,8 +602,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             metadata,
             resolvedMode,
             Set.of(PolarisStorageActions.ALL),
-            refreshCredentialsEndpoint,
-            Optional.empty())
+            refreshCredentialsEndpoint)
         .build();
   }
 
@@ -939,31 +937,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // table ARN. s3tables:* IAM actions require ARN resources, not s3:// paths.
       // This block is only relevant for federated catalogs (not IcebergCatalog) since S3_TABLES
       // storage type is exclusively used with external/federated catalog configurations.
+      boolean isS3Tables = false;
       if (!(baseCatalog instanceof IcebergCatalog)) {
         CatalogEntity catalogEntity = CatalogEntity.of(getResolvedCatalogEntity());
+        isS3Tables = S3TablesUtil.isS3TablesCatalog(catalogEntity);
         tableLocations =
             S3TablesUtil.resolveTableLocations(
                 tableIdentifier,
                 tableLocations,
                 catalogEntity,
                 capturedConfigHolder().getTableId());
-
-      if (isS3Tables && capturedConfigHolder().getTableId().isPresent()) {
-        String tableArn =
-            constructS3TablesArn(catalogEntity, capturedConfigHolder().getTableId().get());
-        validateS3TablesArn(tableIdentifier, tableArn, catalogEntity);
-        tableLocations = Set.of(tableArn);
-        LOGGER
-            .atDebug()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableArn", tableArn)
-            .log("Replaced table locations with S3 Tables ARN for credential vending");
-      } else if (isS3Tables) {
-        throw new BadRequestException(
-            "Cannot vend credentials for S3 Tables table '%s': "
-                + "no tableId was captured from the remote catalog response. "
-                + "Ensure the remote S3 Tables endpoint returns tableId in the loadTable config.",
-            tableIdentifier);
       }
 
       // For federated catalogs, validate that table locations are within allowed locations.

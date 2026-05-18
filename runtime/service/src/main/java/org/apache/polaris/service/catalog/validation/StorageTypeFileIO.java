@@ -26,6 +26,8 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 enum StorageTypeFileIO {
   S3("org.apache.iceberg.aws.s3.S3FileIO", true),
 
+  // TODO: Refactor discriminator to support S3 Tables without opt-out.
+  // See https://github.com/apache/polaris/issues/4486
   S3_TABLES("org.apache.iceberg.aws.s3.S3FileIO", true, false),
 
   GCS("org.apache.iceberg.gcp.gcs.GCSFileIO", true),

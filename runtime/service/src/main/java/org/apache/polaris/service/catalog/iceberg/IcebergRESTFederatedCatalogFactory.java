@@ -42,7 +42,7 @@ public class IcebergRESTFederatedCatalogFactory implements FederatedCatalogFacto
   private final CapturedConfigHolder capturedConfigHolder;
 
   @Inject
-  public IcebergRESTExternalCatalogFactory(CapturedConfigHolder capturedConfigHolder) {
+  public IcebergRESTFederatedCatalogFactory(CapturedConfigHolder capturedConfigHolder) {
     this.capturedConfigHolder = capturedConfigHolder;
   }
 
