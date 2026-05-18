@@ -32,6 +32,22 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade notes
 
 ### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+## [1.5.0]
+
+### Highlights
+
+### Upgrade notes
+
+### Breaking changes
 - The ExternalCatalogFactory interface has been renamed to FederatedCatalogFactory. Its createCatalog() and createGenericCatalog() method signatures have been extended to include a `catalogProperties` parameter of type `Map<String, String>` for passing through proxy and timeout settings to federated catalog HTTP clients.
 - The `ConnectionCredentials.of()` method now throws an exception when more than one expiration timestamp property is present in the credentials map. Only a single expiration timestamp is allowed per credentials bundle.
 - Entity names (namespaces, tables, views, generic tables) submitted to the REST layer are now rejected with HTTP 400 if they are empty, contain a `/`, or have leading/trailing whitespace. Clients that were previously able to create such entities must rename them before upgrading.
@@ -58,8 +74,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 - Fixed `renameTable` to return HTTP 204 (No Content) instead of 200, as per the Iceberg REST Catalog spec.
-
-### Commits
 
 ## [1.4.0]
 
@@ -298,6 +312,8 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
 [Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...HEAD
+[1.5.0]: https://github.com/apache/polaris/compare/apache-polaris-1.4.0...apache-polaris-1.5.0
+[1.4.0]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...apache-polaris-1.4.0
 [1.3.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...apache-polaris-1.3.0-incubating
 [1.2.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0-incubating...apache-polaris-1.2.0-incubating
 [1.1.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.1-incubating...apache-polaris-1.1.0-incubating
