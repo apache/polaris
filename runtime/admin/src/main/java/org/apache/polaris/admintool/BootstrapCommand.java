@@ -162,7 +162,7 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
               && inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             String msg =
                 String.format(
-                    "realm: %1s root principal credentials: %2s:%3s",
+                    "realm: %1$s root principal credentials: %2$s:%3$s",
                     result.getKey(),
                     result.getValue().getPrincipalSecrets().getPrincipalClientId(),
                     result.getValue().getPrincipalSecrets().getMainSecret());
