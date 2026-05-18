@@ -290,7 +290,7 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
       completable.cancel(false);
       var f = runningFuture.getAndSet(null);
       if (f != null && !f.isDone()) {
-        f.cancel(true);
+        f.cancel(false);
       }
       tasks.remove(this);
     }
