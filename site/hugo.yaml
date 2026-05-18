@@ -127,7 +127,7 @@ menu:
     - name: "Community"
       identifier: "community"
       weight: 300
-    - name: "Community Page"
+    - name: "Overview"
       parent: "community"
       url: "/community/"
       weight: 10
