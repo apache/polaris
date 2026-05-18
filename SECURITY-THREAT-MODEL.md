@@ -158,8 +158,10 @@ Polaris assumes the following boundaries:
   metadata, object-store endpoints, and catalog backends are trusted only for
   the configured purpose and must not silently redirect secrets or privileged
   requests outside that trust relationship.
-- Persistence backends are trusted to store and return data, but Polaris must not
-  rely on callers to enforce authorization before persistence access.
+- Persistence backends are trusted to store and return data, but persistence-layer
+  access by internal Polaris callsites is not by itself proof that the data may be
+  returned to an external caller or used to mutate protected state. Authorization
+  must be enforced before protected data is exposed or protected state is changed.
 - Deployment operators are trusted with configuration and infrastructure-level
   secrets.
 
@@ -171,8 +173,10 @@ The following properties must hold:
   public.
 - Authorization checks must be performed before returning or mutating protected
   catalog metadata.
-- A principal must not be able to grant itself privileges it does not already
-  have authority to grant.
+- Grant and role-management operations must enforce the intended grant authority
+  defined by Polaris authorization rules. A principal must not be able to obtain
+  privileges that direct checks would reject by using indirect role creation,
+  self-grants, role nesting, privilege delegation, or other second-order effects.
 - Role, privilege, and policy changes must not bypass scope restrictions.
 - Realm, catalog, namespace, table, and view identifiers must not allow access
   across authorization boundaries.
@@ -192,9 +196,11 @@ The following properties must hold:
 - Temporary storage credentials must be scoped as narrowly as the configured
   storage provider and documented mode allow. Provider-specific limitations that
   broaden scope must be explicit to operators.
-- Reused, overlapping, or ambiguous storage locations must not allow a principal
-  authorized for one logical entity to access another logical entity's data or
-  metadata.
+- Within the applicable realm and configured storage-policy scope, reused,
+  overlapping, or ambiguous storage locations must not create an unintended
+  authorization bypass. Explicitly configured overlap modes, table clones, and
+  documented credential-vending scope limitations should be treated according to
+  their documented behavior, not reported solely because overlap exists.
 - Provider policy documents and expressions must escape or otherwise safely
   encode caller-controlled identifiers, paths, and property values.
 - User-controlled input must not be used to construct SQL, filesystem paths,
