@@ -82,10 +82,7 @@ Required workflow:
    `Fixes #NNN`.
 4. Do not add redundant checks. If existing code already fails, validates, or tests
    the scenario, explain that finding instead of opening a code-change PR.
-5. Do not materialize unbounded inputs just to perform existence checks. Prefer
-   streaming, short-circuiting, indexed lookups, or existing APIs. If collecting is
-   necessary, the bound must be obvious from the code or explained in the PR.
-6. If the issue is outdated, ambiguous, or inconsistent with the current code, stop
+5. If the issue is outdated, ambiguous, or inconsistent with the current code, stop
    and ask for clarification before coding.
 
 ---
@@ -255,6 +252,11 @@ Write the minimum code that solves the problem.
 
 Start with the simplest correct implementation. Optimize only when the task
 requires it, and only after the simple version works and has tests.
+
+When reading from a database, object store, filesystem, archive, or other external
+data source, do not materialize unbounded inputs just to perform existence checks.
+Prefer streaming, short-circuiting, indexed lookups, or existing APIs. If collecting
+is necessary, the bound must be obvious from the code or explained in the PR.
 
 ---
 
