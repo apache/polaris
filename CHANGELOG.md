@@ -51,6 +51,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Changed deprecated APIs in JUnit 5. This change will force downstream projects that pull in the Polaris test packages to adopt JUnit 6.
 - Added client id collision check during reset.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
+- Added version option to Polaris CLI.
 
 ### Deprecations
 - The configuration option `polaris.event-listener.type` is deprecated and will be removed later. Please use `polaris.event-listener.types` instead.
