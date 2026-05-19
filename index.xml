@@ -5654,6 +5654,12 @@ property to include &lt;code&gt;HIVE&lt;/code&gt; (and any other non-REST backen
  &lt;td&gt;Annotations to apply to polaris pods.&lt;/td&gt;
  &lt;/tr&gt;
  &lt;tr&gt;
+ &lt;td&gt;hostUsers&lt;/td&gt;
+ &lt;td&gt;bool&lt;/td&gt;
+ &lt;td&gt;&lt;code&gt;nil&lt;/code&gt;&lt;/td&gt;
+ &lt;td&gt;Specifies whether a pod should use the host&amp;rsquo;s user namespace (Linux-only feature). See &lt;a href="https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/"&gt;User Namespaces&lt;/a&gt;.&lt;/td&gt;
+ &lt;/tr&gt;
+ &lt;tr&gt;
  &lt;td&gt;podLabels&lt;/td&gt;
  &lt;td&gt;object&lt;/td&gt;
  &lt;td&gt;&lt;code&gt;{}&lt;/code&gt;&lt;/td&gt;
