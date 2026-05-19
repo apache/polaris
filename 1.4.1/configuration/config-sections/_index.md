@@ -25,6 +25,8 @@ cascade:
 - build:
     list: never
     render: never
+robots: noindex
+exclude_search: true
 ---
 
 This is a headless bundle containing configuration section snippets.

@@ -21,6 +21,8 @@ title: smallrye-polaris_async
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Advanced configuration options to tune async activities.

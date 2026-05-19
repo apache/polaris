@@ -20,6 +20,8 @@
 title: Relational JDBC
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 This implementation leverages Quarkus for datasource management and supports configuration through

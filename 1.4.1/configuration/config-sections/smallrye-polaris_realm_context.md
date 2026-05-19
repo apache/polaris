@@ -21,6 +21,8 @@ title: smallrye-polaris_realm_context
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 | Property | Default Value | Type | Description |

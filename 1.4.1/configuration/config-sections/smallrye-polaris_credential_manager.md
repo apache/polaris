@@ -21,6 +21,8 @@ title: smallrye-polaris_credential_manager
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Quarkus configuration mapping for Polaris Credential Manager. 

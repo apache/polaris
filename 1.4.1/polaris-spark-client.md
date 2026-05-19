@@ -20,6 +20,8 @@
 Title: Polaris Spark Client
 type: docs
 weight: 650
+robots: noindex
+exclude_search: true
 ---
 
 Polaris provides a Spark client to manage non-Iceberg tables through [Generic Tables]({{% ref "generic-table.md" %}}).

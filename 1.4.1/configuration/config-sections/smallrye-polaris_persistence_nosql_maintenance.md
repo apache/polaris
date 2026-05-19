@@ -21,6 +21,8 @@ title: smallrye-polaris_persistence_nosql_maintenance
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Maintenance service configuration.

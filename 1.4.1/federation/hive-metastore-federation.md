@@ -20,6 +20,8 @@
 title: Hive Metastore Federation
 type: docs
 weight: 705
+robots: noindex
+exclude_search: true
 ---
 
 Polaris can federate catalog operations to an existing Hive Metastore (HMS). This lets an external

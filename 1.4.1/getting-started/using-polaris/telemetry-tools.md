@@ -21,6 +21,8 @@ title: Getting Started with Apache Polaris, Prometheus and Jaeger
 linkTitle: Using Telemetry Tools
 type: docs
 weight: 401
+robots: noindex
+exclude_search: true
 ---
 
 This example requires `jq` to be installed on your machine.

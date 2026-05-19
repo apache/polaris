@@ -21,6 +21,8 @@ title: smallrye-polaris_event_listener_persistence_in_memory_buffer
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 | Property | Default Value | Type | Description |

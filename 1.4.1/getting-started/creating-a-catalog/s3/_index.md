@@ -21,6 +21,8 @@ title: Creating a catalog on S3 compatible cloud providers
 linkTitle: S3
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 Several S3 compatible storage providers can be configured as backends for your Polaris catalog.

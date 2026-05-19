@@ -20,6 +20,8 @@
 title: Generic Table
 type: docs
 weight: 435
+robots: noindex
+exclude_search: true
 ---
 
 The generic tables are non-Iceberg tables. Table can be multiple formats including Delta, CSV, etc. With this framework, you can:

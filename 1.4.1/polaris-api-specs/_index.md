@@ -20,6 +20,8 @@
 title: 'Polaris API Reference'
 type: docs
 weight: 1100
+robots: noindex
+exclude_search: true
 ---
 
 The Apache Polaris API offers a comprehensive set of endpoints that enable you to manage principals, principal-roles, catalogs, and catalog-roles programmatically.

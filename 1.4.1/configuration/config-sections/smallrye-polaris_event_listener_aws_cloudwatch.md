@@ -21,6 +21,8 @@ title: smallrye-polaris_event_listener_aws_cloudwatch
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Configuration interface for AWS CloudWatch event listener integration.

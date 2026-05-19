@@ -21,6 +21,8 @@ title: smallrye-polaris_storage
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Configuration interface containing parameters for clients accessing S3 services from Polaris  servers.  

@@ -21,6 +21,8 @@ title: Configuring GCS Cloud Storage
 linkTitle: Configuring GCS Cloud Storage
 type: docs
 weight: 600
+robots: noindex
+exclude_search: true
 ---
 
 This page provides guidance for configuring GCS Cloud Storage provider for use with Polaris. It covers credential vending, IAM roles, ACL requirements, and best practices to ensure secure and reliable integration.

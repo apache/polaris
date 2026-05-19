@@ -21,6 +21,8 @@ title: Production Configuration
 linkTitle: Production Configuration
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 This guide provides instructions for configuring the Apache Polaris Helm chart for a production environment. For full list of chart values, see the [Chart Reference]({{% relref "reference" %}}) page.

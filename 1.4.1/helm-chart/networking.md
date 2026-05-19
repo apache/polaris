@@ -21,6 +21,8 @@ title: Services & Networking
 linkTitle: Services & Networking
 type: docs
 weight: 500
+robots: noindex
+exclude_search: true
 ---
 
 This guide describes the Kubernetes services created by the Polaris Helm chart and how to configure external access using the Gateway API or Ingress.

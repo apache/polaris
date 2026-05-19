@@ -21,6 +21,8 @@ title: Development & Testing
 linkTitle: Development & Testing
 type: docs
 weight: 800
+robots: noindex
+exclude_search: true
 ---
 
 This guide provides instructions for developers who want to work with the Polaris Helm chart locally, including setting up a local Kubernetes cluster, building from source, and running tests.

@@ -21,6 +21,8 @@ title: smallrye-polaris_node
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Node management configuration.
