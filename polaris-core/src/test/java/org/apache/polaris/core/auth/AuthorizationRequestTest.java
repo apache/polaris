@@ -21,6 +21,9 @@ package org.apache.polaris.core.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.junit.jupiter.api.Test;
 
@@ -30,10 +33,12 @@ public class AuthorizationRequestTest {
   void hasSecurableTypeReturnsTrueForPrincipalTarget() {
     AuthorizationRequest request =
         AuthorizationRequest.of(
-            PolarisAuthorizableOperation.LOAD_TABLE,
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")));
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            AuthorizationIntent.of(
+                PolarisAuthorizableOperation.LOAD_TABLE,
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice"))));
 
-    assertThat(request).isInstanceOf(SingleTargetAuthorizationRequest.class);
+    assertThat(request.intents().get(0)).isInstanceOf(SingleTargetAuthorizationIntent.class);
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL)).isTrue();
   }
 
@@ -41,12 +46,14 @@ public class AuthorizationRequestTest {
   void hasSecurableTypeReturnsTrueForPrincipalRoleSecondary() {
     AuthorizationRequest request =
         AuthorizationRequest.of(
-            PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE,
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
-            PolarisSecurable.of(
-                new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")));
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            AuthorizationIntent.of(
+                PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE,
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.PRINCIPAL, "alice")),
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin"))));
 
-    assertThat(request).isInstanceOf(PairwiseTargetAuthorizationRequest.class);
+    assertThat(request.intents().get(0)).isInstanceOf(PairwiseTargetAuthorizationIntent.class);
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isTrue();
   }
 
@@ -54,11 +61,13 @@ public class AuthorizationRequestTest {
   void hasSecurableTypeReturnsTrueForCatalogRoleSecondary() {
     AuthorizationRequest request =
         AuthorizationRequest.of(
-            PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
-            PolarisSecurable.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role")));
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            AuthorizationIntent.of(
+                PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE,
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")),
+                PolarisSecurable.of(
+                    new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+                    new PathSegment(PolarisEntityType.CATALOG_ROLE, "catalog-role"))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.CATALOG_ROLE)).isTrue();
   }
@@ -67,41 +76,55 @@ public class AuthorizationRequestTest {
   void hasSecurableTypeReturnsFalseWhenTypeAbsent() {
     AuthorizationRequest request =
         AuthorizationRequest.of(
-            PolarisAuthorizableOperation.LOAD_VIEW,
-            PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")));
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            AuthorizationIntent.of(
+                PolarisAuthorizableOperation.LOAD_VIEW,
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))));
 
     assertThat(request.hasSecurableType(PolarisEntityType.PRINCIPAL_ROLE)).isFalse();
   }
 
   @Test
-  void allowsUntargetedRequest() {
+  void allowsTargetlessIntent() {
     AuthorizationRequest request =
-        AuthorizationRequest.of(PolarisAuthorizableOperation.LIST_CATALOGS);
+        AuthorizationRequest.of(
+            PolarisPrincipal.of("alice", Map.of(), Set.of("role")),
+            AuthorizationIntent.of(PolarisAuthorizableOperation.LIST_CATALOGS));
 
-    assertThat(request).isInstanceOf(UntargetedAuthorizationRequest.class);
-    assertThat(request.getTarget()).isNull();
-    assertThat(request.getSecondary()).isNull();
+    assertThat(request.intents().get(0)).isInstanceOf(TargetlessAuthorizationIntent.class);
+    assertThat(request.intents().get(0).getTarget()).isNull();
+    assertThat(request.intents().get(0).getSecondary()).isNull();
   }
 
   @Test
-  void throwsWhenTargetedFactoryHasNoTargetOrSecondary() {
+  void throwsWhenIntentFactoryHasNoTargetOrSecondary() {
     assertThatThrownBy(
-            () -> AuthorizationRequest.of(PolarisAuthorizableOperation.GET_CATALOG, null, null))
+            () -> AuthorizationIntent.of(PolarisAuthorizableOperation.GET_CATALOG, null, null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(
-            "PairwiseTargetAuthorizationRequest must contain a target or secondary");
+            "PairwiseTargetAuthorizationIntent must contain a target or secondary");
   }
 
   @Test
-  void threeArgFactoryAlwaysCreatesPairwiseRequest() {
+  void threeArgIntentFactoryAlwaysCreatesPairwiseIntent() {
     PolarisSecurable target =
         PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"));
-    AuthorizationRequest request =
-        AuthorizationRequest.of(PolarisAuthorizableOperation.GET_CATALOG, target, null);
+    AuthorizationIntent intent =
+        AuthorizationIntent.of(PolarisAuthorizableOperation.GET_CATALOG, target, null);
 
-    assertThat(request).isInstanceOf(PairwiseTargetAuthorizationRequest.class);
-    assertThat(request.getTarget()).isEqualTo(target);
-    assertThat(request.getSecondary()).isNull();
+    assertThat(intent).isInstanceOf(PairwiseTargetAuthorizationIntent.class);
+    assertThat(intent.getTarget()).isEqualTo(target);
+    assertThat(intent.getSecondary()).isNull();
+  }
+
+  @Test
+  void requestRequiresAtLeastOneIntent() {
+    assertThatThrownBy(
+            () ->
+                AuthorizationRequest.of(
+                    PolarisPrincipal.of("alice", Map.of(), Set.of("role")), List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must contain at least one intent");
   }
 
   @Test

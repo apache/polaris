@@ -749,35 +749,36 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
     resolutionManifest.resolveAll();
   }
 
   @Override
-  public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull List<AuthorizationRequest> requests) {
-    Preconditions.checkArgument(
-        !requests.isEmpty(), "Authorization request batch must contain at least one request");
-    authzState.getResolutionManifest().resolveAll();
-  }
-
-  @Override
   @Nonnull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull AuthorizationRequest request) {
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
-    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
+    for (AuthorizationIntent intent : request.intents()) {
+      AuthorizationDecision decision =
+          authorizeIntent(authzState, request.principal(), resolutionManifest, intent);
+      if (!decision.isAllowed()) {
+        return decision;
+      }
+    }
+    return AuthorizationDecision.allow();
+  }
+
+  private AuthorizationDecision authorizeIntent(
+      AuthorizationState authzState,
+      PolarisPrincipal polarisPrincipal,
+      PolarisResolutionManifest resolutionManifest,
+      AuthorizationIntent intent) {
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
       List<PolarisResolvedPathWrapper> resolvedTargets;
-      PolarisSecurable target = request.getTarget();
+      PolarisSecurable target = intent.getTarget();
       if (target == null) {
         resolvedTargets =
             prependRootContainer
@@ -787,7 +788,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         resolvedTargets =
             List.of(getResolvedSecurable(resolutionManifest, target, prependRootContainer));
       }
-      PolarisSecurable secondary = request.getSecondary();
+      PolarisSecurable secondary = intent.getSecondary();
       List<PolarisResolvedPathWrapper> resolvedSecondaries =
           semantics.secondaryPrivileges().isEmpty() || secondary == null
               ? null
@@ -795,7 +796,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       authorizeOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          request.getOperation(),
+          intent.getOperation(),
           resolvedTargets,
           resolvedSecondaries);
       return AuthorizationDecision.allow();
@@ -803,25 +804,12 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       LOGGER.debug(
           "Authorization denied for principalName {} operation {} targets {} secondaries {}",
           polarisPrincipal.getName(),
-          request.getOperation(),
-          request.getTarget(),
-          request.getSecondary(),
+          intent.getOperation(),
+          intent.getTarget(),
+          intent.getSecondary(),
           e);
       return AuthorizationDecision.deny(e.getMessage());
     }
-  }
-
-  @Override
-  @Nonnull
-  public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull List<AuthorizationRequest> requests) {
-    Preconditions.checkArgument(
-        !requests.isEmpty(), "Authorization request batch must contain at least one request");
-    // RBAC has no external batch payload contract to preserve, so batch authorization remains a
-    // sequential evaluation of single-request checks.
-    return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
   }
 
   private PolarisResolvedPathWrapper getResolvedSecurable(

@@ -18,64 +18,53 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-/**
- * Authorization request inputs for pre-authorization and core authorization.
- *
- * <p>This hierarchy makes the target shape explicit on the request itself.
- */
-public sealed interface AuthorizationRequest
-    permits UntargetedAuthorizationRequest,
-        SingleTargetAuthorizationRequest,
-        PairwiseTargetAuthorizationRequest {
-  static AuthorizationRequest of(@Nonnull PolarisAuthorizableOperation operation) {
-    return new UntargetedAuthorizationRequest(operation);
+/** Full authorization request containing the subject and one or more authorization intents. */
+public record AuthorizationRequest(
+    @Nonnull PolarisPrincipal principal, @Nonnull List<AuthorizationIntent> intents) {
+  public AuthorizationRequest {
+    Preconditions.checkNotNull(principal, "principal must be non-null");
+    Preconditions.checkNotNull(intents, "intents must be non-null");
+    intents = List.copyOf(intents);
+    Preconditions.checkArgument(
+        !intents.isEmpty(), "Authorization request must contain at least one intent");
   }
 
-  static AuthorizationRequest of(
-      @Nonnull PolarisAuthorizableOperation operation, @Nonnull PolarisSecurable target) {
-    return new SingleTargetAuthorizationRequest(operation, target);
+  public static AuthorizationRequest of(
+      @Nonnull PolarisPrincipal principal, @Nonnull AuthorizationIntent intent) {
+    return new AuthorizationRequest(principal, List.of(intent));
   }
 
-  static AuthorizationRequest of(
+  public static AuthorizationRequest of(
+      @Nonnull PolarisPrincipal principal, @Nonnull List<AuthorizationIntent> intents) {
+    return new AuthorizationRequest(principal, intents);
+  }
+
+  public static AuthorizationRequest of(
+      @Nonnull PolarisPrincipal principal, @Nonnull PolarisAuthorizableOperation operation) {
+    return of(principal, AuthorizationIntent.of(operation));
+  }
+
+  public static AuthorizationRequest of(
+      @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizableOperation operation,
-      @Nullable PolarisSecurable target,
-      @Nullable PolarisSecurable secondary) {
-    return new PairwiseTargetAuthorizationRequest(operation, target, secondary);
+      @Nonnull PolarisSecurable target) {
+    return of(principal, AuthorizationIntent.of(operation, target));
   }
 
-  /** Returns the operation being authorized. */
-  @Nonnull
-  PolarisAuthorizableOperation getOperation();
-
-  /** Returns the primary target securable, if any. */
-  @Nullable
-  PolarisSecurable getTarget();
-
-  /** Returns the secondary securable, if any. */
-  @Nullable
-  PolarisSecurable getSecondary();
-
-  default boolean hasSecurableType(PolarisEntityType... types) {
-    if (getTarget() != null && containsType(getTarget(), types)) {
-      return true;
-    }
-    if (getSecondary() != null && containsType(getSecondary(), types)) {
-      return true;
-    }
-    return false;
+  public static AuthorizationRequest of(
+      @Nonnull PolarisPrincipal principal,
+      @Nonnull PolarisAuthorizableOperation operation,
+      PolarisSecurable target,
+      PolarisSecurable secondary) {
+    return of(principal, AuthorizationIntent.of(operation, target, secondary));
   }
 
-  static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
-    PolarisEntityType entityType = securable.getLeaf().entityType();
-    for (PolarisEntityType type : types) {
-      if (entityType == type) {
-        return true;
-      }
-    }
-    return false;
+  public boolean hasSecurableType(PolarisEntityType... types) {
+    return intents.stream().anyMatch(intent -> intent.hasSecurableType(types));
   }
 }

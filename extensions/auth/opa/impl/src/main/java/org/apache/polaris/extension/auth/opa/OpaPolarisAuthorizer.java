@@ -21,7 +21,6 @@ package org.apache.polaris.extension.auth.opa;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
@@ -43,6 +42,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -110,55 +110,31 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull AuthorizationRequest request) {
-    authzState.getResolutionManifest().resolveAll();
-  }
-
-  @Override
-  public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull List<AuthorizationRequest> requests) {
-    Preconditions.checkArgument(
-        !requests.isEmpty(), "Authorization request batch must contain at least one request");
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     authzState.getResolutionManifest().resolveAll();
   }
 
   @Override
   @Nonnull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull AuthorizationRequest request) {
-    boolean allowed =
-        queryOpa(
-            buildOpaAuthorizationInput(
-                polarisPrincipal,
-                request.getOperation(),
-                toResourceEntitiesFromSecurable(request.getTarget()),
-                toResourceEntitiesFromSecurable(request.getSecondary())));
-    return allowed
-        ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny(
+      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+    for (AuthorizationIntent intent : request.intents()) {
+      boolean allowed =
+          queryOpa(
+              buildOpaAuthorizationInput(
+                  request.principal(),
+                  intent.getOperation(),
+                  toResourceEntitiesFromSecurable(intent.getTarget()),
+                  toResourceEntitiesFromSecurable(intent.getSecondary())));
+      if (!allowed) {
+        return AuthorizationDecision.deny(
             "OPA denied authorization for principal="
-                + polarisPrincipal.getName()
+                + request.principal().getName()
                 + " operation="
-                + request.getOperation());
-  }
-
-  @Override
-  @Nonnull
-  public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState,
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull List<AuthorizationRequest> requests) {
-    Preconditions.checkArgument(
-        !requests.isEmpty(), "Authorization request batch must contain at least one request");
-    // Batch OPA evaluation remains sequential for backward compatibility until OPA adopts a
-    // batch-native payload schema.
-    return PolarisAuthorizer.super.authorize(authzState, polarisPrincipal, requests);
+                + intent.getOperation());
+      }
+    }
+    return AuthorizationDecision.allow();
   }
 
   /**

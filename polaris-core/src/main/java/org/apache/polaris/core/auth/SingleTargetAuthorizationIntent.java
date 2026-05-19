@@ -22,11 +22,11 @@ import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-/** Authorization request for operations with one explicit target. */
-public record SingleTargetAuthorizationRequest(
+/** Authorization intent for operations with one explicit target. */
+public record SingleTargetAuthorizationIntent(
     @Nonnull PolarisAuthorizableOperation operation, @Nonnull PolarisSecurable target)
-    implements AuthorizationRequest {
-  public SingleTargetAuthorizationRequest {
+    implements AuthorizationIntent {
+  public SingleTargetAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(target, "target must be non-null");
   }

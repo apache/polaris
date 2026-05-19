@@ -22,23 +22,11 @@ import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
-/**
- * Authorization request for operations that may carry both a primary target and a related secondary
- * target.
- *
- * <p>The primary target may be omitted for legacy root-scoped flows that rely on an implicit root
- * primary plus an explicit secondary target.
- */
-public record PairwiseTargetAuthorizationRequest(
-    @Nonnull PolarisAuthorizableOperation operation,
-    @Nullable PolarisSecurable target,
-    @Nullable PolarisSecurable secondary)
-    implements AuthorizationRequest {
-  public PairwiseTargetAuthorizationRequest {
+/** Authorization intent for operations with no explicit securable target. */
+public record TargetlessAuthorizationIntent(@Nonnull PolarisAuthorizableOperation operation)
+    implements AuthorizationIntent {
+  public TargetlessAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
-    Preconditions.checkState(
-        target != null || secondary != null,
-        "PairwiseTargetAuthorizationRequest must contain a target or secondary");
   }
 
   @Override
@@ -48,11 +36,11 @@ public record PairwiseTargetAuthorizationRequest(
 
   @Override
   public @Nullable PolarisSecurable getTarget() {
-    return target;
+    return null;
   }
 
   @Override
   public @Nullable PolarisSecurable getSecondary() {
-    return secondary;
+    return null;
   }
 }

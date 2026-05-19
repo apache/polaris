@@ -67,12 +67,13 @@ public class PolarisAuthorizerImplTest {
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
     AuthorizationRequest request =
         AuthorizationRequest.of(
+            principal,
             PolarisAuthorizableOperation.GET_CATALOG,
             PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")));
 
     authzState.setResolutionManifest(manifest);
 
-    authorizer.resolveAuthorizationInputs(authzState, principal, request);
+    authorizer.resolveAuthorizationInputs(authzState, request);
 
     verify(manifest).resolveAll();
   }
@@ -104,12 +105,13 @@ public class PolarisAuthorizerImplTest {
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
+            principal,
             PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE,
             null,
             PolarisSecurable.of(
                 new PathSegment(PolarisEntityType.PRINCIPAL_ROLE, "analytics-admin")));
 
-    AuthorizationDecision decision = authorizer.authorize(authzState, principal, request);
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer)
@@ -144,9 +146,9 @@ public class PolarisAuthorizerImplTest {
             ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
 
     AuthorizationRequest request =
-        AuthorizationRequest.of(PolarisAuthorizableOperation.LIST_CATALOGS);
+        AuthorizationRequest.of(principal, PolarisAuthorizableOperation.LIST_CATALOGS);
 
-    AuthorizationDecision decision = authorizer.authorize(authzState, principal, request);
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer)
@@ -184,12 +186,13 @@ public class PolarisAuthorizerImplTest {
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
+            principal,
             PolarisAuthorizableOperation.LIST_NAMESPACES,
             PolarisSecurable.of(
                 new PathSegment(PolarisEntityType.CATALOG, "catalog"),
                 new PathSegment(PolarisEntityType.NAMESPACE, "ns")));
 
-    AuthorizationDecision decision = authorizer.authorize(authzState, principal, request);
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
     assertThat(decision.isAllowed()).isTrue();
     verify(manifest)
@@ -204,7 +207,7 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeSingleOperationBatchEvaluatesSequentially() {
+  void authorizeSingleOperationMultiIntentRequestEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
     AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
@@ -230,14 +233,17 @@ public class PolarisAuthorizerImplTest {
     AuthorizationDecision decision =
         authorizer.authorize(
             authzState,
-            principal,
-            List.of(
-                AuthorizationRequest.of(
-                    PolarisAuthorizableOperation.GET_CATALOG,
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog1"))),
-                AuthorizationRequest.of(
-                    PolarisAuthorizableOperation.GET_CATALOG,
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog2")))));
+            AuthorizationRequest.of(
+                principal,
+                List.of(
+                    AuthorizationIntent.of(
+                        PolarisAuthorizableOperation.GET_CATALOG,
+                        PolarisSecurable.of(
+                            new PathSegment(PolarisEntityType.CATALOG, "catalog1"))),
+                    AuthorizationIntent.of(
+                        PolarisAuthorizableOperation.GET_CATALOG,
+                        PolarisSecurable.of(
+                            new PathSegment(PolarisEntityType.CATALOG, "catalog2"))))));
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer, times(1))
@@ -257,20 +263,17 @@ public class PolarisAuthorizerImplTest {
   }
 
   @Test
-  void authorizeMultiOperationBatchEvaluatesSequentially() {
+  void authorizeUpdateTableMultiIntentRequestEvaluatesSequentially() {
     PolarisAuthorizerImpl authorizer = spy(new PolarisAuthorizerImpl(mock(RealmConfig.class)));
     AuthorizationState authzState = new AuthorizationState();
     PolarisResolutionManifest manifest = mock(PolarisResolutionManifest.class);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    PolarisResolvedPathWrapper namespaceWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
     authzState.setResolutionManifest(manifest);
-    when(manifest.getResolvedTopLevelEntity("catalog", PolarisEntityType.CATALOG))
-        .thenReturn(catalogWrapper);
     when(manifest.getResolvedPath(
-            ResolvedPathKey.of(List.of("ns"), PolarisEntityType.NAMESPACE), true))
-        .thenReturn(namespaceWrapper);
+            ResolvedPathKey.of(List.of("ns", "table"), PolarisEntityType.TABLE_LIKE), true))
+        .thenReturn(tableWrapper);
     when(manifest.getAllActivatedCatalogRoleAndPrincipalRoles()).thenReturn(Set.of());
     doNothing()
         .when(authorizer)
@@ -281,48 +284,48 @@ public class PolarisAuthorizerImplTest {
             ArgumentMatchers.any(),
             ArgumentMatchers.<List<PolarisResolvedPathWrapper>>any());
 
+    PolarisSecurable tableTarget =
+        PolarisSecurable.of(
+            new PathSegment(PolarisEntityType.CATALOG, "catalog"),
+            new PathSegment(PolarisEntityType.NAMESPACE, "ns"),
+            new PathSegment(PolarisEntityType.TABLE_LIKE, "table"));
+
     AuthorizationDecision decision =
         authorizer.authorize(
             authzState,
-            principal,
-            List.of(
-                AuthorizationRequest.of(
-                    PolarisAuthorizableOperation.GET_CATALOG,
-                    PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog"))),
-                AuthorizationRequest.of(
-                    PolarisAuthorizableOperation.LIST_NAMESPACES,
-                    PolarisSecurable.of(
-                        new PathSegment(PolarisEntityType.CATALOG, "catalog"),
-                        new PathSegment(PolarisEntityType.NAMESPACE, "ns")))));
+            AuthorizationRequest.of(
+                principal,
+                List.of(
+                    AuthorizationIntent.of(
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES, tableTarget),
+                    AuthorizationIntent.of(
+                        PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF, tableTarget))));
 
     assertThat(decision.isAllowed()).isTrue();
     verify(authorizer, times(1))
         .authorizeOrThrow(
             eq(principal),
             eq(Set.of()),
-            eq(PolarisAuthorizableOperation.GET_CATALOG),
-            eq(List.of(catalogWrapper)),
+            eq(PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES),
+            eq(List.of(tableWrapper)),
             eq(null));
     verify(authorizer, times(1))
         .authorizeOrThrow(
             eq(principal),
             eq(Set.of()),
-            eq(PolarisAuthorizableOperation.LIST_NAMESPACES),
-            eq(List.of(namespaceWrapper)),
+            eq(PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF),
+            eq(List.of(tableWrapper)),
             eq(null));
   }
 
   @Test
-  void authorizeBatchThrowsWhenEmpty() {
-    PolarisAuthorizerImpl authorizer = new PolarisAuthorizerImpl(mock(RealmConfig.class));
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(mock(PolarisResolutionManifest.class));
+  void authorizationRequestThrowsWhenIntentsAreEmpty() {
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("role"));
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> authorizer.authorize(authzState, principal, List.of()))
+            () -> AuthorizationRequest.of(principal, List.of()))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("must contain at least one request");
+        .hasMessageContaining("must contain at least one intent");
   }
 
   @Test
@@ -348,10 +351,11 @@ public class PolarisAuthorizerImplTest {
 
     AuthorizationRequest request =
         AuthorizationRequest.of(
+            principal,
             PolarisAuthorizableOperation.GET_CATALOG,
             PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog")));
 
-    AuthorizationDecision decision = authorizer.authorize(authzState, principal, request);
+    AuthorizationDecision decision = authorizer.authorize(authzState, request);
 
     assertThat(decision.isAllowed()).isFalse();
     assertThat(decision.getMessage()).hasValue("missing privilege");
