@@ -56,8 +56,15 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
           .evictionListener(
-              (String realmId, UnicastProcessor<?> processor, RemovalCause cause) ->
-                  processor.onComplete())
+              (String realmId, UnicastProcessor<?> processor, RemovalCause cause) -> {
+                // onComplete is not synchronized in smallrye-mutiny's UnicastProcessor,
+                // unlike onNext. Acquire the processor's intrinsic monitor (the same one
+                // onNext uses) so that eviction-driven onComplete and concurrent
+                // processEvent-driven onNext mutually exclude.
+                synchronized (processor) {
+                  processor.onComplete();
+                }
+              })
           .build(this::createProcessor);
 
   @Override
@@ -68,7 +75,17 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   @PreDestroy
   public void shutdown() {
-    processors.asMap().values().forEach(UnicastProcessor::onComplete);
+    // Same rationale as the eviction listener: hold the processor's monitor so
+    // shutdown-driven onComplete cannot race a concurrent processEvent-driven onNext.
+    processors
+        .asMap()
+        .values()
+        .forEach(
+            p -> {
+              synchronized (p) {
+                p.onComplete();
+              }
+            });
     processors.invalidateAll(); // doesn't call the eviction listener
   }
 
