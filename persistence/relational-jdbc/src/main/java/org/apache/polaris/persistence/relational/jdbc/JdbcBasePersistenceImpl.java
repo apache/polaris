@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -57,6 +58,9 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.lineage.LineageColumnEdgeRecord;
+import org.apache.polaris.core.persistence.lineage.LineageDatasetRecord;
+import org.apache.polaris.core.persistence.lineage.LineageEdgeRecord;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.core.persistence.metrics.MetricsPersistence;
 import org.apache.polaris.core.persistence.metrics.ScanMetricsRecord;
@@ -75,6 +79,9 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsR
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageColumnEdge;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageDataset;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelLineageEdge;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
@@ -95,9 +102,11 @@ public class JdbcBasePersistenceImpl
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
+  private final AtomicBoolean lineageSchemaNoticeLogged = new AtomicBoolean();
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
+  private static final int MIN_LINEAGE_SCHEMA_VERSION = 5;
 
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
@@ -1353,5 +1362,174 @@ public class JdbcBasePersistenceImpl
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
     }
+  }
+
+  // ============================================================================
+  // LineagePersistence Implementation
+  // ============================================================================
+
+  @Override
+  public void upsertLineageDataset(@Nonnull LineageDatasetRecord record) {
+    if (!supportsLineagePersistence()) {
+      return;
+    }
+    ModelLineageDataset model = ModelLineageDataset.fromRecord(record, realmId);
+    try {
+      datasourceOperations.executeUpdate(generateLineageDatasetUpsert(model));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to upsert lineage dataset due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void upsertLineageEdge(@Nonnull LineageEdgeRecord record) {
+    if (!supportsLineagePersistence()) {
+      return;
+    }
+    ModelLineageEdge model = ModelLineageEdge.fromRecord(record, realmId);
+    try {
+      datasourceOperations.executeUpdate(generateLineageEdgeUpsert(model));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to upsert lineage edge due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void upsertLineageColumnEdge(@Nonnull LineageColumnEdgeRecord record) {
+    if (!supportsLineagePersistence()) {
+      return;
+    }
+    ModelLineageColumnEdge model = ModelLineageColumnEdge.fromRecord(record, realmId);
+    try {
+      datasourceOperations.executeUpdate(generateLineageColumnEdgeUpsert(model));
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to upsert lineage column edge due to %s", e.getMessage()), e);
+    }
+  }
+
+  private boolean supportsLineagePersistence() {
+    if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+      return true;
+    }
+    if (lineageSchemaNoticeLogged.compareAndSet(false, true)) {
+      LOGGER.info(
+          "Lineage persistence is disabled for realm '{}' because JDBC schema version {} is older"
+              + " than required version {}; upgrade the JDBC schema to v{} to persist lineage.",
+          realmId,
+          schemaVersion,
+          MIN_LINEAGE_SCHEMA_VERSION,
+          MIN_LINEAGE_SCHEMA_VERSION);
+    }
+    return false;
+  }
+
+  private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {
+    List<Object> values = new ArrayList<>();
+    values.add(model.getRealmId());
+    values.add(model.getDatasetId());
+    values.add(model.getCatalog());
+    values.add(model.getNamespace());
+    values.add(model.getName());
+    values.add(model.getPolarisEntityId());
+    values.add(model.getCreatedAt());
+    values.add(model.getUpdatedAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageDataset.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?, ?, ?, ?, ?)) "
+              + "v(realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, created_at, updated_at) "
+              + "ON t.realm_id = v.realm_id AND t.namespace = v.namespace AND t.name = v.name "
+              + "WHEN MATCHED THEN UPDATE SET catalog = v.catalog, polaris_entity_id = v.polaris_entity_id, updated_at = v.updated_at "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, created_at, updated_at) "
+              + "VALUES (v.realm_id, v.dataset_id, v.catalog, v.namespace, v.name, v.polaris_entity_id, v.created_at, v.updated_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, dataset_id, catalog, namespace, name, polaris_entity_id, created_at, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, namespace, name) DO UPDATE SET "
+            + "catalog = EXCLUDED.catalog, "
+            + "polaris_entity_id = EXCLUDED.polaris_entity_id, "
+            + "updated_at = EXCLUDED.updated_at",
+        values);
+  }
+
+  private PreparedQuery generateLineageEdgeUpsert(ModelLineageEdge model) {
+    List<Object> values =
+        List.of(
+            model.getRealmId(),
+            model.getSourceDatasetId(),
+            model.getTargetDatasetId(),
+            model.getLastEventAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageEdge.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?)) "
+              + "v(realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+              + "ON t.realm_id = v.realm_id "
+              + "AND t.source_dataset_id = v.source_dataset_id "
+              + "AND t.target_dataset_id = v.target_dataset_id "
+              + "WHEN MATCHED THEN UPDATE SET last_event_at = GREATEST(t.last_event_at, v.last_event_at) "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+              + "VALUES (v.realm_id, v.source_dataset_id, v.target_dataset_id, v.last_event_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, source_dataset_id, target_dataset_id, last_event_at) "
+            + "VALUES (?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, source_dataset_id, target_dataset_id) DO UPDATE SET "
+            + "last_event_at = GREATEST("
+            + table
+            + ".last_event_at, EXCLUDED.last_event_at)",
+        values);
+  }
+
+  private PreparedQuery generateLineageColumnEdgeUpsert(ModelLineageColumnEdge model) {
+    List<Object> values =
+        List.of(
+            model.getRealmId(),
+            model.getSourceDatasetId(),
+            model.getSourceField(),
+            model.getTargetDatasetId(),
+            model.getTargetField(),
+            model.getLastEventAt());
+    String table = QueryGenerator.getFullyQualifiedTableName(ModelLineageColumnEdge.TABLE_NAME);
+    if (datasourceOperations.getDatabaseType().equals(DatabaseType.H2)) {
+      return new PreparedQuery(
+          "MERGE INTO "
+              + table
+              + " t USING (VALUES (?, ?, ?, ?, ?, ?)) "
+              + "v(realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+              + "ON t.realm_id = v.realm_id "
+              + "AND t.source_dataset_id = v.source_dataset_id "
+              + "AND t.source_field = v.source_field "
+              + "AND t.target_dataset_id = v.target_dataset_id "
+              + "AND t.target_field = v.target_field "
+              + "WHEN MATCHED THEN UPDATE SET last_event_at = GREATEST(t.last_event_at, v.last_event_at) "
+              + "WHEN NOT MATCHED THEN INSERT (realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+              + "VALUES (v.realm_id, v.source_dataset_id, v.source_field, v.target_dataset_id, v.target_field, v.last_event_at)",
+          values);
+    }
+    return new PreparedQuery(
+        "INSERT INTO "
+            + table
+            + " (realm_id, source_dataset_id, source_field, target_dataset_id, target_field, last_event_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT (realm_id, source_dataset_id, source_field, target_dataset_id, target_field) DO UPDATE SET "
+            + "last_event_at = GREATEST("
+            + table
+            + ".last_event_at, EXCLUDED.last_event_at)",
+        values);
   }
 }
