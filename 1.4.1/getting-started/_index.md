@@ -21,6 +21,8 @@ title: Getting Started with Apache Polaris
 linkTitle: Getting Started
 type: docs
 weight: 101
+robots: noindex
+exclude_search: true
 ---
 
 Welcome to Apache Polaris! This section provides several ways to get started with Polaris.

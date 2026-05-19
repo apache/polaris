@@ -21,6 +21,8 @@ title: Deploying Polaris on Google Cloud Platform (GCP)
 linkTitle: GCP
 type: docs
 weight: 330
+robots: noindex
+exclude_search: true
 ---
 
 Build and launch Polaris using the GCP Startup Script at the location provided in the command below. This script will start a [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres) instance, which will be used as the backend Postgres instance holding all Polaris data.

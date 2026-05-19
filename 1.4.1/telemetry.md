@@ -20,6 +20,8 @@
 title: Telemetry
 type: docs
 weight: 450
+robots: noindex
+exclude_search: true
 ---
 
 ## Metrics

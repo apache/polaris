@@ -21,6 +21,8 @@ title: Polaris Helm Chart
 linkTitle: Helm Chart
 type: docs
 weight: 650
+robots: noindex
+exclude_search: true
 ---
 
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/apache-polaris)](https://artifacthub.io/packages/search?repo=apache-polaris)

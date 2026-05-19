@@ -20,6 +20,8 @@
 title: Configuration Reference
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 This document provides a comprehensive reference for all Polaris configuration options.

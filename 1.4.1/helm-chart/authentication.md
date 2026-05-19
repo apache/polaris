@@ -21,6 +21,8 @@
 title: Authentication
 linkTitle: Authentication
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 This page describes how to configure authentication for Polaris when deploying with the Helm chart.

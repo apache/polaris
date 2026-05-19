@@ -20,6 +20,8 @@
 title: Building a Custom Server Based on Polaris
 type: docs
 weight: 1005
+robots: noindex
+exclude_search: true
 ---
 
 This page highlights a few keys points for building custom servers based on Apache Polaris.

@@ -21,6 +21,8 @@ title: smallrye-polaris_oidc
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 Polaris-specific configuration for OIDC tenants.

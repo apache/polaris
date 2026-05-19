@@ -20,6 +20,8 @@
 title: Federation
 type: docs
 weight: 703
+robots: noindex
+exclude_search: true
 ---
 
 Guides for federating Polaris with existing metadata services. Expand this section to select a

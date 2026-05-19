@@ -21,6 +21,8 @@ title: smallrye-polaris_persistence_nosql_maintenance_catalog
 build:
   list: never
   render: never
+robots: noindex
+exclude_search: true
 ---
 
 No SQL persistence implementation of Polaris stores a history of changes per kind of object  (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).  
