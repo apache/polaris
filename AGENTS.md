@@ -241,7 +241,7 @@ the PR description or file a separate issue. Do not bundle it.
 
 ---
 
-## Simplicity [DISCIPLINE]
+## Simplicity and Resource Use [DISCIPLINE]
 
 Write the minimum code that solves the problem.
 
