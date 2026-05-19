@@ -45,10 +45,15 @@ public class PolarisEventListeners {
   @Inject @Any Instance<PolarisEventListener> eventListeners;
   @Inject PolarisEventListenerConfiguration configuration;
 
-  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.allOf(PolarisEventType.class);
+  private final EnumSet<PolarisEventType> enabledEventTypes = EnumSet.noneOf(PolarisEventType.class);
 
   public void onStartup(@Observes StartupEvent event) {
     var listenerTypeSet = configuration.types().orElseGet(HashSet::new);
+    if (listenerTypeSet.isEmpty()) {
+      // No listeners configured - enable all event types for backward compatibility
+      enabledEventTypes.addAll(EnumSet.allOf(PolarisEventType.class));
+      return;
+    }
     for (String enabledEventListener : listenerTypeSet) {
       var listenerConfiguration = configuration.listenerConfig().get(enabledEventListener);
       var supportedTypes =

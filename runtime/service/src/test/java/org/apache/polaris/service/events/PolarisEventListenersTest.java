@@ -251,6 +251,15 @@ public class PolarisEventListenersTest {
     assertTrue(consumeCatalogAndNotificationEventListener.unexpectedEvents.isEmpty());
   }
 
+  @Test
+  public void testHasListenersWhenNoListenersConfigured() {
+    // When no listeners are configured via polaris.event-listener.types,
+    // hasListeners should return true for all event types (backward compatibility)
+    for (PolarisEventType eventType : PolarisEventType.values()) {
+      assertTrue(eventDispatcher.hasListeners(eventType));
+    }
+  }
+
   private void expectEventTypes(List<PolarisEvent> events, Set<PolarisEventType> expectedTypes) {
     for (var eventTypes : expectedTypes) {
       assertEquals(
