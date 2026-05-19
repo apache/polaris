@@ -28,4 +28,8 @@ dependencies {
   implementation(baselibs.nexus.publish)
   implementation(baselibs.shadow)
   implementation(baselibs.spotless)
+
+  testImplementation(kotlin("test-junit5"))
 }
+
+tasks.test { useJUnitPlatform() }
