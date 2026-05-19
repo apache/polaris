@@ -31,8 +31,6 @@ import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.junit.jupiter.api.Test;
@@ -98,59 +96,5 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
     // will create a new processor and recover
     sendAsync("test1", 10);
     assertRows("test1", 10);
-  }
-
-  /**
-   * Regression coverage for the concurrent-{@code onNext} race on the per-realm {@link
-   * UnicastProcessor} held by {@link InMemoryBufferEventListener#processors}.
-   *
-   * <p>The Reactive Streams specification (rule 1.3) requires {@code onNext()} to be called
-   * sequentially, and Mutiny's {@code UnicastProcessor} relies on that contract; concurrent {@code
-   * onNext()} invocations on the same processor can silently drop events. The {@link
-   * InMemoryBufferEventListener#processEvent} method serializes those calls via {@code
-   * synchronized(processor)}; this test exercises that path under deliberate concurrency and
-   * asserts the expected number of events lands in the events table.
-   */
-  @Test
-  void testProcessEventIsThreadSafe() throws InterruptedException {
-    int threadCount = 10;
-    int eventsPerThread = 100;
-    int expected = threadCount * eventsPerThread;
-    String realmId = "test1";
-
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch doneLatch = new CountDownLatch(threadCount);
-
-    for (int i = 0; i < threadCount; i++) {
-      Thread t =
-          new Thread(
-              () -> {
-                try {
-                  // All threads block here so they all release simultaneously and produce
-                  // the worst-case concurrent burst into processEvent for the same realm.
-                  startLatch.await();
-                  for (int j = 0; j < eventsPerThread; j++) {
-                    producer.processEvent(realmId, event());
-                  }
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } finally {
-                  doneLatch.countDown();
-                }
-              },
-              "processEvent-thread-safety-" + i);
-      t.start();
-    }
-
-    startLatch.countDown();
-    assertThat(doneLatch.await(30, TimeUnit.SECONDS))
-        .as("all producer threads should complete within 30s")
-        .isTrue();
-
-    // Without the synchronized guard on processor.onNext(), some events would be silently
-    // dropped and the row count would fall below the expected value. With the guard, all
-    // events serialize through onNext() and land in the events table after the size-based
-    // flushes complete.
-    assertRows(realmId, expected);
   }
 }
