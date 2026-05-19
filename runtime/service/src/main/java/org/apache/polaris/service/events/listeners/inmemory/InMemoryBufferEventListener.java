@@ -63,7 +63,13 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Override
   protected void processEvent(String realmId, PolarisEvent event) {
     var processor = Objects.requireNonNull(processors.get(realmId));
-    processor.onNext(event);
+    // Reactive Streams rule 1.3 requires onNext() to be called sequentially. Mutiny's
+    // UnicastProcessor is not safe for concurrent onNext() calls; concurrent emissions
+    // can silently drop events. Synchronize on the processor so that concurrent
+    // processEvent() calls for the same realm serialize on the same underlying processor.
+    synchronized (processor) {
+      processor.onNext(event);
+    }
   }
 
   @PreDestroy
