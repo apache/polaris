@@ -294,6 +294,14 @@ tests:
       - equal:
           path: spec.template.spec.hostUsers
           value: false
+  - it: should set hostUsers
+    template: deployment.yaml
+    set:
+      hostUsers: true
+    asserts:
+      - equal:
+          path: spec.template.spec.hostUsers
+          value: true
 
   # spec.template.spec.securityContext
   - it: should set securityContext by default
