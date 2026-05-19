@@ -21,35 +21,48 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.polaris.ids.impl.MonotonicClockImpl;
+import org.apache.polaris.ids.api.IdGenerator;
+import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.ids.api.SnowflakeIdGenerator;
+import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TestPersistenceTestExtension {
   private final PersistenceTestExtension extension = new PersistenceTestExtension();
 
-  @Test
-  public void acceptsCompatibleSubtypeFields() throws Exception {
-    var field = FieldFixtures.class.getDeclaredField("clock");
-
-    assertThatCode(() -> invokeAssertValidFieldCandidate(field)).doesNotThrowAnyException();
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "monotonicClock",
+        "idGenerator",
+        "snowflakeIdGenerator",
+        "backendTestFactory",
+        "backend",
+        "persistence"
+      })
+  public void acceptsCompatibleSubtypeFields(String fieldName) throws Exception {
+    var field = FieldFixtures.class.getDeclaredField(fieldName);
+    assertThat(PersistenceTestExtension.isValidFieldCandidate(field.getType())).isTrue();
+    assertThatCode(() -> extension.assertValidFieldCandidate(field)).doesNotThrowAnyException();
   }
 
-  @Test
-  public void rejectsUnsupportedSupertypes() throws Exception {
-    var field = FieldFixtures.class.getDeclaredField("unsupported");
+  @ParameterizedTest
+  @ValueSource(strings = {"unsupported", "unsupportedDummyBackendTestFactory"})
+  public void rejectsUnsupportedSupertypes(String fieldName) throws Exception {
+    var field = FieldFixtures.class.getDeclaredField(fieldName);
 
-    assertThatThrownBy(() -> invokeAssertValidFieldCandidate(field))
+    assertThatThrownBy(() -> extension.assertValidFieldCandidate(field))
         .isInstanceOf(ExtensionConfigurationException.class)
-        .hasMessage("Unsupported field type java.lang.Object");
+        .hasMessageStartingWith("Unsupported field type ");
   }
 
   @Test
@@ -81,34 +94,9 @@ public class TestPersistenceTestExtension {
         PersistenceTestExtension.KEY_BACKEND_TEST_FACTORY,
         new PersistenceTestExtension.WrappedResource(existingFactory));
 
-    var resolvedFactory = invokeGetOrCreateBackendTestFactory(context, backendSpec);
+    var resolvedFactory = extension.getOrCreateBackendTestFactory(context, backendSpec);
 
     assertThat(resolvedFactory).isSameAs(existingFactory);
-  }
-
-  private void invokeAssertValidFieldCandidate(Field field) throws Throwable {
-    try {
-      var method =
-          PersistenceTestExtension.class.getDeclaredMethod(
-              "assertValidFieldCandidate", Field.class);
-      method.setAccessible(true);
-      method.invoke(extension, field);
-    } catch (InvocationTargetException e) {
-      throw e.getCause();
-    }
-  }
-
-  private BackendTestFactory invokeGetOrCreateBackendTestFactory(
-      ExtensionContext extensionContext, BackendSpec backendSpec) throws Throwable {
-    try {
-      var method =
-          PersistenceTestExtension.class.getDeclaredMethod(
-              "getOrCreateBackendTestFactory", ExtensionContext.class, BackendSpec.class);
-      method.setAccessible(true);
-      return (BackendTestFactory) method.invoke(extension, extensionContext, backendSpec);
-    } catch (InvocationTargetException e) {
-      throw e.getCause();
-    }
   }
 
   private ExtensionContext extensionContext(ExtensionContext.Store store) {
@@ -183,8 +171,15 @@ public class TestPersistenceTestExtension {
   @BackendSpec(name = "dummy")
   static class BackendSpecCarrier {}
 
+  @SuppressWarnings("unused")
   static class FieldFixtures {
-    @PolarisPersistence MonotonicClockImpl clock;
+    @PolarisPersistence MonotonicClock monotonicClock;
+    @PolarisPersistence IdGenerator idGenerator;
+    @PolarisPersistence SnowflakeIdGenerator snowflakeIdGenerator;
+    @PolarisPersistence BackendTestFactory backendTestFactory;
+    @PolarisPersistence Backend backend;
+    @PolarisPersistence Persistence persistence;
+    @PolarisPersistence DummyBackendTestFactory unsupportedDummyBackendTestFactory;
     @PolarisPersistence Object unsupported;
   }
 }
