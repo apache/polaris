@@ -305,14 +305,13 @@ public class ServiceProducers {
                   "Realm '{}' automatically bootstrapped, credentials taken from root credentials set provided via the {} configuration property, not printed to stdout.");
             } else {
               log.log(
-                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, see separate message printed to stdout.");
-              String msg =
-                  String.format(
-                      "realm: %1$s root principal credentials: %2$s:%3$s",
-                      realm,
-                      principalSecrets.getPrincipalClientId(),
-                      principalSecrets.getMainSecret());
-              System.out.println(msg);
+                  "Realm '{}' automatically bootstrapped, credentials were not present in root credentials set provided via the {} configuration property, credentials are logged separately.");
+
+              LOGGER.info(
+                  "realm: {} root principal credentials: {}:{}",
+                  realm,
+                  principalSecrets.getPrincipalClientId(),
+                  principalSecrets.getMainSecret());
             }
           });
 
