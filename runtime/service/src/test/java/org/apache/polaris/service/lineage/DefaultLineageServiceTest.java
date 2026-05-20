@@ -69,8 +69,8 @@ public class DefaultLineageServiceTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.enabled");
 
-    verify(persistence, never()).ingest(
-        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    verify(persistence, never())
+        .ingest(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -82,8 +82,8 @@ public class DefaultLineageServiceTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
 
-    verify(persistence, never()).query(
-        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    verify(persistence, never())
+        .query(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
   }
 
   @Test
