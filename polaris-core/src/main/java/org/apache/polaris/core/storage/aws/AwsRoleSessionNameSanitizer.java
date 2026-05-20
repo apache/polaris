@@ -78,9 +78,15 @@ public final class AwsRoleSessionNameSanitizer {
    * @return a sanitized string safe for use as an AWS STS role session name
    */
   public static @Nonnull String sanitize(@Nonnull String input) {
-    String sanitized =
-        INVALID_ROLE_SESSION_NAME_CHARS.matcher(input).replaceAll(DEFAULT_REPLACEMENT);
-    return truncate(sanitized);
+    return truncate(sanitizeOnly(input));
+  }
+
+  /**
+   * Replaces invalid characters without truncating. Use when the caller will apply its own length
+   * limit (e.g. proportional budget allocation across multiple fields).
+   */
+  static @Nonnull String sanitizeOnly(@Nonnull String input) {
+    return INVALID_ROLE_SESSION_NAME_CHARS.matcher(input).replaceAll(DEFAULT_REPLACEMENT);
   }
 
   /**

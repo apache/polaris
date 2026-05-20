@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSessionName;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -109,10 +110,30 @@ public class AwsCredentialsStorageIntegration
             .flatMap(Optional::stream)
             .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
 
-    String roleSessionName =
-        includePrincipalNameInSubscopedCredential
-            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName())
-            : "PolarisAwsCredentialsStorageIntegration";
+    List<String> sessionNameFieldNames =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
+    String sessionNamePrefix = AwsSessionNameBuilder.extractPrefix(sessionNameFieldNames);
+    List<SessionNameField> enabledSessionNameFields =
+        sessionNameFieldNames.stream()
+            .filter(t -> !t.startsWith(AwsSessionNameBuilder.PREFIX_CONFIG_TOKEN))
+            .map(SessionNameField::fromConfigName)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toList());
+
+    String roleSessionName;
+    if (!enabledSessionNameFields.isEmpty()) {
+      roleSessionName =
+          buildSessionName(
+              polarisPrincipal.getName(),
+              credentialVendingContext,
+              enabledSessionNameFields,
+              sessionNamePrefix);
+    } else if (includePrincipalNameInSubscopedCredential) {
+      roleSessionName =
+          AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName());
+    } else {
+      roleSessionName = AwsSessionNameBuilder.DEFAULT_SESSION_NAME;
+    }
 
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
