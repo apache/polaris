@@ -107,6 +107,17 @@
       matchManagers: ["github-actions"],
       matchPackageNames: ["python"],
       enabled: false
+    },
+    // Scala 2.12 and 2.13 are not compatible
+    // Ensure that Renovate does not "upgrade" from 2.12 to 2.13
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: [
+        "org.scala-lang:scala-reflect",
+        "org.scala-lang:scala-library",
+      ],
+      "matchCurrentVersion": "/^2\\.12\\./",
+      "allowedVersions": "/^2\\.12\\./"
     }
   ],
 
