@@ -992,6 +992,57 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  /**
+   * Attempt to invoke registerTable with overwrite=true against an EXTERNAL (federated) catalog.
+   * Polaris only supports the overwrite path for its internal IcebergCatalog; EXTERNAL catalogs
+   * must receive a 400 Bad Request.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @Test
+  public void testRegisterTableOverwriteRejectedForExternalCatalog() {
+    Namespace ns = Namespace.of("ns_overwrite_ext");
+    restCatalog.createNamespace(ns);
+
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns_overwrite_ext/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      String fileLocation =
+          externalCatalogBaseLocation + "/ns_overwrite_ext/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      // Register the table without overwrite first (must succeed)
+      restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
+
+      // Now attempt to register again with overwrite=true — must be rejected with 400
+      Invocation overwriteInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_ext/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "my_table",
+                          "metadata-location",
+                          fileLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response overwriteResponse = overwriteInvocation.invoke()) {
+        assertThat(overwriteResponse.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
   @Test
   public void testCreateAndLoadTableWithReturnedEtag() {
     Namespace ns1 = Namespace.of("ns1");
