@@ -2548,6 +2548,31 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testRegisterTableRejectsMetadataLocationOutsideAllowedLocations() {
+    FileIOFactory fileIOFactorySpy = spy(fileIOFactory);
+    LocalIcebergCatalog testCatalog =
+        newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactorySpy);
+    testCatalog.setCatalogFileIo(new InMemoryFileIO());
+    testCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(TABLE_PREFIXES)
+            .buildKeepingLast());
+
+    testCatalog.createNamespace(TABLE.namespace());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                testCatalog.registerTable(
+                    TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+
+    Mockito.verify(fileIOFactorySpy, Mockito.never()).loadFileIO(any(), any(), anyMap());
+  }
+
+  @Test
   public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
