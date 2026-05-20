@@ -20,11 +20,11 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents an entity with its grants. If we "refresh" a previously fetched entity, we will only
@@ -46,7 +46,7 @@ public class ResolvedEntityResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public ResolvedEntityResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public ResolvedEntityResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.entity = null;
     this.entityGrantRecords = null;
@@ -72,7 +72,7 @@ public class ResolvedEntityResult extends BaseResult {
 
   @JsonCreator
   public ResolvedEntityResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @Nullable @JsonProperty("entity") PolarisBaseEntity entity,
       @JsonProperty("grantRecordsVersion") int grantRecordsVersion,

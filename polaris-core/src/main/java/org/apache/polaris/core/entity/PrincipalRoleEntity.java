@@ -19,9 +19,9 @@
 package org.apache.polaris.core.entity;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Wrapper for translating between the REST PrincipalRole object and the base PolarisEntity type.

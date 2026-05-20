@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Result of a lookup operation.

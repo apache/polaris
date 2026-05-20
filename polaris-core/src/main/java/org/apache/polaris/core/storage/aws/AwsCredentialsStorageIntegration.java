@@ -23,7 +23,6 @@ import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSes
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -43,6 +42,7 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -87,13 +87,13 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
+      @NonNull RealmConfig realmConfig,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -423,7 +423,7 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
-  private static @Nonnull String parseS3Path(StorageUri uri) {
+  private static @NonNull String parseS3Path(StorageUri uri) {
     String bucket = uri.authority();
     String path = trimLeadingSlash(uri.rawPath());
     return String.join("/", bucket, path);
@@ -434,7 +434,7 @@ public class AwsCredentialsStorageIntegration
    * IamConditionOperator#STRING_LIKE StringLike} conditions.
    */
   @VisibleForTesting
-  static @Nonnull String escapeIamGlobLiteral(String value) {
+  static @NonNull String escapeIamGlobLiteral(String value) {
     StringBuilder escaped = new StringBuilder(value.length() + 8);
     for (int i = 0; i < value.length(); i++) {
       char c = value.charAt(i);
@@ -448,7 +448,7 @@ public class AwsCredentialsStorageIntegration
     return escaped.toString();
   }
 
-  private static @Nonnull String trimLeadingSlash(String path) {
+  private static @NonNull String trimLeadingSlash(String path) {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }

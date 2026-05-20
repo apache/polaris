@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -58,6 +57,7 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NonNull;
 
 /** Test the Polaris persistence layer */
 public class PolarisTestMetaStoreManager {
@@ -1723,8 +1723,8 @@ public class PolarisTestMetaStoreManager {
   private PolarisBaseEntity loadCacheEntryByName(
       long entityCatalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull String entityName,
+      @NonNull PolarisEntityType entityType,
+      @NonNull String entityName,
       boolean expectExists) {
     // load cached entry
     ResolvedEntityResult cacheEntry =
@@ -1756,8 +1756,8 @@ public class PolarisTestMetaStoreManager {
   private PolarisBaseEntity loadCacheEntryByName(
       long entityCatalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull String entityName) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull String entityName) {
     return this.loadCacheEntryByName(entityCatalogId, parentId, entityType, entityName, true);
   }
 
@@ -1858,7 +1858,7 @@ public class PolarisTestMetaStoreManager {
   private void refreshCacheEntry(
       int entityVersion,
       int entityGrantRecordsVersion,
-      @Nonnull PolarisEntityType entityType,
+      @NonNull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId) {
     // refresh cached entry

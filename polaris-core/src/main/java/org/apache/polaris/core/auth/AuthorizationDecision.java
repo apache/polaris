@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /** Authorization decision returned by authorizer implementations. */
 @PolarisImmutable

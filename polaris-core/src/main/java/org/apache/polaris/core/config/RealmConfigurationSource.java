@@ -19,9 +19,9 @@
 
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.context.RealmContext;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * This is an SPI interface used by Polaris Core for loading base configuration values from the
@@ -40,6 +40,5 @@ public interface RealmConfigurationSource {
    * @return the current value set for the configuration key for the given realm, or null if not
    *     set.
    */
-  @Nullable
-  Object getConfigValue(@Nonnull RealmContext realmContext, String configName);
+  @Nullable Object getConfigValue(@NonNull RealmContext realmContext, String configName);
 }

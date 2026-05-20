@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.pagination;
 
 import static java.util.Spliterators.iterator;
 
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,6 +27,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An immutable page of items plus the next-page token value, if there are more items. The {@link
