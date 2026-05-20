@@ -34,6 +34,31 @@ DERBY_HOME="/tmp/derby"
 ICEBERG_VERSION="1.10.1"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
+# Download a file to $dest if it does not already exist.
+# Installs wget via brew on macOS if the first attempt fails.
+# Removes partial downloads on failure so re-runs are safe.
+download_if_missing() {
+  local dest="$1" url="$2"
+  if [ -f "$dest" ]; then
+    echo "Already present: $dest"
+    return 0
+  fi
+  echo "Downloading $url -> $dest"
+  if ! wget -O "$dest" "$url"; then
+    rm -f "$dest"
+    if [[ "${OSTYPE}" == "darwin"* ]]; then
+      echo "Detected OS: mac. Running 'brew install wget' to try again."
+      brew install wget
+      if ! wget -O "$dest" "$url"; then
+        rm -f "$dest"
+        return 1
+      fi
+    else
+      return 1
+    fi
+  fi
+}
+
 # Ensure binaries are downloaded locally
 echo 'Verifying Spark binaries...'
 if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
@@ -42,21 +67,9 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
     echo 'SPARK_VERSION or SPARK_DISTRIBUTION not set. Please set SPARK_VERSION and SPARK_DISTRIBUTION to the desired version.'
     exit 1
   fi
-  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
-    echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
-    if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
-      if [[ "${OSTYPE}" == "darwin"* ]]; then
-        echo "Detected OS: mac. Running 'brew install wget' to try again."
-        brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
-      fi
-    fi
-  else
-    echo 'Found existing Spark tarball'
-  fi
-  # check if the download was successful
-  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
+  echo 'Downloading spark distro...'
+  if ! download_if_missing ~/${SPARK_DISTRIBUTION}.tgz \
+      "https://www.apache.org/dyn/closer.lua/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download"; then
     echo 'Failed to download Spark distribution. Please check the logs.'
     exit 1
   fi
@@ -75,33 +88,13 @@ else
 fi
 
 # Download the iceberg cloud provider bundles needed
-echo 'Verified bundle jars installed.'
-if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar  ]; then
-    echo 'Download azure bundle jar...'
-    wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/${ICEBERG_VERSION}/iceberg-azure-bundle-${ICEBERG_VERSION}.jar
-    if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar  ]; then
-      if [[ "${OSTYPE}" == "darwin"* ]]; then
-        echo "Detected OS: mac. Running 'brew install wget' to try again."
-        brew install wget
-        wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/${ICEBERG_VERSION}/iceberg-azure-bundle-${ICEBERG_VERSION}.jar
-      fi
-    fi
-else
-  echo 'Verified azure bundle jar already installed'
-fi
-if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar  ]; then
-    echo 'Download gcp bundle jar...'
-    wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/${ICEBERG_VERSION}/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar
-    if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar  ]; then
-      if [[ "${OSTYPE}" == "darwin"* ]]; then
-        echo "Detected OS: mac. Running 'brew install wget' to try again."
-        brew install wget
-        wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/${ICEBERG_VERSION}/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar
-      fi
-    fi
-else
-  echo 'Verified gcp bundle jar already installed'
-fi
+echo 'Verifying bundle jars installed.'
+download_if_missing \
+  "${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar" \
+  "https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/${ICEBERG_VERSION}/iceberg-azure-bundle-${ICEBERG_VERSION}.jar"
+download_if_missing \
+  "${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar" \
+  "https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/${ICEBERG_VERSION}/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar"
 
 # Ensure Spark boilerplate conf is set
 echo 'Verifying Spark conf...'
