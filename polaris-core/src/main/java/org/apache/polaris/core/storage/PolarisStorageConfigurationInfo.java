@@ -40,6 +40,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.storage.aws.AwsS3TablesStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -59,6 +60,7 @@ import org.slf4j.LoggerFactory;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = AwsS3TablesStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
@@ -194,9 +196,13 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
+  /** ARN prefix for S3 Tables resources. */
+  public static final String S3_TABLES_ARN_PREFIX = "arn:aws:s3tables";
+
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3(List.of("s3://", "s3a://")),
+    S3_TABLES(S3_TABLES_ARN_PREFIX),
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),

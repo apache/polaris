@@ -203,6 +203,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   protected abstract StorageAccessConfigProvider storageAccessConfigProvider();
 
+  protected abstract CapturedConfigHolder capturedConfigHolder();
+
   protected abstract EventAttributeMap eventAttributeMap();
 
   protected abstract PolarisMetricsReporter metricsReporter();
@@ -931,8 +933,25 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
 
-      // For federated catalogs, validate that table locations are within allowed locations
-      if (isFederated) {
+      // For federated S3 Tables catalogs, replace s3:// table locations with the constructed
+      // table ARN. s3tables:* IAM actions require ARN resources, not s3:// paths.
+      // This block is only relevant for federated catalogs (not IcebergCatalog) since S3_TABLES
+      // storage type is exclusively used with external/federated catalog configurations.
+      boolean isS3Tables = false;
+      if (!(baseCatalog instanceof IcebergCatalog)) {
+        CatalogEntity catalogEntity = CatalogEntity.of(getResolvedCatalogEntity());
+        isS3Tables = S3TablesUtil.isS3TablesCatalog(catalogEntity);
+        tableLocations =
+            S3TablesUtil.resolveTableLocations(
+                tableIdentifier,
+                tableLocations,
+                catalogEntity,
+                capturedConfigHolder().getTableId());
+      }
+
+      // For federated catalogs, validate that table locations are within allowed locations.
+      // Skip validation for S3 Tables — ARN locations won't match s3:// allowed locations.
+      if (isFederated && !isS3Tables) {
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 

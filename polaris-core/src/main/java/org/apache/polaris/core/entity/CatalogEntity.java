@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.admin.model.AwsS3TablesStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -48,6 +49,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.AwsS3TablesStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -157,6 +159,18 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
             .setKmsUnavailable(awsConfig.getKmsUnavailable())
+            .build();
+      }
+      if (configInfo instanceof AwsS3TablesStorageConfigurationInfo s3TablesConfig) {
+        return AwsS3TablesStorageConfigInfo.builder()
+            .setRoleArn(s3TablesConfig.getRoleARN())
+            .setExternalId(s3TablesConfig.getExternalId())
+            .setRegion(s3TablesConfig.getRegion())
+            .setCurrentKmsKey(s3TablesConfig.getCurrentKmsKey())
+            .setAllowedKmsKeys(s3TablesConfig.getAllowedKmsKeys())
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3_TABLES)
+            .setAllowedLocations(s3TablesConfig.getAllowedLocations())
+            .setStorageName(s3TablesConfig.getStorageName())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo azureConfig) {
@@ -302,6 +316,29 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .kmsUnavailable(awsConfigModel.getKmsUnavailable())
                     .build();
             config = awsConfig;
+            break;
+          case S3_TABLES:
+            if (defaultBaseLocation == null
+                || !defaultBaseLocation.startsWith(
+                    PolarisStorageConfigurationInfo.S3_TABLES_ARN_PREFIX)) {
+              throw new BadRequestException(
+                  "S3 Tables catalogs require default-base-location to be an S3 Tables "
+                      + "bucket ARN (e.g. arn:aws:s3tables:us-east-1:123456789012:bucket/my-bucket)"
+                      + ", but got: %s",
+                  defaultBaseLocation);
+            }
+            AwsS3TablesStorageConfigInfo s3TablesConfigModel =
+                (AwsS3TablesStorageConfigInfo) storageConfigModel;
+            config =
+                AwsS3TablesStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .storageName(storageConfigModel.getStorageName())
+                    .roleARN(s3TablesConfigModel.getRoleArn())
+                    .externalId(s3TablesConfigModel.getExternalId())
+                    .region(s3TablesConfigModel.getRegion())
+                    .currentKmsKey(s3TablesConfigModel.getCurrentKmsKey())
+                    .allowedKmsKeys(s3TablesConfigModel.getAllowedKmsKeys())
+                    .build();
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
