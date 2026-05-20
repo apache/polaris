@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Normalized response model for lineage queries. */
+// TODO: Check the data field content and add the corresponding data.
 public record LineageGraph(
     LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
   public LineageGraph {
