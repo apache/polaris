@@ -45,6 +45,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added support for enabling only a subset of event types and event categories per event listener. Set `polaris.event-listener.`_`<name>`_`.enabled-event-types` or `polaris.event-listener.`_`<name>`_`.enabled-event-categories` to the list of event types or categories for the specified event listener to only consume the selected subset of events.
 - Added support for **Apache Ranger** as an external authorizer (Beta).
 - Added `hostUsers` support in Helm chart.
+- Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
 
 ### Changes
 - Improved Python CLI error messages and exit codes for invalid arguments and configuration errors.
