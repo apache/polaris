@@ -18,7 +18,7 @@
 # under the License.
 #
 title: 'Apache Polaris Documentation (Unreleased)'
-linkTitle: 'In Development'
+linkTitle: 'Developer Docs'
 type: docs
 weight: 200
 params:
@@ -27,20 +27,15 @@ params:
 menus:
   main:
     parent: doc
-    weight: -999998 # 2nd item in the menu
+    weight: 999999 # last item in the docs dropdown
     identifier: doc-in-dev
+    name: Developer Docs (unreleased)
 cascade:
   type: docs
   params:
     show_page_toc: true
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
-
-> [!DANGER] Caution!
-> 
-> These pages refer to the current state of the main branch, which is still under active development.
-> 
-> Functionalities can be changed, removed or added without prior notice.
 
 Apache Polaris is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 

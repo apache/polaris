@@ -34,3 +34,5 @@ menus:
 Welcome to the Apache Polaris documentation. Select a version below to get started.
 
 {{< docs-list >}}
+
+For main-branch developer documentation, see [Developer Docs (main branch, unreleased)](/in-dev/unreleased/).

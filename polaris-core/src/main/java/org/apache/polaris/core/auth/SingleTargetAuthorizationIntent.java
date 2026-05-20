@@ -19,12 +19,12 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Authorization intent for operations with one explicit target. */
 public record SingleTargetAuthorizationIntent(
-    @Nonnull PolarisAuthorizableOperation operation, @Nonnull PolarisSecurable target)
+    @NonNull PolarisAuthorizableOperation operation, @NonNull PolarisSecurable target)
     implements AuthorizationIntent {
   public SingleTargetAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
@@ -32,12 +32,12 @@ public record SingleTargetAuthorizationIntent(
   }
 
   @Override
-  public @Nonnull PolarisAuthorizableOperation getOperation() {
+  public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
   }
 
   @Override
-  public @Nonnull PolarisSecurable getTarget() {
+  public @NonNull PolarisSecurable getTarget() {
     return target;
   }
 

@@ -101,37 +101,29 @@ def catalog_client(polaris_catalog_url):
                   host=polaris_catalog_url))
   return IcebergCatalogAPI(client)
 
-
 @pytest.fixture
 def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
-  minio_test_enabled_raw = os.getenv('MINIO_TEST_ENABLED', '')
-  if minio_test_enabled_raw == '':
-    # Auto-detect based on whether AWS tests are enabled
-    aws_test_enabled = os.getenv('AWS_TEST_ENABLED', 'false').lower() == 'true'
-    minio_enabled = not aws_test_enabled
-  else:
-    minio_enabled = minio_test_enabled_raw.lower() == 'true'
-
-  if minio_enabled:
-    # MinIO mode: use MinIO's STS endpoint for credential vending
-    minio_endpoint = os.getenv('MINIO_ENDPOINT', 'http://minio:9000')
+  aws_test_enabled = os.getenv('S3_TEST_BACKEND') == 'aws'
+  # Force local mode if not explicitly real AWS
+  if not aws_test_enabled:
+    s3_endpoint = os.getenv('AWS_ENDPOINT_URL', 'http://s3.local:9000')
 
     storage_conf = AwsStorageConfigInfo(
         storage_type="S3",
         allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
-        endpoint=minio_endpoint,
-        endpoint_internal=minio_endpoint,
-        sts_endpoint=minio_endpoint,
+        endpoint=s3_endpoint,
+        endpoint_internal=s3_endpoint,
+        sts_endpoint=s3_endpoint,
         path_style_access=True,
         sts_unavailable=False,
         kms_unavailable=True,
-        role_arn="arn:aws:iam::000000000000:role/minio-test",
+        role_arn="arn:aws:iam::000000000000:role/polaris-test",
         region="us-west-2"
     )
     catalog_properties = {
         "default-base-location": f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog",
         "polaris.config.drop-with-purge.enabled": "true",
-        "s3.endpoint": minio_endpoint,
+        "s3.endpoint": s3_endpoint,
         "s3.path-style-access": "true",
     }
   else:
@@ -307,7 +299,7 @@ def file_catalog(root_client, catalog_client):
 def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
     """
     Catalog that always uses S3 storage for AWS testing.
-    Tests using this fixture should include @pytest.mark.skipif for AWS_TEST_ENABLED.
+    Tests using this fixture should include @pytest.mark.skipif for S3_TEST_BACKEND.
     """
     from apache_polaris.sdk.management import AwsStorageConfigInfo
 

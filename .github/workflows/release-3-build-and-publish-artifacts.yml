@@ -616,6 +616,7 @@ jobs:
 
       - name: Build Python client RC for Test PyPI
         run: |
+          rm -rf client/python/dist/
           make client-rc-testpypi-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
 
       - name: Publish Python client RC to Test PyPI

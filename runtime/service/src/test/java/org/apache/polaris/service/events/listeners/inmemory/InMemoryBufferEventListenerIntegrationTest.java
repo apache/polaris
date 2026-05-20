@@ -202,7 +202,7 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e1.getPrincipalName()).isEqualTo("root");
     assertThat(e1.getRequestId()).isEqualTo("12345");
     assertThat(e1.getAdditionalPropertiesAsMap())
-        .containsEntry("otel.trace_flags", "01")
+        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
         .containsEntry("otel.sampled", "true")
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
@@ -216,7 +216,7 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e2.getRequestId()).isEqualTo("456789");
     assertThat(e2.getAdditionalPropertiesAsMap())
         .containsKey("table-uuid")
-        .containsEntry("otel.trace_flags", "01")
+        .containsEntry("otel.trace_flags", "03") // trace-was-sampled + random-trace-id
         .containsEntry("otel.sampled", "true")
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));

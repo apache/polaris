@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Tuple, cast
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.command.utils import (
     get_catalog_api_client,
     crawl_namespace,
@@ -53,7 +54,7 @@ class FindCommand(Command):
 
     def validate(self) -> None:
         if not self.identifier or not self.identifier.strip():
-            raise Exception("The search identifier cannot be empty.")
+            raise CliError("The search identifier cannot be empty.")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         identifier = cast(str, self.identifier)

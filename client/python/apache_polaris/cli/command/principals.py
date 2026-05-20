@@ -23,6 +23,7 @@ from typing import Dict, Optional, List, Iterator, Any, cast
 from pydantic import StrictStr
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import (
@@ -116,7 +117,7 @@ class PrincipalsCommand(Command):
             Subcommands.SUMMARIZE,
         }:
             if not self.principal_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL)}"
                 )
 
@@ -217,7 +218,7 @@ class PrincipalsCommand(Command):
         elif self.principals_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(api)
         else:
-            raise Exception(f"{self.principals_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.principals_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, api: PolarisDefaultApi) -> None:
         principal_name = cast(str, self.principal_name)

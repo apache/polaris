@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -118,9 +119,13 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -435,6 +440,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Override
+  protected boolean supportsNamesWithSlashes() {
+    return false;
+  }
+
+  @Override
   protected boolean overridesRequestedLocation() {
     return true;
   }
@@ -608,6 +618,19 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         .extracting(GrantResources::getGrants)
         .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
         .containsExactly(expectedGrant);
+  }
+
+  @Test
+  public void testRenameTableReturns204() {
+    restCatalog.createNamespace(Namespace.of("rename_ns"));
+    restCatalog
+        .buildTable(TableIdentifier.of(Namespace.of("rename_ns"), "src_table"), SCHEMA)
+        .create();
+
+    catalogApi.renameTable(
+        currentCatalogName,
+        TableIdentifier.of(Namespace.of("rename_ns"), "src_table"),
+        TableIdentifier.of(Namespace.of("rename_ns"), "dst_table"));
   }
 
   @Test
@@ -2412,4 +2435,192 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     assertThat(nsResponse.namespaces()).hasSize(5);
     assertThat(nsResponse.nextPageToken()).isNull();
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateNamespaceRejectsInvalidName(String badName) {
+    try (Response res =
+        catalogApi
+            .request("v1/{cat}/namespaces", Map.of("cat", currentCatalogName))
+            .post(Entity.json(Map.of("namespace", List.of(badName))))) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(res.readEntity(String.class)).contains("Entity name");
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_create_table_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/tables",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(Entity.json(Map.of("name", badName, "schema", SCHEMA)))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRegisterTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_register_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/register",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      Map.of("name", badName, "metadata-location", "file:/tmp/nowhere.json")))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateViewRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_create_view_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      Map<String, Object> viewVersion =
+          Map.of(
+              "version-id",
+              1,
+              "timestamp-ms",
+              0,
+              "schema-id",
+              0,
+              "summary",
+              Map.of(),
+              "representations",
+              List.of(Map.of("type", "sql", "sql", VIEW_QUERY, "dialect", "spark")),
+              "default-namespace",
+              List.of("ns_create_view_bad"));
+      try (Response res =
+          catalogApi
+              .request(
+                  "v1/{cat}/namespaces/{ns}/views",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      Map.of("name", badName, "schema", SCHEMA, "view-version", viewVersion)))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRenameTableRejectsInvalidDestinationName(String badName) {
+    Namespace ns = Namespace.of("ns_rename_table_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      restCatalog.buildTable(TableIdentifier.of(ns, "src_tbl"), SCHEMA).create();
+      try (Response res =
+          catalogApi
+              .request("v1/{cat}/tables/rename", Map.of("cat", currentCatalogName))
+              .post(
+                  Entity.json(
+                      Map.of(
+                          "source", Map.of("namespace", List.of(ns.level(0)), "name", "src_tbl"),
+                          "destination",
+                              Map.of("namespace", List.of(ns.level(0)), "name", badName))))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testRenameViewRejectsInvalidDestinationName(String badName) {
+    Namespace ns = Namespace.of("ns_rename_view_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      restCatalog
+          .buildView(TableIdentifier.of(ns, "src_view"))
+          .withSchema(SCHEMA)
+          .withDefaultNamespace(ns)
+          .withQuery("spark", VIEW_QUERY)
+          .create();
+      try (Response res =
+          catalogApi
+              .request("v1/{cat}/views/rename", Map.of("cat", currentCatalogName))
+              .post(
+                  Entity.json(
+                      Map.of(
+                          "source", Map.of("namespace", List.of(ns.level(0)), "name", "src_view"),
+                          "destination",
+                              Map.of("namespace", List.of(ns.level(0)), "name", badName))))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      catalogApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  public void testCreateGenericTableRejectsInvalidName(String badName) {
+    Namespace ns = Namespace.of("ns_generic_bad");
+    restCatalog.createNamespace(ns);
+    try {
+      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      try (Response res =
+          genericTableApi
+              .request(
+                  "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
+                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+              .post(
+                  Entity.json(
+                      CreateGenericTableRequest.builder()
+                          .setName(badName)
+                          .setFormat("format")
+                          .build()))) {
+        assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+        assertThat(res.readEntity(String.class)).contains("Entity name");
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, ns);
+    }
+  }
+
+  @Test
+  @Disabled("Test is not compatible with REST catalogs")
+  @Override
+  public void testLoadTableWithMissingMetadataFile(@TempDir Path tempDir) {}
+
+  @Test
+  @Disabled("Feature is not implemented yet")
+  @Override
+  public void createTableInUniqueLocation() {}
+
+  @Test
+  @Disabled(
+      "Test is not compatible with Polaris: rename-table op does not change the table location")
+  @Override
+  public void dropAfterRenameDoesntCorruptTable() {}
 }

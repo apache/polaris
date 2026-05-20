@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -27,6 +26,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 public interface StorageCredentialCacheKey {
@@ -38,8 +38,7 @@ public interface StorageCredentialCacheKey {
   long catalogId();
 
   @Value.Parameter(order = 3)
-  @Nullable
-  String storageConfigSerializedStr();
+  @Nullable String storageConfigSerializedStr();
 
   @Value.Parameter(order = 4)
   boolean allowedListAction();

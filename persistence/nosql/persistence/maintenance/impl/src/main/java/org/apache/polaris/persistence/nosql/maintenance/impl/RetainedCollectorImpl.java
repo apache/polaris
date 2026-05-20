@@ -323,9 +323,10 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
     return new Commits() {
       @Override
       public <C extends BaseCommitObj> Iterator<C> commitLog(
-          String refName, OptionalLong offset, Class<C> clazz) {
+          String refName, OptionalLong offsetCommitId, Class<C> clazz) {
         checkArgument(
-            offset.isEmpty(), "Commit offset must be empty during retained-objects identification");
+            offsetCommitId.isEmpty(),
+            "Offset commit ID must be empty during retained-objects identification");
 
         var ref = fetchReference(refName);
 
@@ -354,7 +355,7 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
 
       @Override
       public <C extends BaseCommitObj> Iterator<C> commitLogReversed(
-          String refName, long offset, Class<C> clazz) {
+          String refName, long offsetCommitId, Class<C> clazz) {
         throw new UnsupportedOperationException(
             "Reversed commit scanning not supported during retained-objects identification");
       }

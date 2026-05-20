@@ -18,32 +18,32 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Authorization intent describing an operation and its target resource shape. */
 public sealed interface AuthorizationIntent
     permits TargetlessAuthorizationIntent,
         SingleTargetAuthorizationIntent,
         PairwiseTargetAuthorizationIntent {
-  static AuthorizationIntent of(@Nonnull PolarisAuthorizableOperation operation) {
+  static AuthorizationIntent of(@NonNull PolarisAuthorizableOperation operation) {
     return new TargetlessAuthorizationIntent(operation);
   }
 
   static AuthorizationIntent of(
-      @Nonnull PolarisAuthorizableOperation operation, @Nonnull PolarisSecurable target) {
+      @NonNull PolarisAuthorizableOperation operation, @NonNull PolarisSecurable target) {
     return new SingleTargetAuthorizationIntent(operation, target);
   }
 
   static AuthorizationIntent of(
-      @Nonnull PolarisAuthorizableOperation operation,
+      @NonNull PolarisAuthorizableOperation operation,
       @Nullable PolarisSecurable target,
       @Nullable PolarisSecurable secondary) {
     return new PairwiseTargetAuthorizationIntent(operation, target, secondary);
   }
 
-  @Nonnull
+  @NonNull
   PolarisAuthorizableOperation getOperation();
 
   @Nullable

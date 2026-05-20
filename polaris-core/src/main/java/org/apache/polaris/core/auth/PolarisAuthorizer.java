@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
@@ -38,7 +38,7 @@ public interface PolarisAuthorizer {
    * <p>This method should not perform authorization decisions directly.
    */
   void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
 
   /**
    * Core authorization entry point for the new SPI.
@@ -50,9 +50,8 @@ public interface PolarisAuthorizer {
    * must AND-combine the intents in that request and may short-circuit evaluation on the first
    * deny.
    */
-  @Nonnull
-  AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request);
+  @NonNull AuthorizationDecision authorize(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);
 
   /**
    * Convenience method that throws a {@link ForbiddenException} when authorization is denied.
@@ -60,7 +59,7 @@ public interface PolarisAuthorizer {
    * <p>Implementations should provide allow/deny decisions via {@link #authorize}.
    */
   default void authorizeOrThrow(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     AuthorizationDecision decision = authorize(authzState, request);
     if (!decision.isAllowed()) {
       String message = decision.getMessage().orElse("Authorization denied");
@@ -69,16 +68,16 @@ public interface PolarisAuthorizer {
   }
 
   void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary);
 
   void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }

@@ -51,6 +51,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -918,6 +919,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   .toList(),
               realmId));
     } catch (SQLException e) {
+      if (datasourceOperations.isConstraintViolation(e)) {
+        throw new AlreadyExistsException(e.getMessage(), e);
+      }
       LOGGER.error(
           "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
           resolvedClientId,

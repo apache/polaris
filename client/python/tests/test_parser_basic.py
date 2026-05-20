@@ -18,9 +18,11 @@
 #
 
 import unittest
+from apache_polaris import __version__
 from cli_test_utils import CLITestBase, INVALID_ARGS
-from apache_polaris.cli.options.parser import Parser
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.options.parser import Parser
 
 
 class TestParserBasic(CLITestBase):
@@ -78,10 +80,6 @@ class TestParserBasic(CLITestBase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
-            Parser.parse(["principals", "update", "name", "--client-id", "something"])
-        self.assertEqual(cm.exception.code, INVALID_ARGS)
-
-        with self.assertRaises(SystemExit) as cm:
             Parser.parse(["find"])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
@@ -93,19 +91,19 @@ class TestParserBasic(CLITestBase):
             Parser.parse(["table"])  # missing subcommand
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
-        with self.assertRaises(Exception) as cm_exc:
+        with self.assertRaises(CliError) as cm_exc:
             options = Parser.parse(
                 ["find", " ", "--catalog", "my_catalog"]
             )  # empty identifier
             Command.from_options(options)
         self.assertIn("The search identifier cannot be empty", str(cm_exc.exception))
 
-        with self.assertRaises(Exception) as cm_missing:
+        with self.assertRaises(CliError) as cm_missing:
             options = Parser.parse(["tables", "list"])  # missing catalog/namespace
             Command.from_options(options)
         self.assertIn("Missing required argument", str(cm_missing.exception))
 
-        with self.assertRaises(Exception) as cm_exc:
+        with self.assertRaises(CliError) as cm_exc:
             options = Parser.parse(
                 ["tables", "get", " ", "--catalog", "my_catalog", "--namespace", "ns"]
             )  # empty table name
@@ -152,32 +150,14 @@ class TestParserBasic(CLITestBase):
             lambda: Parser.parse(["catalogs", "create", "something", "--help"])
         )
 
-    def test_extended_usage(self) -> None:
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(["--help"], "input:")
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(["catalogs", "--help"], "input:")
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["catalogs", "create", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["catalogs", "create", "c", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser._build_parser().parse_args(
-                ["privileges", "table", "grant", "--help"], "input:"
-            )
-        )
-        self.check_usage_output(
-            lambda: Parser.parse(["catalogs", "create", "something", "--help"]),
-            "input:",
-        )
+    def test_version(self) -> None:
+        self.check_usage_output(lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}")
+
+    def test_global_flag_anywhere(self) -> None:
+        # Test that global flags work when placed after subcommands
+        options = Parser.parse(["catalogs", "list", "--host", "my-host"])
+        self.assertEqual(options.host, "my-host")
+        self.assertEqual(options.command, "catalogs")
 
     def test_parse_argparse_valid_commands(self) -> None:
         # These commands are valid for parsing, but may cause errors within the command itself

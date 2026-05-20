@@ -209,11 +209,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTI
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.jspecify.annotations.Nullable;
 
 /** Polaris RBAC-specific interpretation of an authorizable operation. */
 record RbacOperationSemantics(

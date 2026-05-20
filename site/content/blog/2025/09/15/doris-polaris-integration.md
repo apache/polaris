@@ -237,7 +237,7 @@ With the environment ready, we'll now deploy the Polaris service and configure t
 
    This command will compile and start the Polaris service, which listens on port 8181 by default.
    
-   > You can also use binary distribution, see: https://github.com/apache/polaris/tree/main/runtime/distribution
+   > You can also use binary distribution, see: https://polaris.apache.org/releases/latest/getting-started/binary-distribution/
 
 
 #### 2.2 Create Catalog and Namespace in Polaris
@@ -424,4 +424,3 @@ If all the above operations succeed, congratulations! You have successfully esta
 For more information about managing Iceberg table with Doris, please visit:
 
 https://doris.apache.org/docs/lakehouse/catalogs/iceberg-catalog
-

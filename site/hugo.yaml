@@ -66,6 +66,8 @@ params:
   active_releases:
     # Mention all active releases here, in semver descending order.
     # Remove any version that should be moved to the "EOL" category.
+    - "1.5.0"
+    - "1.4.1"
     - "1.4.0"
     - "1.3.0"
     - "1.2.0"
@@ -126,7 +128,7 @@ menu:
     - name: "Community"
       identifier: "community"
       weight: 300
-    - name: "Community Page"
+    - name: "Overview"
       parent: "community"
       url: "/community/"
       weight: 10

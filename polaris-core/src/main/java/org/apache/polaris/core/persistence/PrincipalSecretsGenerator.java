@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An interface for generating principal secrets. It enables detaching the secret generation logic
@@ -55,7 +55,7 @@ public interface PrincipalSecretsGenerator {
    * @param principalId the ID of the related principal. This ID is part of the returned data.
    * @return a new {@link PolarisPrincipalSecrets} instance for the specified principal.
    */
-  PolarisPrincipalSecrets produceSecrets(@Nonnull String principalName, long principalId);
+  PolarisPrincipalSecrets produceSecrets(@NonNull String principalName, long principalId);
 
   static PrincipalSecretsGenerator bootstrap(String realmName) {
     return bootstrap(realmName, RootCredentialsSet.fromEnvironment());

@@ -20,11 +20,11 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the return the result of a create-principal method */
 public class CreatePrincipalResult extends BaseResult {
@@ -40,7 +40,7 @@ public class CreatePrincipalResult extends BaseResult {
    * @param errorCode error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
-  public CreatePrincipalResult(@Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+  public CreatePrincipalResult(@NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.principal = null;
     this.principalSecrets = null;
@@ -53,7 +53,7 @@ public class CreatePrincipalResult extends BaseResult {
    * @param principalSecrets and associated secret information
    */
   public CreatePrincipalResult(
-      @Nonnull PolarisBaseEntity principal, @Nonnull PolarisPrincipalSecrets principalSecrets) {
+      @NonNull PolarisBaseEntity principal, @NonNull PolarisPrincipalSecrets principalSecrets) {
     super(ReturnStatus.SUCCESS);
     this.principal = principal;
     this.principalSecrets = principalSecrets;
@@ -61,10 +61,10 @@ public class CreatePrincipalResult extends BaseResult {
 
   @JsonCreator
   private CreatePrincipalResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("principal") @Nonnull PolarisBaseEntity principal,
-      @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
+      @JsonProperty("principal") @NonNull PolarisBaseEntity principal,
+      @JsonProperty("principalSecrets") @NonNull PolarisPrincipalSecrets principalSecrets) {
     super(returnStatus, extraInformation);
     this.principal = principal;
     this.principalSecrets = principalSecrets;

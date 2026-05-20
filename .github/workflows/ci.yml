@@ -66,6 +66,8 @@ jobs:
             echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
             exit 1
           fi
+      - name: Verify Copilot instructions
+        run: .github/scripts/check-copilot-instructions.sh
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
@@ -273,7 +275,7 @@ jobs:
           exit-code: '0'
       - name: Upload SARIF to GitHub Code Scanning
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
-        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4
+        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
@@ -412,10 +414,14 @@ jobs:
         run: ./polaris --help
 
   regtest:
-    name: Regression Tests
+    name: Regression Tests (${{ matrix.s3-backend }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        s3-backend: ["minio", "rustfs"]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -444,7 +450,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}} # zizmor: ignore[secrets-outside-env]
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}} # zizmor: ignore[secrets-outside-env]
-        run: docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
+          S3_TEST_BACKEND: ${{ matrix.s3-backend }}
+        run: docker compose --profile ${{ matrix.s3-backend }} -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Spark Plugin Regression Test
         # NOTE: the regression test runs with spark 3.5.6 and scala 2.12 in Java 17. We also have integration
         # tests runs with the existing gradle.yml, which only runs on Java 21. Since spark Java compatibility
@@ -500,6 +507,8 @@ jobs:
             -o /usr/local/bin/docker-compose
           sudo chmod 755 /usr/local/bin/docker-compose
           sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      - name: Verify release-doc link policy
+        run: site/bin/check-release-doc-links.sh
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
 

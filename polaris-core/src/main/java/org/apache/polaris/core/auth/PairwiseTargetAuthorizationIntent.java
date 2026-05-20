@@ -19,8 +19,8 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Authorization intent for operations that may carry both a primary target and a related secondary
@@ -30,7 +30,7 @@ import jakarta.annotation.Nullable;
  * primary plus an explicit secondary target.
  */
 public record PairwiseTargetAuthorizationIntent(
-    @Nonnull PolarisAuthorizableOperation operation,
+    @NonNull PolarisAuthorizableOperation operation,
     @Nullable PolarisSecurable target,
     @Nullable PolarisSecurable secondary)
     implements AuthorizationIntent {
@@ -42,7 +42,7 @@ public record PairwiseTargetAuthorizationIntent(
   }
 
   @Override
-  public @Nonnull PolarisAuthorizableOperation getOperation() {
+  public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
   }
 

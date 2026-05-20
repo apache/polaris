@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.persistence;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface for the necessary "peripheral integration" objects that are logically attached to core
@@ -47,9 +47,8 @@ public interface IntegrationPersistence {
    * @param clientId principal client id
    * @return the secrets
    */
-  @Nullable
-  PolarisPrincipalSecrets loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
+  @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId);
 
   /**
    * generate and store a client id and associated secrets for a newly created principal entity
@@ -58,9 +57,8 @@ public interface IntegrationPersistence {
    * @param principalName name of the principal
    * @param principalId principal id
    */
-  @Nonnull
-  PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId);
+  @NonNull PolarisPrincipalSecrets generateNewPrincipalSecrets(
+      @NonNull PolarisCallContext callCtx, @NonNull String principalName, long principalId);
 
   /**
    * Rotate the secrets of a principal entity, i.e. make the specified main secrets the secondary
@@ -73,13 +71,12 @@ public interface IntegrationPersistence {
    *     password
    * @param oldSecretHash the principal secret's old main secret hash
    */
-  @Nullable
-  PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
+  @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash);
+      @NonNull String oldSecretHash);
 
   /**
    * Store the secrets of a principal entity.
@@ -93,11 +90,10 @@ public interface IntegrationPersistence {
    * @param customClientSecret the secret for the principal
    * @return the stored principal secrets
    */
-  @Nullable
-  PolarisPrincipalSecrets storePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+  @Nullable PolarisPrincipalSecrets storePrincipalSecrets(
+      @NonNull PolarisCallContext callCtx,
       long principalId,
-      @Nonnull String resolvedClientId,
+      @NonNull String resolvedClientId,
       String customClientSecret);
 
   /**
@@ -108,7 +104,7 @@ public interface IntegrationPersistence {
    * @param principalId the id of the principal whose secrets are dropped
    */
   void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId, long principalId);
 
   /**
    * Create an in-memory storage integration
@@ -119,12 +115,12 @@ public interface IntegrationPersistence {
    * @param polarisStorageConfigurationInfo the storage configuration information
    * @return a storage integration object
    */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+  @Nullable <T extends PolarisStorageConfigurationInfo>
+      PolarisStorageIntegration<T> createStorageIntegration(
+          @NonNull PolarisCallContext callCtx,
+          long catalogId,
+          long entityId,
+          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**
    * Persist a storage integration in the metastore
@@ -134,8 +130,8 @@ public interface IntegrationPersistence {
    * @param storageIntegration the storage integration to persist
    */
   <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callContext,
+      @NonNull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration);
 
   /**
@@ -145,8 +141,7 @@ public interface IntegrationPersistence {
    * @param entity the polaris entity
    * @return a polaris storage integration
    */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
+  @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
+          @NonNull PolarisCallContext callContext, @NonNull PolarisBaseEntity entity);
 }

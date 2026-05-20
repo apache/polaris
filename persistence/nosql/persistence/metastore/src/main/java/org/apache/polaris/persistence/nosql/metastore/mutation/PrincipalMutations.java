@@ -31,6 +31,7 @@ import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -157,7 +158,10 @@ public abstract class PrincipalMutations<RESULT> implements PrincipalsChangeComm
           .ifPresent(
               clientId -> {
                 var clientIdKey = IndexKey.key(clientId);
-                byClientId.put(clientIdKey, updatedPrincipalObjRef);
+                if (!byClientId.put(clientIdKey, updatedPrincipalObjRef)) {
+                  throw new AlreadyExistsException(
+                      String.format("Client ID already in use: %s", clientId));
+                }
               });
 
       state.writeOrReplace("principal", updatedPrincipal);

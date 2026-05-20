@@ -422,6 +422,13 @@
                 }
             }
         },
+        "hostUsers": {
+            "description": "Specifies whether a pod should use the host's user namespace (Linux-only feature). See [User Namespaces](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/).",
+            "type": [
+                "boolean",
+                "null"
+            ]
+        },
         "httproute": {
             "type": "object",
             "required": [

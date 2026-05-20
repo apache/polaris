@@ -23,6 +23,7 @@ from typing import Dict, Optional, List, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog import IcebergCatalogAPI, CreateNamespaceRequest
@@ -56,7 +57,7 @@ class NamespacesCommand(Command):
 
     def validate(self) -> None:
         if not self.catalog:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
         if self.namespaces_subcommand in {
@@ -66,7 +67,7 @@ class NamespacesCommand(Command):
             Subcommands.SUMMARIZE,
         }:
             if not self.namespace:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
                 )
 
@@ -112,7 +113,7 @@ class NamespacesCommand(Command):
         elif self.namespaces_subcommand == Subcommands.SUMMARIZE:
             self._generate_summary(catalog_api)
         else:
-            raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.namespaces_subcommand} is not supported in the CLI")
 
     def _generate_summary(self, catalog_api: IcebergCatalogAPI) -> None:
         catalog_name = cast(str, self.catalog)
