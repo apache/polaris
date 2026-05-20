@@ -213,6 +213,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     } else {
+      // CAS on both entity_version and grant_records_version because grant operations only
+      // bump grant_records_version without touching entity_version.
       Map<String, Object> params =
           Map.of(
               "id",
