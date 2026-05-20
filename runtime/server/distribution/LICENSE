@@ -2263,3 +2263,34 @@ Note: GraalVM licensing documentation identifies this shaded code as XZ for Java
 |  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
+
+This product bundles RxJava
+
+* Maven group:artifact IDs: io.reactivex.rxjava3:rxjava
+
+Home page: https://github.com/ReactiveX/RxJava
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles Infinispan
+
+* Maven group:artifact IDs: org.infinispan.protostream:protostream
+* Maven group:artifact IDs: org.infinispan.protostream:protostream-types
+* Maven group:artifact IDs: org.infinispan:infinispan-commons
+* Maven group:artifact IDs: org.infinispan:infinispan-core
+* Maven group:artifact IDs: org.infinispan:infinispan-counter-api
+
+Home page: https://infinispan.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
+
+This product bundles JGroups
+
+* Maven group:artifact IDs: org.jgroups:jgroups
+
+Home page: http://www.jgroups.org/
+License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
+
+--------------------------------------------------------------------------------
