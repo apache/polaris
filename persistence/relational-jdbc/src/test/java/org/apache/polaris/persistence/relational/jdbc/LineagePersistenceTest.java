@@ -133,8 +133,7 @@ class LineagePersistenceTest {
             .build());
 
     assertSingleLong(
-        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?",
-        200L);
+        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?", 200L);
   }
 
   @Test
@@ -153,8 +152,7 @@ class LineagePersistenceTest {
             .build());
 
     assertSingleLong(
-        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?",
-        200L);
+        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?", 200L);
   }
 
   @Test
@@ -177,8 +175,7 @@ class LineagePersistenceTest {
             .build());
 
     assertSingleLong(
-        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?",
-        300L);
+        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?", 300L);
   }
 
   @Test
@@ -201,8 +198,7 @@ class LineagePersistenceTest {
             .build());
 
     assertSingleLong(
-        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?",
-        300L);
+        "SELECT last_event_at FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?", 300L);
   }
 
   @Test
