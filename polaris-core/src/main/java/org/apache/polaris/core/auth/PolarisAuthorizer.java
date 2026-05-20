@@ -45,6 +45,10 @@ public interface PolarisAuthorizer {
    *
    * <p>Implementations should rely on any required state in {@link AuthorizationState} and the
    * request captured by {@link AuthorizationRequest}.
+   *
+   * <p>When a request contains multiple intents, they form a single batch contract: implementations
+   * must AND-combine the intents in that request and may short-circuit evaluation on the first
+   * deny.
    */
   @Nonnull
   AuthorizationDecision authorize(
