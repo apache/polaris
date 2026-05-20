@@ -43,8 +43,7 @@ public interface ModelLineageDataset extends Converter<ModelLineageDataset> {
   String UPDATED_AT = "updated_at";
 
   List<String> ALL_COLUMNS =
-      List.of(
-          DATASET_ID, CATALOG, NAMESPACE, NAME, POLARIS_ENTITY_ID, CREATED_AT, UPDATED_AT);
+      List.of(DATASET_ID, CATALOG, NAMESPACE, NAME, POLARIS_ENTITY_ID, CREATED_AT, UPDATED_AT);
   List<String> ALL_COLUMNS_WITH_REALM =
       List.of(
           REALM_ID,
