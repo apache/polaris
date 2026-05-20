@@ -53,7 +53,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.RESTException;
+import org.apache.iceberg.exceptions.NoSuchWarehouseException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
@@ -276,9 +276,8 @@ public class PolarisApplicationIntegrationTest {
   @Test
   public void testConfigureCatalogCaseSensitive() {
     assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
-        .isInstanceOf(RESTException.class)
-        .hasMessage(
-            "Unable to process: Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
+        .isInstanceOf(NoSuchWarehouseException.class)
+        .hasMessageContaining("Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
   }
 
   @Test
