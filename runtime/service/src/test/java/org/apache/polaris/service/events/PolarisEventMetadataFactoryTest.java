@@ -19,8 +19,10 @@
 package org.apache.polaris.service.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
@@ -28,6 +30,7 @@ import jakarta.enterprise.inject.Instance;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.concurrent.CompletionException;
 import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
@@ -82,6 +85,8 @@ class PolarisEventMetadataFactoryTest {
 
     PolarisEventMetadata metadata = factory.create();
 
+    assertThat(metadata.realmId()).isEqualTo(TEST_REALM);
+    assertThat(metadata.timestamp()).isEqualTo(FIXED_INSTANT);
     assertThat(metadata.user()).isEmpty();
   }
 
@@ -89,25 +94,40 @@ class PolarisEventMetadataFactoryTest {
   void createReturnsEmptyUserWhenIdentityNotYetResolved() {
     // Simulates getNow(null) returning null because the future hasn't completed
     when(currentIdentityAssociation.getDeferredIdentity())
-        .thenReturn(Uni.createFrom().item(() -> null));
+        .thenReturn(Uni.createFrom().nothing());
 
     PolarisEventMetadata metadata = factory.create();
 
+    assertThat(metadata.realmId()).isEqualTo(TEST_REALM);
+    assertThat(metadata.timestamp()).isEqualTo(FIXED_INSTANT);
     assertThat(metadata.user()).isEmpty();
   }
 
   @Test
-  void createReturnsEmptyUserWhenDeferredIdentityFailsWithCompletionException() {
+  void createReturnsEmptyUserWhenDeferredIdentityFailsWithAuthenticationFailedException() {
     // Simulates the scenario where triggering deferred identity resolution causes
     // the auth pipeline to fail (e.g., on unauthenticated endpoints like /oauth/tokens)
     when(currentIdentityAssociation.getDeferredIdentity())
         .thenReturn(
-            Uni.createFrom().failure(new RuntimeException("Authentication pipeline failed")));
+            Uni.createFrom()
+                .failure(new AuthenticationFailedException("Authentication pipeline failed")));
 
     PolarisEventMetadata metadata = factory.create();
 
     assertThat(metadata.user()).isEmpty();
     assertThat(metadata.realmId()).isEqualTo(TEST_REALM);
     assertThat(metadata.timestamp()).isEqualTo(FIXED_INSTANT);
+  }
+
+  @Test
+  void createPropagatesCompletionExceptionForNonAuthFailures() {
+    // Non-auth exceptions (e.g. ServiceFailureException) should not be suppressed
+    RuntimeException cause = new RuntimeException("Service unavailable");
+    when(currentIdentityAssociation.getDeferredIdentity())
+        .thenReturn(Uni.createFrom().failure(cause));
+
+    assertThatThrownBy(() -> factory.create())
+        .isInstanceOf(CompletionException.class)
+        .hasCause(cause);
   }
 }

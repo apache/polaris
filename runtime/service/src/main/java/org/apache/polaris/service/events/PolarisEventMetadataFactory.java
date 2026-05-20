@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
+import io.quarkus.security.AuthenticationFailedException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.tracing.RequestIdFilter;
@@ -105,8 +106,11 @@ public class PolarisEventMetadataFactory {
    * Resolves the current security identity if available.
    *
    * <p>Returns {@link Optional#empty()} if the identity has not been resolved yet, or if the
-   * deferred identity resolution failed (e.g. on unauthenticated endpoints where the auth pipeline
-   * throws when triggered).
+   * deferred identity resolution failed with an {@link AuthenticationFailedException} (e.g. on
+   * unauthenticated endpoints where the auth pipeline throws when triggered).
+   *
+   * <p>Other exceptions (e.g. {@link org.apache.iceberg.exceptions.ServiceFailureException}) are
+   * not suppressed and will propagate to the caller.
    */
   private Optional<SecurityIdentity> getSecurityIdentity() {
     try {
@@ -116,8 +120,11 @@ public class PolarisEventMetadataFactory {
               .subscribeAsCompletionStage()
               .getNow(null));
     } catch (CompletionException e) {
-      LOGGER.debug("Failed to resolve security identity", e);
-      return Optional.empty();
+      if (e.getCause() instanceof AuthenticationFailedException) {
+        LOGGER.debug("Failed to resolve security identity", e);
+        return Optional.empty();
+      }
+      throw e;
     }
   }
 
