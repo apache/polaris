@@ -432,6 +432,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
           return false;
 
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
@@ -681,6 +682,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
           return false;
 
         default:
@@ -883,6 +885,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
           return false;
 
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:

@@ -2080,6 +2080,70 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .hasMessageContaining("cannot be dropped");
   }
 
+  @Test
+  public void testDropTableWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropTable(TABLE, false);
+    Assertions.assertThat(result).isFalse();
+  }
+
+  @Test
+  public void testDropViewWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropView(TABLE);
+    Assertions.assertThat(result).isFalse();
+  }
+
+  @Test
+  public void testDropNamespaceWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropNamespace(NS);
+    Assertions.assertThat(result).isFalse();
+  }
+
   private TableMetadata createSampleTableMetadata(String tableLocation) {
     Schema schema =
         new Schema(
