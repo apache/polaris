@@ -370,6 +370,10 @@ class TestCatalogsCommand(CLITestBase):
             call_args.catalog.connection_config_info.remote_catalog_name, "i"
         )
         self.assertEqual(call_args.catalog.connection_config_info.uri, "u")
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.bearer_token.get_secret_value(),
+            "b",
+        )
 
     def test_catalog_storage_type_exclusivity(self) -> None:
         mock_client = self.build_mock_client()
@@ -521,6 +525,10 @@ class TestCatalogsCommand(CLITestBase):
             "OAUTH",
         )
         self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.client_secret.get_secret_value(),
+            "test-secret",
+        )
+        self.assertEqual(
             call_args.catalog.connection_config_info.uri, "thrift://hive-metastore:9083"
         )
 
@@ -577,6 +585,10 @@ class TestCatalogsCommand(CLITestBase):
         self.assertEqual(
             call_args.catalog.connection_config_info.authentication_parameters.client_id,
             "i",
+        )
+        self.assertEqual(
+            call_args.catalog.connection_config_info.authentication_parameters.client_secret.get_secret_value(),
+            "k",
         )
         self.assertEqual(
             call_args.catalog.connection_config_info.authentication_parameters.scopes,
