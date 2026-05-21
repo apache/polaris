@@ -35,6 +35,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Support for view registration has been added.
+
 ### Changes
 
 ### Deprecations

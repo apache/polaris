@@ -65,6 +65,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -94,8 +95,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CODE_COPIED_TO_POLARIS Copied from CatalogHandler in Iceberg 1.8.0 Contains a collection of
- * utilities related to managing Iceberg entities
+ * CODE_COPIED_TO_POLARIS
+ *
+ * <p>Copied from CatalogHandlers as of Iceberg 1.8.0.
+ *
+ * <p>The {@link #registerView(ViewCatalog, Namespace, RegisterViewRequest)} method was copied from
+ * Iceberg 1.11.0.
+ *
+ * <p>Contains a collection of utilities related to managing Iceberg entities.
  */
 @ApplicationScoped
 public class CatalogHandlerUtils {
@@ -738,6 +745,15 @@ public class CatalogHandlerUtils {
     if (!dropped) {
       throw notFoundExceptionForTableLikeEntity(viewIdentifier, PolarisEntitySubType.ICEBERG_VIEW);
     }
+  }
+
+  public LoadViewResponse registerView(
+      ViewCatalog catalog, Namespace namespace, RegisterViewRequest request) {
+    request.validate();
+
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+    View view = catalog.registerView(identifier, request.metadataLocation());
+    return viewResponse(view);
   }
 
   protected ViewMetadata commit(ViewOperations ops, UpdateTableRequest request) {
