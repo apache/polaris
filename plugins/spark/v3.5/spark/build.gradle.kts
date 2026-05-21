@@ -32,14 +32,14 @@ checkstyle {
 // get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
-val icebergVersion = pluginlibs.versions.iceberg.get()
-val spark35Version = pluginlibs.versions.spark35.get()
+val icebergVersion = libs.versions.iceberg.get()
+val spark35Version = libs.versions.spark35.get()
 
 val scalaLibraryVersion =
   if (scalaVersion == "2.12") {
-    pluginlibs.versions.scala212.get()
+    libs.versions.scala212.get()
   } else {
-    pluginlibs.versions.scala213.get()
+    libs.versions.scala213.get()
   }
 
 dependencies {

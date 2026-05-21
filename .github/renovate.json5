@@ -112,12 +112,15 @@
     // Ensure that Renovate does not "upgrade" from 2.12 to 2.13
     {
       matchManagers: ["gradle"],
-      matchPackageNames: [
-        "org.scala-lang:scala-reflect",
-        "org.scala-lang:scala-library",
-      ],
-      "matchCurrentVersion": "/^2\\.12\\./",
-      "allowedVersions": "/^2\\.12\\./"
+      matchPackageNames: [ "org.scala-lang:*" ],
+      matchCurrentVersion: "/^2\\.12\\./",
+      allowedVersions: "/^2\\.12\\./"
+    },
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: [ "org.scala-lang:*" ],
+      matchCurrentVersion: "/^2\\.13\\./",
+      allowedVersions: "/^2\\.13\\./"
     }
   ],
 

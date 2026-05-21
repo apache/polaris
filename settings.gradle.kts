@@ -140,11 +140,6 @@ dependencyResolutionManagement {
   }
 }
 
-dependencyResolutionManagement {
-  // version catalog used by the polaris plugin code, such as polaris-spark-3.5
-  versionCatalogs { create("pluginlibs") { from(files("plugins/pluginlibs.versions.toml")) } }
-}
-
 gradle.beforeProject {
   version = baseVersion
   group = "org.apache.polaris"
