@@ -360,6 +360,7 @@
           "table-structure-manage"
         ]
       },
+      { "itemId": 70, "name": "table-metadata-full", "label": "Table Full Metadata", "category": "MANAGE", "impliedGrants": [ "table-metadata-full" ] },
       { "itemId": 34, "name": "table-policy-attach",    "label": "Table Policy Attach",    "category": "MANAGE" },
       { "itemId": 35, "name": "table-policy-detach",    "label": "Table Policy Detach",    "category": "MANAGE" },
       { "itemId": 36, "name": "table-properties-read",  "label": "Table Properties Read",  "category": "READ", "impliedGrants": [ "table-list" ] },
@@ -556,6 +557,7 @@
             { "type": "table-properties-remove" },
             { "type": "table-data-read" },
             { "type": "table-data-write" },
+            { "type": "table-metadata-full" },
             { "type": "table-metadata-full" },
             { "type": "table-policy-attach" },
             { "type": "table-policy-detach" },
