@@ -56,15 +56,8 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
           .evictionListener(
-              (String realmId, UnicastProcessor<?> processor, RemovalCause cause) -> {
-                // onComplete is not synchronized in smallrye-mutiny's UnicastProcessor,
-                // unlike onNext. Acquire the processor's intrinsic monitor (the same one
-                // onNext uses) so that eviction-driven onComplete and concurrent
-                // processEvent-driven onNext mutually exclude.
-                synchronized (processor) {
-                  processor.onComplete();
-                }
-              })
+              (String realmId, UnicastProcessor<?> processor, RemovalCause cause) ->
+                  completeSynchronized(processor))
           .build(this::createProcessor);
 
   @Override
@@ -75,18 +68,23 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   @PreDestroy
   public void shutdown() {
-    // Same rationale as the eviction listener: hold the processor's monitor so
-    // shutdown-driven onComplete cannot race a concurrent processEvent-driven onNext.
-    processors
-        .asMap()
-        .values()
-        .forEach(
-            p -> {
-              synchronized (p) {
-                p.onComplete();
-              }
-            });
+    processors.asMap().values().forEach(InMemoryBufferEventListener::completeSynchronized);
     processors.invalidateAll(); // doesn't call the eviction listener
+  }
+
+  /**
+   * Calls {@link UnicastProcessor#onComplete()} while holding the processor's intrinsic monitor.
+   *
+   * <p>smallrye-mutiny's {@code UnicastProcessor.onNext} is method-{@code synchronized} on the
+   * processor instance; {@code onComplete} is not. Acquiring the same intrinsic monitor here
+   * restores symmetric mutual exclusion between concurrent {@code onNext} (from {@code
+   * processEvent}) and {@code onComplete} (from eviction or shutdown). Wrapping the pattern as an
+   * invariant keeps the synchronization requirement structurally visible to future maintainers.
+   */
+  private static void completeSynchronized(UnicastProcessor<?> processor) {
+    synchronized (processor) {
+      processor.onComplete();
+    }
   }
 
   protected UnicastProcessor<PolarisEvent> createProcessor(String realmId) {
