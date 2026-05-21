@@ -19,6 +19,8 @@
 package org.apache.polaris.core.auth;
 
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 
 /**
@@ -36,14 +38,15 @@ public final class AuthorizationPreConditions {
    *
    * @param polarisPrincipal the principal attempting the operation
    * @param authzOp the operation being attempted
-   * @param enforceCredentialRotationRequiredState whether the enforcement flag is enabled
+   * @param realmConfig the realm config, used to read the enforcement feature flag
    * @throws ForbiddenException if the principal must rotate credentials first
    */
   public static void checkCredentialRotationRequired(
       PolarisPrincipal polarisPrincipal,
       PolarisAuthorizableOperation authzOp,
-      boolean enforceCredentialRotationRequiredState) {
-    if (enforceCredentialRotationRequiredState
+      RealmConfig realmConfig) {
+    if (realmConfig.getConfig(
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING)
         && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
         && polarisPrincipal
             .getProperties()

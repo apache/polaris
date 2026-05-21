@@ -32,7 +32,6 @@ import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -62,15 +61,13 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   private final String serviceName;
   private RealmContext realmContext;
   private String realmConextIdentifier;
-  private final boolean enforceCredentialRotationRequiredState;
+  private final RealmConfig realmConfig;
 
   public RangerPolarisAuthorizer(
       RangerEmbeddedAuthorizer authorizer, String serviceName, RealmConfig realmConfig) {
     this.authorizer = authorizer;
     this.serviceName = serviceName;
-    this.enforceCredentialRotationRequiredState =
-        realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+    this.realmConfig = realmConfig;
   }
 
   public void setRealmContext(RealmContext aRealmContext) {
@@ -135,7 +132,7 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
     try {
       AuthorizationPreConditions.checkCredentialRotationRequired(
-          polarisPrincipal, authzOp, enforceCredentialRotationRequiredState);
+          polarisPrincipal, authzOp, realmConfig);
 
       if (!isAccessAuthorized(polarisPrincipal, authzOp, targets, secondaries)) {
         throw new ForbiddenException(

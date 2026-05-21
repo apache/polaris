@@ -20,10 +20,14 @@ package org.apache.polaris.core.auth;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +35,14 @@ public class AuthorizationPreConditionsTest {
 
   private static final String ROTATION_KEY =
       PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE;
+
+  private static RealmConfig realmConfigWithEnforcement(boolean enforce) {
+    RealmConfig realmConfig = mock(RealmConfig.class);
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING))
+        .thenReturn(enforce);
+    return realmConfig;
+  }
 
   @Test
   public void testFlagOff_noException() {
@@ -40,7 +52,9 @@ public class AuthorizationPreConditionsTest {
     assertThatCode(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal, PolarisAuthorizableOperation.LIST_CATALOGS, false))
+                    principal,
+                    PolarisAuthorizableOperation.LIST_CATALOGS,
+                    realmConfigWithEnforcement(false)))
         .doesNotThrowAnyException();
   }
 
@@ -52,7 +66,9 @@ public class AuthorizationPreConditionsTest {
     assertThatCode(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal, PolarisAuthorizableOperation.ROTATE_CREDENTIALS, true))
+                    principal,
+                    PolarisAuthorizableOperation.ROTATE_CREDENTIALS,
+                    realmConfigWithEnforcement(true)))
         .doesNotThrowAnyException();
   }
 
@@ -64,7 +80,9 @@ public class AuthorizationPreConditionsTest {
     assertThatThrownBy(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal, PolarisAuthorizableOperation.LIST_CATALOGS, true))
+                    principal,
+                    PolarisAuthorizableOperation.LIST_CATALOGS,
+                    realmConfigWithEnforcement(true)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE");
   }
@@ -76,7 +94,9 @@ public class AuthorizationPreConditionsTest {
     assertThatCode(
             () ->
                 AuthorizationPreConditions.checkCredentialRotationRequired(
-                    principal, PolarisAuthorizableOperation.LIST_CATALOGS, true))
+                    principal,
+                    PolarisAuthorizableOperation.LIST_CATALOGS,
+                    realmConfigWithEnforcement(true)))
         .doesNotThrowAnyException();
   }
 }

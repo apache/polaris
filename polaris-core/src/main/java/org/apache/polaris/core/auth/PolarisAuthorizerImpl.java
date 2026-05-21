@@ -134,7 +134,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.RbacOperationSemantics.ResolvedPathRooting;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -881,11 +880,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    boolean enforceCredentialRotationRequiredState =
-        realmConfig.getConfig(
-            FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     AuthorizationPreConditions.checkCredentialRotationRequired(
-        polarisPrincipal, authzOp, enforceCredentialRotationRequiredState);
+        polarisPrincipal, authzOp, realmConfig);
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
     if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
