@@ -194,10 +194,10 @@ hard-coded `/v1/oauth/tokens` path and logs a deprecation warning, since the aut
 is slated for removal in a future Iceberg release.
 
 For Trino, use the Iceberg connector with the REST catalog. The REST/OAuth2 properties talk to
-Polaris; the native S3 filesystem properties consume the vended credentials. Polaris itself
-returns `endpoint`, `path-style-access`, and `region` in the catalog config response, so the
-client-side `s3.*` block below is only needed where Trino requires it to be explicit (for
-example, on S3-compatible endpoints where the default AWS endpoint resolver does not apply).
+Polaris, and Polaris vends the endpoint, path-style flag, and region together with the scoped
+credentials (`s3.endpoint`, `s3.path-style-access`, `client.region` in the load-table response),
+so they do not need to be repeated on the client. The native S3 filesystem still has to be
+enabled on the Trino side:
 
 ```properties
 connector.name=iceberg
@@ -210,14 +210,6 @@ iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
 iceberg.rest-catalog.oauth2.server-uri=https://<polaris-host>/api/catalog/v1/oauth/tokens
 iceberg.rest-catalog.vended-credentials-enabled=true
 fs.native-s3.enabled=true
-s3.region=us-east-1
-```
-
-For S3-compatible endpoints, set the endpoint and path-style flag explicitly on the Trino side:
-
-```properties
-s3.endpoint=https://s3.internal.example.com
-s3.path-style-access=true
 ```
 
 For PyIceberg, use the `rest` catalog type. The same Polaris-side properties (`uri`, `warehouse`,
@@ -258,7 +250,7 @@ SELECT * FROM warehouse_s3.demo.t;
 
 If `INSERT` or `SELECT` fails with a 403, the most common causes are:
 
-- The IAM role's trust policy does not match the `userArn` / `externalId` Polaris is presenting.
+- The IAM role's trust policy does not match the `roleArn` / `externalId` Polaris is presenting.
 - The role grants S3 permissions but is missing the KMS actions for `currentKmsKey`.
 - The bucket policy denies access from outside a specific VPC endpoint.
 
