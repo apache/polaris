@@ -21,8 +21,6 @@ package org.apache.polaris.core.persistence.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +48,8 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,9 +68,9 @@ public class InMemoryEntityCache implements EntityCache {
    * @param polarisMetaStoreManager the meta store manager implementation
    */
   public InMemoryEntityCache(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
+      @NonNull PolarisDiagnostics diagnostics,
+      @NonNull RealmConfig realmConfig,
+      @NonNull PolarisMetaStoreManager polarisMetaStoreManager) {
     this.diagnostics = diagnostics;
 
     // by name cache
@@ -115,7 +115,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @param cacheEntry cache entry to remove
    */
   @Override
-  public void removeCacheEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
+  public void removeCacheEntry(@NonNull ResolvedPolarisEntity cacheEntry) {
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
 
@@ -131,7 +131,7 @@ public class InMemoryEntityCache implements EntityCache {
    *
    * @param cacheEntry new cache entry
    */
-  private void cacheNewEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
+  private void cacheNewEntry(@NonNull ResolvedPolarisEntity cacheEntry) {
 
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
@@ -184,7 +184,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @param newCacheEntry new entry
    */
   private void replaceCacheEntry(
-      @Nullable ResolvedPolarisEntity oldCacheEntry, @Nonnull ResolvedPolarisEntity newCacheEntry) {
+      @Nullable ResolvedPolarisEntity oldCacheEntry, @NonNull ResolvedPolarisEntity newCacheEntry) {
 
     // need to remove old?
     if (oldCacheEntry != null) {
@@ -214,7 +214,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @return true if there is a mismatch
    */
   private boolean entityNameKeyMismatch(
-      @Nonnull PolarisBaseEntity entity, @Nonnull PolarisBaseEntity otherEntity) {
+      @NonNull PolarisBaseEntity entity, @NonNull PolarisBaseEntity otherEntity) {
     return entity.getId() != otherEntity.getId()
         || entity.getParentId() != otherEntity.getParentId()
         || !entity.getName().equals(otherEntity.getName())
@@ -238,7 +238,7 @@ public class InMemoryEntityCache implements EntityCache {
    * @return the cache entry or null if not found
    */
   public @Nullable ResolvedPolarisEntity getEntityByName(
-      @Nonnull EntityCacheByNameKey entityNameKey) {
+      @NonNull EntityCacheByNameKey entityNameKey) {
     return byName.get(entityNameKey);
   }
 
@@ -256,8 +256,8 @@ public class InMemoryEntityCache implements EntityCache {
    */
   @Override
   public @Nullable ResolvedPolarisEntity getAndRefreshIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entityToValidate,
+      @NonNull PolarisCallContext callContext,
+      @NonNull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion) {
     long entityCatalogId = entityToValidate.getCatalogId();
@@ -364,7 +364,7 @@ public class InMemoryEntityCache implements EntityCache {
    */
   @Override
   public @Nullable EntityCacheLookupResult getOrLoadEntityById(
-      @Nonnull PolarisCallContext callContext,
+      @NonNull PolarisCallContext callContext,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
@@ -419,7 +419,7 @@ public class InMemoryEntityCache implements EntityCache {
    */
   @Override
   public @Nullable EntityCacheLookupResult getOrLoadEntityByName(
-      @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
+      @NonNull PolarisCallContext callContext, @NonNull EntityCacheByNameKey entityNameKey) {
 
     // if it exists, we are set
     ResolvedPolarisEntity entry = this.getEntityByName(entityNameKey);
@@ -469,9 +469,9 @@ public class InMemoryEntityCache implements EntityCache {
 
   @Override
   public List<EntityCacheLookupResult> getOrLoadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityType entityType,
+      @NonNull List<PolarisEntityId> entityIds) {
     // use a map to collect cached entries to avoid concurrency problems in case a second thread is
     // trying to populate
     // the cache from a different snapshot
@@ -503,10 +503,10 @@ public class InMemoryEntityCache implements EntityCache {
   }
 
   private boolean isCacheStateValid(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities,
-      @Nonnull List<PolarisEntityId> entityIds,
-      @Nonnull Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities,
+      @NonNull List<PolarisEntityId> entityIds,
+      @NonNull Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc) {
     ChangeTrackingResult changeTrackingResult =
         polarisMetaStoreManager.loadEntitiesChangeTracking(callCtx, entityIds);
     List<PolarisEntityId> idsToLoad = new ArrayList<>();

@@ -212,7 +212,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
       while (true) {
         lock.lock();
         try {
-          invalidations.drainTo(batch, 100);
+          invalidations.drainTo(batch, batchSize);
           if (batch.isEmpty()) {
             LOGGER.trace("Done sending invalidations");
             triggered = false;

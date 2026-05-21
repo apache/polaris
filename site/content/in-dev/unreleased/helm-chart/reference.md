@@ -54,6 +54,7 @@ weight: 900
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
+| hostUsers | bool | `nil` | Specifies whether a pod should use the host's user namespace (Linux-only feature). See [User Namespaces](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/). |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
 | podDisruptionBudget.enabled | bool | `false` | Specifies whether a pod disruption budget should be created. |

@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -30,6 +28,8 @@ import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -55,7 +55,7 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+          public <T> @Nullable T getConfiguration(@NonNull RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key().equals(configName)) {
                 return (T) String.valueOf(c.defaultValue());
@@ -86,7 +86,7 @@ public class PolarisConfigurationStoreTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+          public <T> T getConfiguration(@NonNull RealmContext ctx, String configName) {
             return (T) "abc123";
           }
         };
@@ -157,7 +157,7 @@ public class PolarisConfigurationStoreTest {
           @SuppressWarnings("unchecked")
           @Override
           public <T> @Nullable T getConfiguration(
-              @Nonnull RealmContext realmContext, String configName) {
+              @NonNull RealmContext realmContext, String configName) {
             return (T) Map.of("key2", "config-value2").get(configName);
           }
         };
@@ -182,7 +182,7 @@ public class PolarisConfigurationStoreTest {
           @SuppressWarnings("unchecked")
           @Override
           public <T> @Nullable T getConfiguration(
-              @Nonnull RealmContext realmContext, String configName) {
+              @NonNull RealmContext realmContext, String configName) {
             return (T) Map.of("key3", "config-value3").get(configName);
           }
         };

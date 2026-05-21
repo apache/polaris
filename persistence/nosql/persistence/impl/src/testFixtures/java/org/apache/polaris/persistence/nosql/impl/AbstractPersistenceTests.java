@@ -164,10 +164,12 @@ public abstract class AbstractPersistenceTests {
 
     soft.assertThat(existingRefNames).allSatisfy(refName -> persistence().fetchReference(refName));
 
-    var allRefNames =
+    var newRefNames =
         IntStream.range(numExisting, numRefs)
             .mapToObj(i -> refNamePrefix + "_all_" + i)
             .collect(Collectors.toSet());
+    var allRefNames = new HashSet<>(existingRefNames);
+    allRefNames.addAll(newRefNames);
 
     persistence().createReferencesSilent(allRefNames);
 
@@ -485,6 +487,44 @@ public abstract class AbstractPersistenceTests {
         .containsExactly(updatedObj);
     soft.assertThat(persistence().fetchMany(SimpleTestObj.class, objRef(obj.type(), obj.id(), 30)))
         .containsExactly(updatedObj);
+  }
+
+  @Test
+  public void fetchManyHugeObjectsWithWrongPartHints() {
+    var binaryLen = persistence().maxSerializedValueSize() + 1024;
+    var data1 = new byte[binaryLen];
+    var data2 = new byte[binaryLen];
+    ThreadLocalRandom.current().nextBytes(data1);
+    ThreadLocalRandom.current().nextBytes(data2);
+
+    var obj1 =
+        persistence()
+            .write(
+                SimpleTestObj.builder()
+                    .id(persistence().generateId())
+                    .numParts(0)
+                    .binary(data1)
+                    .build(),
+                SimpleTestObj.class);
+    var obj2 =
+        persistence()
+            .write(
+                SimpleTestObj.builder()
+                    .id(persistence().generateId())
+                    .numParts(0)
+                    .binary(data2)
+                    .build(),
+                SimpleTestObj.class);
+
+    soft.assertThat(obj1.numParts()).isGreaterThan(1);
+    soft.assertThat(obj2.numParts()).isGreaterThan(1);
+    soft.assertThat(
+            persistence()
+                .fetchMany(
+                    SimpleTestObj.class,
+                    objRef(obj1.type(), obj1.id(), 0),
+                    objRef(obj2.type(), obj2.id(), 0)))
+        .containsExactly(obj1, obj2);
   }
 
   @Test

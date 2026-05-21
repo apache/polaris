@@ -19,7 +19,6 @@
 
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -28,6 +27,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.jspecify.annotations.NonNull;
 
 public class StorageCredentialsVendor {
 
@@ -67,13 +67,13 @@ public class StorageCredentialsVendor {
    *     in a future release.
    */
   @Deprecated(forRemoval = true)
-  @Nonnull
+  @NonNull
   public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisEntity entity,
+      @NonNull PolarisEntity entity,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     return getSubscopedCredsForEntity(
         entity,
@@ -103,15 +103,15 @@ public class StorageCredentialsVendor {
    *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
    */
-  @Nonnull
+  @NonNull
   public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisEntity entity,
+      @NonNull PolarisEntity entity,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @NonNull CredentialVendingContext credentialVendingContext) {
     return polarisCredentialVendor.getSubscopedCredsForEntity(
         callContext.getPolarisCallContext(),
         entity.getCatalogId(),

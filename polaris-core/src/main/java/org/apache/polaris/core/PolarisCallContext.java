@@ -18,13 +18,14 @@
  */
 package org.apache.polaris.core;
 
-import jakarta.annotation.Nonnull;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
+import org.jspecify.annotations.NonNull;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
@@ -45,16 +46,16 @@ public class PolarisCallContext implements CallContext {
   @SuppressWarnings("removal")
   @Deprecated(forRemoval = true)
   public PolarisCallContext(
-      @Nonnull RealmContext realmContext,
-      @Nonnull BasePersistence metaStore,
-      @Nonnull org.apache.polaris.core.config.PolarisConfigurationStore configurationStore) {
+      @NonNull RealmContext realmContext,
+      @NonNull BasePersistence metaStore,
+      @NonNull PolarisConfigurationStore configurationStore) {
     this(realmContext, metaStore, configurationStore::getConfiguration);
   }
 
   public PolarisCallContext(
-      @Nonnull RealmContext realmContext,
-      @Nonnull BasePersistence metaStore,
-      @Nonnull RealmConfigurationSource configurationSource) {
+      @NonNull RealmContext realmContext,
+      @NonNull BasePersistence metaStore,
+      @NonNull RealmConfigurationSource configurationSource) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.configurationSource = configurationSource;
@@ -62,7 +63,7 @@ public class PolarisCallContext implements CallContext {
   }
 
   public PolarisCallContext(
-      @Nonnull RealmContext realmContext, @Nonnull BasePersistence metaStore) {
+      @NonNull RealmContext realmContext, @NonNull BasePersistence metaStore) {
     this(realmContext, metaStore, RealmConfigurationSource.EMPTY_CONFIG);
   }
 

@@ -19,9 +19,9 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /** A resource binding containing a primary target and optional secondary. */
 @PolarisImmutable
@@ -35,8 +35,7 @@ public interface AuthorizationTargetBinding {
   }
 
   /** Returns the primary target securable for the binding, if any. */
-  @Nullable
-  PolarisSecurable getTarget();
+  @Nullable PolarisSecurable getTarget();
 
   /**
    * Returns the optional secondary securable associated with the target.
@@ -52,8 +51,7 @@ public interface AuthorizationTargetBinding {
    *       policy).
    * </ul>
    */
-  @Nullable
-  PolarisSecurable getSecondary();
+  @Nullable PolarisSecurable getSecondary();
 
   @Value.Check
   default void validate() {

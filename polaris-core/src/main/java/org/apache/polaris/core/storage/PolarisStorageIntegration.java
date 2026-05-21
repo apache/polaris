@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -67,13 +67,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @return An enum map including the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
-      @Nonnull RealmConfig realmConfig,
+      @NonNull RealmConfig realmConfig,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedWriteLocations,
+      @NonNull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext);
+      @NonNull CredentialVendingContext credentialVendingContext);
 
   /**
    * Validate access for the provided operation actions and locations.
@@ -106,13 +106,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * }
    * </pre>
    */
-  @Nonnull
+  @NonNull
   public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateAccessToLocations(
-          @Nonnull RealmConfig realmConfig,
-          @Nonnull T storageConfig,
-          @Nonnull Set<PolarisStorageActions> actions,
-          @Nonnull Set<String> locations);
+          @NonNull RealmConfig realmConfig,
+          @NonNull T storageConfig,
+          @NonNull Set<PolarisStorageActions> actions,
+          @NonNull Set<String> locations);
 
   /**
    * Result of calling {@link #validateAccessToLocations(RealmConfig,
