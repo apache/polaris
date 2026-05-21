@@ -326,15 +326,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
         metadataFileLocation);
 
-    // Throw an exception if this table already exists in the catalog.
     boolean tableExists = tableExists(identifier);
     if (!overwrite && tableExists) {
       throw alreadyExistsExceptionForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
+    if (overwrite && !tableExists) {
+      throw new NoSuchTableException("Table does not exist: %s", identifier);
+    }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
-    if (tableExists) {
+    if (overwrite) {
       return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
     } else {
       return registerNewTable(identifier, metadataFileLocation, locationDir);
@@ -352,6 +354,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw new IllegalStateException(
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
+
+    validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
+
     FileIO fileIO =
         loadFileIOForTableLike(
             identifier,
@@ -362,6 +367,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
     TableMetadata metadata = TableMetadataParser.read(metadataFile);
+    validateMetadataFileInTableDir(identifier, metadata);
     ops.commit(null, metadata);
 
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
@@ -408,9 +414,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     IcebergTableLikeEntity existingEntity = IcebergTableLikeEntity.of(rawEntity);
-    if (existingEntity == null) {
-      throw new NoSuchTableException("Table does not exist: %s", identifier);
-    }
 
     Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
     IcebergTableLikeEntity updatedEntity =
