@@ -24,7 +24,7 @@ weight: 100
 ---
 
 {{< alert warning "Preview Feature" >}}
-**OPA integration is currently an preview feature** and may undergo breaking changes in future versions. Use with caution in production environments.
+**OPA integration is currently a preview feature** and may undergo breaking changes in future versions. Use with caution in production environments.
 {{< /alert >}}
 
 This page describes how to integrate Apache Polaris with [Open Policy Agent (OPA)](https://www.openpolicyagent.org/) for external authorization.
