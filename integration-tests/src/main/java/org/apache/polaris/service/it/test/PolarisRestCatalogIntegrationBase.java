@@ -986,9 +986,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       assertThat(((BaseTable) loaded).operations().current().metadataFileLocation())
           .isEqualTo(newMetadataLocation);
 
-      // Clean up the test metadata files
+      // Clean up the old metadata file
       resolvingFileIO.deleteFile(currentMetadataLocation);
-      resolvingFileIO.deleteFile(newMetadataLocation);
     }
   }
 
