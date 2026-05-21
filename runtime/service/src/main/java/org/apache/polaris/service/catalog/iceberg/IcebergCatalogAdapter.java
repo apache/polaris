@@ -370,7 +370,9 @@ public class IcebergCatalogAdapter
       String prefix,
       TableIdentifier tableIdentifier) {
     return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
-        ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
+        ? Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier))
         : Optional.empty();
   }
 
@@ -548,7 +550,9 @@ public class IcebergCatalogAdapter
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     Optional<String> refreshEndpoint =
-        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
+        Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
