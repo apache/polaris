@@ -218,7 +218,7 @@ External Catalog Federation: Bearer Token Options:
 External Catalog Federation: AWS SigV4 Options:
   --catalog-role-arn CATALOG_ROLE_ARN                                  The AWS IAM role ARN assumed by Polaris when signing requests
   --catalog-role-session-name CATALOG_ROLE_SESSION_NAME                The role session name to be used by the SigV4 protocol for signing requests
-  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish a AWS trust relationship
+  --catalog-external-id CATALOG_EXTERNAL_ID                            An optional external ID used to establish an AWS trust relationship
   --catalog-signing-region CATALOG_SIGNING_REGION                      Region to be used by the SigV4 protocol for signing requests
   --catalog-signing-name CATALOG_SIGNING_NAME                          The service name to be used by the SigV4 protocol for signing requests
 ```
