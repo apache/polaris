@@ -19,13 +19,13 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.jspecify.annotations.NonNull;
 
 /** Full authorization request containing the subject and one or more authorization intents. */
 public record AuthorizationRequest(
-    @Nonnull PolarisPrincipal principal, @Nonnull List<AuthorizationIntent> intents) {
+    @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
   public AuthorizationRequest {
     Preconditions.checkNotNull(principal, "principal must be non-null");
     Preconditions.checkNotNull(intents, "intents must be non-null");
@@ -35,30 +35,30 @@ public record AuthorizationRequest(
   }
 
   public static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal, @Nonnull AuthorizationIntent intent) {
+      @NonNull PolarisPrincipal principal, @NonNull AuthorizationIntent intent) {
     return new AuthorizationRequest(principal, List.of(intent));
   }
 
   public static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal, @Nonnull List<AuthorizationIntent> intents) {
+      @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
     return new AuthorizationRequest(principal, intents);
   }
 
   public static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal, @Nonnull PolarisAuthorizableOperation operation) {
+      @NonNull PolarisPrincipal principal, @NonNull PolarisAuthorizableOperation operation) {
     return of(principal, AuthorizationIntent.of(operation));
   }
 
   public static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull PolarisSecurable target) {
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizableOperation operation,
+      @NonNull PolarisSecurable target) {
     return of(principal, AuthorizationIntent.of(operation, target));
   }
 
   public static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation operation,
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizableOperation operation,
       PolarisSecurable target,
       PolarisSecurable secondary) {
     return of(principal, AuthorizationIntent.of(operation, target, secondary));
