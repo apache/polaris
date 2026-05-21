@@ -29,7 +29,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
  *   <li>is not null or empty;
  *   <li>is not {@code .} or {@code ..};
  *   <li>does not contain ISO control characters (U+0000–U+001F or U+007F–U+009F);
- *   <li>does not contain any of: {@code / \ : * ? " < > | #};
+ *   <li>does not contain any of: {@code / \ : * ? " < > | # + `};
  *   <li>does not start or end with whitespace.
  * </ul>
  */
@@ -39,10 +39,10 @@ public final class EntityNameValidator {
 
   /**
    * Characters forbidden in entity names beyond control characters and leading/trailing whitespace.
-   * Covers characters rejected or strongly discouraged by S3, GCS, Azure, and Windows filesystem
-   * semantics.
+   * Covers characters rejected or strongly discouraged by S3, GCS, Azure, Windows filesystem
+   * semantics, URL encoding, and shell/template/SQL quoting.
    */
-  private static final String FORBIDDEN_CHARS = "/\\:*?\"<>|#";
+  private static final String FORBIDDEN_CHARS = "/\\:*?\"<>|#+`";
 
   /** Validates a single entity name (table, view, namespace level, ...). */
   public static void validateName(String name) {

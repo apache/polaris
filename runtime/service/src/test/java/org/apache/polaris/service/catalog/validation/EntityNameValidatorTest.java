@@ -42,7 +42,6 @@ class EntityNameValidatorTest {
         "with.dot",
         "café",
         "日本語",
-        "a+b",
         "percent%20encoded",
       })
   void validateNameAccepts(String name) {
@@ -101,6 +100,8 @@ class EntityNameValidatorTest {
         "grea>ter",
         "pi|pe",
         "ha#sh",
+        "plu+s",
+        "back`tick",
       })
   void validateNameRejectsForbiddenChars(String name) {
     assertThatThrownBy(() -> EntityNameValidator.validateName(name))
