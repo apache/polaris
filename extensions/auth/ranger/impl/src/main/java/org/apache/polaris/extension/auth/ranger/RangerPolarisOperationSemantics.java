@@ -209,6 +209,9 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.CREATE_VIEW,
         new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_VIEW,
+        new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LOAD_VIEW,
         new RangerPolarisOperationSemantics(
             toSet(VIEW_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
