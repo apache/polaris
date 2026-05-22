@@ -935,7 +935,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
         return null;
       }
       if (state != VALUE_STATE_UNMATERIALIZED && state != VALUE_STATE_PRESENT) {
-        return materializedContent(state);
+        return uncheckedCast(state);
       }
       var c = serializer.deserialize(serializedThreadSafe().limit(endOffset).position(valueOffset));
       contentState = c == null ? VALUE_STATE_NULL : c;
@@ -968,17 +968,17 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     @Nullable
     private V materializedContent() {
-      return materializedContent(contentState);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Nullable
-    private V materializedContent(Object state) {
+      var state = contentState;
       if (state == VALUE_STATE_UNMATERIALIZED
           || state == VALUE_STATE_NULL
           || state == VALUE_STATE_PRESENT) {
         return null;
       }
+      return uncheckedCast(state);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <V> V uncheckedCast(Object state) {
       return (V) state;
     }
   }
