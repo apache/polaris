@@ -595,7 +595,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
         for (var el : elements) {
           ByteBuffer keyBuf = null;
           if (isLazyElementImpl(el)) {
-            var lazyEl = (LazyIndexElement) el;
+            var lazyEl = (LazyIndexElement<V>) el;
             // The purpose of this 'if'-branch is to determine whether it can serialize the
             // 'IndexKey' by _not_ fully materializing the `IndexKey`. This is possible if (and
             // only if!) the current and the previous element are `LazyStoreIndexElement`s, where
@@ -686,8 +686,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     var first = true;
     var previousKeyLen = 0;
-    LazyIndexElement predecessor = null;
-    LazyIndexElement previous = null;
+    LazyIndexElement<V> predecessor = null;
+    LazyIndexElement<V> previous = null;
 
     while (serialized.remaining() > 0) {
       var strip = first ? 0 : readVarInt(serialized);
@@ -710,8 +710,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
       // It has no predecessor that would be needed to re-construct (aka materialize) the full key.
       var elementPredecessor = prefixLen > 0 ? predecessor : null;
       var element =
-          new LazyIndexElement(
-              elementPredecessor, previous, keyOffset, prefixLen, valueOffset, endOffset);
+          new LazyIndexElement<V>(
+              this, elementPredecessor, previous, keyOffset, prefixLen, valueOffset, endOffset);
       if (elementPredecessor == null) {
         predecessor = element;
       } else if (predecessor.prefixLen > prefixLen) {
@@ -735,8 +735,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
    * prefixLen==0}) can easily become very long in the order of many thousands "hops", which makes
    * key materialization overly expensive.
    */
-  private LazyIndexElement cutPredecessor(
-      LazyIndexElement predecessor, int prefixLen, LazyIndexElement previous) {
+  private LazyIndexElement<V> cutPredecessor(
+      LazyIndexElement<V> predecessor, int prefixLen, LazyIndexElement<V> previous) {
     if (predecessor != null) {
       if (predecessor.prefixLen < prefixLen) {
         // If the current element's prefixLen is higher, let the current element's predecessor point
@@ -756,7 +756,9 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return predecessor;
   }
 
-  private final class LazyIndexElement extends AbstractIndexElement<V> {
+  private static final class LazyIndexElement<V> extends AbstractIndexElement<V> {
+    final IndexImpl<V> idx;
+
     /**
      * Points to the predecessor (in index order) that has a required part of the index-key needed
      * to deserialize. In other words, if multiple index-elements have the same {@code prefixLen},
@@ -776,13 +778,13 @@ final class IndexImpl<V> implements IndexSpi<V> {
      *  IndexElement #6 { prefixLen = 3, key = "bbcaaa", predecessor = #5 }
      * </pre></code>
      */
-    final LazyIndexElement predecessor;
+    final LazyIndexElement<V> predecessor;
 
     /**
      * The previous element in the order of deserialization. This is needed later during
      * serialization.
      */
-    final LazyIndexElement previous;
+    final LazyIndexElement<V> previous;
 
     /** Number of bytes for this element's key that are held by its predecessor(s). */
     final int prefixLen;
@@ -813,12 +815,14 @@ final class IndexImpl<V> implements IndexSpi<V> {
     private static final Object VALUE_STATE_PRESENT = new Object();
 
     LazyIndexElement(
-        LazyIndexElement predecessor,
-        LazyIndexElement previous,
+        IndexImpl<V> idx,
+        LazyIndexElement<V> predecessor,
+        LazyIndexElement<V> previous,
         int keyOffset,
         int prefixLen,
         int valueOffset,
         int endOffset) {
+      this.idx = idx;
       this.predecessor = predecessor;
       this.previous = previous;
       this.keyOffset = keyOffset;
@@ -836,12 +840,12 @@ final class IndexImpl<V> implements IndexSpi<V> {
       }
 
       return keySerBuffer
-          .put(serializedNotThreadSafe().limit(valueOffset).position(keyOffset))
+          .put(idx.serializedNotThreadSafe().limit(valueOffset).position(keyOffset))
           .flip();
     }
 
     private IndexKey materializeKey() {
-      var serialized = serializedThreadSafe();
+      var serialized = idx.serializedThreadSafe();
 
       var suffixLen = valueOffset - keyOffset;
       var suffix = serialized.limit(valueOffset).position(keyOffset);
@@ -859,7 +863,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     private void prefixKey(
-        ByteBuffer serialized, LazyIndexElement me, int remaining, ByteBuffer keyBuffer) {
+        ByteBuffer serialized, LazyIndexElement<V> me, int remaining, ByteBuffer keyBuffer) {
       // This loop could be easier written using recursion. However, recursion is way more expensive
       // than this loop. Since this code is on a very hot code path, it is worth it.
       for (var e = me.predecessor; e != null; e = e.predecessor) {
@@ -891,7 +895,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     @Override
     public void serializeContent(IndexValueSerializer<V> ser, ByteBuffer target) {
-      target.put(serializedNotThreadSafe().limit(endOffset).position(valueOffset));
+      target.put(idx.serializedNotThreadSafe().limit(endOffset).position(valueOffset));
     }
 
     @Override
@@ -919,8 +923,8 @@ final class IndexImpl<V> implements IndexSpi<V> {
         return true;
       }
       var nonNull =
-          !serializer.isNullSerialized(
-              serializedThreadSafe().limit(endOffset).position(valueOffset));
+          !idx.serializer.isNullSerialized(
+              idx.serializedThreadSafe().limit(endOffset).position(valueOffset));
       if (contentState == VALUE_STATE_UNMATERIALIZED) {
         contentState = nonNull ? VALUE_STATE_PRESENT : VALUE_STATE_NULL;
       }
@@ -937,7 +941,9 @@ final class IndexImpl<V> implements IndexSpi<V> {
       if (state != VALUE_STATE_UNMATERIALIZED && state != VALUE_STATE_PRESENT) {
         return uncheckedCast(state);
       }
-      var c = serializer.deserialize(serializedThreadSafe().limit(endOffset).position(valueOffset));
+      var c =
+          idx.serializer.deserialize(
+              idx.serializedThreadSafe().limit(endOffset).position(valueOffset));
       contentState = c == null ? VALUE_STATE_NULL : c;
       return c;
     }
