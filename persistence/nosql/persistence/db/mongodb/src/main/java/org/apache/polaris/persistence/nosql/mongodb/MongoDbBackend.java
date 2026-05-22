@@ -175,6 +175,9 @@ final class MongoDbBackend implements Backend {
 
   @Override
   public void deleteRealms(Set<String> realmIds) {
+    if (!supportsRealmDeletion()) {
+      throw new UnsupportedOperationException("Realm deletion is not enabled for this backend");
+    }
     if (realmIds.isEmpty()) {
       return;
     }
