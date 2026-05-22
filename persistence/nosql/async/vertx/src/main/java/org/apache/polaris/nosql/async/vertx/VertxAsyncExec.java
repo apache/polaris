@@ -165,7 +165,7 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
     checkState(!shutdown, "Must not schedule new tasks after shutdown of pool %s", poolId);
     checkArgument(delay.compareTo(MAX_DURATION) < 0, "Delay is limited to %s", MAX_DURATION);
     var delayMillis = Math.max(delay.toMillis(), 0L);
-    var cf = new CancelableFuture<>(callable, delayMillis > 0L);
+    var cf = new CancelableFuture<>(callable);
     tasks.add(cf);
     taskTrackedHook(cf);
     cf.startScheduled(delayMillis);
@@ -222,16 +222,14 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
             runnable.run();
             return null;
           };
-      this.timerState.set(NotStarted.INSTANCE);
       this.periodic = true;
     }
 
     /** Constructor for one-shot tasks. */
-    CancelableFuture(Callable<R> callable, boolean delayed) {
+    CancelableFuture(Callable<R> callable) {
       this.runnable = null;
       this.callable = requireNonNull(callable, "Callable must not be null");
       this.periodic = false;
-      this.timerState.set(delayed ? NotStarted.INSTANCE : Canceled.INSTANCE);
     }
 
     void startScheduled(long delayMillis) {
@@ -271,9 +269,13 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
         runningFuture.set(f);
         VertxAsyncExec.this.taskSubmittedHook(f);
       } catch (Throwable e) {
+        cancelTimer();
+        runningFuture.set(null);
+        if (periodic) {
+          running.set(false);
+        }
         completable.completeExceptionally(e);
-        running.set(false);
-        cancel();
+        tasks.remove(this);
       }
     }
 
