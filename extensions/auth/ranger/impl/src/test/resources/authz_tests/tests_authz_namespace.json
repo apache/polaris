@@ -69,6 +69,10 @@
       "result":  { "isAllowed": true }
     },
     {
+      "request": { "authzOp": "REGISTER_VIEW", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
+      "result":  { "isAllowed": true }
+    },
+    {
       "request": { "authzOp": "LIST_VIEWS", "principal": { "name": "admin1" }, "target": "NAMESPACE:POLARIS/catalog1/namespace1" },
       "result":  { "isAllowed": true }
     },
