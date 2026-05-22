@@ -126,7 +126,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -2442,7 +2442,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateNamespaceRejectsInvalidName(String badName) {
     try (Response res =
         catalogApi
@@ -2454,7 +2454,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_create_table_bad");
     restCatalog.createNamespace(ns);
@@ -2476,7 +2476,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRegisterTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_register_bad");
     restCatalog.createNamespace(ns);
@@ -2500,7 +2500,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateViewRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_create_view_bad");
     restCatalog.createNamespace(ns);
@@ -2538,7 +2538,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRenameTableRejectsInvalidDestinationName(String badName) {
     Namespace ns = Namespace.of("ns_rename_table_bad");
     restCatalog.createNamespace(ns);
@@ -2562,7 +2562,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRenameViewRejectsInvalidDestinationName(String badName) {
     Namespace ns = Namespace.of("ns_rename_view_bad");
     restCatalog.createNamespace(ns);
@@ -2591,7 +2591,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateGenericTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_generic_bad");
     restCatalog.createNamespace(ns);
@@ -2615,6 +2615,31 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     } finally {
       genericTableApi.purge(currentCatalogName, ns);
     }
+  }
+
+  static Stream<String> invalidEntityNames() {
+    return Stream.of(
+        "bad/name",
+        "bad\\name",
+        "bad:name",
+        "bad*name",
+        "bad?name",
+        "bad\"name",
+        "bad<name",
+        "bad>name",
+        "bad|name",
+        "bad#name",
+        "bad\tname",
+        "bad\nname",
+        "bad\rname",
+        "bad\u0001name",
+        "bad\u001fname",
+        "bad\u007fname",
+        "bad\u009fname",
+        ".",
+        "..",
+        " leading",
+        "trailing ");
   }
 
   @Test

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junitpioneer.jupiter.params.IntRangeSource;
 
 class EntityNameValidatorTest {
 
@@ -41,7 +42,6 @@ class EntityNameValidatorTest {
         "with.dot",
         "café",
         "日本語",
-        "a+b",
         "percent%20encoded",
       })
   void validateNameAccepts(String name) {
@@ -53,7 +53,7 @@ class EntityNameValidatorTest {
   void validateNameRejectsNullOrEmpty(String name) {
     assertThatThrownBy(() -> EntityNameValidator.validateName(name))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("empty");
+        .hasMessageContaining("Entity name must not be empty");
   }
 
   @ParameterizedTest
@@ -61,15 +61,64 @@ class EntityNameValidatorTest {
   void validateNameRejectsSlash(String name) {
     assertThatThrownBy(() -> EntityNameValidator.validateName(name))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("'/'");
+        .hasMessageContaining("Entity name must not contain '/'");
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {" lead", "trail ", " both ", "\ttab", "line\n", " ", "\t", "\n"})
+  @ValueSource(strings = {" lead", "trail ", " both ", " "})
   void validateNameRejectsSurroundingWhitespace(String name) {
     assertThatThrownBy(() -> EntityNameValidator.validateName(name))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("whitespace");
+        .hasMessageContaining("Entity name must not have leading or trailing whitespace");
+  }
+
+  @ParameterizedTest
+  @IntRangeSource(from = 0x00, to = 0x1F)
+  void validateNameRejectsControlC0Characters(int codePoint) {
+    assertThatThrownBy(() -> EntityNameValidator.validateName("name" + (char) codePoint))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Entity name must not contain control characters (U+%04X): name\\u%04X",
+            codePoint, codePoint);
+  }
+
+  @ParameterizedTest
+  @IntRangeSource(from = 0x7F, to = 0x9F)
+  void validateNameRejectsControlC1Characters(int codePoint) {
+    assertThatThrownBy(() -> EntityNameValidator.validateName("name" + (char) codePoint))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(
+            "Entity name must not contain control characters (U+%04X): name\\u%04X",
+            codePoint, codePoint);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "back\\slash",
+        "co:lon",
+        "as*terisk",
+        "ques?tion",
+        "quo\"te",
+        "les<s",
+        "grea>ter",
+        "pi|pe",
+        "ha#sh",
+        "plu+s",
+        "back`tick",
+      })
+  void validateNameRejectsForbiddenChars(String name) {
+    assertThatThrownBy(() -> EntityNameValidator.validateName(name))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Entity name must not contain '");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {".", ".."})
+  void validateNameRejectsDotOrDotDot(String name) {
+    assertThatThrownBy(() -> EntityNameValidator.validateName(name))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Entity name must not be '.' or '..'");
   }
 
   @Test
@@ -90,21 +139,21 @@ class EntityNameValidatorTest {
     assertThatThrownBy(
             () -> EntityNameValidator.validateNamespace(Namespace.of("ns1", "bad/level")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("'/'");
+        .hasMessageContaining("Entity name must not contain '/'");
   }
 
   @Test
   void validateNamespaceRejectsEmptyLevel() {
     assertThatThrownBy(() -> EntityNameValidator.validateNamespace(Namespace.of("ns1", "")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("empty");
+        .hasMessageContaining("Entity name must not be empty");
   }
 
   @Test
   void validateNamespaceRejectsLevelWithSurroundingWhitespace() {
     assertThatThrownBy(() -> EntityNameValidator.validateNamespace(Namespace.of("ns1", " bad ")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("whitespace");
+        .hasMessageContaining("Entity name must not have leading or trailing whitespace");
   }
 
   @Test
@@ -123,7 +172,7 @@ class EntityNameValidatorTest {
                 EntityNameValidator.validateIdentifier(
                     TableIdentifier.of(Namespace.of("ns1", "bad/level"), "table")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("'/'");
+        .hasMessageContaining("Entity name must not contain '/'");
   }
 
   @Test
@@ -133,6 +182,6 @@ class EntityNameValidatorTest {
                 EntityNameValidator.validateIdentifier(
                     TableIdentifier.of(Namespace.of("ns1"), " bad ")))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("whitespace");
+        .hasMessageContaining("Entity name must not have leading or trailing whitespace");
   }
 }

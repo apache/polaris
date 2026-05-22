@@ -159,6 +159,8 @@ dependencies {
 
   testImplementation(libs.awaitility)
 
+  testImplementation(libs.junit.pioneer)
+
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:testcontainers-postgresql")
