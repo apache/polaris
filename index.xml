@@ -3828,21 +3828,18 @@ plus a Polaris Server pre-configured to that MinIO instance.&lt;/p&gt;</descript
 &lt;h1 id="apache-polaris---project-chat-bylaws" id="apache-polaris---project-chat-bylaws"&gt;Apache Polaris - Project Chat Bylaws&lt;a class="heading-anchor" href="#apache-polaris---project-chat-bylaws" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h1&gt;
 &lt;p&gt;Apache Polaris is a top level project at the Apache Software Foundation.&lt;/p&gt;</description></item><item><title>Entities</title><link>https://polaris.apache.org/in-dev/unreleased/entities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/entities/</guid><description>&lt;p&gt;This page documents various entities that can be managed in Apache Polaris.&lt;/p&gt;
-&lt;h2 id="catalog" id="catalog"&gt;Catalog&lt;a class="heading-anchor" href="#catalog" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;h2 id="entity-name-constraints" id="entity-name-constraints"&gt;Entity name constraints&lt;a class="heading-anchor" href="#entity-name-constraints" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
-&lt;p&gt;A catalog is a top-level entity in Polaris that may contain other entities like &lt;a href="#namespace"&gt;namespaces&lt;/a&gt; and &lt;a href="#table"&gt;tables&lt;/a&gt;. These map directly to &lt;a href="https://iceberg.apache.org/terms/#catalog"&gt;Apache Iceberg catalogs&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see &lt;a href="https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml"&gt;the CreateCatalogRequest OpenAPI&lt;/a&gt;.&lt;/p&gt;
-&lt;div class="alert alert-warning"&gt;&lt;p class="alert-heading"&gt;
- ⚠️ Warning&lt;/p&gt;
- Catalog properties are client-visible configuration values. Polaris returns them to authenticated
-catalog clients through the Iceberg REST &lt;code&gt;/config&lt;/code&gt; response. Use catalog properties only for
-non-sensitive client configuration. Do not store passwords, tokens, access keys, or other secrets
-in catalog properties.
-&lt;/div&gt;
-
-&lt;h3 id="storage-type" id="storage-type"&gt;Storage Type&lt;a class="heading-anchor" href="#storage-type" aria-label="Anchor"&gt;🔗&lt;/a&gt;
-&lt;/h3&gt;
-&lt;p&gt;All catalogs in Polaris are associated with a &lt;em&gt;storage type&lt;/em&gt;. Valid Storage Types are &lt;code&gt;S3&lt;/code&gt;, &lt;code&gt;Azure&lt;/code&gt;, and &lt;code&gt;GCS&lt;/code&gt;. The &lt;code&gt;FILE&lt;/code&gt; type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.&lt;/p&gt;</description></item><item><title>Entities</title><link>https://polaris.apache.org/releases/0.9.0/entities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/entities/</guid><description>&lt;p&gt;This page documents various entities that can be managed in Apache Polaris (Incubating).&lt;/p&gt;
+&lt;p&gt;The REST layer enforces the following rules for entity names (namespace levels, table names, view names, and generic table names). Names that violate these rules are rejected with HTTP 400.&lt;/p&gt;
+&lt;p&gt;A valid entity name:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;is not empty;&lt;/li&gt;
+&lt;li&gt;is not &lt;code&gt;.&lt;/code&gt; or &lt;code&gt;..&lt;/code&gt;;&lt;/li&gt;
+&lt;li&gt;does not contain ISO control characters (U+0000–U+001F or U+007F–U+009F);&lt;/li&gt;
+&lt;li&gt;does not contain any of the following characters: &lt;code&gt;/:*?&amp;quot;&amp;lt;&amp;gt;|#+`&lt;/code&gt;;&lt;/li&gt;
+&lt;li&gt;does not start or end with whitespace.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;These constraints apply to &lt;strong&gt;create&lt;/strong&gt;, &lt;strong&gt;register&lt;/strong&gt;, and &lt;strong&gt;rename&lt;/strong&gt; operations. Existing entities whose names pre-date this validation are not affected by read or update operations.&lt;/p&gt;</description></item><item><title>Entities</title><link>https://polaris.apache.org/releases/0.9.0/entities/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/releases/0.9.0/entities/</guid><description>&lt;p&gt;This page documents various entities that can be managed in Apache Polaris (Incubating).&lt;/p&gt;
 &lt;h2 id="catalog" id="catalog"&gt;Catalog&lt;a class="heading-anchor" href="#catalog" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h2&gt;
 &lt;p&gt;A catalog is a top-level entity in Polaris that may contain other entities like &lt;a href="#namespace"&gt;namespaces&lt;/a&gt; and &lt;a href="#table"&gt;tables&lt;/a&gt;. These map directly to &lt;a href="https://iceberg.apache.org/concepts/catalog/"&gt;Apache Iceberg catalogs&lt;/a&gt;.&lt;/p&gt;
