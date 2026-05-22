@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
@@ -643,9 +644,6 @@ final class IndexImpl<V> implements IndexSpi<V> {
     return target;
   }
 
-  // IntelliJ warns "Condition 'el.getClass() == LazyStoreIndexElement.class' is always 'false'",
-  // which is a false positive (see below as well).
-  @SuppressWarnings("ConstantValue")
   private boolean isLazyElementImpl(InternalIndexElement<V> el) {
     return el.getClass() == LazyIndexElement.class;
   }
@@ -810,6 +808,11 @@ final class IndexImpl<V> implements IndexSpi<V> {
      */
     private volatile Object contentState = VALUE_STATE_UNMATERIALIZED;
 
+    @SuppressWarnings("rawtypes")
+    private static final AtomicReferenceFieldUpdater<LazyIndexElement, Object> CONTENT_STATE =
+        AtomicReferenceFieldUpdater.newUpdater(
+            LazyIndexElement.class, Object.class, "contentState");
+
     private static final Object VALUE_STATE_UNMATERIALIZED = new Object();
     private static final Object VALUE_STATE_NULL = new Object();
     private static final Object VALUE_STATE_PRESENT = new Object();
@@ -915,7 +918,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     @Override
     public boolean hasValue() {
-      var state = contentState;
+      var state = CONTENT_STATE.get(this);
       if (state == VALUE_STATE_NULL) {
         return false;
       }
@@ -925,16 +928,15 @@ final class IndexImpl<V> implements IndexSpi<V> {
       var nonNull =
           !idx.serializer.isNullSerialized(
               idx.serializedThreadSafe().limit(endOffset).position(valueOffset));
-      if (contentState == VALUE_STATE_UNMATERIALIZED) {
-        contentState = nonNull ? VALUE_STATE_PRESENT : VALUE_STATE_NULL;
-      }
+      CONTENT_STATE.compareAndSet(
+          this, VALUE_STATE_UNMATERIALIZED, nonNull ? VALUE_STATE_PRESENT : VALUE_STATE_NULL);
       return nonNull;
     }
 
     @Override
     @Nullable
     public V valueNullable() {
-      var state = contentState;
+      var state = CONTENT_STATE.get(this);
       if (state == VALUE_STATE_NULL) {
         return null;
       }
@@ -944,7 +946,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
       var c =
           idx.serializer.deserialize(
               idx.serializedThreadSafe().limit(endOffset).position(valueOffset));
-      contentState = c == null ? VALUE_STATE_NULL : c;
+      CONTENT_STATE.set(this, c == null ? VALUE_STATE_NULL : c);
       return c;
     }
 
@@ -974,7 +976,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     @Nullable
     private V materializedContent() {
-      var state = contentState;
+      var state = CONTENT_STATE.get(this);
       if (state == VALUE_STATE_UNMATERIALIZED
           || state == VALUE_STATE_NULL
           || state == VALUE_STATE_PRESENT) {
