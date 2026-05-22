@@ -281,66 +281,18 @@ The human author owns the contribution.
 ## Security issues
 
 Before reporting or fixing security issues, read
-[`SECURITY-THREAT-MODEL.md`](SECURITY-THREAT-MODEL.md). Use it to determine
-whether a finding crosses a Polaris security boundary, which actor can exploit it,
-what protected asset is affected, and whether the issue is a Polaris
-vulnerability, a deployment responsibility, a dependency issue, or a false
-positive.
-
-Use [`SECURITY.md`](SECURITY.md) and the public
+[`SECURITY-THREAT-MODEL.md`](SECURITY-THREAT-MODEL.md) to determine whether a
+finding is a Polaris vulnerability, a deployment responsibility, a dependency
+issue, or a false positive. Use [`SECURITY.md`](SECURITY.md) and the public
 [security reporting page](https://polaris.apache.org/community/security-report/)
-for reporting process, disclosure handling, and where suspected vulnerabilities
-should be sent. The public security reporting page also lists previously
-published advisories and CVEs; treat those as public historical examples of issue
-classes, not as substitutes for the threat model's boundaries and invariants.
+for reporting process and disclosure handling.
 
-For dependency-related findings, check whether the vulnerable behavior is
-reachable through Polaris, whether it affects a Polaris security boundary or
-protected asset, and whether the upstream project's security policy or disclosure
-process applies.
-
-For packaging, optional-feature, or custom-build findings, identify the exact
-source revision, selected modules, enabled Gradle properties, optional
-extensions, packaging format, and deployment-relevant configuration before
-assessing reachability, supported status, severity, or whether the issue belongs
-to Polaris or downstream integration code.
-
-For findings in related Polaris tools, including tools from `apache/polaris-tools`,
-use the tool-specific threat model and agent guidance in that repository where
-available. A finding in a related tool is not automatically a Polaris server
-vulnerability.
-
-For findings involving storage locations, credential vending, properties,
-configuration, tokens, credential reset, token exchange, externally configured
-endpoints, or existence checks, classify the protected asset and trust boundary
-using `SECURITY-THREAT-MODEL.md` before deciding whether the behavior is a
-Polaris vulnerability, deployment responsibility, upstream issue, or false
-positive.
-
-For findings involving persistence, authentication, authorization, storage, or
-extension variants, identify the concrete backend, authentication mode,
-authorization model, policy service, storage provider, and deployment profile
-before deciding reachability or severity. Do not assume behavior in JDBC,
-in-memory, NoSQL, internal RBAC, OIDC, OPA, Ranger, or mixed deployments is
-identical, and do not combine assumptions from mutually exclusive variants.
-
-Report security-relevant documentation issues separately from vulnerabilities
-when unclear docs, examples, defaults, or missing warnings could reasonably lead
-users to unsafe deployment, credential handling, authorization, storage,
-integration, upgrade, or operational choices.
-
-Use ASF security guidance for process and classification; do not infer advisory
-or CVE status from `SECURITY-THREAT-MODEL.md` alone.
-
-When reporting potential findings, label ASF severity, proof status, and
-CVE/advisory status as non-authoritative triage estimates.
+ASF severity, advisory status, and CVE candidacy are non-authoritative triage
+estimates. Do not infer them from `SECURITY-THREAT-MODEL.md` alone.
 
 Do not treat a test as proof of a vulnerability unless it demonstrates that the
 stated actor can cross a real trust boundary without already-authorized access,
 privileged fixtures, mocked trust decisions, or protected information.
-
-Avoid over-reporting findings that are only security-adjacent and lack a
-realistic path to impact or realistic user misunderstanding.
 
 Do not include private vulnerability details, exploit payloads, reporter names,
 private mailing-list content, secrets, or non-public infrastructure details in
