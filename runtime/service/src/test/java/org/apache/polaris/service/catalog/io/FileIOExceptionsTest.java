@@ -57,6 +57,9 @@ public class FileIOExceptionsTest {
 
   private static final String catalog = "test-catalog";
 
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private static TestServices services;
   private static MeasuredFileIOFactory ioFactory;
 
@@ -109,7 +112,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
-                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
@@ -134,7 +137,7 @@ public class FileIOExceptionsTest {
                 "ns1",
                 request,
                 null,
-                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
     res.close();
@@ -148,7 +151,7 @@ public class FileIOExceptionsTest {
                 catalog,
                 "ns1",
                 "t1",
-                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
+                IDEMPOTENCY_KEY,
                 false,
                 services.realmContext(),
                 services.securityContext());

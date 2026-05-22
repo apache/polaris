@@ -62,6 +62,10 @@ public class PolarisS3InteroperabilityTest {
           "true",
           "SUPPORTED_CATALOG_STORAGE_TYPES",
           List.of("FILE", "S3"));
+
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private final TestServices services;
 
   private static String makeNamespaceLocation(String catalogName, String namespace, String scheme) {
@@ -135,7 +139,7 @@ public class PolarisS3InteroperabilityTest {
             .createNamespace(
                 catalogName,
                 createNamespaceRequest,
-                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -167,7 +171,7 @@ public class PolarisS3InteroperabilityTest {
                 namespace,
                 createTableRequest,
                 null,
-                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
