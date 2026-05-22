@@ -953,7 +953,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     @Override
     public String toString() {
       var k = key;
-      var c = materializedContent();
+      var c = contentIfMaterialized();
       if (k != null && c != null) {
         return super.toString();
       }
@@ -975,7 +975,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Nullable
-    private V materializedContent() {
+    private V contentIfMaterialized() {
       var state = CONTENT_STATE.get(this);
       if (state == VALUE_STATE_UNMATERIALIZED
           || state == VALUE_STATE_NULL
