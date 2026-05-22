@@ -77,7 +77,9 @@ class EntityNameValidatorTest {
   void validateNameRejectsControlC0Characters(int codePoint) {
     assertThatThrownBy(() -> EntityNameValidator.validateName("name" + (char) codePoint))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Entity name must not contain control characters");
+        .hasMessageContaining(
+            "Entity name must not contain control characters (U+%04X): name\\u%04X",
+            codePoint, codePoint);
   }
 
   @ParameterizedTest
@@ -85,7 +87,9 @@ class EntityNameValidatorTest {
   void validateNameRejectsControlC1Characters(int codePoint) {
     assertThatThrownBy(() -> EntityNameValidator.validateName("name" + (char) codePoint))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Entity name must not contain control characters");
+        .hasMessageContaining(
+            "Entity name must not contain control characters (U+%04X): name\\u%04X",
+            codePoint, codePoint);
   }
 
   @ParameterizedTest

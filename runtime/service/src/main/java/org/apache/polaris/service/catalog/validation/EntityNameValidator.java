@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.validation;
 
+import java.util.regex.Pattern;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 
@@ -44,6 +45,8 @@ public final class EntityNameValidator {
    */
   private static final String FORBIDDEN_CHARS = "/\\:*?\"<>|#+`";
 
+  private static final Pattern CONTROL_CHARS = Pattern.compile("\\p{C}");
+
   /** Validates a single entity name (table, view, namespace level, ...). */
   public static void validateName(String name) {
     if (name == null || name.isEmpty()) {
@@ -57,7 +60,8 @@ public final class EntityNameValidator {
       if (Character.isISOControl(c)) {
         throw new IllegalArgumentException(
             String.format(
-                "Entity name must not contain control characters (U+%04X): %s", (int) c, name));
+                "Entity name must not contain control characters (U+%04X): %s",
+                (int) c, sanitizeForMessage(name)));
       }
       if (FORBIDDEN_CHARS.indexOf(c) >= 0) {
         throw new IllegalArgumentException("Entity name must not contain '" + c + "': " + name);
@@ -79,5 +83,11 @@ public final class EntityNameValidator {
   public static void validateIdentifier(TableIdentifier identifier) {
     validateNamespace(identifier.namespace());
     validateName(identifier.name());
+  }
+
+  private static String sanitizeForMessage(String name) {
+    return CONTROL_CHARS
+        .matcher(name)
+        .replaceAll(m -> String.format("\\\\u%04X", (int) m.group().charAt(0)));
   }
 }

@@ -38,7 +38,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
     - Names consisting solely of `.` or `..`
     - Names containing control (invisible) characters
     - Names with leading or trailing whitespace
-    - Names containing any of these characters: `/\:*?"<>|#`
+    - Names containing any of these characters: <code>/\:*?"<>|#+`</code>
 
 ### New Features
 - Added `SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL` feature flag for AWS credential vending. Operators can now configure an ordered list of fields (`realm`, `catalog`, `namespace`, `table`, `principal`) to compose structured STS role session names (e.g. `p-acme-hr_catalog-employee-etl_writer`). Session names are sanitized and proportionally truncated to the AWS 64-character limit. When unset, existing `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` behaviour is preserved.
