@@ -70,12 +70,14 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -112,6 +114,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -183,6 +186,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
           .add(Endpoint.V1_RENAME_VIEW)
+          .add(Endpoint.V1_REGISTER_VIEW)
           .build();
 
   protected abstract PolarisDiagnostics diagnostics();
@@ -1256,6 +1260,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return catalogHandlerUtils().createView(viewCatalog, namespace, request);
   }
 
+  public LoadViewResponse registerView(Namespace namespace, RegisterViewRequest request) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_VIEW;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.name()));
+
+    return catalogHandlerUtils().registerView(viewCatalog, namespace, request);
+  }
+
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
@@ -1436,10 +1448,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
-    String prefix = prefixParser().catalogNameToPrefix(catalogName());
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
-        .withOverrides(ImmutableMap.of("prefix", prefix))
+        .withOverrides(
+            ImmutableMap.of(
+                "prefix",
+                prefixParser().catalogNameToPrefix(catalogName()),
+                // Polaris does not handle custom namespace separators;
+                // always communicate the default namespace separator to clients.
+                RESTCatalogProperties.NAMESPACE_SEPARATOR,
+                NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
         .withEndpoints(
             ImmutableList.<Endpoint>builder()
                 .addAll(DEFAULT_ENDPOINTS)

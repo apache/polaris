@@ -44,6 +44,7 @@ public enum PolarisAuthorizableOperation {
   COMMIT_TRANSACTION,
   LIST_VIEWS,
   CREATE_VIEW,
+  REGISTER_VIEW,
   LOAD_VIEW,
   REPLACE_VIEW,
   DROP_VIEW,

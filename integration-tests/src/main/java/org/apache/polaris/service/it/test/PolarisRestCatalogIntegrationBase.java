@@ -97,6 +97,7 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -1669,7 +1670,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
     try {
-      String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+      String ns =
+          NamespaceUtils.joinNamespace(
+              tableIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           genericTableApi
               .request(
@@ -1750,7 +1753,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            tableIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         genericTableApi
             .request(
@@ -2454,12 +2459,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace ns = Namespace.of("ns_create_table_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/tables",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(Entity.json(Map.of("name", badName, "schema", SCHEMA)))) {
         assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
         assertThat(res.readEntity(String.class)).contains("Entity name");
@@ -2475,12 +2481,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace ns = Namespace.of("ns_register_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/register",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       Map.of("name", badName, "metadata-location", "file:/tmp/nowhere.json")))) {
@@ -2498,7 +2505,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace ns = Namespace.of("ns_create_view_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       Map<String, Object> viewVersion =
           Map.of(
               "version-id",
@@ -2517,7 +2525,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/views",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       Map.of("name", badName, "schema", SCHEMA, "view-version", viewVersion)))) {
@@ -2588,12 +2596,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Namespace ns = Namespace.of("ns_generic_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           genericTableApi
               .request(
                   "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       CreateGenericTableRequest.builder()
