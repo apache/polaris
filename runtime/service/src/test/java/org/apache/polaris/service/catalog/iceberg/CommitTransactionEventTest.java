@@ -56,6 +56,9 @@ public class CommitTransactionEventTest {
   private static final String catalog = "test-catalog";
   private static final String propertyName = "custom-property-1";
 
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private String catalogLocation;
 
   @BeforeEach
@@ -183,7 +186,7 @@ public class CommitTransactionEventTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -204,7 +207,7 @@ public class CommitTransactionEventTest {
             namespace,
             createTableRequest,
             null,
-            new UUID(0L, 0L) /* TODO UUID v7 */,
+            IDEMPOTENCY_KEY,
             services.realmContext(),
             services.securityContext());
   }
@@ -243,7 +246,7 @@ public class CommitTransactionEventTest {
           .commitTransaction(
               catalog,
               generateCommitTransactionRequest(shouldFail, table1Name, table2Name),
-              new UUID(0L, 0L) /* TODO UUID v7 */,
+              IDEMPOTENCY_KEY,
               testServices.realmContext(),
               testServices.securityContext());
     } catch (Exception ignored) {

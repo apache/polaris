@@ -71,6 +71,9 @@ public class IcebergAllowedLocationTest {
               ImmutableSQLViewRepresentation.builder().sql(VIEW_QUERY).dialect("spark").build())
           .build();
 
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private String getTableName() {
     return "table_" + UUID.randomUUID();
   }
@@ -102,7 +105,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
-                    new UUID(0L, 0L) /* TODO UUID v7 */,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -132,7 +135,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
 
@@ -169,7 +172,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     "vended-credentials",
-                    new UUID(0L, 0L) /* TODO UUID v7 */,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -200,7 +203,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -236,7 +239,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
-                    new UUID(0L, 0L) /* TODO UUID v7 */,
+                    IDEMPOTENCY_KEY,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -268,7 +271,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -465,7 +468,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext());
     assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -540,7 +543,7 @@ public class IcebergAllowedLocationTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());

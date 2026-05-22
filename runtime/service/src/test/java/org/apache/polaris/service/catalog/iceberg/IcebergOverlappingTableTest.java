@@ -59,6 +59,9 @@ public class IcebergOverlappingTableTest {
   private static final String namespace = "ns";
   private static final String catalog = "test-catalog";
 
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
+
   private String getTableName() {
     return "table_" + UUID.randomUUID();
   }
@@ -79,7 +82,7 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       return response.getStatus();
@@ -127,7 +130,7 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       return response.getStatus();
@@ -151,7 +154,7 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       if (response.getStatus() != Response.Status.OK.getStatusCode()) {
@@ -202,7 +205,7 @@ public class IcebergOverlappingTableTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -546,7 +549,7 @@ public class IcebergOverlappingTableTest {
                         namespace,
                         request,
                         null,
-                        new UUID(0L, 0L) /* TODO UUID v7 */,
+                        IDEMPOTENCY_KEY,
                         services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(AlreadyExistsException.class);
@@ -592,7 +595,7 @@ public class IcebergOverlappingTableTest {
                         namespace,
                         request2,
                         null,
-                        new UUID(0L, 0L) /* TODO UUID v7 */,
+                        IDEMPOTENCY_KEY,
                         services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(ForbiddenException.class);
@@ -637,7 +640,7 @@ public class IcebergOverlappingTableTest {
                 namespace,
                 request,
                 null,
-                new UUID(0L, 0L) /* TODO UUID v7 */,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
