@@ -420,6 +420,15 @@ If set to true, resolve AWS credentials based on the storageName field of the st
 
 ---
 
+##### `polaris.features."SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL"`
+
+Ordered list of fields to include in the session name during credential vending. Applies to systems that support session-based sub-scoped credentials (e.g. S3 with STS). Fields are joined with '-' and prefixed with 'p-' by default. The result is truncated to 64 characters (the AWS STS session name limit); budget unused by a short field flows to subsequent fields. When empty (default), falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL behaviour. Supported fields: realm, catalog, namespace, table, principal Field order is significant: fields appear in the session name in the order listed. Changing the order changes the session name structure and will affect CloudTrail queries. To customise the prefix, include a 'prefix-X' token (e.g. 'prefix-myorg' sets the prefix to 'myorg-'). Defaults to 'p-'. Example: ["realm","catalog","table","principal"] produces session names like 'p-acme-hr_catalog-employee-etl_writer' (truncated to 64 chars). Note: enabling this flag may reduce credential cache reuse when context-specific fields (e.g. table, namespace) are included, since credentials are keyed partly on session name.
+
+- **Type:** `List<String>`
+- **Default:** `[]`
+
+---
+
 ##### `polaris.features."SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL"`
 
 A comma-separated list of fields to include as session tags in AWS STS AssumeRole requests for credential vending. These tags appear in CloudTrail events, enabling correlation between catalog operations and S3 data access. An empty list (default) disables session tags entirely. Requires the IAM role trust policy to allow sts:TagSession action. Supported fields: realm, catalog, namespace, table, principal, roles, trace_id Note: each additional field may contribute to AWS STS packed policy size (max 2048 characters). Fields with long values (e.g. deeply nested namespaces) can cause STS policy size limit errors. Choose only the fields needed for your CloudTrail correlation requirements. WARNING: Including 'trace_id' effectively eliminates credential cache reuse because every request has a unique trace ID. This may significantly increase latency and STS API costs.

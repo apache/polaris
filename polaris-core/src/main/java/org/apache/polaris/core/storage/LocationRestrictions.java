@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,13 +53,13 @@ public class LocationRestrictions {
   private final String parentLocation;
 
   public LocationRestrictions(
-      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
+      @NonNull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
     this.allowedLocations = storageConfigurationInfo.getAllowedLocations();
     allowedLocations.forEach(storageConfigurationInfo::validatePrefixForStorageType);
     this.parentLocation = parentLocation;
   }
 
-  public LocationRestrictions(@Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo) {
+  public LocationRestrictions(@NonNull PolarisStorageConfigurationInfo storageConfigurationInfo) {
     this(storageConfigurationInfo, null);
   }
 

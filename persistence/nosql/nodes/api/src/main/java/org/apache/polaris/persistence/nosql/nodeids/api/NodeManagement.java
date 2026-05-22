@@ -38,9 +38,13 @@ public interface NodeManagement extends AutoCloseable {
    * Build a <em>new</em> and <em>independent</em> ID generator instance of a {@linkplain #lease()
    * leased node} using the given clock.
    *
+   * <p>Calling this method more than once for the same live lease can create multiple generators
+   * that emit overlapping Snowflake IDs. A lease must therefore back at most one long-lived ID
+   * generator instance.
+   *
    * <p>This function must only be called from {@link ApplicationScoped @ApplicationScoped} CDI
-   * producers providing the same {@link IdGenerator} for the lifetime of the given {@link Node},
-   * aka at most once for a {@link Node} instance.
+   * producers providing the same {@link IdGenerator} for the lifetime of the given {@link
+   * NodeLease}, aka at most once per lease.
    */
   IdGenerator buildIdGenerator(@NonNull NodeLease leasedNode);
 

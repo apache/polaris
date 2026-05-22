@@ -23,10 +23,16 @@ import sys
 from dataclasses import dataclass
 from typing import Optional
 from cmd import Cmd
-import readline
+
+try:
+    import readline
+except ImportError:
+    readline = None  # type: ignore[assignment]
+
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import (
     Commands,
+    Arguments,
     REPL_HISTORY_LENGTH,
     REPL_HISTORY_FILE,
 )
@@ -50,15 +56,20 @@ class ReplCommand(Command):
     """
 
     profile: Optional[str] = None
+    catalog: Optional[str] = None
 
     def validate(self) -> None:
         pass
 
     def execute(self, api: PolarisDefaultApi) -> None:
-        try:
-            PolarisRepl(api, profile=self.profile).cmdloop()
-        except KeyboardInterrupt:
-            sys.stdout.write("\nExiting REPL session.\n")
+        repl = PolarisRepl(api, profile=self.profile, catalog=self.catalog)
+        while True:
+            try:
+                repl.cmdloop()
+                break
+            except KeyboardInterrupt:
+                sys.stdout.write("\n")
+                repl.intro = ""
 
 
 class PolarisRepl(Cmd):
@@ -74,11 +85,16 @@ class PolarisRepl(Cmd):
         self,
         api: PolarisDefaultApi,
         profile: Optional[str] = None,
+        catalog: Optional[str] = None,
     ):
         super().__init__()
         self.api = api
+        self.catalog = catalog
         display_name = profile or urlparse(api.api_client.configuration.host).netloc
-        self.prompt = f"polaris@{display_name}> "
+        if catalog:
+            self.prompt = f"polaris@{display_name}/{catalog}> "
+        else:
+            self.prompt = f"polaris@{display_name}> "
         if readline is not None:
             try:
                 readline.read_history_file(REPL_HISTORY_FILE)
@@ -95,6 +111,12 @@ class PolarisRepl(Cmd):
             if options.command == Commands.REPL:
                 sys.stderr.write("Already in REPL session.\n")
                 return
+            if (
+                self.catalog
+                and hasattr(options, Arguments.CATALOG)
+                and getattr(options, Arguments.CATALOG) is None
+            ):
+                setattr(options, Arguments.CATALOG, self.catalog)
             command = Command.from_options(options)
             if isinstance(command, ProfilesCommand):
                 command.execute()
@@ -105,7 +127,7 @@ class PolarisRepl(Cmd):
         except KeyboardInterrupt:
             sys.stderr.write("Session interrupted. Type 'exit' to quit.\n")
         except ApiException as e:
-            PolarisCli._try_print_exception(e)
+            PolarisCli.print_api_exception(e)
         except CliError as e:
             sys.stderr.write(f"{e}\n")
         except NotImplementedError as e:

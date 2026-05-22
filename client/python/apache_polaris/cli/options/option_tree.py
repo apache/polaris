@@ -1252,6 +1252,9 @@ class OptionTree:
         return Option(
             Commands.REPL,
             hint="start an interactive REPL session",
+            args=[
+                Argument(Arguments.CATALOG, str, Hints.CATALOG),
+            ],
         )
 
     @staticmethod

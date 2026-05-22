@@ -1815,7 +1815,19 @@ polaris tables delete my_table --catalog my_catalog --namespace ns1
 
 ### REPL
 
-The `REPL` command is used to start an interactive REPL session for Polaris CLI.
+The `REPL` command starts an interactive REPL session for Polaris CLI allowing multiple commands to be executed without re-authenticating.
+
+Global authentication and connection options are bound at session start. When starting the REPL, a default catalog can be specified by using the `--catalog` flag. This catalog will be automatically used for all commands within the session that require a catalog, unless explicitly overridden.
+
+Command history is automatically saved to `~/.polaris/.polaris_repl_history`, and the number of entries can be configured via the `POLARIS_REPL_HISTORY_LENGTH` environment variable.
+
+Inside the REPL, use `help` to list commands, `exit` or `Ctrl-D` to quit, and `Ctrl-C` to clear the current line.
+
+##### Examples
+
+```
+polaris repl --catalog my_catalog
+```
 
 ## Examples
 

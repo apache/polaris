@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link

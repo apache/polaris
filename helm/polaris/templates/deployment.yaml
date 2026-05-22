@@ -64,6 +64,9 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ tpl .Values.priorityClassName  . | quote}}
       {{- end }}
+      {{- if (kindIs "bool" .Values.hostUsers) }}
+      hostUsers: {{ .Values.hostUsers }}
+      {{- end }}
       {{- if .Values.podSecurityContext }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}

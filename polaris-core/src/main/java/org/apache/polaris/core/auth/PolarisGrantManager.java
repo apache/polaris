@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** Manage grants for Polaris entities. */
 public interface PolarisGrantManager {
@@ -41,12 +41,11 @@ public interface PolarisGrantManager {
    * @return the grant record we created for this grant. Will return ENTITY_NOT_FOUND if the
    *     specified role couldn't be found. Should be retried in that case
    */
-  @Nonnull
-  PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull PrivilegeResult grantUsageOnRoleToGrantee(
+      @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @Nonnull PolarisEntityCore role,
-      @Nonnull PolarisEntityCore grantee);
+      @NonNull PolarisEntityCore role,
+      @NonNull PolarisEntityCore grantee);
 
   /**
    * Revoke usage on a role (a catalog or a principal role) from a grantee (e.g. a principal role or
@@ -61,12 +60,11 @@ public interface PolarisGrantManager {
    *     Should be retried in that case. Will return GRANT_NOT_FOUND if the grant to revoke cannot
    *     be found
    */
-  @Nonnull
-  PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisCallContext callCtx,
+  @NonNull PrivilegeResult revokeUsageOnRoleFromGrantee(
+      @NonNull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @Nonnull PolarisEntityCore role,
-      @Nonnull PolarisEntityCore grantee);
+      @NonNull PolarisEntityCore role,
+      @NonNull PolarisEntityCore grantee);
 
   /**
    * Grant a privilege on a catalog securable to a grantee.
@@ -80,13 +78,12 @@ public interface PolarisGrantManager {
    * @return the grant record we created for this grant. Will return ENTITY_NOT_FOUND if the
    *     specified role couldn't be found. Should be retried in that case
    */
-  @Nonnull
-  PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore grantee,
+  @NonNull PrivilegeResult grantPrivilegeOnSecurableToRole(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore securable,
-      @Nonnull PolarisPrivilege privilege);
+      @NonNull PolarisEntityCore securable,
+      @NonNull PolarisPrivilege privilege);
 
   /**
    * Revoke a privilege on a catalog securable from a grantee.
@@ -101,13 +98,12 @@ public interface PolarisGrantManager {
    *     Should be retried in that case. Will return GRANT_NOT_FOUND if the grant to revoke cannot
    *     be found
    */
-  @Nonnull
-  PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore grantee,
+  @NonNull PrivilegeResult revokePrivilegeOnSecurableFromRole(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore securable,
-      @Nonnull PolarisPrivilege privilege);
+      @NonNull PolarisEntityCore securable,
+      @NonNull PolarisPrivilege privilege);
 
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
@@ -117,9 +113,8 @@ public interface PolarisGrantManager {
    * @return the list of grants and the version of the grant records. We will return
    *     ENTITY_NOT_FOUND if the securable cannot be found
    */
-  @Nonnull
-  LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable);
+  @NonNull LoadGrantsResult loadGrantsOnSecurable(
+      @NonNull PolarisCallContext callCtx, PolarisEntityCore securable);
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
@@ -130,7 +125,6 @@ public interface PolarisGrantManager {
    * @return the list of grants and the version of the grant records. We will return NULL if the
    *     grantee does not exist
    */
-  @Nonnull
-  LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee);
+  @NonNull LoadGrantsResult loadGrantsToGrantee(
+      @NonNull PolarisCallContext callCtx, PolarisEntityCore grantee);
 }

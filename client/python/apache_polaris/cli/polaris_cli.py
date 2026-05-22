@@ -79,7 +79,7 @@ class PolarisCli:
         # (expected user/config failures with their own exit codes), NotImplementedError
         # (abstract Command misuse), then generic bugs.
         except ApiException as e:
-            PolarisCli._try_print_exception(e)
+            PolarisCli.print_api_exception(e)
             sys.exit(CLI_ERROR_EXIT_CODE)
         except CliError as e:
             sys.stderr.write(f"{e}{os.linesep}")
@@ -114,7 +114,7 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def _try_print_exception(e: ApiException) -> None:
+    def print_api_exception(e: ApiException) -> None:
         try:
             error = json.loads(e.body)["error"]
             sys.stderr.write(

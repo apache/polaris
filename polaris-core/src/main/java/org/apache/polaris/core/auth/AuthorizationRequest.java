@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Authorization request inputs for pre-authorization and core authorization.
@@ -35,9 +35,9 @@ import org.immutables.value.Value;
 @PolarisImmutable
 public interface AuthorizationRequest {
   static AuthorizationRequest of(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull List<AuthorizationTargetBinding> targetBindings) {
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizableOperation operation,
+      @NonNull List<AuthorizationTargetBinding> targetBindings) {
     return ImmutableAuthorizationRequest.builder()
         .principal(principal)
         .operation(operation)
@@ -46,23 +46,20 @@ public interface AuthorizationRequest {
   }
 
   /** Returns the principal requesting authorization. */
-  @Nonnull
-  PolarisPrincipal getPrincipal();
+  @NonNull PolarisPrincipal getPrincipal();
 
   /** Returns the operation being authorized. */
-  @Nonnull
-  PolarisAuthorizableOperation getOperation();
+  @NonNull PolarisAuthorizableOperation getOperation();
 
   /** Returns the target/secondary target bindings. */
-  @Nonnull
-  List<AuthorizationTargetBinding> getTargetBindings();
+  @NonNull List<AuthorizationTargetBinding> getTargetBindings();
 
   /**
    * Returns the primary target securables, if any.
    *
    * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
-  @Nonnull
+  @NonNull
   @Value.Derived
   default List<PolarisSecurable> getTargets() {
     return getTargetBindings().stream()
@@ -76,7 +73,7 @@ public interface AuthorizationRequest {
    *
    * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
    */
-  @Nonnull
+  @NonNull
   @Value.Derived
   default List<PolarisSecurable> getSecondaries() {
     return getTargetBindings().stream()
@@ -90,7 +87,7 @@ public interface AuthorizationRequest {
    *
    * <p>Includes the operation, principal name, formatted targets, and formatted secondaries.
    */
-  @Nonnull
+  @NonNull
   default String formatForAuthorizationMessage() {
     return String.format(
         "operation=%s principal=%s targets=%s secondaries=%s",

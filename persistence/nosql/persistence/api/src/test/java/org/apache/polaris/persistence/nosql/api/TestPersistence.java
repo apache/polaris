@@ -31,6 +31,7 @@ import org.apache.polaris.persistence.nosql.api.obj.SimpleTestObj;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junitpioneer.jupiter.cartesian.CartesianTest;
 import org.junitpioneer.jupiter.cartesian.CartesianTest.Values;
@@ -79,5 +80,23 @@ public class TestPersistence {
         .hasSize(totalSize)
         .map(SimpleTestObj::id)
         .containsExactlyElementsOf(objRefs.stream().map(ObjRef::id).toList());
+  }
+
+  @Test
+  public void bucketizedBulkFetchSizeMustBePositive() {
+    soft.assertThatIllegalStateException()
+        .isThrownBy(
+            () ->
+                PersistenceParams.BuildablePersistenceParams.builder()
+                    .bucketizedBulkFetchSize(0)
+                    .build())
+        .withMessage("bucketizedBulkFetchSize must be positive");
+    soft.assertThatIllegalStateException()
+        .isThrownBy(
+            () ->
+                PersistenceParams.BuildablePersistenceParams.builder()
+                    .bucketizedBulkFetchSize(-1)
+                    .build())
+        .withMessage("bucketizedBulkFetchSize must be positive");
   }
 }
