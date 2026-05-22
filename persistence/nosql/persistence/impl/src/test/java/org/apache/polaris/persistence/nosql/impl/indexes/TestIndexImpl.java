@@ -1062,7 +1062,7 @@ public class TestIndexImpl {
     var deserialized = deserializeStoreIndex(index.serialize(), serializer);
     var element = deserialized.getElement(key1);
 
-    soft.assertThat(element.hasNonNullValue()).isFalse();
+    soft.assertThat(element.hasValue()).isFalse();
     soft.assertThat(nullProbeCalls).hasValue(1);
     soft.assertThat(deserializeCalls).hasValue(0);
 
@@ -1101,7 +1101,7 @@ public class TestIndexImpl {
                             }
                             for (var iter = 0; iter < 1_000; iter++) {
                               if ((iter & 1) == 0) {
-                                if (!element.hasNonNullValue()) {
+                                if (!element.hasValue()) {
                                   throw new AssertionError("Unexpected null-value state");
                                 }
                               } else if (!value1.equals(element.valueNullable())) {
@@ -1118,7 +1118,7 @@ public class TestIndexImpl {
       CompletableFuture.allOf(futures).get(30, TimeUnit.SECONDS);
     }
 
-    soft.assertThat(element.hasNonNullValue()).isTrue();
+    soft.assertThat(element.hasValue()).isTrue();
     soft.assertThat(element.valueNullable()).isEqualTo(value1);
   }
 

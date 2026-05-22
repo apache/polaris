@@ -47,7 +47,7 @@ interface InternalIndexElement<V> extends Index.Element<V> {
 
   int contentSerializedSize(IndexValueSerializer<V> ser);
 
-  boolean hasNonNullValue();
+  boolean hasValue();
 
   @Nullable V valueNullable();
 }

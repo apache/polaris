@@ -810,7 +810,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
 
     private static final Object VALUE_STATE_UNMATERIALIZED = new Object();
     private static final Object VALUE_STATE_NULL = new Object();
-    private static final Object VALUE_STATE_NON_NULL = new Object();
+    private static final Object VALUE_STATE_PRESENT = new Object();
 
     LazyIndexElement(
         LazyIndexElement predecessor,
@@ -910,7 +910,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     }
 
     @Override
-    public boolean hasNonNullValue() {
+    public boolean hasValue() {
       var state = contentState;
       if (state == VALUE_STATE_NULL) {
         return false;
@@ -922,7 +922,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
           !serializer.isNullSerialized(
               serializedThreadSafe().limit(endOffset).position(valueOffset));
       if (contentState == VALUE_STATE_UNMATERIALIZED) {
-        contentState = nonNull ? VALUE_STATE_NON_NULL : VALUE_STATE_NULL;
+        contentState = nonNull ? VALUE_STATE_PRESENT : VALUE_STATE_NULL;
       }
       return nonNull;
     }
@@ -934,7 +934,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
       if (state == VALUE_STATE_NULL) {
         return null;
       }
-      if (state != VALUE_STATE_UNMATERIALIZED && state != VALUE_STATE_NON_NULL) {
+      if (state != VALUE_STATE_UNMATERIALIZED && state != VALUE_STATE_PRESENT) {
         return materializedContent(state);
       }
       var c = serializer.deserialize(serializedThreadSafe().limit(endOffset).position(valueOffset));
@@ -976,7 +976,7 @@ final class IndexImpl<V> implements IndexSpi<V> {
     private V materializedContent(Object state) {
       if (state == VALUE_STATE_UNMATERIALIZED
           || state == VALUE_STATE_NULL
-          || state == VALUE_STATE_NON_NULL) {
+          || state == VALUE_STATE_PRESENT) {
         return null;
       }
       return (V) state;
