@@ -59,6 +59,7 @@ Global Options:
 10. setup
 11. find
 12. tables
+13. repl
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -76,6 +77,7 @@ polaris repair
 polaris setup apply setup-config.yaml
 polaris find some_table
 polaris tables list --catalog my_catalog --namespace ns1
+polaris repl
 ```
 
 ### Authentication
@@ -1809,6 +1811,22 @@ Command Options:
 
 ```
 polaris tables delete my_table --catalog my_catalog --namespace ns1
+```
+
+### REPL
+
+The `REPL` command starts an interactive REPL session for Polaris CLI allowing multiple commands to be executed without re-authenticating.
+
+Global authentication and connection options are bound at session start. When starting the REPL, a default catalog can be specified by using the `--catalog` flag. This catalog will be automatically used for all commands within the session that require a catalog, unless explicitly overridden.
+
+Command history is automatically saved to `~/.polaris/.polaris_repl_history`, and the number of entries can be configured via the `POLARIS_REPL_HISTORY_LENGTH` environment variable.
+
+Inside the REPL, use `help` to list commands, `exit` or `Ctrl-D` to quit, and `Ctrl-C` to clear the current line.
+
+##### Examples
+
+```
+polaris repl --catalog my_catalog
 ```
 
 ## Examples
