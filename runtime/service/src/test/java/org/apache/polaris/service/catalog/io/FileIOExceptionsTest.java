@@ -109,7 +109,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
@@ -134,7 +134,7 @@ public class FileIOExceptionsTest {
                 "ns1",
                 request,
                 null,
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext());
     res.close();
@@ -148,7 +148,7 @@ public class FileIOExceptionsTest {
                 catalog,
                 "ns1",
                 "t1",
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 false,
                 services.realmContext(),
                 services.securityContext());

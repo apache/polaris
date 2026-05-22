@@ -102,7 +102,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
-                    UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                    new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -132,7 +132,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext());
 
@@ -169,7 +169,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     "vended-credentials",
-                    UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                    new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -200,7 +200,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -236,7 +236,7 @@ public class IcebergAllowedLocationTest {
                     namespace,
                     createTableRequest,
                     null,
-                    UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                    new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                     services.realmContext(),
                     services.securityContext()));
   }
@@ -268,7 +268,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 "vended-credentials",
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertEquals(response.getStatus(), Response.Status.OK.getStatusCode());
@@ -465,7 +465,7 @@ public class IcebergAllowedLocationTest {
                 namespace,
                 createTableRequest,
                 null,
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext());
     assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -540,7 +540,7 @@ public class IcebergAllowedLocationTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());

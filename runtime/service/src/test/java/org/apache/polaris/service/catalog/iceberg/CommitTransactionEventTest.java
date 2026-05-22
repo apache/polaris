@@ -183,7 +183,7 @@ public class CommitTransactionEventTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
-                UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+                new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -204,7 +204,7 @@ public class CommitTransactionEventTest {
             namespace,
             createTableRequest,
             null,
-            UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+            new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
             services.realmContext(),
             services.securityContext());
   }
@@ -243,7 +243,7 @@ public class CommitTransactionEventTest {
           .commitTransaction(
               catalog,
               generateCommitTransactionRequest(shouldFail, table1Name, table2Name),
-              UUID.fromString("019e4ed5-5d0f-7d86-9376-d49379989fbc") /* UUID v7 */,
+              new UUID(116617318654508422L, -7820829973016961092L) /* UUID v7 */,
               testServices.realmContext(),
               testServices.securityContext());
     } catch (Exception ignored) {
