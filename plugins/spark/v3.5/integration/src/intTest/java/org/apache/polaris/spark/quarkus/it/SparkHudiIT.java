@@ -23,18 +23,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkHudiIT extends SparkIntegrationBase {
@@ -85,8 +82,8 @@ public class SparkHudiIT extends SparkIntegrationBase {
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
         .config("spark.kryo.registrator", "org.apache.spark.HoodieSparkKryoRegistrar")
-        // for intial integration test have disabled for now, to revisit enabling in future
         .config("hoodie.metadata.enable", "false")
+        .config("hoodie.embed.timeline.server", "false")
         .getOrCreate();
   }
 
@@ -102,14 +99,13 @@ public class SparkHudiIT extends SparkIntegrationBase {
   }
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
+  public void createDefaultResources() {
     spark.sparkContext().setLogLevel("INFO");
     defaultNs = generateName("hudi");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
+    tableRootDir = new File(warehouseDir).getPath() + File.separator + defaultNs;
   }
 
   @AfterEach

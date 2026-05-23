@@ -23,14 +23,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -42,7 +40,6 @@ import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 public class SparkDeltaIT extends SparkIntegrationBase {
@@ -76,14 +73,13 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
+  public void createDefaultResources() {
     spark.sparkContext().setLogLevel("WARN");
     defaultNs = generateName("delta");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
+    tableRootDir = new File(warehouseDir).getPath() + File.separator + defaultNs;
   }
 
   @AfterEach
@@ -272,5 +268,52 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     assertThat(results.get(2)).isEqualTo(new Object[] {"Bob", 25});
 
     sql("DROP TABLE %s", deltatb);
+  }
+
+  @Test
+  public void testMixedTableAndViews() {
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (col1 int, col2 String)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'a'), (2, 'b')", icebergTable);
+
+    String viewName = "icebergview";
+    sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
+
+    String deltaTable = "deltatb";
+    sql(
+        "CREATE TABLE %s (col1 int, col2 int) using delta location '%s'",
+        deltaTable, getTableLocation(deltaTable));
+    sql("INSERT INTO %s VALUES (1, 3), (2, 5), (11, 20)", deltaTable);
+
+    List<Object[]> joinResult =
+        sql(
+            "SELECT icebergtb.col1 as id, icebergtb.col2 as str_col, deltatb.col2 as int_col from icebergtb inner join deltatb on icebergtb.col1 = deltatb.col1 order by id");
+    assertThat(joinResult.get(0)).isEqualTo(new Object[] {1, "a", 3});
+    assertThat(joinResult.get(1)).isEqualTo(new Object[] {2, "b", 5});
+
+    List<Object[]> tables = sql("SHOW TABLES");
+    assertThat(tables.size()).isEqualTo(2);
+    assertThat(tables)
+        .contains(
+            new Object[] {defaultNs, icebergTable, false},
+            new Object[] {defaultNs, deltaTable, false});
+
+    List<Object[]> results = sql("SELECT * FROM %s ORDER BY col1", icebergTable);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {1, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {2, "b"});
+
+    results = sql("SELECT * FROM %s ORDER BY col1", viewName);
+    assertThat(results.size()).isEqualTo(2);
+    assertThat(results.get(0)).isEqualTo(new Object[] {3, "a"});
+    assertThat(results.get(1)).isEqualTo(new Object[] {4, "b"});
+
+    List<Object[]> views = sql("SHOW VIEWS");
+    assertThat(views.size()).isEqualTo(1);
+    assertThat(views).contains(new Object[] {defaultNs, viewName, false});
+
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP TABLE %s", deltaTable);
+    sql("DROP VIEW %s", viewName);
   }
 }
