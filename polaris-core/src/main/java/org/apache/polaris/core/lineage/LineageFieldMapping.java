@@ -18,15 +18,16 @@
  */
 package org.apache.polaris.core.lineage;
 
-import java.util.List;
 import java.util.Objects;
 
-/** Normalized response model for lineage queries. */
-public record LineageGraph(
-    LineageNode node, List<LineageNode> upstream, List<LineageNode> downstream) {
-  public LineageGraph {
-    Objects.requireNonNull(node, "node must be non-null");
-    upstream = List.copyOf(upstream);
-    downstream = List.copyOf(downstream);
+/** A source-to-target field mapping returned for column-granularity queries. */
+public record LineageFieldMapping(String sourceField, String targetField) {
+  public LineageFieldMapping {
+    Objects.requireNonNull(sourceField, "sourceField must be non-null");
+    Objects.requireNonNull(targetField, "targetField must be non-null");
+  }
+
+  public LineageFieldMapping(LineageColumnEdge edge) {
+    this(edge.source().field(), edge.target().field());
   }
 }
