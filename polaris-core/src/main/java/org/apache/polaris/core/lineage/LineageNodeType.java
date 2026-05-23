@@ -20,5 +20,6 @@ package org.apache.polaris.core.lineage;
 
 /** Node kinds surfaced by normalized lineage queries. */
 public enum LineageNodeType {
-  DATASET
+  DATASET,
+  COLUMN
 }

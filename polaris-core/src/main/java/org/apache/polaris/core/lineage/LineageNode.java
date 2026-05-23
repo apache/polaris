@@ -19,13 +19,37 @@
 package org.apache.polaris.core.lineage;
 
 import jakarta.annotation.Nullable;
+import java.util.List;
 import java.util.Objects;
 
 /** A node returned in a lineage query response. */
 public record LineageNode(
-    String id, LineageNodeType type, @Nullable LineageDataset dataset, boolean opaque) {
+    String id,
+    LineageNodeType type,
+    @Nullable LineageData data,
+    boolean opaque,
+    List<LineageFieldMapping> fieldMappings) {
   public LineageNode {
     Objects.requireNonNull(id, "id must be non-null");
     Objects.requireNonNull(type, "type must be non-null");
+    fieldMappings = List.copyOf(fieldMappings);
+  }
+
+  public LineageNode(String id, LineageNodeType type, @Nullable LineageData data, boolean opaque) {
+    this(id, type, data, opaque, List.of());
+  }
+
+  public LineageNode(
+      String id, LineageNodeType type, @Nullable LineageDataset dataset, boolean opaque) {
+    this(id, type, dataset == null ? null : new LineageData(dataset), opaque);
+  }
+
+  public LineageNode(
+      String id,
+      LineageNodeType type,
+      @Nullable LineageDataset dataset,
+      boolean opaque,
+      List<LineageFieldMapping> fieldMappings) {
+    this(id, type, dataset == null ? null : new LineageData(dataset), opaque, fieldMappings);
   }
 }
