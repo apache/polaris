@@ -70,7 +70,13 @@ dependencies {
   testImplementation(
     "org.apache.iceberg:iceberg-spark-runtime-4.0_${scalaVersion}:${icebergVersion}"
   )
-  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}")
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}") {
+    // exclude log4j dependencies
+    exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
+    exclude("org.apache.logging.log4j", "log4j-api")
+    exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.slf4j", "jul-to-slf4j")
+  }
   testImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
 }
 

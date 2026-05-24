@@ -156,7 +156,7 @@ spark.jars.packages org.apache.polaris:polaris-spark-4.0_$SCALA_VERSION:$POLARIS
 EOF
   else
     cat << EOF >> ${SPARK_CONF}
-spark.jars.packages org.apache.polaris:polaris-spark-4.0_$SCALA_VERSION:$POLARIS_VERSION,io.delta:delta-spark_${SCALA_VERSION}:3.2.1
+spark.jars.packages org.apache.polaris:polaris-spark-4.0_$SCALA_VERSION:$POLARIS_VERSION,io.delta:delta-spark_${SCALA_VERSION}:4.2.0
 EOF
   fi
 else
@@ -170,7 +170,7 @@ spark.jars.packages org.apache.hudi:hudi-spark4.0-bundle_${SCALA_VERSION}:1.1.1
 EOF
   else
     cat << EOF >> ${SPARK_CONF}
-spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
+spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:4.2.0
 EOF
   fi
 fi

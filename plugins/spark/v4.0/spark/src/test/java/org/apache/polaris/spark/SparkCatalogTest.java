@@ -50,14 +50,11 @@ import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableChange;
 import org.apache.spark.sql.connector.catalog.TableProvider;
-import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.connector.catalog.V1Table;
 import org.apache.spark.sql.connector.catalog.View;
-
 import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.catalog.ViewInfo;
 import org.apache.spark.sql.connector.expressions.Transform;
-
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.internal.SQLConf;
@@ -157,7 +154,6 @@ public class SparkCatalogTest {
     SessionState mockedSessionState = Mockito.mock(SessionState.class);
     SQLConf mockedSQLConf = Mockito.mock(SQLConf.class);
 
-    mockedStaticSparkSession.when(SparkSession::active).thenReturn(mockedSession);
     Mockito.when(mockedSession.conf()).thenReturn(mockedConfig);
     Mockito.when(mockedSession.sessionState()).thenReturn(mockedSessionState);
     Mockito.when(mockedSessionState.conf()).thenReturn(mockedSQLConf);

@@ -357,17 +357,15 @@ public class SparkCatalog
       String[] columnComments,
       Map<String, String> properties)
       throws NoSuchNamespaceException, NoSuchViewException {
-    ViewInfo viewInfo =
-        new ViewInfo(
-            ident,
-            sql,
-            currentCatalog,
-            currentNamespace,
-            schema,
-            queryColumnNames,
-            columnAliases,
-            columnComments,
-            properties);
-    return this.icebergsSparkCatalog.replaceView(viewInfo, false);
+    return this.icebergsSparkCatalog.replaceView(
+        ident,
+        sql,
+        currentCatalog,
+        currentNamespace,
+        schema,
+        queryColumnNames,
+        columnAliases,
+        columnComments,
+        properties);
   }
 }
