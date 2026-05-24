@@ -92,8 +92,6 @@ public class AuthorizationRequestTest {
             AuthorizationIntent.of(PolarisAuthorizableOperation.LIST_CATALOGS));
 
     assertThat(request.intents().get(0)).isInstanceOf(TargetlessAuthorizationIntent.class);
-    assertThat(request.intents().get(0).getTarget()).isNull();
-    assertThat(request.intents().get(0).getSecondary()).isNull();
   }
 
   @Test
@@ -113,8 +111,9 @@ public class AuthorizationRequestTest {
         AuthorizationIntent.of(PolarisAuthorizableOperation.GET_CATALOG, target, null);
 
     assertThat(intent).isInstanceOf(PairwiseTargetAuthorizationIntent.class);
-    assertThat(intent.getTarget()).isEqualTo(target);
-    assertThat(intent.getSecondary()).isNull();
+    PairwiseTargetAuthorizationIntent pairwiseIntent = (PairwiseTargetAuthorizationIntent) intent;
+    assertThat(pairwiseIntent.target()).isEqualTo(target);
+    assertThat(pairwiseIntent.secondary()).isNull();
   }
 
   @Test

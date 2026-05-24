@@ -778,21 +778,37 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
       List<PolarisResolvedPathWrapper> resolvedTargets;
-      PolarisSecurable target = intent.getTarget();
-      if (target == null) {
+      List<PolarisResolvedPathWrapper> resolvedSecondaries;
+      if (intent instanceof TargetlessAuthorizationIntent) {
         resolvedTargets =
             prependRootContainer
                 ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
                 : null;
-      } else {
+        resolvedSecondaries = null;
+      } else if (intent instanceof SingleTargetAuthorizationIntent singleTargetIntent) {
         resolvedTargets =
-            List.of(getResolvedSecurable(resolutionManifest, target, prependRootContainer));
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, singleTargetIntent.target(), prependRootContainer));
+        resolvedSecondaries = null;
+      } else if (intent instanceof PairwiseTargetAuthorizationIntent pairwiseIntent) {
+        resolvedTargets =
+            pairwiseIntent.target() == null
+                ? (prependRootContainer
+                    ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
+                    : null)
+                : List.of(
+                    getResolvedSecurable(
+                        resolutionManifest, pairwiseIntent.target(), prependRootContainer));
+        resolvedSecondaries =
+            semantics.secondaryPrivileges().isEmpty() || pairwiseIntent.secondary() == null
+                ? null
+                : List.of(
+                    getResolvedSecurable(
+                        resolutionManifest, pairwiseIntent.secondary(), prependRootContainer));
+      } else {
+        throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }
-      PolarisSecurable secondary = intent.getSecondary();
-      List<PolarisResolvedPathWrapper> resolvedSecondaries =
-          semantics.secondaryPrivileges().isEmpty() || secondary == null
-              ? null
-              : List.of(getResolvedSecurable(resolutionManifest, secondary, prependRootContainer));
       authorizeOrThrow(
           polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
@@ -802,11 +818,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {
       LOGGER.debug(
-          "Authorization denied for principalName {} operation {} targets {} secondaries {}",
+          "Authorization denied for principalName {} intent {}",
           polarisPrincipal.getName(),
-          intent.getOperation(),
-          intent.getTarget(),
-          intent.getSecondary(),
+          intent,
           e);
       return AuthorizationDecision.deny(e.getMessage());
     }

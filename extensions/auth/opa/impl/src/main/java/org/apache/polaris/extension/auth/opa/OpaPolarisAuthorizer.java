@@ -45,11 +45,14 @@ import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
+import org.apache.polaris.core.auth.PairwiseTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -119,19 +122,32 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   public AuthorizationDecision authorize(
       @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
     for (AuthorizationIntent intent : request.intents()) {
+      PolarisAuthorizableOperation operation = intent.getOperation();
+      List<ResourceEntity> targets;
+      List<ResourceEntity> secondaries;
+      switch (intent) {
+        case TargetlessAuthorizationIntent ignored -> {
+          targets = List.of();
+          secondaries = List.of();
+        }
+        case SingleTargetAuthorizationIntent singleTargetIntent -> {
+          targets = toResourceEntitiesFromSecurable(singleTargetIntent.target());
+          secondaries = List.of();
+        }
+        case PairwiseTargetAuthorizationIntent pairwiseTargetIntent -> {
+          targets = toResourceEntitiesFromSecurable(pairwiseTargetIntent.target());
+          secondaries = toResourceEntitiesFromSecurable(pairwiseTargetIntent.secondary());
+        }
+      }
       boolean allowed =
           queryOpa(
-              buildOpaAuthorizationInput(
-                  request.principal(),
-                  intent.getOperation(),
-                  toResourceEntitiesFromSecurable(intent.getTarget()),
-                  toResourceEntitiesFromSecurable(intent.getSecondary())));
+              buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
       if (!allowed) {
         return AuthorizationDecision.deny(
             "OPA denied authorization for principal="
                 + request.principal().getName()
                 + " operation="
-                + intent.getOperation());
+                + operation);
       }
     }
     return AuthorizationDecision.allow();
@@ -303,9 +319,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   private ImmutableResource buildResource(
       List<ResourceEntity> targets, List<ResourceEntity> secondaries) {
-    // Backward compatibility: keep the existing OPA input shape with separate target and
-    // secondary lists. Future work can align this with richer request shapes if OPA starts
-    // consuming pairwise authorization intent directly.
+    // Keep the existing OPA input shape by always emitting target and secondary lists, using
+    // empty lists when an intent does not carry that slot. Future work can revisit the payload
+    // shape if OPA starts consuming intent subtype distinctions directly.
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 

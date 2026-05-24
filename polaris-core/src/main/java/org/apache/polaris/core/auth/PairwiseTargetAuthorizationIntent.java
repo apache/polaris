@@ -45,14 +45,4 @@ public record PairwiseTargetAuthorizationIntent(
   public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
   }
-
-  @Override
-  public @Nullable PolarisSecurable getTarget() {
-    return target;
-  }
-
-  @Override
-  public @Nullable PolarisSecurable getSecondary() {
-    return secondary;
-  }
 }

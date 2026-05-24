@@ -20,7 +20,6 @@ package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 /** Authorization intent for operations with no explicit securable target. */
 public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperation operation)
@@ -32,15 +31,5 @@ public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperatio
   @Override
   public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
-  }
-
-  @Override
-  public @Nullable PolarisSecurable getTarget() {
-    return null;
-  }
-
-  @Override
-  public @Nullable PolarisSecurable getSecondary() {
-    return null;
   }
 }

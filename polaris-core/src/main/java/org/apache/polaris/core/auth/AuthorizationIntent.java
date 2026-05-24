@@ -45,16 +45,13 @@ public sealed interface AuthorizationIntent
 
   @NonNull PolarisAuthorizableOperation getOperation();
 
-  @Nullable PolarisSecurable getTarget();
-
-  @Nullable PolarisSecurable getSecondary();
-
   default boolean hasSecurableType(PolarisEntityType... types) {
-    if (getTarget() != null && containsType(getTarget(), types)) {
-      return true;
+    if (this instanceof SingleTargetAuthorizationIntent intent) {
+      return containsType(intent.target(), types);
     }
-    if (getSecondary() != null && containsType(getSecondary(), types)) {
-      return true;
+    if (this instanceof PairwiseTargetAuthorizationIntent intent) {
+      return (intent.target() != null && containsType(intent.target(), types))
+          || (intent.secondary() != null && containsType(intent.secondary(), types));
     }
     return false;
   }
