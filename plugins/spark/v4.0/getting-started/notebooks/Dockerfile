@@ -27,7 +27,8 @@ USER root
 RUN apt-get update -y && \
     apt-get install -y python3-venv && \
     mkdir -p /home/spark && \
-    chown -R spark /home/spark
+    chown -R spark /home/spark && \
+    usermod -d /home/spark spark
 
 USER spark
 
