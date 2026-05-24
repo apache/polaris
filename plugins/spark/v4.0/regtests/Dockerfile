@@ -26,12 +26,14 @@ ENV POLARIS_HOST=${POLARIS_HOST} \
 
 USER root
 
+# Spark 4.0 ubuntu image creates the spark user with HOME=/nonexistent, thus, we need to run usermod to assign the HOME
 RUN apt-get update && \
     apt-get install -y --no-install-recommends diffutils wget curl && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
     chown -R spark:spark /home/spark /tmp/polaris-regtests && \
-    chmod -R 777 /opt/spark/conf
+    chmod -R 777 /opt/spark/conf && \
+    usermod -d /home/spark spark
 
 WORKDIR /home/spark/polaris
 

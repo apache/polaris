@@ -24,6 +24,7 @@ ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
 
 USER root
 
+# Spark 4.0 ubuntu image creates the spark user with HOME=/nonexistent, thus, we need to run usermod to assign the HOME
 RUN apt-get update -y && \
     apt-get install -y python3-venv && \
     mkdir -p /home/spark && \

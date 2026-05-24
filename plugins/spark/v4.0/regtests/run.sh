@@ -155,9 +155,9 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
       # Run setup with appropriate table format
       if [ "${SPARK_SHELL_OPTION}" == "PACKAGE" ]; then
         # run the setup without jar configuration
-        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --tableFormat ${TABLE_FORMAT}
+        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --polarisVersion ${POLARIS_VERSION} --tableFormat ${TABLE_FORMAT}
       else
-        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --jar ${JAR_PATH} --tableFormat ${TABLE_FORMAT}
+        source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --polarisVersion ${POLARIS_VERSION} --jar ${JAR_PATH} --tableFormat ${TABLE_FORMAT}
       fi
 
       # run the test

@@ -75,6 +75,7 @@ The Polaris version is defined in the `versions.txt` file located in the root di
 Assume the following values:
 - `spark_version`: 3.5
 - `scala_version`: 2.12
+- `delta_version`: 3.3.1
 - `polaris_version`: 1.5.0-SNAPSHOT
 - `catalog-name`: `polaris`
 The Spark command would look like following:
