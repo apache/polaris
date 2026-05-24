@@ -24,16 +24,11 @@ plugins {
 }
 
 // get version information
-val sparkMajorVersion = "3.5"
+val sparkMajorVersion = "4.0"
 val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = libs.versions.iceberg.get()
-val spark35Version = libs.versions.spark35.get()
-val scalaLibraryVersion =
-  if (scalaVersion == "2.12") {
-    libs.versions.scala212.get()
-  } else {
-    libs.versions.scala213.get()
-  }
+val spark40Version = libs.versions.spark40.get()
+val scalaLibraryVersion = libs.versions.scala213.get()
 
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
@@ -41,6 +36,12 @@ dependencies {
     exclude(group = "org.antlr", module = "antlr4-runtime")
     exclude(group = "org.scala-lang", module = "scala-library")
     exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
+
+  // For test configurations, exclude jakarta.servlet-api from Quarkus BOM
+  // to allow Spark 4.0's version (5.0.0) which includes SingleThreadModel
+  testImplementation(platform(libs.quarkus.bom)) {
+    exclude(group = "jakarta.servlet", module = "jakarta.servlet-api")
   }
 
   implementation(project(":polaris-runtime-service"))
@@ -54,7 +55,7 @@ dependencies {
 
   testImplementation(project(":polaris-runtime-test-common"))
 
-  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}") {
     // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
     // enforced below to ensure the version compatibility
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -64,7 +65,7 @@ dependencies {
   }
 
   // Add spark-hive for Hudi integration - provides HiveExternalCatalog that Hudi needs
-  testRuntimeOnly("org.apache.spark:spark-hive_${scalaVersion}:${spark35Version}") {
+  testRuntimeOnly("org.apache.spark:spark-hive_${scalaVersion}:${spark40Version}") {
     // exclude log4j dependencies to match spark-sql exclusions
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
@@ -77,8 +78,8 @@ dependencies {
   // of spark-sql dependency
   testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.26.0")
 
-  testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
-  testImplementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1") {
+  testImplementation("io.delta:delta-spark_${scalaVersion}:4.2.0")
+  testImplementation("org.apache.hudi:hudi-spark4.0-bundle_${scalaVersion}:1.1.1") {
     // exclude log4j dependencies to match spark-sql exclusions
     // exclude log4j dependencies to match spark-sql exclusions and prevent version conflicts
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -95,7 +96,7 @@ dependencies {
 
   // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
   // manageable
-  // This matches what Spark 3.5 distribution provides (hive-exec-2.3.10-core.jar)
+  // This matches what Spark 4.0 distribution provides (hive-exec-2.3.10-core.jar)
   testImplementation("org.apache.hive:hive-exec:2.3.10:core") {
     // Exclude conflicting dependencies to use Spark's versions
     exclude("org.apache.hadoop", "*")
@@ -131,7 +132,14 @@ dependencies {
   testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
   testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime.spark35)
+  testImplementation(libs.antlr4.runtime.spark40)
+}
+
+// Force jakarta.servlet-api to 5.0.0 for Spark 4.0 compatibility
+// Spark 4.0 requires version 5.0.0 which includes SingleThreadModel
+// Quarkus BOM forces it to 6.x which removed SingleThreadModel
+configurations.named("intTestRuntimeClasspath") {
+  resolutionStrategy { force("jakarta.servlet:jakarta.servlet-api:5.0.0") }
 }
 
 tasks.named<Test>("intTest").configure {

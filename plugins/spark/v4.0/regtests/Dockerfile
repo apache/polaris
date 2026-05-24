@@ -17,8 +17,29 @@
 # under the License.
 #
 
-sparkVersions=3.5,4.0
+FROM docker.io/apache/spark:4.0.2-scala2.13-java17-ubuntu
 
-scalaVersions.3.5=2.12,2.13
+ARG POLARIS_HOST=polaris
 
-scalaVersions.4.0=2.13
+ENV POLARIS_HOST=${POLARIS_HOST} \
+    CURRENT_SCALA_VERSION=2.13
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends diffutils wget curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
+    chown -R spark:spark /home/spark /tmp/polaris-regtests && \
+    chmod -R 777 /opt/spark/conf
+
+WORKDIR /home/spark/polaris
+
+COPY --chown=spark:spark ./v4.0 /home/spark/polaris/v4.0
+
+# /home/spark/.../regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
+RUN chmod -R 777 /home/spark/polaris/v4.0/regtests
+
+USER spark
+
+ENTRYPOINT ["./v4.0/regtests/run.sh"]

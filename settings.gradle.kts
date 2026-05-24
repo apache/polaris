@@ -68,7 +68,9 @@ val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").ma
 val noSourceChecksProjects = mutableSetOf<String>()
 
 for (sparkVersion in sparkVersions) {
-  val scalaVersions = sparkScalaVersions["scalaVersions"].toString().split(",").map { it.trim() }
+  val scalaVersionsKey = "scalaVersions.${sparkVersion}"
+  val scalaVersionsStr = sparkScalaVersions[scalaVersionsKey].toString()
+  val scalaVersions = scalaVersionsStr.split(",").map { it.trim() }
   var first = true
   for (scalaVersion in scalaVersions) {
     val sparkArtifactId = "polaris-spark-${sparkVersion}_${scalaVersion}"
