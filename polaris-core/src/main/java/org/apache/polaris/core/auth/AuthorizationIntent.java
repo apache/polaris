@@ -45,16 +45,7 @@ public sealed interface AuthorizationIntent
 
   @NonNull PolarisAuthorizableOperation getOperation();
 
-  default boolean hasSecurableType(PolarisEntityType... types) {
-    if (this instanceof SingleTargetAuthorizationIntent intent) {
-      return containsType(intent.target(), types);
-    }
-    if (this instanceof PairwiseTargetAuthorizationIntent intent) {
-      return (intent.target() != null && containsType(intent.target(), types))
-          || (intent.secondary() != null && containsType(intent.secondary(), types));
-    }
-    return false;
-  }
+  boolean hasSecurableType(PolarisEntityType... types);
 
   static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
     PolarisEntityType entityType = securable.getLeaf().entityType();

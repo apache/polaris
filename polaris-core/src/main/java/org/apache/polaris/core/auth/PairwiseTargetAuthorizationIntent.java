@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -44,5 +45,11 @@ public record PairwiseTargetAuthorizationIntent(
   @Override
   public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
+  }
+
+  @Override
+  public boolean hasSecurableType(PolarisEntityType... types) {
+    return (target() != null && AuthorizationIntent.containsType(target(), types))
+        || (secondary() != null && AuthorizationIntent.containsType(secondary(), types));
   }
 }
