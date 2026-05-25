@@ -19,8 +19,8 @@
 package org.apache.polaris.service.lineage;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -62,28 +62,51 @@ public class DefaultLineageServiceTest {
   }
 
   @Test
-  void ingestThrowsWhenStaticConfigDisabled() {
+  void throwsWhenStaticConfigDisabled() {
     when(configuration.enabled()).thenReturn(false);
 
     assertThatThrownBy(() -> service.ingest(emptyIngestRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("polaris.lineage.enabled");
 
-    verify(persistence, never())
-        .ingest(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    assertThatThrownBy(() -> service.query(queryRequest()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("polaris.lineage.enabled");
+
+    verifyNoInteractions(persistence);
   }
 
   @Test
-  void queryThrowsWhenRealmFeatureDisabled() {
+  void throwsWhenRealmFeatureDisabled() {
     when(configuration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.ingest(emptyIngestRequest()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
 
     assertThatThrownBy(() -> service.query(queryRequest()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(FeatureConfiguration.ENABLE_LINEAGE.key());
 
-    verify(persistence, never())
-        .query(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    verifyNoInteractions(persistence);
+  }
+
+  @Test
+  void throwsWhenPersistenceDisabled() {
+    when(configuration.enabled()).thenReturn(true);
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
+    when(persistenceConfiguration.enabled()).thenReturn(false);
+
+    assertThatThrownBy(() -> service.ingest(emptyIngestRequest()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("polaris.lineage.persistence.enabled");
+
+    assertThatThrownBy(() -> service.query(queryRequest()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("polaris.lineage.persistence.enabled");
+
+    verifyNoInteractions(persistence);
   }
 
   @Test
