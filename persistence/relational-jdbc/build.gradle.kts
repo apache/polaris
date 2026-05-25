@@ -52,6 +52,7 @@ dependencies {
 
   testImplementation("org.testcontainers:testcontainers-junit-jupiter")
   testImplementation("org.testcontainers:testcontainers-postgresql")
+  testImplementation("org.testcontainers:testcontainers-cockroachdb")
 
   testImplementation(project(":polaris-container-spec-helper"))
   testImplementation(project(":polaris-runtime-test-common"))

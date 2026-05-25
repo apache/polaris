@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -102,7 +101,6 @@ public class JdbcBasePersistenceImpl
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
-  private final AtomicBoolean lineageSchemaNoticeLogged = new AtomicBoolean();
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
@@ -421,6 +419,22 @@ public class JdbcBasePersistenceImpl
                     ModelPolicyMappingRecord.ALL_COLUMNS,
                     ModelPolicyMappingRecord.TABLE_NAME,
                     params));
+            if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageColumnEdge.ALL_COLUMNS,
+                      ModelLineageColumnEdge.TABLE_NAME,
+                      params));
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageEdge.ALL_COLUMNS, ModelLineageEdge.TABLE_NAME, params));
+              datasourceOperations.execute(
+                  connection,
+                  QueryGenerator.generateDeleteQuery(
+                      ModelLineageDataset.ALL_COLUMNS, ModelLineageDataset.TABLE_NAME, params));
+            }
             return true;
           });
     } catch (SQLException e) {
@@ -1370,9 +1384,7 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void upsertLineageDataset(@Nonnull LineageDatasetRecord record) {
-    if (!supportsLineagePersistence()) {
-      return;
-    }
+    verifyLineagePersistenceSupported();
     ModelLineageDataset model = ModelLineageDataset.fromRecord(record, realmId);
     try {
       datasourceOperations.executeUpdate(generateLineageDatasetUpsert(model));
@@ -1384,9 +1396,7 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void upsertLineageEdge(@Nonnull LineageEdgeRecord record) {
-    if (!supportsLineagePersistence()) {
-      return;
-    }
+    verifyLineagePersistenceSupported();
     ModelLineageEdge model = ModelLineageEdge.fromRecord(record, realmId);
     try {
       datasourceOperations.executeUpdate(generateLineageEdgeUpsert(model));
@@ -1398,9 +1408,7 @@ public class JdbcBasePersistenceImpl
 
   @Override
   public void upsertLineageColumnEdge(@Nonnull LineageColumnEdgeRecord record) {
-    if (!supportsLineagePersistence()) {
-      return;
-    }
+    verifyLineagePersistenceSupported();
     ModelLineageColumnEdge model = ModelLineageColumnEdge.fromRecord(record, realmId);
     try {
       datasourceOperations.executeUpdate(generateLineageColumnEdgeUpsert(model));
@@ -1410,20 +1418,14 @@ public class JdbcBasePersistenceImpl
     }
   }
 
-  private boolean supportsLineagePersistence() {
+  private void verifyLineagePersistenceSupported() {
     if (schemaVersion >= MIN_LINEAGE_SCHEMA_VERSION) {
-      return true;
+      return;
     }
-    if (lineageSchemaNoticeLogged.compareAndSet(false, true)) {
-      LOGGER.info(
-          "Lineage persistence is disabled for realm '{}' because JDBC schema version {} is older"
-              + " than required version {}; upgrade the JDBC schema to v{} to persist lineage.",
-          realmId,
-          schemaVersion,
-          MIN_LINEAGE_SCHEMA_VERSION,
-          MIN_LINEAGE_SCHEMA_VERSION);
-    }
-    return false;
+    throw new IllegalStateException(
+        String.format(
+            "Lineage persistence requires JDBC schema version %d or newer for realm '%s'; current schema version is %d. Upgrade the JDBC schema to v%d to persist lineage.",
+            MIN_LINEAGE_SCHEMA_VERSION, realmId, schemaVersion, MIN_LINEAGE_SCHEMA_VERSION));
   }
 
   private PreparedQuery generateLineageDatasetUpsert(ModelLineageDataset model) {
