@@ -434,6 +434,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           return false;
 
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              tableIdentifier,
+              dropEntityResult.getExtraInformation());
+          return false;
+
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
           throw new ForbiddenException(
               "Table %s cannot be dropped: %s",
@@ -681,6 +688,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              namespace,
+              dropEntityResult.getExtraInformation());
           return false;
 
         default:
@@ -932,6 +946,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              identifier,
+              dropEntityResult.getExtraInformation());
           return false;
 
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
