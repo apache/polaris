@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.InputStream;
 import java.sql.Connection;
@@ -30,6 +30,7 @@ import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
@@ -119,6 +120,8 @@ class LineagePersistenceTest {
 
   @Test
   void upsertLineageEdgeUpdatesLastEventAt() throws SQLException {
+    upsertSourceAndTargetDatasets();
+
     lineagePersistence.upsertLineageEdge(
         LineageEdgeRecord.builder()
             .sourceDatasetId(10L)
@@ -138,6 +141,8 @@ class LineagePersistenceTest {
 
   @Test
   void upsertLineageEdgeDoesNotMoveLastEventAtBackward() throws SQLException {
+    upsertSourceAndTargetDatasets();
+
     lineagePersistence.upsertLineageEdge(
         LineageEdgeRecord.builder()
             .sourceDatasetId(10L)
@@ -157,6 +162,8 @@ class LineagePersistenceTest {
 
   @Test
   void upsertLineageColumnEdgeUpdatesLastEventAt() throws SQLException {
+    upsertSourceAndTargetDatasets();
+
     lineagePersistence.upsertLineageColumnEdge(
         LineageColumnEdgeRecord.builder()
             .sourceDatasetId(10L)
@@ -180,6 +187,8 @@ class LineagePersistenceTest {
 
   @Test
   void upsertLineageColumnEdgeDoesNotMoveLastEventAtBackward() throws SQLException {
+    upsertSourceAndTargetDatasets();
+
     lineagePersistence.upsertLineageColumnEdge(
         LineageColumnEdgeRecord.builder()
             .sourceDatasetId(10L)
@@ -202,7 +211,7 @@ class LineagePersistenceTest {
   }
 
   @Test
-  void lineageUpsertsNoOpForSchemaBeforeV5() throws SQLException {
+  void lineageUpsertsFailForSchemaBeforeV5() throws SQLException {
     DataSource v4DataSource =
         JdbcConnectionPool.create(
             "jdbc:h2:mem:test_lineage_v4_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1", "sa", "");
@@ -222,9 +231,10 @@ class LineagePersistenceTest {
             REALM_ID,
             4);
 
-    // Schema v4 intentionally has no lineage tables. Older deployments should keep accepting
-    // lineage persistence calls as no-ops instead of failing with table-not-found errors.
-    assertDoesNotThrow(
+    // Schema v4 intentionally has no lineage tables. JDBC lineage writes must fail clearly instead
+    // of silently dropping data.
+    assertThrows(
+        IllegalStateException.class,
         () ->
             v4LineagePersistence.upsertLineageDataset(
                 LineageDatasetRecord.builder()
@@ -235,7 +245,8 @@ class LineagePersistenceTest {
                     .createdAt(100L)
                     .updatedAt(100L)
                     .build()));
-    assertDoesNotThrow(
+    assertThrows(
+        IllegalStateException.class,
         () ->
             v4LineagePersistence.upsertLineageEdge(
                 LineageEdgeRecord.builder()
@@ -243,7 +254,8 @@ class LineagePersistenceTest {
                     .targetDatasetId(20L)
                     .lastEventAt(100L)
                     .build()));
-    assertDoesNotThrow(
+    assertThrows(
+        IllegalStateException.class,
         () ->
             v4LineagePersistence.upsertLineageColumnEdge(
                 LineageColumnEdgeRecord.builder()
@@ -253,6 +265,53 @@ class LineagePersistenceTest {
                     .targetField("total")
                     .lastEventAt(100L)
                     .build()));
+  }
+
+  @Test
+  void deleteAllRemovesLineageRowsForRealm() throws SQLException {
+    upsertSourceAndTargetDatasets();
+    lineagePersistence.upsertLineageEdge(
+        LineageEdgeRecord.builder()
+            .sourceDatasetId(10L)
+            .targetDatasetId(20L)
+            .lastEventAt(200L)
+            .build());
+    lineagePersistence.upsertLineageColumnEdge(
+        LineageColumnEdgeRecord.builder()
+            .sourceDatasetId(10L)
+            .sourceField("price")
+            .targetDatasetId(20L)
+            .targetField("total")
+            .lastEventAt(300L)
+            .build());
+
+    lineagePersistence.deleteAll(new PolarisCallContext(() -> REALM_ID, lineagePersistence));
+
+    assertSingleLong(
+        "SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_column_edges WHERE realm_id = ?", 0L);
+    assertSingleLong("SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_edges WHERE realm_id = ?", 0L);
+    assertSingleLong("SELECT COUNT(*) FROM POLARIS_SCHEMA.lineage_datasets WHERE realm_id = ?", 0L);
+  }
+
+  private void upsertSourceAndTargetDatasets() {
+    lineagePersistence.upsertLineageDataset(
+        LineageDatasetRecord.builder()
+            .datasetId(10L)
+            .catalog("polaris")
+            .namespace("analytics")
+            .name("orders")
+            .createdAt(100L)
+            .updatedAt(100L)
+            .build());
+    lineagePersistence.upsertLineageDataset(
+        LineageDatasetRecord.builder()
+            .datasetId(20L)
+            .catalog("polaris")
+            .namespace("analytics")
+            .name("orders_daily")
+            .createdAt(100L)
+            .updatedAt(100L)
+            .build());
   }
 
   private void assertSingleLong(String sql, long expected) throws SQLException {
