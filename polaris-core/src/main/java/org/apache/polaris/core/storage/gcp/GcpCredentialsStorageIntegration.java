@@ -39,7 +39,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -202,10 +202,11 @@ public class GcpCredentialsStorageIntegration
     Map<String, List<String>> readConditionsMap = new HashMap<>();
     Map<String, List<String>> writeConditionsMap = new HashMap<>();
 
-    HashSet<String> readBuckets = new HashSet<>();
-    HashSet<String> writeBuckets = new HashSet<>();
+    LinkedHashSet<String> readBuckets = new LinkedHashSet<>();
+    LinkedHashSet<String> writeBuckets = new LinkedHashSet<>();
     Stream.concat(allowedReadLocations.stream(), allowedWriteLocations.stream())
         .distinct()
+        .sorted()
         .forEach(
             location -> {
               StorageUri uri = StorageUri.parse(location);

@@ -400,13 +400,23 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   /**
    * Custom comparator as ObjectNodes are compared by field indexes as opposed to field names. They
-   * also don't equate a field that is present and set to null with a field that is omitted
-   *
-   * @param on1
-   * @param on2
-   * @return
+   * also don't equate a field that is present and set to null with a field that is omitted. Array
+   * nodes are compared element-by-element in order — without this, {@code fieldNames()} returns
+   * empty for arrays and the loop below would short-circuit to {@code true}, hiding mismatches in
+   * array contents.
    */
   private boolean recursiveEquals(ContainerNode<?> on1, ContainerNode<?> on2) {
+    if (on1.isArray() || on2.isArray()) {
+      if (!on1.isArray() || !on2.isArray() || on1.size() != on2.size()) {
+        return false;
+      }
+      for (int i = 0; i < on1.size(); i++) {
+        if (!nodeEquals(on1.get(i), on2.get(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
     Set<String> fieldNames = new HashSet<>();
     on1.fieldNames().forEachRemaining(fieldNames::add);
     on2.fieldNames().forEachRemaining(fieldNames::add);
@@ -415,20 +425,18 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         if (isNotNull(on1.get(fieldName)) || isNotNull(on2.get(fieldName))) {
           return false;
         }
-      } else {
-        JsonNode fieldValue = on1.get(fieldName);
-        JsonNode fieldValue2 = on2.get(fieldName);
-        if (fieldValue.isContainerNode()) {
-          if (!fieldValue2.isContainerNode()
-              || !recursiveEquals((ContainerNode<?>) fieldValue, (ContainerNode<?>) fieldValue2)) {
-            return false;
-          }
-        } else if (!fieldValue.equals(fieldValue2)) {
-          return false;
-        }
+      } else if (!nodeEquals(on1.get(fieldName), on2.get(fieldName))) {
+        return false;
       }
     }
     return true;
+  }
+
+  private boolean nodeEquals(JsonNode a, JsonNode b) {
+    if (a.isContainerNode()) {
+      return b.isContainerNode() && recursiveEquals((ContainerNode<?>) a, (ContainerNode<?>) b);
+    }
+    return a.equals(b);
   }
 
   @Test
