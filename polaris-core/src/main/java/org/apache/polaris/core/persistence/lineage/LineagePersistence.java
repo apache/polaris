@@ -28,10 +28,20 @@ public interface LineagePersistence {
     // No-op by default - backends that don't support lineage silently ignore.
   }
 
+  /**
+   * Upsert a directed dataset-level lineage edge.
+   *
+   * <p>Callers must upsert both referenced datasets before writing the edge.
+   */
   default void upsertLineageEdge(@Nonnull LineageEdgeRecord record) {
     // No-op by default - backends that don't support lineage silently ignore.
   }
 
+  /**
+   * Upsert a field-level lineage edge.
+   *
+   * <p>Callers must upsert both referenced datasets before writing the column edge.
+   */
   default void upsertLineageColumnEdge(@Nonnull LineageColumnEdgeRecord record) {
     // No-op by default - backends that don't support lineage silently ignore.
   }
