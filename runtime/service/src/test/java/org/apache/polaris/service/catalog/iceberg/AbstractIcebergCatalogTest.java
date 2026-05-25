@@ -39,7 +39,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -164,6 +163,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ListAssert;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.assertj.core.configuration.PreferredAssumptionException;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -2191,9 +2191,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @Nonnull StorageAccessConfig accessConfig,
-                  @Nonnull String ioImplClassName,
-                  @Nonnull Map<String, String> properties) {
+                  @NonNull StorageAccessConfig accessConfig,
+                  @NonNull String ioImplClassName,
+                  @NonNull Map<String, String> properties) {
                 return measured.loadFileIO(
                     accessConfig, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of());
               }

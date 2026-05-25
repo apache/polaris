@@ -23,7 +23,6 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +50,7 @@ import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -108,7 +108,7 @@ public class FileIOFactoryTest {
                 new DefaultFileIOFactory() {
                   @Override
                   FileIO loadFileIOInternal(
-                      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
+                      @NonNull String ioImplClassName, @NonNull Map<String, String> properties) {
                     // properties should contain credentials
                     Assertions.assertThat(properties)
                         .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)

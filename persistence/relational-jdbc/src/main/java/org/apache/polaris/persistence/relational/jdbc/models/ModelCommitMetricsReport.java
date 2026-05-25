@@ -20,7 +20,6 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nullable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
@@ -29,6 +28,7 @@ import java.util.Map;
 import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.jspecify.annotations.Nullable;
 
 /** Model class for commit_metrics_report table - stores commit metrics as first-class entities. */
 @PolarisImmutable
@@ -114,25 +114,19 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   long getTimestampMs();
 
-  @Nullable
-  String getPrincipalName();
+  @Nullable String getPrincipalName();
 
-  @Nullable
-  String getRequestId();
+  @Nullable String getRequestId();
 
-  @Nullable
-  String getOtelTraceId();
+  @Nullable String getOtelTraceId();
 
-  @Nullable
-  String getOtelSpanId();
+  @Nullable String getOtelSpanId();
 
-  @Nullable
-  String getReportTraceId();
+  @Nullable String getReportTraceId();
 
   long getSnapshotId();
 
-  @Nullable
-  Long getSequenceNumber();
+  @Nullable Long getSequenceNumber();
 
   String getOperation();
 
@@ -172,8 +166,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   int getAttempts();
 
-  @Nullable
-  String getMetadata();
+  @Nullable String getMetadata();
 
   @Override
   default ModelCommitMetricsReport fromResultSet(ResultSet rs) throws SQLException {

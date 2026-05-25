@@ -24,12 +24,12 @@ import static java.util.Locale.ROOT;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.spi.Converter;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Type representing a memory size in bytes, using 1024 as the multiplier for kilo, mega, etc.
@@ -84,7 +84,7 @@ public abstract class MemorySize {
       return bytes;
     }
 
-    @Nonnull
+    @NonNull
     @Override
     public BigInteger asBigInteger() {
       return BigInteger.valueOf(bytes);
@@ -124,7 +124,7 @@ public abstract class MemorySize {
   static final class MemorySizeBig extends MemorySize {
     private final BigInteger bytes;
 
-    MemorySizeBig(@Nonnull BigInteger bytes) {
+    MemorySizeBig(@NonNull BigInteger bytes) {
       this.bytes = bytes;
     }
 
@@ -133,7 +133,7 @@ public abstract class MemorySize {
       return bytes.longValueExact();
     }
 
-    @Nonnull
+    @NonNull
     @Override
     public BigInteger asBigInteger() {
       return bytes;
@@ -216,7 +216,7 @@ public abstract class MemorySize {
             value));
   }
 
-  @Nonnull
+  @NonNull
   public abstract BigInteger asBigInteger();
 
   /**

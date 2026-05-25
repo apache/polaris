@@ -24,6 +24,7 @@ description = "Generates Polaris reference docs"
 val genTesting by configurations.creating
 
 dependencies {
+  compileOnly(libs.jspecify)
   implementation(project(":polaris-config-docs-annotations"))
   implementation(project(":polaris-core")) { isTransitive = false }
 

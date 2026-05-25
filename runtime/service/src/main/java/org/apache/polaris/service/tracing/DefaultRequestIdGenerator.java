@@ -20,11 +20,11 @@
 package org.apache.polaris.service.tracing;
 
 import io.smallrye.mutiny.Uni;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Default implementation of {@link RequestIdGenerator}, striking a balance between randomness and
@@ -46,7 +46,7 @@ public class DefaultRequestIdGenerator implements RequestIdGenerator {
     }
 
     @Override
-    @Nonnull
+    @NonNull
     public String toString() {
       return String.format("%s_%019d", uuid(), counter());
     }
