@@ -35,7 +35,7 @@ public interface LineageConfiguration {
   DatasetResolutionConfiguration datasetResolution();
 
   interface PersistenceConfiguration {
-    @WithDefault("true")
+    @WithDefault("false")
     boolean enabled();
 
     @WithDefault("relational-jdbc")
@@ -43,7 +43,7 @@ public interface LineageConfiguration {
   }
 
   interface DatasetResolutionConfiguration {
-    @WithDefault("true")
+    @WithDefault("false")
     boolean enabled();
   }
 }
