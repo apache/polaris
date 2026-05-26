@@ -35,6 +35,8 @@ val scalaLibraryVersion =
     libs.versions.scala213.get()
   }
 
+sourceSets { named("intTest") { java { srcDir("../../common/src/intTest/java") } } }
+
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
