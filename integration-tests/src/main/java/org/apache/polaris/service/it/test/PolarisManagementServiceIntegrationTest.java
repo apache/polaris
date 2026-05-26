@@ -544,11 +544,14 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testCreateAndUpdateAzureCatalog() {
     StorageConfigInfo storageConfig =
-        new AzureStorageConfigInfo("azure:tenantid:12345", StorageConfigInfo.StorageTypeEnum.AZURE);
-    storageConfig.setAllowedLocations(
-        List.of(
-            "abfss://container1@acct1.dfs.core.windows.net/",
-            "abfss://newcontainer@acct1.dfs.core.windows.net/"));
+        AzureStorageConfigInfo.builder()
+            .setTenantId("azure:tenantid:12345")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setAllowedLocations(
+                List.of(
+                    "abfss://container1@acct1.dfs.core.windows.net/",
+                    "abfss://newcontainer@acct1.dfs.core.windows.net/"))
+            .build();
     String catalogName = client.newEntityName("myazurecatalog");
     Catalog catalog =
         PolarisCatalog.builder()
@@ -575,9 +578,11 @@ public class PolarisManagementServiceIntegrationTest {
     }
 
     StorageConfigInfo modifiedStorageConfig =
-        new AzureStorageConfigInfo("azure:tenantid:22222", StorageConfigInfo.StorageTypeEnum.AZURE);
-    modifiedStorageConfig.setAllowedLocations(
-        List.of("abfss://newcontainer@acct1.dfs.core.windows.net/"));
+        AzureStorageConfigInfo.builder()
+            .setTenantId("azure:tenantid:22222")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setAllowedLocations(List.of("abfss://newcontainer@acct1.dfs.core.windows.net/"))
+            .build();
     UpdateCatalogRequest badUpdateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
