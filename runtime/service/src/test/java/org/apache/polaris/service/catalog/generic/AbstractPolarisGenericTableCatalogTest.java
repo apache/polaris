@@ -541,4 +541,85 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
         .isNotNull();
   }
+
+  @Test
+  public void testCreateGenericTableOverlapsExistingGenericTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(
+        TableIdentifier.of("ns", "t1"),
+        "format",
+        "s3://my-bucket/path/to/data/ns/t1",
+        "doc",
+        Map.of());
+
+    Assertions.assertThatThrownBy(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t2"),
+                    "format",
+                    "s3://my-bucket/path/to/data/ns/t1/sub",
+                    "doc",
+                    Map.of()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with");
+  }
+
+  @Test
+  public void testCreateGenericTableOverlapsExistingIcebergTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t2"),
+                    "format",
+                    "s3://my-bucket/path/to/data/ns/t1/sub",
+                    "doc",
+                    Map.of()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with");
+  }
+
+  @Test
+  public void testCreateGenericTableNoOverlapSucceeds() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(
+        TableIdentifier.of("ns", "t1"),
+        "format",
+        "s3://my-bucket/path/to/data/ns/t1",
+        "doc",
+        Map.of());
+
+    Assertions.assertThatCode(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t2"),
+                    "format",
+                    "s3://my-bucket/path/to/data/ns/t2",
+                    "doc",
+                    Map.of()))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testCreateGenericTableNullLocationSkipsOverlapCheck() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(
+        TableIdentifier.of("ns", "t1"),
+        "format",
+        "s3://my-bucket/path/to/data/ns/t1",
+        "doc",
+        Map.of());
+
+    Assertions.assertThatCode(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t2"), "format", null, "doc", Map.of()))
+        .doesNotThrowAnyException();
+  }
 }

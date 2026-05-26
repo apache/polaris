@@ -82,7 +82,11 @@ public class SparkHudiIT extends SparkIntegrationBase {
         .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2")
         .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
         .config("spark.kryo.registrator", "org.apache.spark.HoodieSparkKryoRegistrar")
+        // for intial integration test have disabled for now, to revisit enabling in future
         .config("hoodie.metadata.enable", "false")
+        // Disable the embedded timeline server so Hudi uses direct marker file creation
+        // instead of HTTP-based markers that fail when the local hostname resolves to an
+        // unreachable address (e.g. an AWS EC2 internal hostname).
         .config("hoodie.embed.timeline.server", "false")
         .getOrCreate();
   }
