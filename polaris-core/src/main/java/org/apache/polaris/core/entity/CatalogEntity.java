@@ -20,11 +20,14 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -46,6 +49,7 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -243,6 +247,40 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
+  /**
+   * Validates {@code defaultBaseLocation} against the given allowed-locations list.
+   *
+   * <p>Rejects null/empty allowed-locations to match the runtime semantic in {@code
+   * InMemoryStorageIntegration} (an empty allowed-list means "no location is allowed", not "no
+   * constraint"). Then verifies {@code defaultBaseLocation} is a subpath of at least one entry.
+   *
+   * @throws BadRequestException if {@code allowedLocations} is null/empty, or if {@code
+   *     defaultBaseLocation} is not within any entry of {@code allowedLocations}
+   */
+  @VisibleForTesting
+  public static void validateBaseLocationAgainstAllowedList(
+      List<String> allowedLocations, String defaultBaseLocation) {
+    if (allowedLocations == null || allowedLocations.isEmpty()) {
+      throw new BadRequestException(
+          "Cannot set default-base-location '%s': storage configuration has no allowed-locations"
+              + " (allowed-locations list is %s)",
+          defaultBaseLocation, allowedLocations == null ? "null" : "empty");
+    }
+
+    StorageLocation baseLocation = StorageLocation.of(defaultBaseLocation);
+    boolean isAllowed =
+        allowedLocations.stream()
+            .filter(Objects::nonNull)
+            .map(StorageLocation::of)
+            .anyMatch(baseLocation::isChildOf);
+
+    if (!isAllowed) {
+      throw new BadRequestException(
+          "default-base-location '%s' is not within any of the allowed locations %s",
+          defaultBaseLocation, allowedLocations);
+    }
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
     public Builder() {
       super();
@@ -269,18 +307,27 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     public Builder setStorageConfigurationInfo(
         RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
-        PolarisStorageConfigurationInfo config;
-        Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
-
-        // TODO: Reconsider whether this should actually just be a check up-front or if we
-        // actually want to silently add to the allowed locations. Maybe ideally we only
-        // add to the allowedLocations if allowedLocations is empty for the simple case,
-        // but if the caller provided allowedLocations explicitly, then we just verify that
-        // the defaultBaseLocation is at least a subpath of one of the allowedLocations.
         if (defaultBaseLocation == null) {
           throw new BadRequestException("Must specify default base location");
         }
-        allowedLocations.add(defaultBaseLocation);
+        // Asymmetric semantics for the simple-create case vs. explicit input:
+        //   - If the caller supplied no allowed-locations, default to the catalog's
+        //     default-base-location. This is the convenience for naive create requests.
+        //     (Update-time callers in PolarisAdminService enforce strictness before reaching
+        //     this method, so the auto-populate only kicks in at create time.)
+        //   - If the caller supplied an explicit allowed-locations list, validate that the
+        //     default-base-location is a subpath of at least one entry and store the list
+        //     as-is. No silent additions to the user-supplied list.
+        List<String> userAllowedLocations = storageConfigModel.getAllowedLocations();
+        Set<String> allowedLocations;
+        if (userAllowedLocations == null || userAllowedLocations.isEmpty()) {
+          allowedLocations = new HashSet<>();
+          allowedLocations.add(defaultBaseLocation);
+        } else {
+          validateBaseLocationAgainstAllowedList(userAllowedLocations, defaultBaseLocation);
+          allowedLocations = new HashSet<>(userAllowedLocations);
+        }
+        PolarisStorageConfigurationInfo config;
         validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
