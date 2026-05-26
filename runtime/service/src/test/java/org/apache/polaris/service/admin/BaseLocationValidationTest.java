@@ -29,10 +29,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /**
- * Tests for {@link CatalogEntity#validateBaseLocationAgainstAllowedList}, the helper used by
- * {@code updateCatalog} (to validate the effective default-base-location against the effective
- * allowed-locations) and by {@code CatalogEntity.Builder.setStorageConfigurationInfo} (to
- * validate the user-supplied allowed-locations on create / storage-config replacement).
+ * Tests for {@link CatalogEntity#validateBaseLocationAgainstAllowedList}, the helper used by {@code
+ * updateCatalog} (to validate the effective default-base-location against the effective
+ * allowed-locations) and by {@code CatalogEntity.Builder.setStorageConfigurationInfo} (to validate
+ * the user-supplied allowed-locations on create / storage-config replacement).
  */
 public class BaseLocationValidationTest {
 
@@ -79,8 +79,7 @@ public class BaseLocationValidationTest {
     // Empty allowed-list means no location is allowed at runtime
     // (see InMemoryStorageIntegration line 99-100); validation must match.
     assertThatThrownBy(
-            () ->
-                CatalogEntity.validateBaseLocationAgainstAllowedList(List.of(), "s3://anything/"))
+            () -> CatalogEntity.validateBaseLocationAgainstAllowedList(List.of(), "s3://anything/"))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("empty")
         .hasMessageContaining("s3://anything/");
