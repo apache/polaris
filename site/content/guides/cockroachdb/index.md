@@ -49,13 +49,14 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
+    export POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE=cockroachdb
     export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://cockroachdb:26257/polaris?sslmode=disable
     export QUARKUS_DATASOURCE_USERNAME=root
     export QUARKUS_DATASOURCE_PASSWORD=""
     export ASSETS_PATH=$(pwd)/site/content/guides/assets/
     export CLIENT_ID=root
     export CLIENT_SECRET=s3cr3t
-    docker compose -f site/content/guides/cockroachdb/docker-compose-bootstrap-db.yml -f site/content/guides/assets/cockroachdb/docker-compose-cockroachdb.yml -f site/content/guides/cockroachdb/docker-compose.yml up
+    docker compose -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/assets/cockroachdb/docker-compose-cockroachdb.yml -f site/content/guides/cockroachdb/docker-compose.yml up
     ```
 
 <!-- Guide testing: do not exercise the expensive Docker compose setup.
