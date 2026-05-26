@@ -287,6 +287,11 @@ public class TestIndexKey {
     }
 
     buffer.flip();
+    var nullProbe = buffer.duplicate();
+    soft.assertThat(INDEX_KEY_SERIALIZER.isNullSerialized(nullProbe)).isEqualTo(indexKey == null);
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, serSize);
     soft.assertThat(INDEX_KEY_SERIALIZER.deserialize(buffer.duplicate())).isEqualTo(indexKey);
 
     var skipped = buffer.duplicate();

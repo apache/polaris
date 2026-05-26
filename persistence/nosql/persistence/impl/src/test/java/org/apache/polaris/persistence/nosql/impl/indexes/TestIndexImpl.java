@@ -39,6 +39,7 @@ import static org.apache.polaris.persistence.nosql.impl.indexes.Util.asHex;
 import static org.apache.polaris.persistence.nosql.impl.indexes.Util.randomObjId;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
@@ -47,16 +48,21 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
+import org.apache.polaris.persistence.nosql.api.index.IndexValueSerializer;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.varint.VarInt;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -924,6 +930,198 @@ public class TestIndexImpl {
     }
   }
 
+  @Test
+  void iteratorSkipsLazyNullValuesWithoutDeserializingNonNullValues() {
+    var deserializeCalls = new AtomicInteger();
+    var nullProbeCalls = new AtomicInteger();
+    IndexValueSerializer<String> serializer =
+        new IndexValueSerializer<>() {
+          @Override
+          public int serializedSize(@Nullable String value) {
+            if (value == null) {
+              return 1;
+            }
+            var bytes = value.getBytes(UTF_8);
+            return VarInt.varIntLen(bytes.length) + bytes.length;
+          }
+
+          @Override
+          public @NonNull ByteBuffer serialize(@Nullable String value, @NonNull ByteBuffer target) {
+            if (value == null) {
+              return target.put((byte) 0);
+            }
+            var bytes = value.getBytes(UTF_8);
+            return VarInt.putVarInt(target, bytes.length).put(bytes);
+          }
+
+          @Override
+          public @Nullable String deserialize(@NonNull ByteBuffer buffer) {
+            deserializeCalls.incrementAndGet();
+            var len = VarInt.readVarInt(buffer);
+            if (len == 0) {
+              return null;
+            }
+            var bytes = new byte[len];
+            buffer.get(bytes);
+            return new String(bytes, UTF_8);
+          }
+
+          @Override
+          public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+            nullProbeCalls.incrementAndGet();
+            return VarInt.readVarInt(buffer.duplicate()) == 0;
+          }
+
+          @Override
+          public void skip(@NonNull ByteBuffer buffer) {
+            var len = VarInt.readVarInt(buffer);
+            if (len > 0) {
+              buffer.position(buffer.position() + len);
+            }
+          }
+        };
+
+    var index = newStoreIndex(serializer);
+    var key1 = key("a");
+    var key2 = key("b");
+    var key3 = key("c");
+    index.add(indexElement(key1, "alpha"));
+    index.add(indexElement(key2, (String) null));
+    index.add(indexElement(key3, "charlie"));
+
+    var deserialized = deserializeStoreIndex(index.serialize(), serializer);
+
+    var iteratedKeys = new ArrayList<IndexKey>();
+    deserialized.iterator().forEachRemaining(element -> iteratedKeys.add(element.key()));
+
+    soft.assertThat(iteratedKeys).containsExactly(key1, key3);
+    soft.assertThat(nullProbeCalls).hasValue(3);
+    soft.assertThat(deserializeCalls).hasValue(0);
+
+    var first = deserialized.iterator().next();
+    soft.assertThat(first.key()).isEqualTo(key1);
+    soft.assertThat(first.value()).isEqualTo("alpha");
+    soft.assertThat(deserializeCalls).hasValue(1);
+  }
+
+  @Test
+  void hasNonNullValueMarksLazyNullValueWithoutDeserializingIt() {
+    var deserializeCalls = new AtomicInteger();
+    var nullProbeCalls = new AtomicInteger();
+    IndexValueSerializer<String> serializer =
+        new IndexValueSerializer<>() {
+          @Override
+          public int serializedSize(@Nullable String value) {
+            if (value == null) {
+              return 1;
+            }
+            var bytes = value.getBytes(UTF_8);
+            return VarInt.varIntLen(bytes.length) + bytes.length;
+          }
+
+          @Override
+          public @NonNull ByteBuffer serialize(@Nullable String value, @NonNull ByteBuffer target) {
+            if (value == null) {
+              return target.put((byte) 0);
+            }
+            var bytes = value.getBytes(UTF_8);
+            return VarInt.putVarInt(target, bytes.length).put(bytes);
+          }
+
+          @Override
+          public @Nullable String deserialize(@NonNull ByteBuffer buffer) {
+            deserializeCalls.incrementAndGet();
+            var len = VarInt.readVarInt(buffer);
+            if (len == 0) {
+              return null;
+            }
+            var bytes = new byte[len];
+            buffer.get(bytes);
+            return new String(bytes, UTF_8);
+          }
+
+          @Override
+          public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+            nullProbeCalls.incrementAndGet();
+            return VarInt.readVarInt(buffer.duplicate()) == 0;
+          }
+
+          @Override
+          public void skip(@NonNull ByteBuffer buffer) {
+            var len = VarInt.readVarInt(buffer);
+            if (len > 0) {
+              buffer.position(buffer.position() + len);
+            }
+          }
+        };
+
+    var index = newStoreIndex(serializer);
+    var key1 = key("a");
+    index.add(indexElement(key1, (String) null));
+
+    var deserialized = deserializeStoreIndex(index.serialize(), serializer);
+    var element = deserialized.getElement(key1);
+
+    soft.assertThat(element.hasValue()).isFalse();
+    soft.assertThat(nullProbeCalls).hasValue(1);
+    soft.assertThat(deserializeCalls).hasValue(0);
+
+    soft.assertThat(element.valueNullable()).isNull();
+    soft.assertThat(nullProbeCalls).hasValue(1);
+    soft.assertThat(deserializeCalls).hasValue(0);
+  }
+
+  @Test
+  void lazyValueStateRemainsConsistentAcrossThreads() throws Exception {
+    var index = newStoreIndex(OBJ_REF_SERIALIZER);
+    var key1 = key("a");
+    var value1 = Util.randomObjId();
+    index.add(indexElement(key1, value1));
+
+    var deserialized = deserializeStoreIndex(index.serialize(), OBJ_REF_SERIALIZER);
+    var element = deserialized.getElement(key1);
+
+    var threads = Runtime.getRuntime().availableProcessors();
+
+    try (var executor = Executors.newFixedThreadPool(threads)) {
+      var latch = new CountDownLatch(threads);
+      var start = new Semaphore(0);
+
+      var futures =
+          IntStream.range(0, threads)
+              .mapToObj(
+                  i ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            latch.countDown();
+                            try {
+                              start.acquire();
+                            } catch (InterruptedException e) {
+                              throw new RuntimeException(e);
+                            }
+                            for (var iter = 0; iter < 1_000; iter++) {
+                              if ((iter & 1) == 0) {
+                                if (!element.hasValue()) {
+                                  throw new AssertionError("Unexpected null-value state");
+                                }
+                              } else if (!value1.equals(element.valueNullable())) {
+                                throw new AssertionError("Unexpected materialized value");
+                              }
+                            }
+                          },
+                          executor))
+              .toArray(CompletableFuture[]::new);
+
+      latch.await();
+      start.release(threads);
+
+      CompletableFuture.allOf(futures).get(30, TimeUnit.SECONDS);
+    }
+
+    soft.assertThat(element.hasValue()).isTrue();
+    soft.assertThat(element.valueNullable()).isEqualTo(value1);
+  }
+
   // The following multithreaded "tests" are only there to verify that no ByteBuffer related
   // exceptions are thrown.
 
@@ -959,7 +1157,34 @@ public class TestIndexImpl {
 
   @Test
   public void multithreadedIterator() throws Exception {
-    multithreaded(ts -> ts.keyIndex().iterator().forEachRemaining(el -> {}), 50);
+    var numKeys = 2_048;
+    var everyFourthIsNull = new AtomicInteger();
+    var expectedCount = numKeys - numKeys / 4;
+    var indexTestSet =
+        KeyIndexTestSet.<ObjRef>newGenerator()
+            .keySet(ImmutableRandomUuidKeySet.builder().numKeys(numKeys).build())
+            .elementSupplier(
+                key ->
+                    indexElement(
+                        key,
+                        everyFourthIsNull.getAndIncrement() % 4 == 0 ? null : Util.randomObjId()))
+            .elementSerializer(OBJ_REF_SERIALIZER)
+            .build()
+            .generateIndexTestSet();
+
+    multithreaded(
+        indexTestSet,
+        ts -> {
+          var count = 0;
+          for (Index.Element<ObjRef> element : ts.keyIndex()) {
+            count++;
+          }
+          if (count != expectedCount) {
+            throw new AssertionError(
+                format("Expected %s non-null elements, got %s", expectedCount, count));
+          }
+        },
+        50);
   }
 
   void multithreaded(Consumer<KeyIndexTestSet<ObjRef>> worker, int iterationsPerThread)
@@ -971,6 +1196,15 @@ public class TestIndexImpl {
             .elementSerializer(OBJ_REF_SERIALIZER)
             .build()
             .generateIndexTestSet();
+
+    multithreaded(indexTestSet, worker, iterationsPerThread);
+  }
+
+  void multithreaded(
+      KeyIndexTestSet<ObjRef> indexTestSet,
+      Consumer<KeyIndexTestSet<ObjRef>> worker,
+      int iterationsPerThread)
+      throws Exception {
 
     var threads = Runtime.getRuntime().availableProcessors();
 
