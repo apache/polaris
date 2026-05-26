@@ -47,7 +47,7 @@ show namespaces;
 create namespace hudi_db1.schema1;
 show namespaces in hudi_db1;
 
-create table hudi_db1.schema1.hudi_tb1 (id int, name string) using hudi location 'file:///tmp/spark_hudi_catalog/hudi_tb1';
+create table hudi_db1.schema1.hudi_tb1 (id int, name string) using hudi location 'file:///tmp/spark_hudi_catalog/hudi_db1/schema1/hudi_tb1';
 show tables in hudi_db1;
 show tables in hudi_db1.schema1;
 
@@ -55,7 +55,7 @@ use hudi_db1.schema1;
 insert into hudi_tb1 values (1, 'alice'), (2, 'bob');
 select * from hudi_tb1 order by id;
 
-create table hudi_tb2 (name string, age int, country string) using hudi partitioned by (country) location 'file:///tmp/spark_hudi_catalog/hudi_tb2';
+create table hudi_tb2 (name string, age int, country string) using hudi partitioned by (country) location 'file:///tmp/spark_hudi_catalog/hudi_db1/schema1/hudi_tb2';
 insert into hudi_tb2 values ('anna', 10, 'US'), ('james', 32, 'US'), ('yan', 16, 'CHINA');
 select name, country from hudi_tb2 order by age;
 

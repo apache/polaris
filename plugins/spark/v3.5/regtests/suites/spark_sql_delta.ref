@@ -23,7 +23,7 @@ spark-sql (db1.schema1)> select * from iceberg_tb order by col1;
 123
 234
 spark-sql (db1.schema1)> 
-                       > create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/delta_tb1';
+                       > create table delta_tb1(col1 string) using delta location 'file:///tmp/spark_catalog/db1/schema1/delta_tb1';
 spark-sql (db1.schema1)> insert into delta_tb1 values ('ab'), ('bb'), ('dd');
 spark-sql (db1.schema1)> select * from delta_tb1 order by col1;
 ab
@@ -35,7 +35,7 @@ iceberg_tb
 delta_tb1
 spark-sql (db1.schema1)> 
                        > use db1;
-spark-sql (db1)> create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/delta_tb2';
+spark-sql (db1)> create table delta_tb2(col1 int) using delta location 'file:///tmp/spark_catalog/db1/delta_tb2';
 spark-sql (db1)> insert into delta_tb2 values (1), (2), (3) order by col1;
 spark-sql (db1)> select * from delta_tb2;
 1

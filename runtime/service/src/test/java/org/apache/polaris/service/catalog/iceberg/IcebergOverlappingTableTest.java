@@ -293,21 +293,44 @@ public class IcebergOverlappingTableTest {
                 services, String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
         .isEqualTo(Response.Status.OK.getStatusCode());
 
-    // Repeat location
+    // Repeat location (iceberg at existing iceberg location)
     assertThat(
             createTable(
                 services, String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
         .isEqualTo(expectedStatusForOverlaps);
+    // Iceberg at existing generic table location
     assertThat(
             createTable(
                 services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
         .isEqualTo(expectedStatusForOverlaps);
 
-    // Parent of existing location
+    // Generic table at existing iceberg table location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+    // Generic table at existing generic table location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s/generic_1", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+    // Generic table as child of existing iceberg table location
+    assertThat(
+            createGenericTable(
+                services,
+                String.format("%s/%s/%s/table_1/child", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+    // Generic table as parent of existing iceberg table location
+    assertThat(
+            createGenericTable(
+                services, String.format("%s/%s/%s", baseLocation, catalog, namespace)))
+        .isEqualTo(expectedStatusForOverlaps);
+
+    // Parent of existing location (iceberg)
     assertThat(createTable(services, String.format("%s/%s/%s", baseLocation, catalog, namespace)))
         .isEqualTo(expectedStatusForOverlaps);
 
-    // Child of existing location
+    // Child of existing location (iceberg)
     assertThat(
             createTable(
                 services,
