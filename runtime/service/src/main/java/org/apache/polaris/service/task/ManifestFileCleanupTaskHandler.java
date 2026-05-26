@@ -80,7 +80,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
       return true;
     }
 
-    ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO);
+    ManifestReader<DataFile> dataFiles = ManifestFiles.read(manifestFile, fileIO, null);
     List<CompletableFuture<Void>> dataFileDeletes =
         StreamSupport.stream(
                 Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
