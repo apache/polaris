@@ -143,7 +143,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCatalogSerializing() throws IOException {
-    CatalogProperties props = new CatalogProperties("s3://my-old-bucket/path/to/data");
+    CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
     props.put("prop1", "propval");
     PolarisCatalog catalog =
         PolarisCatalog.builder()
@@ -156,7 +156,7 @@ public class PolarisManagementServiceIntegrationTest {
                     .setExternalId("externalId")
                     .setUserArn("userArn")
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-                    .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+                    .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
                     .build())
             .build();
 
@@ -199,7 +199,7 @@ public class PolarisManagementServiceIntegrationTest {
             .request("v1/catalogs")
             .post(
                 Entity.json(
-                    "{\"catalog\":{\"type\":\"INTERNAL\",\"name\":\"my-catalog\",\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"},\"storageConfigInfo\":{\"storageType\":\"S3\",\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\",\"externalId\":\"externalId\",\"userArn\":\"userArn\",\"allowedLocations\":[\"s3://my-old-bucket/path/to/data\"]}}}"))) {
+                    "{\"catalog\":{\"type\":\"INTERNAL\",\"name\":\"my-catalog\",\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"},\"storageConfigInfo\":{\"storageType\":\"S3\",\"roleArn\":\"arn:aws:iam::123456789012:role/my-role\",\"externalId\":\"externalId\",\"userArn\":\"userArn\",\"allowedLocations\":[\"s3://my-bucket/path/to/data\"]}}}"))) {
       assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
     }
 
@@ -217,7 +217,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
 
     String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
@@ -333,7 +333,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
@@ -358,7 +358,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
@@ -418,7 +418,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
     String catalogName =
         client.newEntityName("testUpdateCatalogWithoutDefaultBaseLocationInUpdate");
@@ -475,7 +475,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
     String catalogName = client.newEntityName("my-external-catalog");
     Catalog catalog =
@@ -512,7 +512,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
             .build();
     ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
@@ -545,6 +545,10 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreateAndUpdateAzureCatalog() {
     StorageConfigInfo storageConfig =
         new AzureStorageConfigInfo("azure:tenantid:12345", StorageConfigInfo.StorageTypeEnum.AZURE);
+    storageConfig.setAllowedLocations(
+        List.of(
+            "abfss://container1@acct1.dfs.core.windows.net/",
+            "abfss://newcontainer@acct1.dfs.core.windows.net/"));
     String catalogName = client.newEntityName("myazurecatalog");
     Catalog catalog =
         PolarisCatalog.builder()
@@ -572,6 +576,8 @@ public class PolarisManagementServiceIntegrationTest {
 
     StorageConfigInfo modifiedStorageConfig =
         new AzureStorageConfigInfo("azure:tenantid:22222", StorageConfigInfo.StorageTypeEnum.AZURE);
+    modifiedStorageConfig.setAllowedLocations(
+        List.of("abfss://newcontainer@acct1.dfs.core.windows.net/"));
     UpdateCatalogRequest badUpdateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
@@ -616,6 +622,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreateListUpdateAndDeleteCatalog() {
     StorageConfigInfo storageConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/role1")
             .build();
     String catalogName = client.newEntityName("mycatalog");
@@ -661,6 +668,7 @@ public class PolarisManagementServiceIntegrationTest {
     // Reject update of fields that can't be currently updated
     StorageConfigInfo invalidModifiedStorageConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://newbucket/"))
             .setRoleArn("arn:aws:iam::123456789012:role/newrole")
             .build();
     UpdateCatalogRequest badUpdateRequest =
@@ -687,6 +695,7 @@ public class PolarisManagementServiceIntegrationTest {
     // account IDs are same)
     StorageConfigInfo validModifiedStorageConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://newbucket/"))
             .setRoleArn("arn:aws:iam::123456789011:role/newrole")
             .build();
     UpdateCatalogRequest updateRequest =
@@ -750,6 +759,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testUpdateCatalogChangeAwsAccountIdRejected() {
     StorageConfigInfo initialConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .build();
     String catalogName = client.newEntityName("mycatalog");
@@ -773,6 +783,7 @@ public class PolarisManagementServiceIntegrationTest {
     // Changing to a different AWS account should be rejected
     StorageConfigInfo differentAccountConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::999999999999:role/otherrole")
             .build();
     UpdateCatalogRequest updateRequest =
@@ -800,6 +811,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testUpdateCatalogChangeRoleWithinSameAccountAllowed() {
     StorageConfigInfo initialConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .build();
     String catalogName = client.newEntityName("mycatalog");
@@ -823,6 +835,7 @@ public class PolarisManagementServiceIntegrationTest {
     // Changing role name within the same account should succeed
     StorageConfigInfo updatedConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/otherrole")
             .build();
     UpdateCatalogRequest updateRequest =
@@ -847,6 +860,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testUpdateCatalogChangeExternalIdRejected() {
     StorageConfigInfo initialConfig =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .setExternalId("my-external-id")
             .build();
@@ -871,6 +885,7 @@ public class PolarisManagementServiceIntegrationTest {
     // Changing the external ID should be rejected
     StorageConfigInfo configWithDifferentExternalId =
         AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket1/"))
             .setRoleArn("arn:aws:iam::123456789011:role/myrole")
             .setExternalId("different-external-id")
             .build();
