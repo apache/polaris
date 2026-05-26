@@ -30,12 +30,12 @@ SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 # Detect base location and storage configuration
 if [[ "${S3_TEST_BACKEND}" == "aws" ]]; then
   BASE_LOCATION="${AWS_TEST_BASE}"
-  STORAGE_CONF="{\"storageType\": \"S3\", \"allowedLocations\": [\"${AWS_TEST_BASE}/polaris_test/\"], \"roleArn\": \"${AWS_ROLE_ARN}\"}"
+  STORAGE_CONF="{\"storageType\": \"S3\", \"allowedLocations\": [\"${AWS_TEST_BASE}/polaris_test/spark_sql_s3_catalog\"], \"roleArn\": \"${AWS_ROLE_ARN}\"}"
 else
   # Local mode
   BASE_LOCATION="s3://${AWS_STORAGE_BUCKET:-polaris-test-bucket}"
   ENDPOINT="${AWS_ENDPOINT_URL:-http://s3.local:9000}"
-  STORAGE_CONF="{\"storageType\": \"S3\", \"allowedLocations\": [\"${BASE_LOCATION}/polaris_test/\"], \"endpoint\": \"${ENDPOINT}\", \"endpointInternal\": \"${ENDPOINT}\", \"stsEndpoint\": \"${ENDPOINT}\", \"pathStyleAccess\": true, \"roleArn\": \"arn:aws:iam::123456789012:role/polaris-test\"}"
+  STORAGE_CONF="{\"storageType\": \"S3\", \"allowedLocations\": [\"${BASE_LOCATION}/polaris_test/spark_sql_s3_catalog\"], \"endpoint\": \"${ENDPOINT}\", \"endpointInternal\": \"${ENDPOINT}\", \"stsEndpoint\": \"${ENDPOINT}\", \"pathStyleAccess\": true, \"roleArn\": \"arn:aws:iam::123456789012:role/polaris-test\"}"
 fi
 
 set -x
