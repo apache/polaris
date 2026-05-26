@@ -119,7 +119,7 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
 
     var current = currentNanos();
     var totalElapsed = current - timeLoopStarted;
-    var attemptElapsed = timeAttemptStarted - current;
+    var attemptElapsed = current - timeAttemptStarted;
 
     if (maxTime < totalElapsed || maxRetries < retries) {
       return false;
