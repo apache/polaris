@@ -18,7 +18,10 @@
  */
 package org.apache.polaris.persistence.nosql.impl.commits;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
@@ -73,5 +76,64 @@ public abstract class BaseTestCommitLogImpl {
         .toIterable()
         .extracting(SimpleCommitTestObj::payload)
         .containsExactlyElementsOf(expectedPayloads);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 3, 21, 41})
+  public void commitLogOffsets(int offsetIndex, TestInfo testInfo) throws Exception {
+    var refName = testInfo.getTestMethod().orElseThrow().getName() + "-" + offsetIndex;
+    var numCommits = 50;
+
+    persistence.createReference(refName, Optional.empty());
+
+    var committer = persistence.createCommitter(refName, SimpleCommitTestObj.class, String.class);
+    for (int i = 0; i < numCommits; i++) {
+      var payload = "commit #" + i;
+      committer.commit(
+          (state, refObjSupplier) ->
+              state.commitResult(
+                  "foo",
+                  ImmutableSimpleCommitTestObj.builder().payload(payload),
+                  refObjSupplier.get()));
+    }
+
+    var commits = persistence.commits();
+    var natural =
+        toList(commits.commitLog(refName, OptionalLong.empty(), SimpleCommitTestObj.class));
+    var chronological = toList(commits.commitLogReversed(refName, 0L, SimpleCommitTestObj.class));
+    Collections.reverse(chronological);
+    soft.assertThat(chronological).containsExactlyElementsOf(natural);
+
+    var offsetCommit = natural.get(offsetIndex);
+    soft.assertThat(
+            toList(
+                commits.commitLog(
+                    refName, OptionalLong.of(offsetCommit.id()), SimpleCommitTestObj.class)))
+        .containsExactlyElementsOf(natural.subList(offsetIndex, natural.size()));
+
+    Collections.reverse(chronological);
+    var chronologicalOffsetCommit = chronological.get(offsetIndex);
+    soft.assertThat(
+            toList(
+                commits.commitLogReversed(
+                    refName, chronologicalOffsetCommit.id(), SimpleCommitTestObj.class)))
+        .containsExactlyElementsOf(chronological.subList(offsetIndex + 1, chronological.size()));
+
+    soft.assertThat(
+            toList(
+                commits.commitLog(
+                    refName, OptionalLong.of(persistence.generateId()), SimpleCommitTestObj.class)))
+        .containsExactly(natural.getLast());
+    soft.assertThat(
+            toList(
+                commits.commitLogReversed(
+                    refName, persistence.generateId(), SimpleCommitTestObj.class)))
+        .containsExactlyElementsOf(chronological);
+  }
+
+  private static List<SimpleCommitTestObj> toList(Iterator<SimpleCommitTestObj> iterator) {
+    var result = new ArrayList<SimpleCommitTestObj>();
+    iterator.forEachRemaining(result::add);
+    return result;
   }
 }
