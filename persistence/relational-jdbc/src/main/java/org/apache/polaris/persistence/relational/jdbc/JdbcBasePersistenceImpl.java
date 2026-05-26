@@ -1402,7 +1402,7 @@ public class JdbcBasePersistenceImpl
       @Nullable String principalName,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
-      @Nonnull PageToken pageToken) {
+      @NonNull PageToken pageToken) {
     try {
       PreparedQuery query =
           buildMetricsQuery(
@@ -1435,7 +1435,7 @@ public class JdbcBasePersistenceImpl
       @Nullable String principalName,
       @Nullable Long timestampFrom,
       @Nullable Long timestampTo,
-      @Nonnull PageToken pageToken) {
+      @NonNull PageToken pageToken) {
     try {
       PreparedQuery query =
           buildMetricsQuery(
