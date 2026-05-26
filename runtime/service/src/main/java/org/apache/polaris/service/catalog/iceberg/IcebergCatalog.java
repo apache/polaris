@@ -331,12 +331,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       throw alreadyExistsExceptionForTableLikeEntity(
           identifier, PolarisEntitySubType.ICEBERG_TABLE);
     }
-    if (overwrite && !tableExists) {
-      throw new NoSuchTableException("Table does not exist: %s", identifier);
-    }
 
     String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
-    if (overwrite) {
+    if (tableExists) {
       return overwriteRegisteredTable(identifier, metadataFileLocation, locationDir);
     } else {
       return registerNewTable(identifier, metadataFileLocation, locationDir);
@@ -419,6 +416,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     IcebergTableLikeEntity updatedEntity =
         new IcebergTableLikeEntity.Builder(existingEntity)
             .setInternalProperties(storedProperties)
+            .setBaseLocation(metadata.location())
             .setMetadataLocation(metadataFileLocation)
             .build();
 

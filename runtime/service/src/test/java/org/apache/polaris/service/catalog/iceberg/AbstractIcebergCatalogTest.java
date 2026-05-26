@@ -2305,6 +2305,25 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // Register with overwrite=true should update the metadata location
     Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
 
+    EntityResult entityResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    Assertions.assertThat(entityResult).returns(true, EntityResult::isSuccess);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, entityResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            table.name());
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+    Assertions.assertThat(IcebergTableLikeEntity.of(tableResult.getEntity()).getMetadataLocation())
+        .isEqualTo(newMetadataLocation);
+
     Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
         .isEqualTo(newMetadataLocation);
     Assertions.assertThat(((BaseTable) overwritten).operations().current().uuid())
@@ -2314,6 +2333,53 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .isEqualTo(newMetadataLocation);
     Assertions.assertThat(((BaseTable) catalog.loadTable(table)).operations().current().uuid())
         .isEqualTo(newTableUuid);
+  }
+
+  @Test
+  public void testRegisterTableOverwriteUpdatesBaseLocation() {
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_overwrite_base_location");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    Table created = catalog.buildTable(table, SCHEMA).create();
+    TableMetadata currentMetadata = ((BaseTable) created).operations().current();
+    String oldTableLocation = currentMetadata.location();
+    String newTableLocation = STORAGE_LOCATION + "/register_overwrite_base_location/table_moved/";
+
+    String newMetadataLocation = newTableLocation + "metadata/overwrite-moved.metadata.json";
+    String movedMetadataJson =
+        TableMetadataParser.toJson(currentMetadata).replace(oldTableLocation, newTableLocation);
+    fileIO.addFile(newMetadataLocation, movedMetadataJson.getBytes(UTF_8));
+
+    Table overwritten = catalog.registerTable(table, newMetadataLocation, true);
+
+    EntityResult entityResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    Assertions.assertThat(entityResult).returns(true, EntityResult::isSuccess);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, entityResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            table.name());
+    Assertions.assertThat(tableResult).returns(true, EntityResult::isSuccess);
+    Assertions.assertThat(IcebergTableLikeEntity.of(tableResult.getEntity()).getBaseLocation())
+        .isEqualTo(newTableLocation);
+
+    Assertions.assertThat(((BaseTable) overwritten).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
+    Assertions.assertThat(
+            ((BaseTable) catalog.loadTable(table)).operations().current().metadataFileLocation())
+        .isEqualTo(newMetadataLocation);
   }
 
   @Test
