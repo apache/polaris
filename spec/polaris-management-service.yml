@@ -879,6 +879,8 @@ components:
           description: The version of the catalog object used to determine if the catalog metadata has changed
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        kmsConfigInfo:
+          $ref: "#/components/schemas/KmsConfigInfo"
       required:
         - name
         - type
@@ -1234,6 +1236,62 @@ components:
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
 
+    KmsConfigInfo:
+      type: object
+      description: A KMS configuration used by catalogs for Iceberg table encryption
+      properties:
+        kmsType:
+          type: string
+          enum:
+            - AWS
+          description: The key-management service provider type
+        kmsName:
+          type: string
+          description: An optional name referencing a server-side KMS configuration
+      required:
+        - kmsType
+      discriminator:
+        propertyName: kmsType
+        mapping:
+          AWS: "#/components/schemas/AwsKmsConfigInfo"
+
+    AwsKmsConfigInfo:
+      type: object
+      description: AWS KMS configuration info for Iceberg table encryption
+      allOf:
+        - $ref: '#/components/schemas/KmsConfigInfo'
+        - type: object
+          properties:
+            roleArn:
+              type: string
+              description: AWS role ARN used by Polaris to access AWS KMS. Optional when using node or pod identity.
+              example: "arn:aws:iam::123456789001:role/polaris-kms-role"
+            externalId:
+              type: string
+              description: An optional external ID used to establish a trust relationship with AWS in the trust policy
+            region:
+              type: string
+              description: AWS region used by AWS KMS clients
+              example: "us-east-2"
+            endpoint:
+              type: string
+              description: AWS KMS endpoint URI. Clients always see this value if it is set.
+              example: "https://kms.us-east-2.amazonaws.com"
+            endpointInternal:
+              type: string
+              description: AWS KMS endpoint URI used by Polaris server-side access. If not set, defaults to `endpoint`.
+              example: "https://kms.internal.example.com"
+            stsEndpoint:
+              type: string
+              description: AWS STS endpoint URI used by Polaris server-side access.
+              example: "https://sts.us-east-2.amazonaws.com"
+            allowedKeyArns:
+              type: array
+              description: KMS key ARNs this catalog is allowed to use for Iceberg table encryption
+              items:
+                type: string
+              example: ["arn:aws:kms:us-east-2:123456789001:key/allowed-key"]
+
     ServiceIdentityInfo:
       type: object
       description: Identity metadata for the Polaris service used to access external resources.
@@ -1277,6 +1335,8 @@ components:
             type: string
         storageConfigInfo:
           $ref: "#/components/schemas/StorageConfigInfo"
+        kmsConfigInfo:
+          $ref: "#/components/schemas/KmsConfigInfo"
 
     Principals:
       description: A list of Principals

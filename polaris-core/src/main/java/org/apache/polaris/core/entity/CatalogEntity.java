@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.polaris.core.admin.model.AwsKmsConfigInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -38,6 +39,7 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.KmsConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -45,6 +47,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.kms.PolarisKmsConfigurationInfo;
+import org.apache.polaris.core.kms.aws.AwsKmsConfigurationInfo;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -94,6 +98,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
         realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+    builder.setKmsConfigurationInfo(catalog.getKmsConfigInfo());
     return builder.build();
   }
 
@@ -127,6 +132,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setKmsConfigInfo(getKmsInfo(internalProperties))
             .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
             .build()
         : PolarisCatalog.builder()
@@ -137,6 +143,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
+            .setKmsConfigInfo(getKmsInfo(internalProperties))
             .build();
   }
 
@@ -193,6 +200,27 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
+  private KmsConfigInfo getKmsInfo(Map<String, String> internalProperties) {
+    if (internalProperties.containsKey(PolarisEntityConstants.getKmsConfigInfoPropertyName())) {
+      PolarisKmsConfigurationInfo configInfo = getKmsConfigurationInfo();
+      if (configInfo instanceof AwsKmsConfigurationInfo awsConfig) {
+        return AwsKmsConfigInfo.builder()
+            .setKmsType(KmsConfigInfo.KmsTypeEnum.AWS)
+            .setKmsName(awsConfig.getKmsName())
+            .setRoleArn(awsConfig.getRoleArn())
+            .setExternalId(awsConfig.getExternalId())
+            .setRegion(awsConfig.getRegion())
+            .setEndpoint(awsConfig.getEndpoint())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
+            .setStsEndpoint(awsConfig.getStsEndpoint())
+            .setAllowedKeyArns(awsConfig.getAllowedKeyArns())
+            .build();
+      }
+      return null;
+    }
+    return null;
+  }
+
   private ConnectionConfigInfo getConnectionInfo(
       Map<String, String> internalProperties, ServiceIdentityProvider serviceIdentityProvider) {
     if (internalProperties.containsKey(
@@ -213,6 +241,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configStr != null) {
       return PolarisStorageConfigurationInfo.deserialize(configStr);
+    }
+    return null;
+  }
+
+  public @Nullable PolarisKmsConfigurationInfo getKmsConfigurationInfo() {
+    String configStr =
+        getInternalPropertiesAsMap().get(PolarisEntityConstants.getKmsConfigInfoPropertyName());
+    if (configStr != null) {
+      return PolarisKmsConfigurationInfo.deserialize(configStr);
     }
     return null;
   }
@@ -299,6 +336,33 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     public Builder setDefaultBaseLocation(String defaultBaseLocation) {
       // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation);
+      return this;
+    }
+
+    public Builder setKmsConfigurationInfo(KmsConfigInfo kmsConfigModel) {
+      if (kmsConfigModel != null) {
+        PolarisKmsConfigurationInfo config;
+        switch (kmsConfigModel.getKmsType()) {
+          case AWS:
+            AwsKmsConfigInfo awsConfigModel = (AwsKmsConfigInfo) kmsConfigModel;
+            config =
+                AwsKmsConfigurationInfo.builder()
+                    .kmsName(kmsConfigModel.getKmsName())
+                    .roleArn(awsConfigModel.getRoleArn())
+                    .externalId(awsConfigModel.getExternalId())
+                    .region(awsConfigModel.getRegion())
+                    .endpoint(awsConfigModel.getEndpoint())
+                    .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .stsEndpoint(awsConfigModel.getStsEndpoint())
+                    .allowedKeyArns(awsConfigModel.getAllowedKeyArns())
+                    .build();
+            break;
+          default:
+            throw new IllegalStateException("Unsupported KMS type: " + kmsConfigModel.getKmsType());
+        }
+        internalProperties.put(
+            PolarisEntityConstants.getKmsConfigInfoPropertyName(), config.serialize());
+      }
       return this;
     }
 

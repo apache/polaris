@@ -31,6 +31,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsKmsConfigInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -39,6 +40,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.KmsConfigInfo;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -212,7 +214,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "file:///tmp/path/to/data/"),
-            fileStorage);
+            fileStorage,
+            null);
 
     // failure to update
     assertThatThrownBy(
@@ -235,7 +238,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setEndpoint("http://example.com")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -475,6 +479,70 @@ public class ManagementServiceTest {
   }
 
   @Test
+  public void testCreateAndUpdateCatalogWithKmsConfigInfo() {
+    StorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789011:role/role1")
+            .build();
+    AwsKmsConfigInfo kmsConfig =
+        AwsKmsConfigInfo.builder(KmsConfigInfo.KmsTypeEnum.AWS)
+            .setKmsName("my-aws-kms-dev")
+            .setRoleArn("arn:aws:iam::123456789011:role/kms-role")
+            .setRegion("us-east-2")
+            .setAllowedKeyArns(List.of("arn:aws:kms:us-east-2:123456789011:key/allowed-key"))
+            .build();
+    String catalogName = "catalog_with_kms";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(storageConfig)
+            .setKmsConfigInfo(kmsConfig)
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+      assertThat(fetchedCatalog.getKmsConfigInfo()).isEqualTo(kmsConfig);
+    }
+
+    AwsKmsConfigInfo updatedKmsConfig =
+        AwsKmsConfigInfo.builder(KmsConfigInfo.KmsTypeEnum.AWS)
+            .setKmsName("my-updated-aws-kms-dev")
+            .setRoleArn("arn:aws:iam::123456789011:role/updated-kms-role")
+            .setRegion("us-east-1")
+            .setAllowedKeyArns(List.of("arn:aws:kms:us-east-1:123456789011:key/allowed-key"))
+            .build();
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(fetchedCatalog.getEntityVersion(), null, null, updatedKmsConfig);
+
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog updatedCatalog = (Catalog) response.getEntity();
+      assertThat(updatedCatalog.getKmsConfigInfo()).isEqualTo(updatedKmsConfig);
+    }
+  }
+
+  @Test
   public void testUpdateCatalogChangeAwsAccountIdBlockedByDefault() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -516,7 +584,8 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -572,7 +641,8 @@ public class ManagementServiceTest {
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/other-role")
-                .build());
+                .build(),
+            null);
     try (Response response =
         services
             .catalogsApi()
@@ -626,7 +696,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::123456789012:role/my-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null);
     assertThatThrownBy(
             () ->
                 services
@@ -697,7 +768,8 @@ public class ManagementServiceTest {
                 .setAllowedLocations(List.of("s3://bucket/path/to/data"))
                 .setRoleArn("arn:aws:iam::999999999999:role/other-role")
                 .setExternalId("different-external-id")
-                .build());
+                .build(),
+            null);
     try (Response response =
         flagEnabledServices
             .catalogsApi()

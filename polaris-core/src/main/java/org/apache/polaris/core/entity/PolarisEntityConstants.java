@@ -49,6 +49,8 @@ public class PolarisEntityConstants {
   private static final String STORAGE_CONFIGURATION_INFO_PROPERTY_NAME =
       "storage_configuration_info";
 
+  private static final String KMS_CONFIGURATION_INFO_PROPERTY_NAME = "kms_configuration_info";
+
   private static final String STORAGE_INTEGRATION_IDENTIFIER_PROPERTY_NAME =
       "storage_integration_identifier";
 
@@ -105,6 +107,10 @@ public class PolarisEntityConstants {
 
   public static String getStorageConfigInfoPropertyName() {
     return STORAGE_CONFIGURATION_INFO_PROPERTY_NAME;
+  }
+
+  public static String getKmsConfigInfoPropertyName() {
+    return KMS_CONFIGURATION_INFO_PROPERTY_NAME;
   }
 
   public static String getConnectionConfigInfoPropertyName() {

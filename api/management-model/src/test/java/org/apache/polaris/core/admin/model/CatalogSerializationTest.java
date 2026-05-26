@@ -20,6 +20,7 @@ package org.apache.polaris.core.admin.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,8 @@ public class CatalogSerializationTest {
   private static final String TEST_CATALOG_NAME = "test-catalog";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
   private static final String KMS_KEY = "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1";
+  private static final String TABLE_ENCRYPTION_KMS_ROLE_ARN =
+      "arn:aws:iam::123456789012:role/test-kms-role";
 
   @BeforeEach
   public void setUp() {
@@ -103,6 +106,50 @@ public class CatalogSerializationTest {
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
+                + "}}");
+  }
+
+  @Test
+  public void testJsonFormatWithKmsConfigInfo() throws Exception {
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(TEST_CATALOG_NAME)
+            .setProperties(new CatalogProperties(TEST_LOCATION))
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn(TEST_ROLE_ARN)
+                    .build())
+            .setKmsConfigInfo(
+                AwsKmsConfigInfo.builder(KmsConfigInfo.KmsTypeEnum.AWS)
+                    .setKmsName("my-aws-kms-dev")
+                    .setRoleArn(TABLE_ENCRYPTION_KMS_ROLE_ARN)
+                    .setRegion("us-east-2")
+                    .setAllowedKeyArns(
+                        List.of("arn:aws:kms:us-east-2:123456789012:key/allowed-key"))
+                    .build())
+            .build();
+
+    String json = mapper.writeValueAsString(catalog);
+
+    assertThat(json)
+        .isEqualTo(
+            "{\"type\":\"INTERNAL\","
+                + "\"name\":\"test-catalog\","
+                + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
+                + "\"storageConfigInfo\":{"
+                + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"allowedKmsKeys\":[],"
+                + "\"pathStyleAccess\":false,"
+                + "\"storageType\":\"S3\","
+                + "\"allowedLocations\":[]"
+                + "},"
+                + "\"kmsConfigInfo\":{"
+                + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-kms-role\","
+                + "\"region\":\"us-east-2\","
+                + "\"allowedKeyArns\":[\"arn:aws:kms:us-east-2:123456789012:key/allowed-key\"],"
+                + "\"kmsType\":\"AWS\","
+                + "\"kmsName\":\"my-aws-kms-dev\""
                 + "}}");
   }
 

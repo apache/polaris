@@ -23,12 +23,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.AwsKmsConfigInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -37,6 +39,7 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.KmsConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
@@ -494,6 +497,43 @@ public class CatalogEntityTest {
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getStorageConfigInfo()).isEqualTo(config);
     assertThat(MAPPER.writeValueAsString(catalog.getStorageConfigInfo())).isEqualTo(configStr);
+  }
+
+  @Test
+  public void testKmsConfigRoundTrip() throws JsonProcessingException {
+    String baseLocation = "s3://test-bucket/path";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    AwsKmsConfigInfo kmsConfigModel =
+        AwsKmsConfigInfo.builder(KmsConfigInfo.KmsTypeEnum.AWS)
+            .setKmsName("my-aws-kms-dev")
+            .setRoleArn("arn:aws:iam::012345678901:role/test-kms-role")
+            .setExternalId("externalId")
+            .setRegion("us-east-2")
+            .setEndpoint("https://kms.us-east-2.amazonaws.com")
+            .setEndpointInternal("https://kms.internal.example.com")
+            .setStsEndpoint("https://sts.us-east-2.amazonaws.com")
+            .setAllowedKeyArns(List.of("arn:aws:kms:us-east-2:012345678901:key/allowed-key"))
+            .build();
+    String configStr = MAPPER.writeValueAsString(kmsConfigModel);
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("test-kms-config-round-trip")
+            .setProperties(new CatalogProperties(baseLocation))
+            .setStorageConfigInfo(storageConfigModel)
+            .setKmsConfigInfo(MAPPER.readValue(configStr, KmsConfigInfo.class))
+            .build();
+    CatalogEntity catalogEntity = CatalogEntity.fromCatalog(realmConfig, catalog);
+
+    Catalog roundTripped = catalogEntity.asCatalog(serviceIdentityProvider);
+    assertThat(roundTripped.getKmsConfigInfo()).isEqualTo(kmsConfigModel);
+    assertThat(MAPPER.writeValueAsString(roundTripped.getKmsConfigInfo())).isEqualTo(configStr);
   }
 
   @Test
