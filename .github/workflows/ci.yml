@@ -66,8 +66,6 @@ jobs:
             echo "ERROR: Configuration reference is out of date. Please run './gradlew :polaris-config-docs-site:copyConfigSectionsToSite' and commit the changes."
             exit 1
           fi
-      - name: Verify Copilot instructions
-        run: .github/scripts/check-copilot-instructions.sh
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
       - name: Archive test results
@@ -78,6 +76,17 @@ jobs:
           path: &test-archive-path |
             **/build/test-results/**
             **/build/reports/tests/**
+      #
+      # The following are not strictly "Gradle build checks", but run quite fast.
+      #
+      # Adding separate jobs for these requires a new GH runner instance, which requires even more resources.
+      #
+      - name: Verify Copilot instructions
+        run: .github/scripts/check-copilot-instructions.sh
+      - name: Renovate Configuration Validation
+        run: npx --yes --package renovate renovate-config-validator --strict --no-global .github/renovate.json5
+      # Intentionally unpinned to always use the latest allowlist from the ASF.
+      - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
 
   runtime-service-tests:
     name: Runtime Service Tests
@@ -538,15 +547,6 @@ jobs:
         with:
           cache-read-only: false
 
-  asf-allowlist-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          persist-credentials: false
-      # Intentionally unpinned to always use the latest allowlist from the ASF.
-      - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
-
   required-checks:
     # Do not rename this job, this is referenced in .asf.yaml!
     name: "Required Checks"
@@ -563,7 +563,6 @@ jobs:
       - regtest
       - markdown-link-check
       - site
-      - asf-allowlist-check
     # Always run this job, even if a "needed" job fails. Without this one, GitHub will not run
     # this job and that yields "Success" to the branch protection rule, which is wrong.
     # Potential results for each "needed" job are: `success`, `failure`, `cancelled`, `skipped`.
