@@ -18,14 +18,17 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import org.apache.polaris.service.auth.internal.service.OAuthError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class TokenRequestValidator {
 
-  static final Logger LOGGER = Logger.getLogger(TokenRequestValidator.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(TokenRequestValidator.class);
 
   static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
   static final String CLIENT_CREDENTIALS = "client_credentials";
@@ -57,24 +60,33 @@ final class TokenRequestValidator {
       return Optional.of(OAuthError.invalid_client);
     }
     if (grantType == null || grantType.isEmpty() || !ALLOWED_GRANT_TYPES.contains(grantType)) {
-      LOGGER.info("Invalid grant type: " + grantType);
+      LOGGER.info("Invalid grant type: {}", grantType);
       return Optional.of(OAuthError.invalid_grant);
     }
     if (scope == null || scope.isEmpty()) {
       LOGGER.info("Missing scope in Request Body");
       return Optional.of(OAuthError.invalid_scope);
     }
-    String[] scopes = scope.split(" ");
-    for (String s : scopes) {
-      if (!s.startsWith(POLARIS_ROLE_PREFIX)) {
-        LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
-        return Optional.of(OAuthError.invalid_scope);
-      }
-      if (s.replaceFirst(POLARIS_ROLE_PREFIX, "").isEmpty()) {
-        LOGGER.info("Invalid scope provided. scope=" + s + ", scopes=" + scope);
+    return validateScope(scope);
+  }
+
+  Optional<OAuthError> validateScope(String scope) {
+    var scopes = parseScopes(scope);
+    if (scopes.isEmpty()) {
+      LOGGER.info("Invalid empty scope provided.");
+      return Optional.of(OAuthError.invalid_scope);
+    }
+    for (var s : scopes) {
+      if (!s.startsWith(POLARIS_ROLE_PREFIX) || s.length() == POLARIS_ROLE_PREFIX.length()) {
+        LOGGER.info("Invalid scope '{}' provided. scope={}", s, scope);
         return Optional.of(OAuthError.invalid_scope);
       }
     }
     return Optional.empty();
+  }
+
+  Set<String> parseScopes(String scope) {
+    // Note: Set.of() would throw an IAE on duplicate scopes. This preserves the original behavior.
+    return Arrays.stream(scope.split(" ")).collect(Collectors.toSet());
   }
 }
