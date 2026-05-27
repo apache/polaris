@@ -31,6 +31,9 @@ plugins {
 description = "Polaris ID generation implementation"
 
 val jcstressRuntime by configurations.creating
+val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
+val jcstressSplitPerActor =
+  providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)
 
 dependencies {
   implementation(project(":polaris-idgen-api"))
@@ -75,7 +78,11 @@ tasks.named("compileJcstressJava") { dependsOn("jandex") }
 
 tasks.named("check") { dependsOn("jcstress") }
 
-jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
+jcstress {
+  jcstressDependency = libs.jcstress.core.get().toString()
+  mode = jcstressMode.get()
+  splitPerActor = jcstressSplitPerActor.get()
+}
 
 tasks.named<JcstressTask>("jcstress") {
   inputs.properties(
@@ -87,6 +94,8 @@ tasks.named<JcstressTask>("jcstress") {
       }
   )
   inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.property("jcstressMode", jcstressMode.get())
+  inputs.property("jcstressSplitPerActor", jcstressSplitPerActor.get())
   inputs.files(jcstressRuntime)
   inputs.files(configurations.runtimeClasspath)
   outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
