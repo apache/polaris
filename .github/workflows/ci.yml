@@ -238,6 +238,7 @@ jobs:
 
   docker-image-scan:
     name: Polaris Docker Image Scan
+    if: github.repository == 'apache/polaris'
     runs-on: ubuntu-latest
     needs:
       - docker-image-build
