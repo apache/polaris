@@ -4786,7 +4786,19 @@ review and apply the following checklist:&lt;/p&gt;
 &lt;h3 id="configure-oauth2" id="configure-oauth2"&gt;Configure OAuth2&lt;a class="heading-anchor" href="#configure-oauth2" aria-label="Anchor"&gt;🔗&lt;/a&gt;
 &lt;/h3&gt;
 &lt;p&gt;Polaris authentication requires specifying a token broker factory type. Two implementations are
-supported out of the box:&lt;/p&gt;</description></item><item><title>Polaris Spark Client</title><link>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</guid><description>&lt;p&gt;Polaris provides a Spark client to manage non-Iceberg tables through &lt;a href="https://polaris.apache.org/in-dev/unreleased/generic-table/"&gt;Generic Tables&lt;/a&gt;.&lt;/p&gt;
+supported out of the box:&lt;/p&gt;</description></item><item><title>Configuring S3 Storage</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/configuring-aws-s3-cloud-storage-specific/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/configuring-aws-s3-cloud-storage-specific/</guid><description>&lt;p&gt;This page covers configuring AWS S3, and S3-compatible object stores (MinIO, Apache Ozone S3
+gateway, Ceph RGW, and similar), as the storage backend for a Polaris catalog. On AWS S3, all read
+and write operations are performed using credential vending: Polaris assumes a customer IAM role
+via STS and returns scoped, short-lived credentials to the client. The IAM role, its trust policy,
+and the bucket itself must be set up before the catalog is created.&lt;/p&gt;</description></item><item><title>Configuring Azure Blob Cloud Storage</title><link>https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/configuring-azure-blob-cloud-storage-specific/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/configuration/configuring-polaris-for-production/configuring-azure-blob-cloud-storage-specific/</guid><description>&lt;p&gt;This page covers configuring Azure Blob Storage and Azure Data Lake Storage Gen2 (ADLS Gen2) as
+the storage backend for a Polaris catalog. Polaris authenticates against Azure with the credentials
+of a service principal that has data-plane access to the target storage account, and then vends
+short-lived SAS tokens to clients on each table-load request.&lt;/p&gt;
+&lt;h2 id="service-principal-and-polaris-credentials" id="service-principal-and-polaris-credentials"&gt;Service principal and Polaris credentials&lt;a class="heading-anchor" href="#service-principal-and-polaris-credentials" aria-label="Anchor"&gt;🔗&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Polaris uses the Azure SDK&amp;rsquo;s &lt;code&gt;DefaultAzureCredential&lt;/code&gt; chain, which by default reads the
+service-principal credentials from environment variables. Create a service principal with data
+access to the storage account and pass its credentials to the Polaris process:&lt;/p&gt;</description></item><item><title>Polaris Spark Client</title><link>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/in-dev/unreleased/polaris-spark-client/</guid><description>&lt;p&gt;Polaris provides a Spark client to manage non-Iceberg tables through &lt;a href="https://polaris.apache.org/in-dev/unreleased/generic-table/"&gt;Generic Tables&lt;/a&gt;.&lt;/p&gt;
 &lt;div class="alert alert-info"&gt;&lt;p class="alert-heading"&gt;
  📝 Note&lt;/p&gt;
  &lt;p&gt;The Spark client can manage Iceberg tables and non-Iceberg tables.&lt;/p&gt;
