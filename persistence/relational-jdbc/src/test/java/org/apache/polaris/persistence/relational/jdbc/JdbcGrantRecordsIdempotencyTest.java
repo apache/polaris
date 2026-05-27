@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Optional;
@@ -28,25 +29,34 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 class JdbcGrantRecordsIdempotencyTest {
 
-  private static final int SCHEMA_VERSION = 4;
+  private static final long SECURABLE_CATALOG_ID = 1L;
+  private static final long SECURABLE_ID = 2L;
+  private static final long GRANTEE_CATALOG_ID = 3L;
+  private static final long GRANTEE_ID = 4L;
+  private static final int PRIVILEGE_CODE = 21;
 
-  @Test
-  void writeToGrantRecordsIsIdempotent() throws SQLException {
-    var dataSource =
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4})
+  void writeToGrantRecordsIsIdempotent(int schemaVersion) throws SQLException {
+    JdbcConnectionPool dataSource =
         JdbcConnectionPool.create(
-            "jdbc:h2:mem:grant_idempotency_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1", "sa", "");
-    var datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
-    InputStream scriptStream =
-        DatasourceOperations.class
-            .getClassLoader()
-            .getResourceAsStream(String.format("h2/schema-v%d.sql", SCHEMA_VERSION));
-    datasourceOperations.executeScript(scriptStream);
+            "jdbc:h2:mem:grant_idempotency_v" + schemaVersion + "_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1", "sa", "");
+    DatasourceOperations datasourceOperations = new DatasourceOperations(dataSource, new TestJdbcConfiguration());
+    try (InputStream scriptStream = DatabaseType.H2.openInitScriptResource(schemaVersion)) {
+      datasourceOperations.executeScript(scriptStream);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
     RealmContext realmContext = () -> "REALM";
     JdbcBasePersistenceImpl basePersistence =
@@ -54,18 +64,17 @@ class JdbcGrantRecordsIdempotencyTest {
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            Mockito.mock(),
+            Mockito.mock(PolarisStorageIntegrationProvider.class),
             realmContext.getRealmIdentifier(),
-            SCHEMA_VERSION);
+            schemaVersion);
     PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
 
-    PolarisGrantRecord grant =
-        new PolarisGrantRecord(
-            /* securableCatalogId */ 1L,
-            /* securableId */ 2L,
-            /* granteeCatalogId */ 3L,
-            /* granteeId */ 4L,
-            /* privilegeCode */ 21);
+    PolarisGrantRecord grant = new PolarisGrantRecord(
+            SECURABLE_CATALOG_ID,
+            SECURABLE_ID,
+            GRANTEE_CATALOG_ID,
+            GRANTEE_ID,
+            PRIVILEGE_CODE);
 
     assertThatCode(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .doesNotThrowAnyException();

@@ -1689,20 +1689,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       return new PrivilegeResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
-    // If the grant already exists, treat the call as a successful no-op so that PUT
-    // remains idempotent (mirrors the symmetric existence check in revoke below).
-    PolarisGrantRecord existingGrantRecord =
-        ms.lookupGrantRecordInCurrentTxn(
-            callCtx,
-            securable.getCatalogId(),
-            securable.getId(),
-            grantee.getCatalogId(),
-            grantee.getId(),
-            priv.getCode());
-    if (existingGrantRecord != null) {
-      return new PrivilegeResult(existingGrantRecord);
-    }
-
     // grant specified privilege on this securable to this role and return the grant
     PolarisGrantRecord grantRecord =
         this.persistNewGrantRecord(callCtx, ms, securable, grantee, priv);

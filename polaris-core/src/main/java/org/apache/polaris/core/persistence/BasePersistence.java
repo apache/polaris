@@ -133,7 +133,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
-   * record with the same PK), all attributes of the new record will replace the existing one.
+   * record with the same PK), this is a no-op, because currently all fields of the grantRecord
+   * are part of the PK. If additional non-PK attributes are added this might change.
    *
    * @param callCtx call context
    * @param grantRec entity record to write, potentially replacing an existing entity record with

@@ -1293,20 +1293,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    // If the grant already exists, treat the call as a successful no-op so that PUT
-    // remains idempotent (mirrors the symmetric existence check in revoke below).
-    PolarisGrantRecord existingGrantRecord =
-        ms.lookupGrantRecord(
-            callCtx,
-            securable.getCatalogId(),
-            securable.getId(),
-            grantee.getCatalogId(),
-            grantee.getId(),
-            privilege.getCode());
-    if (existingGrantRecord != null) {
-      return new PrivilegeResult(existingGrantRecord);
-    }
-
     // grant specified privilege on this securable to this role and return the grant
     PolarisGrantRecord grantRecord =
         this.persistNewGrantRecord(callCtx, ms, securable, grantee, privilege);
