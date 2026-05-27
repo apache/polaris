@@ -20,7 +20,6 @@
 package org.apache.polaris.service.catalog.common;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,18 +27,14 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEntityUtils;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -142,69 +137,35 @@ public class CatalogUtils {
   }
 
   /**
-   * Validates that the specified table-like entity location does not overlap with any sibling
-   * entities. Checks both sibling table-like entities and sibling namespaces.
+   * Validate no location overlap exists between the given entity and its sibling entities. This
+   * lists all siblings at the same level (namespaces if the parent is the catalog, namespaces and
+   * table-like entities otherwise) and checks the base-location property of each. The entity's base
+   * location may not be a prefix or a suffix of any sibling entity's base location.
    *
-   * <p>This method first checks whether overlap validation is enabled via the catalog-level {@link
-   * FeatureConfiguration#ALLOW_TABLE_LOCATION_OVERLAP} configuration. For Iceberg views, overlap is
-   * only checked when {@link BehaviorChangeConfiguration#VALIDATE_VIEW_LOCATION_OVERLAP} is
-   * enabled.
-   *
-   * <p>When validation is enabled, it attempts an optimized sibling check via the persistence
-   * layer. If that is not supported, it falls back to listing all siblings and checking each
-   * entity's base location.
+   * <p>When an optimized sibling check is supported by the persistence layer, it is attempted
+   * first. Otherwise, all siblings are listed and checked individually.
    *
    * @param realmConfig the realm configuration
    * @param metaStoreManager the meta store manager for entity queries
    * @param polarisCallContext the polaris call context
-   * @param catalogEntity the catalog entity (for config resolution)
-   * @param identifier the table identifier being created/updated
-   * @param location the proposed location
+   * @param entity the entity whose location is being validated
    * @param parentPath the resolved parent entity path
-   * @param entitySubType the sub-type of the entity being validated
    */
-  public static void validateNoLocationOverlap(
+  public static <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
       RealmConfig realmConfig,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext,
-      CatalogEntity catalogEntity,
-      TableIdentifier identifier,
-      String location,
-      List<PolarisEntity> parentPath,
-      PolarisEntitySubType entitySubType) {
-    boolean validateViewOverlap =
-        realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
+      T entity,
+      List<PolarisEntity> parentPath) {
 
-    if (catalogEntity != null
-        && realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
-      LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
-      return;
-    }
-
-    // currently only iceberg supports views
-    if (!validateViewOverlap && entitySubType.equals(PolarisEntitySubType.ICEBERG_VIEW)) {
-      return;
-    }
-
-    LOGGER.debug("Validating no overlap with sibling tables or namespaces");
+    String location = entity.getBaseLocation();
+    String name = entity.getName();
 
     boolean useOptimizedSiblingCheck =
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
-      PolarisEntity lastParent = parentPath.getLast();
-      IcebergTableLikeEntity virtualEntity =
-          IcebergTableLikeEntity.of(
-              new PolarisEntity.Builder()
-                  .setName(identifier.name())
-                  .setType(PolarisEntityType.TABLE_LIKE)
-                  .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
-                  .setParentId(lastParent.getId())
-                  .setCatalogId(lastParent.getCatalogId())
-                  .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
-                  .build());
       Optional<Optional<String>> result =
-          metaStoreManager.hasOverlappingSiblings(polarisCallContext, virtualEntity);
+          metaStoreManager.hasOverlappingSiblings(polarisCallContext, entity);
       if (result.isPresent()) {
         if (result.get().isPresent()) {
           throw new ForbiddenException(
@@ -219,20 +180,23 @@ public class CatalogUtils {
     StorageLocation targetLocation = StorageLocation.of(location);
     var coreParentPath = PolarisEntity.toCoreList(parentPath);
 
-    ListEntitiesResult siblingTablesResult =
-        metaStoreManager.listEntities(
-            polarisCallContext,
-            coreParentPath,
-            PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            PageToken.readEverything());
-    if (siblingTablesResult.isSuccess() && siblingTablesResult.getEntities() != null) {
-      for (EntityNameLookupRecord sibling : siblingTablesResult.getEntities()) {
-        if (sibling.getName().equals(identifier.name())) {
-          continue;
+    // If the parent path has more than just the catalog, check table-like siblings too
+    if (parentPath.size() > 1) {
+      ListEntitiesResult siblingTablesResult =
+          metaStoreManager.listEntities(
+              polarisCallContext,
+              coreParentPath,
+              PolarisEntityType.TABLE_LIKE,
+              PolarisEntitySubType.ANY_SUBTYPE,
+              PageToken.readEverything());
+      if (siblingTablesResult.isSuccess() && siblingTablesResult.getEntities() != null) {
+        for (EntityNameLookupRecord sibling : siblingTablesResult.getEntities()) {
+          if (sibling.getName().equals(name)) {
+            continue;
+          }
+          checkEntityLocationOverlap(
+              metaStoreManager, polarisCallContext, sibling, targetLocation, location);
         }
-        checkEntityLocationOverlap(
-            metaStoreManager, polarisCallContext, sibling, targetLocation, location);
       }
     }
 
@@ -245,6 +209,9 @@ public class CatalogUtils {
             PageToken.readEverything());
     if (siblingNamespacesResult.isSuccess() && siblingNamespacesResult.getEntities() != null) {
       for (EntityNameLookupRecord sibling : siblingNamespacesResult.getEntities()) {
+        if (sibling.getName().equals(name)) {
+          continue;
+        }
         checkEntityLocationOverlap(
             metaStoreManager, polarisCallContext, sibling, targetLocation, location);
       }

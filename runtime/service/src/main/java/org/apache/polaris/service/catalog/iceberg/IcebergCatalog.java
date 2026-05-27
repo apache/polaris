@@ -35,7 +35,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -101,13 +100,11 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -119,12 +116,9 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.persistence.resolver.ResolverPath;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageLocation;
@@ -538,7 +532,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             .build();
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
-      validateNoLocationOverlap(entity, resolvedParent.getRawFullPath());
+      CatalogUtils.validateNoLocationOverlap(
+          realmConfig,
+          getMetaStoreManager(),
+          getCurrentPolarisContext(),
+          entity,
+          resolvedParent.getRawFullPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
@@ -727,8 +726,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
-      validateNoLocationOverlap(
-          NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
+      CatalogUtils.validateNoLocationOverlap(
+          realmConfig,
+          getMetaStoreManager(),
+          getCurrentPolarisContext(),
+          NamespaceEntity.of(updatedEntity),
+          resolvedEntities.getRawParentPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
@@ -1096,15 +1099,34 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
-    CatalogUtils.validateNoLocationOverlap(
-        realmConfig,
-        getMetaStoreManager(),
-        getCurrentPolarisContext(),
-        catalog,
-        identifier,
-        location,
-        resolvedNamespace,
-        entity.getSubType());
+    boolean validateViewOverlap =
+        realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
+
+    if (realmConfig.getConfig(FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalog)) {
+      LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
+    } else if (validateViewOverlap
+        || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
+      LOGGER.debug("Validating no overlap with sibling tables or namespaces");
+
+      var lastNamespace = resolvedNamespace.getLast();
+      IcebergTableLikeEntity virtualEntity =
+          IcebergTableLikeEntity.of(
+              new PolarisEntity.Builder()
+                  .setName(identifier.name())
+                  .setType(PolarisEntityType.TABLE_LIKE)
+                  .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+                  .setParentId(lastNamespace.getId())
+                  .setCatalogId(lastNamespace.getCatalogId())
+                  .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
+                  .build());
+
+      CatalogUtils.validateNoLocationOverlap(
+          realmConfig,
+          getMetaStoreManager(),
+          getCurrentPolarisContext(),
+          virtualEntity,
+          resolvedNamespace);
+    }
   }
 
   /** Checks whether the location of a namespace is valid given its parent */
@@ -1175,174 +1197,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + "]");
       }
     }
-  }
-
-  /**
-   * Validate no location overlap exists between the entity path and its sibling entities. This
-   * resolves all siblings at the same level as the target entity (namespaces if the target entity
-   * is a namespace whose parent is the catalog, namespaces and tables otherwise) and checks the
-   * base-location property of each. The target entity's base location may not be a prefix or a
-   * suffix of any sibling entity's base location.
-   */
-  private <T extends PolarisEntity & LocationBasedEntity> void validateNoLocationOverlap(
-      T entity, List<PolarisEntity> parentPath) {
-
-    String location = entity.getBaseLocation();
-    String name = entity.getName();
-
-    // Attempt to directly query for siblings
-    boolean useOptimizedSiblingCheck =
-        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
-    if (useOptimizedSiblingCheck) {
-      Optional<Optional<String>> directSiblingCheckResult =
-          getMetaStoreManager().hasOverlappingSiblings(getCurrentPolarisContext(), entity);
-      if (directSiblingCheckResult.isPresent()) {
-        if (directSiblingCheckResult.get().isPresent()) {
-          throw new org.apache.iceberg.exceptions.ForbiddenException(
-              "Unable to create entity at location '%s' because it conflicts with existing table or namespace at %s",
-              location, directSiblingCheckResult.get().get());
-        } else {
-          return;
-        }
-      }
-    }
-
-    // if the entity path has more than just the catalog, check for tables as well as other
-    // namespaces
-    Optional<NamespaceEntity> parentNamespace =
-        parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
-            : Optional.empty();
-
-    // Fall through by listing everything:
-    ListEntitiesResult siblingNamespacesResult =
-        getMetaStoreManager()
-            .listEntities(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(parentPath),
-                PolarisEntityType.NAMESPACE,
-                PolarisEntitySubType.ANY_SUBTYPE,
-                PageToken.readEverything());
-    if (!siblingNamespacesResult.isSuccess()) {
-      throw new IllegalStateException(
-          "Unable to resolve siblings entities to validate location - could not list namespaces");
-    }
-
-    List<TableIdentifier> siblingTables =
-        parentNamespace
-            .map(
-                ns -> {
-                  ListEntitiesResult siblingTablesResult =
-                      getMetaStoreManager()
-                          .listEntities(
-                              getCurrentPolarisContext(),
-                              PolarisEntity.toCoreList(parentPath),
-                              PolarisEntityType.TABLE_LIKE,
-                              PolarisEntitySubType.ANY_SUBTYPE,
-                              PageToken.readEverything());
-                  if (!siblingTablesResult.isSuccess()) {
-                    throw new IllegalStateException(
-                        "Unable to resolve siblings entities to validate location - could not list tables");
-                  }
-                  return siblingTablesResult.getEntities().stream()
-                      .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
-                      .collect(Collectors.toList());
-                })
-            .orElse(List.of());
-
-    List<Namespace> siblingNamespaces =
-        siblingNamespacesResult.getEntities().stream()
-            .map(
-                ns -> {
-                  String[] nsLevels =
-                      parentNamespace
-                          .map(parent -> parent.asNamespace().levels())
-                          .orElse(new String[0]);
-                  String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
-                  newLevels[nsLevels.length] = ns.getName();
-                  return Namespace.of(newLevels);
-                })
-            .toList();
-    List<ResolvedPathKey> pathsToResolve =
-        new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
-    siblingTables.forEach(
-        tbl -> {
-          if (!tbl.name().equals(name)) {
-            pathsToResolve.add(ResolvedPathKey.ofTableLike(tbl));
-          }
-        });
-    siblingNamespaces.forEach(
-        ns -> {
-          if (!ns.level(ns.length() - 1).equals(name)) {
-            pathsToResolve.add(ResolvedPathKey.ofNamespace(ns));
-          }
-        });
-
-    StorageLocation targetLocation = StorageLocation.of(location);
-    for (PolarisEntity entityToCheck :
-        resolveOptionalPaths(pathsToResolve, parentPath.getFirst().getName())) {
-      PolarisEntityUtils.asLocationBasedEntity(entityToCheck)
-          .map(LocationBasedEntity::getBaseLocation)
-          .map(StorageLocation::of)
-          .ifPresent(
-              siblingLocation -> {
-                if (targetLocation.isChildOf(siblingLocation)
-                    || siblingLocation.isChildOf(targetLocation)) {
-                  throw new ForbiddenException(
-                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
-                          + "location '%s'",
-                      targetLocation, siblingLocation);
-                }
-              });
-    }
-  }
-
-  @VisibleForTesting
-  List<PolarisEntity> resolveOptionalPaths(List<ResolvedPathKey> keys, String catalogName) {
-    LOGGER.debug("Resolving {} sibling entities to validate location", keys.size());
-
-    PolarisResolutionManifest resolutionManifest =
-        new PolarisResolutionManifest(
-            diagnostics, callContext.getRealmContext(), resolverFactory, principal, catalogName);
-
-    keys.forEach(
-        k -> {
-          resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
-        });
-
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
-      String message =
-          "Unable to resolve sibling entities to validate location - " + status.getStatus();
-      if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
-        message += ". Could not resolve entity: " + status.getFailedToResolvedEntityName();
-      } else if (status
-          .getStatus()
-          .equals(ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED)) {
-        ResolverPath path = status.getFailedToResolvePath();
-        if (path != null) {
-          message += ". path: " + String.join(".", path.entityNames());
-          message += ", failed index: " + status.getFailedToResolvedEntityIndex();
-        }
-      }
-
-      throw new CommitConflictException(message);
-    }
-
-    List<PolarisEntity> result = new ArrayList<>(keys.size());
-    keys.forEach(
-        k -> {
-          PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
-          if (path != null) {
-            PolarisEntity entity = path.getRawLeafEntity();
-            if (entity != null) {
-              result.add(entity);
-            }
-          }
-        });
-
-    return result;
   }
 
   private class PolarisIcebergCatalogTableBuilder

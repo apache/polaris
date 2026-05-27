@@ -29,7 +29,10 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -93,15 +96,26 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     if (baseLocation != null && !baseLocation.isEmpty()) {
       CatalogUtils.validateLocationForTableLike(
           resolvedEntityView, callContext.getRealmConfig(), tableIdentifier, baseLocation);
-      CatalogUtils.validateNoLocationOverlap(
-          callContext.getRealmConfig(),
-          metaStoreManager,
-          callContext.getPolarisCallContext(),
-          resolvedEntityView.getResolvedCatalogEntity(),
-          tableIdentifier,
-          baseLocation,
-          resolvedParent.getRawFullPath(),
-          PolarisEntitySubType.GENERIC_TABLE);
+
+      CatalogEntity catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
+      RealmConfig realmConfig = callContext.getRealmConfig();
+      if (catalogEntity == null
+          || !realmConfig.getConfig(
+              FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
+        PolarisEntity lastParent = resolvedParent.getRawLeafEntity();
+        GenericTableEntity virtualEntity =
+            new GenericTableEntity.Builder(tableIdentifier, "")
+                .setCatalogId(catalogId)
+                .setParentId(lastParent.getId())
+                .setBaseLocation(baseLocation)
+                .build();
+        CatalogUtils.validateNoLocationOverlap(
+            realmConfig,
+            metaStoreManager,
+            callContext.getPolarisCallContext(),
+            virtualEntity,
+            resolvedParent.getRawFullPath());
+      }
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
