@@ -216,6 +216,53 @@ public abstract class CatalogHandler {
   }
 
   /**
+   * Authorizes a register-table-with-overwrite operation. If the table already exists, {@code
+   * REGISTER_TABLE_OVERWRITE} is authorized against the table entity. If the table does not exist,
+   * {@code REGISTER_TABLE} is authorized against the parent namespace.
+   */
+  protected void authorizeRegisterTableOverwriteOrThrow(TableIdentifier identifier) {
+    Namespace namespace = identifier.namespace();
+    resolutionManifest = newResolutionManifest();
+    resolutionManifest.addPath(
+        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE));
+    resolutionManifest.addPassthroughPath(
+        new ResolverPath(
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.TABLE_LIKE,
+            true /* optional */));
+    resolutionManifest.resolveAll();
+
+    PolarisResolvedPathWrapper tableTarget =
+        resolutionManifest.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE, true);
+
+    if (tableTarget != null) {
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+              tableTarget,
+              null /* secondary */);
+    } else {
+      PolarisResolvedPathWrapper namespaceTarget =
+          resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
+      if (namespaceTarget == null) {
+        throw noSuchNamespaceException(namespace);
+      }
+      authorizer()
+          .authorizeOrThrow(
+              polarisPrincipal(),
+              resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+              PolarisAuthorizableOperation.REGISTER_TABLE, // normal register-table operation
+              namespaceTarget,
+              null /* secondary */);
+    }
+
+    initializeCatalog();
+  }
+
+  /**
    * Ensures resolution manifest is initialized for a table identifier. This allows checking
    * catalog-level feature flags or other resolved entities before authorization. If already
    * initialized, this is a no-op.

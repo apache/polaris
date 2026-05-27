@@ -617,17 +617,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-    boolean overwrite = request.overwrite();
 
-    if (overwrite) {
-      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-          PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE, identifier);
+    if (request.overwrite()) {
+      authorizeRegisterTableOverwriteOrThrow(identifier);
       return registerTableWithOverwrite(identifier, request);
     }
 
-    // Creating new table requires REGISTER_TABLE privilege
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        PolarisAuthorizableOperation.REGISTER_TABLE, identifier);
     return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
   }
 

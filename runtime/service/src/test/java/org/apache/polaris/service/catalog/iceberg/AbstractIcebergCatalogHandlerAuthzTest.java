@@ -679,6 +679,37 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   }
 
   @TestFactory
+  Stream<DynamicNode> testRegisterTableOverwriteTableLevelSufficientPrivileges() {
+    // REGISTER_TABLE_OVERWRITE authorizes against the table entity, so TABLE_FULL_METADATA
+    // granted directly on the target table (not at catalog/namespace level) must suffice.
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_READ_PROPERTIES));
+    String metadataLocation =
+        newHandler(Set.of(PRINCIPAL_ROLE2)).loadTable(TABLE_NS1_1, "all").metadataLocation();
+
+    RegisterTableRequest registerRequest = Mockito.mock(RegisterTableRequest.class);
+    Mockito.when(registerRequest.name()).thenReturn(TABLE_NS1_1.name());
+    Mockito.when(registerRequest.metadataLocation()).thenReturn(metadataLocation);
+    Mockito.when(registerRequest.overwrite()).thenReturn(true);
+
+    return authzTestsBuilder("registerTableOverwrite (table-level grant)")
+        .grantAction(
+            privilege ->
+                adminService.grantPrivilegeOnTableToRole(
+                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+        .revokeAction(
+            privilege ->
+                adminService.revokePrivilegeOnTableFromRole(
+                    CATALOG_NAME, CATALOG_ROLE1, TABLE_NS1_1, privilege))
+        .action(() -> newHandler(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest))
+        .shouldPassWith(PolarisPrivilege.TABLE_FULL_METADATA)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
+        .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_METADATA)
+        .createTests();
+  }
+
+  @TestFactory
   Stream<DynamicNode> testRegisterTableOverwriteInsufficientPermissions() {
     /*
      * Verifies that a variety of privileges are insufficient to authorize a registerTable operation
