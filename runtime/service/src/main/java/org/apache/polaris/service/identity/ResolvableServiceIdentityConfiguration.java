@@ -19,12 +19,12 @@
 
 package org.apache.polaris.service.identity;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Represents a service identity configuration that can be converted into a fully initialized {@link
@@ -69,7 +69,7 @@ public interface ResolvableServiceIdentityConfiguration {
    * @return an optional service identity credential, or empty if required configuration is missing
    */
   default Optional<? extends ServiceIdentityCredential> asServiceIdentityCredential(
-      @Nonnull SecretReference secretReference) {
+      @NonNull SecretReference secretReference) {
     return Optional.empty();
   }
 

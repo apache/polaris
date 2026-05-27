@@ -40,6 +40,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.ImmutableCreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -370,7 +371,9 @@ public class IcebergCatalogAdapter
       String prefix,
       TableIdentifier tableIdentifier) {
     return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
-        ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
+        ? Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier))
         : Optional.empty();
   }
 
@@ -520,6 +523,24 @@ public class IcebergCatalogAdapter
   }
 
   @Override
+  public Response registerView(
+      String prefix,
+      String namespace,
+      RegisterViewRequest registerViewRequest,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    registerViewRequest.validate();
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    EntityNameValidator.validateIdentifier(TableIdentifier.of(ns, registerViewRequest.name()));
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.registerView(ns, registerViewRequest)).build());
+  }
+
+  @Override
   public Response listViews(
       String prefix,
       String namespace,
@@ -548,7 +569,9 @@ public class IcebergCatalogAdapter
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
     Optional<String> refreshEndpoint =
-        Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
+        Optional.of(
+            new PolarisResourcePaths(prefix, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED)
+                .credentialsPath(tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,

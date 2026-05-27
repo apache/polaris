@@ -52,7 +52,7 @@ public final class PolarisEntityUtils {
    * Returns a String representation of a namespace that is suitable for storage in entity internal
    * properties.
    *
-   * <p>This method is similar to {@link RESTUtil#encodeNamespace(Namespace)}.
+   * <p>This method is similar to {@link RESTUtil#encodeNamespace(Namespace, String)}.
    */
   public static String encodeNamespace(Namespace ns) {
     Preconditions.checkArgument(ns != null, "Invalid namespace: null");
@@ -68,7 +68,7 @@ public final class PolarisEntityUtils {
    * Returns a Namespace object from a String representation that was encoded using {@link
    * #encodeNamespace(Namespace)}.
    *
-   * <p>This method is similar to {@link RESTUtil#decodeNamespace(String)}.
+   * <p>This method is similar to {@link RESTUtil#decodeNamespace(String, String)}.
    */
   public static Namespace decodeNamespace(String encodedNs) {
     Preconditions.checkArgument(encodedNs != null, "Invalid namespace: null");

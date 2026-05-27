@@ -39,7 +39,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import io.quarkus.test.junit.QuarkusMock;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -164,6 +163,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ListAssert;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.assertj.core.configuration.PreferredAssumptionException;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -2083,6 +2083,70 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .hasMessageContaining("cannot be dropped");
   }
 
+  @Test
+  public void testDropTableWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropTable(TABLE, false);
+    Assertions.assertThat(result).isFalse();
+  }
+
+  @Test
+  public void testDropViewWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+    catalog
+        .buildView(TABLE)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropView(TABLE);
+    Assertions.assertThat(result).isFalse();
+  }
+
+  @Test
+  public void testDropNamespaceWithCatalogPathCannotBeResolved() {
+    catalog.createNamespace(NS);
+
+    PolarisMetaStoreManager spiedManager = spy(metaStoreManager);
+    doReturn(new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null))
+        .when(spiedManager)
+        .dropEntityIfExists(any(), anyList(), any(), anyMap(), anyBoolean());
+
+    IcebergCatalog spiedCatalog = newIcebergCatalog(CATALOG_NAME, spiedManager, fileIOFactory);
+    spiedCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    boolean result = spiedCatalog.dropNamespace(NS);
+    Assertions.assertThat(result).isFalse();
+  }
+
   private TableMetadata createSampleTableMetadata(String tableLocation) {
     Schema schema =
         new Schema(
@@ -2191,9 +2255,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @Nonnull StorageAccessConfig accessConfig,
-                  @Nonnull String ioImplClassName,
-                  @Nonnull Map<String, String> properties) {
+                  @NonNull StorageAccessConfig accessConfig,
+                  @NonNull String ioImplClassName,
+                  @NonNull Map<String, String> properties) {
                 return measured.loadFileIO(
                     accessConfig, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of());
               }

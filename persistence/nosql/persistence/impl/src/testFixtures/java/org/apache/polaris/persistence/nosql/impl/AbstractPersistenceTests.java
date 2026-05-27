@@ -664,6 +664,14 @@ public abstract class AbstractPersistenceTests {
   }
 
   @Test
+  public void backendRealmDeletionUnsupported() {
+    Assumptions.assumeThat(backend.supportsRealmDeletion()).isFalse();
+
+    soft.assertThatThrownBy(() -> backend.deleteRealms(Set.of("unsupported-realm-deletion-test")))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
   public void backendRealmDeletion(
       @PolarisPersistence Persistence one,
       @PolarisPersistence Persistence two,

@@ -31,8 +31,6 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -147,6 +145,8 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -434,6 +434,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           return false;
 
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              tableIdentifier,
+              dropEntityResult.getExtraInformation());
+          return false;
+
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
           throw new ForbiddenException(
               "Table %s cannot be dropped: %s",
@@ -572,8 +579,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @Nonnull String resolveLocationForPath(
-      @Nonnull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
+  private static @NonNull String resolveLocationForPath(
+      @NonNull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -592,7 +599,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private static @Nullable String baseLocation(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisEntity entity) {
+      @NonNull PolarisDiagnostics diagnostics, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
       String catalogDefaultBaseLocation = catEntity.getBaseLocation();
@@ -681,6 +688,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              namespace,
+              dropEntityResult.getExtraInformation());
           return false;
 
         default:
@@ -874,6 +888,55 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
+  public View registerView(TableIdentifier identifier, String metadataFileLocation) {
+    Preconditions.checkArgument(
+        identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
+    Preconditions.checkArgument(
+        metadataFileLocation != null && !metadataFileLocation.isEmpty(),
+        "Cannot register an empty metadata file location as a view");
+
+    int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
+    Preconditions.checkArgument(
+        lastSlashIndex != -1,
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        metadataFileLocation);
+
+    // Throw an exception if this view already exists in the catalog.
+    if (viewExists(identifier)) {
+      throw new AlreadyExistsException("View already exists: %s", identifier);
+    }
+
+    if (tableExists(identifier)) {
+      throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
+    }
+
+    String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
+
+    ViewOperations ops = newViewOps(identifier);
+
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    if (resolvedParent == null) {
+      // Illegal state because the namespace should've already been in the static resolution set.
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
+    }
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(locationDir),
+            resolvedParent,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
+    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
+    ViewMetadata metadata = ViewMetadataParser.read(metadataFile);
+    ops.commit(null, metadata);
+
+    return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
+  }
+
+  @Override
   public boolean dropView(TableIdentifier identifier) {
     boolean purge =
         realmConfig.getConfig(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP, catalogEntity);
@@ -883,6 +946,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              identifier,
+              dropEntityResult.getExtraInformation());
           return false;
 
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
@@ -2495,7 +2565,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @SuppressWarnings("FormatStringAnnotation")
-  private @Nonnull DropEntityResult dropTableLike(
+  private @NonNull DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,

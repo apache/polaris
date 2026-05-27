@@ -21,8 +21,6 @@ package org.apache.polaris.service.catalog;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
@@ -32,6 +30,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,8 +83,8 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   }
 
   @Override
-  public @Nonnull Optional<AccessDelegationMode> resolve(
-      @Nonnull EnumSet<AccessDelegationMode> requestedModes,
+  public @NonNull Optional<AccessDelegationMode> resolve(
+      @NonNull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
 
     // Case 1: No valid delegation mode found, or none requested
@@ -209,7 +209,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
    * @param catalogEntity The catalog entity to check
    * @return true if STS is available or the storage type doesn't require STS
    */
-  private boolean isCredentialVendingAvailable(@Nonnull CatalogEntity catalogEntity) {
+  private boolean isCredentialVendingAvailable(@NonNull CatalogEntity catalogEntity) {
     PolarisStorageConfigurationInfo storageConfig = catalogEntity.getStorageConfigurationInfo();
 
     if (storageConfig == null) {

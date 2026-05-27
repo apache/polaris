@@ -52,6 +52,7 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("encodeNamespaceCases")
+  @SuppressWarnings("deprecation")
   public void testEncodeNamespace(Namespace ns, String expected) {
     assertThat(PolarisEntityUtils.encodeNamespace(ns))
         .isEqualTo(RESTUtil.encodeNamespace(ns))
@@ -86,6 +87,7 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("decodeNamespaceCases")
+  @SuppressWarnings("deprecation")
   public void testDecodeNamespace(String encoded, Namespace expected) {
     assertThat(PolarisEntityUtils.decodeNamespace(encoded))
         .isEqualTo(RESTUtil.decodeNamespace(encoded))

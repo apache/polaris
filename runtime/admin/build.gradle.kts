@@ -25,6 +25,7 @@ plugins {
 }
 
 dependencies {
+  compileOnly(libs.jspecify)
   implementation(project(":polaris-core"))
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))

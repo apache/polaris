@@ -39,8 +39,7 @@ final class IndexElementIter<V> extends AbstractIterator<Index.Element<V>> {
   protected Index.Element<V> computeNext() {
     while (delegate.hasNext()) {
       var next = delegate.next();
-      var value = next.valueNullable();
-      if (value != null) {
+      if (next.hasValue()) {
         return next;
       }
     }

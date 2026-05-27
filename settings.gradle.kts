@@ -113,7 +113,7 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.4.1"
+  id("com.gradle.develocity") version "4.4.2"
   id("com.gradle.common-custom-user-data-gradle-plugin") version "2.6.0"
 }
 
@@ -138,11 +138,6 @@ dependencyResolutionManagement {
     }
     gradlePluginPortal()
   }
-}
-
-dependencyResolutionManagement {
-  // version catalog used by the polaris plugin code, such as polaris-spark-3.5
-  versionCatalogs { create("pluginlibs") { from(files("plugins/pluginlibs.versions.toml")) } }
 }
 
 gradle.beforeProject {

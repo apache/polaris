@@ -19,8 +19,6 @@
 package org.apache.polaris.extension.auth.ranger;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +44,8 @@ import org.apache.ranger.authz.model.RangerAuthzResult;
 import org.apache.ranger.authz.model.RangerMultiAuthzRequest;
 import org.apache.ranger.authz.model.RangerMultiAuthzResult;
 import org.apache.ranger.authz.model.RangerUserInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,21 +82,21 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     throw new UnsupportedOperationException("resolveAuthorizationInputs is not implemented yet");
   }
 
   @Override
-  public @Nonnull AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+  public @NonNull AuthorizationDecision authorize(
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     throw new UnsupportedOperationException("authorize is not implemented yet");
   }
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
@@ -109,9 +109,9 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
 
@@ -156,8 +156,8 @@ public class RangerPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   private boolean isAccessAuthorized(
-      @Nonnull PolarisPrincipal principal,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal principal,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries)
       throws RangerAuthzException {

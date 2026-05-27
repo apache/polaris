@@ -24,8 +24,6 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.inject.Instance;
@@ -58,6 +56,8 @@ import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.tracing.TracingFilter;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,7 +162,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
   }
 
-  private @Nonnull CompletableFuture<Void> tryHandleTask(
+  private @NonNull CompletableFuture<Void> tryHandleTask(
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,

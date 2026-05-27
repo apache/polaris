@@ -25,7 +25,6 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.CATALOG;
 
 import com.google.common.base.Strings;
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -66,6 +65,7 @@ import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.Policy;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

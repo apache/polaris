@@ -107,6 +107,26 @@
       matchManagers: ["github-actions"],
       matchPackageNames: ["python"],
       enabled: false
+    },
+    // gradle/actions v6 defaults to the proprietary enhanced caching provider, keep receiving v5 updates.
+    {
+      matchManagers: ["github-actions"],
+      matchPackageNames: ["gradle/actions", "gradle/actions/setup-gradle"],
+      allowedVersions: "/^v?5(\\.|$)/",
+    },
+    // Scala 2.12 and 2.13 are not compatible
+    // Ensure that Renovate does not "upgrade" from 2.12 to 2.13
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: [ "org.scala-lang:*" ],
+      matchCurrentVersion: "/^2\\.12\\./",
+      allowedVersions: "/^2\\.12\\./"
+    },
+    {
+      matchManagers: ["gradle"],
+      matchPackageNames: [ "org.scala-lang:*" ],
+      matchCurrentVersion: "/^2\\.13\\./",
+      allowedVersions: "/^2\\.13\\./"
     }
   ],
 

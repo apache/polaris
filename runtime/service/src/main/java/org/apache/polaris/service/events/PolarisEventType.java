@@ -149,6 +149,8 @@ public enum PolarisEventType {
   AFTER_REPLACE_VIEW(713, Category.VIEW),
   BEFORE_REFRESH_VIEW(714, Category.VIEW),
   AFTER_REFRESH_VIEW(715, Category.VIEW),
+  BEFORE_REGISTER_VIEW(716, Category.VIEW),
+  AFTER_REGISTER_VIEW(717, Category.VIEW),
 
   // Credential Events
   BEFORE_LOAD_CREDENTIALS(800, Category.CREDENTIAL),

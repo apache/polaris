@@ -22,13 +22,13 @@ import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_INSECURE
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_SPECIFYING_FILE_IO_IMPL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,13 +36,13 @@ public class IcebergPropertiesValidation {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergPropertiesValidation.class);
 
   public static void validateIcebergProperties(
-      @Nonnull RealmConfig realmConfig, @Nonnull Map<String, String> properties) {
+      @NonNull RealmConfig realmConfig, @NonNull Map<String, String> properties) {
     determineFileIOClassName(realmConfig, properties, null);
   }
 
   public static String determineFileIOClassName(
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull Map<String, String> properties,
+      @NonNull RealmConfig realmConfig,
+      @NonNull Map<String, String> properties,
       @Nullable PolarisStorageConfigurationInfo storageConfigurationInfo) {
     var ioImpl = properties.get(CatalogProperties.FILE_IO_IMPL);
 

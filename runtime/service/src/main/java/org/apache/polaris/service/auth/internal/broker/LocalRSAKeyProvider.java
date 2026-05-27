@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +32,11 @@ record LocalRSAKeyProvider(PublicKey publicKey, PrivateKey privateKey) implement
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalRSAKeyProvider.class);
 
-  LocalRSAKeyProvider(@Nonnull KeyPair keyPair) {
+  LocalRSAKeyProvider(@NonNull KeyPair keyPair) {
     this(keyPair.getPublic(), keyPair.getPrivate());
   }
 
-  static LocalRSAKeyProvider fromFiles(@Nonnull Path publicKeyFile, @Nonnull Path privateKeyFile) {
+  static LocalRSAKeyProvider fromFiles(@NonNull Path publicKeyFile, @NonNull Path privateKeyFile) {
     return new LocalRSAKeyProvider(
         readPublicKeyFile(publicKeyFile), readPrivateKeyFile(privateKeyFile));
   }
