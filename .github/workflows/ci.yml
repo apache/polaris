@@ -284,7 +284,7 @@ jobs:
           exit-code: '0'
       - name: Upload SARIF to GitHub Code Scanning
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
-        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
