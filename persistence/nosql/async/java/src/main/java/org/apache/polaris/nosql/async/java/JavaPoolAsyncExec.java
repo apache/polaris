@@ -243,6 +243,7 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
     try {
       executorService.submit(cancelable);
     } catch (RejectedExecutionException e) {
+      // In case the pool is being shut-down, do not attempt to reschedule.
       if (!cancelable.cancelledOrShutdown()) {
         try {
           delayed(cancelable, SUBMISSION_RETRY_MILLIS);
