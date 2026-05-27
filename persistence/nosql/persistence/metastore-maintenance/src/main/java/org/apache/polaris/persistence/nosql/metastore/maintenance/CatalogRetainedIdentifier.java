@@ -63,7 +63,6 @@ import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
-import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
@@ -233,7 +232,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
             perCatalogRoles(
                 catalogObj,
                 catalogsMaintenanceConfig.catalogRolesRetain().orElse(DEFAULT_CATALOG_ROLES_RETAIN),
-                CatalogRolesObj::nameToObjRef,
                 collector,
                 catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
 
@@ -347,7 +345,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
   private void perCatalogRoles(
       CatalogObj catalogObj,
       String celRetainExpr,
-      Function<CatalogRolesObj, IndexContainer<ObjRef>> indexContainerFunction,
       RetainedCollector collector,
       Consumer<CatalogRolesObj> objConsumer) {
     LOGGER.info(
@@ -364,7 +361,11 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
               new CelReferenceContinuePredicate<CatalogRolesObj>(
                   refName, persistence, celRetainExpr);
           collector.refRetainIndexToSingleObj(
-              refName, CatalogRolesObj.class, historyContinue, indexContainerFunction, objConsumer);
+              refName,
+              CatalogRolesObj.class,
+              historyContinue,
+              CatalogRolesObj::nameToObjRef,
+              objConsumer);
         });
   }
 
@@ -430,7 +431,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
       var anchor = GrantTriplet.fromRoleName(aclKey.toString());
       if (!entityLookup.entityExists(anchor.catalogId(), anchor.id(), anchor.typeCode())) {
-        candidates.add(new GrantCleanupCandidate(aclKey, List.of(), true));
+        candidates.add(new GrantCleanupCandidate(aclKey, List.of()));
       } else {
         var aclObj = persistence.fetch(elem.value(), AclObj.class);
         if (aclObj == null) {
@@ -448,7 +449,7 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   }
                 });
         if (!staleRoleIds.isEmpty()) {
-          candidates.add(new GrantCleanupCandidate(aclKey, staleRoleIds, false));
+          candidates.add(new GrantCleanupCandidate(aclKey, staleRoleIds));
         }
       }
 
@@ -473,12 +474,10 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
               var aclIndex =
                   refObj.get().acls().asUpdatableIndex(state.persistence(), OBJ_REF_SERIALIZER);
-              var changed = false;
               var cleaned = 0;
               for (var candidate : grantCleanupCandidates) {
                 if (candidate.removeAcl()) {
                   if (aclIndex.remove(candidate.aclKey())) {
-                    changed = true;
                     cleaned++;
                   }
                   continue;
@@ -501,9 +500,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                   continue;
                 }
 
-                if (aclIsEmpty(updatedAcl)) {
+                if (updatedAcl.isEmpty()) {
                   if (aclIndex.remove(candidate.aclKey())) {
-                    changed = true;
                     cleaned++;
                   }
                   continue;
@@ -519,11 +517,10 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                     state.writeOrReplace(
                         "acl-" + currentAclObj.securableId(), updatedAclObj, AclObj.class);
                 aclIndex.put(candidate.aclKey(), objRef(updatedAclObj));
-                changed = true;
                 cleaned++;
               }
 
-              if (!changed) {
+              if (cleaned == 0) {
                 return state.noCommit(0);
               }
 
@@ -586,18 +583,27 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
       skipContinuation = false;
 
       var mappingKey = PolicyMappingsObj.PolicyMappingKey.fromIndexKey(key);
-      if (!(mappingKey instanceof PolicyMappingsObj.KeyByEntity entityKey)) {
+
+      if (mappingKey instanceof PolicyMappingsObj.KeyByEntity entityKey) {
+        lastScannedKey = key;
+        if (!entityLookup.policyExists(entityKey.policyCatalogId(), entityKey.policyId())
+            || !entityLookup.policyTargetExists(
+                entityKey.entityCatalogId(), entityKey.entityId())) {
+          candidates.add(entityKey);
+        }
+
+        if (candidates.size() >= STALE_CLEANUP_BATCH_SIZE) {
+          return new PolicyMappingsCleanupBatch(candidates, lastScannedKey, false);
+        }
+      } else if (mappingKey instanceof PolicyMappingsObj.KeyByPolicy) {
+        // The serialized key representations for KeyByEntity and KeyByPolicy start with a 'type'
+        // character: `E` for KeyByEntity and `P` for KeyByPolicy.
+        // Indexes and the order of returned elements are always sorted.
+        // So we can safely stop on the first KeyByPolicy.
         break;
-      }
-
-      lastScannedKey = key;
-      if (!entityLookup.policyExists(entityKey.policyCatalogId(), entityKey.policyId())
-          || !entityLookup.policyTargetExists(entityKey.entityCatalogId(), entityKey.entityId())) {
-        candidates.add(entityKey);
-      }
-
-      if (candidates.size() >= STALE_CLEANUP_BATCH_SIZE) {
-        return new PolicyMappingsCleanupBatch(candidates, lastScannedKey, false);
+      } else {
+        // Paranoid check: we should never get here.
+        throw new IllegalStateException("Unexpected mapping key type: " + mappingKey.getClass());
       }
     }
     return new PolicyMappingsCleanupBatch(candidates, lastScannedKey, true);
@@ -642,20 +648,17 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         .orElse(0);
   }
 
-  private static boolean aclIsEmpty(Acl acl) {
-    var hasEntries = new boolean[1];
-    acl.forEach((roleId, entry) -> hasEntries[0] = true);
-    return !hasEntries[0];
-  }
-
   private record PolicyMappingsCleanupBatch(
       List<PolicyMappingsObj.KeyByEntity> candidates, IndexKey lastScannedKey, boolean exhausted) {}
 
   private record GrantCleanupBatch(
       List<GrantCleanupCandidate> candidates, IndexKey lastScannedKey, boolean exhausted) {}
 
-  private record GrantCleanupCandidate(
-      IndexKey aclKey, List<String> staleRoleIds, boolean removeAcl) {}
+  private record GrantCleanupCandidate(IndexKey aclKey, List<String> staleRoleIds) {
+    boolean removeAcl() {
+      return staleRoleIds.isEmpty();
+    }
+  }
 
   private static final class EntityLookupCache {
     private final Persistence persistence;

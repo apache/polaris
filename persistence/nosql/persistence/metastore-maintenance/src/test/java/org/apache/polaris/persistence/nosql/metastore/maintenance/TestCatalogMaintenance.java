@@ -327,6 +327,10 @@ public class TestCatalogMaintenance {
 
     assertThat(countPolicyMappingsForPolicy(persistence, policy.getCatalogId(), policy.getId()))
         .isZero();
+    var cleanedMappings = manager.loadPoliciesOnEntity(callCtx, tables.getFirst());
+    assertThat(cleanedMappings.isSuccess()).isTrue();
+    assertThat(cleanedMappings.getPolicyMappingRecords()).isEmpty();
+    assertThat(cleanedMappings.getEntities()).isEmpty();
   }
 
   @Test
@@ -395,15 +399,29 @@ public class TestCatalogMaintenance {
 
     assertThat(countPolicyMappingsForPolicy(persistence, policy.getCatalogId(), policy.getId()))
         .isEqualTo(2L * (staleTables.size() + 1L));
-    assertThat(manager.loadPoliciesOnEntity(callCtx, liveTable).getPolicyMappingRecords())
-        .hasSize(1);
+    var liveMappingsBeforeCleanup = manager.loadPoliciesOnEntity(callCtx, liveTable);
+    assertThat(liveMappingsBeforeCleanup.isSuccess()).isTrue();
+    assertThat(liveMappingsBeforeCleanup.getPolicyMappingRecords())
+        .singleElement()
+        .satisfies(
+            mapping -> {
+              assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
+              assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
+            });
 
     assertThat(runMaintenance().success()).isTrue();
 
     assertThat(countPolicyMappingsForPolicy(persistence, policy.getCatalogId(), policy.getId()))
         .isEqualTo(2L);
-    assertThat(manager.loadPoliciesOnEntity(callCtx, liveTable).getPolicyMappingRecords())
-        .hasSize(1);
+    var liveMappingsAfterCleanup = manager.loadPoliciesOnEntity(callCtx, liveTable);
+    assertThat(liveMappingsAfterCleanup.isSuccess()).isTrue();
+    assertThat(liveMappingsAfterCleanup.getPolicyMappingRecords())
+        .singleElement()
+        .satisfies(
+            mapping -> {
+              assertThat(mapping.getTargetCatalogId()).isEqualTo(liveTable.getCatalogId());
+              assertThat(mapping.getTargetId()).isEqualTo(liveTable.getId());
+            });
   }
 
   @Test
@@ -447,6 +465,8 @@ public class TestCatalogMaintenance {
     assertThat(manager.dropEntityIfExists(callCtx, List.of(catalog), catalogRole, null, false))
         .extracting(BaseResult::isSuccess)
         .isEqualTo(true);
+
+    assertThat(countGrantAclHeads(persistence, staleAclNames)).isEqualTo(tables.size() + 1L);
 
     var staleGrants = manager.loadGrantsOnSecurable(callCtx, tables.getFirst());
     assertThat(staleGrants.isSuccess()).isTrue();
