@@ -633,12 +633,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   private LoadTableResponse registerTableWithOverwrite(
       TableIdentifier identifier, RegisterTableRequest request) {
+
+    // For non-Polaris/federated catalogs, reject overwrite until this is
+    // supported by a common catalog contract.
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    if (catalogEntity.isExternal()) {
+      throw new BadRequestException(
+          "Register table overwrite is only supported for internal Polaris catalogs");
+    }
+
     // Handle Polaris-specific overwrite logic.
-    //
-    // NOTE: Register-table overwrite is currently only implemented for Polaris's
-    // IcebergCatalog. Federated catalogs are initialized as external catalog
-    // implementations (for example RESTCatalog) and do not expose this Polaris-
-    // specific overwrite contract, so overwrite requests are rejected below.
     if (baseCatalog instanceof IcebergCatalog icebergCatalog) {
       // Use the overwrite-capable registration path for IcebergCatalog
       Table table = icebergCatalog.registerTable(identifier, request.metadataLocation(), true);
@@ -649,8 +653,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
     }
 
-    // For non-Polaris/federated catalogs, reject overwrite until this is
-    // supported by a common catalog contract.
     throw new BadRequestException(
         "Register table overwrite is only supported for internal Polaris catalogs; unsupported catalog type: %s",
         baseCatalog.getClass().getName());
