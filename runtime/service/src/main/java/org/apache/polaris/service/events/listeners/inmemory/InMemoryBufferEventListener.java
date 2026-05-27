@@ -57,7 +57,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
           .expireAfterAccess(Duration.ofHours(1))
           .evictionListener(
               (String realmId, UnicastProcessor<?> processor, RemovalCause cause) ->
-                  processor.onComplete())
+                  completeSynchronized(processor))
           .build(this::createProcessor);
 
   @Override
@@ -72,8 +72,23 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   @PreDestroy
   public void shutdown() {
-    processors.asMap().values().forEach(UnicastProcessor::onComplete);
+    processors.asMap().values().forEach(InMemoryBufferEventListener::completeSynchronized);
     processors.invalidateAll(); // doesn't call the eviction listener
+  }
+
+  /**
+   * Calls {@link UnicastProcessor#onComplete()} while holding the processor's intrinsic monitor.
+   *
+   * <p>smallrye-mutiny's {@code UnicastProcessor.onNext} is method-{@code synchronized} on the
+   * processor instance; {@code onComplete} is not. Acquiring the same intrinsic monitor here
+   * restores symmetric mutual exclusion between concurrent {@code onNext} (from {@code
+   * processEvent}) and {@code onComplete} (from eviction or shutdown). Wrapping the pattern as an
+   * invariant keeps the synchronization requirement structurally visible to future maintainers.
+   */
+  private static void completeSynchronized(UnicastProcessor<?> processor) {
+    synchronized (processor) {
+      processor.onComplete();
+    }
   }
 
   protected UnicastProcessor<PolarisEvent> createProcessor(String realmId) {
