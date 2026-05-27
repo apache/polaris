@@ -64,7 +64,7 @@ public record AuthorizationRequest(
     return of(principal, AuthorizationIntent.of(operation, target, secondary));
   }
 
-  public boolean hasSecurableType(PolarisEntityType... types) {
-    return intents.stream().anyMatch(intent -> intent.hasSecurableType(types));
+  public boolean hasSecurableType(PolarisEntityType type) {
+    return intents.stream().anyMatch(intent -> intent.hasSecurableType(type));
   }
 }

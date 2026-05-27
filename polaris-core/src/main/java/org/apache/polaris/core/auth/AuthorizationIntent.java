@@ -45,15 +45,5 @@ public sealed interface AuthorizationIntent
 
   @NonNull PolarisAuthorizableOperation getOperation();
 
-  boolean hasSecurableType(PolarisEntityType... types);
-
-  static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
-    PolarisEntityType entityType = securable.getLeaf().entityType();
-    for (PolarisEntityType type : types) {
-      if (entityType == type) {
-        return true;
-      }
-    }
-    return false;
-  }
+  boolean hasSecurableType(PolarisEntityType type);
 }

@@ -37,7 +37,7 @@ public record SingleTargetAuthorizationIntent(
   }
 
   @Override
-  public boolean hasSecurableType(PolarisEntityType... types) {
-    return AuthorizationIntent.containsType(target(), types);
+  public boolean hasSecurableType(PolarisEntityType type) {
+    return target().leafHasType(type);
   }
 }

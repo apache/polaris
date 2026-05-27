@@ -48,8 +48,8 @@ public record PairwiseTargetAuthorizationIntent(
   }
 
   @Override
-  public boolean hasSecurableType(PolarisEntityType... types) {
-    return (target() != null && AuthorizationIntent.containsType(target(), types))
-        || (secondary() != null && AuthorizationIntent.containsType(secondary(), types));
+  public boolean hasSecurableType(PolarisEntityType type) {
+    return (target() != null && target().leafHasType(type))
+        || (secondary() != null && secondary().leafHasType(type));
   }
 }

@@ -83,6 +83,17 @@ public interface PolarisSecurable {
         .collect(Collectors.joining("."));
   }
 
+  /** Returns whether the leaf segment has any of the provided types. */
+  default boolean leafHasType(PolarisEntityType... types) {
+    PolarisEntityType entityType = getLeaf().entityType();
+    for (PolarisEntityType type : types) {
+      if (entityType == type) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Value.Check
   default void validate() {
     Preconditions.checkState(

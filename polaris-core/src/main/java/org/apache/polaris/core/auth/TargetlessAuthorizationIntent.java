@@ -35,7 +35,7 @@ public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperatio
   }
 
   @Override
-  public boolean hasSecurableType(PolarisEntityType... types) {
+  public boolean hasSecurableType(PolarisEntityType type) {
     return false;
   }
 }

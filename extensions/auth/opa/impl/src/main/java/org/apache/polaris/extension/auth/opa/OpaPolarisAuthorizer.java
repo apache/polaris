@@ -120,8 +120,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   @Override
   @NonNull
   public AuthorizationDecision authorize(
-<<<<<<< auth-op-model-spike
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     for (AuthorizationIntent intent : request.intents()) {
       PolarisAuthorizableOperation operation = intent.getOperation();
       List<ResourceEntity> targets;
@@ -152,20 +151,6 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       }
     }
     return AuthorizationDecision.allow();
-=======
-      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    boolean allowed =
-        queryOpa(
-            buildOpaAuthorizationInput(
-                request.getPrincipal(),
-                request.getOperation(),
-                toResourceEntitiesFromSecurables(request.getTargets()),
-                toResourceEntitiesFromSecurables(request.getSecondaries())));
-    return allowed
-        ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny(
-            "OPA denied authorization for " + request.formatForAuthorizationMessage());
->>>>>>> main
   }
 
   /**
@@ -399,24 +384,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return entities;
   }
 
-<<<<<<< auth-op-model-spike
-  @Nonnull
   private List<ResourceEntity> toResourceEntitiesFromSecurable(
       @Nullable PolarisSecurable securable) {
     return securable == null ? List.of() : List.of(buildResourceEntity(securable));
-=======
-  @NonNull
-  private List<ResourceEntity> toResourceEntitiesFromSecurables(
-      @Nullable List<PolarisSecurable> securables) {
-    if (securables == null || securables.isEmpty()) {
-      return List.of();
-    }
-
-    List<ResourceEntity> entities = new ArrayList<>();
-    for (PolarisSecurable securable : securables) {
-      entities.add(buildResourceEntity(securable));
-    }
-    return entities;
->>>>>>> main
   }
 }
