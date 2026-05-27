@@ -56,7 +56,7 @@ This example requires `jq` to be installed on your machine.
     export ASSETS_PATH=$(pwd)/site/content/guides/assets/
     export CLIENT_ID=root
     export CLIENT_SECRET=s3cr3t
-    docker compose -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/assets/cockroachdb/docker-compose-cockroachdb.yml -f site/content/guides/cockroachdb/docker-compose.yml up
+    docker compose -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/assets/cockroachdb/docker-compose-cockroachdb.yml -f site/content/guides/jdc/docker-compose.yml up
     ```
 
 <!-- Guide testing: do not exercise the expensive Docker compose setup.
