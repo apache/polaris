@@ -33,12 +33,14 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal.RoleSelection;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -92,10 +94,11 @@ public class DefaultAuthenticatorTest {
   @BeforeEach
   public void setup(TestInfo testInfo) {
     realmContextHolder.set(() -> testInfo.getTestMethod().orElseThrow().getName());
-    authenticatedRoot =
-        PolarisPrincipal.of(PolarisEntityConstants.getRootPrincipalName(), Map.of(), Set.of());
-    identityAssociation.setIdentity(
-        QuarkusSecurityIdentity.builder().setPrincipal(authenticatedRoot).build());
+    PolarisPrincipal root =
+        PolarisPrincipal.ofAllRoles(
+            PolarisEntityConstants.getRootPrincipalName(), Map.of(), Set.of(), Optional.empty());
+    authenticatedRoot = root;
+    identityAssociation.setIdentity(QuarkusSecurityIdentity.builder().setPrincipal(root).build());
     principalEntity = createPrincipal(PRINCIPAL_NAME, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
     principalEntityNoRoles = createPrincipal(PRINCIPAL_NAME_NO_ROLES);
   }
@@ -185,6 +188,7 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with all assigned roles
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertThat(result.getRoleSelection()).isEqualTo(RoleSelection.ALL_ROLES);
   }
 
   @Test
@@ -201,6 +205,7 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with only the requested role
     assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
+    assertThat(result.getRoleSelection()).isEqualTo(RoleSelection.SELECTED_ROLES);
   }
 
   @Test
@@ -244,11 +249,8 @@ public class DefaultAuthenticatorTest {
             PRINCIPAL_NAME,
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
 
-    // When: authenticating the principal
-    PolarisPrincipal result = authenticator.authenticate(credentials);
-
-    // Then: should return principal with empty roles set (non-existent roles are filtered out)
-    assertPrincipal(result, principalEntity);
+    // When/Then: authentication should fail with NotAuthorizedException
+    assertUnauthorized(credentials);
   }
 
   @Test
@@ -260,15 +262,10 @@ public class DefaultAuthenticatorTest {
             PRINCIPAL_NAME,
             Set.of(
                 DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1,
-                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX
-                    + "non-existent-role" // This should be ignored
-                ));
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
 
-    // When: authenticating the principal
-    PolarisPrincipal result = authenticator.authenticate(credentials);
-
-    // Then: should return principal with only the valid role
-    assertPrincipal(result, principalEntity, PRINCIPAL_ROLE1);
+    // When/Then: authentication should fail with NotAuthorizedException
+    assertUnauthorized(credentials);
   }
 
   @Test
@@ -304,6 +301,7 @@ public class DefaultAuthenticatorTest {
 
     // Then: should return principal with empty roles set
     assertPrincipal(result, principalEntity);
+    assertThat(result.getRoleSelection()).isEqualTo(RoleSelection.SELECTED_ROLES);
   }
 
   @Test

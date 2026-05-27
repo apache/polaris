@@ -167,7 +167,7 @@ public abstract class AbstractLocalIcebergCatalogViewTest
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.ofAllRoles(rootPrincipal);
 
     authorizer = new PolarisAuthorizerImpl(realmConfig);
     reservedProperties = ReservedProperties.NONE;

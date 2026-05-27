@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -36,7 +35,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -421,21 +419,10 @@ public abstract class BaseResolverTest {
       this.cache =
           new InMemoryEntityCache(diagServices, callCtx().getRealmConfig(), metaStoreManager());
     }
-    boolean allRoles = principalRolesScope == null;
-    Optional<List<PrincipalRoleEntity>> roleEntities =
-        Optional.ofNullable(principalRolesScope)
-            .map(
-                scopes ->
-                    scopes.stream()
-                        .map(
-                            roleName ->
-                                metaStoreManager().findPrincipalRoleByName(callCtx(), roleName))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(Collectors.toList()));
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(
-            PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
+        principalRolesScope == null
+            ? PolarisPrincipal.ofAllRoles(PrincipalEntity.of(P1))
+            : PolarisPrincipal.of(PrincipalEntity.of(P1), principalRolesScope);
     return new Resolver(
         diagServices,
         callCtx(),

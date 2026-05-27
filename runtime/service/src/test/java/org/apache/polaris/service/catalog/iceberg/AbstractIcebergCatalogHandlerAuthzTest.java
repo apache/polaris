@@ -122,7 +122,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
   @Inject IcebergCatalogHandlerFactory icebergCatalogHandlerFactory;
 
   protected IcebergCatalogHandler newHandler() {
-    return newHandler(Set.of());
+    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.ofAllRoles(principalEntity);
+    return icebergCatalogHandlerFactory.createHandler(CATALOG_NAME, authenticatedPrincipal);
   }
 
   private IcebergCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
@@ -1165,7 +1166,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
    * behavior to coarse-grained authorization.
    */
   private IcebergCatalogHandler newHandlerWithFineGrainedAuthzDisabled() {
-    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
+    PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.ofAllRoles(principalEntity);
 
     // Create a custom CallContext that returns a custom RealmConfig
     CallContext mockCallContext = Mockito.mock(CallContext.class);

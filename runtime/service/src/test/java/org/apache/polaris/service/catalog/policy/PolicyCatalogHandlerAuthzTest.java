@@ -43,12 +43,14 @@ import org.junit.jupiter.api.TestFactory;
 public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private PolicyCatalogHandler newHandler() {
-    return newHandler(Set.of());
+    return newHandler(PolarisPrincipal.ofAllRoles(principalEntity));
   }
 
   private PolicyCatalogHandler newHandler(Set<String> activatedPrincipalRoles) {
-    PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+    return newHandler(PolarisPrincipal.of(principalEntity, activatedPrincipalRoles));
+  }
+
+  private PolicyCatalogHandler newHandler(PolarisPrincipal authenticatedPrincipal) {
     return ImmutablePolicyCatalogHandler.builder()
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(authenticatedPrincipal)

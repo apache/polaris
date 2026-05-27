@@ -26,13 +26,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal.RoleSelection;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -86,8 +86,6 @@ public class DefaultAuthenticator implements Authenticator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
-  private static final Set<String> ALL_ROLES_REQUESTED = Set.of();
-
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
   @Inject PolarisDiagnostics diagnostics;
@@ -98,10 +96,15 @@ public class DefaultAuthenticator implements Authenticator {
     LOGGER.debug("Resolving principal for credentials: {}", credentials);
 
     PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
-    Set<String> principalRoles = resolvePrincipalRoles(credentials, principalEntity);
+    PrincipalRoleSelection principalRoles = resolvePrincipalRoles(credentials, principalEntity);
     PolarisPrincipal polarisPrincipal =
         PolarisPrincipal.of(
-            principalEntity, principalRoles, Optional.ofNullable(credentials.getToken()));
+            principalEntity,
+            principalRoles.roles(),
+            principalRoles.allRolesRequested()
+                ? RoleSelection.ALL_ROLES
+                : RoleSelection.SELECTED_ROLES,
+            Optional.ofNullable(credentials.getToken()));
 
     LOGGER.debug("Resolved principal: {}", polarisPrincipal);
     return polarisPrincipal;
@@ -162,14 +165,11 @@ public class DefaultAuthenticator implements Authenticator {
    * roles they have been granted in the system, and all such roles will be included in the returned
    * set.
    */
-  protected Set<String> resolvePrincipalRoles(
+  protected PrincipalRoleSelection resolvePrincipalRoles(
       PolarisCredential credentials, PrincipalEntity principal) {
 
-    Set<String> requestedRoles = extractRequestedRoles(credentials);
+    PrincipalRoleSelection requestedRoles = extractRequestedRoles(credentials);
     LoadGrantsResult loadGrantsResult = loadPrincipalGrants(principal);
-
-    Predicate<String> includeRoleFilter =
-        requestedRoles == ALL_ROLES_REQUESTED ? role -> true : requestedRoles::contains;
 
     Map<Long, PolarisBaseEntity> entitiesById = loadGrantsResult.getEntitiesAsMap();
 
@@ -180,19 +180,21 @@ public class DefaultAuthenticator implements Authenticator {
             .filter(entity -> entity.getType() == PolarisEntityType.PRINCIPAL_ROLE)
             .map(PrincipalRoleEntity::of)
             .map(PrincipalRoleEntity::getName)
-            .filter(includeRoleFilter)
+            .filter(
+                role -> requestedRoles.allRolesRequested() || requestedRoles.roles().contains(role))
             .collect(Collectors.toSet());
 
-    if (requestedRoles != ALL_ROLES_REQUESTED && !activeRoles.containsAll(requestedRoles)) {
+    if (!requestedRoles.allRolesRequested() && !activeRoles.containsAll(requestedRoles.roles())) {
       LOGGER
           .atWarn()
           .addKeyValue("principal", principal.getName())
           .addKeyValue("credentials", credentials)
           .addKeyValue("roles", activeRoles)
           .log("Some principal roles were not found in the principal's grants");
+      throw new NotAuthorizedException("Unable to authenticate");
     }
 
-    return activeRoles;
+    return new PrincipalRoleSelection(activeRoles, requestedRoles.allRolesRequested());
   }
 
   /**
@@ -204,10 +206,10 @@ public class DefaultAuthenticator implements Authenticator {
    * <p>Otherwise, it filters the roles that start with the {@link #PRINCIPAL_ROLE_PREFIX} and
    * returns the set of roles without the prefix.
    */
-  protected Set<String> extractRequestedRoles(PolarisCredential credentials) {
+  protected PrincipalRoleSelection extractRequestedRoles(PolarisCredential credentials) {
     Set<String> credentialsRoles = credentials.getPrincipalRoles();
     if (credentialsRoles.contains(PRINCIPAL_ROLE_ALL)) {
-      return ALL_ROLES_REQUESTED;
+      return new PrincipalRoleSelection(Set.of(), true);
     }
     if (credentialsRoles.stream().anyMatch(s -> !s.startsWith(PRINCIPAL_ROLE_PREFIX))) {
       LOGGER
@@ -219,10 +221,12 @@ public class DefaultAuthenticator implements Authenticator {
                   + "These roles will be ignored during authentication.",
               PRINCIPAL_ROLE_PREFIX);
     }
-    return credentialsRoles.stream()
-        .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
-        .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
-        .collect(Collectors.toSet());
+    return new PrincipalRoleSelection(
+        credentialsRoles.stream()
+            .filter(s -> s.startsWith(PRINCIPAL_ROLE_PREFIX))
+            .map(s -> s.substring(PRINCIPAL_ROLE_PREFIX.length()))
+            .collect(Collectors.toSet()),
+        false);
   }
 
   /**
@@ -268,4 +272,6 @@ public class DefaultAuthenticator implements Authenticator {
             PolarisEntityType.PRINCIPAL_ROLE)
         .getEntity();
   }
+
+  protected record PrincipalRoleSelection(Set<String> roles, boolean allRolesRequested) {}
 }
