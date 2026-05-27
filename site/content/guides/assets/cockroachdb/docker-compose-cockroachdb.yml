@@ -18,20 +18,29 @@
 #
 
 services:
+  cockroachdb:
+    image: cockroachdb/cockroach:v24.3.33
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    healthcheck:
+      test: "curl --fail http://localhost:8080/health?ready=1"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+  cockroachdb-init:
+    image: cockroachdb/cockroach:v24.3.33
+    depends_on:
+      cockroachdb:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c", "cockroach sql --insecure --host=cockroachdb -e 'CREATE DATABASE IF NOT EXISTS polaris;'"]
   polaris-bootstrap:
-    image: apache/polaris-admin-tool:latest
-    environment:
-      - POLARIS_PERSISTENCE_TYPE=relational-jdbc
-      - POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE=${POLARIS_PERSISTENCE_RELATIONAL_JDBC_DATABASE_TYPE:-postgresql}
-      - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
-      - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
-      - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
-    command:
-      - "bootstrap"
-      - "--realm=POLARIS"
-      - "--credential=POLARIS,root,s3cr3t"
-
+    depends_on:
+      cockroachdb-init:
+        condition: service_completed_successfully
   polaris:
     depends_on:
-      polaris-bootstrap:
+      cockroachdb-init:
         condition: service_completed_successfully
