@@ -325,6 +325,8 @@ public class TestCatalogMaintenance {
 
     assertThat(runMaintenance().success()).isTrue();
 
+    purgeBackendCache("");
+
     assertThat(countPolicyMappingsForPolicy(persistence, policy.getCatalogId(), policy.getId()))
         .isZero();
     var cleanedMappings = manager.loadPoliciesOnEntity(callCtx, tables.getFirst());
@@ -411,6 +413,8 @@ public class TestCatalogMaintenance {
 
     assertThat(runMaintenance().success()).isTrue();
 
+    purgeBackendCache("");
+
     assertThat(countPolicyMappingsForPolicy(persistence, policy.getCatalogId(), policy.getId()))
         .isEqualTo(2L);
     var liveMappingsAfterCleanup = manager.loadPoliciesOnEntity(callCtx, liveTable);
@@ -474,6 +478,8 @@ public class TestCatalogMaintenance {
     assertThat(staleGrants.getEntities()).isEmpty();
 
     assertThat(runMaintenance().success()).isTrue();
+
+    purgeBackendCache("");
 
     assertThat(countGrantAclHeads(persistence, staleAclNames)).isZero();
 
@@ -545,6 +551,8 @@ public class TestCatalogMaintenance {
     assertThat(staleGrants.getEntities()).hasSize(1);
 
     assertThat(runMaintenance().success()).isTrue();
+
+    purgeBackendCache("");
 
     assertThat(countGrantAclHeads(persistence, aclNames)).isEqualTo(2L);
     assertThat(grantAclRoleIds(persistence, grantAclName(table)))
@@ -914,10 +922,7 @@ public class TestCatalogMaintenance {
   }
 
   private void checkEntities(String step, List<PolarisBaseEntity> entities) {
-    // Purge the whole cache in case maintenance purged objects/references that should not have
-    // been purged to make the assertions catch those cases.
-    cacheBackend.purge();
-    soft.assertThat(cacheBackend.estimatedSize()).describedAs(step).isEqualTo(0L);
+    purgeBackendCache(step);
 
     var manager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
@@ -941,6 +946,13 @@ public class TestCatalogMaintenance {
           .describedAs("%s: %s", step, result.getReturnStatus())
           .isEqualTo(e);
     }
+  }
+
+  private void purgeBackendCache(String step) {
+    // Purge the whole cache in case maintenance purged objects/references that should not have
+    // been purged to make the assertions catch those cases.
+    cacheBackend.purge();
+    soft.assertThat(cacheBackend.estimatedSize()).describedAs(step).isEqualTo(0L);
   }
 
   private record TestSetup(
