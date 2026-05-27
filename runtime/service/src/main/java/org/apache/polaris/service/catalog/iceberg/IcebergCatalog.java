@@ -1088,7 +1088,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   /**
    * Validates the table location has no overlap with other entities after checking the
-   * configuration of the service
+   * configuration of the service.
    */
   private void validateNoLocationOverlap(
       CatalogEntity catalog,
@@ -1096,31 +1096,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location,
       PolarisEntity entity) {
-    boolean validateViewOverlap =
-        realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
-
-    if (realmConfig.getConfig(FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalog)) {
-      LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
-    } else if (validateViewOverlap
-        || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
-      LOGGER.debug("Validating no overlap with sibling tables or namespaces");
-
-      // Create a fake IcebergTableLikeEntity to check for overlap, since no real entity
-      // has been created yet.
-      var lastNamespace = resolvedNamespace.getLast();
-      IcebergTableLikeEntity virtualEntity =
-          IcebergTableLikeEntity.of(
-              new PolarisEntity.Builder()
-                  .setName(identifier.name())
-                  .setType(PolarisEntityType.TABLE_LIKE)
-                  .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
-                  .setParentId(lastNamespace.getId())
-                  .setCatalogId(lastNamespace.getCatalogId())
-                  .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
-                  .build());
-
-      validateNoLocationOverlap(virtualEntity, resolvedNamespace);
-    }
+    CatalogUtils.validateNoLocationOverlap(
+        realmConfig,
+        getMetaStoreManager(),
+        getCurrentPolarisContext(),
+        catalog,
+        identifier,
+        location,
+        resolvedNamespace,
+        entity.getSubType());
   }
 
   /** Checks whether the location of a namespace is valid given its parent */

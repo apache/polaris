@@ -25,34 +25,23 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundE
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
-import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
-import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +93,15 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     if (baseLocation != null && !baseLocation.isEmpty()) {
       CatalogUtils.validateLocationForTableLike(
           resolvedEntityView, callContext.getRealmConfig(), tableIdentifier, baseLocation);
-      validateNoLocationOverlap(tableIdentifier, baseLocation, resolvedParent.getRawFullPath());
+      CatalogUtils.validateNoLocationOverlap(
+          callContext.getRealmConfig(),
+          metaStoreManager,
+          callContext.getPolarisCallContext(),
+          resolvedEntityView.getResolvedCatalogEntity(),
+          tableIdentifier,
+          baseLocation,
+          resolvedParent.getRawFullPath(),
+          PolarisEntitySubType.GENERIC_TABLE);
     }
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
@@ -214,99 +211,5 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
                     PageToken.readEverything())
                 .getEntities());
     return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
-  }
-
-  private void validateNoLocationOverlap(
-      TableIdentifier identifier, String location, List<PolarisEntity> parentPath) {
-    RealmConfig realmConfig = callContext.getRealmConfig();
-    CatalogEntity catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
-    if (catalogEntity != null
-        && realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
-      LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
-      return;
-    }
-
-    boolean useOptimizedSiblingCheck =
-        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
-    if (useOptimizedSiblingCheck) {
-      GenericTableEntity virtualEntity =
-          new GenericTableEntity.Builder(identifier, "")
-              .setCatalogId(catalogId)
-              .setParentId(parentPath.getLast().getId())
-              .setBaseLocation(location)
-              .build();
-      Optional<Optional<String>> result =
-          metaStoreManager.hasOverlappingSiblings(
-              callContext.getPolarisCallContext(), virtualEntity);
-      if (result.isPresent()) {
-        if (result.get().isPresent()) {
-          throw new ForbiddenException(
-              "Unable to create table at location '%s' because it conflicts with "
-                  + "existing table or namespace at %s",
-              location, result.get().get());
-        }
-        return;
-      }
-    }
-
-    StorageLocation targetLocation = StorageLocation.of(location);
-    List<PolarisEntityCore> coreParentPath = PolarisEntity.toCoreList(parentPath);
-
-    ListEntitiesResult siblingTablesResult =
-        metaStoreManager.listEntities(
-            callContext.getPolarisCallContext(),
-            coreParentPath,
-            PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            PageToken.readEverything());
-    if (siblingTablesResult.isSuccess() && siblingTablesResult.getEntities() != null) {
-      for (EntityNameLookupRecord sibling : siblingTablesResult.getEntities()) {
-        if (sibling.getName().equals(identifier.name())) {
-          continue;
-        }
-        checkEntityLocationOverlap(sibling, targetLocation, location);
-      }
-    }
-
-    ListEntitiesResult siblingNamespacesResult =
-        metaStoreManager.listEntities(
-            callContext.getPolarisCallContext(),
-            coreParentPath,
-            PolarisEntityType.NAMESPACE,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            PageToken.readEverything());
-    if (siblingNamespacesResult.isSuccess() && siblingNamespacesResult.getEntities() != null) {
-      for (EntityNameLookupRecord sibling : siblingNamespacesResult.getEntities()) {
-        checkEntityLocationOverlap(sibling, targetLocation, location);
-      }
-    }
-  }
-
-  private void checkEntityLocationOverlap(
-      EntityNameLookupRecord sibling, StorageLocation targetLocation, String location) {
-    EntityResult loadResult =
-        metaStoreManager.loadEntity(
-            callContext.getPolarisCallContext(),
-            sibling.getCatalogId(),
-            sibling.getId(),
-            PolarisEntityType.fromCode(sibling.getTypeCode()));
-    if (!loadResult.isSuccess() || loadResult.getEntity() == null) {
-      return;
-    }
-    PolarisEntity siblingEntity = new PolarisEntity(loadResult.getEntity());
-    PolarisEntityUtils.asLocationBasedEntity(siblingEntity)
-        .map(LocationBasedEntity::getBaseLocation)
-        .map(StorageLocation::of)
-        .ifPresent(
-            siblingLocation -> {
-              if (targetLocation.isChildOf(siblingLocation)
-                  || siblingLocation.isChildOf(targetLocation)) {
-                throw new ForbiddenException(
-                    "Unable to create table at location '%s' because it conflicts with "
-                        + "existing table or namespace at location '%s'",
-                    location, siblingLocation);
-              }
-            });
   }
 }

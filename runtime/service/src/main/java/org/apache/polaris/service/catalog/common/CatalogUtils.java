@@ -20,21 +20,41 @@
 package org.apache.polaris.service.catalog.common;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageLocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CatalogUtils.class);
 
   /**
    * Find the resolved entity path that may contain storage information
@@ -117,6 +137,147 @@ public class CatalogUtils {
                       "Invalid locations '%s' for identifier '%s': File locations are not allowed",
                       invalidLocations, identifier);
                 }
+              }
+            });
+  }
+
+  /**
+   * Validates that the specified table-like entity location does not overlap with any sibling
+   * entities. Checks both sibling table-like entities and sibling namespaces.
+   *
+   * <p>This method first checks whether overlap validation is enabled via the catalog-level {@link
+   * FeatureConfiguration#ALLOW_TABLE_LOCATION_OVERLAP} configuration. For Iceberg views, overlap is
+   * only checked when {@link BehaviorChangeConfiguration#VALIDATE_VIEW_LOCATION_OVERLAP} is
+   * enabled.
+   *
+   * <p>When validation is enabled, it attempts an optimized sibling check via the persistence
+   * layer. If that is not supported, it falls back to listing all siblings and checking each
+   * entity's base location.
+   *
+   * @param realmConfig the realm configuration
+   * @param metaStoreManager the meta store manager for entity queries
+   * @param polarisCallContext the polaris call context
+   * @param catalogEntity the catalog entity (for config resolution)
+   * @param identifier the table identifier being created/updated
+   * @param location the proposed location
+   * @param parentPath the resolved parent entity path
+   * @param entitySubType the sub-type of the entity being validated
+   */
+  public static void validateNoLocationOverlap(
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext,
+      CatalogEntity catalogEntity,
+      TableIdentifier identifier,
+      String location,
+      List<PolarisEntity> parentPath,
+      PolarisEntitySubType entitySubType) {
+    boolean validateViewOverlap =
+        realmConfig.getConfig(BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
+
+    if (catalogEntity != null
+        && realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
+      LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
+      return;
+    }
+
+    // currently only iceberg supports views
+    if (!validateViewOverlap && entitySubType.equals(PolarisEntitySubType.ICEBERG_VIEW)) {
+      return;
+    }
+
+    LOGGER.debug("Validating no overlap with sibling tables or namespaces");
+
+    boolean useOptimizedSiblingCheck =
+        realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
+    if (useOptimizedSiblingCheck) {
+      PolarisEntity lastParent = parentPath.getLast();
+      IcebergTableLikeEntity virtualEntity =
+          IcebergTableLikeEntity.of(
+              new PolarisEntity.Builder()
+                  .setName(identifier.name())
+                  .setType(PolarisEntityType.TABLE_LIKE)
+                  .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
+                  .setParentId(lastParent.getId())
+                  .setCatalogId(lastParent.getCatalogId())
+                  .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
+                  .build());
+      Optional<Optional<String>> result =
+          metaStoreManager.hasOverlappingSiblings(polarisCallContext, virtualEntity);
+      if (result.isPresent()) {
+        if (result.get().isPresent()) {
+          throw new ForbiddenException(
+              "Unable to create entity at location '%s' because it conflicts with "
+                  + "existing table or namespace at %s",
+              location, result.get().get());
+        }
+        return;
+      }
+    }
+
+    StorageLocation targetLocation = StorageLocation.of(location);
+    var coreParentPath = PolarisEntity.toCoreList(parentPath);
+
+    ListEntitiesResult siblingTablesResult =
+        metaStoreManager.listEntities(
+            polarisCallContext,
+            coreParentPath,
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.readEverything());
+    if (siblingTablesResult.isSuccess() && siblingTablesResult.getEntities() != null) {
+      for (EntityNameLookupRecord sibling : siblingTablesResult.getEntities()) {
+        if (sibling.getName().equals(identifier.name())) {
+          continue;
+        }
+        checkEntityLocationOverlap(
+            metaStoreManager, polarisCallContext, sibling, targetLocation, location);
+      }
+    }
+
+    ListEntitiesResult siblingNamespacesResult =
+        metaStoreManager.listEntities(
+            polarisCallContext,
+            coreParentPath,
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            PageToken.readEverything());
+    if (siblingNamespacesResult.isSuccess() && siblingNamespacesResult.getEntities() != null) {
+      for (EntityNameLookupRecord sibling : siblingNamespacesResult.getEntities()) {
+        checkEntityLocationOverlap(
+            metaStoreManager, polarisCallContext, sibling, targetLocation, location);
+      }
+    }
+  }
+
+  private static void checkEntityLocationOverlap(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext,
+      EntityNameLookupRecord sibling,
+      StorageLocation targetLocation,
+      String location) {
+    EntityResult loadResult =
+        metaStoreManager.loadEntity(
+            polarisCallContext,
+            sibling.getCatalogId(),
+            sibling.getId(),
+            PolarisEntityType.fromCode(sibling.getTypeCode()));
+    if (!loadResult.isSuccess() || loadResult.getEntity() == null) {
+      return;
+    }
+    PolarisEntity siblingEntity = new PolarisEntity(loadResult.getEntity());
+    PolarisEntityUtils.asLocationBasedEntity(siblingEntity)
+        .map(LocationBasedEntity::getBaseLocation)
+        .map(StorageLocation::of)
+        .ifPresent(
+            siblingLocation -> {
+              if (targetLocation.isChildOf(siblingLocation)
+                  || siblingLocation.isChildOf(targetLocation)) {
+                throw new ForbiddenException(
+                    "Unable to create entity at location '%s' because it conflicts with "
+                        + "existing table or namespace at location '%s'",
+                    location, siblingLocation);
               }
             });
   }
