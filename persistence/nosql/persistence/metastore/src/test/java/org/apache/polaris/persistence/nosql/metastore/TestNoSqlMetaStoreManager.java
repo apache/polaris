@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore;
 
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation.MAX_POLICY_MAPPING_INDEX_VALUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.tuple;
@@ -299,7 +300,8 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var policy = PolicyEntity.of(policyResult.getEntity());
 
     var parameters = policyMappingParameters(50);
-    assertThat(serializedPolicyMappingSize(parameters)).isLessThanOrEqualTo(384);
+    assertThat(serializedPolicyMappingSize(parameters))
+        .isLessThanOrEqualTo(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE);
 
     var attachResult =
         metaStore.attachPolicyToEntity(
@@ -373,7 +375,8 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var policy = PolicyEntity.of(policyResult.getEntity());
 
     var parameters = policyMappingParameters(51);
-    assertThat(serializedPolicyMappingSize(parameters)).isGreaterThan(384);
+    assertThat(serializedPolicyMappingSize(parameters))
+        .isGreaterThan(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE);
 
     var attachResult =
         metaStore.attachPolicyToEntity(
@@ -389,7 +392,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .containsExactly(false, BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED);
     assertThat(attachResult.getExtraInformation())
         .contains("Serialized policy-mapping index value size")
-        .contains("384");
+        .contains(String.valueOf(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE));
 
     var loadResult = metaStore.loadPoliciesOnEntity(callContext, table);
     assertThat(loadResult)

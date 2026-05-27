@@ -33,6 +33,7 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
+import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
@@ -48,7 +49,19 @@ public record PolicyMutation(
     long targetId,
     boolean doAttach,
     @NonNull Map<String, String> parameters) {
-  private static final int MAX_POLICY_MAPPING_INDEX_VALUE_SIZE = 384;
+  /**
+   * Conservative limit for serialized policy-mapping index value size to ensure that the serialized
+   * index-entry value sizes don't grow too large.
+   *
+   * <p>If this limit is ever exceeded, there are two options:
+   *
+   * <ul>
+   *   <li>If it's a marginal increase, it's possible to increase this value.
+   *   <li>If the property bag is becoming too big, the policy mapping should be stored in a
+   *       separate new {@link Obj}ect.
+   * </ul>
+   */
+  public static final int MAX_POLICY_MAPPING_INDEX_VALUE_SIZE = 384;
 
   public PolicyAttachmentResult apply() {
     try {
