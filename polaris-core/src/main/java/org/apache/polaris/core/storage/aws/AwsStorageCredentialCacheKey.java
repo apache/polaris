@@ -20,18 +20,23 @@ package org.apache.polaris.core.storage.aws;
 
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Storage access config parameters for AWS. Includes principal name and credential vending context
- * fields that affect AWS STS AssumeRole behavior (session tags, role session name).
+ * Cache key for vended AWS credentials. Data fields drive equality (cache identity); the
+ * integration is carried as an auxiliary field so the loader can delegate back to it without
+ * participating in equality.
  */
 @PolarisImmutable
 public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey {
+
+  // ---- data fields: part of equals/hashCode ----
 
   @Value.Parameter(order = 1)
   String realmId();
@@ -54,9 +59,24 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Parameter(order = 7)
   Optional<String> principalName();
 
-  /** Credential vending context for session tags. */
   @Value.Parameter(order = 8)
   CredentialVendingContext credentialVendingContext();
+
+  // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
+
+  @Value.Parameter(order = 9)
+  @Value.Auxiliary
+  AwsCredentialsStorageIntegration integration();
+
+  @Override
+  default RealmConfig realmConfig() {
+    return integration().realmConfig();
+  }
+
+  @Override
+  default StorageAccessConfig load() {
+    return integration().compute(this);
+  }
 
   static AwsStorageCredentialCacheKey of(
       String realmId,
@@ -66,7 +86,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       Optional<String> principalName,
-      CredentialVendingContext credentialVendingContext) {
+      CredentialVendingContext credentialVendingContext,
+      AwsCredentialsStorageIntegration integration) {
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
@@ -75,6 +96,7 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedWriteLocations,
         refreshCredentialsEndpoint,
         principalName,
-        credentialVendingContext);
+        credentialVendingContext,
+        integration);
   }
 }

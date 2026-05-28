@@ -20,17 +20,21 @@ package org.apache.polaris.core.storage.gcp;
 
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Storage access config parameters for GCP. GCP downscoped credentials do not support session tags,
- * so principal and credential vending context are never included.
+ * Cache key for vended GCP credentials. GCP downscoped credentials do not support session tags, so
+ * principal and credential vending context are never included.
  */
 @PolarisImmutable
 public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey {
+
+  // ---- data fields: part of equals/hashCode ----
 
   @Value.Parameter(order = 1)
   String realmId();
@@ -50,19 +54,37 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Parameter(order = 6)
   Optional<String> refreshCredentialsEndpoint();
 
+  // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
+
+  @Value.Parameter(order = 7)
+  @Value.Auxiliary
+  GcpCredentialsStorageIntegration integration();
+
+  @Override
+  default RealmConfig realmConfig() {
+    return integration().realmConfig();
+  }
+
+  @Override
+  default StorageAccessConfig load() {
+    return integration().compute(this);
+  }
+
   static GcpStorageCredentialCacheKey of(
       String realmId,
       @Nullable String storageConfigSerializedStr,
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      GcpCredentialsStorageIntegration integration) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        integration);
   }
 }

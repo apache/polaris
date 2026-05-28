@@ -60,7 +60,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Tag;
 
-/** Credential vendor that supports generating */
+/** Credential vendor that supports generating AWS STS subscoped credentials. */
 public class AwsCredentialsStorageIntegration
     extends CachingStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
@@ -119,19 +119,6 @@ public class AwsCredentialsStorageIntegration
         context);
   }
 
-  @Override
-  protected StorageAccessConfig generateStorageAccessConfig(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
-    return generateStorageAccessConfig(
-        readLocations(grants),
-        listLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
-  }
-
   private static Set<String> readLocations(List<LocationGrant> grants) {
     return locationsFor(grants, PolarisStorageActions.READ, PolarisStorageActions.ALL);
   }
@@ -158,7 +145,7 @@ public class AwsCredentialsStorageIntegration
         .collect(Collectors.toSet());
   }
 
-  private StorageCredentialCacheKey buildCacheKey(
+  private AwsStorageCredentialCacheKey buildCacheKey(
       @NonNull Set<String> readLocations,
       @NonNull Set<String> listLocations,
       @NonNull Set<String> writeLocations,
@@ -195,18 +182,16 @@ public class AwsCredentialsStorageIntegration
         writeLocations,
         refreshEndpoint,
         includePrincipalInCacheKey ? context.principalName() : Optional.empty(),
-        contextForCacheKey);
+        contextForCacheKey,
+        this);
   }
 
-  public StorageAccessConfig generateStorageAccessConfig(
-      @NonNull Set<String> readLocations,
-      @NonNull Set<String> listLocations,
-      @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
+  /** Mint a fresh {@link StorageAccessConfig} for the given AWS cache key. */
+  StorageAccessConfig compute(AwsStorageCredentialCacheKey key) {
     RealmConfig realmConfig = realmConfig();
     AwsStorageConfigurationInfo awsStorageConfig = storageConfig();
-    String principalName = context.principalName().orElse("");
+    String principalName = key.principalName().orElse("");
+    CredentialVendingContext context = key.credentialVendingContext();
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     String region = awsStorageConfig.getRegion();
@@ -241,7 +226,11 @@ public class AwsCredentialsStorageIntegration
               .roleSessionName(roleSessionName)
               .policy(
                   policyString(
-                          awsStorageConfig, readLocations, listLocations, writeLocations, region)
+                          awsStorageConfig,
+                          key.allowedReadLocations(),
+                          key.allowedListLocations(),
+                          key.allowedWriteLocations(),
+                          region)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
@@ -259,7 +248,7 @@ public class AwsCredentialsStorageIntegration
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support
           request.transitiveTagKeys(
-              sessionTags.stream().map(Tag::key).collect(java.util.stream.Collectors.toList()));
+              sessionTags.stream().map(Tag::key).collect(Collectors.toList()));
         }
       }
 
@@ -293,10 +282,10 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
-    refreshEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    key.refreshCredentialsEndpoint()
+        .ifPresent(
+            endpoint ->
+                accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     URI endpointUri = awsStorageConfig.getEndpointUri();
     if (endpointUri != null) {
@@ -322,11 +311,11 @@ public class AwsCredentialsStorageIntegration
     return accessConfig.build();
   }
 
-  private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
+  private static boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
     return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
   }
 
-  private boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {
+  private static boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {
     return !Boolean.TRUE.equals(storageConfig.getKmsUnavailable());
   }
 
@@ -339,7 +328,7 @@ public class AwsCredentialsStorageIntegration
    * emitted so we don't send an empty policy to AWS and inadvertently assume the role with full
    * privileges.
    */
-  private IamPolicy policyString(
+  private static IamPolicy policyString(
       AwsStorageConfigurationInfo storageConfigurationInfo,
       Set<String> readLocations,
       Set<String> listLocations,

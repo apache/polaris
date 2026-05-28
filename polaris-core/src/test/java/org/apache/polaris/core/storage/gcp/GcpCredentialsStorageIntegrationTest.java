@@ -44,6 +44,7 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -52,6 +53,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.LocationGrant;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
@@ -71,6 +74,21 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
   private static final String REFRESH_ENDPOINT = "get/credentials";
+
+  private static List<LocationGrant> toGrants(
+      Set<String> readLocations, Set<String> listLocations, Set<String> writeLocations) {
+    List<LocationGrant> grants = new ArrayList<>();
+    if (!readLocations.isEmpty()) {
+      grants.add(new LocationGrant(readLocations, Set.of(PolarisStorageActions.READ)));
+    }
+    if (!listLocations.isEmpty()) {
+      grants.add(new LocationGrant(listLocations, Set.of(PolarisStorageActions.LIST)));
+    }
+    if (!writeLocations.isEmpty()) {
+      grants.add(new LocationGrant(writeLocations, Set.of(PolarisStorageActions.WRITE)));
+    }
+    return grants;
+  }
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
@@ -180,10 +198,11 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
             gcpConfig,
             EMPTY_REALM_CONFIG);
-    return gcpCredsIntegration.generateStorageAccessConfig(
-        new HashSet<>(allowedReadLoc),
-        allowListAction ? new HashSet<>(allowedReadLoc) : Set.of(),
-        new HashSet<>(allowedWriteLoc),
+    return gcpCredsIntegration.getStorageAccessConfig(
+        toGrants(
+            new HashSet<>(allowedReadLoc),
+            allowListAction ? new HashSet<>(allowedReadLoc) : Set.of(),
+            new HashSet<>(allowedWriteLoc)),
         Optional.of(REFRESH_ENDPOINT),
         org.apache.polaris.core.storage.CredentialVendingContext.empty());
   }
@@ -489,10 +508,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           }
         };
 
-    integration.generateStorageAccessConfig(
-        Set.of("gs://bucket/path"),
-        Set.of("gs://bucket/path"),
-        Set.of("gs://bucket/path"),
+    integration.getStorageAccessConfig(
+        toGrants(
+            Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
         Optional.empty(),
         org.apache.polaris.core.storage.CredentialVendingContext.empty());
 

@@ -18,14 +18,13 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -33,12 +32,17 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Storage subscoped credential cache. */
+/**
+ * Storage subscoped credential cache. The cache loader is key-driven: on miss, {@link
+ * StorageCredentialCacheKey#load()} is invoked to mint a fresh {@link StorageAccessConfig} from the
+ * key's own data fields and the auxiliary deps it carries. This guarantees the cached value is a
+ * function of the key alone, so two equal keys are logically equivalent.
+ */
 public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
-  private final Cache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
+  private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
   public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
@@ -56,7 +60,13 @@ public class StorageCredentialCache {
                                   entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
-            .build();
+            .build(
+                key -> {
+                  LOGGER.atDebug().log("StorageCredentialCache::load");
+                  StorageAccessConfig accessConfig = key.load();
+                  return new StorageCredentialCacheEntry(
+                      accessConfig, maxCacheDurationMs(key.realmConfig()));
+                });
   }
 
   /** How long credentials should remain in the cache. */
@@ -77,27 +87,11 @@ public class StorageCredentialCache {
   }
 
   /**
-   * Get cached credentials or load new ones using the provided supplier.
-   *
-   * @param key the cache key
-   * @param realmConfig realm configuration for cache duration settings
-   * @param loader supplier that produces scoped credentials on cache miss; may throw on error
-   * @return the storage access config with scoped credentials
+   * Return the cached {@link StorageAccessConfig} for {@code key}, loading it via {@link
+   * StorageCredentialCacheKey#load()} on miss.
    */
-  public StorageAccessConfig getOrLoad(
-      StorageCredentialCacheKey key,
-      RealmConfig realmConfig,
-      Supplier<StorageAccessConfig> loader) {
-    long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
-    return cache
-        .get(
-            key,
-            k -> {
-              LOGGER.atDebug().log("StorageCredentialCache::load");
-              StorageAccessConfig accessConfig = loader.get();
-              return new StorageCredentialCacheEntry(accessConfig, maxCacheDurationMs);
-            })
-        .toAccessConfig();
+  public StorageAccessConfig getOrLoad(StorageCredentialCacheKey key) {
+    return cache.get(key).toAccessConfig();
   }
 
   @VisibleForTesting

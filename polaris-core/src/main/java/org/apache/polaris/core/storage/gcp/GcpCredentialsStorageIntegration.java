@@ -114,19 +114,6 @@ public class GcpCredentialsStorageIntegration
         context);
   }
 
-  @Override
-  protected StorageAccessConfig generateStorageAccessConfig(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
-    return generateStorageAccessConfig(
-        readLocations(grants),
-        listLocations(grants),
-        writeLocations(grants),
-        refreshEndpoint,
-        context);
-  }
-
   private static Set<String> readLocations(List<LocationGrant> grants) {
     return locationsFor(grants, PolarisStorageActions.READ, PolarisStorageActions.ALL);
   }
@@ -152,7 +139,7 @@ public class GcpCredentialsStorageIntegration
         .collect(Collectors.toSet());
   }
 
-  private StorageCredentialCacheKey buildCacheKey(
+  private GcpStorageCredentialCacheKey buildCacheKey(
       @NonNull Set<String> readLocations,
       @NonNull Set<String> listLocations,
       @NonNull Set<String> writeLocations,
@@ -164,16 +151,16 @@ public class GcpCredentialsStorageIntegration
         readLocations,
         listLocations,
         writeLocations,
-        refreshEndpoint);
+        refreshEndpoint,
+        this);
   }
 
-  public StorageAccessConfig generateStorageAccessConfig(
-      @NonNull Set<String> readLocations,
-      @NonNull Set<String> listLocations,
-      @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
+  /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
+  StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
     GcpStorageConfigurationInfo gcpStorageConfig = storageConfig();
+    Set<String> readLocations = key.allowedReadLocations();
+    Set<String> listLocations = key.allowedListLocations();
+    Set<String> writeLocations = key.allowedWriteLocations();
 
     try {
       sourceCredentials.refresh();
@@ -213,10 +200,10 @@ public class GcpCredentialsStorageIntegration
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
 
-    refreshEndpoint.ifPresent(
-        endpoint -> {
-          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-        });
+    key.refreshCredentialsEndpoint()
+        .ifPresent(
+            endpoint ->
+                accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint));
 
     return accessConfig.build();
   }

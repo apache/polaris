@@ -18,12 +18,27 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
+
 /**
- * Marker interface for storage credential cache keys. Each storage backend defines its own
- * implementation with only the fields that affect credential vending for that backend.
+ * Cache key for vended storage credentials. Each backend defines its own implementation with the
+ * fields that affect credential vending for that backend.
+ *
+ * <p>The cache calls {@link #load} on miss to mint a new {@link StorageAccessConfig}; that result
+ * must be fully derived from the key's data fields (those participating in {@code equals} / {@code
+ * hashCode}) plus app-scoped invariants carried as auxiliary fields. This guarantees that two
+ * cached values whose keys are equal are logically equivalent.
  *
  * <p>Caffeine cache uses {@code equals()}/{@code hashCode()} for key lookup. Since Immutables
- * generates both based on the concrete class and its fields, different backend parameter types will
- * never collide even when sharing the same cache.
+ * generates both based on the concrete class and its data fields, different backend parameter types
+ * will never collide even when sharing the same cache.
  */
-public interface StorageCredentialCacheKey {}
+public interface StorageCredentialCacheKey {
+
+  /** Realm config used to scope cache-duration settings for the resulting cache entry. */
+  RealmConfig realmConfig();
+
+  /** Mint a fresh {@link StorageAccessConfig} for this key. Called by the cache on miss. */
+  StorageAccessConfig load();
+}

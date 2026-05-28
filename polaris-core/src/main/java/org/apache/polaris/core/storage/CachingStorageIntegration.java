@@ -33,9 +33,11 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Integration instances are fully bound at construction time to a particular {@link
  * PolarisStorageConfigurationInfo} and {@link RealmConfig}. The public {@link
- * #getStorageAccessConfig} method is a thin cache-aware wrapper around the subclass-provided {@link
- * #generateStorageAccessConfig}. Each subclass owns how it interprets the per-grant action sets —
- * this base class does not prescribe any decomposition rules.
+ * #getStorageAccessConfig} method builds a backend-specific {@link StorageCredentialCacheKey} via
+ * {@link #buildCacheKey} and either delegates to the shared cache or calls {@link
+ * StorageCredentialCacheKey#load()} directly when no cache is present. The actual credential
+ * vending lives behind {@code key.load()}, which subclasses wire up by stamping themselves onto the
+ * key as an auxiliary field.
  *
  * @param <T> the concrete type of {@link PolarisStorageConfigurationInfo} this integration supports
  */
@@ -61,7 +63,7 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
   }
 
   /** The realm configuration this integration instance is bound to. */
-  protected RealmConfig realmConfig() {
+  public RealmConfig realmConfig() {
     return realmConfig;
   }
 
@@ -70,30 +72,16 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
-    if (cache != null) {
-      StorageCredentialCacheKey key = buildCacheKey(grants, refreshEndpoint, context);
-      return cache.getOrLoad(
-          key, realmConfig, () -> generateStorageAccessConfig(grants, refreshEndpoint, context));
-    }
-    return generateStorageAccessConfig(grants, refreshEndpoint, context);
+    StorageCredentialCacheKey key = buildCacheKey(grants, refreshEndpoint, context);
+    return cache != null ? cache.getOrLoad(key) : key.load();
   }
 
   /**
-   * Build a backend-specific cache key for the given vending request. The key shape is the
-   * subclass's choice; its only requirement is that two requests that would produce equivalent
-   * credentials collide on the same key.
+   * Build a backend-specific cache key for the given vending request. The key must carry whatever
+   * data fields drive identity for cache lookup and an aux reference back to this integration so
+   * {@link StorageCredentialCacheKey#load()} can mint credentials on miss.
    */
   protected abstract StorageCredentialCacheKey buildCacheKey(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context);
-
-  /**
-   * Mint credentials for the instance's bound storage configuration. Subclasses implement the
-   * actual credential vending logic (e.g. AWS STS AssumeRole, GCP downscoping, Azure SAS
-   * generation).
-   */
-  protected abstract StorageAccessConfig generateStorageAccessConfig(
       @NonNull List<LocationGrant> grants,
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context);

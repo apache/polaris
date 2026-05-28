@@ -103,15 +103,6 @@ public class AzureCredentialsStorageIntegration
         allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
   }
 
-  @Override
-  protected StorageAccessConfig generateStorageAccessConfig(
-      @NonNull List<LocationGrant> grants,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
-    return generateStorageAccessConfig(
-        allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
-  }
-
   private static boolean allowList(List<LocationGrant> grants) {
     return grants.stream()
         .flatMap(g -> g.actions().stream())
@@ -133,7 +124,7 @@ public class AzureCredentialsStorageIntegration
         .collect(Collectors.toSet());
   }
 
-  private StorageCredentialCacheKey buildCacheKey(
+  private AzureStorageCredentialCacheKey buildCacheKey(
       boolean allowList,
       @NonNull Set<String> locations,
       @NonNull Set<String> writeLocations,
@@ -145,16 +136,17 @@ public class AzureCredentialsStorageIntegration
         allowList,
         locations,
         writeLocations,
-        refreshEndpoint);
+        refreshEndpoint,
+        this);
   }
 
-  public StorageAccessConfig generateStorageAccessConfig(
-      boolean allowList,
-      @NonNull Set<String> locations,
-      @NonNull Set<String> writeLocations,
-      @NonNull Optional<String> refreshEndpoint,
-      @NonNull CredentialVendingContext context) {
+  /** Mint a fresh {@link StorageAccessConfig} for the given Azure cache key. */
+  StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
     RealmConfig realmConfig = realmConfig();
+    boolean allowList = key.allowedListAction();
+    Set<String> locations = key.allowedReadLocations();
+    Set<String> writeLocations = key.allowedWriteLocations();
+    Optional<String> refreshEndpoint = key.refreshCredentialsEndpoint();
 
     String loc =
         !writeLocations.isEmpty()
