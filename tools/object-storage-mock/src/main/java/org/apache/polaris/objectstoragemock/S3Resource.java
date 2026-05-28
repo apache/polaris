@@ -95,7 +95,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 public class S3Resource {
   @Inject ObjectStorageMock mockServer;
 
-  private static final Owner TEST_OWNER = Owner.of(42, "nessie-iceberg-s3-mock");
+  private static final Owner TEST_OWNER = Owner.of(42, "polaris-object-storage-mock");
 
   @Path("ready")
   @GET

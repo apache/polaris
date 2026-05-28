@@ -19,6 +19,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.objectstoragemock.HeapStorageBucket.newHeapStorageBucket;
 
 import com.azure.storage.file.datalake.DataLakeFileSystemClientBuilder;
+import com.google.api.gax.paging.Page;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.storage.Blob;
@@ -28,6 +29,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.io.ByteArrayInputStream;
 import java.nio.channels.Channels;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,13 +85,11 @@ public class TestWithGcs extends AbstractObjectStorageMockServer {
   public void listObjects() {
 
     IntFunction<String> intToKey =
-        i ->
-            String.format(
-                "%02d/%02d/%02d/%d", i / 100_000, (i / 1_000) % 100, (i / 10) % 100, i % 10);
+        i -> String.format("%02d/%02d/%02d/%d", i / 1_000, (i / 100) % 10, (i / 10) % 10, i % 10);
 
     Bucket.Lister lister =
         (String prefix, String offset) ->
-            IntStream.range(0, 400_000)
+            IntStream.range(0, 4_000)
                 .mapToObj(
                     i ->
                         new ListElement() {
@@ -108,38 +108,40 @@ public class TestWithGcs extends AbstractObjectStorageMockServer {
 
     soft.assertThat(
             client
-                .list(BUCKET, Storage.BlobListOption.prefix("00/00/10/"))
+                .list(BUCKET, Storage.BlobListOption.prefix("00/00/01/"))
                 .streamAll()
                 .map(Blob::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(100, 109).mapToObj(intToKey).collect(Collectors.toList()));
+            IntStream.rangeClosed(10, 19).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
             client
-                .list(BUCKET, Storage.BlobListOption.prefix("03/50/50/"))
+                .list(BUCKET, Storage.BlobListOption.prefix("03/05/05/"))
                 .streamAll()
                 .map(Blob::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(350_500, 350_509)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(3_550, 3_559).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
             client
-                .list(BUCKET, Storage.BlobListOption.prefix("02/50/"))
+                .list(BUCKET, Storage.BlobListOption.prefix("02/05/"))
                 .streamAll()
                 .map(Blob::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(250_000, 250_999)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(2_500, 2_599).mapToObj(intToKey).collect(Collectors.toList()));
 
-    // This one takes long - the number of round-trips makes is slow TODO: too slow for a unit test?
-    soft.assertThat(client.list(BUCKET, Storage.BlobListOption.prefix("03/")).streamAll().count())
-        .isEqualTo(100_000);
+    Page<Blob> page =
+        client.list(
+            BUCKET, Storage.BlobListOption.prefix("02/05/"), Storage.BlobListOption.pageSize(13));
+    List<Integer> pageSizes = new ArrayList<>();
+    while (page != null) {
+      pageSizes.add((int) page.streamValues().count());
+      page = page.hasNextPage() ? page.getNextPage() : null;
+    }
+    soft.assertThat(pageSizes).containsExactly(13, 13, 13, 13, 13, 13, 13, 9);
   }
 
   @Test
@@ -202,7 +204,7 @@ public class TestWithGcs extends AbstractObjectStorageMockServer {
             b.putBuckets(
                 BUCKET, Bucket.builder().object(objects::get).deleter(o -> false).build()));
 
-    byte[] content = "Hello World\nHello Nessie!".getBytes(UTF_8);
+    byte[] content = "Hello World\nHello Polaris!".getBytes(UTF_8);
 
     MockObject obj =
         ImmutableMockObject.builder()

@@ -81,10 +81,9 @@ public class TestWithAdlsGen2 extends AbstractObjectStorageMockServer {
   @BeforeAll
   public static void setupHttpClient() {
 
-    // So, Microsoft/Azure's opinion on resources (threads and connections) is "interesting":
-    // There is absolutely NO WAY to release the resources held by an `HttpClient` - neither via
-    // `DataLakeFileSystem(Async)Client` nor directly on `HttpClient`. This is technically a bad
-    // concept and a built-in resource leak.
+    // Azure's Data Lake clients do not expose a close method for releasing resources held by
+    // HttpClient. Reuse one shared instance so the test suite does not create additional client
+    // resources for each test method.
 
     sharedHttpClient =
         HttpClient.createDefault(
@@ -121,13 +120,11 @@ public class TestWithAdlsGen2 extends AbstractObjectStorageMockServer {
   public void listObjects() {
 
     IntFunction<String> intToKey =
-        i ->
-            String.format(
-                "%02d/%02d/%02d/%d", i / 100_000, (i / 1_000) % 100, (i / 10) % 100, i % 10);
+        i -> String.format("%02d/%02d/%02d/%d", i / 1_000, (i / 100) % 10, (i / 10) % 10, i % 10);
 
     Bucket.Lister lister =
         (String prefix, String offset) ->
-            IntStream.range(0, 400_000)
+            IntStream.range(0, 4_000)
                 .mapToObj(
                     i ->
                         new ListElement() {
@@ -146,44 +143,39 @@ public class TestWithAdlsGen2 extends AbstractObjectStorageMockServer {
 
     soft.assertThat(
             client
-                .listPaths(new ListPathsOptions().setRecursive(true).setPath("00/00/10/"), null)
+                .listPaths(new ListPathsOptions().setRecursive(true).setPath("00/00/01/"), null)
                 .stream()
                 .map(PathItem::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(100, 109).mapToObj(intToKey).collect(Collectors.toList()));
+            IntStream.rangeClosed(10, 19).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
             client
-                .listPaths(new ListPathsOptions().setRecursive(true).setPath("03/50/50/"), null)
+                .listPaths(new ListPathsOptions().setRecursive(true).setPath("03/05/05/"), null)
                 .stream()
                 .map(PathItem::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(350_500, 350_509)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(3_550, 3_559).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
             client
-                .listPaths(new ListPathsOptions().setRecursive(true).setPath("02/50/"), null)
+                .listPaths(new ListPathsOptions().setRecursive(true).setPath("02/05/"), null)
                 .stream()
                 .map(PathItem::getName)
                 .collect(Collectors.toList()))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(250_000, 250_999)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(2_500, 2_599).mapToObj(intToKey).collect(Collectors.toList()));
 
-    // This one takes long - the number of round-trips makes is slow TODO: too slow for a unit test?
     soft.assertThat(
             client
                 .listPaths(
-                    new ListPathsOptions().setRecursive(true).setMaxResults(13_431).setPath("03/"),
+                    new ListPathsOptions().setRecursive(true).setMaxResults(13).setPath("02/05/"),
                     null)
-                .stream()
-                .count())
-        .isEqualTo(100_000);
+                .streamByPage()
+                .map(page -> page.getValue().size()))
+        .containsExactly(13, 13, 13, 13, 13, 13, 13, 9);
   }
 
   @Test
@@ -256,7 +248,7 @@ public class TestWithAdlsGen2 extends AbstractObjectStorageMockServer {
             b.putBuckets(
                 BUCKET, Bucket.builder().object(objects::get).deleter(o -> false).build()));
 
-    byte[] content = "Hello World\nHello Nessie!".getBytes(UTF_8);
+    byte[] content = "Hello World\nHello Polaris!".getBytes(UTF_8);
 
     MockObject obj =
         ImmutableMockObject.builder()

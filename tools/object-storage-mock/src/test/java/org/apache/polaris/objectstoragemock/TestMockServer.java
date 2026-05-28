@@ -104,7 +104,7 @@ public class TestMockServer extends AbstractObjectStorageMockServer {
                 b.putBuckets(
                     BUCKET, Bucket.builder().object(objects::get).deleter(o -> false).build()));
 
-    String content = "Hello World\nHello Nessie!";
+    String content = "Hello World\nHello Polaris!";
 
     MockObject obj =
         ImmutableMockObject.builder()

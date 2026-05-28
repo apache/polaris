@@ -128,7 +128,7 @@ public class TestWithS3Client extends AbstractObjectStorageMockServer {
 
     AssumeRoleRequest request =
         AssumeRoleRequest.builder()
-            .roleSessionName("nessie")
+            .roleSessionName("polaris")
             .roleArn("arn-thingy")
             .policy("policy")
             .durationSeconds(1234)
@@ -178,13 +178,11 @@ public class TestWithS3Client extends AbstractObjectStorageMockServer {
   public void listObjectsV2() {
 
     IntFunction<String> intToKey =
-        i ->
-            String.format(
-                "%02d/%02d/%02d/%d", i / 100_000, (i / 1_000) % 100, (i / 10) % 100, i % 10);
+        i -> String.format("%02d/%02d/%02d/%d", i / 1_000, (i / 100) % 10, (i / 10) % 10, i % 10);
 
     Bucket.Lister lister =
         (String prefix, String offset) ->
-            IntStream.range(0, 400_000)
+            IntStream.range(0, 4_000)
                 .mapToObj(
                     i ->
                         new ListElement() {
@@ -203,39 +201,33 @@ public class TestWithS3Client extends AbstractObjectStorageMockServer {
 
     soft.assertThat(
             s3
-                .listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("00/00/10/"))
+                .listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("00/00/01/"))
                 .stream()
                 .flatMap(p -> p.contents().stream())
                 .map(S3Object::key))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(100, 109).mapToObj(intToKey).collect(Collectors.toList()));
+            IntStream.rangeClosed(10, 19).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
             s3
-                .listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("03/50/50/"))
+                .listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("03/05/05/"))
                 .stream()
                 .flatMap(p -> p.contents().stream())
                 .map(S3Object::key))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(350_500, 350_509)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(3_550, 3_559).mapToObj(intToKey).collect(Collectors.toList()));
 
     soft.assertThat(
-            s3.listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("02/50/")).stream()
+            s3.listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(743).prefix("02/05/")).stream()
                 .flatMap(p -> p.contents().stream())
                 .map(S3Object::key))
         .containsExactlyElementsOf(
-            IntStream.rangeClosed(250_000, 250_999)
-                .mapToObj(intToKey)
-                .collect(Collectors.toList()));
+            IntStream.rangeClosed(2_500, 2_599).mapToObj(intToKey).collect(Collectors.toList()));
 
-    // This one takes long - the number of round-trips makes is slow TODO: too slow for a unit test?
     soft.assertThat(
-            s3.listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(13_431).prefix("03/")).stream()
-                .mapToLong(p -> p.contents().size())
-                .sum())
-        .isEqualTo(100_000);
+            s3.listObjectsV2Paginator(b -> b.bucket(BUCKET).maxKeys(13).prefix("02/05/")).stream()
+                .mapToInt(p -> p.contents().size()))
+        .containsExactly(13, 13, 13, 13, 13, 13, 13, 9);
   }
 
   @SuppressWarnings("resource")
@@ -348,7 +340,7 @@ public class TestWithS3Client extends AbstractObjectStorageMockServer {
             b.putBuckets(
                 BUCKET, Bucket.builder().object(objects::get).deleter(o -> false).build()));
 
-    byte[] content = "Hello World\nHello Nessie!".getBytes(StandardCharsets.UTF_8);
+    byte[] content = "Hello World\nHello Polaris!".getBytes(StandardCharsets.UTF_8);
 
     MockObject obj =
         ImmutableMockObject.builder()

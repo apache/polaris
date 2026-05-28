@@ -38,6 +38,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.jetty.JettyHttpContainerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.ServerProperties;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +129,7 @@ public abstract class ObjectStorageMock {
       customizeUriCompliance();
       this.baseUri = baseUri(server, initUri);
 
-      LOGGER.info("Object storage mock started started at {}", baseUri);
+      LOGGER.info("Object storage mock started at {}", baseUri);
     }
 
     /**
@@ -207,6 +208,7 @@ public abstract class ObjectStorageMock {
   @SuppressWarnings("Slf4jSignOnlyFormat")
   public MockServer start() {
     ResourceConfig config = new ResourceConfig();
+    config.property(ServerProperties.WADL_FEATURE_DISABLE, true);
     config.register(
         new AbstractBinder() {
           @Override

@@ -42,6 +42,12 @@ public class AbstractObjectStorageMockServer {
 
   @AfterEach
   public void stopServer() throws Exception {
-    serverInstance.close();
+    if (serverInstance != null) {
+      try {
+        serverInstance.close();
+      } finally {
+        serverInstance = null;
+      }
+    }
   }
 }

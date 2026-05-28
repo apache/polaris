@@ -63,7 +63,6 @@ dependencies {
 
   testImplementation(platform(libs.azuresdk.bom))
   testImplementation("com.azure:azure-storage-file-datalake")
-  testImplementation("com.azure:azure-identity")
 
   testImplementation(platform(libs.google.cloud.storage.bom))
   testImplementation("com.google.cloud:google-cloud-storage")

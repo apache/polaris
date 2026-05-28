@@ -265,8 +265,6 @@ public class AdlsGen2Resource {
       @QueryParam("continuation") String continuationToken,
       @QueryParam("maxResults") Integer maxResults) {
 
-    // TODO handle 'recursive' - it's special, like everything from MS
-
     String normalizedPath = stripLeadingSlash(directory);
 
     return withFilesystem(
