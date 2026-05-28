@@ -76,13 +76,13 @@ Assume the following values:
 - `spark_version`: 3.5
 - `scala_version`: 2.12
 - `delta_version`: 3.3.1
-- `polaris_version`: 1.5.0-SNAPSHOT
+- `polaris_version`: 1.6.0-SNAPSHOT
 - `catalog-name`: `polaris`
 The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.6.0-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -99,7 +99,7 @@ bin/spark-shell \
 The polaris-spark project also provides a Spark bundle JAR for the `--jars` use case. The resulting JAR will follow this naming format:
 polaris-spark-<spark_version>_<scala_version>-<polaris_version>-bundle.jar
 For example:
-polaris-spark-3.5_2.12-1.5.0-SNAPSHOT-bundle.jar
+polaris-spark-3.5_2.12-1.6.0-SNAPSHOT-bundle.jar
 
 Run `./gradlew assemble` to build the entire Polaris project without running tests. After the build completes, 
 the bundle JAR can be found under: plugins/spark/v3.5/spark/build/<scala_version>/libs/.
