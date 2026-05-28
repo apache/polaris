@@ -91,7 +91,11 @@ public abstract class GenericTableCatalogHandler extends CatalogHandler {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.genericTableCatalog =
           new PolarisGenericTableCatalog(
-              metaStoreManager(), callContext(), this.resolutionManifest);
+              metaStoreManager(),
+              callContext(),
+              this.resolutionManifest,
+              resolutionManifestFactory(),
+              polarisPrincipal());
       this.genericTableCatalog.initialize(catalogName(), Map.of());
     }
   }

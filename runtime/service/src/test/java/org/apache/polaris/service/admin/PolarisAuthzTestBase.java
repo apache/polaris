@@ -497,7 +497,12 @@ public abstract class PolarisAuthzTestBase {
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
     this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+        new PolarisGenericTableCatalog(
+            metaStoreManager,
+            callContext,
+            passthroughView,
+            resolutionManifestFactory,
+            authenticatedRoot);
     this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }

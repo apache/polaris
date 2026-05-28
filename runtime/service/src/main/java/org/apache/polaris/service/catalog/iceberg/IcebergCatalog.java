@@ -117,6 +117,7 @@ import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -536,6 +537,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           realmConfig,
           getMetaStoreManager(),
           getCurrentPolarisContext(),
+          new ResolutionManifestFactoryImpl(
+              diagnostics, callContext.getRealmContext(), resolverFactory),
+          principal,
           entity,
           resolvedParent.getRawFullPath());
     } else {
@@ -730,6 +734,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           realmConfig,
           getMetaStoreManager(),
           getCurrentPolarisContext(),
+          new ResolutionManifestFactoryImpl(
+              diagnostics, callContext.getRealmContext(), resolverFactory),
+          principal,
           NamespaceEntity.of(updatedEntity),
           resolvedEntities.getRawParentPath());
     } else {
@@ -1124,6 +1131,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           realmConfig,
           getMetaStoreManager(),
           getCurrentPolarisContext(),
+          new ResolutionManifestFactoryImpl(
+              diagnostics, callContext.getRealmContext(), resolverFactory),
+          principal,
           virtualEntity,
           resolvedNamespace);
     }

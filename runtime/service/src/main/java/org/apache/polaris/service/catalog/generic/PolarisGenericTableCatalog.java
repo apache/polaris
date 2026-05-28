@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -44,6 +45,7 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.slf4j.Logger;
@@ -56,17 +58,23 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final long catalogId;
   private final PolarisMetaStoreManager metaStoreManager;
+  private final ResolutionManifestFactory resolutionManifestFactory;
+  private final PolarisPrincipal principal;
 
   public PolarisGenericTableCatalog(
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      ResolutionManifestFactory resolutionManifestFactory,
+      PolarisPrincipal principal) {
     this.callContext = callContext;
     this.resolvedEntityView = requireNonNull(resolvedEntityView, "No resolved entity view");
     this.catalogId =
         requireNonNull(resolvedEntityView.getResolvedCatalogEntity(), "No resolved catalog entity")
             .getId();
     this.metaStoreManager = metaStoreManager;
+    this.resolutionManifestFactory = resolutionManifestFactory;
+    this.principal = principal;
   }
 
   @Override
@@ -113,6 +121,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             realmConfig,
             metaStoreManager,
             callContext.getPolarisCallContext(),
+            resolutionManifestFactory,
+            principal,
             virtualEntity,
             resolvedParent.getRawFullPath());
       }

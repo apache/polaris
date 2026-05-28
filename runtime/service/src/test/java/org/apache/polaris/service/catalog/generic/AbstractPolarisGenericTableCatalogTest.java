@@ -221,7 +221,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
+        new PolarisGenericTableCatalog(
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            resolutionManifestFactory,
+            authenticatedRoot);
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
