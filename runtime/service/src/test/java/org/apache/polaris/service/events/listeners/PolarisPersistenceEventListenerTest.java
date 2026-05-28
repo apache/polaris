@@ -230,7 +230,7 @@ class PolarisPersistenceEventListenerTest {
   @Test
   void shouldPropagateProcessEventErrors() {
     PolarisPersistenceEventListener listener =
-        new PolarisPersistenceEventListener(new DefaultEventPayloadPruner()) {
+        new PolarisPersistenceEventListener() {
           @Override
           protected void processEvent(
               String realmId, org.apache.polaris.core.entity.PolarisEvent event) {
@@ -462,7 +462,7 @@ class PolarisPersistenceEventListenerTest {
     private final Map<PolarisEventType, String> persistedRealmsByType = new LinkedHashMap<>();
 
     private CapturingPersistenceListener() {
-      super(new DefaultEventPayloadPruner());
+      super();
     }
 
     @Override

@@ -19,36 +19,32 @@
 
 package org.apache.polaris.service.events.listeners;
 
-import jakarta.inject.Inject;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.entity.PolarisEvent.ResourceType;
+import org.apache.polaris.service.events.AttributeKey;
 import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
-import org.apache.polaris.service.events.EventPayloadPruner;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
-  @Inject EventPayloadPruner payloadPruner;
-
   protected PolarisPersistenceEventListener() {}
-
-  PolarisPersistenceEventListener(EventPayloadPruner payloadPruner) {
-    this.payloadPruner = payloadPruner;
-  }
 
   @Override
   public void onEvent(PolarisEvent event) {
     String catalogName = resolveCatalogName(event);
-    org.apache.polaris.core.entity.PolarisEvent.ResourceType resourceType =
-        resolveResourceType(event.type());
+    ResourceType resourceType = resolveResourceType(event.type());
     String resourceIdentifier = resolveResourceIdentifier(event, resourceType, catalogName);
 
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
@@ -77,21 +73,34 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
         .orElse(org.apache.polaris.core.entity.PolarisEvent.REALM_SCOPED);
   }
 
-  private static org.apache.polaris.core.entity.PolarisEvent.ResourceType resolveResourceType(
-      PolarisEventType eventType) {
+  /**
+   * Maps an event's category to a {@link ResourceType} for indexing. Exhaustive over all {@link
+   * PolarisEventType.Category} values: any new category added to the enum must be classified here
+   * explicitly. The {@code default} arm is intentionally absent so that adding a category produces
+   * a compile-time error rather than silently routing to {@link ResourceType#REALM}.
+   */
+  private static ResourceType resolveResourceType(PolarisEventType eventType) {
     return switch (eventType.category()) {
-      case TABLE, GENERIC_TABLE -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.TABLE;
-      case VIEW -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.VIEW;
-      case NAMESPACE -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.NAMESPACE;
-      case CATALOG -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.CATALOG;
-      default -> org.apache.polaris.core.entity.PolarisEvent.ResourceType.REALM;
+      case TABLE, GENERIC_TABLE -> ResourceType.TABLE;
+      case VIEW -> ResourceType.VIEW;
+      case NAMESPACE -> ResourceType.NAMESPACE;
+      case CATALOG -> ResourceType.CATALOG;
+      case POLICY,
+          PRINCIPAL,
+          PRINCIPAL_ROLE,
+          CATALOG_ROLE,
+          CREDENTIAL,
+          TRANSACTION,
+          NOTIFICATION,
+          CONFIG,
+          TASK_EXECUTION,
+          RATE_LIMITING ->
+          ResourceType.REALM;
     };
   }
 
   private static String resolveResourceIdentifier(
-      PolarisEvent event,
-      org.apache.polaris.core.entity.PolarisEvent.ResourceType resourceType,
-      String catalogName) {
+      PolarisEvent event, ResourceType resourceType, String catalogName) {
     return switch (resourceType) {
       case TABLE -> resolveTableResourceIdentifier(event, catalogName);
       case VIEW -> resolveViewResourceIdentifier(event, catalogName);
@@ -233,13 +242,69 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     return event.type().name();
   }
 
-  private Map<String, String> buildAdditionalProperties(PolarisEvent event) {
+  private static Map<String, String> buildAdditionalProperties(PolarisEvent event) {
     Map<String, String> additionalProperties =
         new LinkedHashMap<>(event.metadata().openTelemetryContext());
-    event
-        .attributes()
-        .forEach((key, value) -> additionalProperties.putAll(payloadPruner.prune(key, value)));
+    event.attributes().forEach((key, value) -> additionalProperties.putAll(prune(key, value)));
     return additionalProperties;
+  }
+
+  /**
+   * Reduces an attribute value to a bounded string representation suitable for storage in the
+   * persistence event row. Inlined here (rather than exposed as a swappable bean) because pruning
+   * is a serialization concern of this listener only — other listeners are free to render the same
+   * value differently.
+   */
+  private static Map<String, String> prune(AttributeKey<?> key, Object value) {
+    if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+      return Map.of(key.name(), value.toString());
+    }
+
+    if (value instanceof Namespace namespace) {
+      return Map.of(key.name(), namespace.toString());
+    }
+
+    if (value instanceof TableIdentifier tableIdentifier) {
+      return Map.of(key.name(), tableIdentifier.toString());
+    }
+
+    if (key.equals(EventAttributes.TABLE_METADATA) && value instanceof TableMetadata metadata) {
+      return pruneTableMetadata(metadata);
+    }
+
+    if (key.equals(EventAttributes.LOAD_TABLE_RESPONSE)
+        && value instanceof LoadTableResponse response) {
+      return pruneTableMetadata(response.tableMetadata());
+    }
+
+    if (key.equals(EventAttributes.RENAME_TABLE_REQUEST)
+        && value instanceof RenameTableRequest request) {
+      Map<String, String> result = new LinkedHashMap<>();
+      result.put("rename_source", request.source().toString());
+      result.put("rename_destination", request.destination().toString());
+      return result;
+    }
+
+    return Map.of(key.name(), value.toString());
+  }
+
+  private static Map<String, String> pruneTableMetadata(TableMetadata metadata) {
+    if (metadata == null) {
+      return Map.of();
+    }
+    Map<String, String> summary = new LinkedHashMap<>();
+    if (metadata.uuid() != null) {
+      summary.put("table_uuid", metadata.uuid());
+    }
+    summary.put("table_location", metadata.location());
+    summary.put("table_format_version", String.valueOf(metadata.formatVersion()));
+    summary.put(
+        "table_current_snapshot_id",
+        String.valueOf(
+            metadata.currentSnapshot() != null ? metadata.currentSnapshot().snapshotId() : -1));
+    summary.put("table_schema", metadata.schema().toString());
+    summary.put("table_last_updated_ms", String.valueOf(metadata.lastUpdatedMillis()));
+    return summary;
   }
 
   protected abstract void processEvent(

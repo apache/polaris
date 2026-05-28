@@ -20,9 +20,11 @@
 package org.apache.polaris.service.events;
 
 /**
- * Global event attribute filter applied before delivery to all listeners. Determines which {@link
- * AttributeKey}s from an {@link EventAttributeMap} are safe to pass downstream. Sensitive
- * attributes are stripped globally so all listeners receive only sanitized events by default.
+ * Per-attribute denial policy used by the default {@link EventSanitizer} implementation. Decides
+ * whether a given {@link AttributeKey} is safe to pass downstream. This is a sub-component of
+ * {@link EventSanitizer}, not a standalone global hook: replacing only this bean tweaks which
+ * attributes are denied while keeping the standard derivation logic intact. To change derivation or
+ * add raw-event passthrough, replace {@link EventSanitizer} instead.
  */
 public interface EventAttributeFilter {
 

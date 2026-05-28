@@ -19,15 +19,20 @@
 
 package org.apache.polaris.service.events;
 
-import java.util.Map;
-
 /**
- * Reduces large attribute values to bounded, safe string representations suitable for persistence
- * or external transmission. While {@link EventAttributeFilter} decides <em>which</em> keys pass
- * globally, this interface decides <em>how</em> a passing value is serialized, and is applied
- * per-listener as a serialization concern.
+ * Global, dispatcher-enforced sanitizer for events. Invoked exactly once at the choke point in
+ * {@link PolarisEventListeners} before delivery to any listener. Implementations are responsible
+ * for both stripping disallowed attributes and producing any derived attributes that downstream
+ * listeners depend on.
+ *
+ * <p>Replacing this bean replaces the entire global sanitization policy — attribute denial,
+ * derivation, and any future raw-event escape-hatch logic.
  */
-public interface EventPayloadPruner {
+public interface EventSanitizer {
 
-  Map<String, String> prune(AttributeKey<?> key, Object value);
+  /**
+   * Returns a sanitized copy of {@code event}. The original event is not modified. The returned
+   * event MUST be safe to deliver to all listeners that have not opted in to receiving raw events.
+   */
+  PolarisEvent sanitize(PolarisEvent event);
 }
