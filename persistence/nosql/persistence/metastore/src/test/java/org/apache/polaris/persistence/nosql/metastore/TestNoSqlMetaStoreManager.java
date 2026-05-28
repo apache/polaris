@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
+import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation.MAX_POLICY_MAPPING_INDEX_VALUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.tuple;
@@ -26,10 +28,12 @@ import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.RealmConfigurationSource;
@@ -50,7 +54,12 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -66,7 +75,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @EnableWeld
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
-  @WeldSetup WeldInitiator weld = WeldInitiator.performDefaultDiscovery();
+  @SuppressWarnings("unused")
+  @WeldSetup
+  WeldInitiator weld = WeldInitiator.performDefaultDiscovery();
 
   @InjectSoftAssertions SoftAssertions soft;
 
@@ -242,6 +253,156 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .contains(Optional.empty());
   }
 
+  @Test
+  void attachPolicyAcceptsParametersWithinSerializedSizeLimit() {
+    var catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "policyMappingLimitCatalog");
+    var catalogCreated = metaStore.createCatalog(callContext, catalog, List.of());
+    assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    var namespaceResult =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "ns",
+            Map.of());
+    assertThat(namespaceResult.isSuccess()).isTrue();
+    var namespace = namespaceResult.getEntity();
+
+    var tableResult =
+        createEntity(
+            List.of(catalog, namespace),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "tbl",
+            Map.of());
+    assertThat(tableResult.isSuccess()).isTrue();
+    var table = tableResult.getEntity();
+
+    var policyResult =
+        createEntity(
+            List.of(catalog, namespace),
+            PolarisEntityType.POLICY,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "policy",
+            Map.of(
+                "policy-type-code",
+                Integer.toString(PredefinedPolicyTypes.DATA_COMPACTION.getCode())));
+    assertThat(policyResult.isSuccess()).isTrue();
+    var policy = PolicyEntity.of(policyResult.getEntity());
+
+    var parameters = policyMappingParameters(50);
+    assertThat(serializedPolicyMappingSize(parameters))
+        .isLessThanOrEqualTo(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE);
+
+    var attachResult =
+        metaStore.attachPolicyToEntity(
+            callContext,
+            List.of(catalog, namespace),
+            table,
+            List.of(catalog, namespace),
+            policy,
+            parameters);
+
+    assertThat(attachResult.isSuccess()).isTrue();
+    assertThat(attachResult.getPolicyMappingRecord()).isNotNull();
+    assertThat(attachResult.getPolicyMappingRecord().getParametersAsMap())
+        .containsExactlyEntriesOf(parameters);
+
+    var loadResult =
+        metaStore.loadPoliciesOnEntityByType(
+            callContext, table, PredefinedPolicyTypes.DATA_COMPACTION);
+    assertThat(loadResult.isSuccess()).isTrue();
+    assertThat(loadResult.getEntities()).hasSize(1);
+    assertThat(loadResult.getPolicyMappingRecords())
+        .singleElement()
+        .satisfies(
+            record -> assertThat(record.getParametersAsMap()).containsExactlyEntriesOf(parameters));
+  }
+
+  @Test
+  void attachPolicyRejectsParametersExceedingSerializedSizeLimit() {
+    var catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStore.generateNewEntityId(callContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "policyMappingTooLargeCatalog");
+    var catalogCreated = metaStore.createCatalog(callContext, catalog, List.of());
+    assertThat(catalogCreated).isNotNull();
+    catalog = catalogCreated.getCatalog();
+
+    var namespaceResult =
+        createEntity(
+            List.of(catalog),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "ns",
+            Map.of());
+    assertThat(namespaceResult.isSuccess()).isTrue();
+    var namespace = namespaceResult.getEntity();
+
+    var tableResult =
+        createEntity(
+            List.of(catalog, namespace),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "tbl",
+            Map.of());
+    assertThat(tableResult.isSuccess()).isTrue();
+    var table = tableResult.getEntity();
+
+    var policyResult =
+        createEntity(
+            List.of(catalog, namespace),
+            PolarisEntityType.POLICY,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            "policy",
+            Map.of(
+                "policy-type-code",
+                Integer.toString(PredefinedPolicyTypes.DATA_COMPACTION.getCode())));
+    assertThat(policyResult.isSuccess()).isTrue();
+    var policy = PolicyEntity.of(policyResult.getEntity());
+
+    var parameters = policyMappingParameters(51);
+    assertThat(serializedPolicyMappingSize(parameters))
+        .isGreaterThan(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE);
+
+    var attachResult =
+        metaStore.attachPolicyToEntity(
+            callContext,
+            List.of(catalog, namespace),
+            table,
+            List.of(catalog, namespace),
+            policy,
+            parameters);
+
+    assertThat(attachResult)
+        .extracting(PolicyAttachmentResult::isSuccess, PolicyAttachmentResult::getReturnStatus)
+        .containsExactly(false, BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED);
+    assertThat(attachResult.getExtraInformation())
+        .contains("Serialized policy-mapping index value size")
+        .contains(String.valueOf(MAX_POLICY_MAPPING_INDEX_VALUE_SIZE));
+
+    var loadResult = metaStore.loadPoliciesOnEntity(callContext, table);
+    assertThat(loadResult)
+        .extracting(
+            LoadPolicyMappingsResult::isSuccess,
+            LoadPolicyMappingsResult::getPolicyMappingRecords,
+            LoadPolicyMappingsResult::getEntities)
+        .containsExactly(true, List.of(), List.of());
+  }
+
   @SuppressWarnings("SameParameterValue")
   EntityResult createEntity(
       List<PolarisBaseEntity> catalogPath,
@@ -263,6 +424,17 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     var path = (List<PolarisEntityCore>) (List) catalogPath;
     return metaStore.createEntityIfNotExists(callContext, path, newEntity);
+  }
+
+  private static Map<String, String> policyMappingParameters(int entries) {
+    var parameters = new LinkedHashMap<String, String>();
+    IntStream.range(0, entries).forEach(i -> parameters.put("k" + i, "v" + i));
+    return parameters;
+  }
+
+  private static int serializedPolicyMappingSize(Map<String, String> parameters) {
+    return POLICY_MAPPING_SERIALIZER.serializedSize(
+        PolicyMapping.builder().parameters(parameters).build());
   }
 
   @Test
