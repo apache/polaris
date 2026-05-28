@@ -82,6 +82,7 @@ abstract class InMemoryBufferEventListenerTestBase {
   void clearEvents() throws Exception {
     reset(metaStoreManagerFactory);
     producer.shutdown();
+    producer.reset();
     try (Connection connection = dataSource.get().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE FROM polaris_schema.events");
