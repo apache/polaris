@@ -271,6 +271,17 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testCreateTableWithInvalidLocationFails() {
+    String deltatb = getTableNameWithRandomSuffix();
+    String invalidLocation =
+        new File(System.getProperty("java.io.tmpdir"), "invalid_" + deltatb).getAbsolutePath();
+    assertThatThrownBy(
+            () ->
+                sql("CREATE TABLE %s (id INT) USING DELTA LOCATION '%s'", deltatb, invalidLocation))
+        .hasMessageContaining("is not in the list of allowed locations");
+  }
+
+  @Test
   public void testCreateTableWithOverlappingLocationFails() {
     String deltatb1 = getTableNameWithRandomSuffix();
     String location1 = getTableLocation(deltatb1);

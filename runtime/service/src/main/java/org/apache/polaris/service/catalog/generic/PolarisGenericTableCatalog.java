@@ -102,14 +102,22 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     }
 
     if (baseLocation != null && !baseLocation.isEmpty()) {
+      LOGGER.debug(
+          "Validating location and overlap for generic table '{}' at '{}'",
+          tableIdentifier,
+          baseLocation);
       CatalogUtils.validateLocationForTableLike(
           resolvedEntityView, callContext.getRealmConfig(), tableIdentifier, baseLocation);
 
       CatalogEntity catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
+      if (catalogEntity == null) {
+        throw new IllegalStateException(
+            String.format("Failed to resolve catalog entity for table '%s'", tableIdentifier));
+      }
       RealmConfig realmConfig = callContext.getRealmConfig();
-      if (catalogEntity == null
-          || !realmConfig.getConfig(
-              FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
+      if (!realmConfig.getConfig(
+          FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP, catalogEntity)) {
+        LOGGER.debug("Validating no overlap with sibling tables or namespaces");
         PolarisEntity lastParent = resolvedParent.getRawLeafEntity();
         GenericTableEntity virtualEntity =
             new GenericTableEntity.Builder(tableIdentifier, "")
@@ -125,6 +133,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             principal,
             virtualEntity,
             resolvedParent.getRawFullPath());
+      } else {
+        LOGGER.debug("Skipping location overlap validation for identifier '{}'", tableIdentifier);
       }
     }
 
