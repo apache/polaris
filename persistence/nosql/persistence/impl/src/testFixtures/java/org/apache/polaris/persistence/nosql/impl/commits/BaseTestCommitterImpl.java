@@ -55,13 +55,14 @@ public abstract class BaseTestCommitterImpl {
   protected Persistence persistence;
 
   @Test
-  public void exclusiveSynchronizerDoesNotReleaseUnacquiredPermit() {
+  public void exclusiveSynchronizerDoesNotAcquirePermitOnTimeout() {
     var sync =
         ExclusiveCommitSynchronizer.forKey(
             persistence.realmId(), "exclusiveSynchronizer-" + persistence.generateId());
 
     soft.assertThat(sync.before(0L)).isTrue();
     soft.assertThat(sync.before(1L)).isFalse();
+    soft.assertThat(sync.before(0L)).isFalse();
     sync.after();
     soft.assertThat(sync.before(0L)).isTrue();
     sync.after();
@@ -309,6 +310,7 @@ public abstract class BaseTestCommitterImpl {
     var firstEntered = new CountDownLatch(1);
     var releaseFirst = new CountDownLatch(1);
     var secondEntered = new CountDownLatch(1);
+    var thirdEntered = new CountDownLatch(1);
     var firstReleased = new AtomicBoolean();
     var executor = Executors.newFixedThreadPool(2);
     try {
@@ -326,9 +328,13 @@ public abstract class BaseTestCommitterImpl {
                           Thread.currentThread().interrupt();
                           throw new RuntimeException(e);
                         }
+                        var result =
+                            state.commitResult(
+                                "first",
+                                CommitTestObj.builder().text("first"),
+                                refObjSupplier.get());
                         firstReleased.set(true);
-                        return state.commitResult(
-                            "first", CommitTestObj.builder().text("first"), refObjSupplier.get());
+                        return result;
                       }));
       soft.assertThat(firstEntered.await(5, TimeUnit.SECONDS)).isTrue();
 
@@ -347,9 +353,17 @@ public abstract class BaseTestCommitterImpl {
                       }));
 
       soft.assertThat(secondEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
+      var third =
+          executor.submit(
+              () -> {
+                thirdEntered.countDown();
+                return "third";
+              });
+      soft.assertThat(thirdEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
       releaseFirst.countDown();
       soft.assertThat(first.get(5, TimeUnit.SECONDS)).contains("first");
       soft.assertThat(second.get(5, TimeUnit.SECONDS)).contains("second");
+      soft.assertThat(third.get(5, TimeUnit.SECONDS)).isEqualTo("third");
     } finally {
       executor.shutdownNow();
     }
