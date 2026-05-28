@@ -355,7 +355,6 @@ This product bundles several SmallRye project artifacts.
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-mutiny-vertx-web-common
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-api
 * Maven group:artifact IDs: io.smallrye.reactive:smallrye-reactive-converter-mutiny
-* Maven group:artifact IDs: io.smallrye.reactive:vertx-mutiny-generator
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-api
 * Maven group:artifact IDs: io.smallrye:smallrye-context-propagation-jta
@@ -1383,7 +1382,6 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 This product bundles JBoss (logmanager, transaction, narayana).
 
-* Maven group:artifact IDs: org.jboss.invocation:jboss-invocation
 * Maven group:artifact IDs: org.jboss:jboss-transaction-spi
 * Maven group:artifact IDs: org.jboss.logging:commons-logging-jboss-logging
 * Maven group:artifact IDs: org.jboss.narayana.jta:narayana-jta
@@ -1676,37 +1674,6 @@ This product bundles Agrona.
 * Maven group:artifact IDs: org.agrona:agrona
 
 Project URL: https://github.com/aeron-io/agrona
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles RxJava
-
-* Maven group:artifact IDs: io.reactivex.rxjava3:rxjava
-
-Home page: https://github.com/ReactiveX/RxJava
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles Infinispan
-
-* Maven group:artifact IDs: org.infinispan.protostream:protostream
-* Maven group:artifact IDs: org.infinispan.protostream:protostream-types
-* Maven group:artifact IDs: org.infinispan:infinispan-commons
-* Maven group:artifact IDs: org.infinispan:infinispan-core
-* Maven group:artifact IDs: org.infinispan:infinispan-counter-api
-
-Home page: https://infinispan.org/
-License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
-
---------------------------------------------------------------------------------
-
-This product bundles JGroups
-
-* Maven group:artifact IDs: org.jgroups:jgroups
-
-Home page: http://www.jgroups.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
