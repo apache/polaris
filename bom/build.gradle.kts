@@ -30,6 +30,8 @@ dependencies {
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
+    api(project(":polaris-azurite-testcontainer"))
+    api(project(":polaris-gcs-testcontainer"))
     api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-rustfs-testcontainer"))
     api(project(":polaris-immutables"))
