@@ -39,6 +39,11 @@ record AclImpl(Object2ObjectHashMap<String, AclEntry> map) implements Acl {
   }
 
   @Override
+  public boolean isEmpty() {
+    return map.isEmpty();
+  }
+
+  @Override
   public void forEach(@NonNull BiConsumer<String, AclEntry> consumer) {
     map.forEach(consumer);
   }
