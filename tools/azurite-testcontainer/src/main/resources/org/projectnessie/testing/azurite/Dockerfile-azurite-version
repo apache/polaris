@@ -1,0 +1,3 @@
+# Dockerfile to provide the image name and tag to a test.
+# Version is managed by Renovate - do not edit.
+FROM mcr.microsoft.com/azure-storage/azurite:3.35.0
