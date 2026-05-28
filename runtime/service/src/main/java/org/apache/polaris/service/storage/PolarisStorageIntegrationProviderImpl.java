@@ -142,9 +142,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case GCS -> gcpFactory.apply((GcpStorageConfigurationInfo) storageConfig);
       case AZURE -> azureFactory.apply((AzureStorageConfigurationInfo) storageConfig);
       case FILE -> FILE_INTEGRATION;
-      default ->
-          throw new IllegalArgumentException(
-              "Unknown storage type " + storageConfig.getStorageType());
     };
   }
 
