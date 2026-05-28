@@ -43,15 +43,14 @@ public class TestAclEntryImpl {
 
   @BeforeAll
   static void setUp() {
+    privileges =
+        new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
     mapper =
         JsonMapper.builder()
-            .findAndAddModules()
+            .addModule(new JacksonPrivilegesModule(() -> privileges))
             .disable(FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(DEFAULT_VIEW_INCLUSION)
             .build();
-    privileges =
-        new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
-    JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
   }
 
   @ParameterizedTest
