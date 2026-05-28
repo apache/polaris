@@ -35,12 +35,17 @@ sourceSets {
 }
 
 // get version information
-val sparkMajorVersion = "4.0"
+val sparkMajorVersion = "3.5"
 val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = libs.versions.iceberg.get()
-val spark40Version = libs.versions.spark40.get()
+val spark35Version = libs.versions.spark35.get()
 
-val scalaLibraryVersion = libs.versions.scala213.get()
+val scalaLibraryVersion =
+  if (scalaVersion == "2.12") {
+    libs.versions.scala212.get()
+  } else {
+    libs.versions.scala213.get()
+  }
 
 dependencies {
   // TODO: extract a polaris-rest module as a thin layer for
@@ -53,7 +58,7 @@ dependencies {
 
   compileOnly("org.scala-lang:scala-library:${scalaLibraryVersion}")
   compileOnly("org.scala-lang:scala-reflect:${scalaLibraryVersion}")
-  compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}") {
+  compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -73,16 +78,15 @@ dependencies {
   testImplementation(libs.mockito.core)
 
   testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-4.0_${scalaVersion}:${icebergVersion}"
+    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${icebergVersion}"
   )
-  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark40Version}") {
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
-  testImplementation("org.apache.logging.log4j:log4j-api:2.24.3")
 }
 
 tasks.register<ShadowJar>("createPolarisSparkJar") {
