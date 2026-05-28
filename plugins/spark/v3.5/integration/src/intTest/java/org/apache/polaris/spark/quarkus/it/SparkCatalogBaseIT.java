@@ -39,7 +39,6 @@ import org.apache.spark.sql.connector.catalog.SupportsNamespaces;
 import org.apache.spark.sql.connector.catalog.View;
 import org.apache.spark.sql.connector.catalog.ViewCatalog;
 import org.apache.spark.sql.connector.catalog.ViewChange;
-import org.apache.spark.sql.connector.catalog.ViewInfo;
 import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -155,16 +154,15 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
     Identifier viewIdentifier = Identifier.of(namespace, "test-view");
     String viewSql = "select id from test-table where id < 3";
     viewCatalog.createView(
-        new ViewInfo(
-            viewIdentifier,
-            viewSql,
-            catalogName,
-            namespace,
-            schema,
-            new String[0],
-            new String[0],
-            new String[0],
-            Maps.newHashMap()));
+        viewIdentifier,
+        viewSql,
+        catalogName,
+        namespace,
+        schema,
+        new String[0],
+        new String[0],
+        new String[0],
+        Maps.newHashMap());
 
     // load the view
     View view = viewCatalog.loadView(viewIdentifier);
@@ -221,16 +219,15 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
     String view1Name = "test-view1";
     String view1SQL = "select id from test-table where id >= 3";
     viewCatalog.createView(
-        new ViewInfo(
-            Identifier.of(l1ns, view1Name),
-            view1SQL,
-            catalogName,
-            l1ns,
-            schema,
-            new String[0],
-            new String[0],
-            new String[0],
-            Maps.newHashMap()));
+        Identifier.of(l1ns, view1Name),
+        view1SQL,
+        catalogName,
+        l1ns,
+        schema,
+        new String[0],
+        new String[0],
+        new String[0],
+        Maps.newHashMap());
     // create two views under the l2 namespace
     String[] nsl2ViewNames = new String[] {"test-view2", "test-view3"};
     String[] nsl2ViewSQLs =
@@ -239,16 +236,15 @@ public abstract class SparkCatalogBaseIT extends SparkIntegrationBase {
         };
     for (int i = 0; i < nsl2ViewNames.length; i++) {
       viewCatalog.createView(
-          new ViewInfo(
-              Identifier.of(l2ns, nsl2ViewNames[i]),
-              nsl2ViewSQLs[i],
-              catalogName,
-              l2ns,
-              schema,
-              new String[0],
-              new String[0],
-              new String[0],
-              Maps.newHashMap()));
+          Identifier.of(l2ns, nsl2ViewNames[i]),
+          nsl2ViewSQLs[i],
+          catalogName,
+          l2ns,
+          schema,
+          new String[0],
+          new String[0],
+          new String[0],
+          Maps.newHashMap());
     }
     // list views under l1ns
     Identifier[] l1Views = viewCatalog.listViews(l1ns);
