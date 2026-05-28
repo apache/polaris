@@ -22,7 +22,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +29,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,8 +101,7 @@ public class StorageCredentialCache {
   }
 
   @VisibleForTesting
-  @Nullable
-  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
+  @Nullable Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
     return getAccessConfig(key).map(StorageAccessConfig::credentials).orElse(null);
   }
 

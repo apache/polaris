@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.extension.auth.opa.token;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface for providing bearer tokens for authentication.
@@ -38,8 +38,7 @@ public interface BearerTokenProvider extends AutoCloseable {
    *
    * @return the bearer token, or null if no token is available
    */
-  @Nullable
-  String getToken();
+  @Nullable String getToken();
 
   /**
    * Clean up any resources used by this token provider. Should be called when the provider is no

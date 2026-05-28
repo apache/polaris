@@ -22,8 +22,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -50,6 +48,8 @@ import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 /**
@@ -128,7 +128,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
   @Override
   public @Nullable PolarisStorageIntegration getStorageIntegration(
-      @Nonnull List<PolarisEntity> resolvedEntityPath) {
+      @NonNull List<PolarisEntity> resolvedEntityPath) {
     return PolarisStorageConfigurationInfo.findStorageInfoFromHierarchy(resolvedEntityPath)
         .map(entity -> BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity))
         .map(this::createIntegration)
@@ -153,9 +153,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       new PolarisStorageIntegration() {
         @Override
         public StorageAccessConfig getStorageAccessConfig(
-            @Nonnull List<LocationGrant> grants,
-            @Nonnull Optional<String> refreshEndpoint,
-            @Nonnull CredentialVendingContext context) {
+            @NonNull List<LocationGrant> grants,
+            @NonNull Optional<String> refreshEndpoint,
+            @NonNull CredentialVendingContext context) {
           return StorageAccessConfig.builder().supportsCredentialVending(false).build();
         }
       };

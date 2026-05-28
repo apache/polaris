@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
@@ -51,6 +52,7 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("encodeNamespaceCases")
+  @SuppressWarnings("deprecation")
   public void testEncodeNamespace(Namespace ns, String expected) {
     assertThat(PolarisEntityUtils.encodeNamespace(ns))
         .isEqualTo(RESTUtil.encodeNamespace(ns))
@@ -85,6 +87,7 @@ public class PolarisEntityUtilsTest {
 
   @ParameterizedTest
   @MethodSource("decodeNamespaceCases")
+  @SuppressWarnings("deprecation")
   public void testDecodeNamespace(String encoded, Namespace expected) {
     assertThat(PolarisEntityUtils.decodeNamespace(encoded))
         .isEqualTo(RESTUtil.decodeNamespace(encoded))
@@ -117,5 +120,26 @@ public class PolarisEntityUtilsTest {
   public void testRoundTrip(Namespace ns) {
     assertThat(PolarisEntityUtils.decodeNamespace(PolarisEntityUtils.encodeNamespace(ns)))
         .isEqualTo(ns);
+  }
+
+  public static Stream<Arguments> asLocationBasedEntityCases() {
+    return Stream.of(
+        Arguments.of(PolarisEntityType.FILE, PolarisEntitySubType.ANY_SUBTYPE, true),
+        Arguments.of(PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true),
+        Arguments.of(PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.NULL_SUBTYPE, true),
+        Arguments.of(PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE, false),
+        Arguments.of(PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, false),
+        Arguments.of(PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, false),
+        Arguments.of(PolarisEntityType.CATALOG, PolarisEntitySubType.NULL_SUBTYPE, false),
+        Arguments.of(PolarisEntityType.NAMESPACE, PolarisEntitySubType.NULL_SUBTYPE, false));
+  }
+
+  @ParameterizedTest
+  @MethodSource("asLocationBasedEntityCases")
+  public void testAsLocationBasedEntity(
+      PolarisEntityType type, PolarisEntitySubType subType, boolean empty) {
+    PolarisEntity sample =
+        new PolarisEntity(0, type, subType, 1, 2, "name", 0, 0, 0, 0, Map.of(), Map.of(), 0, 1);
+    assertThat(PolarisEntityUtils.asLocationBasedEntity(sample).isEmpty()).isEqualTo(empty);
   }
 }

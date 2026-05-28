@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Vetoed;
 import jakarta.inject.Inject;
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -52,9 +52,9 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull StorageAccessConfig storageAccessConfig,
-      @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
+      @NonNull StorageAccessConfig storageAccessConfig,
+      @NonNull String ioImplClassName,
+      @NonNull Map<String, String> properties) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();

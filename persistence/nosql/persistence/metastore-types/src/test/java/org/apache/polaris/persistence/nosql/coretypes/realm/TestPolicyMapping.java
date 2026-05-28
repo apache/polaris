@@ -52,6 +52,11 @@ public class TestPolicyMapping {
         .containsExactly(serSize + 10, 0);
 
     buffer.flip();
+    var nullProbe = buffer.duplicate();
+    soft.assertThat(POLICY_MAPPING_SERIALIZER.isNullSerialized(nullProbe)).isFalse();
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, serSize + 10);
 
     soft.assertThat(buffer)
         .extracting(ByteBuffer::position, ByteBuffer::remaining)

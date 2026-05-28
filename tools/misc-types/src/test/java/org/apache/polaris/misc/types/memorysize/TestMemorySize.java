@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
-import jakarta.annotation.Nullable;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +39,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -180,12 +180,10 @@ public class TestMemorySize {
     @JsonFormat(shape = JsonFormat.Shape.NUMBER_INT)
     MemorySize implicitInt();
 
-    @Nullable
-    MemorySize implicitNull();
+    @Nullable MemorySize implicitNull();
 
     @JsonFormat(shape = JsonFormat.Shape.NUMBER_INT)
-    @Nullable
-    MemorySize implicitIntNull();
+    @Nullable MemorySize implicitIntNull();
 
     Optional<MemorySize> optionalEmpty();
 

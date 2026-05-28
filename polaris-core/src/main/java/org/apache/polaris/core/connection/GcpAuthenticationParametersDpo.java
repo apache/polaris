@@ -19,13 +19,13 @@
 
 package org.apache.polaris.core.connection;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.GcpAuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.jspecify.annotations.NonNull;
 
 /**
  * See {@link org.apache.iceberg.rest.RESTUtil#configHeaders(Map)} and {@link
@@ -37,7 +37,7 @@ public class GcpAuthenticationParametersDpo extends AuthenticationParametersDpo 
     super(AuthenticationType.GCP.getCode());
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
@@ -46,7 +46,7 @@ public class GcpAuthenticationParametersDpo extends AuthenticationParametersDpo 
     return properties;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public GcpAuthenticationParameters asAuthenticationParametersModel() {
     return GcpAuthenticationParameters.builder()

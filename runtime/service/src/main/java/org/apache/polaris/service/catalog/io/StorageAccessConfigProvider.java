@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.io;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -42,6 +41,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,11 +73,11 @@ public class StorageAccessConfigProvider {
   }
 
   public StorageAccessConfig getStorageAccessConfig(
-      @Nonnull TableIdentifier tableIdentifier,
-      @Nonnull Set<String> tableLocations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisResolvedPathWrapper resolvedPath) {
+      @NonNull TableIdentifier tableIdentifier,
+      @NonNull Set<String> tableLocations,
+      @NonNull Set<PolarisStorageActions> storageActions,
+      @NonNull Optional<String> refreshCredentialsEndpoint,
+      @NonNull PolarisResolvedPathWrapper resolvedPath) {
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
@@ -104,10 +104,10 @@ public class StorageAccessConfigProvider {
   }
 
   private StorageAccessConfig getStorageAccessConfig(
-      @Nonnull List<PolarisEntity> resolvedEntityPath,
-      @Nonnull Set<String> locations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull Optional<String> refreshCredentialsEndpoint) {
+      @NonNull List<PolarisEntity> resolvedEntityPath,
+      @NonNull Set<String> locations,
+      @NonNull Set<PolarisStorageActions> storageActions,
+      @NonNull Optional<String> refreshCredentialsEndpoint) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext

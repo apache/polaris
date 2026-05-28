@@ -1163,7 +1163,11 @@ class SetupCommand(Command):
             parts = ns_name.split(".")
             if len(parts) > 1:
                 parent_ns = ".".join(parts[:-1])
-                if parent_ns in existing_namespaces and parent_ns not in listed_parents:
+                if (
+                    not dry_run
+                    and parent_ns in existing_namespaces
+                    and parent_ns not in listed_parents
+                ):
                     try:
                         sub_ns = catalog_api.list_namespaces(
                             prefix=catalog_name, parent=UNIT_SEPARATOR.join(parts[:-1])

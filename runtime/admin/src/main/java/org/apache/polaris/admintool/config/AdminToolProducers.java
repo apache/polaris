@@ -19,8 +19,6 @@
 package org.apache.polaris.admintool.config;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -37,6 +35,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public class AdminToolProducers {
 
@@ -70,7 +70,7 @@ public class AdminToolProducers {
       @Override
       @Nullable
       public PolarisStorageIntegration getStorageIntegration(
-          @Nonnull List<PolarisEntity> resolvedEntityPath) {
+          @NonNull List<PolarisEntity> resolvedEntityPath) {
         return null;
       }
     };

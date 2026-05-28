@@ -19,13 +19,13 @@
 
 package org.apache.polaris.service.identity;
 
-import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
@@ -111,7 +111,7 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
    */
   @Override
   default Optional<AwsIamServiceIdentityCredential> asServiceIdentityCredential(
-      @Nonnull SecretReference secretReference) {
+      @NonNull SecretReference secretReference) {
     return Optional.of(
         new AwsIamServiceIdentityCredential(secretReference, iamArn(), awsCredentialsProvider()));
   }
@@ -123,7 +123,7 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
    *
    * @return the constructed AWS credentials provider
    */
-  @Nonnull
+  @NonNull
   default AwsCredentialsProvider awsCredentialsProvider() {
     if (accessKeyId().isPresent() && secretAccessKey().isPresent()) {
       if (sessionToken().isPresent()) {

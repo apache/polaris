@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore.privs;
+package org.apache.polaris.persistence.nosql.coretypes.acl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -24,7 +24,6 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
-import org.apache.polaris.persistence.nosql.coretypes.acl.GrantsObj;
 
 /**
  * Represents the triplet of catalog-ID, entity-ID and type-code plus a reverse-or-key marker.

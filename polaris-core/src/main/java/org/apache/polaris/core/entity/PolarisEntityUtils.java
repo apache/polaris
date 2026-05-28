@@ -25,8 +25,11 @@ import com.google.common.collect.Iterables;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 
 /**
  * Polaris-owned encoding/decoding for namespaces stored in entity internal properties.
@@ -49,7 +52,7 @@ public final class PolarisEntityUtils {
    * Returns a String representation of a namespace that is suitable for storage in entity internal
    * properties.
    *
-   * <p>This method is similar to {@link RESTUtil#encodeNamespace(Namespace)}.
+   * <p>This method is similar to {@link RESTUtil#encodeNamespace(Namespace, String)}.
    */
   public static String encodeNamespace(Namespace ns) {
     Preconditions.checkArgument(ns != null, "Invalid namespace: null");
@@ -65,7 +68,7 @@ public final class PolarisEntityUtils {
    * Returns a Namespace object from a String representation that was encoded using {@link
    * #encodeNamespace(Namespace)}.
    *
-   * <p>This method is similar to {@link RESTUtil#decodeNamespace(String)}.
+   * <p>This method is similar to {@link RESTUtil#decodeNamespace(String, String)}.
    */
   public static Namespace decodeNamespace(String encodedNs) {
     Preconditions.checkArgument(encodedNs != null, "Invalid namespace: null");
@@ -74,5 +77,21 @@ public final class PolarisEntityUtils {
       levels[i] = URLDecoder.decode(levels[i], StandardCharsets.UTF_8);
     }
     return Namespace.of(levels);
+  }
+
+  public static Optional<LocationBasedEntity> asLocationBasedEntity(PolarisEntity entity) {
+    return Optional.ofNullable(
+        switch (entity.getType()) {
+          case CATALOG -> CatalogEntity.of(entity);
+          case NAMESPACE -> NamespaceEntity.of(entity);
+          case TABLE_LIKE ->
+              switch (entity.getSubType()) {
+                case GENERIC_TABLE -> GenericTableEntity.of(entity);
+                case ICEBERG_TABLE, ICEBERG_VIEW -> IcebergTableLikeEntity.of(entity);
+                default -> null;
+              };
+
+          default -> null;
+        });
   }
 }

@@ -38,7 +38,7 @@ from prettytable import PrettyTable
 @dataclass
 class TableCommand(Command):
     """
-    A Command implemtation to represent `polaris tables`. It manages Iceberg tables within a Polaris Catalog.
+    A Command implementation to represent `polaris tables`. It manages Iceberg tables within a Polaris Catalog.
 
     Example commands:
         * ./polaris tables list --catalog my_catalog --namespace ns1

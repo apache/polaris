@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * SPI that returns a {@link PolarisStorageIntegration} for a resolved entity path.
@@ -38,6 +38,6 @@ public interface PolarisStorageIntegrationProvider {
    * resolved entity path. Implementations are free to walk the path to locate storage
    * configuration, resolve overrides, or consult persistence-side state.
    */
-  @Nullable
-  PolarisStorageIntegration getStorageIntegration(@Nonnull List<PolarisEntity> resolvedEntityPath);
+  @Nullable PolarisStorageIntegration getStorageIntegration(
+      @NonNull List<PolarisEntity> resolvedEntityPath);
 }

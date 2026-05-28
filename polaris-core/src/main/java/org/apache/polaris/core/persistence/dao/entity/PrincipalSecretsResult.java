@@ -20,9 +20,9 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /** the result of load/rotate principal secrets */
 public class PrincipalSecretsResult extends BaseResult {
@@ -37,7 +37,7 @@ public class PrincipalSecretsResult extends BaseResult {
    * @param extraInformation extra information
    */
   public PrincipalSecretsResult(
-      @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
+      @NonNull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.principalSecrets = null;
   }
@@ -47,16 +47,16 @@ public class PrincipalSecretsResult extends BaseResult {
    *
    * @param principalSecrets and associated secret information
    */
-  public PrincipalSecretsResult(@Nonnull PolarisPrincipalSecrets principalSecrets) {
+  public PrincipalSecretsResult(@NonNull PolarisPrincipalSecrets principalSecrets) {
     super(ReturnStatus.SUCCESS);
     this.principalSecrets = principalSecrets;
   }
 
   @JsonCreator
   private PrincipalSecretsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @NonNull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
+      @JsonProperty("principalSecrets") @NonNull PolarisPrincipalSecrets principalSecrets) {
     super(returnStatus, extraInformation);
     this.principalSecrets = principalSecrets;
   }

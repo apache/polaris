@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.core.identity.credential;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
@@ -64,14 +64,14 @@ public class AwsIamServiceIdentityCredential extends ServiceIdentityCredential {
   }
 
   public AwsIamServiceIdentityCredential(
-      @Nullable String iamArn, @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
+      @Nullable String iamArn, @NonNull AwsCredentialsProvider awsCredentialsProvider) {
     this(null, iamArn, awsCredentialsProvider);
   }
 
   public AwsIamServiceIdentityCredential(
       @Nullable SecretReference secretReference,
       @Nullable String iamArn,
-      @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
+      @NonNull AwsCredentialsProvider awsCredentialsProvider) {
     super(ServiceIdentityType.AWS_IAM, secretReference);
     this.iamArn = iamArn;
     this.awsCredentialsProvider = awsCredentialsProvider;
@@ -81,17 +81,17 @@ public class AwsIamServiceIdentityCredential extends ServiceIdentityCredential {
     return iamArn;
   }
 
-  public @Nonnull AwsCredentialsProvider getAwsCredentialsProvider() {
+  public @NonNull AwsCredentialsProvider getAwsCredentialsProvider() {
     return awsCredentialsProvider;
   }
 
   @Override
-  public @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo() {
+  public @NonNull ServiceIdentityInfoDpo asServiceIdentityInfoDpo() {
     return new AwsIamServiceIdentityInfoDpo(getIdentityInfoReference());
   }
 
   @Override
-  public @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel() {
+  public @NonNull ServiceIdentityInfo asServiceIdentityInfoModel() {
     return AwsIamServiceIdentityInfo.builder()
         .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
         .setIamArn(getIamArn())

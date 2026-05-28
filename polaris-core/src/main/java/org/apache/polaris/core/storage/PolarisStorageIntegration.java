@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NonNull;
 
 /**
  * SPI for a storage integration bound to a particular storage configuration. An integration vends
@@ -52,7 +52,7 @@ public interface PolarisStorageIntegration {
    *     call — used for audit tagging and cache keying
    */
   StorageAccessConfig getStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context);
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context);
 }

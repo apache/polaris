@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.connection.iceberg;
 
-import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Configuration wrappers which ultimately translate their contents into Iceberg properties and
@@ -29,7 +29,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
  * expose the internals of deeply nested configuration objects to a visitor class.
  */
 public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
+  @NonNull
   default Map<String, String> asIcebergCatalogProperties(
       PolarisCredentialManager credentialManager) {
     return Map.of();

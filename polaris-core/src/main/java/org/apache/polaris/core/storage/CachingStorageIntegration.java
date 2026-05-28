@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Abstract base for storage integrations that cache vended credentials in an in-memory {@link
@@ -48,8 +48,8 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
 
   protected CachingStorageIntegration(
       @Nullable StorageCredentialCache cache,
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull T storageConfig) {
+      @NonNull RealmConfig realmConfig,
+      @NonNull T storageConfig) {
     this.cache = cache;
     this.realmConfig = realmConfig;
     this.storageConfig = storageConfig;
@@ -67,9 +67,9 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
 
   @Override
   public final StorageAccessConfig getStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     if (cache != null) {
       StorageCredentialCacheKey key = buildCacheKey(grants, refreshEndpoint, context);
       return cache.getOrLoad(
@@ -84,9 +84,9 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
    * credentials collide on the same key.
    */
   protected abstract StorageCredentialCacheKey buildCacheKey(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context);
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context);
 
   /**
    * Mint credentials for the instance's bound storage configuration. Subclasses implement the
@@ -94,7 +94,7 @@ public abstract class CachingStorageIntegration<T extends PolarisStorageConfigur
    * generation).
    */
   protected abstract StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context);
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context);
 }

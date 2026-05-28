@@ -20,7 +20,6 @@
 package org.apache.polaris.service.credentials;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -34,6 +33,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.service.credentials.connection.AuthType;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Default implementation of {@link PolarisCredentialManager} responsible for retrieving credentials
@@ -72,8 +72,8 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
   }
 
   @Override
-  public @Nonnull ConnectionCredentials getConnectionCredentials(
-      @Nonnull ConnectionConfigInfoDpo connectionConfig) {
+  public @NonNull ConnectionCredentials getConnectionCredentials(
+      @NonNull ConnectionConfigInfoDpo connectionConfig) {
 
     AuthenticationType authType =
         connectionConfig.getAuthenticationParameters().getAuthenticationType();

@@ -40,6 +40,9 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
+
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-databind")
 }
 
 tasks.withType<Javadoc> { isFailOnError = false }

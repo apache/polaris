@@ -86,6 +86,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_TAB
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.NAMESPACE_EXISTS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_TABLE;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REGISTER_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
@@ -209,11 +210,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTI
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.jspecify.annotations.Nullable;
 
 /** Polaris RBAC-specific interpretation of an authorizable operation. */
 record RbacOperationSemantics(
@@ -300,6 +301,7 @@ record RbacOperationSemantics(
     // View operations
     register(LIST_VIEWS, VIEW_LIST);
     register(CREATE_VIEW, VIEW_CREATE);
+    register(REGISTER_VIEW, VIEW_CREATE);
     register(LOAD_VIEW, VIEW_READ_PROPERTIES);
     register(REPLACE_VIEW, VIEW_WRITE_PROPERTIES);
     register(DROP_VIEW, VIEW_DROP);

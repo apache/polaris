@@ -34,7 +34,6 @@ import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
-import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -59,6 +58,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,9 +103,9 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return buildCacheKey(
         readLocations(grants),
         listLocations(grants),
@@ -116,9 +116,9 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   protected StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return generateStorageAccessConfig(
         readLocations(grants),
         listLocations(grants),
@@ -153,11 +153,11 @@ public class GcpCredentialsStorageIntegration
   }
 
   private StorageCredentialCacheKey buildCacheKey(
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> listLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> readLocations,
+      @NonNull Set<String> listLocations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
@@ -168,11 +168,11 @@ public class GcpCredentialsStorageIntegration
   }
 
   public StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> listLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> readLocations,
+      @NonNull Set<String> listLocations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     GcpStorageConfigurationInfo gcpStorageConfig = storageConfig();
 
     try {
@@ -281,9 +281,9 @@ public class GcpCredentialsStorageIntegration
    */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedListLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @NonNull Set<String> allowedReadLocations,
+      @NonNull Set<String> allowedListLocations,
+      @NonNull Set<String> allowedWriteLocations) {
     Map<String, LinkedHashSet<String>> readConditionsByBucket = new LinkedHashMap<>();
     Map<String, LinkedHashSet<String>> writeConditionsByBucket = new LinkedHashMap<>();
     HashSet<String> bucketsWithList = new HashSet<>();

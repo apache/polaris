@@ -19,6 +19,7 @@
     { "bundleName" : "upl", "licenseName" : "Universal Permissive License, Version 1.0", "licenseUrl": "http://opensource.org/licenses/UPL" }
   ],
   "transformationRules" : [
+    { "bundleName" : "apache2", "licenseNamePattern" : "Apache License 2.0" },
     { "bundleName" : "apache2", "licenseUrlPattern" : "https?://www.apache.org/licenses/LICENSE-2.0.*" },
     { "bundleName" : "apache2", "licenseUrlPattern" : "https?://opensource.org/licenses/Apache-2.0" },
     { "bundleName" : "apache2", "licenseUrlPattern" : "https?://repository.jboss.org/licenses/apache-2.0.*" },

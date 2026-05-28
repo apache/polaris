@@ -100,6 +100,11 @@ final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMappin
   }
 
   @Override
+  public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+    return false;
+  }
+
+  @Override
   public void skip(@NonNull ByteBuffer buffer) {
     var num = readVarInt(buffer);
     for (int i = 0; i < num; i++) {

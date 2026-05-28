@@ -25,7 +25,7 @@ REST endpoints, and provides implementations for Apache Spark's
 - [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
 - [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
 
-Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13, and depends on iceberg-spark-runtime 1.9.1.
+Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13, and depends on iceberg-spark-runtime 1.11.0.
 
 The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
 requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
@@ -54,7 +54,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -77,7 +77,7 @@ The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -103,7 +103,7 @@ To start Spark using the bundle JAR, specify it with the `--jars` option as show
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.11.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \

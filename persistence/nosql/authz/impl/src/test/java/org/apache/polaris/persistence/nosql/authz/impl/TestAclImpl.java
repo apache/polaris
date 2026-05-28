@@ -42,16 +42,21 @@ public class TestAclImpl {
 
   @BeforeAll
   static void setUp() {
-    mapper = JsonMapper.builder().findAndAddModules().build();
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
-    JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
+    mapper = JsonMapper.builder().addModule(new JacksonPrivilegesModule(() -> privileges)).build();
   }
 
   @ParameterizedTest
   @MethodSource
   public void acl(Acl acl) throws Exception {
     String json = mapper.writeValueAsString(acl);
+
+    var notEmpty = new boolean[1];
+    acl.forEach((roleId, aclEntry) -> notEmpty[0] = true);
+
+    soft.assertThat(acl.isEmpty()).isEqualTo(!notEmpty[0]);
+
     soft.assertThat(mapper.readValue(json, Acl.class)).isEqualTo(acl);
   }
 

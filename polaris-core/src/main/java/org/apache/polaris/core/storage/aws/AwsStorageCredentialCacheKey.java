@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Storage access config parameters for AWS. Includes principal name and credential vending context
@@ -37,8 +37,7 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String realmId();
 
   @Value.Parameter(order = 2)
-  @Nullable
-  String storageConfigSerializedStr();
+  @Nullable String storageConfigSerializedStr();
 
   @Value.Parameter(order = 3)
   Set<String> allowedReadLocations();

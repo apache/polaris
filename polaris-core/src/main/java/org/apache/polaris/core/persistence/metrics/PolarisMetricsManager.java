@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.persistence.metrics;
 
-import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Interface for managing Iceberg metrics persistence through the metastore manager layer.
@@ -55,7 +55,7 @@ public interface PolarisMetricsManager {
    * @param record the scan metrics record to persist (including request context)
    */
   default void writeScanMetrics(
-      @Nonnull PolarisCallContext callCtx, @Nonnull ScanMetricsRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull ScanMetricsRecord record) {
     callCtx.getMetaStore().writeScanReport(record);
   }
 
@@ -72,7 +72,7 @@ public interface PolarisMetricsManager {
    * @param record the commit metrics record to persist (including request context)
    */
   default void writeCommitMetrics(
-      @Nonnull PolarisCallContext callCtx, @Nonnull CommitMetricsRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull CommitMetricsRecord record) {
     callCtx.getMetaStore().writeCommitReport(record);
   }
 }

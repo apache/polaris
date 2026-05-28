@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.metastore.mutation;
 
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping.POLICY_MAPPING_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.POLICY_MAPPINGS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj.PolicyMappingKey.fromIndexKey;
@@ -32,6 +33,7 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
+import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj;
 import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
@@ -47,6 +49,20 @@ public record PolicyMutation(
     long targetId,
     boolean doAttach,
     @NonNull Map<String, String> parameters) {
+  /**
+   * Conservative limit for serialized policy-mapping index value size to ensure that the serialized
+   * index-entry value sizes don't grow too large.
+   *
+   * <p>If this limit is ever exceeded, there are two options:
+   *
+   * <ul>
+   *   <li>If it's a marginal increase, it's possible to increase this value.
+   *   <li>If the property bag is becoming too big, the policy mapping should be stored in a
+   *       separate new {@link Obj}ect.
+   * </ul>
+   */
+  public static final int MAX_POLICY_MAPPING_INDEX_VALUE_SIZE = 384;
+
   public PolicyAttachmentResult apply() {
     try {
       var committer =
@@ -131,11 +147,22 @@ public record PolicyMutation(
                     }
                   }
 
+                  var policyMapping = PolicyMapping.builder().parameters(parameters).build();
+                  var serializedPolicyMappingSize =
+                      POLICY_MAPPING_SERIALIZER.serializedSize(policyMapping);
+                  if (serializedPolicyMappingSize > MAX_POLICY_MAPPING_INDEX_VALUE_SIZE) {
+                    return state.noCommit(
+                        new PolicyAttachmentResult(
+                            UNEXPECTED_ERROR_SIGNALED,
+                            "Serialized policy-mapping index value size "
+                                + serializedPolicyMappingSize
+                                + " exceeds maximum allowed size "
+                                + MAX_POLICY_MAPPING_INDEX_VALUE_SIZE));
+                  }
+
                   // note: parameters are only added to the "by entity" entry
                   index.put(keyByPolicy.toIndexKey(), PolicyMapping.EMPTY);
-                  index.put(
-                      keyByEntity.toIndexKey(),
-                      PolicyMapping.builder().parameters(parameters).build());
+                  index.put(keyByEntity.toIndexKey(), policyMapping);
                   changed = true;
                 } else {
                   changed |= index.remove(keyByPolicy.toIndexKey());
@@ -143,6 +170,8 @@ public record PolicyMutation(
                 }
 
                 if (changed) {
+                  // Replacing this inline index leaves older mapping objects and stripes stale
+                  // until a later maintenance purge.
                   builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
                   return state.commitResult(result, builder, refObj);
                 }

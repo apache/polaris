@@ -30,8 +30,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import java.io.Closeable;
 import java.time.Clock;
@@ -70,12 +68,14 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -112,6 +112,7 @@ import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -131,6 +132,8 @@ import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,6 +186,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
           .add(Endpoint.V1_RENAME_VIEW)
+          .add(Endpoint.V1_REGISTER_VIEW)
           .build();
 
   protected abstract PolarisDiagnostics diagnostics();
@@ -465,8 +469,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
-    request.validate();
-
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw alreadyExistsExceptionForTableLikeEntity(
@@ -508,8 +510,6 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   }
 
   private TableMetadata stageTableCreateHelper(Namespace namespace, CreateTableRequest request) {
-    request.validate();
-
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(ident)) {
       throw alreadyExistsExceptionForTableLikeEntity(ident, PolarisEntitySubType.ICEBERG_TABLE);
@@ -1260,6 +1260,14 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return catalogHandlerUtils().createView(viewCatalog, namespace, request);
   }
 
+  public LoadViewResponse registerView(Namespace namespace, RegisterViewRequest request) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_VIEW;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.name()));
+
+    return catalogHandlerUtils().registerView(viewCatalog, namespace, request);
+  }
+
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
@@ -1306,7 +1314,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     catalogHandlerUtils().renameView(viewCatalog, request);
   }
 
-  private @Nonnull LoadTableResponse filterResponseToSnapshots(
+  private @NonNull LoadTableResponse filterResponseToSnapshots(
       LoadTableResponse loadTableResponse, String snapshots) {
     if (snapshots == null || snapshots.equalsIgnoreCase(SNAPSHOTS_ALL)) {
       return loadTableResponse;
@@ -1440,10 +1448,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
-    String prefix = prefixParser().catalogNameToPrefix(catalogName());
     return ConfigResponse.builder()
         .withDefaults(properties) // catalog properties are defaults
-        .withOverrides(ImmutableMap.of("prefix", prefix))
+        .withOverrides(
+            ImmutableMap.of(
+                "prefix",
+                prefixParser().catalogNameToPrefix(catalogName()),
+                // Polaris does not handle custom namespace separators;
+                // always communicate the default namespace separator to clients.
+                RESTCatalogProperties.NAMESPACE_SEPARATOR,
+                NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR_ENCODED))
         .withEndpoints(
             ImmutableList.<Endpoint>builder()
                 .addAll(DEFAULT_ENDPOINTS)

@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrincipalForRealm;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
@@ -57,13 +56,17 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
- * using a JDBC backed by SQL metastore. TODO: refactor - <a
- * href="https://github.com/apache/polaris/pull/1287/files#r2047487588">...</a>
+ * JDBC-based implementation of {@link MetaStoreManagerFactory} that creates and manages {@link
+ * PolarisMetaStoreManager} instances backed by a relational SQL metastore.
+ *
+ * <p>This factory is responsible for: - Bootstrapping realms - Managing per-realm persistence
+ * sessions - Caching schema versions and bootstrap state - Providing entity caches for runtime
+ * operations
  */
 @ApplicationScoped
 @Identifier("relational-jdbc")

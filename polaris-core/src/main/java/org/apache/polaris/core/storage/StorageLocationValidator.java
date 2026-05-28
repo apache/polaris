@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_WILDCARD_LOCATION;
 
-import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +27,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Utility for checking whether a set of request locations fall within a list of allowed locations.
@@ -52,10 +52,10 @@ public final class StorageLocationValidator {
    *     locations are equal to or subdirectories of the allowed locations.
    */
   public static Map<String, Map<PolarisStorageActions, ValidationResult>> validateAllowedLocations(
-      @Nonnull RealmConfig realmConfig,
-      @Nonnull List<String> allowedLocationsToValid,
-      @Nonnull Set<PolarisStorageActions> actions,
-      @Nonnull Set<String> locations) {
+      @NonNull RealmConfig realmConfig,
+      @NonNull List<String> allowedLocationsToValid,
+      @NonNull Set<PolarisStorageActions> actions,
+      @NonNull Set<String> locations) {
     // trim trailing / from allowed locations so that locations missing the trailing slash still
     // match
     Set<String> allowedLocationStrings =

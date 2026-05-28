@@ -31,12 +31,11 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,7 +50,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -109,8 +107,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -147,6 +145,8 @@ import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -434,6 +434,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           return false;
 
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              tableIdentifier,
+              dropEntityResult.getExtraInformation());
+          return false;
+
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
           throw new ForbiddenException(
               "Table %s cannot be dropped: %s",
@@ -572,8 +579,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @Nonnull String resolveLocationForPath(
-      @Nonnull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
+  private static @NonNull String resolveLocationForPath(
+      @NonNull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -592,7 +599,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private static @Nullable String baseLocation(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisEntity entity) {
+      @NonNull PolarisDiagnostics diagnostics, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
       String catalogDefaultBaseLocation = catEntity.getBaseLocation();
@@ -681,6 +688,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              namespace,
+              dropEntityResult.getExtraInformation());
           return false;
 
         default:
@@ -874,6 +888,55 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
+  public View registerView(TableIdentifier identifier, String metadataFileLocation) {
+    Preconditions.checkArgument(
+        identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
+    Preconditions.checkArgument(
+        metadataFileLocation != null && !metadataFileLocation.isEmpty(),
+        "Cannot register an empty metadata file location as a view");
+
+    int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
+    Preconditions.checkArgument(
+        lastSlashIndex != -1,
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        metadataFileLocation);
+
+    // Throw an exception if this view already exists in the catalog.
+    if (viewExists(identifier)) {
+      throw new AlreadyExistsException("View already exists: %s", identifier);
+    }
+
+    if (tableExists(identifier)) {
+      throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
+    }
+
+    String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
+
+    ViewOperations ops = newViewOps(identifier);
+
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
+    if (resolvedParent == null) {
+      // Illegal state because the namespace should've already been in the static resolution set.
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
+    }
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(locationDir),
+            resolvedParent,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
+    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
+    ViewMetadata metadata = ViewMetadataParser.read(metadataFile);
+    ops.commit(null, metadata);
+
+    return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
+  }
+
+  @Override
   public boolean dropView(TableIdentifier identifier) {
     boolean purge =
         realmConfig.getConfig(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP, catalogEntity);
@@ -883,6 +946,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     if (!dropEntityResult.isSuccess()) {
       switch (dropEntityResult.getReturnStatus()) {
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
+          return false;
+
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          LOGGER.debug(
+              "Catalog path cannot be resolved for {}, treating as dropped; extraInfo={}",
+              identifier,
+              dropEntityResult.getExtraInformation());
           return false;
 
         case BaseResult.ReturnStatus.ENTITY_UNDROPPABLE:
@@ -1242,70 +1312,86 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   return Namespace.of(newLevels);
                 })
             .toList();
-    LOGGER.debug(
-        "Resolving {} sibling entities to validate location",
-        siblingTables.size() + siblingNamespaces.size());
+    List<ResolvedPathKey> pathsToResolve =
+        new ArrayList<>(siblingTables.size() + siblingNamespaces.size());
+    siblingTables.forEach(
+        tbl -> {
+          if (!tbl.name().equals(name)) {
+            pathsToResolve.add(ResolvedPathKey.ofTableLike(tbl));
+          }
+        });
+    siblingNamespaces.forEach(
+        ns -> {
+          if (!ns.level(ns.length() - 1).equals(name)) {
+            pathsToResolve.add(ResolvedPathKey.ofNamespace(ns));
+          }
+        });
+
+    StorageLocation targetLocation = StorageLocation.of(location);
+    for (PolarisEntity entityToCheck :
+        resolveOptionalPaths(pathsToResolve, parentPath.getFirst().getName())) {
+      PolarisEntityUtils.asLocationBasedEntity(entityToCheck)
+          .map(LocationBasedEntity::getBaseLocation)
+          .map(StorageLocation::of)
+          .ifPresent(
+              siblingLocation -> {
+                if (targetLocation.isChildOf(siblingLocation)
+                    || siblingLocation.isChildOf(targetLocation)) {
+                  throw new ForbiddenException(
+                      "Unable to create entity at location '%s' because it conflicts with existing table or namespace at "
+                          + "location '%s'",
+                      targetLocation, siblingLocation);
+                }
+              });
+    }
+  }
+
+  @VisibleForTesting
+  List<PolarisEntity> resolveOptionalPaths(List<ResolvedPathKey> keys, String catalogName) {
+    LOGGER.debug("Resolving {} sibling entities to validate location", keys.size());
+
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            diagnostics,
-            callContext.getRealmContext(),
-            resolverFactory,
-            principal,
-            parentPath.getFirst().getName());
-    siblingTables.forEach(
-        tbl ->
-            resolutionManifest.addPath(
-                new ResolverPath(
-                    PolarisCatalogHelpers.tableIdentifierToList(tbl),
-                    PolarisEntityType.TABLE_LIKE)));
-    siblingNamespaces.forEach(
-        ns ->
-            resolutionManifest.addPath(
-                new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE)));
+            diagnostics, callContext.getRealmContext(), resolverFactory, principal, catalogName);
+
+    keys.forEach(
+        k -> {
+          resolutionManifest.addPath(new ResolverPath(k, true)); // optional path
+        });
+
     ResolverStatus status = resolutionManifest.resolveAll();
-    if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
+
+    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       String message =
           "Unable to resolve sibling entities to validate location - " + status.getStatus();
       if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
         message += ". Could not resolve entity: " + status.getFailedToResolvedEntityName();
+      } else if (status
+          .getStatus()
+          .equals(ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED)) {
+        ResolverPath path = status.getFailedToResolvePath();
+        if (path != null) {
+          message += ". path: " + String.join(".", path.entityNames());
+          message += ", failed index: " + status.getFailedToResolvedEntityIndex();
+        }
       }
-      throw new IllegalStateException(message);
+
+      throw new CommitConflictException(message);
     }
 
-    StorageLocation targetLocation = StorageLocation.of(location);
-    Stream.concat(
-            siblingTables.stream()
-                .filter(tbl -> !tbl.name().equals(name))
-                .map(
-                    tbl -> {
-                      PolarisResolvedPathWrapper resolveTablePath =
-                          resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(tbl));
-                      PolarisEntity tableEntity = resolveTablePath.getRawLeafEntity();
-                      if (tableEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
-                        return GenericTableEntity.of(tableEntity).getBaseLocation();
-                      }
-                      return IcebergTableLikeEntity.of(tableEntity).getBaseLocation();
-                    }),
-            siblingNamespaces.stream()
-                .filter(ns -> !ns.level(ns.length() - 1).equals(name))
-                .map(
-                    ns -> {
-                      PolarisResolvedPathWrapper resolveNamespacePath =
-                          resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(ns));
-                      return NamespaceEntity.of(resolveNamespacePath.getRawLeafEntity())
-                          .getBaseLocation();
-                    }))
-        .filter(java.util.Objects::nonNull)
-        .map(StorageLocation::of)
-        .forEach(
-            siblingLocation -> {
-              if (targetLocation.isChildOf(siblingLocation)
-                  || siblingLocation.isChildOf(targetLocation)) {
-                throw new org.apache.iceberg.exceptions.ForbiddenException(
-                    "Unable to create table at location '%s' because it conflicts with existing table or namespace at location '%s'",
-                    targetLocation, siblingLocation);
-              }
-            });
+    List<PolarisEntity> result = new ArrayList<>(keys.size());
+    keys.forEach(
+        k -> {
+          PolarisResolvedPathWrapper path = resolutionManifest.getResolvedPath(k);
+          if (path != null) {
+            PolarisEntity entity = path.getRawLeafEntity();
+            if (entity != null) {
+              result.add(entity);
+            }
+          }
+        });
+
+    return result;
   }
 
   private class PolarisIcebergCatalogTableBuilder
@@ -2479,7 +2565,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @SuppressWarnings("FormatStringAnnotation")
-  private @Nonnull DropEntityResult dropTableLike(
+  private @NonNull DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,

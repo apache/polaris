@@ -30,6 +30,7 @@ LICENSE
 NOTICE
 
 # Source code
+apache_polaris/__init__.py
 apache_polaris/cli/
 
 # Tests

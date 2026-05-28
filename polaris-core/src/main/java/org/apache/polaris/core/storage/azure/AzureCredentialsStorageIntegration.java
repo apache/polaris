@@ -44,7 +44,6 @@ import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -65,6 +64,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -96,18 +96,18 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return buildCacheKey(
         allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
   }
 
   @Override
   protected StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return generateStorageAccessConfig(
         allowList(grants), readLocations(grants), writeLocations(grants), refreshEndpoint, context);
   }
@@ -135,10 +135,10 @@ public class AzureCredentialsStorageIntegration
 
   private StorageCredentialCacheKey buildCacheKey(
       boolean allowList,
-      @Nonnull Set<String> locations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> locations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return AzureStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
@@ -150,10 +150,10 @@ public class AzureCredentialsStorageIntegration
 
   public StorageAccessConfig generateStorageAccessConfig(
       boolean allowList,
-      @Nonnull Set<String> locations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> locations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
 
     String loc =

@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.policy;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 
 import com.google.common.base.Strings;
-import jakarta.annotation.Nullable;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +49,7 @@ import org.apache.polaris.service.types.LoadPolicyResponse;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
+import org.jspecify.annotations.Nullable;
 
 @PolarisImmutable
 @SuppressWarnings("immutables:incompat")

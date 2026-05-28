@@ -18,6 +18,7 @@
 #
 
 import unittest
+from apache_polaris import __version__
 from cli_test_utils import CLITestBase, INVALID_ARGS
 from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.command import Command
@@ -148,6 +149,9 @@ class TestParserBasic(CLITestBase):
         self.check_usage_output(
             lambda: Parser.parse(["catalogs", "create", "something", "--help"])
         )
+
+    def test_version(self) -> None:
+        self.check_usage_output(lambda: Parser.parse(["--version"]), needle=f"polaris {__version__}")
 
     def test_global_flag_anywhere(self) -> None:
         # Test that global flags work when placed after subcommands
@@ -285,6 +289,7 @@ class TestParserBasic(CLITestBase):
                 "ns1.ns2",
             ]
         )
+        Parser.parse(["repl"])
 
 
 if __name__ == "__main__":

@@ -19,12 +19,12 @@
 package org.apache.polaris.service.catalog.io;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.NonNull;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -40,9 +40,9 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull StorageAccessConfig accessConfig,
-      @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
+      @NonNull StorageAccessConfig accessConfig,
+      @NonNull String ioImplClassName,
+      @NonNull Map<String, String> properties) {
     return new WasbTranslatingFileIO(
         defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties));
   }

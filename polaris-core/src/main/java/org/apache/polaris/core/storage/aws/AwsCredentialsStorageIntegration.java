@@ -19,10 +19,10 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.storage.aws.AwsSessionNameBuilder.buildSessionName;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -46,6 +46,7 @@ import org.apache.polaris.core.storage.StorageUri;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -107,9 +108,9 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return buildCacheKey(
         readLocations(grants),
         listLocations(grants),
@@ -120,9 +121,9 @@ public class AwsCredentialsStorageIntegration
 
   @Override
   protected StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull List<LocationGrant> grants,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull List<LocationGrant> grants,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     return generateStorageAccessConfig(
         readLocations(grants),
         listLocations(grants),
@@ -158,21 +159,34 @@ public class AwsCredentialsStorageIntegration
   }
 
   private StorageCredentialCacheKey buildCacheKey(
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> listLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> readLocations,
+      @NonNull Set<String> listLocations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
     List<String> sessionTagFields =
         realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
     boolean includeSessionTags = !sessionTagFields.isEmpty();
+    List<String> sessionNameFields =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
+    // Session name fields that pull from CredentialVendingContext (realm/catalog/namespace/table)
+    // require the context to be part of the cache key so different request contexts don't share
+    // a cached credential that was stamped with another context's session name.
+    boolean sessionNameNeedsContext =
+        sessionNameFields.stream()
+            .anyMatch(f -> Set.of("realm", "catalog", "namespace", "table").contains(f));
+    boolean sessionNameNeedsPrincipal = sessionNameFields.contains("principal");
     boolean includePrincipalInCacheKey =
-        includePrincipalNameInSubscopedCredential || includeSessionTags;
+        includePrincipalNameInSubscopedCredential
+            || includeSessionTags
+            || sessionNameNeedsPrincipal;
     CredentialVendingContext contextForCacheKey =
-        includeSessionTags ? context : CredentialVendingContext.empty();
+        (includeSessionTags || sessionNameNeedsContext)
+            ? context
+            : CredentialVendingContext.empty();
     return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
@@ -185,11 +199,11 @@ public class AwsCredentialsStorageIntegration
   }
 
   public StorageAccessConfig generateStorageAccessConfig(
-      @Nonnull Set<String> readLocations,
-      @Nonnull Set<String> listLocations,
-      @Nonnull Set<String> writeLocations,
-      @Nonnull Optional<String> refreshEndpoint,
-      @Nonnull CredentialVendingContext context) {
+      @NonNull Set<String> readLocations,
+      @NonNull Set<String> listLocations,
+      @NonNull Set<String> writeLocations,
+      @NonNull Optional<String> refreshEndpoint,
+      @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
     AwsStorageConfigurationInfo awsStorageConfig = storageConfig();
     String principalName = context.principalName().orElse("");
@@ -200,10 +214,24 @@ public class AwsCredentialsStorageIntegration
 
     boolean includePrincipalInRoleSessionName =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    String roleSessionName =
-        includePrincipalInRoleSessionName
-            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + principalName)
-            : "PolarisAwsCredentialsStorageIntegration";
+    List<String> sessionNameFieldNames =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
+    String sessionNamePrefix = AwsSessionNameBuilder.extractPrefix(sessionNameFieldNames);
+    List<SessionNameField> enabledSessionNameFields =
+        sessionNameFieldNames.stream()
+            .filter(t -> !t.startsWith(AwsSessionNameBuilder.PREFIX_CONFIG_TOKEN))
+            .map(SessionNameField::fromConfigName)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toList());
+    String roleSessionName;
+    if (!enabledSessionNameFields.isEmpty()) {
+      roleSessionName =
+          buildSessionName(principalName, context, enabledSessionNameFields, sessionNamePrefix);
+    } else if (includePrincipalInRoleSessionName) {
+      roleSessionName = AwsRoleSessionNameSanitizer.sanitize("polaris-" + principalName);
+    } else {
+      roleSessionName = AwsSessionNameBuilder.DEFAULT_SESSION_NAME;
+    }
 
     if (shouldUseSts(awsStorageConfig)) {
       AssumeRoleRequest.Builder request =
@@ -522,7 +550,7 @@ public class AwsCredentialsStorageIntegration
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
-  private static @Nonnull String parseS3Path(StorageUri uri) {
+  private static @NonNull String parseS3Path(StorageUri uri) {
     String bucket = uri.authority();
     String path = trimLeadingSlash(uri.rawPath());
     return String.join("/", bucket, path);
@@ -533,7 +561,7 @@ public class AwsCredentialsStorageIntegration
    * IamConditionOperator#STRING_LIKE StringLike} conditions.
    */
   @VisibleForTesting
-  static @Nonnull String escapeIamGlobLiteral(String value) {
+  static @NonNull String escapeIamGlobLiteral(String value) {
     StringBuilder escaped = new StringBuilder(value.length() + 8);
     for (int i = 0; i < value.length(); i++) {
       char c = value.charAt(i);
@@ -547,7 +575,7 @@ public class AwsCredentialsStorageIntegration
     return escaped.toString();
   }
 
-  private static @Nonnull String trimLeadingSlash(String path) {
+  private static @NonNull String trimLeadingSlash(String path) {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }

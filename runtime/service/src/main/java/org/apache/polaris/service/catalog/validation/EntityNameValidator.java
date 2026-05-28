@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.validation;
 
+import java.util.regex.Pattern;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 
@@ -27,7 +28,9 @@ import org.apache.iceberg.catalog.TableIdentifier;
  *
  * <ul>
  *   <li>is not null or empty;
- *   <li>does not contain a forward slash ({@code /});
+ *   <li>is not {@code .} or {@code ..};
+ *   <li>does not contain ISO control characters (U+0000–U+001F or U+007F–U+009F);
+ *   <li>does not contain any of: {@code / \ : * ? " < > | # + `};
  *   <li>does not start or end with whitespace.
  * </ul>
  */
@@ -35,17 +38,38 @@ public final class EntityNameValidator {
 
   private EntityNameValidator() {}
 
+  /**
+   * Characters forbidden in entity names beyond control characters and leading/trailing whitespace.
+   * Covers characters rejected or strongly discouraged by S3, GCS, Azure, Windows filesystem
+   * semantics, URL encoding, and shell/template/SQL quoting.
+   */
+  private static final String FORBIDDEN_CHARS = "/\\:*?\"<>|#+`";
+
+  private static final Pattern CONTROL_CHARS = Pattern.compile("\\p{C}");
+
   /** Validates a single entity name (table, view, namespace level, ...). */
   public static void validateName(String name) {
     if (name == null || name.isEmpty()) {
       throw new IllegalArgumentException("Entity name must not be empty");
     }
-    if (name.indexOf('/') >= 0) {
-      throw new IllegalArgumentException("Entity name must not contain '/': " + name);
+    if (name.equals(".") || name.equals("..")) {
+      throw new IllegalArgumentException("Entity name must not be '.' or '..'");
     }
-    if (!name.equals(name.strip())) {
-      throw new IllegalArgumentException(
-          "Entity name must not have leading or trailing whitespace: " + name);
+    for (int i = 0; i < name.length(); i++) {
+      char c = name.charAt(i);
+      if (Character.isISOControl(c)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Entity name must not contain control characters (U+%04X): %s",
+                (int) c, sanitizeForMessage(name)));
+      }
+      if (FORBIDDEN_CHARS.indexOf(c) >= 0) {
+        throw new IllegalArgumentException("Entity name must not contain '" + c + "': " + name);
+      }
+      if ((i == 0 || i == name.length() - 1) && Character.isWhitespace(c)) {
+        throw new IllegalArgumentException(
+            "Entity name must not have leading or trailing whitespace: " + name);
+      }
     }
   }
 
@@ -59,5 +83,11 @@ public final class EntityNameValidator {
   public static void validateIdentifier(TableIdentifier identifier) {
     validateNamespace(identifier.namespace());
     validateName(identifier.name());
+  }
+
+  private static String sanitizeForMessage(String name) {
+    return CONTROL_CHARS
+        .matcher(name)
+        .replaceAll(m -> String.format("\\\\u%04X", (int) m.group().charAt(0)));
   }
 }

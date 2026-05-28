@@ -90,6 +90,7 @@ paths:
                   warehouse: s3://bucket/warehouse/
                 defaults:
                   clients: '4'
+                idempotency-key-lifetime: PT30M
                 endpoints:
                   - GET /v1/{prefix}/namespaces/{namespace}
                   - GET /v1/{prefix}/namespaces
@@ -102,6 +103,15 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - Warehouse provided in the `warehouse` query parameter is not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NoSuchWarehouseExample:
+                  $ref: '#/components/examples/NoSuchWarehouseError'
         '419':
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
@@ -170,9 +180,8 @@ paths:
         - $ref: '#/components/parameters/page-size'
         - name: parent
           in: query
-          description: An optional namespace, underneath which to list namespaces. If not provided or empty, all top-level namespaces should be listed. If parent is a multipart namespace, the parts must be separated by the unit separator (`0x1F`) byte.
+          description: An optional namespace, underneath which to list namespaces. If not provided, all top-level namespaces should be listed. For backward compatibility, empty string is treated as absent for now. If parent is a multipart namespace, the parts must be separated by the namespace separator as indicated via the /config override `namespace-separator`, which defaults to the unit separator `0x1F` byte (url encoded `%1F`). To be compatible with older clients, servers must use both the advertised separator and `0x1F` as valid separators when decoding namespaces. The `namespace-separator` should be provided in a url encoded form.
           required: false
-          allowEmptyValue: true
           schema:
             type: string
           example: accounting%1Ftax
@@ -204,6 +213,8 @@ paths:
       tags:
         - Catalog API
       summary: Create a namespace
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       description: Create a namespace, with an optional set of properties. The server might also add properties, such as `last_modified_time` etc.
       operationId: createNamespace
       requestBody:
@@ -307,6 +318,8 @@ paths:
         - Catalog API
       summary: Drop a namespace from the catalog. Namespace must be empty.
       operationId: dropNamespace
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       responses:
         '204':
           description: Success, no content
@@ -349,6 +362,8 @@ paths:
         - Catalog API
       summary: Set or remove properties on a namespace
       operationId: updateProperties
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       description: |-
         Set and/or remove properties on a namespace. The request body specifies a list of properties to remove and a map of key value pairs to update.
         Properties that are not in the request are not modified or removed by this call.
@@ -447,6 +462,7 @@ paths:
       operationId: createTable
       parameters:
         - $ref: '#/components/parameters/data-access'
+        - $ref: '#/components/parameters/idempotency-key'
       requestBody:
         required: true
         content:
@@ -472,13 +488,13 @@ paths:
                 NamespaceNotFound:
                   $ref: '#/components/examples/NoSuchNamespaceError'
         '409':
-          description: Conflict - The table already exists
+          description: Conflict - The identifier already exists as a table or view
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IcebergErrorResponse'
               examples:
-                NamespaceAlreadyExists:
+                TableAlreadyExists:
                   $ref: '#/components/examples/TableAlreadyExistsError'
         '419':
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
@@ -494,6 +510,9 @@ paths:
       tags:
         - Catalog API
       summary: Register a table in the given namespace using given metadata file location
+      parameters:
+        - $ref: '#/components/parameters/data-access'
+        - $ref: '#/components/parameters/idempotency-key'
       description: Register a table using given metadata file location.
       operationId: registerTable
       requestBody:
@@ -521,13 +540,13 @@ paths:
                 NamespaceNotFound:
                   $ref: '#/components/examples/NoSuchNamespaceError'
         '409':
-          description: Conflict - The table already exists
+          description: Conflict - The identifier already exists as a table or view
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IcebergErrorResponse'
               examples:
-                NamespaceAlreadyExists:
+                TableAlreadyExists:
                   $ref: '#/components/examples/TableAlreadyExistsError'
         '419':
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
@@ -557,14 +576,14 @@ paths:
         - $ref: '#/components/parameters/data-access'
         - name: If-None-Match
           in: header
-          description: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse or LoadTableResponse.
+          description: An optional header that allows the server to return 304 (Not Modified) if the metadata is current. The content is the value of the ETag received in a CreateTableResponse, LoadTableResponse or CommitTableResponse.
           required: false
           schema:
             type: string
         - in: query
           name: snapshots
           description: |-
-            The snapshots to return in the body of the metadata. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags.
+            The snapshots to return in the body of the metadata via the `snapshots` field. Setting the value to `all` would return the full set of snapshots currently valid for the table. Setting the value to `refs` would load all snapshots referenced by branches or tags.
             Default if no param is provided is `all`.
           required: false
           schema:
@@ -572,6 +591,7 @@ paths:
             enum:
               - all
               - refs
+        - $ref: '#/components/parameters/referenced-by'
       responses:
         '200':
           $ref: '#/components/responses/LoadTableResponse'
@@ -603,6 +623,8 @@ paths:
         - Catalog API
       summary: Commit updates to a table
       operationId: updateTable
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       description: |-
         Commit updates to a table.
 
@@ -696,6 +718,7 @@ paths:
       operationId: dropTable
       description: Remove a table from the catalog
       parameters:
+        - $ref: '#/components/parameters/idempotency-key'
         - name: purgeRequested
           in: query
           required: false
@@ -767,6 +790,14 @@ paths:
         - Catalog API
       summary: Load vended credentials for a table from the catalog
       operationId: loadCredentials
+      parameters:
+        - name: planId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The plan ID that has been used for server-side scan planning
+        - $ref: '#/components/parameters/referenced-by'
       description: Load vended credentials for a table from the catalog.
       responses:
         '200':
@@ -799,6 +830,8 @@ paths:
       tags:
         - Catalog API
       summary: Rename a table from its current name to a new name
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       description: Rename a table from one identifier to another. It's valid to move a table across namespaces, but the server implementation is not required to support it.
       operationId: renameTable
       requestBody:
@@ -843,7 +876,7 @@ paths:
                 summary: The requested table identifier already exists
                 value:
                   error:
-                    message: The given table already exists
+                    message: The requested table identifier already exists
                     type: AlreadyExistsException
                     code: 409
         '419':
@@ -901,6 +934,8 @@ paths:
         - Catalog API
       summary: Commit updates to multiple tables in an atomic operation
       operationId: commitTransaction
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       requestBody:
         description: |-
           Commit updates to multiple tables in an atomic operation
@@ -1052,13 +1087,64 @@ paths:
                 NamespaceNotFound:
                   $ref: '#/components/examples/NoSuchNamespaceError'
         '409':
-          description: Conflict - The view already exists
+          description: Conflict - The identifier already exists as a table or view
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorModel'
               examples:
-                NamespaceAlreadyExists:
+                ViewAlreadyExists:
+                  $ref: '#/components/examples/ViewAlreadyExistsError'
+        '419':
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /v1/{prefix}/namespaces/{namespace}/register-view:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+    post:
+      tags:
+        - Catalog API
+      summary: Register a view in the catalog
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
+      description: Register a view in the given namespace using given metadata file location.
+      operationId: registerView
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterViewRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoadViewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '409':
+          description: Conflict - The identifier already exists as a table or view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                ViewAlreadyExists:
                   $ref: '#/components/examples/ViewAlreadyExistsError'
         '419':
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
@@ -1084,6 +1170,8 @@ paths:
         The response also contains the view's full metadata, matching the view metadata JSON file.
 
         The catalog configuration may contain credentials that should be used for subsequent requests for the view. The configuration key "token" is used to pass an access token to be used as a bearer token for view requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
+      parameters:
+        - $ref: '#/components/parameters/referenced-by'
       responses:
         '200':
           $ref: '#/components/responses/LoadViewResponse'
@@ -1113,6 +1201,8 @@ paths:
         - Catalog API
       summary: Replace a view
       operationId: replaceView
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       description: Commit updates to a view.
       requestBody:
         required: true
@@ -1198,6 +1288,8 @@ paths:
       summary: Drop a view from the catalog
       operationId: dropView
       description: Remove a view from the catalog
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       responses:
         '204':
           description: Success, no content
@@ -1252,6 +1344,8 @@ paths:
       summary: Rename a view from its current name to a new name
       description: Rename a view from one identifier to another. It's valid to move a view across namespaces, but the server implementation is not required to support it.
       operationId: renameView
+      parameters:
+        - $ref: '#/components/parameters/idempotency-key'
       requestBody:
         description: Current view identifier to rename and new view identifier to rename to
         content:
@@ -1294,7 +1388,7 @@ paths:
                 summary: The requested view identifier already exists
                 value:
                   error:
-                    message: The given view already exists
+                    message: The requested view identifier already exists
                     type: AlreadyExistsException
                     code: 409
         '419':
@@ -1401,6 +1495,8 @@ paths:
       summary: Create a generic table under the given namespace
       description: Create a generic table under the given namespace, and return the created table information as a response.
       operationId: createGenericTable
+      parameters:
+        - $ref: '#/components/parameters/polaris-generic-table-data-access'
       requestBody:
         required: true
         content:
@@ -1451,6 +1547,8 @@ paths:
       description: |-
         Load a generic table from the catalog under the given namespace.
         The response contains all table information passed during create.
+      parameters:
+        - $ref: '#/components/parameters/polaris-generic-table-data-access'
       responses:
         '200':
           $ref: '#/components/responses/LoadGenericTableResponse'
@@ -1958,6 +2056,11 @@ components:
             - POST /v1/{prefix}/namespaces
             - GET /v1/{prefix}/namespaces/{namespace}/tables/{table}
             - GET /v1/{prefix}/namespaces/{namespace}/views/{view}
+        idempotency-key-lifetime:
+          type: string
+          format: duration
+          description: Client reuse window for an Idempotency-Key (ISO-8601 duration, e.g., PT30M, PT24H). Interpreted as the maximum time from the first submission using a key to the last retry during which a client may reuse that key. Servers SHOULD accept retries for at least this duration and MAY include a grace period to account for delays/clock skew. Clients SHOULD NOT reuse an Idempotency-Key after this window elapses; they SHOULD generate a new key for any subsequent attempt. Presence of this field indicates the server supports Idempotency-Key semantics for mutation endpoints. If absent, clients MUST assume idempotency is not supported.
+          example: PT30M
     ErrorModel:
       type: object
       description: JSON error payload returned in a response with further details on the error
@@ -2354,7 +2457,7 @@ components:
       example: 123.456
     DecimalTypeValue:
       type: string
-      description: Decimal type values are serialized as strings. Decimals with a positive scale serialize as numeric plain  text, while decimals with a negative scale use scientific notation and the exponent will be equal to the  negated scale. For instance, a decimal with a positive scale is '123.4500', with zero scale is '2',  and with a negative scale is '2E+20'
+      description: Decimal type values are serialized as strings. Decimals with a positive scale serialize as numeric plain text, while decimals with a negative scale use scientific notation and the exponent will be equal to the negated scale. For instance, a decimal with a positive scale is '123.4500', with zero scale is '2', and with a negative scale is '2E+20'
       example: '123.4500'
     StringTypeValue:
       type: string
@@ -2365,7 +2468,7 @@ components:
       pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
       maxLength: 36
       minLength: 36
-      description: UUID type values are serialized as a 36-character lowercase string in standard UUID format as specified  by RFC-4122
+      description: UUID type values are serialized as a 36-character lowercase string in standard UUID format as specified by RFC-4122
       example: eb26bdb1-a1d8-4aa6-990e-da940875492c
     DateTypeValue:
       type: string
@@ -2382,7 +2485,7 @@ components:
       example: '2007-12-03T10:15:30.123456'
     TimestampTzTypeValue:
       type: string
-      description: TimestampTz type values follow the 'YYYY-MM-DDTHH:MM:SS.ssssss+00:00' ISO-8601 format with microsecond precision,  and a timezone offset (+00:00 for UTC)
+      description: TimestampTz type values follow the 'YYYY-MM-DDTHH:MM:SS.ssssss+00:00' ISO-8601 format with microsecond precision, and a timezone offset (+00:00 for UTC)
       example: '2007-12-03T10:15:30.123456+00:00'
     TimestampNanoTypeValue:
       type: string
@@ -2390,11 +2493,11 @@ components:
       example: '2007-12-03T10:15:30.123456789'
     TimestampTzNanoTypeValue:
       type: string
-      description: Timestamp_ns type values follow the 'YYYY-MM-DDTHH:MM:SS.sssssssss+00:00' ISO-8601 format with nanosecond  precision, and a timezone offset (+00:00 for UTC)
+      description: Timestamp_ns type values follow the 'YYYY-MM-DDTHH:MM:SS.sssssssss+00:00' ISO-8601 format with nanosecond precision, and a timezone offset (+00:00 for UTC)
       example: '2007-12-03T10:15:30.123456789+00:00'
     FixedTypeValue:
       type: string
-      description: Fixed length type values are stored and serialized as an uppercase hexadecimal string  preserving the fixed length
+      description: Fixed length type values are stored and serialized as an uppercase hexadecimal string preserving the fixed length
       example: 78797A
     BinaryTypeValue:
       type: string
@@ -2595,6 +2698,10 @@ components:
           type: integer
           format: int64
           description: The first _row_id assigned to the first row in the first data file in the first manifest
+        added-rows:
+          type: integer
+          format: int64
+          description: The upper bound of the number of rows with assigned row IDs
         summary:
           type: object
           required:
@@ -2831,22 +2938,31 @@ components:
 
         ## General Configurations
 
-        - `token`: Authorization bearer token to use for table requests if OAuth2 security is enabled 
+        - `token`: Authorization bearer token to use for table requests if OAuth2 security is enabled
+        - `scan-planning-mode`: Communicates to clients the supported planning mode. Clients should use this value to fail fast if the supported scanning mode is not available on the client. Valid values:
+          - `client`: Clients MUST use client-side scan planning
+          - `server`: Clients MUST use server-side scan planning via the `planTableScan` endpoint
 
         ## AWS Configurations
 
         The following configurations should be respected when working with tables stored in AWS S3
          - `client.region`: region to configure client for making requests to AWS
          - `s3.access-key-id`: id for credentials that provide access to the data in S3
-         - `s3.secret-access-key`: secret for credentials that provide access to data in S3 
-         - `s3.session-token`: if present, this value should be used for as the session token 
-         - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `s3-signer-open-api.yaml` specification
+         - `s3.secret-access-key`: secret for credentials that provide access to data in S3
+         - `s3.session-token`: if present, this value should be used for as the session token
+         - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `RemoteSignRequest` schema section of this spec document.
          - `s3.cross-region-access-enabled`: if `true`, S3 Cross-Region bucket access is enabled
 
         ## Storage Credentials
 
         Credentials for ADLS / GCS / S3 / ... are provided through the `storage-credentials` field.
         Clients must first check whether the respective credentials exist in the `storage-credentials` field before checking the `config` for credentials.
+
+        ## Remote Signing
+
+        If remote signing for a specific storage provider is enabled, clients must respect the following configurations when creating a remote signer client:
+         - `signer.endpoint`: the remote signer endpoint. Required. Can either be a relative path (to be resolved against `signer.uri`) or an absolute URI.
+         - `signer.uri`: the base URI to resolve `signer.endpoint` against. Optional. Only meaningful if `signer.endpoint` is a relative path. Defaults to the catalog's base URI if not set.
       type: object
       required:
         - metadata
@@ -3406,6 +3522,8 @@ components:
         - $ref: '#/components/schemas/RemovePropertiesUpdate'
         - $ref: '#/components/schemas/SetStatisticsUpdate'
         - $ref: '#/components/schemas/RemoveStatisticsUpdate'
+        - $ref: '#/components/schemas/SetPartitionStatisticsUpdate'
+        - $ref: '#/components/schemas/RemovePartitionStatisticsUpdate'
         - $ref: '#/components/schemas/RemovePartitionSpecsUpdate'
         - $ref: '#/components/schemas/RemoveSchemasUpdate'
         - $ref: '#/components/schemas/AddEncryptionKeyUpdate'
@@ -3569,7 +3687,7 @@ components:
         values:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/PrimitiveTypeValue'
     LiteralExpression:
       type: object
       required:
@@ -3591,13 +3709,12 @@ components:
         term:
           $ref: '#/components/schemas/Term'
         value:
-          type: object
+          $ref: '#/components/schemas/PrimitiveTypeValue'
     UnaryExpression:
       type: object
       required:
         - type
         - term
-        - value
       properties:
         type:
           $ref: '#/components/schemas/ExpressionType'
@@ -3608,8 +3725,6 @@ components:
             - not-nan
         term:
           $ref: '#/components/schemas/Term'
-        value:
-          type: object
     CounterResult:
       type: object
       required:
@@ -3849,6 +3964,16 @@ components:
           type: object
           additionalProperties:
             type: string
+    RegisterViewRequest:
+      type: object
+      required:
+        - name
+        - metadata-location
+      properties:
+        name:
+          type: string
+        metadata-location:
+          type: string
     AssertViewUUID:
       description: The view UUID must match the requirement's `uuid`
       required:
@@ -3987,6 +4112,46 @@ components:
           type: object
           additionalProperties:
             type: string
+    StorageAccessConfig:
+      type: object
+      required:
+        - prefix
+        - config
+      properties:
+        prefix:
+          type: string
+          description: Indicates a storage location prefix where the configuration is relevant. Clients should choose the most specific prefix (by selecting the longest common prefix) if several configurations of the same type are available. If multiple configurations share the same longest matching prefix, the client may select any of them. However, a server should avoid generating multiple configurations for the same prefix.
+        config:
+          type: object
+          description: |
+            Storage access configurations for S3, GCP GCS, and Azure ADLS are supported. The following outlines 
+            the currently supported configuration options:
+              
+            ## S3 Configurations
+              
+            The following configurations should be respected when working with tables stored on S3, including AWS S3, S3-Compatible systems:
+              - `s3.access-key-id`: id for credentials that provide access to the data in S3
+              - `s3.secret-access-key`: secret for credentials that provide access to data in S3
+              - `s3.session-token`: if present, this value should be used for as the session token
+              - `s3.session-token-expires-at-ms`: the time the aws session token expires, in milliseconds
+              - `s3.client.region`: region to configure client for making requests to S3
+              - `s3.client.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+              
+            ## GCP GCS Configurations
+
+            The following configurations should be respected when working with tables stored in GCP GCS:
+              - `gcs.oauth2.token`: the gcs scoped access token
+              - `gcs.oauth2.token-expires-at`: the time the gcs access token expires, in milliseconds
+              - `gcs.oauth2.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+
+            ## AZURE ADLS Configuration
+
+            The following configurations should be respected when working with tables stored in AZURE ADLS:
+              - `adls.sas-token.<hostname>`: an azure shared access signature token
+              - `adls.sas-token-expires-at-ms.<hostname>`: the expiration time for the access token, in milliseconds
+              - `adls.refresh-credentials-endpoint`: the endpoint to load vended credentials for a table from the catalog
+          additionalProperties:
+            type: string
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
       type: object
@@ -3995,6 +4160,13 @@ components:
       properties:
         table:
           $ref: '#/components/schemas/GenericTable'
+        storage-access-configs:
+          type: array
+          description: |
+            Storage configurations required to access the table, encompassing both credentials and other necessary 
+            settings for storage access, such as the client region for S3.
+          items:
+            $ref: '#/components/schemas/StorageAccessConfig'
     PolicyType:
       description: The type of a policy
       type: string
@@ -4337,6 +4509,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/CommitTableResponse'
+      headers:
+        etag:
+          $ref: '#/components/headers/etag'
     LoadCredentialsResponse:
       description: Table credentials result when loading credentials for a table
       content:
@@ -4404,97 +4579,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/GetApplicablePoliciesResponse'
-  parameters:
-    prefix:
-      name: prefix
-      in: path
-      schema:
-        type: string
-      required: true
-      description: An optional prefix in the path
-    page-token:
-      name: pageToken
-      in: query
-      required: false
-      allowEmptyValue: true
-      schema:
-        $ref: '#/components/schemas/PageToken'
-    page-size:
-      name: pageSize
-      in: query
-      description: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
-      required: false
-      schema:
-        type: integer
-        minimum: 1
-    namespace:
-      name: namespace
-      in: path
-      required: true
-      description: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
-      schema:
-        type: string
-      examples:
-        singlepart_namespace:
-          value: accounting
-        multipart_namespace:
-          value: accounting%1Ftax
-    data-access:
-      name: X-Iceberg-Access-Delegation
-      in: header
-      description: |
-        Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.
-
-        Specific properties and handling for `vended-credentials` is documented in the `LoadTableResult` schema section of this spec document.
-
-        The protocol and specification for `remote-signing` is documented in  the `s3-signer-open-api.yaml` OpenApi spec in the `aws` module.
-      required: false
-      schema:
-        type: string
-        enum:
-          - vended-credentials
-          - remote-signing
-      style: simple
-      explode: false
-      example: vended-credentials,remote-signing
-    table:
-      name: table
-      in: path
-      description: A table name
-      required: true
-      schema:
-        type: string
-      example: sales
-    view:
-      name: view
-      in: path
-      description: A view name
-      required: true
-      schema:
-        type: string
-      example: sales
-    generic-table:
-      name: generic-table
-      in: path
-      description: A generic table name
-      required: true
-      schema:
-        type: string
-      example: sales
-    policy-type:
-      name: policyType
-      in: query
-      required: false
-      allowEmptyValue: true
-      schema:
-        $ref: '#/components/schemas/PolicyType'
-    policy-name:
-      name: policy-name
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/PolicyName'
   examples:
+    NoSuchWarehouseError:
+      summary: The requested warehouse does not exist
+      value:
+        error:
+          message: The given warehouse does not exist
+          type: NoSuchWarehouseException
+          code: 404
     ListNamespacesNonEmptyExample:
       summary: A non-empty list of namespaces
       value:
@@ -4563,7 +4655,7 @@ components:
       summary: The requested table identifier already exists
       value:
         error:
-          message: The given table already exists
+          message: The requested table identifier already exists
           type: AlreadyExistsException
           code: 409
     NoSuchTableError:
@@ -4590,7 +4682,7 @@ components:
       summary: The requested view identifier already exists
       value:
         error:
-          message: The given view already exists
+          message: The requested view identifier already exists
           type: AlreadyExistsException
           code: 409
     NoSuchViewError:
@@ -4678,11 +4770,153 @@ components:
           message: The given mapping between policy and target does not exist
           type: NoSuchMappingException
           code: 404
+  parameters:
+    prefix:
+      name: prefix
+      in: path
+      schema:
+        type: string
+      required: true
+      description: An optional prefix in the path
+    page-token:
+      name: pageToken
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/PageToken'
+    page-size:
+      name: pageSize
+      in: query
+      description: For servers that support pagination, this signals an upper bound of the number of results that a client will receive. For servers that do not support pagination, clients may receive results larger than the indicated `pageSize`.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+    idempotency-key:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+        example: 017F22E2-79B0-7CC3-98C4-DC0C0C07398F
+      description: |
+        Optional client-provided idempotency key for safe request retries.
+
+        When present, the server ensures no additional effects for requests that carry the same
+        Idempotency-Key. If a prior request with this key has been finalized, the server returns
+        an equivalent final response without re-running the operation. The response body may
+        reflect a newer state of the catalog than existed at the time of the commit.
+
+        Finalization rules:
+        - Finalize & replay: 200, 201, 204, and deterministic terminal 4xx (including 409
+          such as AlreadyExists, NamespaceNotEmpty, etc.)
+        - Do not finalize (not stored/replayed): 5xx
+
+        Key Requirements:
+        - Key format: UUIDv7 in string form (RFC 9562).
+        - The idempotency key must be globally unique (no reuse across different operations).
+        - Catalogs SHOULD NOT expire keys before the end of the advertised token lifetime.
+        - If Idempotency-Key is used, clients MUST reuse the same key when retrying the same
+          logical operation and MUST generate a new key for a different operation.
+    namespace:
+      name: namespace
+      in: path
+      required: true
+      description: A namespace identifier as a single string. Multipart namespace parts must be separated by the namespace separator as indicated via the /config override `namespace-separator`, which defaults to the unit separator `0x1F` byte (url encoded `%1F`). To be compatible with older clients, servers must use both the advertised separator and `0x1F` as valid separators when decoding namespaces. The `namespace-separator` should be provided in a url encoded form.
+      schema:
+        type: string
+      examples:
+        singlepart_namespace:
+          value: accounting
+        multipart_namespace:
+          value: accounting%1Ftax
+    data-access:
+      name: X-Iceberg-Access-Delegation
+      in: header
+      description: |
+        Optional signal to the server that the client supports delegated access via a comma-separated list of access mechanisms.  The server may choose to supply access via any or none of the requested mechanisms.
+
+        Specific properties and handling for `vended-credentials` and `remote-signing` are documented in the `LoadTableResult` schema section of this spec document.
+      required: false
+      schema:
+        type: string
+        enum:
+          - vended-credentials
+          - remote-signing
+      style: simple
+      explode: false
+      example: vended-credentials,remote-signing
+    table:
+      name: table
+      in: path
+      description: A table name
+      required: true
+      schema:
+        type: string
+      example: sales
+    referenced-by:
+      name: referenced-by
+      in: query
+      description: |-
+        A comma-separated list of fully qualified view names (namespace and view name) representing the view reference chain when an entity (table or view) is loaded via a view. The list should be ordered with the outermost view first, followed by any intermediate views it references, down to the view that directly references the entity. For a simple case where a view directly references the entity, the list contains a single view identifier. For nested views (a view referencing another view which references the entity), the list contains multiple view identifiers representing the complete dependency chain.
+        The view identifier is a composite string of the format {namespace}{separator}{viewName}. The namespace-separator (defined in /config) acts as the delimiter. When parsing, the last occurrence of this separator identifies the boundary between the namespace and the view name. Multipart namespaces must follow the encoding rules of the parent parameter in the list namespaces endpoint.
+        Multiple view identifiers are separated by commas. Servers should split the parameter value on comma characters to parse individual view identifiers. If view names contain commas, they must be url-encoded as %2C.
+        Example with multiple views (where prod%1Fanalytics is a nested namespace which has a quarterly_view which references to monthly_view which then references the entity being loaded) - prod%1Fanalytics%1Fquarterly_view,prod%1Fanalytics%1Fmonthly_view
+      required: false
+      schema:
+        type: string
+    view:
+      name: view
+      in: path
+      description: A view name
+      required: true
+      schema:
+        type: string
+      example: sales
+    polaris-generic-table-data-access:
+      name: Polaris-Generic-Table-Access-Delegation
+      in: header
+      description: |
+        Optional header indicating that the client supports delegated access using a specific mechanism. If the header is present, the server must either provide access using the requested mechanism or fail the request. If `vended-credentials` is specified, the server must return scoped storage credentials in the `storage-access-configs` field of the response.
+      required: false
+      schema:
+        type: string
+        enum:
+          - vended-credentials
+      style: simple
+      explode: false
+      example: vended-credentials
+    generic-table:
+      name: generic-table
+      in: path
+      description: A generic table name
+      required: true
+      schema:
+        type: string
+      example: sales
+    policy-type:
+      name: policyType
+      in: query
+      required: false
+      allowEmptyValue: true
+      schema:
+        $ref: '#/components/schemas/PolicyType'
+    policy-name:
+      name: policy-name
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PolicyName'
   headers:
     etag:
       name: ETag
       in: header
-      description: Identifies a unique version of the table metadata.
+      description: |-
+        Identifies a unique version of the table metadata.
+        Implementations that support ETags should produce unique tags for responses that return different metadata content but represent the same version of table metadata.  For example, the `snapshots` query parameter may result in different metadata representations depending on whether `refs` or `all` is provided, therefore should have distinct ETags.
       required: false
       schema:
         type: string

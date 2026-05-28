@@ -104,6 +104,7 @@ import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.acl.AclObj;
+import org.apache.polaris.persistence.nosql.coretypes.acl.GrantTriplet;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
@@ -131,7 +132,6 @@ import org.apache.polaris.persistence.nosql.metastore.mutation.PolicyMutation;
 import org.apache.polaris.persistence.nosql.metastore.mutation.PrincipalMutations;
 import org.apache.polaris.persistence.nosql.metastore.mutation.PrincipalMutations.UpdateSecrets.SecretsUpdater;
 import org.apache.polaris.persistence.nosql.metastore.mutation.UpdateKeyForCatalogAndEntityType;
-import org.apache.polaris.persistence.nosql.metastore.privs.GrantTriplet;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableAndGrantee;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 import org.jspecify.annotations.NonNull;
@@ -521,6 +521,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                       index.remove(fromIndexKey(key).reverse().toIndexKey());
                     }
 
+                    // Replacing this inline index leaves older mapping objects and stripes stale
+                    // until a later maintenance purge.
                     builder.policyMappings(index.toIndexed("mappings", state::writeOrReplace));
                     return state.commitResult("", builder, refObj);
                   })
@@ -624,11 +626,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                       .apply()));
     }
 
-    // TODO populate MutationResults.aclsToRemove and handle those, also need a maintenance
-    //  operation to garbage-collect ACL entries for no longer existing entities.
-
-    // TODO handle MutationResults.policyIndexKeysToRemove(), also need a maintenance
-    //  operation to garbage-collect stale policy entries.
+    // Cross-reference cleanup for grants and policy mappings cannot be atomic with the entity drop
+    // commit, because those structures live on separate refs. Stale entries are tolerated on the
+    // read path and are removed later by maintenance.
 
     return mutationResults;
   }
@@ -988,7 +988,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
         .apply();
   }
 
-  // TODO remove entirely?
+  // Dormant reverse-lookup helper kept for possible future policy-to-entity lookups.
   @SuppressWarnings("SameParameterValue")
   LoadPolicyMappingsResult loadEntitiesOnPolicy(
       @Nullable PolarisEntityType entityType,
@@ -1089,6 +1089,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               .byId(key.policyId())
               .flatMap(objBase -> filterIsEntityType(objBase, PolarisEntityType.POLICY))
               .map(obj -> mapToEntity(obj, key.policyCatalogId()))
+              // Missing policy entities indicate tolerated stale mappings that maintenance will
+              // eventually prune.
               .ifPresent(policyEntities::add);
         }
         mappingRecords.add(key.toMappingRecord(elem.value()));
@@ -1211,6 +1213,8 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
               entities.add(entity);
             }
           } else {
+            // Missing targets indicate tolerated stale grant references that maintenance will
+            // eventually prune.
             LOGGER.trace("    Not returning stale entity reference");
           }
         },
@@ -1242,6 +1246,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   securableAndGrantee.securableId(),
                   securableAndGrantee.securableTypeCode());
           if (!securableExists) {
+            // Stale grant entries are tolerated on reads and removed later by maintenance.
             LOGGER.trace("Skipping stale grant record due to missing securable reference");
             return;
           }
@@ -1252,6 +1257,7 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
                   securableAndGrantee.granteeId(),
                   securableAndGrantee.granteeTypeCode());
           if (!granteeExists) {
+            // Stale grant entries are tolerated on reads and removed later by maintenance.
             LOGGER.trace("Skipping stale grant record due to missing grantee reference");
             return;
           }

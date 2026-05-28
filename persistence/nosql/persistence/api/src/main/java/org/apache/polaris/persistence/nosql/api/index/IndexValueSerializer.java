@@ -34,6 +34,14 @@ public interface IndexValueSerializer<V> {
    */
   @Nullable V deserialize(@NonNull ByteBuffer buffer);
 
+  /**
+   * Determines whether the serialized value at the current {@code buffer} position represents
+   * {@code null}.
+   *
+   * <p>Implementations must not modify the caller-visible state of {@code buffer}.
+   */
+  boolean isNullSerialized(@NonNull ByteBuffer buffer);
+
   /** Skips an element, only updating the {@code buffer}'s {@link ByteBuffer#position()}. */
   void skip(@NonNull ByteBuffer buffer);
 }

@@ -49,8 +49,8 @@ Released on May 1st, 2026.
 #### Fixes
 
 This release fixes 4 security issues:
-* [CVE-2026-42809](../../community/security-advisories/CVE-2026-42809/)
-* [CVE-2026-42810](../../community/security-advisories/CVE-2026-42810/)
-* [CVE-2026-42811](../../community/security-advisories/CVE-2026-42811/)
-* [CVE-2026-42812](../../community/security-advisories/CVE-2026-42812/)
+* [CVE-2026-42809](../../community/security-advisories/cve-2026-42809/)
+* [CVE-2026-42810](../../community/security-advisories/cve-2026-42810/)
+* [CVE-2026-42811](../../community/security-advisories/cve-2026-42811/)
+* [CVE-2026-42812](../../community/security-advisories/cve-2026-42812/)
 

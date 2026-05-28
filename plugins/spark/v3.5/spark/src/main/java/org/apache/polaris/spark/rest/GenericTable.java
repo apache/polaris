@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.spark.rest;
 
-import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 // TODO: auto generate the class based on spec
 @Value.Builder

@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
@@ -54,6 +55,9 @@ public class CommitTransactionEventTest {
   private static final String namespace = "ns";
   private static final String catalog = "test-catalog";
   private static final String propertyName = "custom-property-1";
+
+  // UUID v7
+  private static final UUID IDEMPOTENCY_KEY = new UUID(116617318654508422L, -7820829973016961092L);
 
   private String catalogLocation;
 
@@ -182,6 +186,7 @@ public class CommitTransactionEventTest {
             .createNamespace(
                 catalog,
                 createNamespaceRequest,
+                IDEMPOTENCY_KEY,
                 services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
@@ -202,6 +207,7 @@ public class CommitTransactionEventTest {
             namespace,
             createTableRequest,
             null,
+            IDEMPOTENCY_KEY,
             services.realmContext(),
             services.securityContext());
   }
@@ -240,6 +246,7 @@ public class CommitTransactionEventTest {
           .commitTransaction(
               catalog,
               generateCommitTransactionRequest(shouldFail, table1Name, table2Name),
+              IDEMPOTENCY_KEY,
               testServices.realmContext(),
               testServices.securityContext());
     } catch (Exception ignored) {

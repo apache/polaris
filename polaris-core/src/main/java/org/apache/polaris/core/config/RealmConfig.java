@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.config;
 
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.jspecify.annotations.Nullable;
 
 /** Realm-specific configuration used to retrieve runtime parameters. */
 public interface RealmConfig {

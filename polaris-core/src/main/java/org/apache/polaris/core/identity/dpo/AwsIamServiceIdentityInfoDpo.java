@@ -21,11 +21,11 @@ package org.apache.polaris.core.identity.dpo;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Persistence-layer representation of an AWS IAM service identity used by Polaris.
@@ -46,8 +46,8 @@ public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
 
   @JsonCreator
   public AwsIamServiceIdentityInfoDpo(
-      @JsonProperty(value = "identityInfoReference", required = false) @Nullable
-          SecretReference identityInfoReference) {
+      @JsonProperty(value = "identityInfoReference", required = false)
+          @Nullable SecretReference identityInfoReference) {
     super(ServiceIdentityType.AWS_IAM.getCode(), identityInfoReference);
   }
 

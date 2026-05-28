@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.annotation.Nonnull;
 import java.util.Set;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A request for a specific set of {@link PolarisStorageActions} on a specific set of storage
@@ -28,4 +28,4 @@ import java.util.Set;
  * legacy location alongside read+write access to a new location).
  */
 public record LocationGrant(
-    @Nonnull Set<String> locations, @Nonnull Set<PolarisStorageActions> actions) {}
+    @NonNull Set<String> locations, @NonNull Set<PolarisStorageActions> actions) {}

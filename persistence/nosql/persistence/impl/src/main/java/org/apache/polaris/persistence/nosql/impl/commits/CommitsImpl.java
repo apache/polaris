@@ -47,7 +47,7 @@ final class CommitsImpl implements Commits {
 
   @Override
   public <C extends BaseCommitObj> Iterator<C> commitLogReversed(
-      String refName, long offset, Class<C> clazz) {
+      String refName, long offsetCommitId, Class<C> clazz) {
     var headOpt = persistence.fetchReferenceHead(refName, clazz);
     if (headOpt.isEmpty()) {
       return emptyIterator();
@@ -56,15 +56,15 @@ final class CommitsImpl implements Commits {
     var head = headOpt.get();
     var type = head.type().id();
 
-    // find commit with Obj.id() == offset, memoize visited commits
-
-    // Contains the seen IDs, without the 'offset', in _natural_ order (most recent commit ID first)
+    // Resolve the exclusive offset commit ID via a linear walk from the current head. This lookup
+    // is not internally bounded.
+    //
+    // Contains the seen IDs, without the offset commit ID, in _natural_ order (most recent commit
+    // ID first).
     var visited = new LongArrayList();
 
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
-
-    // Only walk, if the most recent commit ID is != offset
-    if (head.id() == offset) {
+    // Only walk if the most recent commit ID is not the offset commit ID.
+    if (head.id() == offsetCommitId) {
       return emptyIterator();
     }
 
@@ -73,7 +73,7 @@ final class CommitsImpl implements Commits {
     outer:
     while (tail.length != 0) {
       for (var tailId : tail) {
-        if (tailId == offset) {
+        if (tailId == offsetCommitId) {
           break outer;
         }
         visited.add(tailId);
@@ -138,7 +138,7 @@ final class CommitsImpl implements Commits {
 
   @Override
   public <C extends BaseCommitObj> Iterator<C> commitLog(
-      String refName, OptionalLong offset, Class<C> clazz) {
+      String refName, OptionalLong offsetCommitId, Class<C> clazz) {
     var headOpt = persistence.fetchReferenceHead(refName, clazz);
     if (headOpt.isEmpty()) {
       return emptyIterator();
@@ -147,12 +147,14 @@ final class CommitsImpl implements Commits {
     var head = headOpt.get();
     var type = head.type().id();
 
-    // TODO add safeguard to limit the work done when finding the commit with ID 'offset'
+    if (offsetCommitId.isPresent()) {
+      var off = offsetCommitId.getAsLong();
 
-    if (offset.isPresent()) {
-      var off = offset.getAsLong();
+      // Resolve the inclusive offset commit ID via a linear walk from the current head. If the
+      // commit ID is not encountered while scanning visible history, attempt to continue directly
+      // from the commit object identified by the offset commit ID.
 
-      // Only walk, if the most recent commit ID is != offset
+      // Only walk if the most recent commit ID is not the offset commit ID.
       if (head.id() == off) {
         return singletonList(head).iterator();
       }

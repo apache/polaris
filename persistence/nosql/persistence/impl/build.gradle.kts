@@ -17,13 +17,23 @@
  * under the License.
  */
 
+import com.github.erizo.gradle.JcstressTask
+import java.io.FileOutputStream
+import java.nio.file.Files
+
 plugins {
   id("org.kordamp.gradle.jandex")
   alias(libs.plugins.jmh)
+  alias(libs.plugins.jcstress)
   id("polaris-server")
 }
 
 description = "Polaris NoSQL persistence core implementation"
+
+val jcstressRuntime by configurations.creating
+val jcstressMode = providers.gradleProperty("jcstressMode").orElse("quick")
+val jcstressSplitPerActor =
+  providers.gradleProperty("jcstressSplitPerActor").map(String::toBoolean).orElse(false)
 
 dependencies {
   implementation(project(":polaris-persistence-nosql-api"))
@@ -92,4 +102,56 @@ dependencies {
 
   jmhImplementation(libs.jmh.core)
   jmhAnnotationProcessor(libs.jmh.generator.annprocess)
+
+  jcstressRuntime(libs.jcstress.core)
+}
+
+tasks.named("jcstressJar") { dependsOn("jandex") }
+
+tasks.named("compileJcstressJava") { dependsOn("jandex") }
+
+tasks.named("check") { dependsOn("jcstress") }
+
+jcstress {
+  jcstressDependency = libs.jcstress.core.get().toString()
+  mode = jcstressMode.get()
+  splitPerActor = jcstressSplitPerActor.get()
+}
+
+tasks.named<JcstressTask>("jcstress") {
+  inputs.properties(
+    System.getProperties()
+      .mapKeys { it.key.toString() }
+      .filterKeys {
+        setOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version")
+          .contains(it)
+      }
+  )
+  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.property("jcstressMode", jcstressMode.get())
+  inputs.property("jcstressSplitPerActor", jcstressSplitPerActor.get())
+  inputs.files(jcstressRuntime)
+  inputs.files(configurations.runtimeClasspath)
+  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+
+  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+    // Capture jcstress output in a log file, dump that in case of a failure.
+
+    val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
+    val logFile = File(logDir, "jcstress.log")
+    var logStream: FileOutputStream? = null
+
+    actions.addFirst {
+      logStream = FileOutputStream(logFile)
+      standardOutput = logStream
+      errorOutput = logStream
+    }
+
+    actions.addLast {
+      logStream?.close()
+      if (state.failure != null) {
+        logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+      }
+    }
+  }
 }

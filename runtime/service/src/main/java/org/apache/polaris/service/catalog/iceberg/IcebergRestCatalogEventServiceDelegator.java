@@ -27,6 +27,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.UUID;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -34,6 +35,7 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
+import org.apache.iceberg.rest.requests.RegisterViewRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
@@ -91,6 +93,7 @@ public class IcebergRestCatalogEventServiceDelegator
   public Response createNamespace(
       String prefix,
       CreateNamespaceRequest createNamespaceRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -104,7 +107,8 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CREATE_NAMESPACE_REQUEST, createNamespaceRequest)));
     }
     Response resp =
-        delegate.createNamespace(prefix, createNamespaceRequest, realmContext, securityContext);
+        delegate.createNamespace(
+            prefix, createNamespaceRequest, idempotencyKey, realmContext, securityContext);
     CreateNamespaceResponse createNamespaceResponse = (CreateNamespaceResponse) resp.getEntity();
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_CREATE_NAMESPACE)) {
       polarisEventDispatcher.dispatch(
@@ -214,7 +218,11 @@ public class IcebergRestCatalogEventServiceDelegator
 
   @Override
   public Response dropNamespace(
-      String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
+      String prefix,
+      String namespace,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_DROP_NAMESPACE)) {
       polarisEventDispatcher.dispatch(
@@ -228,7 +236,8 @@ public class IcebergRestCatalogEventServiceDelegator
                       NamespaceUtils.splitNamespace(
                           namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR))));
     }
-    Response resp = delegate.dropNamespace(prefix, namespace, realmContext, securityContext);
+    Response resp =
+        delegate.dropNamespace(prefix, namespace, idempotencyKey, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_NAMESPACE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -246,6 +255,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -265,7 +275,12 @@ public class IcebergRestCatalogEventServiceDelegator
     }
     Response resp =
         delegate.updateProperties(
-            prefix, namespace, updateNamespacePropertiesRequest, realmContext, securityContext);
+            prefix,
+            namespace,
+            updateNamespacePropertiesRequest,
+            idempotencyKey,
+            realmContext,
+            securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_UPDATE_NAMESPACE_PROPERTIES)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -287,6 +302,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -309,6 +325,7 @@ public class IcebergRestCatalogEventServiceDelegator
             namespace,
             createTableRequest,
             accessDelegationMode,
+            idempotencyKey,
             realmContext,
             securityContext);
     if (!createTableRequest.stageCreate()
@@ -368,6 +385,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -394,6 +412,7 @@ public class IcebergRestCatalogEventServiceDelegator
             accessDelegationMode,
             ifNoneMatchString,
             snapshots,
+            referencedBy,
             realmContext,
             securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_TABLE)) {
@@ -449,6 +468,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String table,
+      UUID idempotencyKey,
       Boolean purgeRequested,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -468,7 +488,14 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.PURGE_REQUESTED, purgeRequested)));
     }
     Response resp =
-        delegate.dropTable(prefix, namespace, table, purgeRequested, realmContext, securityContext);
+        delegate.dropTable(
+            prefix,
+            namespace,
+            table,
+            idempotencyKey,
+            purgeRequested,
+            realmContext,
+            securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -488,6 +515,8 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       RegisterTableRequest registerTableRequest,
+      String accessDelegationMode,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -505,7 +534,13 @@ public class IcebergRestCatalogEventServiceDelegator
     }
     Response resp =
         delegate.registerTable(
-            prefix, namespace, registerTableRequest, realmContext, securityContext);
+            prefix,
+            namespace,
+            registerTableRequest,
+            accessDelegationMode,
+            idempotencyKey,
+            realmContext,
+            securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REGISTER_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -524,6 +559,7 @@ public class IcebergRestCatalogEventServiceDelegator
   public Response renameTable(
       String prefix,
       RenameTableRequest renameTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -536,7 +572,9 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
     }
-    Response resp = delegate.renameTable(prefix, renameTableRequest, realmContext, securityContext);
+    Response resp =
+        delegate.renameTable(
+            prefix, renameTableRequest, idempotencyKey, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_RENAME_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -555,6 +593,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String namespace,
       String table,
       CommitTableRequest commitTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -573,7 +612,13 @@ public class IcebergRestCatalogEventServiceDelegator
     }
     Response resp =
         delegate.updateTable(
-            prefix, namespace, table, commitTableRequest, realmContext, securityContext);
+            prefix,
+            namespace,
+            table,
+            commitTableRequest,
+            idempotencyKey,
+            realmContext,
+            securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_UPDATE_TABLE)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -628,6 +673,44 @@ public class IcebergRestCatalogEventServiceDelegator
   }
 
   @Override
+  public Response registerView(
+      String prefix,
+      String namespace,
+      RegisterViewRequest registerViewRequest,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
+    Namespace namespaceObj =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.BEFORE_REGISTER_VIEW)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.BEFORE_REGISTER_VIEW,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .put(EventAttributes.REGISTER_VIEW_REQUEST, registerViewRequest)));
+    }
+    Response resp =
+        delegate.registerView(
+            prefix, namespace, registerViewRequest, idempotencyKey, realmContext, securityContext);
+    if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REGISTER_VIEW)) {
+      polarisEventDispatcher.dispatch(
+          new PolarisEvent(
+              PolarisEventType.AFTER_REGISTER_VIEW,
+              eventMetadataFactory.create(),
+              new EventAttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.NAMESPACE, namespaceObj)
+                  .put(EventAttributes.VIEW_NAME, registerViewRequest.name())
+                  .put(EventAttributes.LOAD_VIEW_RESPONSE, (LoadViewResponse) resp.getEntity())));
+    }
+    return resp;
+  }
+
+  @Override
   public Response listViews(
       String prefix,
       String namespace,
@@ -666,6 +749,8 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String table,
+      String planId,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -682,7 +767,8 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.TABLE_NAME, table)));
     }
     Response resp =
-        delegate.loadCredentials(prefix, namespace, table, realmContext, securityContext);
+        delegate.loadCredentials(
+            prefix, namespace, table, planId, referencedBy, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_CREDENTIALS)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -701,6 +787,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String view,
+      String referencedBy,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -716,7 +803,8 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)));
     }
-    Response resp = delegate.loadView(prefix, namespace, view, realmContext, securityContext);
+    Response resp =
+        delegate.loadView(prefix, namespace, view, referencedBy, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_LOAD_VIEW)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -770,6 +858,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String prefix,
       String namespace,
       String view,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -785,7 +874,8 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.VIEW_NAME, view)));
     }
-    Response resp = delegate.dropView(prefix, namespace, view, realmContext, securityContext);
+    Response resp =
+        delegate.dropView(prefix, namespace, view, idempotencyKey, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_DROP_VIEW)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -803,6 +893,7 @@ public class IcebergRestCatalogEventServiceDelegator
   public Response renameView(
       String prefix,
       RenameTableRequest renameTableRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -815,7 +906,9 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.RENAME_TABLE_REQUEST, renameTableRequest)));
     }
-    Response resp = delegate.renameView(prefix, renameTableRequest, realmContext, securityContext);
+    Response resp =
+        delegate.renameView(
+            prefix, renameTableRequest, idempotencyKey, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_RENAME_VIEW)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -834,6 +927,7 @@ public class IcebergRestCatalogEventServiceDelegator
       String namespace,
       String view,
       CommitViewRequest commitViewRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -852,7 +946,13 @@ public class IcebergRestCatalogEventServiceDelegator
     }
     Response resp =
         delegate.replaceView(
-            prefix, namespace, view, commitViewRequest, realmContext, securityContext);
+            prefix,
+            namespace,
+            view,
+            commitViewRequest,
+            idempotencyKey,
+            realmContext,
+            securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_REPLACE_VIEW)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(
@@ -872,6 +972,7 @@ public class IcebergRestCatalogEventServiceDelegator
   public Response commitTransaction(
       String prefix,
       CommitTransactionRequest commitTransactionRequest,
+      UUID idempotencyKey,
       RealmContext realmContext,
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(prefix);
@@ -898,7 +999,8 @@ public class IcebergRestCatalogEventServiceDelegator
       }
     }
     Response resp =
-        delegate.commitTransaction(prefix, commitTransactionRequest, realmContext, securityContext);
+        delegate.commitTransaction(
+            prefix, commitTransactionRequest, idempotencyKey, realmContext, securityContext);
     if (polarisEventDispatcher.hasListeners(PolarisEventType.AFTER_COMMIT_TRANSACTION)) {
       polarisEventDispatcher.dispatch(
           new PolarisEvent(

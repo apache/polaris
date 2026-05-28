@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Storage access config parameters for FILE and unknown storage backends. Contains the minimal set
@@ -35,8 +35,7 @@ public interface DefaultStorageCredentialCacheKey extends StorageCredentialCache
   String realmId();
 
   @Value.Parameter(order = 2)
-  @Nullable
-  String storageConfigSerializedStr();
+  @Nullable String storageConfigSerializedStr();
 
   @Value.Parameter(order = 3)
   boolean allowedListAction();
