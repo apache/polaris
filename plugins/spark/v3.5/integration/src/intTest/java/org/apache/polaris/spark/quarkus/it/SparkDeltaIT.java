@@ -271,6 +271,25 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @Test
+  public void testCreateTableWithOverlappingLocationFails() {
+    String deltatb1 = getTableNameWithRandomSuffix();
+    String location1 = getTableLocation(deltatb1);
+    sql("CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'", deltatb1, location1);
+    sql("INSERT INTO %s VALUES (1, 'anna')", deltatb1);
+
+    String deltatb2 = getTableNameWithRandomSuffix();
+    String overlappingLocation = location1 + "/child";
+    assertThatThrownBy(
+            () ->
+                sql(
+                    "CREATE TABLE %s (id INT) USING DELTA LOCATION '%s'",
+                    deltatb2, overlappingLocation))
+        .hasMessageContaining("conflicts with");
+
+    sql("DROP TABLE %s", deltatb1);
+  }
+
+  @Test
   public void testMixedTableAndViews() {
     String icebergTable = "icebergtb";
     sql("CREATE TABLE %s (col1 int, col2 String)", icebergTable);
