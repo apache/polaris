@@ -206,7 +206,7 @@ public class GcpCredentialsStorageIntegration
     LinkedHashSet<String> writeBuckets = new LinkedHashSet<>();
     Stream.concat(allowedReadLocations.stream(), allowedWriteLocations.stream())
         .distinct()
-        .sorted()
+        .sorted() // to ensure this method's output is deterministic
         .forEach(
             location -> {
               StorageUri uri = StorageUri.parse(location);
