@@ -2804,11 +2804,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   public void testLoadTableWithMissingMetadataFile(@TempDir Path tempDir) {}
 
   @Test
-  @Disabled("Feature is not implemented yet")
-  @Override
-  public void createTableInUniqueLocation() {}
-
-  @Test
   @Disabled(
       "Test is not compatible with Polaris: rename-table op does not change the table location")
   @Override
