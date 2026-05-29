@@ -2426,6 +2426,33 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   @Test
+  public void testRegisterTableRejectsExistingView() {
+    // Note: there exists a similar test in ViewCatalogTests.registerTableThatAlreadyExistsAsView,
+    // but it doesn't cover register with overwrite
+    IcebergCatalog catalog = catalog();
+    Namespace namespace = Namespace.of("register_view_conflict");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "entity");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(namespace);
+    }
+
+    catalog
+        .buildView(identifier)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", "SELECT * FROM ns.tbl")
+        .create();
+
+    Assertions.assertThatThrownBy(() -> catalog.registerTable(identifier, "s3://bucket/path", true))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("View with same name already exists");
+    Assertions.assertThatThrownBy(
+            () -> catalog.registerTable(identifier, "s3://bucket/path", false))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("View with same name already exists");
+  }
+
+  @Test
   public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),

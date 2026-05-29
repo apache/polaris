@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
@@ -231,6 +232,16 @@ public abstract class CatalogHandler {
             PolarisEntityType.TABLE_LIKE,
             true /* optional */));
     resolutionManifest.resolveAll();
+
+    // Early check so that a caller that has table-level REGISTER_TABLE_OVERWRITE but not
+    // namespace-level REGISTER_TABLE doesn't get a permission error instead of
+    // "View with same name already exists"
+    PolarisEntitySubType leafSubType =
+        resolutionManifest.getLeafSubType(ResolvedPathKey.ofTableLike(identifier));
+    if (leafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          identifier, PolarisEntitySubType.ICEBERG_VIEW);
+    }
 
     PolarisResolvedPathWrapper tableTarget =
         resolutionManifest.getResolvedPath(

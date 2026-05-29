@@ -326,6 +326,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
         metadataFileLocation);
 
+    if (viewExists(identifier)) {
+      throw alreadyExistsExceptionWithSameNameForTableLikeEntity(
+          identifier, PolarisEntitySubType.ICEBERG_VIEW);
+    }
+
     boolean tableExists = tableExists(identifier);
     if (!overwrite && tableExists) {
       throw alreadyExistsExceptionForTableLikeEntity(
