@@ -42,6 +42,7 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -810,8 +811,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       if (!results.isEmpty()) {
         StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
         for (PolarisBaseEntity result : results) {
-          StorageLocation potentialSiblingLocation =
-              StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
+          // JDBC materializes persisted rows as PolarisBaseEntity, so use the stored location
+          // property instead of casting to LocationBasedEntity.
+          String siblingBaseLocation =
+              result.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+          if (siblingBaseLocation == null || siblingBaseLocation.isBlank()) {
+            continue;
+          }
+          StorageLocation potentialSiblingLocation = StorageLocation.of(siblingBaseLocation);
           if (entityLocation.isChildOf(potentialSiblingLocation)
               || potentialSiblingLocation.isChildOf(entityLocation)) {
             return Optional.of(Optional.of(potentialSiblingLocation.toString()));
