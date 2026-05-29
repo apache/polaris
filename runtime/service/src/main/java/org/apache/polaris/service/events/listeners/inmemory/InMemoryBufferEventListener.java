@@ -58,7 +58,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
    * example, it was evicted between the cache lookup and the {@code onNext} call). {@link
    * #processEvent} catches it and retries with a freshly loaded processor.
    */
-  private static final class EvictedException extends IllegalStateException {}
+  private static final class CompletedException extends IllegalStateException {}
 
   /**
    * Wraps a {@link UnicastProcessor} together with its own lock, so that mutual exclusion between
@@ -66,7 +66,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
    * does not depend on smallrye-mutiny's internal {@code synchronized} on {@code
    * UnicastProcessor.onNext}.
    */
-  final class EventProcessor {
+  protected final class EventProcessor {
 
     private final UnicastProcessor<PolarisEvent> processor;
     private final ReentrantLock lock = new ReentrantLock();
@@ -87,7 +87,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
       lock.lock();
       try {
         if (completed) {
-          throw new EvictedException();
+          throw new CompletedException();
         }
         processor.onNext(event);
       } finally {
@@ -148,7 +148,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
         try {
           processor.onNext(event);
           return;
-        } catch (EvictedException ignored) {
+        } catch (CompletedException ignored) {
           // processor was evicted between the cache lookup and onNext; retry with a fresh one
         }
       }
@@ -164,23 +164,6 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
       shutdown = true;
       processors.asMap().values().forEach(EventProcessor::onComplete);
       processors.invalidateAll(); // doesn't call the eviction listener
-    } finally {
-      shutdownLock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Re-enables the listener after a {@link #shutdown()}. {@code shutdown} is terminal in production
-   * (it runs on {@code @PreDestroy}), but tests reuse the same {@code @ApplicationScoped} bean
-   * across methods and call {@link #shutdown()} between them, so they need a way to clear the flag
-   * and start fresh.
-   */
-  @VisibleForTesting
-  void reset() {
-    shutdownLock.writeLock().lock();
-    try {
-      shutdown = false;
-      processors.invalidateAll();
     } finally {
       shutdownLock.writeLock().unlock();
     }
