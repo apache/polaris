@@ -21,10 +21,10 @@ package org.apache.polaris.core.storage.gcp;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.node.ContainerNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
@@ -59,7 +59,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
-import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -74,6 +73,13 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
   private static final String REFRESH_ENDPOINT = "get/credentials";
+
+  private static final ObjectMapper MAPPER =
+      JsonMapper.builder()
+          .defaultPropertyInclusion(
+              JsonInclude.Value.construct(
+                  JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+          .build();
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
@@ -192,10 +198,26 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         CredentialVendingContext.empty());
   }
 
-  private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
+  private JsonNode readResource(String name) throws IOException {
     try (InputStream in = GcpCredentialsStorageIntegrationTest.class.getResourceAsStream(name)) {
-      return mapper.readTree(in);
+      return MAPPER.readTree(in);
     }
+  }
+
+  private Set<JsonNode> canonicalRules(JsonNode rules) {
+    Set<JsonNode> canonical = new HashSet<>();
+    for (JsonNode rule : rules.path("accessBoundaryRules")) {
+      ObjectNode copy = rule.deepCopy();
+      JsonNode condition = copy.path("availabilityCondition");
+      JsonNode expression = condition.path("expression");
+      if (expression.isTextual()) {
+        String[] clauses = expression.asText().split(" \\|\\| ");
+        Arrays.sort(clauses);
+        ((ObjectNode) condition).put("expression", String.join(" || ", clauses));
+      }
+      canonical.add(copy);
+    }
+    return canonical;
   }
 
   @Test
@@ -204,15 +226,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             true, Set.of("gs://bucket1/path/to/data"), Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundary.json");
-    assertThat(parsedRules)
-        .usingRecursiveComparison(
-            RecursiveComparisonConfiguration.builder()
-                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
-                .build())
-        .isEqualTo(refRules);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundary.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -226,16 +242,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 "gs://bucket2/a/super/path/to/data"),
             Set.of("gs://bucket1/normal/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules =
-        readResource(mapper, "gcp-testGenerateAccessBoundaryWithMultipleBuckets.json");
-    assertThat(parsedRules)
-        .usingRecursiveComparison(
-            RecursiveComparisonConfiguration.builder()
-                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
-                .build())
-        .isEqualTo(refRules);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithMultipleBuckets.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -246,15 +255,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of("gs://bucket1/path/to/data", "gs://bucket1/another/path/to/data"),
             Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryWithoutList.json");
-    assertThat(parsedRules)
-        .usingRecursiveComparison(
-            RecursiveComparisonConfiguration.builder()
-                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
-                .build())
-        .isEqualTo(refRules);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithoutList.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -265,15 +268,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
             Set.of());
     assertThat(credentialAccessBoundary).isNotNull();
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryWithoutWrites.json");
-    assertThat(parsedRules)
-        .usingRecursiveComparison(
-            RecursiveComparisonConfiguration.builder()
-                .withEqualsForType(this::recursiveEquals, ObjectNode.class)
-                .build())
-        .isEqualTo(refRules);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithoutWrites.json");
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -283,8 +280,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             true, Set.of("gs://bucket1/" + path), Set.of("gs://bucket1/" + path));
 
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     assertThat(parsedRules.path("accessBoundaryRules")).hasSize(2);
 
     assertThat(expressionAt(parsedRules, 0))
@@ -384,8 +380,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             true, Set.of("gs://bucket1/path/to/data?with?question"), Set.of());
 
-    ObjectMapper mapper = JsonMapper.builder().build();
-    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
 
     assertThat(
             parsedRules
@@ -396,39 +391,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .asText())
         .contains("projects/_/buckets/bucket1/objects/path/to/data?with?question")
         .contains("startsWith('path/to/data?with?question')");
-  }
-
-  /**
-   * Custom comparator as ObjectNodes are compared by field indexes as opposed to field names. They
-   * also don't equate a field that is present and set to null with a field that is omitted
-   *
-   * @param on1
-   * @param on2
-   * @return
-   */
-  private boolean recursiveEquals(ContainerNode<?> on1, ContainerNode<?> on2) {
-    Set<String> fieldNames = new HashSet<>();
-    on1.fieldNames().forEachRemaining(fieldNames::add);
-    on2.fieldNames().forEachRemaining(fieldNames::add);
-    for (String fieldName : fieldNames) {
-      if ((!on1.has(fieldName) || !on2.has(fieldName))) {
-        if (isNotNull(on1.get(fieldName)) || isNotNull(on2.get(fieldName))) {
-          return false;
-        }
-      } else {
-        JsonNode fieldValue = on1.get(fieldName);
-        JsonNode fieldValue2 = on2.get(fieldName);
-        if (fieldValue.isContainerNode()) {
-          if (!fieldValue2.isContainerNode()
-              || !recursiveEquals((ContainerNode<?>) fieldValue, (ContainerNode<?>) fieldValue2)) {
-            return false;
-          }
-        } else if (!fieldValue.equals(fieldValue2)) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   @Test
@@ -506,10 +468,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         && request
                             .getScope(0)
                             .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
-  }
-
-  private boolean isNotNull(JsonNode node) {
-    return node != null && !node.isNull();
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
