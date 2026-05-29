@@ -231,4 +231,69 @@ class IcebergCatalogHandlerTest {
               assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
             });
   }
+
+  /**
+   * If the entity's internal properties are missing the LOCATION key, the optimized path cannot
+   * vend credentials (it has nothing to scope them to), so loadCredentials must fall back to a full
+   * loadTable on the underlying catalog. This guards the backfill path noted in the handler: an
+   * entity that pre-dates the location-in-properties write should still serve credentials.
+   */
+  @Test
+  void loadCredentialsFallsBackWhenEntityLocationMissing() {
+    String tableLocation = "s3://fake-bucket/tables/table2";
+    Map<String, String> fakeCredentials =
+        Map.of("fake.access.key", "AKIAFAKE", "fake.secret.key", "fakeSecret");
+
+    // Leaf entity is an Iceberg table-like entity but has no LOCATION in its internal properties,
+    // forcing the optimized path to fall back.
+    PolarisEntity leafEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity.Builder()
+                .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+                .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+                .name(TABLE2.name())
+                .internalPropertiesAsMap(Map.of())
+                .build());
+    when(resolvedPath.getRawLeafEntity()).thenReturn(leafEntity);
+
+    // The fallback path calls loadTable on the underlying catalog and reads location from the
+    // returned table metadata, so we need a BaseTable with a current() TableMetadata.
+    TableMetadata metadata = mock(TableMetadata.class);
+    when(metadata.location()).thenReturn(tableLocation);
+    when(metadata.properties()).thenReturn(Map.of());
+    TableOperations ops = mock(TableOperations.class);
+    when(ops.current()).thenReturn(metadata);
+    BaseTable table = mock(BaseTable.class);
+    when(table.operations()).thenReturn(ops);
+
+    IcebergCatalog icebergCatalog = mock(IcebergCatalog.class);
+    when(icebergCatalog.loadTable(TABLE2)).thenReturn(table);
+    when(localCatalogFactory.createCatalog(any())).thenReturn(icebergCatalog);
+
+    when(accessDelegationModeResolver.resolve(any(), any()))
+        .thenReturn(Optional.of(VENDED_CREDENTIALS));
+
+    StorageAccessConfig storageAccessConfig =
+        StorageAccessConfig.builder()
+            .putCredential("fake.access.key", "AKIAFAKE")
+            .putCredential("fake.secret.key", "fakeSecret")
+            .build();
+    when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
+        .thenReturn(storageAccessConfig);
+
+    @SuppressWarnings("resource")
+    IcebergCatalogHandler handler = newHandler();
+
+    ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
+
+    // Missing LOCATION on the entity must force the fallback — loadTable is the proof.
+    verify(icebergCatalog).loadTable(TABLE2);
+    assertThat(response.credentials())
+        .singleElement()
+        .satisfies(
+            (Credential c) -> {
+              assertThat(c.prefix()).isEqualTo(tableLocation);
+              assertThat(c.config()).containsExactlyInAnyOrderEntriesOf(fakeCredentials);
+            });
+  }
 }
