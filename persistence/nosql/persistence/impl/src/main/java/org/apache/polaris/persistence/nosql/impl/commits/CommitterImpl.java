@@ -117,11 +117,17 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
       var result =
           loop.retryLoop(
               nanosRemaining -> {
+                var acquired = false;
                 try {
-                  sync.before(nanosRemaining);
+                  acquired = sync.before(nanosRemaining);
+                  if (!acquired) {
+                    return Optional.empty();
+                  }
                   return commitAttempt(committerState, commitRetryable);
                 } finally {
-                  sync.after();
+                  if (acquired) {
+                    sync.after();
+                  }
                 }
               });
       if (result == noResultSentinel()) {
