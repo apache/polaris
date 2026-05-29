@@ -86,7 +86,7 @@ class IcebergCatalogHandlerTest {
   private final StorageAccessConfigProvider storageAccessConfigProvider =
       mock(StorageAccessConfigProvider.class);
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({"unchecked"})
   private IcebergCatalogHandler newHandler() {
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getRealmContext()).thenReturn(mock(RealmContext.class));
@@ -167,6 +167,7 @@ class IcebergCatalogHandlerTest {
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
 
+    @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
@@ -215,6 +216,7 @@ class IcebergCatalogHandlerTest {
     when(storageAccessConfigProvider.getStorageAccessConfig(any(), any(), any(), any(), any()))
         .thenReturn(storageAccessConfig);
 
+    @SuppressWarnings("resource")
     IcebergCatalogHandler handler = newHandler();
 
     ImmutableLoadCredentialsResponse response = handler.loadCredentials(TABLE2, Optional.empty());
