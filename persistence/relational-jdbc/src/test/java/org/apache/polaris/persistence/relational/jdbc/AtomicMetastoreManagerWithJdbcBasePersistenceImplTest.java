@@ -150,8 +150,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
         .typeCode(PolarisEntityType.NAMESPACE.getCode())
         .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
         .name(name)
-        .propertiesAsMap(
-            Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, baseLocation))
+        .propertiesAsMap(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, baseLocation))
         .internalPropertiesAsMap(Map.of())
         .build();
   }
