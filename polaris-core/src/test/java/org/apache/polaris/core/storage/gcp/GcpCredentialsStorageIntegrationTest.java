@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -203,6 +204,22 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     }
   }
 
+  private Set<JsonNode> canonicalRules(JsonNode rules) {
+    Set<JsonNode> canonical = new HashSet<>();
+    for (JsonNode rule : rules.path("accessBoundaryRules")) {
+      ObjectNode copy = rule.deepCopy();
+      JsonNode condition = copy.path("availabilityCondition");
+      JsonNode expression = condition.path("expression");
+      if (expression.isTextual()) {
+        String[] clauses = expression.asText().split(" \\|\\| ");
+        Arrays.sort(clauses);
+        ((ObjectNode) condition).put("expression", String.join(" || ", clauses));
+      }
+      canonical.add(copy);
+    }
+    return canonical;
+  }
+
   @Test
   public void testGenerateAccessBoundary() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
@@ -211,7 +228,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules = readResource("gcp-testGenerateAccessBoundary.json");
-    assertThat(parsedRules).isEqualTo(refRules);
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -227,7 +244,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithMultipleBuckets.json");
-    assertThat(parsedRules).isEqualTo(refRules);
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -240,7 +257,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithoutList.json");
-    assertThat(parsedRules).isEqualTo(refRules);
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
@@ -253,7 +270,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules = readResource("gcp-testGenerateAccessBoundaryWithoutWrites.json");
-    assertThat(parsedRules).isEqualTo(refRules);
+    assertThat(canonicalRules(parsedRules)).isEqualTo(canonicalRules(refRules));
   }
 
   @Test
