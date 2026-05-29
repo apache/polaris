@@ -68,7 +68,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
    */
   protected final class EventProcessor {
 
-    private final UnicastProcessor<PolarisEvent> processor;
+    @VisibleForTesting final UnicastProcessor<PolarisEvent> processor;
     private final ReentrantLock lock = new ReentrantLock();
     private boolean completed = false; // guarded by lock
 
@@ -105,11 +105,6 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
       } finally {
         lock.unlock();
       }
-    }
-
-    @VisibleForTesting
-    UnicastProcessor<PolarisEvent> processor() {
-      return processor;
     }
   }
 

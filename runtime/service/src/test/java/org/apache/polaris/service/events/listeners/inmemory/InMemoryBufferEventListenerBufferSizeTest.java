@@ -90,7 +90,7 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
     var test1 = producer.processors.get("test1");
     assertThat(test1).isNotNull();
     // emulate backpressure error; will drop the event and invalidate the processor
-    test1.processor().onError(new BackPressureFailure("error"));
+    test1.processor.onError(new BackPressureFailure("error"));
     // will create a new processor and recover
     sendAsync("test1", 10);
     assertRows("test1", 10);
