@@ -61,7 +61,7 @@ public class RangerIcebergCatalogHandlerIT extends RangerIntegrationTestBase {
         rootToken,
         catalogName,
         baseLocation,
-        List.of(allowedNamespacePath, allowedNamespacePath + "/"));
+        List.of(baseLocation, allowedNamespacePath, allowedNamespacePath + "/"));
     // base namespace for list assertions
     createNamespace(rootToken, catalogName, namespace);
   }
