@@ -121,7 +121,7 @@ public class IcebergAllowedLocationTest {
     assertNotEquals(catalogLocation, namespaceLocation);
 
     // add the namespace location to the allowed locations of the catalog
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
 
     createNamespace(services, namespaceLocation);
 
@@ -187,7 +187,7 @@ public class IcebergAllowedLocationTest {
     var namespaceLocation = tmpDir.resolve(namespace).toAbsolutePath().toUri().toString();
     assertNotEquals(catalogLocation, namespaceLocation);
 
-    createCatalog(services, Map.of(), catalogLocation, List.of(namespaceLocation));
+    createCatalog(services, Map.of(), catalogLocation, List.of(tmpDir.toUri().toString()));
     createNamespace(services, namespaceLocation);
 
     var createTableRequest =
