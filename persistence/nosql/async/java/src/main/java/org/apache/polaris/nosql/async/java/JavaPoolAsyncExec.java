@@ -243,6 +243,7 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
     try {
       executorService.submit(cancelable);
     } catch (RejectedExecutionException e) {
+      taskSubmissionRejectedHook(cancelable);
       // In case the pool is being shut-down, do not attempt to reschedule.
       if (!cancelable.cancelledOrShutdown()) {
         try {
@@ -272,6 +273,9 @@ public class JavaPoolAsyncExec implements AsyncExec, AutoCloseable {
 
   @VisibleForTesting
   void taskTrackedHook(Cancelable<?> cancelable) {}
+
+  @VisibleForTesting
+  void taskSubmissionRejectedHook(Cancelable<?> cancelable) {}
 
   private final class CancelableFuture<R> implements Cancelable<R>, Runnable {
     private final CompletableFuture<R> completable = new CompletableFuture<>();
