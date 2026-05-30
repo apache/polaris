@@ -18,20 +18,22 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 import org.jspecify.annotations.Nullable;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.Tag;
 
 /**
- * Cache key for vended AWS credentials. Data fields drive equality (cache identity); the
- * integration is carried as an auxiliary field so the loader can delegate back to it without
- * participating in equality.
+ * Cache key for vended AWS credentials. Data fields drive equality (cache identity); auxiliary
+ * fields carry the app-scoped deps that {@link #load()} needs to mint a fresh credential on miss.
  */
 @PolarisImmutable
 public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey {
@@ -57,25 +59,33 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   Optional<String> refreshCredentialsEndpoint();
 
   @Value.Parameter(order = 7)
-  Optional<String> principalName();
+  String roleSessionName();
 
   @Value.Parameter(order = 8)
-  CredentialVendingContext credentialVendingContext();
+  List<Tag> sessionTags();
 
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
   @Value.Parameter(order = 9)
   @Value.Auxiliary
-  AwsCredentialsStorageIntegration integration();
+  StsClientProvider stsClientProvider();
+
+  @Value.Parameter(order = 10)
+  @Value.Auxiliary
+  Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver();
+
+  @Value.Parameter(order = 11)
+  @Value.Auxiliary
+  AwsStorageConfigurationInfo storageConfig();
 
   @Override
-  default RealmConfig realmConfig() {
-    return integration().realmConfig();
-  }
+  @Value.Parameter(order = 12)
+  @Value.Auxiliary
+  RealmConfig realmConfig();
 
   @Override
   default StorageAccessConfig load() {
-    return integration().compute(this);
+    return AwsCredentialsStorageIntegration.compute(this);
   }
 
   static AwsStorageCredentialCacheKey of(
@@ -85,9 +95,12 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
-      Optional<String> principalName,
-      CredentialVendingContext credentialVendingContext,
-      AwsCredentialsStorageIntegration integration) {
+      String roleSessionName,
+      List<Tag> sessionTags,
+      StsClientProvider stsClientProvider,
+      Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
+      AwsStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
@@ -95,8 +108,11 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
-        principalName,
-        credentialVendingContext,
-        integration);
+        roleSessionName,
+        sessionTags,
+        stsClientProvider,
+        credentialsResolver,
+        storageConfig,
+        realmConfig);
   }
 }

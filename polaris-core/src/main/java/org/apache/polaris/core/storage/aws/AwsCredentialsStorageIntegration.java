@@ -152,28 +152,9 @@ public class AwsCredentialsStorageIntegration
       @NonNull Optional<String> refreshEndpoint,
       @NonNull CredentialVendingContext context) {
     RealmConfig realmConfig = realmConfig();
-    boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
-    List<String> sessionTagFields =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeSessionTags = !sessionTagFields.isEmpty();
-    List<String> sessionNameFields =
-        realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
-    // Session name fields that pull from CredentialVendingContext (realm/catalog/namespace/table)
-    // require the context to be part of the cache key so different request contexts don't share
-    // a cached credential that was stamped with another context's session name.
-    boolean sessionNameNeedsContext =
-        sessionNameFields.stream()
-            .anyMatch(f -> Set.of("realm", "catalog", "namespace", "table").contains(f));
-    boolean sessionNameNeedsPrincipal = sessionNameFields.contains("principal");
-    boolean includePrincipalInCacheKey =
-        includePrincipalNameInSubscopedCredential
-            || includeSessionTags
-            || sessionNameNeedsPrincipal;
-    CredentialVendingContext contextForCacheKey =
-        (includeSessionTags || sessionNameNeedsContext)
-            ? context
-            : CredentialVendingContext.empty();
+    String principalName = context.principalName().orElse("");
+    String roleSessionName = resolveRoleSessionName(realmConfig, context, principalName);
+    List<Tag> sessionTags = resolveSessionTags(realmConfig, context, principalName);
     return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
         storageConfig().serialize(),
@@ -181,24 +162,16 @@ public class AwsCredentialsStorageIntegration
         listLocations,
         writeLocations,
         refreshEndpoint,
-        includePrincipalInCacheKey ? context.principalName() : Optional.empty(),
-        contextForCacheKey,
-        this);
+        roleSessionName,
+        sessionTags,
+        stsClientProvider,
+        credentialsResolver,
+        storageConfig(),
+        realmConfig);
   }
 
-  /** Mint a fresh {@link StorageAccessConfig} for the given AWS cache key. */
-  StorageAccessConfig compute(AwsStorageCredentialCacheKey key) {
-    RealmConfig realmConfig = realmConfig();
-    AwsStorageConfigurationInfo awsStorageConfig = storageConfig();
-    String principalName = key.principalName().orElse("");
-    CredentialVendingContext context = key.credentialVendingContext();
-    int storageCredentialDurationSeconds =
-        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
-    String region = awsStorageConfig.getRegion();
-    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-
-    boolean includePrincipalInRoleSessionName =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+  private static String resolveRoleSessionName(
+      RealmConfig realmConfig, CredentialVendingContext context, String principalName) {
     List<String> sessionNameFieldNames =
         realmConfig.getConfig(FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL);
     String sessionNamePrefix = AwsSessionNameBuilder.extractPrefix(sessionNameFieldNames);
@@ -208,15 +181,40 @@ public class AwsCredentialsStorageIntegration
             .map(SessionNameField::fromConfigName)
             .flatMap(Optional::stream)
             .collect(Collectors.toList());
-    String roleSessionName;
     if (!enabledSessionNameFields.isEmpty()) {
-      roleSessionName =
-          buildSessionName(principalName, context, enabledSessionNameFields, sessionNamePrefix);
-    } else if (includePrincipalInRoleSessionName) {
-      roleSessionName = AwsRoleSessionNameSanitizer.sanitize("polaris-" + principalName);
-    } else {
-      roleSessionName = AwsSessionNameBuilder.DEFAULT_SESSION_NAME;
+      return buildSessionName(principalName, context, enabledSessionNameFields, sessionNamePrefix);
     }
+    if (realmConfig.getConfig(
+        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL)) {
+      return AwsRoleSessionNameSanitizer.sanitize("polaris-" + principalName);
+    }
+    return AwsSessionNameBuilder.DEFAULT_SESSION_NAME;
+  }
+
+  private static List<Tag> resolveSessionTags(
+      RealmConfig realmConfig, CredentialVendingContext context, String principalName) {
+    List<String> sessionTagFieldNames =
+        realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    if (sessionTagFieldNames.isEmpty() || context.equals(CredentialVendingContext.empty())) {
+      return List.of();
+    }
+    Set<SessionTagField> enabledSessionTagFields =
+        sessionTagFieldNames.stream()
+            .map(SessionTagField::fromConfigName)
+            .flatMap(Optional::stream)
+            .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
+    return buildSessionTags(principalName, context, enabledSessionTagFields);
+  }
+
+  /** Mint a fresh {@link StorageAccessConfig} for the given AWS cache key. */
+  static StorageAccessConfig compute(AwsStorageCredentialCacheKey key) {
+    RealmConfig realmConfig = key.realmConfig();
+    AwsStorageConfigurationInfo awsStorageConfig = key.storageConfig();
+    int storageCredentialDurationSeconds =
+        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    String region = awsStorageConfig.getRegion();
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    String roleSessionName = key.roleSessionName();
 
     if (shouldUseSts(awsStorageConfig)) {
       AssumeRoleRequest.Builder request =
@@ -234,33 +232,22 @@ public class AwsCredentialsStorageIntegration
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
-      // Add session tags when configured and context is non-empty.
-      List<String> sessionTagFieldNames =
-          realmConfig.getConfig(FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-      if (!sessionTagFieldNames.isEmpty() && !context.equals(CredentialVendingContext.empty())) {
-        Set<SessionTagField> enabledSessionTagFields =
-            sessionTagFieldNames.stream()
-                .map(SessionTagField::fromConfigName)
-                .flatMap(Optional::stream)
-                .collect(Collectors.toCollection(() -> EnumSet.noneOf(SessionTagField.class)));
-        List<Tag> sessionTags = buildSessionTags(principalName, context, enabledSessionTagFields);
-        if (!sessionTags.isEmpty()) {
-          request.tags(sessionTags);
-          // Mark all tags as transitive for role chaining support
-          request.transitiveTagKeys(
-              sessionTags.stream().map(Tag::key).collect(Collectors.toList()));
-        }
+      List<Tag> sessionTags = key.sessionTags();
+      if (!sessionTags.isEmpty()) {
+        request.tags(sessionTags);
+        // Mark all tags as transitive for role chaining support
+        request.transitiveTagKeys(sessionTags.stream().map(Tag::key).collect(Collectors.toList()));
       }
 
-      credentialsResolver
+      key.credentialsResolver()
           .apply(awsStorageConfig)
           .ifPresent(cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
-          stsClientProvider.stsClient(
-              StsDestination.of(awsStorageConfig.getStsEndpointUri(), region));
+          key.stsClientProvider()
+              .stsClient(StsDestination.of(awsStorageConfig.getStsEndpointUri(), region));
 
       AssumeRoleResponse response = stsClient.assumeRole(request.build());
       accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());

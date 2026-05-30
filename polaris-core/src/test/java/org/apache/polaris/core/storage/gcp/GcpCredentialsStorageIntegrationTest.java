@@ -491,22 +491,25 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
     Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
 
+    GcpCredentialOps testOps =
+        new GcpCredentialOps() {
+          @Override
+          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            return mockIamClient;
+          }
+
+          @Override
+          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
             mockCreds,
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
             config,
-            EMPTY_REALM_CONFIG) {
-          @Override
-          protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
-            return mockIamClient;
-          }
-
-          @Override
-          protected AccessToken refreshAccessToken(DownscopedCredentials credentials) {
-            return new AccessToken("downscoped-token", new Date());
-          }
-        };
+            EMPTY_REALM_CONFIG,
+            testOps);
 
     integration.getStorageAccessConfig(
         toGrants(

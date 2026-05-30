@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage.gcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -30,7 +29,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
 import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
 import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
-import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
@@ -78,13 +76,20 @@ public class GcpCredentialsStorageIntegration
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
+  private final GcpCredentialOps credentialOps;
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
-    this(sourceCredentials, transportFactory, null, storageConfig, realmConfig);
+    this(
+        sourceCredentials,
+        transportFactory,
+        null,
+        storageConfig,
+        realmConfig,
+        GcpCredentialOps.DEFAULT);
   }
 
   public GcpCredentialsStorageIntegration(
@@ -93,12 +98,38 @@ public class GcpCredentialsStorageIntegration
       org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
       GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
+    this(
+        sourceCredentials,
+        transportFactory,
+        cache,
+        storageConfig,
+        realmConfig,
+        GcpCredentialOps.DEFAULT);
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps) {
+    this(sourceCredentials, transportFactory, null, storageConfig, realmConfig, credentialOps);
+  }
+
+  public GcpCredentialsStorageIntegration(
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps) {
     super(cache, realmConfig, storageConfig);
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
         sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
     this.transportFactory = transportFactory;
+    this.credentialOps = credentialOps;
   }
 
   @Override
@@ -152,12 +183,19 @@ public class GcpCredentialsStorageIntegration
         listLocations,
         writeLocations,
         refreshEndpoint,
-        this);
+        sourceCredentials,
+        transportFactory,
+        storageConfig(),
+        realmConfig(),
+        credentialOps);
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
-  StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
-    GcpStorageConfigurationInfo gcpStorageConfig = storageConfig();
+  static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
+    GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
+    GoogleCredentials sourceCredentials = key.sourceCredentials();
+    HttpTransportFactory transportFactory = key.transportFactory();
+    GcpCredentialOps credentialOps = key.credentialOps();
     Set<String> readLocations = key.allowedReadLocations();
     Set<String> listLocations = key.allowedListLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
@@ -168,7 +206,8 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    GoogleCredentials credentialsToDownscope = getBaseCredentials(gcpStorageConfig);
+    GoogleCredentials credentialsToDownscope =
+        getBaseCredentials(gcpStorageConfig, sourceCredentials, credentialOps);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -180,7 +219,7 @@ public class GcpCredentialsStorageIntegration
             .build();
     AccessToken token;
     try {
-      token = refreshAccessToken(credentials);
+      token = credentialOps.refreshAccessToken(credentials);
     } catch (IOException e) {
       LOGGER
           .atError()
@@ -212,16 +251,21 @@ public class GcpCredentialsStorageIntegration
    * Returns the credential to be used as the source for downscoping. If a specific service account
    * is configured, it impersonates that account first.
    */
-  private GoogleCredentials getBaseCredentials(GcpStorageConfigurationInfo storageConfig) {
+  private static GoogleCredentials getBaseCredentials(
+      GcpStorageConfigurationInfo storageConfig,
+      GoogleCredentials sourceCredentials,
+      GcpCredentialOps credentialOps) {
     if (storageConfig.getGcpServiceAccount() != null) {
-      return createImpersonatedCredentials(sourceCredentials, storageConfig.getGcpServiceAccount());
+      return createImpersonatedCredentials(
+          sourceCredentials, storageConfig.getGcpServiceAccount(), credentialOps);
     }
     return sourceCredentials;
   }
 
-  private GoogleCredentials createImpersonatedCredentials(
-      GoogleCredentials source, String targetServiceAccount) {
-    try (IamCredentialsClient iamCredentialsClient = createIamCredentialsClient(source)) {
+  private static GoogleCredentials createImpersonatedCredentials(
+      GoogleCredentials source, String targetServiceAccount, GcpCredentialOps credentialOps) {
+    try (IamCredentialsClient iamCredentialsClient =
+        credentialOps.createIamCredentialsClient(source)) {
       GenerateAccessTokenRequest request =
           GenerateAccessTokenRequest.newBuilder()
               .setName(SERVICE_ACCOUNT_PREFIX + targetServiceAccount)
@@ -248,7 +292,7 @@ public class GcpCredentialsStorageIntegration
     }
   }
 
-  private String convertToString(CredentialAccessBoundary accessBoundary) {
+  private static String convertToString(CredentialAccessBoundary accessBoundary) {
     try {
       return OBJECT_MAPPER.writeValueAsString(accessBoundary);
     } catch (JsonProcessingException e) {
@@ -343,20 +387,6 @@ public class GcpCredentialsStorageIntegration
           accessBoundaryBuilder.addRule(builder.build());
         });
     return accessBoundaryBuilder.build();
-  }
-
-  @VisibleForTesting
-  protected AccessToken refreshAccessToken(DownscopedCredentials credentials) throws IOException {
-    return credentials.refreshAccessToken();
-  }
-
-  @VisibleForTesting
-  protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials)
-      throws IOException {
-    return IamCredentialsClient.create(
-        IamCredentialsSettings.newBuilder()
-            .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-            .build());
   }
 
   @VisibleForTesting

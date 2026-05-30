@@ -137,12 +137,16 @@ public class AzureCredentialsStorageIntegration
         locations,
         writeLocations,
         refreshEndpoint,
-        this);
+        defaultAzureCredential,
+        storageConfig(),
+        realmConfig());
   }
 
   /** Mint a fresh {@link StorageAccessConfig} for the given Azure cache key. */
-  StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
-    RealmConfig realmConfig = realmConfig();
+  static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
+    RealmConfig realmConfig = key.realmConfig();
+    AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
+    DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
@@ -189,8 +193,8 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AzureStorageConfigurationInfo azureStorageConfig = storageConfig();
-    AccessToken accessToken = getAccessToken(realmConfig, azureStorageConfig.getTenantId());
+    AccessToken accessToken =
+        getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
@@ -299,7 +303,7 @@ public class AzureCredentialsStorageIntegration
     }
   }
 
-  private String getBlobUserDelegationSas(
+  private static String getBlobUserDelegationSas(
       OffsetDateTime startTime,
       OffsetDateTime keyEndtime,
       OffsetDateTime sasExpiry,
@@ -336,7 +340,7 @@ public class AzureCredentialsStorageIntegration
     }
   }
 
-  private String getAdlsUserDelegationSas(
+  private static String getAdlsUserDelegationSas(
       OffsetDateTime startTime,
       OffsetDateTime endTime,
       OffsetDateTime sasExpiry,
@@ -386,7 +390,7 @@ public class AzureCredentialsStorageIntegration
   }
 
   /** Verify that storage accounts, containers and endpoint are the same */
-  private void validateAccountAndContainer(
+  private static void validateAccountAndContainer(
       AzureLocation target, Set<String> readLocations, Set<String> writeLocations) {
     Set<String> allLocations = new HashSet<>();
     allLocations.addAll(readLocations);
@@ -424,7 +428,8 @@ public class AzureCredentialsStorageIntegration
    * @return the access token
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
-  private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
+  private static AccessToken getAccessToken(
+      DefaultAzureCredential defaultAzureCredential, RealmConfig realmConfig, String tenantId) {
     int timeoutMillis = realmConfig.getConfig(AZURE_TIMEOUT_MILLIS);
     int retryCount = realmConfig.getConfig(AZURE_RETRY_COUNT);
     int initialDelayMillis = realmConfig.getConfig(AZURE_RETRY_DELAY_MILLIS);
@@ -442,7 +447,7 @@ public class AzureCredentialsStorageIntegration
             .retryWhen(
                 Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
                     .jitter(jitter) // Apply jitter factor to computed delay
-                    .filter(this::isRetriableAzureException)
+                    .filter(AzureCredentialsStorageIntegration::isRetriableAzureException)
                     .doBeforeRetry(
                         retrySignal ->
                             LOGGER.info(
@@ -484,7 +489,7 @@ public class AzureCredentialsStorageIntegration
    * @param throwable the exception to check
    * @return true if the exception should trigger a retry
    */
-  private boolean isRetriableAzureException(Throwable throwable) {
+  private static boolean isRetriableAzureException(Throwable throwable) {
     // Retry on timeout exceptions
     if (throwable instanceof java.util.concurrent.TimeoutException) {
       return true;

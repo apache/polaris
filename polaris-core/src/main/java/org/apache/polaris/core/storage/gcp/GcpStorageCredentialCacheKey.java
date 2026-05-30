@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import com.google.auth.http.HttpTransportFactory;
+import com.google.auth.oauth2.GoogleCredentials;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
@@ -58,16 +60,28 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
 
   @Value.Parameter(order = 7)
   @Value.Auxiliary
-  GcpCredentialsStorageIntegration integration();
+  GoogleCredentials sourceCredentials();
+
+  @Value.Parameter(order = 8)
+  @Value.Auxiliary
+  HttpTransportFactory transportFactory();
+
+  @Value.Parameter(order = 9)
+  @Value.Auxiliary
+  GcpStorageConfigurationInfo storageConfig();
 
   @Override
-  default RealmConfig realmConfig() {
-    return integration().realmConfig();
-  }
+  @Value.Parameter(order = 10)
+  @Value.Auxiliary
+  RealmConfig realmConfig();
+
+  @Value.Parameter(order = 11)
+  @Value.Auxiliary
+  GcpCredentialOps credentialOps();
 
   @Override
   default StorageAccessConfig load() {
-    return integration().compute(this);
+    return GcpCredentialsStorageIntegration.compute(this);
   }
 
   static GcpStorageCredentialCacheKey of(
@@ -77,7 +91,11 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
-      GcpCredentialsStorageIntegration integration) {
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory,
+      GcpStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig,
+      GcpCredentialOps credentialOps) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
         storageConfigSerializedStr,
@@ -85,6 +103,10 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
-        integration);
+        sourceCredentials,
+        transportFactory,
+        storageConfig,
+        realmConfig,
+        credentialOps);
   }
 }

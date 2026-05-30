@@ -61,6 +61,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 import software.amazon.awssdk.services.sts.model.StsException;
+import software.amazon.awssdk.services.sts.model.Tag;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -1764,8 +1765,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   // Tests for AwsStorageCredentialCacheKey equality
 
-  private AwsStorageCredentialCacheKey awsKey(
-      Optional<String> principalName, CredentialVendingContext context) {
+  private AwsStorageCredentialCacheKey awsKey(String roleSessionName, List<Tag> sessionTags) {
     return AwsStorageCredentialCacheKey.of(
         "testRealm",
         null,
@@ -1773,46 +1773,36 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Set.of("s3://bucket/path"),
         Set.of("s3://bucket/path"),
         Optional.empty(),
-        principalName,
-        context,
-        Mockito.mock(AwsCredentialsStorageIntegration.class));
+        roleSessionName,
+        sessionTags,
+        Mockito.mock(StsClientProvider.class),
+        cfg -> Optional.empty(),
+        Mockito.mock(AwsStorageConfigurationInfo.class),
+        Mockito.mock(RealmConfig.class));
   }
 
   @Test
-  public void testCacheKeyDifferentPrincipalsProduceDifferentKeys() {
-    AwsStorageCredentialCacheKey key1 =
-        awsKey(Optional.of("alice"), CredentialVendingContext.empty());
-    AwsStorageCredentialCacheKey key2 =
-        awsKey(Optional.of("bob"), CredentialVendingContext.empty());
+  public void testCacheKeyDifferentSessionNamesProduceDifferentKeys() {
+    AwsStorageCredentialCacheKey key1 = awsKey("session-alice", List.of());
+    AwsStorageCredentialCacheKey key2 = awsKey("session-bob", List.of());
 
     assertThat(key1).isNotEqualTo(key2);
-    assertThat(key1.principalName()).hasValue("alice");
-    assertThat(key2.principalName()).hasValue("bob");
   }
 
   @Test
-  public void testCacheKeySameWhenPrincipalExcluded() {
-    AwsStorageCredentialCacheKey key1 = awsKey(Optional.empty(), CredentialVendingContext.empty());
-    AwsStorageCredentialCacheKey key2 = awsKey(Optional.empty(), CredentialVendingContext.empty());
+  public void testCacheKeySameWhenInputsMatch() {
+    AwsStorageCredentialCacheKey key1 = awsKey("test-session", List.of());
+    AwsStorageCredentialCacheKey key2 = awsKey("test-session", List.of());
 
     assertThat(key1).isEqualTo(key2);
   }
 
   @Test
-  public void testCacheKeyDifferentContextsProduceDifferentKeys() {
-    CredentialVendingContext context1 =
-        CredentialVendingContext.builder()
-            .principalName(Optional.of("alice"))
-            .catalogName(Optional.of("catalog1"))
-            .build();
-    CredentialVendingContext context2 =
-        CredentialVendingContext.builder()
-            .principalName(Optional.of("alice"))
-            .catalogName(Optional.of("catalog2"))
-            .build();
-
-    AwsStorageCredentialCacheKey key1 = awsKey(Optional.of("alice"), context1);
-    AwsStorageCredentialCacheKey key2 = awsKey(Optional.of("alice"), context2);
+  public void testCacheKeyDifferentSessionTagsProduceDifferentKeys() {
+    Tag tag1 = Tag.builder().key("catalog").value("c1").build();
+    Tag tag2 = Tag.builder().key("catalog").value("c2").build();
+    AwsStorageCredentialCacheKey key1 = awsKey("test-session", List.of(tag1));
+    AwsStorageCredentialCacheKey key2 = awsKey("test-session", List.of(tag2));
 
     assertThat(key1).isNotEqualTo(key2);
   }
