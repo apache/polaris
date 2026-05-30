@@ -26,9 +26,7 @@ import io.vertx.core.Vertx;
 import jakarta.inject.Inject;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -132,7 +130,7 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
   }
 
   @Test
-  public void immediateTaskFailsWhenThreadPoolIsSaturated() throws Exception {
+  public void immediateTaskRetriesWhenThreadPoolIsSaturated() throws Exception {
     var started = new CountDownLatch(1);
     var release = new Semaphore(0);
 
@@ -147,16 +145,12 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
               });
 
       assertThat(started.await(5, SECONDS)).isTrue();
-      var rejected = executor.submit(() -> "rejected").completionStage().toCompletableFuture();
-      assertThat(rejected)
-          .failsWithin(Duration.ofSeconds(5))
-          .withThrowableThat()
-          .isInstanceOf(ExecutionException.class)
-          .havingCause()
-          .isInstanceOf(RejectedExecutionException.class);
+      var delayed = executor.submit(() -> "delayed").completionStage().toCompletableFuture();
+      assertThat(delayed).isNotDone();
 
       release.release();
       assertThat(blocker.completionStage()).succeedsWithin(Duration.ofSeconds(5));
+      assertThat(delayed).succeedsWithin(Duration.ofSeconds(5)).isEqualTo("delayed");
     }
   }
 }
