@@ -137,8 +137,8 @@ public interface BasePersistence extends PolicyMappingPersistence, MetricsPersis
    * part of the PK. If additional non-PK attributes are added this might change.
    *
    * @param callCtx call context
-   * @param grantRec entity record to write, potentially replacing an existing entity record with
-   *     the same key
+   * @param grantRec entity record to write; no update occurs if identical to an already-persisted
+   *     grantRecord
    */
   void writeToGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);

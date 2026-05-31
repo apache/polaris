@@ -193,7 +193,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 values,
                 realmId));
       } catch (SQLException e) {
-        if (datasourceOperations.isConstraintViolation(e)) {
+        if (datasourceOperations.isUniquenessConstraintViolation(e)) {
           PolarisBaseEntity existingEntity =
               lookupEntityByName(
                   callCtx,
@@ -258,7 +258,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           QueryGenerator.generateInsertQuery(
               ModelGrantRecord.ALL_COLUMNS, ModelGrantRecord.TABLE_NAME, values, realmId));
     } catch (SQLException e) {
-      if (datasourceOperations.isConstraintViolation(e)) {
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
         LOGGER.debug("Grant record already exists; treating as no-op: {}", grantRec);
         return;
       }
@@ -923,7 +923,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   .toList(),
               realmId));
     } catch (SQLException e) {
-      if (datasourceOperations.isConstraintViolation(e)) {
+      if (datasourceOperations.isUniquenessConstraintViolation(e)) {
         throw new AlreadyExistsException(e.getMessage(), e);
       }
       LOGGER.error(

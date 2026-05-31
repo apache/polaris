@@ -20,6 +20,12 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,6 +42,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 class JdbcGrantRecordsIdempotencyTest {
+
+  private static final RealmContext REALM_CONTEXT = () -> "REALM";
 
   private static final long SECURABLE_CATALOG_ID = 1L;
   private static final long SECURABLE_ID = 2L;
@@ -63,16 +71,15 @@ class JdbcGrantRecordsIdempotencyTest {
       throw new RuntimeException(e);
     }
 
-    RealmContext realmContext = () -> "REALM";
     JdbcBasePersistenceImpl basePersistence =
         new JdbcBasePersistenceImpl(
             new PolarisDefaultDiagServiceImpl(),
             datasourceOperations,
             RANDOM_SECRETS,
-            Mockito.mock(PolarisStorageIntegrationProvider.class),
-            realmContext.getRealmIdentifier(),
+            mock(PolarisStorageIntegrationProvider.class),
+            REALM_CONTEXT.getRealmIdentifier(),
             schemaVersion);
-    PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
 
     PolarisGrantRecord grant =
         new PolarisGrantRecord(
@@ -82,6 +89,49 @@ class JdbcGrantRecordsIdempotencyTest {
         .doesNotThrowAnyException();
     assertThatCode(() -> basePersistence.writeToGrantRecords(callCtx, grant))
         .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "23502", // NOT NULL violation
+        "23503", // FK violation
+        "23513", // CHECK violation
+        "08006", // connection failure
+        "40001" // serialization failure
+      })
+  void writeToGrantRecords_IdempotencyCheck_OnlyCatchesPKUniqueness(String sqlStateCode)
+      throws SQLException {
+    SQLException nonUniqueViolation = new SQLException(sqlStateCode, sqlStateCode);
+
+    DatasourceOperations datasourceOperations = Mockito.mock(DatasourceOperations.class);
+    when(datasourceOperations.getDatabaseType()).thenReturn(DatabaseType.H2);
+    doThrow(nonUniqueViolation)
+        .when(datasourceOperations)
+        .executeUpdate(any(QueryGenerator.PreparedQuery.class));
+    doCallRealMethod()
+        .when(datasourceOperations)
+        .isUniquenessConstraintViolation(any(SQLException.class));
+
+    int schemaVersion = 4;
+    JdbcBasePersistenceImpl basePersistence =
+        new JdbcBasePersistenceImpl(
+            new PolarisDefaultDiagServiceImpl(),
+            datasourceOperations,
+            RANDOM_SECRETS,
+            mock(PolarisStorageIntegrationProvider.class),
+            REALM_CONTEXT.getRealmIdentifier(),
+            schemaVersion);
+    PolarisCallContext callCtx = new PolarisCallContext(REALM_CONTEXT, basePersistence);
+
+    PolarisGrantRecord grant =
+        new PolarisGrantRecord(
+            SECURABLE_CATALOG_ID, SECURABLE_ID, GRANTEE_CATALOG_ID, GRANTEE_ID, PRIVILEGE_CODE);
+
+    assertThatExceptionOfType(RuntimeException.class)
+        .isThrownBy(() -> basePersistence.writeToGrantRecords(callCtx, grant))
+        .withMessageContaining("Failed to write to grant records")
+        .withCause(nonUniqueViolation);
   }
 
   private static final class TestJdbcConfiguration implements RelationalJdbcConfiguration {
