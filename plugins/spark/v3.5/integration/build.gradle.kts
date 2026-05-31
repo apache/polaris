@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
@@ -134,7 +136,15 @@ dependencies {
   testImplementation(libs.antlr4.runtime)
 }
 
+evaluationDependsOn(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
+
+val sparkBundleJarTask =
+  project(":polaris-spark-${sparkMajorVersion}_${scalaVersion}")
+    .tasks
+    .named<ShadowJar>("createPolarisSparkJar")
+
 tasks.named<Test>("intTest").configure {
+  dependsOn(sparkBundleJarTask)
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
@@ -155,6 +165,10 @@ tasks.named<Test>("intTest").configure {
     logsDir.deleteRecursively()
     // delete quarkus.log file (captured Polaris stdout/stderr)
     project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+    systemProperty(
+      "polaris.spark.bundle.jar",
+      sparkBundleJarTask.get().archiveFile.get().asFile.absolutePath,
+    )
   }
   // This property is not honored in a per-profile application.properties file,
   // so we need to set it here.
