@@ -42,11 +42,11 @@ import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEntityUtils;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -811,17 +811,21 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       if (!results.isEmpty()) {
         StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
         for (PolarisBaseEntity result : results) {
-          // JDBC materializes persisted rows as PolarisBaseEntity, so use the stored location
-          // property instead of casting to LocationBasedEntity.
-          String siblingBaseLocation =
-              result.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-          if (siblingBaseLocation == null || siblingBaseLocation.isBlank()) {
-            continue;
-          }
-          StorageLocation potentialSiblingLocation = StorageLocation.of(siblingBaseLocation);
-          if (entityLocation.isChildOf(potentialSiblingLocation)
-              || potentialSiblingLocation.isChildOf(entityLocation)) {
-            return Optional.of(Optional.of(potentialSiblingLocation.toString()));
+          // JDBC materializes persisted rows as PolarisBaseEntity; resolve location via entity
+          // utils
+          // instead of casting to LocationBasedEntity.
+          Optional<String> overlappingSiblingLocation =
+              PolarisEntityUtils.asLocationBasedEntity(PolarisEntity.of(result))
+                  .map(LocationBasedEntity::getBaseLocation)
+                  .filter(location -> location != null && !location.isBlank())
+                  .map(StorageLocation::of)
+                  .filter(
+                      potentialSiblingLocation ->
+                          entityLocation.isChildOf(potentialSiblingLocation)
+                              || potentialSiblingLocation.isChildOf(entityLocation))
+                  .map(StorageLocation::toString);
+          if (overlappingSiblingLocation.isPresent()) {
+            return Optional.of(overlappingSiblingLocation);
           }
         }
       }
