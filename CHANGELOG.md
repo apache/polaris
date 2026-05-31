@@ -45,6 +45,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `hostUsers` support in Helm chart.
 - Added documentation for BigQuery Metastore Catalog federation. Build with `-PNonRESTCatalogs=BIGQUERY` to include the BigQueryMetastoreCatalog federation extension. See `site/content/in-dev/unreleased/federation/bigquery-metastore-federation.md`.
 - Support for view registration has been added.
+- Python client: added support for Python 3.14
 
 ### Changes
 - Added REPL support to Polaris CLI.
