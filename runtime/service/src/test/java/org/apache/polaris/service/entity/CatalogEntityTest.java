@@ -169,7 +169,7 @@ public class CatalogEntityTest {
                     storageLocation + "5/",
                     storageLocation + "6/"))
             .build();
-    CatalogProperties prop = new CatalogProperties(storageLocation);
+    CatalogProperties prop = new CatalogProperties(storageLocation + "1/");
     Catalog awsCatalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
