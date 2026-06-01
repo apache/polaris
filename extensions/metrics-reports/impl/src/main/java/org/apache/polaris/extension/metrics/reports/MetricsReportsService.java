@@ -25,7 +25,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
@@ -214,12 +213,8 @@ public class MetricsReportsService implements PolarisCatalogsApiService {
         new ScanMetricsReport.Payload.Data(
             r.schemaId().orElse(null),
             r.filterExpression().orElse(null),
-            r.projectedFieldIds().isEmpty()
-                ? null
-                : r.projectedFieldIds().stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(",")),
-            r.projectedFieldNames().isEmpty() ? null : String.join(",", r.projectedFieldNames()),
+            r.projectedFieldIds().isEmpty() ? null : r.projectedFieldIds(),
+            r.projectedFieldNames().isEmpty() ? null : r.projectedFieldNames(),
             r.resultDataFiles(),
             r.resultDeleteFiles(),
             r.totalFileSizeBytes(),

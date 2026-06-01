@@ -20,6 +20,7 @@ package org.apache.polaris.extension.metrics.reports;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 /** A single scan metrics report entry returned by the list API. */
 public record ScanMetricsReport(
@@ -45,8 +46,8 @@ public record ScanMetricsReport(
     public record Data(
         @JsonProperty("schemaId") Integer schemaId,
         @JsonProperty("filterExpression") String filterExpression,
-        @JsonProperty("projectedFieldIds") String projectedFieldIds,
-        @JsonProperty("projectedFieldNames") String projectedFieldNames,
+        @JsonProperty("projectedFieldIds") List<Integer> projectedFieldIds,
+        @JsonProperty("projectedFieldNames") List<String> projectedFieldNames,
         @JsonProperty("resultDataFiles") long resultDataFiles,
         @JsonProperty("resultDeleteFiles") long resultDeleteFiles,
         @JsonProperty("totalFileSizeBytes") long totalFileSizeBytes,

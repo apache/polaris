@@ -260,13 +260,17 @@ components:
           type: string
           nullable: true
         projectedFieldIds:
-          type: string
+          type: array
           nullable: true
-          description: Comma-separated projected field IDs
+          items:
+            type: integer
+          description: Projected field IDs
         projectedFieldNames:
-          type: string
+          type: array
           nullable: true
-          description: Comma-separated projected field names
+          items:
+            type: string
+          description: Projected field names
         resultDataFiles:
           type: integer
           format: int64

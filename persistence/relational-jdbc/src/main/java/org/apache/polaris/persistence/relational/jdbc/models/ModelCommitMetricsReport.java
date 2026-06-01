@@ -354,7 +354,9 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
         .addedFileSizeBytes(getAddedFileSizeBytes())
         .removedFileSizeBytes(getRemovedFileSizeBytes())
         .totalFileSizeBytes(getTotalFileSizeBytes())
-        // The write path stores Optional.empty() as 0L; treat 0 as "unknown" on read.
+        // TODO(#4397): total_duration_ms is NOT NULL, so 0L is ambiguous between "unknown" and a
+        // genuine zero-duration commit. Make the column nullable as part of the metrics schema
+        // consolidation in #4397 so null vs 0 can be represented without this workaround.
         .totalDurationMs(
             getTotalDurationMs() == 0L ? Optional.empty() : Optional.of(getTotalDurationMs()))
         .attempts(getAttempts())
