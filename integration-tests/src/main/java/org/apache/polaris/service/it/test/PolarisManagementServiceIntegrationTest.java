@@ -418,7 +418,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setExternalId("externalId")
             .setUserArn("userArn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
             .build();
     String catalogName =
         client.newEntityName("testUpdateCatalogWithoutDefaultBaseLocationInUpdate");

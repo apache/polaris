@@ -126,7 +126,7 @@ class InMemoryBufferEventListenerIntegrationTest {
         PolarisCatalog.builder()
             .setName(catalogName)
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setProperties(CatalogProperties.builder(baseLocation.toString()).build())
             .setStorageConfigInfo(
                 FileStorageConfigInfo.builder()
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)

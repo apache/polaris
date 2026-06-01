@@ -194,7 +194,7 @@ public class PolarisPolicyServiceIntegrationTest {
             .setStorageConfigInfo(
                 s3BucketBase.getScheme().equals("file")
                     ? new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"), null)
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of(catalogBaseLocation), null)
                     : awsConfigModel)
             .build();
 
