@@ -30,6 +30,7 @@ dependencies {
     api(project(":polaris-api-iceberg-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
+    api(project(":polaris-api-metrics-reports-service"))
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-azurite-testcontainer"))
