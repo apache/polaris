@@ -19,7 +19,6 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for operations with no explicit securable target. */
@@ -32,10 +31,5 @@ public record TargetlessAuthorizationIntent(@NonNull PolarisAuthorizableOperatio
   @Override
   public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
-  }
-
-  @Override
-  public boolean hasSecurableType(PolarisEntityType type) {
-    return false;
   }
 }

@@ -18,17 +18,23 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import org.jspecify.annotations.NonNull;
 
-/** Authorization intent describing an operation and its target resource shape. */
-public sealed interface AuthorizationIntent
-    permits TargetlessAuthorizationIntent,
-        SingleTargetAuthorizationIntent,
-        RenameAuthorizationIntent,
-        PolicyAttachmentAuthorizationIntent,
-        RoleAssignmentAuthorizationIntent,
-        PrivilegeGrantAuthorizationIntent,
-        RootPrivilegeGrantAuthorizationIntent {
+/** Authorization intent for granting or revoking privileges on a securable for a grantee. */
+public record PrivilegeGrantAuthorizationIntent(
+    @NonNull PolarisAuthorizableOperation operation,
+    @NonNull PolarisSecurable grantTarget,
+    @NonNull PolarisSecurable grantee)
+    implements AuthorizationIntent {
+  public PrivilegeGrantAuthorizationIntent {
+    Preconditions.checkNotNull(operation, "operation must be non-null");
+    Preconditions.checkNotNull(grantTarget, "grantTarget must be non-null");
+    Preconditions.checkNotNull(grantee, "grantee must be non-null");
+  }
 
-  @NonNull PolarisAuthorizableOperation getOperation();
+  @Override
+  public @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation;
+  }
 }

@@ -50,13 +50,14 @@ import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.HttpEntities;
 import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 import org.apache.polaris.core.auth.AuthorizationDecision;
-import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -507,15 +508,13 @@ public class OpaPolarisAuthorizerTest {
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
 
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
+    PolarisResolvedPathWrapper target = null;
+    PolarisResolvedPathWrapper secondary = null;
     assertThatNoException()
         .isThrownBy(
             () -> {
               authorizer.authorizeOrThrow(
-                  mockPrincipal,
-                  Collections.emptySet(),
-                  mockOperation,
-                  (PolarisResolvedPathWrapper) null,
-                  (PolarisResolvedPathWrapper) null);
+                  mockPrincipal, Collections.emptySet(), mockOperation, target, secondary);
             });
   }
 
@@ -553,17 +552,15 @@ public class OpaPolarisAuthorizerTest {
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
 
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
+    PolarisResolvedPathWrapper target = null;
+    PolarisResolvedPathWrapper secondary = null;
 
     // Execute authorization (should not throw since we mocked allow=true)
     assertThatNoException()
         .isThrownBy(
             () -> {
               authorizer.authorizeOrThrow(
-                  mockPrincipal,
-                  Collections.emptySet(),
-                  mockOperation,
-                  (PolarisResolvedPathWrapper) null,
-                  (PolarisResolvedPathWrapper) null);
+                  mockPrincipal, Collections.emptySet(), mockOperation, target, secondary);
             });
   }
 
@@ -679,14 +676,16 @@ public class OpaPolarisAuthorizerTest {
   void authorizeIncludesStructuredParentsFromSecurable() throws Exception {
     final String[] capturedRequestBody = new String[1];
     AuthorizationRequest request =
-        AuthorizationRequest.of(
+        new AuthorizationRequest(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
-            PolarisAuthorizableOperation.LOAD_TABLE,
-            PolarisSecurable.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
-                new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")));
+            List.of(
+                new SingleTargetAuthorizationIntent(
+                    PolarisAuthorizableOperation.LOAD_TABLE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "ns2"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "table1")))));
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
     ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
@@ -866,17 +865,19 @@ public class OpaPolarisAuthorizerTest {
     authzState.setResolutionManifest(resolutionManifest);
 
     AuthorizationRequest request =
-        AuthorizationRequest.of(
+        new AuthorizationRequest(
             PolarisPrincipal.of("alice", Map.of(), Set.of("role-1")),
-            PolarisAuthorizableOperation.RENAME_TABLE,
-            PolarisSecurable.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "src_ns"),
-                new PathSegment(PolarisEntityType.TABLE_LIKE, "src_tbl")),
-            PolarisSecurable.of(
-                new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
-                new PathSegment(PolarisEntityType.NAMESPACE, "dst_ns"),
-                new PathSegment(PolarisEntityType.TABLE_LIKE, "dst_tbl")));
+            List.of(
+                new RenameAuthorizationIntent(
+                    PolarisAuthorizableOperation.RENAME_TABLE,
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "src_ns"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "src_tbl")),
+                    PolarisSecurable.of(
+                        new PathSegment(PolarisEntityType.CATALOG, "catalog1"),
+                        new PathSegment(PolarisEntityType.NAMESPACE, "dst_ns"),
+                        new PathSegment(PolarisEntityType.TABLE_LIKE, "dst_tbl")))));
 
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
@@ -964,14 +965,14 @@ public class OpaPolarisAuthorizerTest {
     AuthorizationDecision decision =
         authorizer.authorize(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 principal,
                 List.of(
-                    AuthorizationIntent.of(
+                    new SingleTargetAuthorizationIntent(
                         PolarisAuthorizableOperation.GET_CATALOG,
                         PolarisSecurable.of(
                             new PathSegment(PolarisEntityType.CATALOG, "catalog-1"))),
-                    AuthorizationIntent.of(
+                    new SingleTargetAuthorizationIntent(
                         PolarisAuthorizableOperation.GET_CATALOG,
                         PolarisSecurable.of(
                             new PathSegment(PolarisEntityType.CATALOG, "catalog-2"))))));
@@ -1014,7 +1015,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  void authorizeUpdateTableMultiIntentRequestEvaluatesSequentially() throws Exception {
+  void authorizeUpdateTableMultiIntentRequestEvaluatesSequentially() {
     final int[] requestCount = new int[1];
     HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
     @SuppressWarnings("resource")
@@ -1049,12 +1050,12 @@ public class OpaPolarisAuthorizerTest {
     AuthorizationDecision decision =
         authorizer.authorize(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 principal,
                 List.of(
-                    AuthorizationIntent.of(
+                    new SingleTargetAuthorizationIntent(
                         PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES, tableTarget),
-                    AuthorizationIntent.of(
+                    new SingleTargetAuthorizationIntent(
                         PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF, tableTarget))));
 
     assertThat(decision.isAllowed()).isTrue();
@@ -1062,10 +1063,12 @@ public class OpaPolarisAuthorizerTest {
   }
 
   private AuthorizationRequest requestWithCatalogTarget(PolarisPrincipal principal) {
-    return AuthorizationRequest.of(
+    return new AuthorizationRequest(
         principal,
-        PolarisAuthorizableOperation.GET_CATALOG,
-        PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-1")));
+        List.of(
+            new SingleTargetAuthorizationIntent(
+                PolarisAuthorizableOperation.GET_CATALOG,
+                PolarisSecurable.of(new PathSegment(PolarisEntityType.CATALOG, "catalog-1")))));
   }
 
   private ResolvedPolarisEntity createResolvedEntity(PolarisEntity entity) {

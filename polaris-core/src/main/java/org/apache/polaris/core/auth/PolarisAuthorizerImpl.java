@@ -761,7 +761,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
     for (AuthorizationIntent intent : request.intents()) {
       AuthorizationDecision decision =
-          authorizeIntent(authzState, request.principal(), resolutionManifest, intent);
+          authorizeIntent(request.principal(), resolutionManifest, intent);
       if (!decision.isAllowed()) {
         return decision;
       }
@@ -770,7 +770,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   private AuthorizationDecision authorizeIntent(
-      AuthorizationState authzState,
       PolarisPrincipal polarisPrincipal,
       PolarisResolutionManifest resolutionManifest,
       AuthorizationIntent intent) {
@@ -791,21 +790,47 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
                 getResolvedSecurable(
                     resolutionManifest, singleTargetIntent.target(), prependRootContainer));
         resolvedSecondaries = null;
-      } else if (intent instanceof PairwiseTargetAuthorizationIntent pairwiseIntent) {
+      } else if (intent instanceof RenameAuthorizationIntent renameIntent) {
         resolvedTargets =
-            pairwiseIntent.target() == null
-                ? (prependRootContainer
-                    ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
-                    : null)
-                : List.of(
-                    getResolvedSecurable(
-                        resolutionManifest, pairwiseIntent.target(), prependRootContainer));
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, renameIntent.from(), prependRootContainer));
         resolvedSecondaries =
-            semantics.secondaryPrivileges().isEmpty() || pairwiseIntent.secondary() == null
-                ? null
-                : List.of(
-                    getResolvedSecurable(
-                        resolutionManifest, pairwiseIntent.secondary(), prependRootContainer));
+            List.of(
+                getResolvedSecurable(resolutionManifest, renameIntent.to(), prependRootContainer));
+      } else if (intent instanceof PolicyAttachmentAuthorizationIntent policyAttachmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.policy(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.attachedTo(), prependRootContainer));
+      } else if (intent instanceof RoleAssignmentAuthorizationIntent roleAssignmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.role(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.assignee(), prependRootContainer));
+      } else if (intent instanceof PrivilegeGrantAuthorizationIntent privilegeGrantIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantTarget(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantee(), prependRootContainer));
+      } else if (intent instanceof RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent) {
+        resolvedTargets = List.of(resolutionManifest.getResolvedRootContainerEntityAsPath());
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, rootPrivilegeGrantIntent.grantee(), prependRootContainer));
       } else {
         throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }

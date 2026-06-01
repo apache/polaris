@@ -20,7 +20,6 @@ package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
 import java.util.List;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.jspecify.annotations.NonNull;
 
 /** Full authorization request containing the subject and one or more authorization intents. */
@@ -32,39 +31,5 @@ public record AuthorizationRequest(
     intents = List.copyOf(intents);
     Preconditions.checkArgument(
         !intents.isEmpty(), "Authorization request must contain at least one intent");
-  }
-
-  public static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal, @NonNull AuthorizationIntent intent) {
-    return new AuthorizationRequest(principal, List.of(intent));
-  }
-
-  public static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
-    return new AuthorizationRequest(principal, intents);
-  }
-
-  public static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal, @NonNull PolarisAuthorizableOperation operation) {
-    return of(principal, AuthorizationIntent.of(operation));
-  }
-
-  public static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal,
-      @NonNull PolarisAuthorizableOperation operation,
-      @NonNull PolarisSecurable target) {
-    return of(principal, AuthorizationIntent.of(operation, target));
-  }
-
-  public static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal,
-      @NonNull PolarisAuthorizableOperation operation,
-      PolarisSecurable target,
-      PolarisSecurable secondary) {
-    return of(principal, AuthorizationIntent.of(operation, target, secondary));
-  }
-
-  public boolean hasSecurableType(PolarisEntityType type) {
-    return intents.stream().anyMatch(intent -> intent.hasSecurableType(type));
   }
 }

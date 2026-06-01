@@ -19,37 +19,22 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
-/**
- * Authorization intent for operations that may carry both a primary target and a related secondary
- * target.
- *
- * <p>The primary target may be omitted for legacy root-scoped flows that rely on an implicit root
- * primary plus an explicit secondary target.
- */
-public record PairwiseTargetAuthorizationIntent(
+/** Authorization intent for assigning or revoking a role for an assignee. */
+public record RoleAssignmentAuthorizationIntent(
     @NonNull PolarisAuthorizableOperation operation,
-    @Nullable PolarisSecurable target,
-    @Nullable PolarisSecurable secondary)
+    @NonNull PolarisSecurable role,
+    @NonNull PolarisSecurable assignee)
     implements AuthorizationIntent {
-  public PairwiseTargetAuthorizationIntent {
+  public RoleAssignmentAuthorizationIntent {
     Preconditions.checkNotNull(operation, "operation must be non-null");
-    Preconditions.checkState(
-        target != null || secondary != null,
-        "PairwiseTargetAuthorizationIntent must contain a target or secondary");
+    Preconditions.checkNotNull(role, "role must be non-null");
+    Preconditions.checkNotNull(assignee, "assignee must be non-null");
   }
 
   @Override
   public @NonNull PolarisAuthorizableOperation getOperation() {
     return operation;
-  }
-
-  @Override
-  public boolean hasSecurableType(PolarisEntityType type) {
-    return (target() != null && target().leafHasType(type))
-        || (secondary() != null && secondary().leafHasType(type));
   }
 }

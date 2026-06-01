@@ -43,12 +43,16 @@ import org.apache.polaris.core.auth.AuthorizationDecision;
 import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.PairwiseTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.PathSegment;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
+import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -134,9 +138,25 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
           targets = toResourceEntitiesFromSecurable(singleTargetIntent.target());
           secondaries = List.of();
         }
-        case PairwiseTargetAuthorizationIntent pairwiseTargetIntent -> {
-          targets = toResourceEntitiesFromSecurable(pairwiseTargetIntent.target());
-          secondaries = toResourceEntitiesFromSecurable(pairwiseTargetIntent.secondary());
+        case RenameAuthorizationIntent renameIntent -> {
+          targets = toResourceEntitiesFromSecurable(renameIntent.from());
+          secondaries = toResourceEntitiesFromSecurable(renameIntent.to());
+        }
+        case PolicyAttachmentAuthorizationIntent policyAttachmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(policyAttachmentIntent.policy());
+          secondaries = toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo());
+        }
+        case RoleAssignmentAuthorizationIntent roleAssignmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(roleAssignmentIntent.role());
+          secondaries = toResourceEntitiesFromSecurable(roleAssignmentIntent.assignee());
+        }
+        case PrivilegeGrantAuthorizationIntent privilegeGrantIntent -> {
+          targets = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantTarget());
+          secondaries = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantee());
+        }
+        case RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent -> {
+          targets = List.of();
+          secondaries = toResourceEntitiesFromSecurable(rootPrivilegeGrantIntent.grantee());
         }
       }
       boolean allowed =
