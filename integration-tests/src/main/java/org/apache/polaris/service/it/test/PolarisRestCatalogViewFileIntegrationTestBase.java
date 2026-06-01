@@ -46,8 +46,7 @@ public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     return FileStorageConfigInfo.builder()
         .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
         .setAllowedLocations(
-            List.of(
-                baseLocation, baseLocation + "/" + System.getenv("USER") + "/path/to/data"))
+            List.of(baseLocation, baseLocation + "/" + System.getenv("USER") + "/path/to/data"))
         .build();
   }
 
