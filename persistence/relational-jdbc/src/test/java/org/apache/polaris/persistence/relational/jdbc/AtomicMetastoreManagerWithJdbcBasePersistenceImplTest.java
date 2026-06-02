@@ -40,6 +40,7 @@ import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -92,9 +93,7 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
   @Test
   void testHasOverlappingSiblingsUsesStoredBaseLocation() {
     // The optimized check relies on the location_without_scheme column added in schema v2.
-    if (schemaVersion() < 2) {
-      return;
-    }
+    Assumptions.assumeThat(schemaVersion()).isGreaterThanOrEqualTo(2);
 
     var metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager();
     var callContext = polarisTestMetaStoreManager.polarisCallContext();
