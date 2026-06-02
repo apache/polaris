@@ -515,9 +515,9 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   protected String defaultWarehouseLocation(TableIdentifier tableIdentifier) {
+    String namespaceLocation;
     if (tableIdentifier.namespace().isEmpty()) {
-      return SLASH.join(
-          defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
+      namespaceLocation = defaultNamespaceLocation(tableIdentifier.namespace());
     } else {
       PolarisResolvedPathWrapper resolvedNamespace =
           resolvedEntityView.getResolvedPath(
@@ -526,9 +526,16 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         throw noSuchNamespaceException(tableIdentifier.namespace());
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
-      String namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
-      return SLASH.join(namespaceLocation, tableIdentifier.name());
+      namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
     }
+    String location = SLASH.join(namespaceLocation, tableIdentifier.name());
+    // Give the generated location a unique, unpredictable suffix so that no two tables share a
+    // path prefix.
+    if (realmConfig.getConfig(
+        FeatureConfiguration.DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED, catalogEntity)) {
+      location = location + "-" + UUID.randomUUID();
+    }
+    return location;
   }
 
   private String defaultNamespaceLocation(Namespace namespace) {
