@@ -144,8 +144,7 @@ public class ServiceProducers {
         (metaStore instanceof MetricsPersistence mp)
             ? mp
             : metaStoreManagerFactory.getOrCreateMetricsPersistence(realmContext);
-    return new PolarisCallContext(
-        realmContext, metaStore, metricsPersistence, configurationSource);
+    return new PolarisCallContext(realmContext, metaStore, metricsPersistence, configurationSource);
   }
 
   @Produces
