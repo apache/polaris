@@ -30,8 +30,9 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.AuthorizationTargetBinding;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -153,12 +154,11 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.policy(catalogName(), identifier), null))));
+                    new SingleTargetAuthorizationIntent(
+                        op, PolarisSecurableMapper.policy(catalogName(), identifier)))));
 
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(
@@ -196,7 +196,7 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
       PolarisAuthorizableOperation op =
           PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
       // only Iceberg tables are supported
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
   }
@@ -208,12 +208,11 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.catalog(catalogName()), null))));
+                    new SingleTargetAuthorizationIntent(
+                        op, PolarisSecurableMapper.catalog(catalogName())))));
 
     PolarisResolvedPathWrapper targetCatalog =
         resolutionManifest.getResolvedReferenceCatalogEntity();
@@ -265,11 +264,11 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                requestedOp,
                 List.of(
-                    AuthorizationTargetBinding.of(
+                    new PolicyAttachmentAuthorizationIntent(
+                        requestedOp,
                         PolarisSecurableMapper.policy(catalogName(), identifier),
                         PolarisSecurableMapper.policyAttachmentTarget(catalogName(), target)))));
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();

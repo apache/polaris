@@ -92,8 +92,8 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.AuthorizationTargetBinding;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -699,7 +699,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
             ? PolarisAuthorizableOperation.REPORT_READ_METRICS
             : PolarisAuthorizableOperation.REPORT_WRITE_METRICS;
 
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_TABLE, identifier);
 
     // Get catalog and table IDs from resolved entities (already resolved during authorization)
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
@@ -860,7 +861,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private Set<PolarisStorageActions> authorizeLoadTable(
       TableIdentifier tableIdentifier, boolean delegationRequested) {
     if (!delegationRequested) {
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           PolarisAuthorizableOperation.LOAD_TABLE,
           PolarisEntitySubType.ICEBERG_TABLE,
           tableIdentifier);
@@ -882,11 +883,11 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     try {
       // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
       // easily.
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
-      authorizeBasicTableLikeOperationOrThrow(
+      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
@@ -1072,12 +1073,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                PolarisAuthorizableOperation.UPDATE_TABLE,
                 List.of(
-                    AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier), null))));
+                    new SingleTargetAuthorizationIntent(
+                        PolarisAuthorizableOperation.UPDATE_TABLE,
+                        PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))));
 
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
         getUpdateTableAuthorizableOperations(request, getResolvedCatalogEntity());
@@ -1108,7 +1109,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropTableWithoutPurge(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     catalogHandlerUtils().dropTable(baseCatalog, tableIdentifier);
@@ -1116,7 +1117,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropTableWithPurge(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
@@ -1128,7 +1129,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void tableExists(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.TABLE_EXISTS;
-    authorizeBasicTableLikeOperationOrThrow(
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
@@ -1320,14 +1321,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     return catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REPLACE_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1339,14 +1342,16 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
   public void dropView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     catalogHandlerUtils().dropView(viewCatalog, viewIdentifier);
   }
 
   public void viewExists(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.VIEW_EXISTS;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
+    resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
     catalogHandlerUtils().loadView(viewCatalog, viewIdentifier);

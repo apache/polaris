@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog.common;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
@@ -30,12 +32,14 @@ import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
-import org.apache.polaris.core.auth.AuthorizationTargetBinding;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -139,15 +143,14 @@ public abstract class CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
+                    new SingleTargetAuthorizationIntent(
+                        op,
                         namespace.isEmpty()
                             ? PolarisSecurableMapper.catalog(catalogName())
-                            : PolarisSecurableMapper.namespace(catalogName(), namespace),
-                        null))));
+                            : PolarisSecurableMapper.namespace(catalogName(), namespace)))));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
@@ -184,15 +187,14 @@ public abstract class CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
+                    new SingleTargetAuthorizationIntent(
+                        op,
                         parentNamespace.isEmpty()
                             ? PolarisSecurableMapper.catalog(catalogName())
-                            : PolarisSecurableMapper.namespace(catalogName(), parentNamespace),
-                        null))));
+                            : PolarisSecurableMapper.namespace(catalogName(), parentNamespace)))));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(parentNamespace), true);
     if (target == null) {
@@ -233,12 +235,11 @@ public abstract class CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
-                        PolarisSecurableMapper.namespace(catalogName(), namespace), null))));
+                    new SingleTargetAuthorizationIntent(
+                        op, PolarisSecurableMapper.namespace(catalogName(), namespace)))));
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofNamespace(namespace), true);
     if (target == null) {
@@ -330,9 +331,36 @@ public abstract class CatalogHandler {
     }
   }
 
-  protected void authorizeBasicTableLikeOperationOrThrow(
+  protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    authorizeBasicTableLikeOperationsOrThrow(EnumSet.of(op), subType, identifier);
+    ensureResolutionManifestForTable(identifier);
+
+    AuthorizationState authzState = new AuthorizationState();
+    authzState.setResolutionManifest(resolutionManifest);
+    authorizer()
+        .resolveAuthorizationInputs(
+            authzState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                List.of(
+                    new SingleTargetAuthorizationIntent(
+                        op, PolarisSecurableMapper.tableLike(catalogName(), identifier)))));
+
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
+    if (target == null) {
+      throw notFoundExceptionForTableLikeEntity(identifier, subType);
+    }
+
+    authorizer()
+        .authorizeOrThrow(
+            polarisPrincipal(),
+            resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+            op,
+            target,
+            null /* secondary */);
+
+    initializeCatalog();
   }
 
   protected void authorizeBasicTableLikeOperationsOrThrow(
@@ -340,27 +368,12 @@ public abstract class CatalogHandler {
       PolarisEntitySubType subType,
       TableIdentifier identifier) {
     ensureResolutionManifestForTable(identifier);
-    if (resolutionManifest.getPrimaryResolverStatus() == null) {
-      if (!ops.isEmpty()) {
-        // Pre-resolution intentionally runs once for the shared target set using a representative
-        // operation from the requested op set. This is a temporary misuse of the current SPI
-        // shape: operation is part of resolveAuthorizationInputs(...), but built-in authorizers do
-        // not currently vary resolution scope by operation, so any op in the set is sufficient.
-        // Once the SPI supports repeated or multi-op resolution cleanly, this path should stop
-        // depending on a representative operation.
-        AuthorizationState authzState = new AuthorizationState();
-        authzState.setResolutionManifest(resolutionManifest);
-        authorizer()
-            .resolveAuthorizationInputs(
-                authzState,
-                AuthorizationRequest.of(
-                    polarisPrincipal(),
-                    ops.iterator().next(),
-                    List.of(
-                        AuthorizationTargetBinding.of(
-                            PolarisSecurableMapper.tableLike(catalogName(), identifier), null))));
-      }
-    }
+    checkArgument(!ops.isEmpty(), "No operations provided for table-like authorization");
+    checkState(
+        resolutionManifest.getPrimaryResolverStatus() != null,
+        "Expected table-like target to already be resolved before authorizing operations %s",
+        ops);
+
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
     if (target == null) {
@@ -397,12 +410,12 @@ public abstract class CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 ids.stream()
                     .map(identifier -> PolarisSecurableMapper.tableLike(catalogName(), identifier))
-                    .map(target -> AuthorizationTargetBinding.of(target, null))
+                    .<AuthorizationIntent>map(
+                        target -> new SingleTargetAuthorizationIntent(op, target))
                     .toList()));
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
 
@@ -458,13 +471,13 @@ public abstract class CatalogHandler {
     authorizer()
         .resolveAuthorizationInputs(
             authzState,
-            AuthorizationRequest.of(
+            new AuthorizationRequest(
                 polarisPrincipal(),
-                op,
                 List.of(
-                    AuthorizationTargetBinding.of(
+                    new RenameAuthorizationIntent(
+                        op,
                         PolarisSecurableMapper.tableLike(catalogName(), src),
-                        PolarisSecurableMapper.namespace(catalogName(), dst.namespace())))));
+                        PolarisSecurableMapper.tableLike(catalogName(), dst)))));
     ResolverStatus status = resolutionManifest.getPrimaryResolverStatus();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().lastEntityType() == PolarisEntityType.NAMESPACE) {
