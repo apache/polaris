@@ -759,75 +759,117 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   public AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
-    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(request.getOperation());
+    for (AuthorizationIntent intent : request.intents()) {
+      AuthorizationDecision decision =
+          authorizeIntent(request.principal(), resolutionManifest, intent);
+      if (!decision.isAllowed()) {
+        return decision;
+      }
+    }
+    return AuthorizationDecision.allow();
+  }
+
+  private AuthorizationDecision authorizeIntent(
+      PolarisPrincipal polarisPrincipal,
+      PolarisResolutionManifest resolutionManifest,
+      AuthorizationIntent intent) {
+    RbacOperationSemantics semantics = RbacOperationSemantics.forOperation(intent.getOperation());
     boolean prependRootContainer = semantics.rooting() == ResolvedPathRooting.ROOT;
     try {
-      List<PolarisSecurable> targets = request.getTargets();
       List<PolarisResolvedPathWrapper> resolvedTargets;
-      if (targets.isEmpty()) {
+      List<PolarisResolvedPathWrapper> resolvedSecondaries;
+      if (intent instanceof TargetlessAuthorizationIntent) {
         resolvedTargets =
             prependRootContainer
                 ? List.of(resolutionManifest.getResolvedRootContainerEntityAsPath())
                 : null;
+        resolvedSecondaries = null;
+      } else if (intent instanceof SingleTargetAuthorizationIntent singleTargetIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, singleTargetIntent.target(), prependRootContainer));
+        resolvedSecondaries = null;
+      } else if (intent instanceof RenameAuthorizationIntent renameIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, renameIntent.from(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(resolutionManifest, renameIntent.to(), prependRootContainer));
+      } else if (intent instanceof PolicyAttachmentAuthorizationIntent policyAttachmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.policy(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, policyAttachmentIntent.attachedTo(), prependRootContainer));
+      } else if (intent instanceof RoleAssignmentAuthorizationIntent roleAssignmentIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.role(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, roleAssignmentIntent.assignee(), prependRootContainer));
+      } else if (intent instanceof PrivilegeGrantAuthorizationIntent privilegeGrantIntent) {
+        resolvedTargets =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantTarget(), prependRootContainer));
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, privilegeGrantIntent.grantee(), prependRootContainer));
+      } else if (intent instanceof RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent) {
+        resolvedTargets = List.of(resolutionManifest.getResolvedRootContainerEntityAsPath());
+        resolvedSecondaries =
+            List.of(
+                getResolvedSecurable(
+                    resolutionManifest, rootPrivilegeGrantIntent.grantee(), prependRootContainer));
       } else {
-        resolvedTargets = getResolvedSecurables(resolutionManifest, targets, prependRootContainer);
+        throw new IllegalStateException("Unsupported authorization intent: " + intent.getClass());
       }
-      List<PolarisSecurable> secondaries = request.getSecondaries();
-      List<PolarisResolvedPathWrapper> resolvedSecondaries =
-          semantics.secondaryPrivileges().isEmpty() || secondaries.isEmpty()
-              ? null
-              : getResolvedSecurables(resolutionManifest, secondaries, prependRootContainer);
       authorizeOrThrow(
-          request.getPrincipal(),
+          polarisPrincipal,
           resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          request.getOperation(),
+          intent.getOperation(),
           resolvedTargets,
           resolvedSecondaries);
       return AuthorizationDecision.allow();
     } catch (ForbiddenException e) {
       LOGGER.debug(
-          "Authorization denied for principalName {} operation {} targets {} secondaries {}",
-          request.getPrincipal().getName(),
-          request.getOperation(),
-          request.getTargets(),
-          request.getSecondaries(),
+          "Authorization denied for principalName {} intent {}",
+          polarisPrincipal.getName(),
+          intent,
           e);
       return AuthorizationDecision.deny(e.getMessage());
     }
-  }
-
-  private List<PolarisResolvedPathWrapper> getResolvedSecurables(
-      PolarisResolutionManifest resolutionManifest,
-      List<PolarisSecurable> securables,
-      boolean prependRootContainer) {
-    return securables.stream()
-        .map(
-            securable -> {
-              PolarisResolvedPathWrapper resolvedSecurable =
-                  getResolvedSecurable(resolutionManifest, securable, prependRootContainer);
-              Preconditions.checkState(
-                  resolvedSecurable != null,
-                  "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
-                  securable.getLeaf().entityType(),
-                  securable.getLeaf(),
-                  securable.getParents());
-              return resolvedSecurable;
-            })
-        .toList();
   }
 
   private PolarisResolvedPathWrapper getResolvedSecurable(
       PolarisResolutionManifest resolutionManifest,
       PolarisSecurable securable,
       boolean prependRootContainer) {
-    if (securable.getLeaf().entityType().isTopLevel()) {
-      // Ignore prependRootContainer for top-level entities.
-      return resolutionManifest.getResolvedTopLevelEntity(
-          securable.getLeaf().name(), securable.getLeaf().entityType());
-    }
-    return resolutionManifest.getResolvedPath(
-        ResolvedPathKey.of(getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
-        prependRootContainer);
+    PolarisResolvedPathWrapper resolvedSecurable =
+        securable.getLeaf().entityType().isTopLevel()
+            ? resolutionManifest.getResolvedTopLevelEntity(
+                securable.getLeaf().name(), securable.getLeaf().entityType())
+            : resolutionManifest.getResolvedPath(
+                ResolvedPathKey.of(
+                    getPathNamesWithinCatalog(securable), securable.getLeaf().entityType()),
+                prependRootContainer);
+    Preconditions.checkState(
+        resolvedSecurable != null,
+        "Resolved path for securable is null for entityType=%s leaf=%s parents=%s",
+        securable.getLeaf().entityType(),
+        securable.getLeaf(),
+        securable.getParents());
+    return resolvedSecurable;
   }
 
   private List<String> getPathNamesWithinCatalog(PolarisSecurable securable) {

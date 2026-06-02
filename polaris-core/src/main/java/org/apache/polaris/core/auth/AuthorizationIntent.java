@@ -18,18 +18,17 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.google.common.base.Preconditions;
-import java.util.List;
 import org.jspecify.annotations.NonNull;
 
-/** Full authorization request containing the subject and one or more authorization intents. */
-public record AuthorizationRequest(
-    @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
-  public AuthorizationRequest {
-    Preconditions.checkNotNull(principal, "principal must be non-null");
-    Preconditions.checkNotNull(intents, "intents must be non-null");
-    intents = List.copyOf(intents);
-    Preconditions.checkArgument(
-        !intents.isEmpty(), "Authorization request must contain at least one intent");
-  }
+/** Authorization intent describing an operation and its target resource shape. */
+public sealed interface AuthorizationIntent
+    permits TargetlessAuthorizationIntent,
+        SingleTargetAuthorizationIntent,
+        RenameAuthorizationIntent,
+        PolicyAttachmentAuthorizationIntent,
+        RoleAssignmentAuthorizationIntent,
+        PrivilegeGrantAuthorizationIntent,
+        RootPrivilegeGrantAuthorizationIntent {
+
+  @NonNull PolarisAuthorizableOperation getOperation();
 }

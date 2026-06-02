@@ -19,17 +19,22 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
-import java.util.List;
 import org.jspecify.annotations.NonNull;
 
-/** Full authorization request containing the subject and one or more authorization intents. */
-public record AuthorizationRequest(
-    @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
-  public AuthorizationRequest {
-    Preconditions.checkNotNull(principal, "principal must be non-null");
-    Preconditions.checkNotNull(intents, "intents must be non-null");
-    intents = List.copyOf(intents);
-    Preconditions.checkArgument(
-        !intents.isEmpty(), "Authorization request must contain at least one intent");
+/** Authorization intent for rename operations over a source and destination securable. */
+public record RenameAuthorizationIntent(
+    @NonNull PolarisAuthorizableOperation operation,
+    @NonNull PolarisSecurable from,
+    @NonNull PolarisSecurable to)
+    implements AuthorizationIntent {
+  public RenameAuthorizationIntent {
+    Preconditions.checkNotNull(operation, "operation must be non-null");
+    Preconditions.checkNotNull(from, "from must be non-null");
+    Preconditions.checkNotNull(to, "to must be non-null");
+  }
+
+  @Override
+  public @NonNull PolarisAuthorizableOperation getOperation() {
+    return operation;
   }
 }
