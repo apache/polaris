@@ -25,6 +25,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
@@ -49,6 +53,20 @@ public abstract class BaseTestCommitterImpl {
 
   @PolarisPersistence(fastRetries = true)
   protected Persistence persistence;
+
+  @Test
+  public void exclusiveSynchronizerDoesNotAcquirePermitOnTimeout() {
+    var sync =
+        ExclusiveCommitSynchronizer.forKey(
+            persistence.realmId(), "exclusiveSynchronizer-" + persistence.generateId());
+
+    soft.assertThat(sync.before(0L)).isTrue();
+    soft.assertThat(sync.before(1L)).isFalse();
+    soft.assertThat(sync.before(0L)).isFalse();
+    sync.after();
+    soft.assertThat(sync.before(0L)).isTrue();
+    sync.after();
+  }
 
   @Test
   public void committerStateImpl() {
@@ -267,6 +285,88 @@ public abstract class BaseTestCommitterImpl {
                 objRef(anotherObj1.withNumParts(1)),
                 objRef(anotherObj2.withNumParts(1))))
         .containsExactly(anotherObj1.withNumParts(1), anotherObj2.withNumParts(1));
+  }
+
+  @Test
+  public void synchronizingLocallySerializesConcurrentCommits(TestInfo testInfo) throws Exception {
+    var initialObj =
+        persistence.write(
+            CommitTestObj.builder()
+                .id(persistence.generateId())
+                .text("initial")
+                .seq(1)
+                .tail(new long[0])
+                .build(),
+            CommitTestObj.class);
+    var referenceName = testInfo.getTestMethod().orElseThrow().getName();
+
+    persistence.write(initialObj, CommitTestObj.class);
+    persistence.createReference(referenceName, Optional.of(objRef(initialObj)));
+
+    var committer =
+        persistence
+            .createCommitter(referenceName, CommitTestObj.class, String.class)
+            .synchronizingLocally();
+    var firstEntered = new CountDownLatch(1);
+    var releaseFirst = new CountDownLatch(1);
+    var secondEntered = new CountDownLatch(1);
+    var thirdEntered = new CountDownLatch(1);
+    var firstReleased = new AtomicBoolean();
+    var executor = Executors.newFixedThreadPool(2);
+    try {
+      var first =
+          executor.submit(
+              () ->
+                  committer.commit(
+                      (state, refObjSupplier) -> {
+                        firstEntered.countDown();
+                        try {
+                          if (!releaseFirst.await(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Timed out waiting to release first commit");
+                          }
+                        } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                          throw new RuntimeException(e);
+                        }
+                        var result =
+                            state.commitResult(
+                                "first",
+                                CommitTestObj.builder().text("first"),
+                                refObjSupplier.get());
+                        firstReleased.set(true);
+                        return result;
+                      }));
+      soft.assertThat(firstEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+      var second =
+          executor.submit(
+              () ->
+                  committer.commit(
+                      (state, refObjSupplier) -> {
+                        secondEntered.countDown();
+                        if (!firstReleased.get()) {
+                          throw new AssertionError(
+                              "Second synchronized commit started before first commit finished");
+                        }
+                        return state.commitResult(
+                            "second", CommitTestObj.builder().text("second"), refObjSupplier.get());
+                      }));
+
+      soft.assertThat(secondEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
+      var third =
+          executor.submit(
+              () -> {
+                thirdEntered.countDown();
+                return "third";
+              });
+      soft.assertThat(thirdEntered.await(200, TimeUnit.MILLISECONDS)).isFalse();
+      releaseFirst.countDown();
+      soft.assertThat(first.get(5, TimeUnit.SECONDS)).contains("first");
+      soft.assertThat(second.get(5, TimeUnit.SECONDS)).contains("second");
+      soft.assertThat(third.get(5, TimeUnit.SECONDS)).isEqualTo("third");
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @Test

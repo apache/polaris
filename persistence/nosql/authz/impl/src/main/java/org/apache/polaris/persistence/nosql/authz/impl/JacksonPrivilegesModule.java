@@ -18,72 +18,71 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.Shutdown;
+import jakarta.enterprise.event.Startup;
 import jakarta.enterprise.inject.spi.CDI;
-import java.util.function.Function;
+import jakarta.inject.Inject;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.PrivilegeSet;
 import org.apache.polaris.persistence.nosql.authz.api.Privileges;
 
 public class JacksonPrivilegesModule extends SimpleModule {
+  @SuppressWarnings("unused")
   public JacksonPrivilegesModule() {
-    addDeserializer(PrivilegeSet.class, new PrivilegeSetDeserializer());
-    addSerializer(PrivilegeSet.class, new PrivilegeSetSerializer());
-    addDeserializer(Acl.class, new AclDeserializer());
+    this(PrivilegesViaCDI::privileges);
+  }
+
+  JacksonPrivilegesModule(Supplier<Privileges> privilegesResolver) {
+    requireNonNull(privilegesResolver, "privilegesResolver must not be null");
+    addDeserializer(PrivilegeSet.class, new PrivilegeSetDeserializer(privilegesResolver));
+    addSerializer(PrivilegeSet.class, new PrivilegeSetSerializer(privilegesResolver));
+    addDeserializer(Acl.class, new AclDeserializer(privilegesResolver));
     addSerializer(Acl.class, new AclSerializer());
   }
 
-  static Privileges currentPrivileges() {
-    return cdiResolve(Privileges.class);
-  }
-
-  // TODO the following is the same as in AbstractTypeIdResolver
-
   /**
-   * Resolve the given type via {@link CDI#current() CDI.current()}. For tests the resolution via
-   * CDI can be {@linkplain CDIResolver#setResolver(Function) routed to a custom function}.
+   * Helper to memoize the {@link Privileges} instance in a CDI environment. This class bridges the
+   * gap between CDI and Jackson module lifecycles.
+   *
+   * <p>The implementation attempts to infer the {@link Privileges} instance from the CDI container
+   * by observing the {@link Startup} event. However, other beans that also observe the {@link
+   * Startup} event can trigger a call to the {@link #privileges()} method before this bean's {@link
+   * #init(Startup)} function is called.
    */
-  private static <R> R cdiResolve(Class<R> type) {
-    // TODO instead of doing the 'CDIResolver' dance, we could (should?) have an attribute in the
-    //  `DatabindContext` holding a reference to the CDI instance (referred to as `Instance<?>`).
-    var resolved = CDIResolver.resolver.apply(type);
-    @SuppressWarnings("unchecked")
-    var r = (R) resolved;
-    return r;
-  }
+  @ApplicationScoped
+  static class PrivilegesViaCDI {
+    @Inject Privileges privileges;
 
-  public static final class CDIResolver {
-    static Function<Class<?>, ?> resolver = CDIResolver::resolveViaCurrentCDI;
+    private static volatile Privileges privilegesForJackson;
 
-    /**
-     * The helper function {@link #cdiResolve(Class)} is used by {@link JacksonPrivilegesModule}
-     * implementations to resolve the {@link Privileges} instance, and the default implementation of
-     * {@link #cdiResolve(Class)} relies on {@link CDI#current() CDI.current()} to resolve against a
-     * "singleton" {@link CDI} instance. Some tests do not use CDI. Setting a custom resolver
-     * function helps in such scenarios.
-     */
-    @SuppressWarnings("unused")
-    public static void setResolver(Function<Class<?>, ?> resolver) {
-      CDIResolver.resolver = resolver;
+    void init(@Observes Startup startup) {
+      checkState(
+          privilegesForJackson == null || privilegesForJackson == privileges,
+          "A CDI container has already been started");
+      privilegesForJackson = privileges;
     }
 
-    /**
-     * Manually reset a custom {@linkplain #setResolver(Function) CDI resolver}. This is usually
-     * performed automatically after each test case.
-     */
-    @SuppressWarnings("unused")
-    public static void resetResolver() {
-      resolver = CDIResolver::resolveViaCurrentCDI;
+    void dispose(@Observes Shutdown shutdown) {
+      privilegesForJackson = null;
     }
 
-    private static Object resolveViaCurrentCDI(Class<?> type) {
-      Instance<?> selected = CDI.current().select(type);
-      checkArgument(selected.isResolvable(), "Cannot resolve %s", type);
-      checkArgument(!selected.isAmbiguous(), "Ambiguous type %s", type);
-      return selected.get();
+    static Privileges privileges() {
+      var privs = privilegesForJackson;
+      if (privs != null) {
+        // fast path
+        return privs;
+      }
+      // slow path
+      privs = CDI.current().select(Privileges.class).get();
+      privilegesForJackson = privs;
+      return privs;
     }
   }
 }

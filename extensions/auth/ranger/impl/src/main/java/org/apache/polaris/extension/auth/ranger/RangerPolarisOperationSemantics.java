@@ -105,6 +105,7 @@ public record RangerPolarisOperationSemantics(
   private static final String TABLE_SET_STATISTICS = "table-statistics-set";
   private static final String TABLE_REMOVE_STATISTICS = "table-statistics-remove";
   private static final String TABLE_REMOVE_PARTITION_SPECS = "table-partition-specs-remove";
+  private static final String TABLE_METADATA_FULL = "table-metadata-full";
 
   private static final String VIEW_CREATE = "view-create";
   private static final String VIEW_DROP = "view-drop";
@@ -166,6 +167,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.REGISTER_TABLE,
         new RangerPolarisOperationSemantics(toSet(TABLE_CREATE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_TABLE_OVERWRITE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_METADATA_FULL), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LOAD_TABLE,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
@@ -207,6 +212,9 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(toSet(VIEW_LIST), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.CREATE_VIEW,
+        new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REGISTER_VIEW,
         new RangerPolarisOperationSemantics(toSet(VIEW_CREATE), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.LOAD_VIEW,

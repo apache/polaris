@@ -63,6 +63,12 @@ public class TestEntityIdSet {
         .containsExactly(serSize + 10, 0);
 
     buffer.flip();
+    var nullProbe = buffer.duplicate();
+    soft.assertThat(ENTITY_ID_SET_SERIALIZER.isNullSerialized(nullProbe))
+        .isEqualTo(objIds == null || objIds.entityIds().isEmpty());
+    soft.assertThat(nullProbe)
+        .extracting(ByteBuffer::position, ByteBuffer::remaining)
+        .containsExactly(0, serSize + 10);
 
     soft.assertThat(buffer)
         .extracting(ByteBuffer::position, ByteBuffer::remaining)

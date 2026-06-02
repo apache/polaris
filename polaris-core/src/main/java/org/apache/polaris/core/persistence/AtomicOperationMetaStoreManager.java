@@ -1788,12 +1788,18 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       entity = null;
     }
 
+    // When the entity was reloaded, a concurrent writer may have bumped its
+    // grant_records_version between our lookupEntityVersions and lookupEntity reads. Use the
+    // entity's own value so (entity, grantRecordsVersion) stays internally consistent.
+    int reportedGrantRecordsVersion =
+        entity != null ? entity.getGrantRecordsVersion() : entityVersions.grantRecordsVersion();
+
     // TODO: Consider whether it's necessary to look up grant records atomically with the entity
     // or if it's actually safe as independent lookups. Document the nuances of independent lookups.
 
     // load the grant records if required
     final List<PolarisGrantRecord> grantRecords;
-    if (entityVersions.grantRecordsVersion() != entityGrantRecordsVersion) {
+    if (reportedGrantRecordsVersion != entityGrantRecordsVersion) {
       if (entityType.isGrantee()) {
         grantRecords =
             new ArrayList<>(ms.loadAllGrantRecordsOnGrantee(callCtx, entityCatalogId, entityId));
@@ -1806,7 +1812,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // return the result
-    return new ResolvedEntityResult(entity, entityVersions.grantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, reportedGrantRecordsVersion, grantRecords);
   }
 
   /** {@inheritDoc} */

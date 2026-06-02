@@ -111,6 +111,7 @@ class Commands:
     SETUP = "setup"
     TABLES = "tables"
     FIND = "find"
+    REPL = "repl"
 
 
 class Subcommands:
@@ -361,3 +362,14 @@ CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduse
     "~/.polaris"
 )
 CONFIG_FILE = os.path.join(CONFIG_DIR, ".polaris.json")
+REPL_HISTORY_FILE = os.path.join(CONFIG_DIR, ".polaris_repl_history")
+_DEFAULT_REPL_HISTORY_LENGTH = 1000
+try:
+    REPL_HISTORY_LENGTH = max(
+        0,
+        int(
+            os.environ.get("POLARIS_REPL_HISTORY_LENGTH", _DEFAULT_REPL_HISTORY_LENGTH)
+        ),
+    )
+except ValueError:
+    REPL_HISTORY_LENGTH = _DEFAULT_REPL_HISTORY_LENGTH

@@ -21,8 +21,6 @@ package org.apache.polaris.extension.auth.opa;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -42,6 +40,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationIntent;
 import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PathSegment;
@@ -49,6 +48,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisSecurable;
+import org.apache.polaris.core.auth.PolicyAttachmentAuthorizationIntent;
+import org.apache.polaris.core.auth.PrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.RenameAuthorizationIntent;
+import org.apache.polaris.core.auth.RoleAssignmentAuthorizationIntent;
+import org.apache.polaris.core.auth.RootPrivilegeGrantAuthorizationIntent;
+import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
+import org.apache.polaris.core.auth.TargetlessAuthorizationIntent;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -60,6 +66,8 @@ import org.apache.polaris.extension.auth.opa.model.ImmutableResource;
 import org.apache.polaris.extension.auth.opa.model.ImmutableResourceEntity;
 import org.apache.polaris.extension.auth.opa.model.ResourceEntity;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * OPA-based implementation of {@link PolarisAuthorizer}.
@@ -90,9 +98,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param tokenProvider Token provider for authentication (optional)
    */
   public OpaPolarisAuthorizer(
-      @Nonnull URI policyUri,
-      @Nonnull CloseableHttpClient httpClient,
-      @Nonnull ObjectMapper objectMapper,
+      @NonNull URI policyUri,
+      @NonNull CloseableHttpClient httpClient,
+      @NonNull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider) {
 
     this.policyUri = policyUri;
@@ -109,25 +117,60 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   @Override
   public void resolveAuthorizationInputs(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
     authzState.getResolutionManifest().resolveAll();
   }
 
   @Override
-  @Nonnull
+  @NonNull
   public AuthorizationDecision authorize(
-      @Nonnull AuthorizationState authzState, @Nonnull AuthorizationRequest request) {
-    boolean allowed =
-        queryOpa(
-            buildOpaAuthorizationInput(
-                request.getPrincipal(),
-                request.getOperation(),
-                toResourceEntitiesFromSecurables(request.getTargets()),
-                toResourceEntitiesFromSecurables(request.getSecondaries())));
-    return allowed
-        ? AuthorizationDecision.allow()
-        : AuthorizationDecision.deny(
-            "OPA denied authorization for " + request.formatForAuthorizationMessage());
+      @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
+    for (AuthorizationIntent intent : request.intents()) {
+      PolarisAuthorizableOperation operation = intent.getOperation();
+      List<ResourceEntity> targets;
+      List<ResourceEntity> secondaries;
+      switch (intent) {
+        case TargetlessAuthorizationIntent ignored -> {
+          targets = List.of();
+          secondaries = List.of();
+        }
+        case SingleTargetAuthorizationIntent singleTargetIntent -> {
+          targets = toResourceEntitiesFromSecurable(singleTargetIntent.target());
+          secondaries = List.of();
+        }
+        case RenameAuthorizationIntent renameIntent -> {
+          targets = toResourceEntitiesFromSecurable(renameIntent.from());
+          secondaries = toResourceEntitiesFromSecurable(renameIntent.to());
+        }
+        case PolicyAttachmentAuthorizationIntent policyAttachmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(policyAttachmentIntent.policy());
+          secondaries = toResourceEntitiesFromSecurable(policyAttachmentIntent.attachedTo());
+        }
+        case RoleAssignmentAuthorizationIntent roleAssignmentIntent -> {
+          targets = toResourceEntitiesFromSecurable(roleAssignmentIntent.role());
+          secondaries = toResourceEntitiesFromSecurable(roleAssignmentIntent.assignee());
+        }
+        case PrivilegeGrantAuthorizationIntent privilegeGrantIntent -> {
+          targets = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantTarget());
+          secondaries = toResourceEntitiesFromSecurable(privilegeGrantIntent.grantee());
+        }
+        case RootPrivilegeGrantAuthorizationIntent rootPrivilegeGrantIntent -> {
+          targets = List.of();
+          secondaries = toResourceEntitiesFromSecurable(rootPrivilegeGrantIntent.grantee());
+        }
+      }
+      boolean allowed =
+          queryOpa(
+              buildOpaAuthorizationInput(request.principal(), operation, targets, secondaries));
+      if (!allowed) {
+        return AuthorizationDecision.deny(
+            "OPA denied authorization for principal="
+                + request.principal().getName()
+                + " operation="
+                + operation);
+      }
+    }
+    return AuthorizationDecision.allow();
   }
 
   /**
@@ -144,9 +187,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
@@ -171,9 +214,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    */
   @Override
   public void authorizeOrThrow(
-      @Nonnull PolarisPrincipal polarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
+      @NonNull PolarisPrincipal polarisPrincipal,
+      @NonNull Set<PolarisBaseEntity> activatedEntities,
+      @NonNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean allowed =
@@ -296,9 +339,9 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
 
   private ImmutableResource buildResource(
       List<ResourceEntity> targets, List<ResourceEntity> secondaries) {
-    // Backward compatibility: keep the existing OPA input shape with separate target and
-    // secondary lists. Future work can align this with AuthorizationTargetBinding semantics
-    // using binding tuples like [(target, secondary), ...].
+    // Keep the existing OPA input shape by always emitting target and secondary lists, using
+    // empty lists when an intent does not carry that slot. Future work can revisit the payload
+    // shape if OPA starts consuming intent subtype distinctions directly.
     return ImmutableResource.builder().targets(targets).secondaries(secondaries).build();
   }
 
@@ -345,7 +388,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
         .build();
   }
 
-  @Nonnull
+  @NonNull
   private List<ResourceEntity> toResourceEntitiesFromResolvedPaths(
       @Nullable List<PolarisResolvedPathWrapper> paths) {
     if (paths == null || paths.isEmpty()) {
@@ -361,17 +404,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     return entities;
   }
 
-  @Nonnull
-  private List<ResourceEntity> toResourceEntitiesFromSecurables(
-      @Nullable List<PolarisSecurable> securables) {
-    if (securables == null || securables.isEmpty()) {
-      return List.of();
-    }
-
-    List<ResourceEntity> entities = new ArrayList<>();
-    for (PolarisSecurable securable : securables) {
-      entities.add(buildResourceEntity(securable));
-    }
-    return entities;
+  private List<ResourceEntity> toResourceEntitiesFromSecurable(
+      @Nullable PolarisSecurable securable) {
+    return securable == null ? List.of() : List.of(buildResourceEntity(securable));
   }
 }

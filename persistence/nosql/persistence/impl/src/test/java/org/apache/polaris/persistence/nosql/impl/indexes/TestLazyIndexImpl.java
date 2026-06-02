@@ -140,14 +140,15 @@ public class TestLazyIndexImpl {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {2, 3, 4, 5, 6})
-  public void divide(int parts) {
+  @ValueSource(longs = {32, 48, 64, 96, 128})
+  public void splitByTargetSize(long targetSize) {
     var indexTestSet = basicIndexTestSet();
     var base = indexTestSet.keyIndex();
+    var expectedSplits = base.splitByTargetSize(targetSize);
 
     var index = lazyStoreIndex(() -> base, base.first(), base.last());
 
-    var splits = index.divide(parts);
+    var splits = index.splitByTargetSize(targetSize);
 
     soft.assertThat(splits.stream().mapToInt(i -> i.asKeyList().size()).sum())
         .isEqualTo(index.asKeyList().size());
@@ -158,6 +159,9 @@ public class TestLazyIndexImpl {
         .containsExactlyElementsOf(index);
     soft.assertThat(splits.getFirst().first()).isEqualTo(index.first());
     soft.assertThat(splits.getLast().last()).isEqualTo(index.last());
+    soft.assertThat(splits).hasSize(expectedSplits.size());
+    soft.assertThat(splits.stream().map(IndexSpi::asKeyList))
+        .containsExactlyElementsOf(expectedSplits.stream().map(IndexSpi::asKeyList).toList());
   }
 
   @Test

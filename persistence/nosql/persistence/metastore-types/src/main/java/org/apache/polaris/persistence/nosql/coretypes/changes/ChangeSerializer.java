@@ -51,6 +51,15 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
           .findAndAddModules()
           .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
           .build();
+  private static final byte[] NULL;
+
+  static {
+    try {
+      NULL = MAPPER.writeValueAsBytes(null);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Override
   public int serializedSize(@Nullable Change value) {
@@ -88,6 +97,16 @@ final class ChangeSerializer implements IndexValueSerializer<Change> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public boolean isNullSerialized(@NonNull ByteBuffer buffer) {
+    var dup = buffer.duplicate();
+    var len = readVarInt(dup);
+    if (len != NULL.length) {
+      return false;
+    }
+    return dup.limit(dup.position() + len).mismatch(ByteBuffer.wrap(NULL)) == -1;
   }
 
   @Override

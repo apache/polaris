@@ -22,9 +22,15 @@ import com.google.common.base.Joiner;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.RESTUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PolarisResourcePaths {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResourcePaths.class);
+
   private static final Joiner SLASH = Joiner.on("/").skipNulls();
   public static final String PREFIX = "prefix";
 
@@ -43,18 +49,34 @@ public class PolarisResourcePaths {
   public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
 
   private final String prefix;
+  private final String namespaceSeparatorEncoded;
 
-  public PolarisResourcePaths(String prefix) {
+  public PolarisResourcePaths(String prefix, String namespaceSeparatorEncoded) {
     this.prefix = prefix;
+    this.namespaceSeparatorEncoded = namespaceSeparatorEncoded;
   }
 
   public static PolarisResourcePaths forCatalogProperties(Map<String, String> properties) {
-    return new PolarisResourcePaths(properties.get(PREFIX));
+    String namespaceSeparatorEncoded =
+        properties.getOrDefault(
+            RESTCatalogProperties.NAMESPACE_SEPARATOR,
+            RESTCatalogProperties.NAMESPACE_SEPARATOR_DEFAULT);
+    if (!namespaceSeparatorEncoded.equals(RESTCatalogProperties.NAMESPACE_SEPARATOR_DEFAULT)) {
+      LOGGER.warn("Using non-default namespace separator '{}'", namespaceSeparatorEncoded);
+    }
+    return new PolarisResourcePaths(properties.get(PREFIX), namespaceSeparatorEncoded);
   }
 
   public String genericTables(Namespace ns) {
     return SLASH.join(
-        "polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "generic-tables");
+        "polaris",
+        "v1",
+        prefix,
+        "namespaces",
+        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
+        // https://github.com/apache/iceberg/pull/15989
+        RESTUtil.encodeNamespace(ns, namespaceSeparatorEncoded),
+        "generic-tables");
   }
 
   public String credentialsPath(TableIdentifier ident) {
@@ -62,8 +84,11 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        RESTUtil.encodeNamespace(ident.namespace()),
+        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
+        // https://github.com/apache/iceberg/pull/15989
+        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
         "tables",
+        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
         RESTUtil.encodeString(ident.name()),
         "credentials");
   }
@@ -74,8 +99,11 @@ public class PolarisResourcePaths {
         "v1",
         prefix,
         "namespaces",
-        RESTUtil.encodeNamespace(ident.namespace()),
+        // FIXME use RESTUtil.encodeNamespaceAsPathSegment(), see
+        // https://github.com/apache/iceberg/pull/15989
+        RESTUtil.encodeNamespace(ident.namespace(), namespaceSeparatorEncoded),
         "generic-tables",
+        // FIXME use RESTUtil.encodePathSegment(), see https://github.com/apache/iceberg/pull/15989
         RESTUtil.encodeString(ident.name()));
   }
 }

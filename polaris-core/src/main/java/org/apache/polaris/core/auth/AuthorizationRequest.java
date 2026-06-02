@@ -18,111 +18,18 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.google.common.base.Preconditions;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 import org.jspecify.annotations.NonNull;
 
-/**
- * Authorization request inputs for pre-authorization and core authorization.
- *
- * <p>This wrapper keeps authorization inputs together and conveys the intent to be authorized via
- * {@link AuthorizationTargetBinding} target bindings.
- */
-@PolarisImmutable
-public interface AuthorizationRequest {
-  static AuthorizationRequest of(
-      @NonNull PolarisPrincipal principal,
-      @NonNull PolarisAuthorizableOperation operation,
-      @NonNull List<AuthorizationTargetBinding> targetBindings) {
-    return ImmutableAuthorizationRequest.builder()
-        .principal(principal)
-        .operation(operation)
-        .targetBindings(targetBindings)
-        .build();
-  }
-
-  /** Returns the principal requesting authorization. */
-  @NonNull PolarisPrincipal getPrincipal();
-
-  /** Returns the operation being authorized. */
-  @NonNull PolarisAuthorizableOperation getOperation();
-
-  /** Returns the target/secondary target bindings. */
-  @NonNull List<AuthorizationTargetBinding> getTargetBindings();
-
-  /**
-   * Returns the primary target securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
-  @NonNull
-  @Value.Derived
-  default List<PolarisSecurable> getTargets() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getTarget)
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  /**
-   * Returns secondary securables, if any.
-   *
-   * <p>Compatibility accessor derived from {@link #getTargetBindings()}.
-   */
-  @NonNull
-  @Value.Derived
-  default List<PolarisSecurable> getSecondaries() {
-    return getTargetBindings().stream()
-        .map(AuthorizationTargetBinding::getSecondary)
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  /**
-   * Returns a stable debug string for authorization messages.
-   *
-   * <p>Includes the operation, principal name, formatted targets, and formatted secondaries.
-   */
-  @NonNull
-  default String formatForAuthorizationMessage() {
-    return String.format(
-        "operation=%s principal=%s targets=%s secondaries=%s",
-        getOperation(),
-        getPrincipal().getName(),
-        formatSecurables(getTargets()),
-        formatSecurables(getSecondaries()));
-  }
-
-  private static String formatSecurables(List<PolarisSecurable> securables) {
-    return securables.stream()
-        .map(PolarisSecurable::formatForAuthorizationMessage)
-        .collect(Collectors.joining(", ", "[", "]"));
-  }
-
-  default boolean hasSecurableType(PolarisEntityType... types) {
-    for (AuthorizationTargetBinding targetBinding : getTargetBindings()) {
-      if (targetBinding.getTarget() != null && containsType(targetBinding.getTarget(), types)) {
-        return true;
-      }
-      if (targetBinding.getSecondary() != null
-          && containsType(targetBinding.getSecondary(), types)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  static boolean containsType(PolarisSecurable securable, PolarisEntityType... types) {
-    PolarisEntityType entityType = securable.getLeaf().entityType();
-    for (PolarisEntityType type : types) {
-      if (entityType == type) {
-        return true;
-      }
-    }
-    return false;
+/** Full authorization request containing the subject and one or more authorization intents. */
+public record AuthorizationRequest(
+    @NonNull PolarisPrincipal principal, @NonNull List<AuthorizationIntent> intents) {
+  public AuthorizationRequest {
+    Preconditions.checkNotNull(principal, "principal must be non-null");
+    Preconditions.checkNotNull(intents, "intents must be non-null");
+    intents = List.copyOf(intents);
+    Preconditions.checkArgument(
+        !intents.isEmpty(), "Authorization request must contain at least one intent");
   }
 }

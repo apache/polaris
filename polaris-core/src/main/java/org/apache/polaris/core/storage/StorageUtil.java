@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.storage;
 
-import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -60,18 +59,6 @@ public class StorageUtil {
       return null;
     }
     return StorageUri.parse(path).authority();
-  }
-
-  /**
-   * Given a URI, extract the bucket (authority).
-   *
-   * @param uri A path to parse
-   * @return The bucket/authority of the URI
-   * @deprecated Use {@link StorageUri#parse(String)} instead.
-   */
-  @Deprecated(forRemoval = true)
-  public static @NonNull String getBucket(URI uri) {
-    return uri.getAuthority();
   }
 
   /** Given a TableMetadata, extracts the locations where the table's [meta]data might be found. */

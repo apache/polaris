@@ -51,7 +51,6 @@ public class TestPrivilegeCheckImpl {
   static void setUp() {
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
-    JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
   }
 
   static PrivilegeSet privilegeSet(Privilege... values) {

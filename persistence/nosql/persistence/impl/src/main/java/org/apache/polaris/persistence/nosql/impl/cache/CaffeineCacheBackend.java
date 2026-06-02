@@ -190,7 +190,7 @@ class CaffeineCacheBackend implements CacheBackend {
                       .register(reg);
                   var rejectedWeightSummary =
                       DistributionSummary.builder(METER_CACHE_REJECTED_WEIGHT)
-                          .description("Weight of of rejected cache-puts in bytes.")
+                          .description("Weight of rejected cache-puts in bytes.")
                           .tag("cache", CACHE_NAME)
                           .baseUnit(BaseUnits.BYTES)
                           .register(reg);

@@ -31,7 +31,7 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly("com.fasterxml.jackson.core:jackson-core")
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
-  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(platform(libs.opentelemetry.instrumentation.bom.alpha))

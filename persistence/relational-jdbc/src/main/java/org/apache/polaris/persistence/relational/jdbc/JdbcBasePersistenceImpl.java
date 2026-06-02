@@ -21,8 +21,6 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 import com.google.common.base.Preconditions;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -80,6 +78,8 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingR
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,14 +113,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
+  public long generateNewId(@NonNull PolarisCallContext callCtx) {
     return IdGenerator.getIdGenerator().nextId();
   }
 
   @Override
   public void writeEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
@@ -139,8 +139,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void writeEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisBaseEntity> entities,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
     try {
       datasourceOperations.runWithinTransaction(
@@ -174,8 +174,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   private void persistEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
       PolarisBaseEntity originalEntity,
       Connection connection,
       QueryAction queryAction)
@@ -214,6 +214,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     } else {
+      // CAS on both entity_version and grant_records_version because grant operations only
+      // bump grant_records_version without touching entity_version.
       Map<String, Object> params =
           Map.of(
               "id",
@@ -222,6 +224,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               originalEntity.getCatalogId(),
               "entity_version",
               originalEntity.getEntityVersion(),
+              "grant_records_version",
+              originalEntity.getGrantRecordsVersion(),
               "realm_id",
               realmId);
       try {
@@ -237,8 +241,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                     params));
         if (rowsUpdated == 0) {
           throw new RetryOnConcurrencyException(
-              "Entity '%s' id '%s' concurrently modified; expected version %s",
-              originalEntity.getName(), originalEntity.getId(), originalEntity.getEntityVersion());
+              "Entity '%s' id '%s' concurrently modified; expected entity_version=%s, grant_records_version=%s",
+              originalEntity.getName(),
+              originalEntity.getId(),
+              originalEntity.getEntityVersion(),
+              originalEntity.getGrantRecordsVersion());
         }
       } catch (SQLException e) {
         throw new RuntimeException(
@@ -249,7 +256,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void writeToGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     try {
       List<Object> values =
@@ -264,7 +271,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+  public void writeEvents(@NonNull List<PolarisEvent> events) {
     if (events.isEmpty()) {
       return; // or throw if empty list is invalid
     }
@@ -321,7 +328,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+  public void deleteEntity(@NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
     Map<String, Object> params =
         Map.of(
@@ -343,7 +350,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deleteFromGrantRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);
     try {
       Map<String, Object> whereClause =
@@ -360,10 +367,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deleteAllEntityGrantRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore entity,
-      @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
-      @Nonnull List<PolarisGrantRecord> grantsOnSecurable) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisEntityCore entity,
+      @NonNull List<PolarisGrantRecord> grantsOnGrantee,
+      @NonNull List<PolarisGrantRecord> grantsOnSecurable) {
     try {
       datasourceOperations.executeUpdate(
           QueryGenerator.generateDeleteQueryForEntityGrantRecords(entity, realmId));
@@ -374,7 +381,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
+  public void deleteAll(@NonNull PolarisCallContext callCtx) {
     try {
       Map<String, Object> params = Map.of("realm_id", realmId);
       datasourceOperations.runWithinTransaction(
@@ -409,7 +416,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
     return getPolarisBaseEntity(
@@ -419,11 +426,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public PolarisBaseEntity lookupEntityByName(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int typeCode,
-      @Nonnull String name) {
+      @NonNull String name) {
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -461,10 +468,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisBaseEntity> lookupEntities(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
     PreparedQuery query =
         QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
@@ -481,10 +488,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
+      @NonNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         lookupEntities(callCtx, entityIds).stream()
             .filter(Objects::nonNull)
@@ -547,15 +554,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull PageToken pageToken) {
     try {
       PreparedQuery query =
           buildEntityQuery(
@@ -580,17 +587,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public <T> Page<T> listFullEntities(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
+      @NonNull PolarisEntityType entityType,
+      @NonNull PolarisEntitySubType entitySubType,
+      @NonNull Predicate<PolarisBaseEntity> entityFilter,
+      @NonNull Function<PolarisBaseEntity, T> transformer,
+      @NonNull PageToken pageToken) {
     try {
       PreparedQuery query =
           buildEntityQuery(
@@ -617,7 +624,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public int lookupEntityGrantRecordsVersion(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
+      @NonNull PolarisCallContext callCtx, long catalogId, long entityId) {
 
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "realm_id", realmId);
@@ -630,7 +637,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public PolarisGrantRecord lookupGrantRecord(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -670,10 +677,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+      @NonNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     Map<String, Object> params =
         Map.of(
             "securable_catalog_id",
@@ -698,10 +705,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+      @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     Map<String, Object> params =
         Map.of(
             "grantee_catalog_id", granteeCatalogId, "grantee_id", granteeId, "realm_id", realmId);
@@ -723,7 +730,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public boolean hasChildren(
-      @Nonnull PolarisCallContext callContext,
+      @NonNull PolarisCallContext callContext,
       PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId) {
@@ -786,7 +793,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
-          @Nonnull PolarisCallContext callContext, T entity) {
+          @NonNull PolarisCallContext callContext, T entity) {
     if (this.schemaVersion < 2) {
       return Optional.empty();
     }
@@ -828,7 +835,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Nullable
   @Override
   public PolarisPrincipalSecrets loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId) {
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
     try {
       var results =
@@ -850,10 +857,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String principalName, long principalId) {
     // ensure principal client id is unique
     PolarisPrincipalSecrets principalSecrets;
     ModelPrincipalAuthenticationData lookupPrincipalSecrets;
@@ -899,9 +906,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Nullable
   @Override
   public PolarisPrincipalSecrets storePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long principalId,
-      @Nonnull String resolvedClientId,
+      @NonNull String resolvedClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
@@ -938,11 +945,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Nullable
   @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash) {
+      @NonNull String oldSecretHash) {
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
 
@@ -998,7 +1005,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @NonNull PolarisCallContext callCtx, @NonNull String clientId, long principalId) {
     Map<String, Object> params =
         Map.of("principal_client_id", clientId, "principal_id", principalId, "realm_id", realmId);
     try {
@@ -1020,7 +1027,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void writeToPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     try {
       datasourceOperations.runWithinTransaction(
           connection -> {
@@ -1055,9 +1062,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   private boolean handleInheritablePolicy(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisPolicyMappingRecord record,
-      @Nonnull PreparedQuery insertQuery,
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisPolicyMappingRecord record,
+      @NonNull PreparedQuery insertQuery,
       Connection connection)
       throws SQLException {
     List<PolarisPolicyMappingRecord> existingRecords =
@@ -1110,7 +1117,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deleteFromPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     try {
       Map<String, Object> objectMap =
@@ -1129,10 +1136,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public void deleteAllEntityPolicyMappingRecords(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     try {
       Map<String, Object> queryParams = new LinkedHashMap<>();
       if (entity.getType() == PolarisEntityType.POLICY) {
@@ -1159,7 +1166,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Nullable
   @Override
   public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode,
@@ -1187,10 +1194,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     return results.size() == 1 ? results.getFirst() : null;
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode) {
@@ -1209,10 +1216,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
-      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     Map<String, Object> params =
         Map.of("target_catalog_id", targetCatalogId, "target_id", targetId, "realm_id", realmId);
     return fetchPolicyMappingRecords(
@@ -1220,10 +1227,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             ModelPolicyMappingRecord.ALL_COLUMNS, ModelPolicyMappingRecord.TABLE_NAME, params));
   }
 
-  @Nonnull
+  @NonNull
   @Override
   public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
       int policyTypeCode) {
@@ -1257,7 +1264,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
+          @NonNull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
@@ -1267,15 +1274,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Override
   public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
+      @NonNull PolarisCallContext callContext,
+      @NonNull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration) {}
 
   @Nullable
   @Override
   public <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
+          @NonNull PolarisCallContext callContext, @NonNull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
@@ -1296,20 +1303,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
-  public void writeScanReport(@Nonnull ScanMetricsRecord record) {
+  public void writeScanReport(@NonNull ScanMetricsRecord record) {
     ModelScanMetricsReport model = ModelScanMetricsReport.fromRecord(record, realmId);
     writeScanMetricsReport(model);
   }
 
   @Override
-  public void writeCommitReport(@Nonnull CommitMetricsRecord record) {
+  public void writeCommitReport(@NonNull CommitMetricsRecord record) {
     ModelCommitMetricsReport model = ModelCommitMetricsReport.fromRecord(record, realmId);
     writeCommitMetricsReport(model);
   }
 
   // ========== Internal Metrics JDBC methods ==========
 
-  private void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+  private void writeScanMetricsReport(@NonNull ModelScanMetricsReport report) {
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =
@@ -1325,7 +1332,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  private void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+  private void writeCommitMetricsReport(@NonNull ModelCommitMetricsReport report) {
     DatasourceOperations metricsOps = getMetricsDatasource();
     try {
       PreparedQuery pq =

@@ -97,6 +97,7 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.rest.NamespaceUtils;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -125,7 +126,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -935,6 +936,112 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     }
   }
 
+  /**
+   * Build an Iceberg table, then invoke a subsequent register table call that overwrites the
+   * existing table metadata. Verifies that the overwrite is applied and the catalog reflects the
+   * updated metadata.
+   */
+  @Test
+  public void testRegisterTableOverwriteViaRest() {
+    Namespace ns = Namespace.of("ns_overwrite_rest");
+    restCatalog.createNamespace(ns);
+
+    // Create a source table and capture its metadata location
+    Table source = restCatalog.buildTable(TableIdentifier.of(ns, "source_table"), SCHEMA).create();
+    String currentMetadataLocation =
+        ((BaseTable) source).operations().current().metadataFileLocation();
+    String metadataDir =
+        currentMetadataLocation.substring(0, currentMetadataLocation.lastIndexOf('/') + 1);
+    String newMetadataLocation = metadataDir + "overwrite-v1.metadata.json";
+
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      // Write a new metadata file (re-using the current metadata contents)
+      TableMetadataParser.write(
+          ((BaseTable) source).operations().current(),
+          resolvingFileIO.newOutputFile(newMetadataLocation));
+
+      // Invoke REST register with overwrite=true
+      Invocation registerInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_rest/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "source_table",
+                          "metadata-location",
+                          newMetadataLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response registerResponse = registerInvocation.invoke()) {
+        assertThat(registerResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      }
+
+      // Reload the table via REST client and verify metadata-location updated
+      Table loaded = restCatalog.loadTable(TableIdentifier.of(ns, "source_table"));
+      assertThat(((BaseTable) loaded).operations().current().metadataFileLocation())
+          .isEqualTo(newMetadataLocation);
+
+      // Clean up the old metadata file
+      resolvingFileIO.deleteFile(currentMetadataLocation);
+    }
+  }
+
+  /**
+   * Attempt to invoke registerTable with overwrite=true against an EXTERNAL (federated) catalog.
+   * Polaris only supports the overwrite path for its internal IcebergCatalog; EXTERNAL catalogs
+   * must receive a 400 Bad Request.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @Test
+  public void testRegisterTableOverwriteRejectedForExternalCatalog() {
+    Namespace ns = Namespace.of("ns_overwrite_ext");
+    restCatalog.createNamespace(ns);
+
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            externalCatalogBaseLocation + "/ns_overwrite_ext/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      initializeClientFileIO(resolvingFileIO);
+      resolvingFileIO.setConf(new Configuration());
+
+      String fileLocation =
+          externalCatalogBaseLocation + "/ns_overwrite_ext/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+
+      // Register the table without overwrite first (must succeed)
+      restCatalog.registerTable(TableIdentifier.of(ns, "my_table"), fileLocation);
+
+      // Now attempt to register again with overwrite=true — must be rejected with 400
+      Invocation overwriteInvocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns_overwrite_ext/register")
+              .buildPost(
+                  Entity.json(
+                      Map.of(
+                          "name",
+                          "my_table",
+                          "metadata-location",
+                          fileLocation,
+                          "overwrite",
+                          true)));
+
+      try (Response overwriteResponse = overwriteInvocation.invoke()) {
+        assertThat(overwriteResponse.getStatus())
+            .isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
   @Test
   public void testCreateAndLoadTableWithReturnedEtag() {
     Namespace ns1 = Namespace.of("ns1");
@@ -1669,7 +1776,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
     try {
-      String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+      String ns =
+          NamespaceUtils.joinNamespace(
+              tableIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           genericTableApi
               .request(
@@ -1750,7 +1859,9 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog.createNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "tbl1");
 
-    String ns = RESTUtil.encodeNamespace(tableIdentifier.namespace());
+    String ns =
+        NamespaceUtils.joinNamespace(
+            tableIdentifier.namespace(), NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     try (Response res =
         genericTableApi
             .request(
@@ -2437,7 +2548,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateNamespaceRejectsInvalidName(String badName) {
     try (Response res =
         catalogApi
@@ -2449,17 +2560,18 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_create_table_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/tables",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(Entity.json(Map.of("name", badName, "schema", SCHEMA)))) {
         assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
         assertThat(res.readEntity(String.class)).contains("Entity name");
@@ -2470,17 +2582,18 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRegisterTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_register_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/register",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       Map.of("name", badName, "metadata-location", "file:/tmp/nowhere.json")))) {
@@ -2493,12 +2606,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateViewRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_create_view_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       Map<String, Object> viewVersion =
           Map.of(
               "version-id",
@@ -2517,7 +2631,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           catalogApi
               .request(
                   "v1/{cat}/namespaces/{ns}/views",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       Map.of("name", badName, "schema", SCHEMA, "view-version", viewVersion)))) {
@@ -2530,7 +2644,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRenameTableRejectsInvalidDestinationName(String badName) {
     Namespace ns = Namespace.of("ns_rename_table_bad");
     restCatalog.createNamespace(ns);
@@ -2554,7 +2668,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testRenameViewRejectsInvalidDestinationName(String badName) {
     Namespace ns = Namespace.of("ns_rename_view_bad");
     restCatalog.createNamespace(ns);
@@ -2583,17 +2697,18 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"bad/name", " leading", "trailing "})
+  @MethodSource("invalidEntityNames")
   public void testCreateGenericTableRejectsInvalidName(String badName) {
     Namespace ns = Namespace.of("ns_generic_bad");
     restCatalog.createNamespace(ns);
     try {
-      String nsEncoded = RESTUtil.encodeNamespace(ns);
+      String nsJoined =
+          NamespaceUtils.joinNamespace(ns, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
       try (Response res =
           genericTableApi
               .request(
                   "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
-                  Map.of("cat", currentCatalogName, "ns", nsEncoded))
+                  Map.of("cat", currentCatalogName, "ns", nsJoined))
               .post(
                   Entity.json(
                       CreateGenericTableRequest.builder()
@@ -2606,6 +2721,31 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     } finally {
       genericTableApi.purge(currentCatalogName, ns);
     }
+  }
+
+  static Stream<String> invalidEntityNames() {
+    return Stream.of(
+        "bad/name",
+        "bad\\name",
+        "bad:name",
+        "bad*name",
+        "bad?name",
+        "bad\"name",
+        "bad<name",
+        "bad>name",
+        "bad|name",
+        "bad#name",
+        "bad\tname",
+        "bad\nname",
+        "bad\rname",
+        "bad\u0001name",
+        "bad\u001fname",
+        "bad\u007fname",
+        "bad\u009fname",
+        ".",
+        "..",
+        " leading",
+        "trailing ");
   }
 
   @Test

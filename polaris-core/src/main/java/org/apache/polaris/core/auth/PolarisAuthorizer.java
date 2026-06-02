@@ -44,7 +44,11 @@ public interface PolarisAuthorizer {
    * Core authorization entry point for the new SPI.
    *
    * <p>Implementations should rely on any required state in {@link AuthorizationState} and the
-   * intent captured by {@link AuthorizationRequest} (principal, operation, and target securables).
+   * request captured by {@link AuthorizationRequest}.
+   *
+   * <p>When a request contains multiple intents, they form a single batch contract: implementations
+   * must AND-combine the intents in that request and may short-circuit evaluation on the first
+   * deny.
    */
   @NonNull AuthorizationDecision authorize(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request);

@@ -85,6 +85,7 @@ dependencies {
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
+  compileOnly(libs.jspecify)
   compileOnly(libs.jakarta.annotation.api)
 
   implementation(platform(libs.google.cloud.storage.bom))
@@ -158,6 +159,8 @@ dependencies {
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
   testImplementation(libs.awaitility)
+
+  testImplementation(libs.junit.pioneer)
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")

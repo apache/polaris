@@ -24,6 +24,11 @@ import org.apache.polaris.persistence.nosql.api.index.IndexElem;
 abstract class AbstractIndexElement<V> extends IndexElem<V> implements InternalIndexElement<V> {
 
   @Override
+  public boolean hasValue() {
+    return valueNullable() != null;
+  }
+
+  @Override
   public String toString() {
     return MoreObjects.toStringHelper("StoreIndexElement")
         .omitNullValues()

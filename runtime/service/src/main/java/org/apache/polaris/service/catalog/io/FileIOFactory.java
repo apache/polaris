@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Interface for providing a way to construct FileIO objects, such as for reading/writing S3.
@@ -44,7 +44,7 @@ public interface FileIOFactory {
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(
-      @Nonnull StorageAccessConfig storageAccessConfig,
-      @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties);
+      @NonNull StorageAccessConfig storageAccessConfig,
+      @NonNull String ioImplClassName,
+      @NonNull Map<String, String> properties);
 }
