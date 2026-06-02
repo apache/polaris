@@ -1766,9 +1766,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   // Tests for AwsStorageCredentialCacheKey equality
 
   private AwsStorageCredentialCacheKey awsKey(String roleSessionName, List<Tag> sessionTags) {
+    AwsStorageConfigurationInfo config =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation("s3://bucket/path")
+            .roleARN("arn:aws:iam::123456789012:role/test")
+            .build();
     return AwsStorageCredentialCacheKey.of(
         "testRealm",
-        null,
+        config,
         Set.of("s3://bucket/path"),
         Set.of("s3://bucket/path"),
         Set.of("s3://bucket/path"),
@@ -1777,7 +1782,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         sessionTags,
         Mockito.mock(StsClientProvider.class),
         cfg -> Optional.empty(),
-        Mockito.mock(AwsStorageConfigurationInfo.class),
         Mockito.mock(RealmConfig.class));
   }
 

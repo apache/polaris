@@ -178,14 +178,13 @@ public class GcpCredentialsStorageIntegration
       @NonNull CredentialVendingContext context) {
     return GcpStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        storageConfig().serialize(),
+        storageConfig(),
         readLocations,
         listLocations,
         writeLocations,
         refreshEndpoint,
         sourceCredentials,
         transportFactory,
-        storageConfig(),
         realmConfig(),
         credentialOps);
   }

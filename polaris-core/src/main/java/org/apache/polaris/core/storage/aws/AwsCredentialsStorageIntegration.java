@@ -157,7 +157,7 @@ public class AwsCredentialsStorageIntegration
     List<Tag> sessionTags = resolveSessionTags(realmConfig, context, principalName);
     return AwsStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        storageConfig().serialize(),
+        storageConfig(),
         readLocations,
         listLocations,
         writeLocations,
@@ -166,7 +166,6 @@ public class AwsCredentialsStorageIntegration
         sessionTags,
         stsClientProvider,
         credentialsResolver,
-        storageConfig(),
         realmConfig);
   }
 

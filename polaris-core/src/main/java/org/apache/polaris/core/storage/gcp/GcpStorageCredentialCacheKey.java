@@ -27,7 +27,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Cache key for vended GCP credentials. GCP downscoped credentials do not support session tags, so
@@ -42,7 +41,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String realmId();
 
   @Value.Parameter(order = 2)
-  @Nullable String storageConfigSerializedStr();
+  GcpStorageConfigurationInfo storageConfig();
 
   @Value.Parameter(order = 3)
   Set<String> allowedReadLocations();
@@ -66,16 +65,12 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Auxiliary
   HttpTransportFactory transportFactory();
 
-  @Value.Parameter(order = 9)
-  @Value.Auxiliary
-  GcpStorageConfigurationInfo storageConfig();
-
   @Override
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 9)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
-  @Value.Parameter(order = 11)
+  @Value.Parameter(order = 10)
   @Value.Auxiliary
   GcpCredentialOps credentialOps();
 
@@ -86,26 +81,24 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
 
   static GcpStorageCredentialCacheKey of(
       String realmId,
-      @Nullable String storageConfigSerializedStr,
+      GcpStorageConfigurationInfo storageConfig,
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
-      GcpStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig,
       GcpCredentialOps credentialOps) {
     return ImmutableGcpStorageCredentialCacheKey.of(
         realmId,
-        storageConfigSerializedStr,
+        storageConfig,
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
         sourceCredentials,
         transportFactory,
-        storageConfig,
         realmConfig,
         credentialOps);
   }

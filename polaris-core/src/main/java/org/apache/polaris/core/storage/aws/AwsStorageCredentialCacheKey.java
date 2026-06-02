@@ -27,7 +27,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
-import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.Tag;
 
@@ -44,7 +43,7 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   String realmId();
 
   @Value.Parameter(order = 2)
-  @Nullable String storageConfigSerializedStr();
+  AwsStorageConfigurationInfo storageConfig();
 
   @Value.Parameter(order = 3)
   Set<String> allowedReadLocations();
@@ -74,12 +73,8 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
   @Value.Auxiliary
   Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver();
 
-  @Value.Parameter(order = 11)
-  @Value.Auxiliary
-  AwsStorageConfigurationInfo storageConfig();
-
   @Override
-  @Value.Parameter(order = 12)
+  @Value.Parameter(order = 11)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
@@ -90,7 +85,7 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
 
   static AwsStorageCredentialCacheKey of(
       String realmId,
-      @Nullable String storageConfigSerializedStr,
+      AwsStorageConfigurationInfo storageConfig,
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
@@ -99,11 +94,10 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
       List<Tag> sessionTags,
       StsClientProvider stsClientProvider,
       Function<AwsStorageConfigurationInfo, Optional<AwsCredentialsProvider>> credentialsResolver,
-      AwsStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
     return ImmutableAwsStorageCredentialCacheKey.of(
         realmId,
-        storageConfigSerializedStr,
+        storageConfig,
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
@@ -112,7 +106,6 @@ public interface AwsStorageCredentialCacheKey extends StorageCredentialCacheKey 
         sessionTags,
         stsClientProvider,
         credentialsResolver,
-        storageConfig,
         realmConfig);
   }
 }

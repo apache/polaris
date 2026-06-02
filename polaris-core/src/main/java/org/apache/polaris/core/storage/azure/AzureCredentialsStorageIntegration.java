@@ -132,13 +132,12 @@ public class AzureCredentialsStorageIntegration
       @NonNull CredentialVendingContext context) {
     return AzureStorageCredentialCacheKey.of(
         context.realm().orElse(""),
-        storageConfig().serialize(),
+        storageConfig(),
         allowList,
         locations,
         writeLocations,
         refreshEndpoint,
         defaultAzureCredential,
-        storageConfig(),
         realmConfig());
   }
 

@@ -26,7 +26,6 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Cache key for vended Azure SAS credentials. Azure SAS tokens do not support session tags, so
@@ -41,7 +40,7 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
   String realmId();
 
   @Value.Parameter(order = 2)
-  @Nullable String storageConfigSerializedStr();
+  AzureStorageConfigurationInfo storageConfig();
 
   @Value.Parameter(order = 3)
   boolean allowedListAction();
@@ -61,12 +60,8 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
   @Value.Auxiliary
   DefaultAzureCredential defaultAzureCredential();
 
-  @Value.Parameter(order = 8)
-  @Value.Auxiliary
-  AzureStorageConfigurationInfo storageConfig();
-
   @Override
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
@@ -77,23 +72,21 @@ public interface AzureStorageCredentialCacheKey extends StorageCredentialCacheKe
 
   static AzureStorageCredentialCacheKey of(
       String realmId,
-      @Nullable String storageConfigSerializedStr,
+      AzureStorageConfigurationInfo storageConfig,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       DefaultAzureCredential defaultAzureCredential,
-      AzureStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
     return ImmutableAzureStorageCredentialCacheKey.of(
         realmId,
-        storageConfigSerializedStr,
+        storageConfig,
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
         defaultAzureCredential,
-        storageConfig,
         realmConfig);
   }
 }
