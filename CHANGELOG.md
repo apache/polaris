@@ -47,6 +47,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Support for view registration has been added.
 - Python client: added support for Python 3.14
 
+- Added support for `register table` overwrite semantics in the Iceberg REST catalog flow (`overwrite=true`) for internal Polaris catalogs. With overwrite enabled, existing table pointers can be updated to a new metadata location while preserving default behavior for `overwrite=false`.
+- Added `REGISTER_TABLE_OVERWRITE` authorization operation mapped to `TABLE_FULL_METADATA` for deterministic overwrite authorization.
+
 ### Changes
 - Added REPL support to Polaris CLI.
 - The `nosql maintenance-run` admin command now rejects a new run when the latest recorded maintenance run is still unfinished, unless the operator explicitly passes `--supersede-run=<run-id>`.
