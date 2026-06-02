@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 /** Discovers H2 schema versions available on the test classpath. */
 final class H2SchemaVersions {
@@ -29,22 +32,42 @@ final class H2SchemaVersions {
   /**
    * Returns sorted schema versions for which {@code h2/schema-vN.sql} exists on the classpath.
    *
-   * <p>schema-v0.sql lives in test resources to cover legacy bootstrap behavior; newer H2 schema
-   * files live in main resources. Both are merged on the test classpath.
+   * <p>Every version from {@code 0} through {@link DatabaseType#H2}{@linkplain
+   * DatabaseType#getLatestSchemaVersion() latest} must be present. {@code schema-v0.sql} lives in
+   * test resources to cover legacy bootstrap behavior; newer H2 schema files live in main
+   * resources.
    */
   static SortedSet<Integer> discover() {
     ClassLoader classLoader = H2SchemaVersions.class.getClassLoader();
+    int latestVersion = DatabaseType.H2.getLatestSchemaVersion();
     SortedSet<Integer> versions = new TreeSet<>();
-    for (int version = 0; ; version++) {
-      String resource = String.format("h2/schema-v%d.sql", version);
+    List<Integer> missingVersions = new ArrayList<>();
+    for (int version = 0; version <= latestVersion; version++) {
+      String resource =
+          String.format("%s/schema-v%d.sql", DatabaseType.H2.getDisplayName(), version);
       if (classLoader.getResource(resource) == null) {
-        break;
+        missingVersions.add(version);
+      } else {
+        versions.add(version);
       }
-      versions.add(version);
     }
-    if (versions.isEmpty()) {
-      throw new IllegalStateException("No H2 schema files found on classpath");
+    if (!missingVersions.isEmpty()) {
+      throw new IllegalStateException(
+          String.format(
+              "Missing H2 schema resource(s) %s for version(s) %s (expected versions 0-%d)",
+              missingVersions.stream()
+                  .map(
+                      version ->
+                          String.format(
+                              "%s/schema-v%d.sql", DatabaseType.H2.getDisplayName(), version))
+                  .toList(),
+              missingVersions,
+              latestVersion));
     }
     return versions;
+  }
+
+  static Stream<Integer> discoverAsStream() {
+    return discover().stream();
   }
 }

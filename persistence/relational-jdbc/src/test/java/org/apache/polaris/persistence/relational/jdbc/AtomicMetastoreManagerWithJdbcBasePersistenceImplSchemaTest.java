@@ -18,64 +18,28 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.stream.Stream;
-import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
-import org.junit.jupiter.api.DynamicContainer;
-import org.junit.jupiter.api.DynamicNode;
-import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Runs {@link BasePolarisMetaStoreManagerTest} integration tests against every H2 schema version
- * discovered on the classpath.
+ * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
+ * tests against every H2 schema version on the classpath.
  */
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest {
+@ParameterizedClass
+@MethodSource("schemaVersions")
+public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest
+    extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
 
-  @TestFactory
-  Stream<DynamicNode> metastoreTestsForAllH2SchemaVersions() {
-    return H2SchemaVersions.discover().stream().map(this::testsForSchemaVersion);
+  @Parameter int schemaVersion;
+
+  static Stream<Integer> schemaVersions() {
+    return H2SchemaVersions.discoverAsStream();
   }
 
-  private DynamicNode testsForSchemaVersion(int schemaVersion) {
-    return DynamicContainer.dynamicContainer(
-        "schema-v" + schemaVersion,
-        testMethods()
-            .map(
-                method ->
-                    DynamicTest.dynamicTest(
-                        method.getName(), () -> runTest(method, schemaVersion))));
-  }
-
-  private static Stream<Method> testMethods() {
-    return Arrays.stream(BasePolarisMetaStoreManagerTest.class.getDeclaredMethods())
-        .filter(method -> method.isAnnotationPresent(Test.class))
-        .sorted(Comparator.comparing(Method::getName));
-  }
-
-  private static void runTest(Method method, int schemaVersion) throws Exception {
-    AtomicMetastoreManagerWithJdbcBasePersistenceImplTest testInstance =
-        new SchemaVersionTest(schemaVersion);
-    testInstance.setupPolarisMetaStoreManager();
-    method.setAccessible(true);
-    method.invoke(testInstance);
-  }
-
-  private static final class SchemaVersionTest
-      extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
-
-    private final int schemaVersion;
-
-    private SchemaVersionTest(int schemaVersion) {
-      this.schemaVersion = schemaVersion;
-    }
-
-    @Override
-    public int schemaVersion() {
-      return schemaVersion;
-    }
+  @Override
+  public int schemaVersion() {
+    return schemaVersion;
   }
 }
