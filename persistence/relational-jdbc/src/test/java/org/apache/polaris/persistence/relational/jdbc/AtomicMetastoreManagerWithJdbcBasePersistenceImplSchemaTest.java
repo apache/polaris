@@ -16,13 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.persistence.relational.jdbc;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV1SchemaTest
+import java.util.stream.Stream;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
+
+/**
+ * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
+ * tests against every H2 schema version on the classpath.
+ */
+@ParameterizedClass
+@MethodSource("schemaVersions")
+public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest
     extends AtomicMetastoreManagerWithJdbcBasePersistenceImplTest {
+
+  @Parameter int schemaVersion;
+
+  static Stream<Integer> schemaVersions() {
+    return H2SchemaVersions.discoverAsStream();
+  }
+
   @Override
   public int schemaVersion() {
-    return 1;
+    return schemaVersion;
   }
 }
