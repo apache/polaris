@@ -424,7 +424,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    */
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     return createTableDirect(
-        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
+            namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty())
+        .response();
   }
 
   /**
@@ -439,7 +440,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       CreateTableRequest request,
       Optional<String> refreshCredentialsEndpoint) {
     return createTableDirect(
-        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
+            namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint)
+        .response();
   }
 
   public void authorizeCreateTableDirect(
@@ -460,7 +462,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
   }
 
-  public LoadTableResponse createTableDirect(
+  public ETaggedLoadTableResponse createTableDirect(
       Namespace namespace,
       CreateTableRequest request,
       EnumSet<AccessDelegationMode> delegationModes,
@@ -490,16 +492,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      return buildLoadTableResponseWithDelegationCredentials(
-              tableIdentifier,
-              tableMetadata,
-              resolvedMode,
-              Set.of(
-                  PolarisStorageActions.READ,
-                  PolarisStorageActions.WRITE,
-                  PolarisStorageActions.LIST),
-              refreshCredentialsEndpoint)
-          .build();
+      return withETag(
+          buildLoadTableResponseWithDelegationCredentials(
+                  tableIdentifier,
+                  tableMetadata,
+                  resolvedMode,
+                  Set.of(
+                      PolarisStorageActions.READ,
+                      PolarisStorageActions.WRITE,
+                      PolarisStorageActions.LIST),
+                  refreshCredentialsEndpoint)
+              .build(),
+          tableIdentifier);
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw notFoundExceptionForTableLikeEntity(
@@ -615,12 +619,13 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * @param request the register table request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
+  public ETaggedLoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, tableIdentifier);
 
-    return catalogHandlerUtils().registerTable(baseCatalog, namespace, request);
+    return withETag(
+        catalogHandlerUtils().registerTable(baseCatalog, namespace, request), tableIdentifier);
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -713,11 +718,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   public Optional<LoadTableResponse> loadTableIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.noneOf(AccessDelegationMode.class),
-        Optional.empty());
+            tableIdentifier,
+            snapshots,
+            ifNoneMatch,
+            EnumSet.noneOf(AccessDelegationMode.class),
+            Optional.empty())
+        .map(ETaggedLoadTableResponse::response);
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -745,11 +751,12 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       String snapshots,
       Optional<String> refreshCredentialsEndpoint) {
     return loadTable(
-        tableIdentifier,
-        snapshots,
-        ifNoneMatch,
-        EnumSet.of(VENDED_CREDENTIALS),
-        refreshCredentialsEndpoint);
+            tableIdentifier,
+            snapshots,
+            ifNoneMatch,
+            EnumSet.of(VENDED_CREDENTIALS),
+            refreshCredentialsEndpoint)
+        .map(ETaggedLoadTableResponse::response);
   }
 
   /**
@@ -857,7 +864,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     return actionsRequested;
   }
 
-  public Optional<LoadTableResponse> loadTable(
+  public Optional<ETaggedLoadTableResponse> loadTable(
       TableIdentifier tableIdentifier,
       String snapshots,
       IfNoneMatch ifNoneMatch,
@@ -902,7 +909,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
                   actionsRequested,
                   refreshCredentialsEndpoint)
               .build();
-      return Optional.of(filterResponseToSnapshots(response, snapshots));
+      return Optional.of(withETag(filterResponseToSnapshots(response, snapshots), tableIdentifier));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw notFoundExceptionForTableLikeEntity(
@@ -910,6 +917,27 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+  }
+
+  /**
+   * Pair a {@link LoadTableResponse} with an entity tag derived from its metadata location. When
+   * the response has no metadata location (e.g. staged create or external catalogs that don't
+   * expose one) the etag is omitted and a warning is logged.
+   */
+  private ETaggedLoadTableResponse withETag(
+      LoadTableResponse response, TableIdentifier tableIdentifier) {
+    if (response.metadataLocation() != null) {
+      return new ETaggedLoadTableResponse(
+          response,
+          Optional.of(
+              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation())));
+    }
+    LOGGER
+        .atWarn()
+        .addKeyValue("namespace", tableIdentifier.namespace())
+        .addKeyValue("tableName", tableIdentifier.name())
+        .log("Response has null metadataLocation; omitting etag");
+    return new ETaggedLoadTableResponse(response, Optional.empty());
   }
 
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(

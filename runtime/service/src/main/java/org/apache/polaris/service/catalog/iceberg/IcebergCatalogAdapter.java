@@ -45,7 +45,6 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -59,7 +58,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.validation.EntityNameValidator;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -176,27 +174,12 @@ public class IcebergCatalogAdapter
   }
 
   /**
-   * For situations where we typically expect a metadataLocation to be present in the response and
-   * so expect to insert an etag header, this helper gracefully falls back to omitting the header if
-   * unable to get metadata location and logs a warning.
+   * Translate an {@link ETaggedLoadTableResponse} produced by the handler into a JAX-RS response
+   * builder, attaching the handler-computed etag as an {@code ETag} HTTP header when present.
    */
-  private Response.ResponseBuilder tryInsertETagHeader(
-      Response.ResponseBuilder builder,
-      LoadTableResponse response,
-      String namespace,
-      String tableName) {
-    if (response.metadataLocation() != null) {
-      builder =
-          builder.header(
-              HttpHeaders.ETAG,
-              IcebergHttpUtil.generateETagForMetadataFileLocation(response.metadataLocation()));
-    } else {
-      LOGGER
-          .atWarn()
-          .addKeyValue("namespace", namespace)
-          .addKeyValue("tableName", tableName)
-          .log("Response has null metadataLocation; omitting etag");
-    }
+  private Response.ResponseBuilder toResponseBuilder(ETaggedLoadTableResponse tagged) {
+    Response.ResponseBuilder builder = Response.ok(tagged.response());
+    tagged.etag().ifPresent(etag -> builder.header(HttpHeaders.ETAG, etag));
     return builder;
   }
 
@@ -296,11 +279,9 @@ public class IcebergCatalogAdapter
                         ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
-            LoadTableResponse response =
-                catalog.createTableDirect(
-                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
-            return tryInsertETagHeader(
-                    Response.ok(response), response, namespace, createTableRequest.name())
+            return toResponseBuilder(
+                    catalog.createTableDirect(
+                        ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           }
         });
@@ -349,7 +330,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          Optional<LoadTableResponse> response =
+          Optional<ETaggedLoadTableResponse> response =
               catalog.loadTable(
                   tableIdentifier,
                   snapshots,
@@ -361,8 +342,7 @@ public class IcebergCatalogAdapter
             return Response.notModified().build();
           }
 
-          return tryInsertETagHeader(Response.ok(response.get()), response.get(), namespace, table)
-              .build();
+          return toResponseBuilder(response.get()).build();
         });
   }
 
@@ -437,12 +417,7 @@ public class IcebergCatalogAdapter
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> {
-          LoadTableResponse response = catalog.registerTable(ns, registerTableRequest);
-          return tryInsertETagHeader(
-                  Response.ok(response), response, namespace, registerTableRequest.name())
-              .build();
-        });
+        catalog -> toResponseBuilder(catalog.registerTable(ns, registerTableRequest)).build());
   }
 
   @Override
