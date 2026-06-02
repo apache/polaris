@@ -172,8 +172,8 @@ final class LazyIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
-    return loaded().divide(parts);
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
+    return loaded().splitByTargetSize(targetSerializedSize);
   }
 
   @Override

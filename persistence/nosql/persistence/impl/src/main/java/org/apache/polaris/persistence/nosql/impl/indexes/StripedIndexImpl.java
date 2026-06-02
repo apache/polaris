@@ -143,7 +143,7 @@ final class StripedIndexImpl<V> implements IndexSpi<V> {
   }
 
   @Override
-  public List<IndexSpi<V>> divide(int parts) {
+  public List<IndexSpi<V>> splitByTargetSize(long targetSerializedSize) {
     throw new UnsupportedOperationException("Striped indexes cannot be further divided");
   }
 
