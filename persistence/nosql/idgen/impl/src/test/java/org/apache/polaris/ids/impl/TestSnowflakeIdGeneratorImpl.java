@@ -28,6 +28,8 @@ import static org.apache.polaris.ids.api.SnowflakeIdGenerator.DEFAULT_TIMESTAMP_
 import static org.apache.polaris.ids.api.SnowflakeIdGenerator.ID_EPOCH_MILLIS;
 import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.timeUuidLsb;
 import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.timeUuidMsbReal;
+import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.timeUuidTimestampFromUnixMillis;
+import static org.apache.polaris.ids.impl.SnowflakeIdGeneratorImpl.unixMillisFromTimeUuidTimestamp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -496,12 +498,15 @@ public class TestSnowflakeIdGeneratorImpl {
         var uuid = impl.idToTimeUuid(id);
 
         soft.assertThat(impl.nodeFromId(id)).isEqualTo(nodeId).isEqualTo(uuid.node());
-        soft.assertThat(impl.timestampFromId(id))
-            .isEqualTo(initialTimestamp + millis)
-            .isEqualTo(uuid.timestamp() - ID_EPOCH_MILLIS);
+        soft.assertThat(impl.timestampFromId(id)).isEqualTo(initialTimestamp + millis);
+        soft.assertThat(impl.timestampUtcFromId(id))
+            .isEqualTo(ID_EPOCH_MILLIS + initialTimestamp + millis)
+            .isEqualTo(unixMillisFromTimeUuidTimestamp(uuid.timestamp()));
         soft.assertThat(uuid).extracting(UUID::variant, UUID::version).containsExactly(2, 1);
+        soft.assertThat(uuid.timestamp())
+            .isEqualTo(
+                timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS + initialTimestamp + millis));
         soft.assertThat(impl.timeUuidToId(uuid)).isEqualTo(id);
-        soft.assertThat(impl.timestampUtcFromId(id)).isEqualTo(uuid.timestamp());
         soft.assertThat(impl.sequenceFromId(id)).isEqualTo(j).isEqualTo(uuid.clockSequence());
         soft.assertThat(impl.idToString(id))
             .isEqualTo(
@@ -520,6 +525,7 @@ public class TestSnowflakeIdGeneratorImpl {
     }
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   @Test
   public void miscUuid() {
     var clockSource = new AtomicLong(ID_EPOCH_MILLIS + TimeUnit.DAYS.toMillis(365));
@@ -554,15 +560,39 @@ public class TestSnowflakeIdGeneratorImpl {
                         timeUuidMsbReal(tsUuidHighest),
                         timeUuidLsb(seqUuidHighest, nodeUuidHighest))))
         .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                unixMillisFromTimeUuidTimestamp(
+                    timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS) + 1))
+        .withMessage("TimeUUID contains values that cannot be condensed into a snowflake-ID");
 
     soft.assertThatCode(
             () ->
                 impl.timeUuidToId(
                     new UUID(
-                        timeUuidMsbReal((1L << DEFAULT_TIMESTAMP_BITS) - 1),
+                        timeUuidMsbReal(
+                            timeUuidTimestampFromUnixMillis(
+                                ID_EPOCH_MILLIS + ((1L << DEFAULT_TIMESTAMP_BITS) - 2))),
                         timeUuidLsb(
                             (1L << DEFAULT_SEQUENCE_BITS) - 1, (1L << DEFAULT_NODE_ID_BITS) - 1))))
         .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void timeUuidUsesStandardTimestampEncoding() {
+    var nodeId = 42;
+    var timestamp = TimeUnit.DAYS.toMillis(365);
+    var impl =
+        new SnowflakeIdGeneratorImpl(idGeneratorSource(nodeId, () -> ID_EPOCH_MILLIS + timestamp));
+    var id = impl.constructId(timestamp, 7, nodeId);
+    var uuid = impl.idToTimeUuid(id);
+
+    soft.assertThat(uuid.timestamp())
+        .isEqualTo(timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS + timestamp));
+    soft.assertThat(unixMillisFromTimeUuidTimestamp(uuid.timestamp()))
+        .isEqualTo(ID_EPOCH_MILLIS + timestamp);
+    soft.assertThat(impl.timeUuidToId(uuid)).isEqualTo(id);
   }
 
   @Test
@@ -587,7 +617,8 @@ public class TestSnowflakeIdGeneratorImpl {
               () -> {
                 assertThat(uuid.node()).isEqualTo(nodeId);
                 assertThat(uuid.timestamp())
-                    .isGreaterThan(ID_EPOCH_MILLIS)
+                    .isGreaterThan(timeUuidTimestampFromUnixMillis(ID_EPOCH_MILLIS));
+                assertThat(unixMillisFromTimeUuidTimestamp(uuid.timestamp()))
                     .isEqualTo(impl.timestampUtcFromId(id));
                 assertThat(uuid.clockSequence()).isGreaterThanOrEqualTo(0).isLessThan(4096);
                 assertThat(uuid.variant()).isEqualTo(2);

@@ -146,6 +146,7 @@ public class PolarisCatalogUtils {
     // for now we will fill the parameters we have from polaris catalog, and let underlying client
     // resolve the rest within its catalog implementation
     org.apache.spark.sql.types.StructType emptySchema = new org.apache.spark.sql.types.StructType();
+    @SuppressWarnings("deprecation")
     scala.collection.immutable.Seq<String> emptyStringSeq =
         scala.collection.JavaConverters.asScalaBuffer(new java.util.ArrayList<String>()).toList();
     CatalogTable catalogTable =

@@ -54,6 +54,10 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   // TODO add a specialized implementation using hard-coded values for the standardized parameters
 
+  // Number of 100ns ticks between the UUID epoch (1582-10-15) and the Unix epoch.
+  @VisibleForTesting static final long TIME_UUID_EPOCH_OFFSET_100NS = 0x01b21dd213814000L;
+  private static final long TIME_UUID_TICKS_PER_MILLISECOND = 10_000L;
+
   private static final AtomicLongFieldUpdater<SnowflakeIdGeneratorImpl> LAST_ID_UPDATER =
       AtomicLongFieldUpdater.newUpdater(SnowflakeIdGeneratorImpl.class, "lastId");
 
@@ -289,11 +293,11 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
   public long timeUuidToId(@NonNull UUID uuid) {
     checkArgument(
         uuid.variant() == 2 && uuid.version() == 1, "Must be a version 1 / variant 2 UUID");
-    var ts = uuid.timestamp() - idEpoch;
+    var ts = unixMillisFromTimeUuidTimestamp(uuid.timestamp()) - idEpoch;
     var seq = uuid.clockSequence();
     var node = uuid.node();
     checkArgument(
-        ts > 0
+        ts >= 0
             && ts <= timestampMax
             && seq >= 0
             && seq <= sequenceMask
@@ -381,7 +385,7 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
 
   @VisibleForTesting
   private long timeUuidMsb(long timestamp) {
-    return timeUuidMsbReal(timestamp + idEpoch);
+    return timeUuidMsbReal(timeUuidTimestampFromUnixMillis(timestamp + idEpoch));
   }
 
   @VisibleForTesting
@@ -404,5 +408,20 @@ class SnowflakeIdGeneratorImpl implements SnowflakeIdGenerator {
         |
         // time_hi
         ((timestamp >>> 48) & 0x0000000000000FFFL);
+  }
+
+  @VisibleForTesting
+  static long timeUuidTimestampFromUnixMillis(long unixMillis) {
+    return unixMillis * TIME_UUID_TICKS_PER_MILLISECOND + TIME_UUID_EPOCH_OFFSET_100NS;
+  }
+
+  @VisibleForTesting
+  static long unixMillisFromTimeUuidTimestamp(long timeUuidTimestamp) {
+    var timestampSinceUnixEpoch = timeUuidTimestamp - TIME_UUID_EPOCH_OFFSET_100NS;
+    checkArgument(
+        timestampSinceUnixEpoch >= 0
+            && timestampSinceUnixEpoch % TIME_UUID_TICKS_PER_MILLISECOND == 0,
+        "TimeUUID contains values that cannot be condensed into a snowflake-ID");
+    return timestampSinceUnixEpoch / TIME_UUID_TICKS_PER_MILLISECOND;
   }
 }

@@ -20,9 +20,9 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Nullable;
 import java.security.SecureRandom;
 import org.apache.polaris.core.DigestUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Simple class to represent the secrets used to authenticate a catalog principal, These secrets are

@@ -19,10 +19,10 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
+import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL;
 import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -39,8 +39,10 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -103,6 +105,17 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return new RealmConfigImpl(
         (rc, name) -> {
           if (name.equals(SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
+            return List.of(fields);
+          }
+          return null;
+        },
+        () -> "realm");
+  }
+
+  private static RealmConfig sessionNameFields(String... fields) {
+    return new RealmConfigImpl(
+        (rc, name) -> {
+          if (name.equals(SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL.key())) {
             return List.of(fields);
           }
           return null;
@@ -354,6 +367,196 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
     }
+  }
+
+  @Test
+  public void testGetSubscopedCredsInlinePolicyEscapesIamSpecialCharacters() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String specialLocation = "s3://bucket/" + warehouseKeyPrefix + "/ns*?$/tb$?*";
+    String escapedSpecialPath = "path/to/warehouse/ns${*}${?}${$}/tb${$}${?}${*}";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:PutObject"),
+                                      IamAction.create("s3:DeleteObject")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(IamAction.create("s3:ListBucket")), IamStatement::actions)
+                              .returns(
+                                  List.of(IamResource.create(s3Arn(AWS_PARTITION, bucket, null))),
+                                  IamStatement::resources)
+                              .satisfies(
+                                  st ->
+                                      assertThat(st.conditions())
+                                          .containsExactly(
+                                              IamCondition.builder()
+                                                  .operator(IamConditionOperator.STRING_LIKE)
+                                                  .key("s3:prefix")
+                                                  .value(escapedSpecialPath + "/*")
+                                                  .build())));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:GetObject"),
+                                      IamAction.create("s3:GetObjectVersion")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region("us-east-1")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(specialLocation),
+            Set.of(specialLocation),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testGetSubscopedCredsInlinePolicyPreservesLiteralQuestionMarksInLocation() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String specialLocation = "s3://bucket/" + warehouseKeyPrefix + "/ns?/tb?*";
+    String escapedSpecialPath = "path/to/warehouse/ns${?}/tb${?}${*}";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:PutObject"),
+                                      IamAction.create("s3:DeleteObject")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(IamAction.create("s3:ListBucket")), IamStatement::actions)
+                              .returns(
+                                  List.of(IamResource.create(s3Arn(AWS_PARTITION, bucket, null))),
+                                  IamStatement::resources)
+                              .satisfies(
+                                  st ->
+                                      assertThat(st.conditions())
+                                          .containsExactly(
+                                              IamCondition.builder()
+                                                  .operator(IamConditionOperator.STRING_LIKE)
+                                                  .key("s3:prefix")
+                                                  .value(escapedSpecialPath + "/*")
+                                                  .build())));
+
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      statement ->
+                          assertThat(statement)
+                              .returns(
+                                  List.of(
+                                      IamAction.create("s3:GetObject"),
+                                      IamAction.create("s3:GetObjectVersion")),
+                                  IamStatement::actions)
+                              .returns(
+                                  List.of(
+                                      IamResource.create(
+                                          s3Arn(AWS_PARTITION, bucket, escapedSpecialPath))),
+                                  IamStatement::resources));
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region("us-east-1")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(specialLocation),
+            Set.of(specialLocation),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "plain, plain",
+    "'*', '${*}'",
+    "'?', '${?}'",
+    "'$', '${$}'",
+    "'abc $ def * ghi ? jkl', 'abc ${$} def ${*} ghi ${?} jkl'",
+    "'path/*/file', 'path/${*}/file'",
+    "'path/?/file', 'path/${?}/file'",
+    "'path/$/file', 'path/${$}/file'",
+    "'*?$', '${*}${?}${$}'",
+    "'path/*?$/$?*/file', 'path/${*}${?}${$}/${$}${?}${*}/file'",
+  })
+  public void testEscapeIamGlobLiteral(String input, String expectedOutput) {
+    assertThat(AwsCredentialsStorageIntegration.escapeIamGlobLiteral(input))
+        .isEqualTo(expectedOutput);
   }
 
   @Test
@@ -1141,7 +1344,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             CredentialVendingContext.empty());
   }
 
-  private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
+  private static @NonNull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
     if (keyPrefix == null) {
       return bucketArn;
@@ -1149,7 +1352,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return bucketArn + "/" + keyPrefix + "/*";
   }
 
-  private static @Nonnull String s3Path(String bucket, String keyPrefix) {
+  private static @NonNull String s3Path(String bucket, String keyPrefix) {
     return "s3://" + bucket + "/" + keyPrefix;
   }
 
@@ -1633,6 +1836,141 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         context))
         .isInstanceOf(software.amazon.awssdk.services.sts.model.StsException.class)
         .hasMessageContaining("sts:TagSession");
+  }
+
+  // ---- SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL tests ----
+
+  @Test
+  public void testSessionNameFieldsOverridesLegacyBehavior() {
+    // When SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL is set, the resulting roleSessionName
+    // must start with "p-" regardless of INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.
+    RealmConfig config = sessionNameFields("catalog", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder().catalogName(Optional.of("hr_catalog")).build();
+
+    AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
+
+    assertThat(request.roleSessionName()).isEqualTo("p-hr_catalog-test-principal");
+  }
+
+  @Test
+  public void testSessionNameFieldsEmptyFallsBackToLegacyDefault() {
+    // Empty SESSION_NAME_FIELDS falls back to INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL=false
+    // behaviour → "PolarisAwsCredentialsStorageIntegration"
+    AssumeRoleRequest request =
+        invokeGetSubscopedCredsAndCaptureRequest(
+            EMPTY_REALM_CONFIG, CredentialVendingContext.empty());
+
+    assertThat(request.roleSessionName()).isEqualTo("PolarisAwsCredentialsStorageIntegration");
+  }
+
+  @Test
+  public void testSessionNameFieldsEmptyFallsBackToPrincipalIncluderBehavior() {
+    // When SESSION_NAME_FIELDS is empty but INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL=true,
+    // the legacy "polaris-<principal>" format must still be used.
+    AssumeRoleRequest request =
+        invokeGetSubscopedCredsAndCaptureRequest(
+            PRINCIPAL_INCLUDER_REALM_CONFIG, CredentialVendingContext.empty());
+
+    assertThat(request.roleSessionName()).isEqualTo("polaris-test-principal");
+  }
+
+  @Test
+  public void testSessionNameFieldsAllFiveFields() {
+    RealmConfig config = sessionNameFields("realm", "catalog", "namespace", "table", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .realm(Optional.of("myrealm"))
+            .catalogName(Optional.of("mycat"))
+            .namespace(Optional.of("myns"))
+            .tableName(Optional.of("mytbl"))
+            .build();
+
+    AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
+
+    assertThat(request.roleSessionName()).isEqualTo("p-myrealm-mycat-myns-mytbl-test-principal");
+  }
+
+  @Test
+  public void testSessionNameFieldsCustomPrefix() {
+    RealmConfig config = sessionNameFields("prefix-polaris", "catalog", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder().catalogName(Optional.of("hr_catalog")).build();
+
+    AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
+
+    assertThat(request.roleSessionName()).isEqualTo("polaris-hr_catalog-test-principal");
+  }
+
+  @Test
+  public void testSessionNameFieldsTruncatedToAwsLimit() {
+    RealmConfig config = sessionNameFields("realm", "catalog", "table", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .realm(Optional.of("a".repeat(50)))
+            .catalogName(Optional.of("b".repeat(50)))
+            .tableName(Optional.of("c".repeat(50)))
+            .build();
+
+    PolarisPrincipal longPrincipal = PolarisPrincipal.of("d".repeat(50), Map.of(), Set.of());
+
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
+
+    String warehouseDir = "s3://bucket/path";
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(warehouseDir)
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .externalId("externalId")
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            config,
+            true,
+            Set.of(warehouseDir),
+            Set.of(warehouseDir),
+            longPrincipal,
+            Optional.empty(),
+            context);
+
+    assertThat(requestCaptor.getValue().roleSessionName()).hasSizeLessThanOrEqualTo(64);
+    assertThat(requestCaptor.getValue().roleSessionName()).startsWith("p-");
+  }
+
+  @Test
+  public void testSessionNameFieldsInvalidCharsAreSanitized() {
+    RealmConfig config = sessionNameFields("catalog", "principal");
+
+    CredentialVendingContext context =
+        CredentialVendingContext.builder().catalogName(Optional.of("my catalog/v2")).build();
+
+    AssumeRoleRequest request = invokeGetSubscopedCredsAndCaptureRequest(config, context);
+
+    // spaces and slashes must be replaced; session name must match AWS pattern
+    assertThat(request.roleSessionName()).matches("[\\w+=,.@-]+");
+    assertThat(request.roleSessionName()).doesNotContain(" ").doesNotContain("/");
+  }
+
+  @Test
+  public void testSessionNameFieldsUnknownFieldNamesAreIgnored() {
+    // Unrecognised field names (e.g. "roles", "trace_id") must be silently ignored for session
+    // names. The result should still be well-formed.
+    RealmConfig config = sessionNameFields("principal", "roles", "trace_id");
+
+    AssumeRoleRequest request =
+        invokeGetSubscopedCredsAndCaptureRequest(config, CredentialVendingContext.empty());
+
+    // Only "principal" is recognised; "roles" and "trace_id" are silently dropped
+    assertThat(request.roleSessionName()).startsWith("p-");
+    assertThat(request.roleSessionName()).hasSizeLessThanOrEqualTo(64);
+    assertThat(request.roleSessionName()).isEqualTo("p-test-principal");
   }
 
   @Test

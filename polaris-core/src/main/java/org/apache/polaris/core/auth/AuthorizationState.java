@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Request-scoped authorization state shared across authorization phases.
@@ -34,7 +34,7 @@ public class AuthorizationState {
       new AtomicReference<>();
 
   /** Returns the request-scoped resolution manifest used for authorization. */
-  @Nonnull
+  @NonNull
   public PolarisResolutionManifest getResolutionManifest() {
     PolarisResolutionManifest manifest = resolutionManifest.get();
     if (manifest == null) {
@@ -44,7 +44,7 @@ public class AuthorizationState {
   }
 
   /** Sets the request-scoped resolution manifest used for authorization. */
-  public void setResolutionManifest(@Nonnull PolarisResolutionManifest resolutionManifest) {
+  public void setResolutionManifest(@NonNull PolarisResolutionManifest resolutionManifest) {
     Objects.requireNonNull(resolutionManifest, "resolutionManifest");
     if (!this.resolutionManifest.compareAndSet(null, resolutionManifest)) {
       throw new IllegalStateException("AuthorizationState resolution manifest already set");

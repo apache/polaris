@@ -43,7 +43,7 @@ follows:
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
-docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
 In this setup, a Polaris container will be started in a docker-compose group, using the image
@@ -110,7 +110,7 @@ Create a .env file that contains the following variables:
 
 ```
 # AWS variables
-AWS_TEST_ENABLED=true
+S3_TEST_BACKEND=aws
 AWS_ACCESS_KEY_ID=<your_access_key>
 AWS_SECRET_ACCESS_KEY=<your_secret_key>
 AWS_STORAGE_BUCKET=<your_s3_bucket>
@@ -132,59 +132,47 @@ AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.w
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
-## Run with MinIO (Local Development)
+## Local S3-compatible Storage (MinIO or RustFS)
 
-For local development without AWS credentials, tests can run against MinIO, an S3-compatible object storage server that runs in a Docker container.
+Regression tests support local S3-compatible storage as an alternative to real AWS S3.
 
-### Automatic Mode Detection
+Currently supported backends:
+- **MinIO** (Default)
+- **RustFS**
 
-The test framework automatically detects which storage backend to use:
-- If `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are set → AWS mode
-- If AWS credentials are not available → MinIO mode
+### Running with Local Backend
 
-### Running with MinIO
-
-MinIO is included automatically in the docker-compose setup:
+The `docker-compose` setup use **Docker Compose Profiles** to manage these backends.
 
 ```shell
-# Start services (MinIO will be included automatically)
-docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+# Run with MinIO (default)
+S3_TEST_BACKEND=minio docker compose --profile minio -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+# Run with RustFS
+S3_TEST_BACKEND=rustfs docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
-If you don't have AWS credentials configured, MinIO mode will be automatically enabled. The tests will run against the local MinIO instance instead of real AWS S3.
+### Forcing a Backend
 
-### Forcing MinIO Mode
-
-To explicitly use MinIO even if AWS credentials are available, set `MINIO_TEST_ENABLED=true` in your `.env` file:
+To explicitly select a backend even if AWS credentials are available, set `S3_TEST_BACKEND` in your `.env` file or export it:
 
 ```shell
-# In .env file
-MINIO_TEST_ENABLED=true
-MINIO_ENDPOINT=http://minio:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
+export S3_TEST_BACKEND=rustfs
+docker compose --profile rustfs -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
-Or export it as an environment variable:
+### Credentials
 
-```shell
-export MINIO_TEST_ENABLED=true
-docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-```
-
-### MinIO Console
-
-When MinIO is running, you can access the MinIO web console to inspect buckets and objects:
+Local backends use hardcoded test credentials:
 - URL: http://localhost:9001
-- Username: `minioadmin`
-- Password: `minioadmin`
+- Username: `polarisadmin`
+- Password: `polarisadmin`
+
+These are configured automatically in both storage backends and the Polaris service during testing.
 
 ### Configuration
 
-MinIO settings can be customized in the `.env` file:
-- `MINIO_ENDPOINT` - MinIO server endpoint (default: `http://minio:9000`)
-- `MINIO_ACCESS_KEY` - Access key (default: `minioadmin`)
-- `MINIO_SECRET_KEY` - Secret key (default: `minioadmin`)
+When running locally, you can access the storage console:
+- **MINIO_ENDPOINT** - http://localhost:9001
 
 ### Limitations
 

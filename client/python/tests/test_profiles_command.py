@@ -97,3 +97,51 @@ class TestProfilesCommand(CLITestBase):
         with patch("sys.stdout", new_callable=io.StringIO):
             self.mock_execute(mock_client, ["profiles", "create", "dev"])
         mock_exit.assert_called_once_with(1)
+
+    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch(
+        "apache_polaris.cli.command.profiles.open",
+        new_callable=mock_open,
+        read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
+    )
+    def test_profile_delete(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_exists.return_value = True
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(mock_client, ["profiles", "delete", "dev"])
+            output = mock_stdout.getvalue()
+            self.assertIn("Polaris profile dev deleted successfully.", output)
+        mock_file.assert_called_with(ANY, "w")
+
+    @patch("apache_polaris.cli.command.profiles.os.path.exists")
+    @patch(
+        "apache_polaris.cli.command.profiles.open",
+        new_callable=mock_open,
+        read_data='{"dev": {"client_id": "root", "client_secret": "s3cr3t", "host": "localhost", "port": 8181, "realm": "", "header": "Polaris-Realm"}}',
+    )
+    @patch("builtins.input")
+    @patch("apache_polaris.cli.command.profiles.os.makedirs")
+    def test_profile_update(
+        self,
+        mock_makedirs: MagicMock,
+        mock_input: MagicMock,
+        mock_file: MagicMock,
+        mock_exists: MagicMock,
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_exists.return_value = True
+        mock_input.side_effect = [
+            "new-id",
+            "new-secret",
+            "newhost",
+            9090,
+            "myrealm",
+            "Polaris-Realm",
+        ]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(mock_client, ["profiles", "update", "dev"])
+            output = mock_stdout.getvalue()
+            self.assertIn("Polaris profile dev updated successfully.", output)
+        mock_file.assert_called_with(ANY, "w")

@@ -23,6 +23,7 @@ from typing import Any, Callable
 from unittest.mock import patch, MagicMock
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -49,7 +50,7 @@ class CLITestBase(unittest.TestCase):
         return command.execute(mock_client)
 
     def check_exception(self, func: Callable[[], Any], exception_str: str) -> None:
-        with self.assertRaises(Exception) as cm:
+        with self.assertRaises(CliError) as cm:
             func()
         self.assertIn(exception_str, str(cm.exception))
 

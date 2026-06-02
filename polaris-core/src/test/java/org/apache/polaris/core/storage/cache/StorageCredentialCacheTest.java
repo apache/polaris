@@ -19,9 +19,9 @@
 package org.apache.polaris.core.storage.cache;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL;
+import static org.apache.polaris.core.config.FeatureConfiguration.SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL;
 import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 
-import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +47,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -488,6 +489,134 @@ public class StorageCredentialCacheTest {
     }
   }
 
+  /**
+   * When SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL includes a context-varying field (e.g.
+   * "table"), credentials for different tables must NOT share a cache entry — the session name
+   * encodes the table and serving a credential stamped with table-A's session name to a request for
+   * table-B would produce wrong CloudTrail attribution.
+   */
+  @Test
+  public void testSessionNameTableFieldCausesCacheMissPerTable() {
+    StorageCredentialsVendor vendorWithSessionName = Mockito.mock(StorageCredentialsVendor.class);
+    Mockito.when(vendorWithSessionName.getRealmContext()).thenReturn(realmContext);
+    Mockito.when(vendorWithSessionName.getRealmConfig())
+        .thenReturn(
+            new RealmConfigImpl(
+                (rc, name) ->
+                    SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL.key().equals(name)
+                        ? List.of("table")
+                        : null,
+                () -> "realm"));
+
+    List<ScopedCredentialsResult> creds = getFakeScopedCreds(2, false);
+    Mockito.when(
+            vendorWithSessionName.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(creds.get(0))
+        .thenReturn(creds.get(1));
+
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+    PolarisPrincipal principal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+
+    CredentialVendingContext ctxTableA =
+        CredentialVendingContext.builder().tableName(Optional.of("tableA")).build();
+    CredentialVendingContext ctxTableB =
+        CredentialVendingContext.builder().tableName(Optional.of("tableB")).build();
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        vendorWithSessionName,
+        entity,
+        true,
+        Set.of("s3://bucket/path"),
+        Set.of(),
+        principal,
+        Optional.empty(),
+        ctxTableA);
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // Different table context → must be a cache miss (size grows to 2)
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        vendorWithSessionName,
+        entity,
+        true,
+        Set.of("s3://bucket/path"),
+        Set.of(),
+        principal,
+        Optional.empty(),
+        ctxTableB);
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(2);
+  }
+
+  /**
+   * When SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL includes "principal", credentials for
+   * different principals must NOT share a cache entry — the session name encodes the principal.
+   */
+  @Test
+  public void testSessionNamePrincipalFieldCausesCacheMissPerPrincipal() {
+    StorageCredentialsVendor vendorWithSessionName = Mockito.mock(StorageCredentialsVendor.class);
+    Mockito.when(vendorWithSessionName.getRealmContext()).thenReturn(realmContext);
+    Mockito.when(vendorWithSessionName.getRealmConfig())
+        .thenReturn(
+            new RealmConfigImpl(
+                (rc, name) ->
+                    SESSION_NAME_FIELDS_IN_SUBSCOPED_CREDENTIAL.key().equals(name)
+                        ? List.of("principal")
+                        : null,
+                () -> "realm"));
+
+    List<ScopedCredentialsResult> creds = getFakeScopedCreds(2, false);
+    Mockito.when(
+            vendorWithSessionName.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(creds.get(0))
+        .thenReturn(creds.get(1));
+
+    PolarisEntity entity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+    PolarisPrincipal principalA = PolarisPrincipal.of("alice", Map.of(), Set.of());
+    PolarisPrincipal principalB = PolarisPrincipal.of("bob", Map.of(), Set.of());
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        vendorWithSessionName,
+        entity,
+        true,
+        Set.of("s3://bucket/path"),
+        Set.of(),
+        principalA,
+        Optional.empty(),
+        CredentialVendingContext.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // Different principal → must be a cache miss (size grows to 2)
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        vendorWithSessionName,
+        entity,
+        true,
+        Set.of("s3://bucket/path"),
+        Set.of(),
+        principalB,
+        Optional.empty(),
+        CredentialVendingContext.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(2);
+  }
+
   private static List<ScopedCredentialsResult> getFakeScopedCreds(int number, boolean expireSoon) {
     List<ScopedCredentialsResult> res = new ArrayList<>();
     for (int i = 1; i <= number; i = i + 3) {
@@ -529,7 +658,7 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
-  @Nonnull
+  @NonNull
   private static List<PolarisEntity> getPolarisEntities() {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(

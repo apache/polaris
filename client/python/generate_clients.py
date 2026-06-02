@@ -56,6 +56,7 @@ EXCLUDE_PATHS = [
     Path("hatch_build.py"),
     Path("templates"),
     Path("spec"),
+    Path("PKG-INFO"),
     Path("LICENSE"),
     Path("NOTICE"),
 ]

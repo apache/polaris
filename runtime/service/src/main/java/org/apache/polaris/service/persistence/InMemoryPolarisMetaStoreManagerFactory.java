@@ -45,20 +45,23 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
+  private final RootCredentialsSet rootCredentialsSet;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
       Clock clock,
       PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegration) {
+      PolarisStorageIntegrationProvider storageIntegration,
+      RootCredentialsSet rootCredentialsSet) {
     super(clock, diagnostics);
     this.storageIntegration = storageIntegration;
+    this.rootCredentialsSet = rootCredentialsSet;
   }
 
   @Override
@@ -81,7 +84,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
+      bootstrapRealms(List.of(realmId), rootCredentialsSet);
     }
     return super.getOrCreateMetaStoreManager(realmContext);
   }
@@ -90,14 +93,9 @@ public class InMemoryPolarisMetaStoreManagerFactory
   public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
+      bootstrapRealms(List.of(realmId), rootCredentialsSet);
     }
     return super.getOrCreateSession(realmContext);
-  }
-
-  private void bootstrapRealmsFromEnvironment(List<String> realms) {
-    RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
-    this.bootstrapRealms(realms, rootCredentialsSet);
   }
 
   @Override

@@ -146,6 +146,37 @@ public abstract class AsyncExecTestBase {
   }
 
   @Test
+  public void cancelRunningTaskDoesNotInterrupt() throws Exception {
+    var started = new Semaphore(0);
+    var allowFinish = new Semaphore(0);
+    var finished = new Semaphore(0);
+    var interrupted = new AtomicBoolean();
+
+    var cancelable =
+        executor.submit(
+            () -> {
+              started.release();
+              try {
+                allowFinish.acquire();
+              } catch (InterruptedException e) {
+                interrupted.set(true);
+              } finally {
+                finished.release();
+              }
+              return null;
+            });
+
+    soft.assertThat(started.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS)).isTrue();
+
+    cancelable.cancel();
+    allowFinish.release();
+
+    soft.assertThat(finished.tryAcquire(asyncTimeout.toMillis(), MILLISECONDS)).isTrue();
+    soft.assertThat(interrupted.get()).isFalse();
+    cancelledAssert(assertThat(cancelable.completionStage().toCompletableFuture()));
+  }
+
+  @Test
   public void submitManyFailing() {
     int numTasks = 50;
     var sem = new Semaphore(0);

@@ -24,6 +24,7 @@ from typing import Optional, Dict, List, cast
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
@@ -70,7 +71,7 @@ class PoliciesCommand(Command):
 
     def validate(self) -> None:
         if not self.catalog_name:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
 
@@ -83,22 +84,22 @@ class PoliciesCommand(Command):
             Subcommands.DETACH,
         }:
             if not self.policy_name:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY)}"
                 )
 
         if self.policies_subcommand in [Subcommands.CREATE, Subcommands.UPDATE]:
             if not self.policy_file:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}"
                 )
         if self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
             if not self.attachment_type:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACHMENT_TYPE)}"
                 )
             if self.attachment_type != "catalog" and not self.attachment_path:
-                raise Exception(
+                raise CliError(
                     f"'{Argument.to_flag_name(Arguments.ATTACHMENT_PATH)}' is required when attachment type is not 'catalog'"
                 )
         if (
@@ -107,13 +108,13 @@ class PoliciesCommand(Command):
             and self.target_name
         ):
             if not self.namespace:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
                     f" when {Argument.to_flag_name(Arguments.TARGET_NAME)} is set."
                 )
         if self.policies_subcommand == Subcommands.LIST and not self.applicable:
             if not self.namespace:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
                     f" when listing policies without {Argument.to_flag_name(Arguments.APPLICABLE)} flag."
                 )
@@ -204,7 +205,7 @@ class PoliciesCommand(Command):
             if loaded_policy_response and loaded_policy_response.policy:
                 current_policy_version = loaded_policy_response.policy.version
             else:
-                raise Exception(
+                raise CliError(
                     f"Could not retrieve current policy version for {policy_name}"
                 )
 
@@ -252,4 +253,4 @@ class PoliciesCommand(Command):
                     ),
                 )
         else:
-            raise Exception(f"{self.policies_subcommand} is not supported in the CLI")
+            raise CliError(f"{self.policies_subcommand} is not supported in the CLI")

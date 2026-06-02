@@ -18,16 +18,16 @@
  */
 package org.apache.polaris.core.policy;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 public interface TransactionalPolicyMappingPersistence {
   /** See {@link PolicyMappingPersistence#writeToPolicyMappingRecords} */
   default void writeToPolicyMappingRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
@@ -41,29 +41,29 @@ public interface TransactionalPolicyMappingPersistence {
    * @param record policy mapping record to write.
    */
   default void checkConditionsForWriteToPolicyMappingRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
   /** See {@link PolicyMappingPersistence#deleteFromPolicyMappingRecords} */
   default void deleteFromPolicyMappingRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisPolicyMappingRecord record) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
   /** See {@link PolicyMappingPersistence#deleteAllEntityPolicyMappingRecords} */
   default void deleteAllEntityPolicyMappingRecordsInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
-      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+      @NonNull PolarisCallContext callCtx,
+      @NonNull PolarisBaseEntity entity,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @NonNull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
   /** See {@link PolicyMappingPersistence#lookupPolicyMappingRecord} */
   @Nullable
   default PolarisPolicyMappingRecord lookupPolicyMappingRecordInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode,
@@ -73,9 +73,9 @@ public interface TransactionalPolicyMappingPersistence {
   }
 
   /** See {@link PolicyMappingPersistence#loadPoliciesOnTargetByType} */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByTypeInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long targetCatalogId,
       long targetId,
       int policyTypeCode) {
@@ -83,16 +83,16 @@ public interface TransactionalPolicyMappingPersistence {
   }
 
   /** See {@link PolicyMappingPersistence#loadAllPoliciesOnTarget} */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadAllPoliciesOnTargetInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+      @NonNull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
   /** See {@link PolicyMappingPersistence#loadAllTargetsOnPolicy} */
-  @Nonnull
+  @NonNull
   default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
+      @NonNull PolarisCallContext callCtx,
       long policyCatalogId,
       long policyId,
       int policyTypeCode) {

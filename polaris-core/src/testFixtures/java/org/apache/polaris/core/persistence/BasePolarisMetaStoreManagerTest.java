@@ -43,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -520,5 +521,22 @@ public abstract class BasePolarisMetaStoreManagerTest {
       executorService.shutdown();
       Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
     }
+  }
+
+  @Test
+  protected void testResetCredentialsClientIdCollision() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    PrincipalEntity principalA = polarisTestMetaStoreManager.createPrincipal("principalA");
+    PrincipalEntity principalB = polarisTestMetaStoreManager.createPrincipal("principalB");
+
+    String principalAClientId = principalA.getClientId();
+
+    Assertions.assertThatThrownBy(
+            () ->
+                metaStoreManager.resetPrincipalSecrets(
+                    callCtx, principalB.getId(), principalAClientId, null))
+        .isInstanceOf(AlreadyExistsException.class);
   }
 }

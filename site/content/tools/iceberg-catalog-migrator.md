@@ -20,6 +20,10 @@
 title: Iceberg Catalog Migrator
 type: docs
 weight: 100
+menus:
+  main:
+    parent: tools
+    weight: 100
 ---
 
 Iceberg Catalog Migrator is a command-line tool to migrate Iceberg tables from one Iceberg catalog to another.

@@ -41,6 +41,11 @@ github:
 
   del_branch_on_merge: true
 
+  copilot_code_review:
+    enabled: true
+    review_drafts: false
+    review_on_push: false
+
   protected_branches:
     main:
       required_pull_request_reviews:

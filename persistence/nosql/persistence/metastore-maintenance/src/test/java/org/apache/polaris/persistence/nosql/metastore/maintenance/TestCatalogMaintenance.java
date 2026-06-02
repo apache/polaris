@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -199,7 +200,8 @@ public class TestCatalogMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmId))
-                .build());
+                .build(),
+            OptionalLong.empty());
     soft.assertThat(runInformation)
         .describedAs("%s", runInformation)
         .extracting(
@@ -233,7 +235,8 @@ public class TestCatalogMaintenance {
             MaintenanceRunSpec.builder()
                 .includeSystemRealm(false)
                 .realmsToProcess(Set.of(realmId))
-                .build());
+                .build(),
+            OptionalLong.empty());
     soft.assertThat(runInformation)
         .describedAs("%s", runInformation)
         .extracting(

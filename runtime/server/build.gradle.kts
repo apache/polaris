@@ -18,7 +18,7 @@
  */
 
 import io.quarkus.gradle.tasks.QuarkusBuild
-import io.quarkus.gradle.tasks.QuarkusRun
+import io.quarkus.gradle.tasks.QuarkusDev
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -49,7 +49,10 @@ dependencies {
   }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "com.google.protobuf", module = "protobuf-java")
+    exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+  }
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
@@ -73,10 +76,10 @@ quarkus {
 tasks.register("run") {
   group = "application"
   description = "Runs the Apache Polaris server application"
-  dependsOn("quarkusRun")
+  dependsOn("quarkusDev")
 }
 
-tasks.named<QuarkusRun>("quarkusRun") {
+tasks.named<QuarkusDev>("quarkusDev") {
   jvmArgs =
     listOf(
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",

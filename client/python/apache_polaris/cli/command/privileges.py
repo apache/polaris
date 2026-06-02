@@ -22,6 +22,7 @@ from typing import List, Optional, cast
 from pydantic import StrictStr
 
 from apache_polaris.cli.command import Command
+from apache_polaris.cli.exceptions import CliError
 from apache_polaris.cli.constants import Subcommands, Actions, Arguments
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import (
@@ -64,46 +65,46 @@ class PrivilegesCommand(Command):
 
     def validate(self) -> None:
         if not self.catalog_name:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
         if not self.catalog_role_name:
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG_ROLE)}"
             )
 
         if self.privileges_subcommand != Subcommands.LIST:
             if not self.privilege:
-                raise Exception(
+                raise CliError(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.PRIVILEGE)}"
                 )
 
         if not self.privileges_subcommand:
-            raise Exception("A subcommand must be provided")
+            raise CliError("A subcommand must be provided")
         if (
             self.privileges_subcommand
             in {Subcommands.NAMESPACE, Subcommands.TABLE, Subcommands.VIEW}
             and not self.namespace
         ):
-            raise Exception(
+            raise CliError(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
             )
 
         if self.action == Actions.GRANT and self.cascade:
-            raise Exception("Unrecognized argument for GRANT: --cascade")
+            raise CliError("Unrecognized argument for GRANT: --cascade")
 
         if self.privileges_subcommand == Subcommands.CATALOG:
             if self.privilege not in {i.value for i in CatalogPrivilege}:
-                raise Exception(f"Invalid catalog privilege: {self.privilege}")
+                raise CliError(f"Invalid catalog privilege: {self.privilege}")
         if self.privileges_subcommand == Subcommands.NAMESPACE:
             if self.privilege not in {i.value for i in NamespacePrivilege}:
-                raise Exception(f"Invalid namespace privilege: {self.privilege}")
+                raise CliError(f"Invalid namespace privilege: {self.privilege}")
         if self.privileges_subcommand == Subcommands.TABLE:
             if self.privilege not in {i.value for i in TablePrivilege}:
-                raise Exception(f"Invalid table privilege: {self.privilege}")
+                raise CliError(f"Invalid table privilege: {self.privilege}")
         if self.privileges_subcommand == Subcommands.VIEW:
             if self.privilege not in {i.value for i in ViewPrivilege}:
-                raise Exception(f"Invalid view privilege: {self.privilege}")
+                raise CliError(f"Invalid view privilege: {self.privilege}")
 
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_name = cast(str, self.catalog_name)
@@ -144,7 +145,7 @@ class PrivilegesCommand(Command):
                 )
 
             if not grant:
-                raise Exception(
+                raise CliError(
                     f"{self.privileges_subcommand} is not supported in the CLI"
                 )
             elif self.action == Actions.GRANT:
@@ -156,4 +157,4 @@ class PrivilegesCommand(Command):
                     catalog_name, role_name, self.cascade, request
                 )
             else:
-                raise Exception(f"{self.action} is not supported in the CLI")
+                raise CliError(f"{self.action} is not supported in the CLI")

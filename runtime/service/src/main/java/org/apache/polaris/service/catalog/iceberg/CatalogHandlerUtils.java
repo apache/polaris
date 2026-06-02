@@ -231,8 +231,6 @@ public class CatalogHandlerUtils {
 
   public UpdateNamespacePropertiesResponse updateNamespaceProperties(
       SupportsNamespaces catalog, Namespace namespace, UpdateNamespacePropertiesRequest request) {
-    request.validate();
-
     Set<String> removals = Sets.newHashSet(request.removals());
     Map<String, String> updates = request.updates();
 
@@ -294,8 +292,6 @@ public class CatalogHandlerUtils {
 
   public LoadTableResponse registerTable(
       Catalog catalog, Namespace namespace, RegisterTableRequest request) {
-    request.validate();
-
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     Table table = catalog.registerTable(identifier, request.metadataLocation());
     if (table instanceof BaseTable baseTable) {
@@ -679,8 +675,6 @@ public class CatalogHandlerUtils {
 
   public LoadViewResponse createView(
       ViewCatalog catalog, Namespace namespace, CreateViewRequest request) {
-    request.validate();
-
     ViewBuilder viewBuilder =
         catalog
             .buildView(TableIdentifier.of(namespace, request.name()))

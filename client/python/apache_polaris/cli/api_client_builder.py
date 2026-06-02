@@ -33,6 +33,7 @@ from apache_polaris.cli.constants import (
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
 )
+from apache_polaris.cli.exceptions import CliError, CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import ApiClient, Configuration
 
@@ -58,7 +59,7 @@ class BuilderConfig:
             profiles = _load_profiles()
             loaded_profile = profiles.get(client_profile)
             if loaded_profile is None:
-                raise Exception(f"Polaris profile {client_profile} not found")
+                raise CliError(f"Polaris profile {client_profile} not found")
             profile = loaded_profile
         return profile
 
@@ -66,7 +67,7 @@ class BuilderConfig:
     def base_url(self) -> str:
         if self.options.base_url:
             if self.options.host is not None or self.options.port is not None:
-                raise Exception(
+                raise CliError(
                     f"Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or"
                     f" {Argument.to_flag_name(Arguments.HOST)} &"
                     f" {Argument.to_flag_name(Arguments.PORT)}, but not both"
@@ -144,7 +145,8 @@ class ApiClientBuilder:
             },
         ).response.data
         if "access_token" not in json.loads(response):
-            raise Exception("Failed to get access token")
+            # Distinct from validation errors: HTTP succeeded but body was not a usable token.
+            raise CliError("Failed to get access token", exit_code=CLI_ERROR_EXIT_CODE)
         return json.loads(response)["access_token"]
 
     def _build(self) -> ApiClient:
@@ -153,13 +155,15 @@ class ApiClientBuilder:
             self.conf.client_id is not None and self.conf.client_secret is not None
         )
         if has_access_token and (self.conf.client_id or self.conf.client_secret):
-            raise Exception(
+            # User supplied conflicting credential sources (usage / EX_USAGE).
+            raise CliError(
                 f"Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &"
                 f" {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or"
                 f" {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}, but not both"
             )
         if not has_access_token and not has_client_secret:
-            raise Exception(
+            # Missing credentials entirely (usage / EX_USAGE).
+            raise CliError(
                 f"Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &"
                 f" {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or"
                 f" {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}."

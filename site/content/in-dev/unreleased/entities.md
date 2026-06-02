@@ -30,6 +30,13 @@ A catalog is a top-level entity in Polaris that may contain other entities like 
 
 For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the CreateCatalogRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
+{{< alert warning >}}
+Catalog properties are client-visible configuration values. Polaris returns them to authenticated
+catalog clients through the Iceberg REST `/config` response. Use catalog properties only for
+non-sensitive client configuration. Do not store passwords, tokens, access keys, or other secrets
+in catalog properties.
+{{< /alert >}}
+
 ### Storage Type
 
 All catalogs in Polaris are associated with a _storage type_. Valid Storage Types are `S3`, `Azure`, and `GCS`. The `FILE` type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.
@@ -52,11 +59,21 @@ Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the CreateTableRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
+{{< alert warning >}}
+Table properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in table properties.
+{{< /alert >}}
+
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
 For information on managing views with the REST API or for more information on what data can be associated with a view, see [the CreateViewRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
+
+{{< alert warning >}}
+View properties are readable metadata, not a secret store. Do not store passwords, tokens, access
+keys, or other secrets in view properties.
+{{< /alert >}}
 
 ## Principal
 
