@@ -255,7 +255,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
   @Override
   public MetricsPersistence getOrCreateMetricsPersistence(RealmContext realmContext) {
-    return createJdbcPersistence(realmContext);
+    // JdbcBasePersistenceImpl implements both BasePersistence and MetricsPersistence, so reuse the
+    // session creation path rather than building a second, independent persistence instance.
+    return (MetricsPersistence) getOrCreateSession(realmContext);
   }
 
   @Override
