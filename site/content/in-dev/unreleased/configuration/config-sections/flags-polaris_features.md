@@ -35,6 +35,16 @@ When set, the base location for a table or namespace will have `/` added as a su
 
 ---
 
+##### `polaris.features."ALLOW_CLIENT_SPECIFIED_TABLE_LOCATION"`
+
+If set to true (the default), Polaris honors a `location` (and the `write.data.path` / `write.metadata.path` properties) explicitly supplied in a create-table or create-view request, subject to the usual allowed-location and overlap validation. If set to false, such a request is rejected and Polaris always generates the managed location. See DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.allow.client-specified.table.location`
+
+---
+
 ##### `polaris.features."ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG"`
 
 If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. passthrough-facade catalogs may contain leftover entities when syncing with source catalog.In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.
@@ -248,6 +258,16 @@ When enabled, Iceberg tables and views created without a location specified will
 - **Type:** `Boolean`
 - **Default:** `false`
 - **Catalog Config:** `polaris.config.default-table-location-object-storage-prefix.enabled`
+
+---
+
+##### `polaris.features."DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED"`
+
+When enabled (the default), a managed location generated for a table or view created without an explicit location is given a unique, unpredictable suffix, so that no two tables share a path prefix. When disabled, the generated location is the legacy `<namespace location>/<table name>` form.
+
+- **Type:** `Boolean`
+- **Default:** `true`
+- **Catalog Config:** `polaris.config.default-unique-table-location.enabled`
 
 ---
 

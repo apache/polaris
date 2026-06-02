@@ -42,6 +42,10 @@ public final class Profiles {
           "true",
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",
+          // Keep the legacy default location layout so the shared catalog test suite keeps its
+          // historical behavior; the unique-location default is exercised by dedicated tests.
+          "polaris.features.\"DEFAULT_UNIQUE_TABLE_LOCATION_ENABLED\"",
+          "false",
           "polaris.event-listener.type",
           "test",
           "polaris.readiness.ignore-severe-issues",
