@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.spark.sql.SparkSession;
 
 public class BundleSanityChecker {
@@ -28,12 +30,10 @@ public class BundleSanityChecker {
       spark.sql("CREATE TABLE bundle_ns.t (id INT, value STRING) USING ICEBERG");
       spark.sql("INSERT INTO bundle_ns.t VALUES (1, 'a'), (2, 'b')");
       long count = spark.sql("SELECT * FROM bundle_ns.t").count();
-      if (count != 2) {
-        throw new IllegalStateException("Excepted 2 rows, got " + count);
-      }
+      assertThat(count).withFailMessage("Expected 2 rows, got %d", count).isEqualTo(2);
       spark.sql("DROP TABLE bundle_ns.t");
       spark.sql("DROP NAMESPACE bundle_ns");
-    } catch (Exception e) {
+    } catch (Throwable e) {
       e.printStackTrace();
       System.exit(1);
     }
