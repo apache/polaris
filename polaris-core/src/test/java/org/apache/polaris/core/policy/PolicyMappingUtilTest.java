@@ -58,7 +58,7 @@ public class PolicyMappingUtilTest {
             PolicyMappingUtil.isValidTargetEntityType(
                 PolarisEntityType.TABLE_LIKE, null))
         .isFalse();
-
+    
     assertThat(
             PolicyMappingUtil.isValidTargetEntityType(
                 PolarisEntityType.TABLE_LIKE,
