@@ -878,16 +878,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     PolarisAuthorizableOperation write =
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
+    // Resolve once for the shared table target before auth fallback. Today resolution does not
+    // vary by table operation, so either delegation op is sufficient for building the manifest.
+    resolveBasicTableLikeTargetOrThrow(write, tableIdentifier);
+
     Set<PolarisStorageActions> actionsRequested =
         new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
     try {
-      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
-      // easily.
-      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+      authorizeResolvedBasicTableLikeOperationOrThrow(
           write, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
-      resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+      authorizeResolvedBasicTableLikeOperationOrThrow(
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 

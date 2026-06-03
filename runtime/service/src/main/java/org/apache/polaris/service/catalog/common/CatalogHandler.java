@@ -331,8 +331,8 @@ public abstract class CatalogHandler {
     }
   }
 
-  protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
-      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+  protected void resolveBasicTableLikeTargetOrThrow(
+      PolarisAuthorizableOperation op, TableIdentifier identifier) {
     ensureResolutionManifestForTable(identifier);
 
     AuthorizationState authzState = new AuthorizationState();
@@ -345,7 +345,10 @@ public abstract class CatalogHandler {
                 List.of(
                     new SingleTargetAuthorizationIntent(
                         op, PolarisSecurableMapper.tableLike(catalogName(), identifier)))));
+  }
 
+  protected void authorizeResolvedBasicTableLikeOperationOrThrow(
+      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(ResolvedPathKey.ofTableLike(identifier), subType, true);
     if (target == null) {
@@ -361,6 +364,12 @@ public abstract class CatalogHandler {
             null /* secondary */);
 
     initializeCatalog();
+  }
+
+  protected void resolveAndAuthorizeBasicTableLikeOperationOrThrow(
+      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+    resolveBasicTableLikeTargetOrThrow(op, identifier);
+    authorizeResolvedBasicTableLikeOperationOrThrow(op, subType, identifier);
   }
 
   protected void authorizeBasicTableLikeOperationsOrThrow(
