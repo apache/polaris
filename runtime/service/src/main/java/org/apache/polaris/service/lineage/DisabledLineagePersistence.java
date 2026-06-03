@@ -19,9 +19,13 @@
 package org.apache.polaris.service.lineage;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import java.time.Instant;
+import java.util.List;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.lineage.LineageColumnEdge;
+import org.apache.polaris.core.lineage.LineageDataset;
+import org.apache.polaris.core.lineage.LineageEdge;
 import org.apache.polaris.core.lineage.LineageGraph;
-import org.apache.polaris.core.lineage.LineageIngestRequest;
 import org.apache.polaris.core.lineage.LineagePersistence;
 import org.apache.polaris.core.lineage.LineageQueryRequest;
 
@@ -32,12 +36,24 @@ public class DisabledLineagePersistence implements LineagePersistence {
       "No lineage persistence implementation is configured for this deployment.";
 
   @Override
-  public void ingest(RealmContext realmContext, LineageIngestRequest request) {
+  public void upsertDatasets(RealmContext realmContext, List<LineageDataset> datasets) {
     throw new UnsupportedOperationException(MESSAGE);
   }
 
   @Override
-  public LineageGraph query(RealmContext realmContext, LineageQueryRequest request) {
+  public void upsertDatasetEdges(
+      RealmContext realmContext, List<LineageEdge> edges, Instant lastEventAt) {
+    throw new UnsupportedOperationException(MESSAGE);
+  }
+
+  @Override
+  public void upsertColumnEdges(
+      RealmContext realmContext, List<LineageColumnEdge> columnEdges, Instant lastEventAt) {
+    throw new UnsupportedOperationException(MESSAGE);
+  }
+
+  @Override
+  public LineageGraph loadLineage(RealmContext realmContext, LineageQueryRequest request) {
     throw new UnsupportedOperationException(MESSAGE);
   }
 }
