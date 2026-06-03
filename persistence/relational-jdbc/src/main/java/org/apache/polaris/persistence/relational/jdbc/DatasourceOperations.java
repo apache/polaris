@@ -54,7 +54,9 @@ public class DatasourceOperations {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
   // PG STATUS CODES
-  private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+  // 23505 = unique key violation, consistent across PG/Cockroach/H2; other checks (FK, NOT NULL,
+  // CHECK) all propagate
+  private static final String UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE = "23505";
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // H2 STATUS CODES
@@ -407,8 +409,8 @@ public class DatasourceOperations {
     boolean execute(Connection connection) throws SQLException;
   }
 
-  public boolean isConstraintViolation(SQLException e) {
-    return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+  public boolean isUniquenessConstraintViolation(SQLException e) {
+    return UNIQUENESS_CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {
