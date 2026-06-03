@@ -352,6 +352,7 @@ public record TestServices(
                   .polarisPrincipal(principal)
                   .diagnostics(diagnostics)
                   .callContext(callContext)
+                  .authorizationState(new AuthorizationState())
                   .prefixParser(new DefaultCatalogPrefixParser())
                   .resolverFactory(resolverFactory)
                   .resolutionManifestFactory(resolutionManifestFactory)
@@ -405,6 +406,7 @@ public record TestServices(
                   .catalogName(catalogName)
                   .polarisPrincipal(principal)
                   .callContext(callContext)
+                  .authorizationState(new AuthorizationState())
                   .resolutionManifestFactory(resolutionManifestFactory)
                   .metaStoreManager(metaStoreManager)
                   .authorizer(authorizer)
@@ -436,6 +438,7 @@ public record TestServices(
               callContext,
               resolutionManifestFactory,
               metaStoreManager,
+              new AuthorizationState(),
               userSecretsManager,
               serviceIdentityProvider,
               principal,

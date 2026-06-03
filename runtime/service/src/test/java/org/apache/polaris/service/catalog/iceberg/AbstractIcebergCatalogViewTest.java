@@ -38,6 +38,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -175,6 +176,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
+            new AuthorizationState(),
             userSecretsManager,
             serviceIdentityProvider,
             authenticatedRoot,

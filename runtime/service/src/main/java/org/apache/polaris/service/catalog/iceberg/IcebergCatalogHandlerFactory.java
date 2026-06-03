@@ -24,6 +24,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -48,6 +49,7 @@ public class IcebergCatalogHandlerFactory {
   @Inject CatalogPrefixParser prefixParser;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject AuthorizationState authorizationState;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisCredentialManager credentialManager;
   @Inject LocalCatalogFactory localCatalogFactory;
@@ -67,6 +69,7 @@ public class IcebergCatalogHandlerFactory {
         .polarisPrincipal(principal)
         .diagnostics(diagnostics)
         .callContext(callContext)
+        .authorizationState(authorizationState)
         .prefixParser(prefixParser)
         .resolverFactory(resolverFactory)
         .resolutionManifestFactory(resolutionManifestFactory)

@@ -63,6 +63,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -125,6 +126,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     }
     return ImmutableIcebergCatalogHandler.builder()
         .from(handler)
+        .authorizationState(new AuthorizationState())
         .localCatalogFactory(factory)
         .build();
   }
@@ -202,6 +204,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     IcebergCatalogHandler refreshedWrapper =
         ImmutableIcebergCatalogHandler.builder()
             .from(handler)
+            .authorizationState(new AuthorizationState())
             .polarisPrincipal(authenticatedPrincipal1)
             .build();
 
@@ -950,6 +953,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
     return ImmutableIcebergCatalogHandler.builder()
         .from(handler)
+        .authorizationState(new AuthorizationState())
         .callContext(mockCallContext)
         .build();
   }

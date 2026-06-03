@@ -91,7 +91,6 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthorizationRequest;
-import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
@@ -1070,11 +1069,10 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // resolveAuthorizationInputs(...) request, but built-in authorizers do not currently vary
     // resolution by operation. Once the SPI supports multiple resolution passes cleanly, this flow
     // should stop relying on a representative operation for planning-time config lookup.
-    AuthorizationState authzState = new AuthorizationState();
-    authzState.setResolutionManifest(resolutionManifest);
+    authorizationState().setResolutionManifest(resolutionManifest);
     authorizer()
         .resolveAuthorizationInputs(
-            authzState,
+            authorizationState(),
             new AuthorizationRequest(
                 polarisPrincipal(),
                 List.of(

@@ -53,6 +53,7 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -247,6 +248,7 @@ public abstract class PolarisAuthzTestBase {
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
+            new AuthorizationState(),
             userSecretsManager,
             serviceIdentityProvider,
             authenticatedRoot,

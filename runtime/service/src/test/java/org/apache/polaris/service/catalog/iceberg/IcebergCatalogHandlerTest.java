@@ -41,6 +41,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.LocalCatalogFactory;
@@ -113,6 +114,7 @@ class IcebergCatalogHandlerTest {
         .catalogName(CATALOG_NAME)
         .polarisPrincipal(PolarisPrincipal.of("test", Map.of(), Set.of()))
         .callContext(callContext)
+        .authorizationState(new AuthorizationState())
         .metaStoreManager(mock(PolarisMetaStoreManager.class))
         .resolutionManifestFactory(resolutionManifestFactory)
         .authorizer(mock(PolarisAuthorizer.class))

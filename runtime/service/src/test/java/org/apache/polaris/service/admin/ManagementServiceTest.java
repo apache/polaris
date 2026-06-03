@@ -43,6 +43,7 @@ import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -380,6 +381,7 @@ public class ManagementServiceTest {
         callContext,
         services.resolutionManifestFactory(),
         metaStoreManager,
+        new AuthorizationState(),
         new UnsafeInMemorySecretsManager(),
         new DefaultServiceIdentityProvider(),
         principal,

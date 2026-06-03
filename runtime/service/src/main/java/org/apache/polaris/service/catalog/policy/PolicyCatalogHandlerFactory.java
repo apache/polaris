@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import org.apache.polaris.core.auth.AuthorizationState;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -31,6 +32,7 @@ public class PolicyCatalogHandlerFactory {
 
   @Inject CallContext callContext;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject AuthorizationState authorizationState;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject PolarisAuthorizer authorizer;
 
@@ -39,6 +41,7 @@ public class PolicyCatalogHandlerFactory {
         .catalogName(catalogName)
         .polarisPrincipal(principal)
         .callContext(callContext)
+        .authorizationState(authorizationState)
         .resolutionManifestFactory(resolutionManifestFactory)
         .metaStoreManager(metaStoreManager)
         .authorizer(authorizer)
