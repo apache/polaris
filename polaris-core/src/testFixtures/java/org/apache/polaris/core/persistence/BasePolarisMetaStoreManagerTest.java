@@ -131,7 +131,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .extracting(PolarisEntity::toCore)
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-    Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
+    PolarisPersistenceTestSupport.assertEntitiesEquivalentInAnyOrder(
+        createdEntities, listedEntities);
   }
 
   @Test
@@ -167,7 +168,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
                 "principal_test")
             .getEntity();
 
-    Assertions.assertThat(principalEntity).isEqualTo(fetchedPrincipal);
+    PolarisPersistenceTestSupport.assertEntitiesEquivalent(principalEntity, fetchedPrincipal);
   }
 
   @Test

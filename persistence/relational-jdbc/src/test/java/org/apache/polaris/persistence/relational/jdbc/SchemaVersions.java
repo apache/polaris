@@ -24,27 +24,27 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-/** Discovers H2 schema versions available on the test classpath. */
-final class H2SchemaVersions {
+/** Discovers JDBC schema versions available on the test classpath for a {@link DatabaseType}. */
+final class SchemaVersions {
 
-  private H2SchemaVersions() {}
+  private SchemaVersions() {}
 
   /**
-   * Returns sorted schema versions for which {@code h2/schema-vN.sql} exists on the classpath.
+   * Returns sorted schema versions for which {@code <database>/schema-vN.sql} exists on the
+   * classpath.
    *
-   * <p>Every version from {@code 0} through {@link DatabaseType#H2}{@linkplain
-   * DatabaseType#getLatestSchemaVersion() latest} must be present. {@code schema-v0.sql} lives in
-   * test resources to cover legacy bootstrap behavior; newer H2 schema files live in main
-   * resources.
+   * <p>Every version from the type's first schema version through {@link
+   * DatabaseType#getLatestSchemaVersion()} must be present. H2 {@code schema-v0.sql} lives in test
+   * resources to cover legacy bootstrap behavior; production schema files live in main resources.
    */
-  static SortedSet<Integer> discover() {
-    ClassLoader classLoader = H2SchemaVersions.class.getClassLoader();
-    int latestVersion = DatabaseType.H2.getLatestSchemaVersion();
+  static SortedSet<Integer> discover(DatabaseType databaseType) {
+    ClassLoader classLoader = SchemaVersions.class.getClassLoader();
+    int firstVersion = firstSchemaVersion(databaseType);
+    int latestVersion = databaseType.getLatestSchemaVersion();
     SortedSet<Integer> versions = new TreeSet<>();
     List<Integer> missingVersions = new ArrayList<>();
-    for (int version = 0; version <= latestVersion; version++) {
-      String resource =
-          String.format("%s/schema-v%d.sql", DatabaseType.H2.getDisplayName(), version);
+    for (int version = firstVersion; version <= latestVersion; version++) {
+      String resource = String.format("%s/schema-v%d.sql", databaseType.getDisplayName(), version);
       if (classLoader.getResource(resource) == null) {
         missingVersions.add(version);
       } else {
@@ -54,20 +54,29 @@ final class H2SchemaVersions {
     if (!missingVersions.isEmpty()) {
       throw new IllegalStateException(
           String.format(
-              "Missing H2 schema resource(s) %s for version(s) %s (expected versions 0-%d)",
+              "Missing %s schema resource(s) %s for version(s) %s (expected versions %d-%d)",
+              databaseType,
               missingVersions.stream()
                   .map(
                       version ->
                           String.format(
-                              "%s/schema-v%d.sql", DatabaseType.H2.getDisplayName(), version))
+                              "%s/schema-v%d.sql", databaseType.getDisplayName(), version))
                   .toList(),
               missingVersions,
+              firstVersion,
               latestVersion));
     }
     return versions;
   }
 
-  static Stream<Integer> discoverAsStream() {
-    return discover().stream();
+  static Stream<Integer> discoverAsStream(DatabaseType databaseType) {
+    return discover(databaseType).stream();
+  }
+
+  private static int firstSchemaVersion(DatabaseType databaseType) {
+    return switch (databaseType) {
+      case H2 -> 0;
+      case POSTGRES, COCKROACHDB -> 1;
+    };
   }
 }

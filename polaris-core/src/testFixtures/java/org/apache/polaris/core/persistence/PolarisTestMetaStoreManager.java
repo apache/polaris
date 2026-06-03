@@ -1209,16 +1209,18 @@ public class PolarisTestMetaStoreManager {
       PolarisBaseEntity target,
       PolicyEntity policy,
       Map<String, String> parameters) {
-    PolarisPolicyMappingRecord expected =
-        new PolarisPolicyMappingRecord(
-            target.getCatalogId(),
-            target.getId(),
-            policy.getCatalogId(),
-            policy.getId(),
-            policy.getPolicyTypeCode(),
-            parameters);
+    Map<String, String> expectedParameters = parameters == null ? Map.of() : parameters;
     long policyMappingCount =
-        policyMappingRecords.stream().filter(record -> expected.equals(record)).count();
+        policyMappingRecords.stream()
+            .filter(
+                record ->
+                    record.getPolicyCatalogId() == policy.getCatalogId()
+                        && record.getPolicyId() == policy.getId()
+                        && record.getTargetCatalogId() == target.getCatalogId()
+                        && record.getTargetId() == target.getId()
+                        && record.getPolicyTypeCode() == policy.getPolicyTypeCode()
+                        && Objects.equals(record.getParametersAsMap(), expectedParameters))
+            .count();
     return policyMappingCount == 1;
   }
 
@@ -2549,7 +2551,7 @@ public class PolarisTestMetaStoreManager {
               newName);
 
       // what is returned should be same has what has been loaded
-      Assertions.assertThat(renamedEntity).isEqualTo(renamedEntityOut);
+      PolarisPersistenceTestSupport.assertEntitiesEquivalent(renamedEntity, renamedEntityOut);
 
       // ensure properties have been updated
       Assertions.assertThat(renamedEntityOut.getInternalPropertiesAsMap())

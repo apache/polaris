@@ -25,7 +25,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Runs {@link org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest} integration
- * tests against every H2 schema version on the classpath.
+ * tests against the latest H2 schema version only. Historical schema versions are exercised on
+ * PostgreSQL; see {@link AtomicMetastoreManagerWithJdbcBasePersistenceImplPostgresSchemaIT}.
  */
 @ParameterizedClass
 @MethodSource("schemaVersions")
@@ -35,7 +36,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplSchemaTest
   @Parameter int schemaVersion;
 
   static Stream<Integer> schemaVersions() {
-    return H2SchemaVersions.discoverAsStream();
+    return Stream.of(DatabaseType.H2.getLatestSchemaVersion());
   }
 
   @Override
