@@ -20,6 +20,7 @@ package org.apache.polaris.service.lineage;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.lineage.LineageGraph;
@@ -45,13 +46,17 @@ public class DefaultLineageService implements LineageService {
   @Override
   public void ingest(LineageIngestRequest request) {
     ensureEnabled();
-    persistence.ingest(callContext.getRealmContext(), request);
+    Instant lastEventAt = request.eventTime().orElseGet(Instant::now);
+    persistence.upsertDatasets(callContext.getRealmContext(), request.datasets());
+    persistence.upsertDatasetEdges(callContext.getRealmContext(), request.edges(), lastEventAt);
+    persistence.upsertColumnEdges(
+        callContext.getRealmContext(), request.columnEdges(), lastEventAt);
   }
 
   @Override
   public LineageGraph query(LineageQueryRequest request) {
     ensureEnabled();
-    return persistence.query(callContext.getRealmContext(), request);
+    return persistence.loadLineage(callContext.getRealmContext(), request);
   }
 
   private void ensureEnabled() {

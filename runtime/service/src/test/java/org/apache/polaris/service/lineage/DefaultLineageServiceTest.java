@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -30,7 +31,10 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.lineage.LineageColumnEdge;
 import org.apache.polaris.core.lineage.LineageDataset;
+import org.apache.polaris.core.lineage.LineageEdge;
+import org.apache.polaris.core.lineage.LineageFieldReference;
 import org.apache.polaris.core.lineage.LineageGraph;
 import org.apache.polaris.core.lineage.LineageIngestRequest;
 import org.apache.polaris.core.lineage.LineageNode;
@@ -43,6 +47,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class DefaultLineageServiceTest {
+  private static final Instant EVENT_TIME = Instant.parse("2026-01-01T00:00:00Z");
+
   @Mock private CallContext callContext;
   @Mock private RealmContext realmContext;
   @Mock private RealmConfig realmConfig;
@@ -111,6 +117,7 @@ public class DefaultLineageServiceTest {
 
   @Test
   void delegatesWhenLineageEnabled() {
+    LineageIngestRequest ingestRequest = ingestRequest();
     LineageGraph graph =
         new LineageGraph(
             new LineageNode(
@@ -121,17 +128,32 @@ public class DefaultLineageServiceTest {
     when(configuration.enabled()).thenReturn(true);
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_LINEAGE)).thenReturn(true);
     when(persistenceConfiguration.enabled()).thenReturn(true);
-    when(persistence.query(realmContext, queryRequest())).thenReturn(graph);
+    when(persistence.loadLineage(realmContext, queryRequest())).thenReturn(graph);
 
-    service.ingest(emptyIngestRequest());
+    service.ingest(ingestRequest);
     service.query(queryRequest());
 
-    verify(persistence).ingest(realmContext, emptyIngestRequest());
-    verify(persistence).query(realmContext, queryRequest());
+    verify(persistence).upsertDatasets(realmContext, ingestRequest.datasets());
+    verify(persistence).upsertDatasetEdges(realmContext, ingestRequest.edges(), EVENT_TIME);
+    verify(persistence).upsertColumnEdges(realmContext, ingestRequest.columnEdges(), EVENT_TIME);
+    verify(persistence).loadLineage(realmContext, queryRequest());
   }
 
   private static LineageIngestRequest emptyIngestRequest() {
     return new LineageIngestRequest(List.of(), List.of(), List.of(), Optional.empty());
+  }
+
+  private static LineageIngestRequest ingestRequest() {
+    LineageDataset source = dataset("raw", "orders");
+    LineageDataset target = dataset("test", "orders");
+    return new LineageIngestRequest(
+        List.of(source, target),
+        List.of(new LineageEdge(source, target)),
+        List.of(
+            new LineageColumnEdge(
+                new LineageFieldReference(source, "id"),
+                new LineageFieldReference(target, "order_id"))),
+        Optional.of(EVENT_TIME));
   }
 
   private static LineageQueryRequest queryRequest() {
