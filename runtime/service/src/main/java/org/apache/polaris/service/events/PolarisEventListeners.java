@@ -84,6 +84,7 @@ public class PolarisEventListeners {
 
   private void deliverEvent(
       PolarisEvent event, String listenerName, PolarisEventListener listener) {
+    LOGGER.debug("Delivering {} event to listener '{}' ({})", event.type(), listenerName, listener);
     try {
       executor.execute(
           () -> {

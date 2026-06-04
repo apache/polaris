@@ -33,6 +33,7 @@ import jakarta.inject.Singleton;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -467,7 +468,10 @@ public class ServiceProducers {
   @Identifier("event-listener-executor")
   public Executor eventListenerExecutor(PolarisEventListenerConfiguration config) {
     if (config.types().isEmpty()) {
-      return Runnable::run;
+      return runnable -> {
+        throw new RejectedExecutionException(
+            "Event listener executor is not available because no event listeners are configured");
+      };
     }
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("event-listener-executor")
