@@ -41,7 +41,7 @@ services:
   jupyter:
     build:
       context: ../../../../   # this is needed to get the ./client
-      dockerfile: ./plugins/spark/v3.5/getting-started/notebooks/Dockerfile
+      dockerfile: ./plugins/spark/v4.0/getting-started/notebooks/Dockerfile
       network: host
     ports:
       - "8888:8888"
