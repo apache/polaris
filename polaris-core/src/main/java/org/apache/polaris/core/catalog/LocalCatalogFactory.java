@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.iceberg;
+package org.apache.polaris.core.catalog;
 
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 public interface LocalCatalogFactory {
 
-  IcebergCatalog createCatalog(PolarisResolutionManifest resolvedManifest);
+  LocalIcebergCatalog createCatalog(PolarisResolutionManifest resolvedManifest);
 }

@@ -25,6 +25,7 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;

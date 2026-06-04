@@ -90,6 +90,8 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
+import org.apache.polaris.core.catalog.LocalIcebergCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -217,7 +219,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private Catalog federatedCatalog = null;
 
   @SuppressWarnings("immutables:incompat")
-  private IcebergCatalog localCatalog = null;
+  private LocalIcebergCatalog localCatalog = null;
 
   @SuppressWarnings("immutables:incompat")
   private SupportsNamespaces namespaceCatalog = null;

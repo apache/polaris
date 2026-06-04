@@ -70,6 +70,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.FederatedCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
+import org.apache.polaris.core.catalog.LocalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
