@@ -33,11 +33,15 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -114,7 +118,11 @@ public class StorageAccessConfigProvider {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
-      return StorageAccessConfig.builder().build();
+      // Even when credential subscoping is skipped, the FileIO still needs the storage
+      // endpoint, path-style-access, and region settings to address the object store
+      // correctly (e.g. path-style is required for S3-compatible stores that use a single
+      // host certificate without wildcard SAN coverage for virtual-hosted-style URLs).
+      return buildStoragePropertiesOnlyConfig(storageInfoEntity);
     }
 
     boolean allowList =
@@ -152,6 +160,37 @@ public class StorageAccessConfigProvider {
       LOGGER.debug("No credentials found for table");
     }
     return accessConfig;
+  }
+
+  /**
+   * Builds a {@link StorageAccessConfig} containing only the non-credential storage properties
+   * (endpoint, path-style-access, region) from the storage entity's configuration. Used when
+   * credential subscoping is skipped — no credentials are vended, but the FileIO still needs
+   * correct addressing properties to avoid defaulting to virtual-hosted-style S3 URLs.
+   */
+  private StorageAccessConfig buildStoragePropertiesOnlyConfig(PolarisEntity storageInfoEntity) {
+    StorageAccessConfig.Builder builder = StorageAccessConfig.builder();
+    String storageConfigStr =
+        storageInfoEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    if (storageConfigStr == null) {
+      return builder.build();
+    }
+    PolarisStorageConfigurationInfo storageConfig =
+        PolarisStorageConfigurationInfo.deserialize(storageConfigStr);
+    if (storageConfig instanceof AwsStorageConfigurationInfo awsConfig) {
+      if (awsConfig.getEndpointUri() != null) {
+        builder.put(StorageAccessProperty.AWS_ENDPOINT, awsConfig.getEndpointUri().toString());
+      }
+      if (Boolean.TRUE.equals(awsConfig.getPathStyleAccess())) {
+        builder.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
+      }
+      if (awsConfig.getRegion() != null) {
+        builder.put(StorageAccessProperty.CLIENT_REGION, awsConfig.getRegion());
+      }
+    }
+    return builder.build();
   }
 
   /**
